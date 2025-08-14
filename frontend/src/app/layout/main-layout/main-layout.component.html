@@ -1,0 +1,61 @@
+<div class="dashboard-layout">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h3>ShopHub</h3>
+      <p style="font-size: 12px; opacity: 0.8;">Admin Panel</p>
+    </div>
+
+    <ul class="sidebar-nav">
+      <li><a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"><span class="icon">📊</span> Dashboard</a></li>
+      <li *ngIf="hasAccess(['ADMIN'])"><a routerLink="/shops/master" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"><span class="icon">🏪</span> Shop </a></li>
+      <li *ngIf="hasAccess(['ADMIN', 'SHOP_OWNER'])"><a routerLink="/shops" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"><span class="icon">✅</span> Shop Verification</a></li>
+      <li *ngIf="hasAccess(['ADMIN', 'MANAGER'])"><a routerLink="/products" routerLinkActive="active"><span class="icon">📦</span> Products</a></li>
+      <li *ngIf="hasAccess(['ADMIN'])"><a routerLink="/users" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"><span class="icon">👥</span> Users</a></li>
+      <li><a routerLink="/settings" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"><span class="icon">⚙️</span> Settings</a></li>
+      <li *ngIf="hasAccess(['ADMIN', 'SHOP_OWNER'])"><a routerLink="/reports" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"><span class="icon">📈</span> Reports</a></li>
+      <li><a (click)="onLogout()" style="cursor: pointer;"><span class="icon">🚪</span> Logout</a></li>
+    </ul>
+
+  </div>
+  <div class="main-content">
+    <div class="header">
+      <div class="header-left">
+        <h2 class="page-title">{{ getCurrentPageTitle() }}</h2>
+      </div>
+      <div class="header-right">
+        <div class="search-container">
+          <input type="text" class="search-box" placeholder="Search...">
+        </div>
+        <div class="user-section">
+          <div style="display: flex; align-items: center; gap: 15px; color: #333;">
+            <span>Welcome, {{ (currentUser$ | async)?.username }}</span>
+            <div class="user-avatar" [matMenuTriggerFor]="userMenu" style="cursor: pointer;">
+              {{ getUserInitials((currentUser$ | async)?.username) }}
+            </div>
+          </div>
+          
+          <!-- User Menu -->
+          <mat-menu #userMenu="matMenu" class="user-menu">
+            <button mat-menu-item>
+              <mat-icon>person</mat-icon>
+              <span>Profile</span>
+            </button>
+            <button mat-menu-item>
+              <mat-icon>settings</mat-icon>
+              <span>Settings</span>
+            </button>
+            <mat-divider></mat-divider>
+            <button mat-menu-item (click)="onLogout()">
+              <mat-icon>logout</mat-icon>
+              <span>Logout</span>
+            </button>
+          </mat-menu>
+        </div>
+      </div>
+    </div>
+    <div class="content-area">
+      <router-outlet></router-outlet>
+    </div>
+  </div>
+</div>

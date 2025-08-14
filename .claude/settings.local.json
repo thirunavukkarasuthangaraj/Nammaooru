@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mvn clean:*)",
+      "Bash(mvn:*)",
+      "Bash(curl:*)",
+      "Bash(taskkill:*)",
+      "Bash(npm install)",
+      "Bash(npm start)",
+      "Bash(npm install:*)",
+      "Bash(del google-maps.service.ts)",
+      "Bash(ren:*)",
+      "Bash(rm:*)",
+      "Bash(mv:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(ng serve:*)",
+      "Bash(powershell:*)",
+      "Bash(mkdir:*)",
+      "Bash(java:*)",
+      "Bash(timeout:*)",
+      "Bash(ng build:*)",
+      "Bash(./gradlew compileJava:*)"
+    ],
+    "deny": [],
+    "ask": [],
+    "defaultMode": "acceptEdits",
+    "additionalDirectories": [
+      "D:\\mnt\\d\\AAWS\\nammaooru\\shop-management-system"
+    ]
+  }
+}

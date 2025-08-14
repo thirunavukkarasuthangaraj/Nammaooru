@@ -1,0 +1,64 @@
+package com.shopmanagement.product.dto;
+
+import com.shopmanagement.product.entity.ShopProduct;
+import jakarta.validation.constraints.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ShopProductRequest {
+
+    @NotNull(message = "Master product ID is required")
+    private Long masterProductId;
+
+    @NotNull(message = "Price is required")
+    @DecimalMin(value = "0.0", message = "Price must be positive")
+    private BigDecimal price;
+
+    @DecimalMin(value = "0.0", message = "Original price must be positive")
+    private BigDecimal originalPrice;
+
+    @DecimalMin(value = "0.0", message = "Cost price must be positive")
+    private BigDecimal costPrice;
+
+    @Min(value = 0, message = "Stock quantity cannot be negative")
+    private Integer stockQuantity = 0;
+
+    @Min(value = 0, message = "Minimum stock level cannot be negative")
+    private Integer minStockLevel;
+
+    @Min(value = 0, message = "Maximum stock level cannot be negative")
+    private Integer maxStockLevel;
+
+    private Boolean trackInventory = true;
+
+    private ShopProduct.ShopProductStatus status = ShopProduct.ShopProductStatus.ACTIVE;
+
+    private Boolean isAvailable = true;
+
+    private Boolean isFeatured = false;
+
+    @Size(max = 255, message = "Custom name must be less than 255 characters")
+    private String customName;
+
+    @Size(max = 1000, message = "Custom description must be less than 1000 characters")
+    private String customDescription;
+
+    @Size(max = 2000, message = "Custom attributes must be less than 2000 characters")
+    private String customAttributes;
+
+    private Integer displayOrder;
+
+    @Size(max = 1000, message = "Tags must be less than 1000 characters")
+    private String tags;
+
+    private List<String> shopImageUrls;
+}
