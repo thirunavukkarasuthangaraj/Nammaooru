@@ -38,6 +38,23 @@ spring:
     user:
       name: admin
       password: admin123
+      
+  # Email Configuration
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: noreplaynammaoorudelivery@gmail.com
+    password: zjvvmelvrfgwvrpl
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 3000
+          writetimeout: 5000
 
 management:
   endpoints:
@@ -89,3 +106,16 @@ shop:
       max-length: 255
     description:
       max-length: 2000
+
+# Email Configuration
+email:
+  from: ${EMAIL_FROM_ADDRESS:nammaooru.shopmanagement@gmail.com}
+  from-name: ${EMAIL_FROM_NAME:NammaOoru Shop Management}
+  templates:
+    welcome: welcome-shop-owner
+    password-reset: password-reset
+    shop-approval: shop-approval
+  subject:
+    welcome: "Welcome to NammaOoru - Your Shop Account is Ready!"
+    password-reset: "Reset Your NammaOoru Account Password"
+    shop-approval: "Your Shop has been Approved!"

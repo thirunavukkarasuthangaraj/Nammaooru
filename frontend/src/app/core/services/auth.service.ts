@@ -128,6 +128,33 @@ export class AuthService {
     return this.hasAnyRole([UserRole.ADMIN, UserRole.SHOP_OWNER]);
   }
 
+  changePassword(request: { currentPassword: string; newPassword: string; confirmPassword: string }): Observable<any> {
+    return this.http.post(`${this.API_URL}/change-password`, request)
+      .pipe(
+        tap(() => {
+          // Clear password status after successful change
+          if (isPlatformBrowser(this.platformId)) {
+            localStorage.removeItem('passwordChangeRequired');
+            localStorage.removeItem('isTemporaryPassword');
+          }
+        }),
+        catchError(error => {
+          this.handleAuthError(error);
+          return throwError(() => error);
+        })
+      );
+  }
+
+  getPasswordStatus(): Observable<{ isTemporaryPassword: boolean; passwordChangeRequired: boolean; lastPasswordChange?: Date }> {
+    return this.http.get<{ isTemporaryPassword: boolean; passwordChangeRequired: boolean; lastPasswordChange?: Date }>(`${this.API_URL}/password-status`)
+      .pipe(
+        catchError(error => {
+          this.handleAuthError(error);
+          return throwError(() => error);
+        })
+      );
+  }
+
   private setSession(authResponse: AuthResponse): void {
     if (isPlatformBrowser(this.platformId)) {
       localStorage.setItem(this.TOKEN_KEY, authResponse.accessToken);
@@ -143,8 +170,29 @@ export class AuthService {
       };
 
       localStorage.setItem(this.USER_KEY, JSON.stringify(user));
+      
+      // Store password status for use in components
+      if (authResponse.passwordChangeRequired || authResponse.isTemporaryPassword) {
+        localStorage.setItem('passwordChangeRequired', 'true');
+        localStorage.setItem('isTemporaryPassword', authResponse.isTemporaryPassword ? 'true' : 'false');
+      }
+      
       this.currentUserSubject.next(user);
     }
+  }
+
+  isPasswordChangeRequired(): boolean {
+    if (isPlatformBrowser(this.platformId)) {
+      return localStorage.getItem('passwordChangeRequired') === 'true';
+    }
+    return false;
+  }
+
+  isTemporaryPassword(): boolean {
+    if (isPlatformBrowser(this.platformId)) {
+      return localStorage.getItem('isTemporaryPassword') === 'true';
+    }
+    return false;
   }
 
   private getCurrentUserFromStorage(): User | null {
@@ -161,6 +209,8 @@ export class AuthService {
     if (isPlatformBrowser(this.platformId)) {
       localStorage.removeItem(this.TOKEN_KEY);
       localStorage.removeItem(this.USER_KEY);
+      localStorage.removeItem('passwordChangeRequired');
+      localStorage.removeItem('isTemporaryPassword');
     }
   }
 

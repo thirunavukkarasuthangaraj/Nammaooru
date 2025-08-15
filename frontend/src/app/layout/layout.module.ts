@@ -18,17 +18,17 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 
 // Layout Components
 import { MainLayoutComponent } from './main-layout/main-layout.component';
-import { TimeAgoPipe } from '../shared/pipes/time-ago.pipe';
+import { SharedModule } from '../shared/shared.module';
 
 @NgModule({
   declarations: [
-    MainLayoutComponent,
-    TimeAgoPipe
+    MainLayoutComponent
   ],
   imports: [
     CommonModule,
     RouterModule,
     FormsModule,
+    SharedModule,
     MatToolbarModule,
     MatButtonModule,
     MatIconModule,

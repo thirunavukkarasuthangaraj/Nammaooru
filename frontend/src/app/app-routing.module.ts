@@ -13,8 +13,8 @@ const routes: Routes = [
     pathMatch: 'full'
   },
   {
-    path: 'auth/login',
-    loadComponent: () => import('./features/auth/login/login.component').then(m => m.LoginComponent)
+    path: 'auth',
+    loadChildren: () => import('./features/auth/auth.module').then(m => m.AuthModule)
   },
   {
     path: '',

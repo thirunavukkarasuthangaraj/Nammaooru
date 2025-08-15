@@ -60,84 +60,118 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   
   private destroy$ = new Subject<void>();
   
-  menuItems = [
-    { 
-      title: 'Dashboard', 
-      icon: 'dashboard', 
-      route: '/dashboard', 
-      roles: ['ADMIN', 'SHOP_OWNER', 'USER'] 
+  // Complete menu structure organized by user role
+  adminMenuItems = [
+    {
+      category: 'Overview',
+      items: [
+        { title: 'Dashboard', icon: 'dashboard', route: '/dashboard', badge: null }
+      ]
     },
-    
-    // Shop Management - Visible to Admin
-    { 
-      title: 'Shop Master', 
-      icon: 'store', 
-      route: '/shops/master', 
-      roles: ['ADMIN'] 
+    {
+      category: 'Shop Management',
+      items: [
+        { title: 'Shop Master', icon: 'store', route: '/shops/master', badge: null },
+        { title: 'All Shops', icon: 'store_mall_directory', route: '/shops', badge: 'new' },
+        { title: 'Shop Approvals', icon: 'check_circle', route: '/shops/approvals', badge: '3' }
+      ]
     },
-    { 
-      title: 'All Shops', 
-      icon: 'store_mall_directory', 
-      route: '/shops', 
-      roles: ['ADMIN', 'SHOP_OWNER'] 
+    {
+      category: 'Product Management',
+      items: [
+        { title: 'Product Master', icon: 'inventory_2', route: '/products/master', badge: null },
+        { title: 'Categories', icon: 'category', route: '/products/categories', badge: null },
+        { title: 'Bulk Assignment', icon: 'assignment', route: '/products/bulk-assignment', badge: null }
+      ]
     },
-    
-    // Product Management - Admin Section
-    { 
-      title: 'Product Master', 
-      icon: 'inventory_2', 
-      route: '/products/master', 
-      roles: ['ADMIN'] 
+    {
+      category: 'User Management',
+      items: [
+        { title: 'Users', icon: 'people', route: '/users', badge: null },
+        { title: 'Roles & Permissions', icon: 'security', route: '/users/roles', badge: null }
+      ]
     },
-    { 
-      title: 'Categories', 
-      icon: 'category', 
-      route: '/products/categories', 
-      roles: ['ADMIN'] 
-    },
-    { 
-      title: 'Bulk Product Assignment', 
-      icon: 'assignment', 
-      route: '/products/bulk-assignment', 
-      roles: ['ADMIN'] 
-    },
-    
-    // Product Management - Shop Owner Section
-    { 
-      title: 'Select Products', 
-      icon: 'add_shopping_cart', 
-      route: '/products/shop-owner', 
-      roles: ['ADMIN', 'SHOP_OWNER'] 
-    },
-    { 
-      title: 'My Shop Products', 
-      icon: 'shopping_cart', 
-      route: '/products/my-shop', 
-      roles: ['ADMIN', 'SHOP_OWNER'] 
-    },
-    
-    // User Management
-    { 
-      title: 'Users', 
-      icon: 'people', 
-      route: '/users', 
-      roles: ['ADMIN'] 
-    },
-    
-    // Common Features
-    { 
-      title: 'Settings', 
-      icon: 'settings', 
-      route: '/settings', 
-      roles: ['ADMIN', 'SHOP_OWNER'] 
-    },
-    { 
-      title: 'Reports', 
-      icon: 'analytics', 
-      route: '/reports', 
-      roles: ['ADMIN', 'SHOP_OWNER'] 
+    {
+      category: 'System',
+      items: [
+        { title: 'Settings', icon: 'settings', route: '/settings', badge: null },
+        { title: 'System Reports', icon: 'analytics', route: '/reports/system', badge: null }
+      ]
     }
   ];
+
+  shopOwnerMenuItems = [
+    {
+      category: 'Main',
+      items: [
+        { title: 'Dashboard', icon: 'dashboard', route: '/shop-owner', badge: null },
+        { title: 'Shop Overview', icon: 'storefront', route: '/shop-owner/overview', badge: null }
+      ]
+    },
+    {
+      category: 'Products',
+      items: [
+        { title: 'My Products', icon: 'inventory', route: '/shop-owner/products', badge: null },
+        { title: 'Add Product', icon: 'add_box', route: '/shop-owner/products/add', badge: null },
+        { title: 'Browse Products', icon: 'shopping_basket', route: '/shop-owner/products/browse', badge: null },
+        { title: 'Bulk Upload', icon: 'cloud_upload', route: '/shop-owner/products/bulk-upload', badge: null },
+        { title: 'Categories', icon: 'category', route: '/shop-owner/products/categories', badge: null }
+      ]
+    },
+    {
+      category: 'Inventory',
+      items: [
+        { title: 'Stock Management', icon: 'inventory_2', route: '/shop-owner/inventory', badge: null },
+        { title: 'Low Stock Alerts', icon: 'warning', route: '/shop-owner/inventory/alerts', badge: '8' },
+        { title: 'Pricing Management', icon: 'local_offer', route: '/shop-owner/inventory/pricing', badge: null }
+      ]
+    },
+    {
+      category: 'Orders & Sales',
+      items: [
+        { title: 'My Orders', icon: 'receipt_long', route: '/shop-owner/orders', badge: '5' },
+        { title: 'Customers', icon: 'people', route: '/shop-owner/customers', badge: null },
+        { title: 'Sales Analytics', icon: 'trending_up', route: '/shop-owner/analytics', badge: null },
+        { title: 'Promotions', icon: 'local_offer', route: '/shop-owner/promotions', badge: 'new' }
+      ]
+    },
+    {
+      category: 'Shop Management',
+      items: [
+        { title: 'Shop Profile', icon: 'store', route: '/shop-owner/shop/profile', badge: null },
+        { title: 'Settings', icon: 'settings', route: '/shop-owner/settings', badge: null },
+        { title: 'Business Hours', icon: 'schedule', route: '/shop-owner/business-hours', badge: null },
+        { title: 'Delivery Settings', icon: 'local_shipping', route: '/shop-owner/delivery', badge: null }
+      ]
+    },
+    {
+      category: 'Reports',
+      items: [
+        { title: 'Performance', icon: 'assessment', route: '/shop-owner/reports/performance', badge: null },
+        { title: 'Inventory Reports', icon: 'inventory', route: '/shop-owner/reports/inventory', badge: null },
+        { title: 'Financial Reports', icon: 'account_balance', route: '/shop-owner/reports/financial', badge: null }
+      ]
+    },
+    {
+      category: 'Account',
+      items: [
+        { title: 'Profile', icon: 'person', route: '/shop-owner/profile', badge: null },
+        { title: 'Notifications', icon: 'notifications', route: '/shop-owner/notifications', badge: '3' },
+        { title: 'Help', icon: 'help', route: '/shop-owner/help', badge: null },
+        { title: 'Feedback', icon: 'feedback', route: '/shop-owner/feedback', badge: null }
+      ]
+    }
+  ];
+
+  get currentMenuItems() {
+    const user = this.authService.getCurrentUser();
+    if (user?.role === 'SHOP_OWNER') {
+      return this.shopOwnerMenuItems;
+    } else if (user?.role === 'ADMIN') {
+      return this.adminMenuItems;
+    }
+    return [];
+  }
 
   constructor(
     private authService: AuthService,
@@ -271,7 +305,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   // Page title methods
   getCurrentPageTitle(): string {
     const url = this.router.url;
-    const menuItem = this.menuItems.find(item => url.startsWith(item.route));
+    const allItems = this.currentMenuItems.flatMap(section => section.items);
+    const menuItem = allItems.find(item => url.startsWith(item.route));
     return menuItem ? menuItem.title : 'NammaOoru Shop Management';
   }
 

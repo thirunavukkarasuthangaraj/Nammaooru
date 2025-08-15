@@ -24,15 +24,14 @@
 
     <!-- Navigation Menu -->
     <nav class="professional-nav">
-      <div class="nav-section">
-        <p class="nav-section-title" *ngIf="!isSidebarCollapsed">Main</p>
+      <div class="nav-section" *ngFor="let section of currentMenuItems">
+        <p class="nav-section-title" *ngIf="!isSidebarCollapsed">{{ section.category }}</p>
         
         <ul class="nav-menu">
-          <li *ngFor="let item of menuItems" class="nav-item">
-            <a *ngIf="hasAccess(item.roles)" 
-               [routerLink]="item.route" 
+          <li *ngFor="let item of section.items" class="nav-item">
+            <a [routerLink]="item.route" 
                routerLinkActive="active" 
-               [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' }"
+               [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' || item.route === '/shop-owner' }"
                class="nav-link"
                [matTooltip]="isSidebarCollapsed ? item.title : ''"
                matTooltipPosition="right">
@@ -40,6 +39,11 @@
                 <mat-icon>{{ item.icon }}</mat-icon>
               </div>
               <span class="nav-text" *ngIf="!isSidebarCollapsed">{{ item.title }}</span>
+              <span class="nav-badge" *ngIf="!isSidebarCollapsed && item.badge" 
+                    [class.badge-new]="item.badge === 'new'"
+                    [class.badge-count]="item.badge !== 'new'">
+                {{ item.badge }}
+              </span>
               <div class="nav-indicator" *ngIf="!isSidebarCollapsed"></div>
             </a>
           </li>
@@ -223,25 +227,51 @@
 
   <!-- Quick Add Menu -->
   <mat-menu #quickAddMenu="matMenu" class="quick-add-menu">
-    <button mat-menu-item routerLink="/shops/new">
-      <mat-icon>store</mat-icon>
-      <span>New Shop</span>
-    </button>
-    
-    <button mat-menu-item routerLink="/products/master/new">
-      <mat-icon>inventory</mat-icon>
-      <span>New Product</span>
-    </button>
-    
-    <button mat-menu-item routerLink="/categories/new">
-      <mat-icon>category</mat-icon>
-      <span>New Category</span>
-    </button>
-    
-    <button mat-menu-item routerLink="/users/new" *ngIf="hasAccess(['ADMIN'])">
-      <mat-icon>person_add</mat-icon>
-      <span>New User</span>
-    </button>
+    <!-- Admin Quick Actions -->
+    <ng-container *ngIf="hasAccess(['ADMIN'])">
+      <button mat-menu-item routerLink="/shops/new">
+        <mat-icon>store</mat-icon>
+        <span>New Shop</span>
+      </button>
+      
+      <button mat-menu-item routerLink="/products/master/new">
+        <mat-icon>inventory</mat-icon>
+        <span>New Product</span>
+      </button>
+      
+      <button mat-menu-item routerLink="/categories/new">
+        <mat-icon>category</mat-icon>
+        <span>New Category</span>
+      </button>
+      
+      <button mat-menu-item routerLink="/users/new">
+        <mat-icon>person_add</mat-icon>
+        <span>New User</span>
+      </button>
+    </ng-container>
+
+    <!-- Shop Owner Quick Actions -->
+    <ng-container *ngIf="hasAccess(['SHOP_OWNER'])">
+      <button mat-menu-item routerLink="/shop-owner/products/add">
+        <mat-icon>add_box</mat-icon>
+        <span>Add Product</span>
+      </button>
+      
+      <button mat-menu-item routerLink="/shop-owner/orders/new">
+        <mat-icon>receipt</mat-icon>
+        <span>New Order</span>
+      </button>
+      
+      <button mat-menu-item routerLink="/shop-owner/promotions/new">
+        <mat-icon>local_offer</mat-icon>
+        <span>Create Promotion</span>
+      </button>
+      
+      <button mat-menu-item routerLink="/shop-owner/inventory">
+        <mat-icon>inventory_2</mat-icon>
+        <span>Update Stock</span>
+      </button>
+    </ng-container>
   </mat-menu>
 
   <!-- Mobile Sidebar Overlay -->

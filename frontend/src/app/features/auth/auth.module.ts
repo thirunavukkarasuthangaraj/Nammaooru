@@ -10,17 +10,23 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSnackBarModule } from '@angular/material/snack-bar';
+import { HttpClientModule } from '@angular/common/http';
 
 import { AuthRoutingModule } from './auth-routing.module';
 import { LoginComponent } from './components/login/login.component';
 import { RegisterComponent } from './components/register/register.component';
 import { AuthLayoutComponent } from './components/auth-layout/auth-layout.component';
+import { ForgotPasswordComponent } from './components/forgot-password/forgot-password.component';
+import { ChangePasswordComponent } from './components/change-password/change-password.component';
 
 @NgModule({
   declarations: [
     LoginComponent,
     RegisterComponent,
-    AuthLayoutComponent
+    AuthLayoutComponent,
+    ForgotPasswordComponent,
+    ChangePasswordComponent
   ],
   imports: [
     CommonModule,
@@ -34,7 +40,9 @@ import { AuthLayoutComponent } from './components/auth-layout/auth-layout.compon
     MatButtonModule,
     MatSelectModule,
     MatProgressSpinnerModule,
-    MatIconModule
+    MatIconModule,
+    MatSnackBarModule,
+    HttpClientModule
   ]
 })
 export class AuthModule { }

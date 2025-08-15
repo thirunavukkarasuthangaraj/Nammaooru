@@ -303,7 +303,7 @@ public class ShopController {
     }
 
     @GetMapping("/my-shop")
-    @PreAuthorize("hasRole('SHOP_OWNER')")
+    @PreAuthorize("hasRole('SHOP_OWNER') or hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<ShopResponse>> getCurrentUserShop() {
         log.info("Fetching current user's shop");
         ShopResponse response = shopService.getCurrentUserShop();

@@ -22,7 +22,9 @@
       "Bash(./gradlew compileJava:*)",
       "Bash(cp:*)",
       "Bash(npm start:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(npm run build:*)",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": [],

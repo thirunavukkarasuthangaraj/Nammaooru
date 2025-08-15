@@ -40,6 +40,7 @@ import { ShopImageUploadComponent } from './components/shop-image-upload/shop-im
 import { ShopMasterComponent } from './components/shop-master/shop-master.component';
 import { DocumentUploadComponent } from './components/document-upload/document-upload.component';
 import { SimpleDocumentUploadComponent } from './components/simple-document-upload/simple-document-upload.component';
+import { ShopApprovalComponent } from './components/shop-approval/shop-approval.component';
 
 @NgModule({
   declarations: [
@@ -52,7 +53,8 @@ import { SimpleDocumentUploadComponent } from './components/simple-document-uplo
     ShopImageUploadComponent,
     ShopMasterComponent,
     DocumentUploadComponent,
-    SimpleDocumentUploadComponent
+    SimpleDocumentUploadComponent,
+    ShopApprovalComponent
   ],
   imports: [
     CommonModule,

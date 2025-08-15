@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to NammaOoru - Your Shop Journey Begins!</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap');
+        
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #1a1a1a;
+            max-width: 650px;
+            margin: 0 auto;
+            padding: 0;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        }
+        
+        .email-wrapper {
+            padding: 30px 15px;
+        }
+        
+        .email-container {
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.05);
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #ec4899 100%);
+            position: relative;
+            color: white;
+            text-align: center;
+            padding: 50px 30px;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="20" cy="20" r="1" fill="white" opacity="0.1"/><circle cx="60" cy="40" r="1" fill="white" opacity="0.1"/><circle cx="40" cy="70" r="1" fill="white" opacity="0.1"/><circle cx="80" cy="80" r="1" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            pointer-events: none;
+        }
+        
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            backdrop-filter: blur(10px);
+            position: relative;
+            z-index: 1;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-family: 'Playfair Display', serif;
+            font-size: 2.8rem;
+            font-weight: 700;
+            position: relative;
+            z-index: 1;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .header .tagline {
+            margin: 15px 0 0 0;
+            font-size: 1.2rem;
+            opacity: 0.95;
+            font-weight: 400;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .content {
+            padding: 45px 40px;
+            background: white;
+        }
+        
+        .welcome-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+        
+        .greeting {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin: 0 0 25px 0;
+            font-family: 'Playfair Display', serif;
+        }
+        
+        .intro-text {
+            font-size: 1.1rem;
+            color: #4b5563;
+            margin-bottom: 35px;
+            line-height: 1.7;
+        }
+        
+        .shop-card {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border: 2px solid #e5e7eb;
+            border-radius: 16px;
+            padding: 25px;
+            margin: 30px 0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .shop-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #4f46e5, #7c3aed, #ec4899);
+        }
+        
+        .shop-card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+        
+        .shop-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: white;
+        }
+        
+        .shop-card h3 {
+            margin: 0;
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #1f2937;
+        }
+        
+        .shop-name {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #4f46e5;
+            margin: 10px 0 15px 0;
+            font-family: 'Playfair Display', serif;
+        }
+        
+        .credentials-container {
+            background: white;
+            border: 2px solid #4f46e5;
+            border-radius: 16px;
+            margin: 30px 0;
+            overflow: hidden;
+        }
+        
+        .credentials-header {
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: white;
+            padding: 20px 25px;
+            text-align: center;
+        }
+        
+        .credentials-header h3 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .credentials-body {
+            padding: 25px;
+        }
+        
+        .credential-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .credential-item:last-child {
+            border-bottom: none;
+        }
+        
+        .credential-label {
+            font-weight: 600;
+            color: #374151;
+            font-size: 1rem;
+        }
+        
+        .credential-value {
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            background: #f3f4f6;
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid #d1d5db;
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: #1f2937;
+            letter-spacing: 0.5px;
+        }
+        
+        .security-alert {
+            background: linear-gradient(135deg, #fef3c7, #fed7aa);
+            border: 1px solid #f59e0b;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 25px 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        
+        .alert-icon {
+            width: 24px;
+            height: 24px;
+            background: #f59e0b;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        
+        .alert-content h4 {
+            margin: 0 0 8px 0;
+            color: #92400e;
+            font-weight: 600;
+        }
+        
+        .alert-content p {
+            margin: 0;
+            color: #92400e;
+            font-size: 0.95rem;
+        }
+        
+        .action-button-container {
+            text-align: center;
+            margin: 40px 0;
+        }
+        
+        .action-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: white;
+            text-decoration: none;
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 25px rgba(79, 70, 229, 0.3);
+        }
+        
+        .action-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 35px rgba(79, 70, 229, 0.4);
+        }
+        
+        .steps-section {
+            margin: 40px 0;
+        }
+        
+        .steps-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 25px;
+            font-family: 'Playfair Display', serif;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .steps-container {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 25px;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .step-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .step-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .step-number {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+        
+        .step-content {
+            flex: 1;
+            padding-top: 4px;
+        }
+        
+        .step-title {
+            font-weight: 600;
+            color: #1f2937;
+            margin: 0 0 4px 0;
+        }
+        
+        .step-description {
+            color: #6b7280;
+            font-size: 0.95rem;
+            margin: 0;
+            line-height: 1.5;
+        }
+        
+        .support-section {
+            background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+            border: 1px solid #10b981;
+            border-radius: 16px;
+            padding: 30px;
+            margin: 40px 0;
+        }
+        
+        .support-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .support-icon {
+            width: 40px;
+            height: 40px;
+            background: #10b981;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2rem;
+        }
+        
+        .support-section h3 {
+            margin: 0;
+            color: #065f46;
+            font-weight: 600;
+            font-size: 1.3rem;
+        }
+        
+        .support-text {
+            color: #047857;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        
+        .support-links {
+            display: grid;
+            gap: 12px;
+        }
+        
+        .support-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #047857;
+            text-decoration: none;
+            padding: 8px 0;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+        
+        .support-link:hover {
+            color: #065f46;
+        }
+        
+        .footer {
+            background: linear-gradient(135deg, #1f2937, #374151);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        
+        .footer-logo {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        
+        .footer-tagline {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            margin-bottom: 25px;
+            font-weight: 400;
+        }
+        
+        .footer-disclaimer {
+            font-size: 0.85rem;
+            opacity: 0.7;
+            margin-top: 25px;
+            padding-top: 25px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+            line-height: 1.6;
+        }
+        
+        /* Mobile Responsiveness */
+        @media (max-width: 600px) {
+            .email-wrapper {
+                padding: 15px 10px;
+            }
+            
+            .content {
+                padding: 30px 20px;
+            }
+            
+            .header {
+                padding: 40px 20px;
+            }
+            
+            .header h1 {
+                font-size: 2.2rem;
+            }
+            
+            .logo {
+                width: 60px;
+                height: 60px;
+                font-size: 2rem;
+            }
+            
+            .greeting {
+                font-size: 1.3rem;
+            }
+            
+            .credential-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            
+            .credential-value {
+                word-break: break-all;
+                width: 100%;
+            }
+            
+            .action-button {
+                padding: 14px 24px;
+                font-size: 1rem;
+            }
+            
+            .step-item {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .support-section,
+            .steps-container,
+            .shop-card,
+            .credentials-body {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-wrapper">
+        <div class="email-container">
+            <!-- Header -->
+            <div class="header">
+                <div class="logo">🏪</div>
+                <h1>NammaOoru</h1>
+                <div class="tagline">Empowering Local Businesses</div>
+            </div>
+
+            <!-- Content -->
+            <div class="content">
+                <div class="welcome-badge">
+                    ✨ Welcome to the Community
+                </div>
+                
+                <div class="greeting">
+                    Hello <span th:text="${shopOwnerName}">Shop Owner</span>! 
+                </div>
+
+                <div class="intro-text">
+                    🎉 Congratulations! Your shop has been successfully registered with NammaOoru Shop Management System. We're thrilled to welcome you to our growing community of local entrepreneurs and business owners.
+                </div>
+
+                <div class="shop-card">
+                    <div class="shop-card-header">
+                        <div class="shop-icon">🏬</div>
+                        <h3>Your Shop Details</h3>
+                    </div>
+                    <div class="shop-name" th:text="${shopName}">Your Shop Name</div>
+                    <p>Your shop is now part of the NammaOoru marketplace, where you can manage products, track orders, analyze performance, and grow your business with powerful digital tools.</p>
+                </div>
+
+                <div class="credentials-container">
+                    <div class="credentials-header">
+                        <h3>🔐 Your Login Credentials</h3>
+                    </div>
+                    <div class="credentials-body">
+                        <div class="credential-item">
+                            <span class="credential-label">Username</span>
+                            <span class="credential-value" th:text="${username}">your_username</span>
+                        </div>
+                        <div class="credential-item">
+                            <span class="credential-label">Temporary Password</span>
+                            <span class="credential-value" th:text="${temporaryPassword}">temp_password</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="security-alert">
+                    <div class="alert-icon">!</div>
+                    <div class="alert-content">
+                        <h4>🔒 Important Security Notice</h4>
+                        <p>This is a temporary password for your first login. You'll be prompted to create a secure, personalized password immediately after logging in to protect your business data.</p>
+                    </div>
+                </div>
+
+                <div class="action-button-container">
+                    <a href="http://localhost:4200/auth/login" class="action-button">
+                        🚀 Access Your Dashboard
+                    </a>
+                </div>
+
+                <div class="steps-section">
+                    <div class="steps-title">
+                        📋 Your Journey Starts Here
+                    </div>
+                    <div class="steps-container">
+                        <div class="step-item">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <div class="step-title">Sign In & Secure Your Account</div>
+                                <div class="step-description">Use the credentials above to log in and create your secure password</div>
+                            </div>
+                        </div>
+                        <div class="step-item">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <div class="step-title">Complete Your Business Profile</div>
+                                <div class="step-description">Add your business details, contact information, and operating hours</div>
+                            </div>
+                        </div>
+                        <div class="step-item">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <div class="step-title">Add Products to Your Inventory</div>
+                                <div class="step-description">Browse our master catalog and add products to start selling</div>
+                            </div>
+                        </div>
+                        <div class="step-item">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <div class="step-title">Manage Orders & Grow Your Business</div>
+                                <div class="step-description">Track sales, manage inventory, and serve your customers efficiently</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="support-section">
+                    <div class="support-header">
+                        <div class="support-icon">🤝</div>
+                        <h3>We're Here to Help</h3>
+                    </div>
+                    <div class="support-text">
+                        Our dedicated support team is ready to assist you every step of the way. Whether you need technical help or business guidance, we've got you covered.
+                    </div>
+                    <div class="support-links">
+                        <a href="mailto:support@nammaooru.com" class="support-link">
+                            📧 support@nammaooru.com
+                        </a>
+                        <div class="support-link">
+                            📱 In-app support chat (available 24/7)
+                        </div>
+                        <div class="support-link">
+                            📚 Help center & tutorials
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer">
+                <div class="footer-logo">NammaOoru</div>
+                <div class="footer-tagline">Building Stronger Local Communities</div>
+                
+                <div class="footer-disclaimer">
+                    This email was sent because a shop account was created for your business on NammaOoru. 
+                    If you didn't request this account or have concerns, please contact our support team immediately.
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -47,6 +47,17 @@ public class User implements UserDetails {
     @Builder.Default
     private Boolean isActive = true;
 
+    @Column(name = "is_temporary_password")
+    @Builder.Default
+    private Boolean isTemporaryPassword = false;
+
+    @Column(name = "password_change_required")
+    @Builder.Default
+    private Boolean passwordChangeRequired = false;
+
+    @Column(name = "last_password_change")
+    private LocalDateTime lastPasswordChange;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

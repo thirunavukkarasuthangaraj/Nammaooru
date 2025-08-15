@@ -3,6 +3,8 @@ import { Router } from '@angular/router';
 import { Shop } from '../../../../core/models/shop.model';
 import { ShopService } from '../../../../core/services/shop.service';
 import { DocumentService } from '../../../../core/services/document.service';
+import { AuthService } from '../../../../core/services/auth.service';
+import { UserRole } from '../../../../core/models/auth.model';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -558,14 +560,27 @@ export class ShopListComponent implements OnInit {
   constructor(
     private shopService: ShopService,
     private documentService: DocumentService,
-    private router: Router
+    private router: Router,
+    private authService: AuthService
   ) {}
 
   ngOnInit() {
-    // Default to show all shops (no status filter)
-    this.selectedStatus = '';
-    this.loadShops();
-    this.loadCities();
+    // Check if password change is required first
+    if (this.authService.isPasswordChangeRequired()) {
+      this.router.navigate(['/auth/change-password']);
+      return;
+    }
+
+    // Check user role and load appropriate content
+    if (this.authService.isShopOwner()) {
+      // Shop owners should see their own shop
+      this.loadMyShop();
+    } else {
+      // Admins can see all shops
+      this.selectedStatus = '';
+      this.loadShops();
+      this.loadCities();
+    }
   }
 
   loadShops() {
@@ -587,6 +602,36 @@ export class ShopListComponent implements OnInit {
       error: (error) => {
         console.error('Error loading shops:', error);
         this.loading = false;
+      }
+    });
+  }
+
+  loadMyShop() {
+    this.loading = true;
+    this.shopService.getMyShop().subscribe({
+      next: (shop) => {
+        this.shops = [shop]; // Show only the owner's shop
+        this.totalElements = 1;
+        this.loading = false;
+      },
+      error: (error) => {
+        console.error('Error loading my shop:', error);
+        this.loading = false;
+        // If shop not found, redirect to create shop
+        if (error.status === 404) {
+          Swal.fire({
+            title: 'No Shop Found',
+            text: 'You don\'t have a shop yet. Would you like to create one?',
+            icon: 'info',
+            showCancelButton: true,
+            confirmButtonText: 'Create Shop',
+            cancelButtonText: 'Later'
+          }).then((result) => {
+            if (result.isConfirmed) {
+              this.router.navigate(['/shops/create']);
+            }
+          });
+        }
       }
     });
   }

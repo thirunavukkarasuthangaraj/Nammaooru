@@ -16,6 +16,8 @@ export interface AuthResponse {
   username: string;
   email: string;
   role: string;
+  passwordChangeRequired: boolean;
+  isTemporaryPassword: boolean;
 }
 
 export interface User {

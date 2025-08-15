@@ -13,11 +13,13 @@ import { MatInputModule } from '@angular/material/input';
 
 // import { LocationPickerComponent } from './components/location-picker/location-picker.component'; // Disabled - Google Maps issues
 import { UnauthorizedComponent } from './components/unauthorized/unauthorized.component';
+import { TimeAgoPipe } from './pipes/time-ago.pipe';
 
 @NgModule({
   declarations: [
     // LocationPickerComponent, // Disabled - Google Maps issues
-    UnauthorizedComponent
+    UnauthorizedComponent,
+    TimeAgoPipe
   ],
   imports: [
     CommonModule,
@@ -34,7 +36,8 @@ import { UnauthorizedComponent } from './components/unauthorized/unauthorized.co
   ],
   exports: [
     // LocationPickerComponent, // Disabled - Google Maps issues
-    UnauthorizedComponent
+    UnauthorizedComponent,
+    TimeAgoPipe
   ]
 })
 export class SharedModule { }

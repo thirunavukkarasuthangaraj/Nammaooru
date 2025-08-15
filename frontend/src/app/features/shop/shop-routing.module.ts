@@ -8,6 +8,7 @@ import { ShopListComponent } from './components/shop-list/shop-list.component';
 import { ShopDetailsComponent } from './components/shop-details/shop-details.component';
 import { ShopFormComponent } from './components/shop-form/shop-form.component';
 import { ShopMasterComponent } from './components/shop-master/shop-master.component';
+import { ShopApprovalComponent } from './components/shop-approval/shop-approval.component';
 
 const routes: Routes = [
   {
@@ -31,6 +32,12 @@ const routes: Routes = [
     component: ShopFormComponent,
     canActivate: [AuthGuard, RoleGuard],
     data: { roles: [UserRole.ADMIN, UserRole.SHOP_OWNER] }
+  },
+  {
+    path: ':shopId/approval',
+    component: ShopApprovalComponent,
+    canActivate: [AuthGuard, RoleGuard],
+    data: { roles: [UserRole.ADMIN] }
   },
   {
     path: ':id',

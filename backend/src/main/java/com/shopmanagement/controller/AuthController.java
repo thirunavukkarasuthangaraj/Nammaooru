@@ -3,6 +3,7 @@ package com.shopmanagement.controller;
 import com.shopmanagement.dto.auth.AuthRequest;
 import com.shopmanagement.dto.auth.AuthResponse;
 import com.shopmanagement.dto.auth.RegisterRequest;
+import com.shopmanagement.dto.auth.ChangePasswordRequest;
 import com.shopmanagement.service.AuthService;
 import com.shopmanagement.service.TokenBlacklistService;
 import jakarta.validation.Valid;
@@ -59,6 +60,44 @@ public class AuthController {
             response.put("authorities", authentication.getAuthorities());
         } else {
             response.put("valid", false);
+        }
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    @PostMapping("/change-password")
+    public ResponseEntity<Map<String, String>> changePassword(
+            @Valid @RequestBody ChangePasswordRequest request,
+            Authentication authentication) {
+        Map<String, String> response = new HashMap<>();
+        
+        if (authentication == null || !authentication.isAuthenticated()) {
+            response.put("status", "error");
+            response.put("message", "User not authenticated");
+            return ResponseEntity.badRequest().body(response);
+        }
+        
+        try {
+            authService.changePassword(request, authentication.getName());
+            response.put("status", "success");
+            response.put("message", "Password changed successfully");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("status", "error");
+            response.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+    
+    @GetMapping("/password-status")
+    public ResponseEntity<Map<String, Object>> getPasswordStatus(Authentication authentication) {
+        Map<String, Object> response = new HashMap<>();
+        
+        if (authentication != null && authentication.isAuthenticated()) {
+            response = authService.getPasswordStatus(authentication.getName());
+        } else {
+            response.put("status", "error");
+            response.put("message", "User not authenticated");
         }
         
         return ResponseEntity.ok(response);

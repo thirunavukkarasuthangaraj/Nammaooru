@@ -57,7 +57,7 @@ import Swal from 'sweetalert2';
                 </div>
                 <div class="info-item">
                   <span class="label">License Number:</span>
-                  <span>{{ shop.licenseNumber || 'Not provided' }}</span>
+                  <span>{{ shop.gstNumber || shop.panNumber || 'Not provided' }}</span>
                 </div>
               </div>
 
@@ -77,7 +77,7 @@ import Swal from 'sweetalert2';
                 </div>
                 <div class="info-item">
                   <span class="label">Alternate Phone:</span>
-                  <span>{{ shop.alternatePhone || 'Not provided' }}</span>
+                  <span>Not provided</span>
                 </div>
               </div>
 
@@ -86,10 +86,6 @@ import Swal from 'sweetalert2';
                 <div class="info-item">
                   <span class="label">Address:</span>
                   <span>{{ shop.addressLine1 }}</span>
-                </div>
-                <div class="info-item" *ngIf="shop.addressLine2">
-                  <span class="label">Address Line 2:</span>
-                  <span>{{ shop.addressLine2 }}</span>
                 </div>
                 <div class="info-item">
                   <span class="label">City, State:</span>
@@ -109,15 +105,15 @@ import Swal from 'sweetalert2';
                 <h3><mat-icon>local_shipping</mat-icon> Service Information</h3>
                 <div class="info-item">
                   <span class="label">Delivery Available:</span>
-                  <mat-chip [ngClass]="shop.deliveryAvailable ? 'status-available' : 'status-unavailable'">
-                    {{ shop.deliveryAvailable ? 'Yes' : 'No' }}
+                  <mat-chip [ngClass]="(shop.deliveryRadius && shop.deliveryRadius > 0) ? 'status-available' : 'status-unavailable'">
+                    {{ (shop.deliveryRadius && shop.deliveryRadius > 0) ? 'Yes' : 'No' }}
                   </mat-chip>
                 </div>
-                <div class="info-item" *ngIf="shop.deliveryAvailable">
+                <div class="info-item" *ngIf="shop.deliveryRadius && shop.deliveryRadius > 0">
                   <span class="label">Delivery Fee:</span>
                   <span>₹{{ shop.deliveryFee || 0 }}</span>
                 </div>
-                <div class="info-item" *ngIf="shop.deliveryAvailable">
+                <div class="info-item" *ngIf="shop.deliveryRadius && shop.deliveryRadius > 0">
                   <span class="label">Delivery Radius:</span>
                   <span>{{ shop.deliveryRadius || 0 }} km</span>
                 </div>
@@ -1312,8 +1308,8 @@ export class ShopApprovalComponent implements OnInit {
     return null;
   }
 
-  getStatusClass(status: string): string {
-    switch(status?.toUpperCase()) {
+  getStatusClass(status: string | undefined): string {
+    switch(status?.toString().toUpperCase()) {
       case 'PENDING': return 'status-pending';
       case 'APPROVED': return 'status-approved';
       case 'REJECTED': return 'status-rejected';
@@ -1321,8 +1317,8 @@ export class ShopApprovalComponent implements OnInit {
     }
   }
 
-  getStatusIcon(status: string): string {
-    switch(status?.toUpperCase()) {
+  getStatusIcon(status: string | undefined): string {
+    switch(status?.toString().toUpperCase()) {
       case 'PENDING': return 'schedule';
       case 'APPROVED': return 'check_circle';
       case 'REJECTED': return 'cancel';
@@ -1330,12 +1326,12 @@ export class ShopApprovalComponent implements OnInit {
     }
   }
 
-  getStatusDisplay(status: string): string {
-    switch(status?.toUpperCase()) {
+  getStatusDisplay(status: string | undefined): string {
+    switch(status?.toString().toUpperCase()) {
       case 'PENDING': return 'Pending Review';
       case 'APPROVED': return 'Approved';
       case 'REJECTED': return 'Rejected';
-      default: return status || 'Unknown';
+      default: return status?.toString() || 'Unknown';
     }
   }
 
