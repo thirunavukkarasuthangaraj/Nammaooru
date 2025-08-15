@@ -10,6 +10,8 @@ import { ShopProductFormComponent } from './components/shop-product-form/shop-pr
 import { CategoryListComponent } from './components/category-list/category-list.component';
 import { CategoryFormComponent } from './components/category-form/category-form.component';
 import { ProductDashboardComponent } from './components/product-dashboard/product-dashboard.component';
+import { BulkProductAssignmentComponent } from './components/bulk-product-assignment/bulk-product-assignment.component';
+import { ShopOwnerProductsComponent } from './components/shop-owner-products/shop-owner-products.component';
 
 const routes: Routes = [
   {
@@ -106,6 +108,42 @@ const routes: Routes = [
         data: { 
           title: 'Edit Category',
           roles: ['ADMIN', 'MANAGER']
+        }
+      },
+      {
+        path: 'bulk-assignment',
+        component: BulkProductAssignmentComponent,
+        canActivate: [RoleGuard],
+        data: { 
+          title: 'Bulk Assign Products',
+          roles: ['ADMIN']
+        }
+      },
+      {
+        path: 'assign/:shopId',
+        component: BulkProductAssignmentComponent,
+        canActivate: [RoleGuard],
+        data: { 
+          title: 'Assign Products to Shop',
+          roles: ['ADMIN', 'MANAGER']
+        }
+      },
+      {
+        path: 'shop-owner',
+        component: ShopOwnerProductsComponent,
+        canActivate: [RoleGuard],
+        data: { 
+          title: 'Select Products for My Shop',
+          roles: ['SHOP_OWNER']
+        }
+      },
+      {
+        path: 'my-shop',
+        component: ShopProductListComponent,
+        canActivate: [RoleGuard],
+        data: { 
+          title: 'My Shop Products',
+          roles: ['SHOP_OWNER']
         }
       }
     ]

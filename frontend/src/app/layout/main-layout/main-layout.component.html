@@ -1,61 +1,253 @@
-<div class="dashboard-layout">
-  <!-- SIDEBAR -->
-  <div class="sidebar">
-    <div class="sidebar-header">
-      <h3>ShopHub</h3>
-      <p style="font-size: 12px; opacity: 0.8;">Admin Panel</p>
+<!-- Professional Dashboard Layout -->
+<div class="professional-dashboard">
+  <!-- Modern Sidebar -->
+  <aside class="professional-sidebar" [class.collapsed]="isSidebarCollapsed">
+    <!-- Brand Header -->
+    <div class="brand-header">
+      <div class="brand-logo">
+        <div class="brand-icon">
+          <mat-icon class="brand-icon-graphic">storefront</mat-icon>
+        </div>
+        <div class="brand-text" *ngIf="!isSidebarCollapsed">
+          <h2 class="brand-title">NammaOoru</h2>
+          <p class="brand-subtitle">Shop Management</p>
+        </div>
+      </div>
+      <button 
+        mat-icon-button 
+        class="sidebar-toggle"
+        (click)="toggleSidebar()"
+        matTooltip="{{ isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar' }}">
+        <mat-icon>{{ isSidebarCollapsed ? 'menu_open' : 'menu' }}</mat-icon>
+      </button>
     </div>
 
-    <ul class="sidebar-nav">
-      <li><a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"><span class="icon">📊</span> Dashboard</a></li>
-      <li *ngIf="hasAccess(['ADMIN'])"><a routerLink="/shops/master" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"><span class="icon">🏪</span> Shop </a></li>
-      <li *ngIf="hasAccess(['ADMIN', 'SHOP_OWNER'])"><a routerLink="/shops" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"><span class="icon">✅</span> Shop Verification</a></li>
-      <li *ngIf="hasAccess(['ADMIN', 'MANAGER'])"><a routerLink="/products" routerLinkActive="active"><span class="icon">📦</span> Products</a></li>
-      <li *ngIf="hasAccess(['ADMIN'])"><a routerLink="/users" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"><span class="icon">👥</span> Users</a></li>
-      <li><a routerLink="/settings" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"><span class="icon">⚙️</span> Settings</a></li>
-      <li *ngIf="hasAccess(['ADMIN', 'SHOP_OWNER'])"><a routerLink="/reports" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"><span class="icon">📈</span> Reports</a></li>
-      <li><a (click)="onLogout()" style="cursor: pointer;"><span class="icon">🚪</span> Logout</a></li>
-    </ul>
+    <!-- Navigation Menu -->
+    <nav class="professional-nav">
+      <div class="nav-section">
+        <p class="nav-section-title" *ngIf="!isSidebarCollapsed">Main</p>
+        
+        <ul class="nav-menu">
+          <li *ngFor="let item of menuItems" class="nav-item">
+            <a *ngIf="hasAccess(item.roles)" 
+               [routerLink]="item.route" 
+               routerLinkActive="active" 
+               [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' }"
+               class="nav-link"
+               [matTooltip]="isSidebarCollapsed ? item.title : ''"
+               matTooltipPosition="right">
+              <div class="nav-icon">
+                <mat-icon>{{ item.icon }}</mat-icon>
+              </div>
+              <span class="nav-text" *ngIf="!isSidebarCollapsed">{{ item.title }}</span>
+              <div class="nav-indicator" *ngIf="!isSidebarCollapsed"></div>
+            </a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+  </aside>
 
-  </div>
-  <div class="main-content">
-    <div class="header">
+  <!-- Main Content Area -->
+  <main class="professional-main" [class.sidebar-collapsed]="isSidebarCollapsed">
+    <!-- Top Header Bar -->
+    <header class="professional-header">
       <div class="header-left">
-        <h2 class="page-title">{{ getCurrentPageTitle() }}</h2>
-      </div>
-      <div class="header-right">
-        <div class="search-container">
-          <input type="text" class="search-box" placeholder="Search...">
-        </div>
-        <div class="user-section">
-          <div style="display: flex; align-items: center; gap: 15px; color: #333;">
-            <span>Welcome, {{ (currentUser$ | async)?.username }}</span>
-            <div class="user-avatar" [matMenuTriggerFor]="userMenu" style="cursor: pointer;">
-              {{ getUserInitials((currentUser$ | async)?.username) }}
-            </div>
+        <!-- Mobile Menu Button -->
+        <button 
+          mat-icon-button 
+          class="mobile-menu-btn"
+          (click)="toggleMobileSidebar()"
+          *ngIf="isMobile">
+          <mat-icon>menu</mat-icon>
+        </button>
+
+        <!-- Page Title & Breadcrumb -->
+        <div class="page-header-content">
+          <h1 class="page-title">{{ getCurrentPageTitle() }}</h1>
+          <div class="page-breadcrumb">
+            <span class="breadcrumb-item">{{ getCurrentPageBreadcrumb() }}</span>
           </div>
-          
-          <!-- User Menu -->
-          <mat-menu #userMenu="matMenu" class="user-menu">
-            <button mat-menu-item>
-              <mat-icon>person</mat-icon>
-              <span>Profile</span>
-            </button>
-            <button mat-menu-item>
-              <mat-icon>settings</mat-icon>
-              <span>Settings</span>
-            </button>
-            <mat-divider></mat-divider>
-            <button mat-menu-item (click)="onLogout()">
-              <mat-icon>logout</mat-icon>
-              <span>Logout</span>
-            </button>
-          </mat-menu>
         </div>
       </div>
+
+      <div class="header-right">
+        <!-- Global Search -->
+        <div class="search-container" *ngIf="!isMobile">
+          <mat-form-field class="search-field" appearance="outline">
+            <mat-icon matPrefix>search</mat-icon>
+            <input 
+              matInput 
+              placeholder="Search shops, products, orders..."
+              [(ngModel)]="searchQuery"
+              (input)="onGlobalSearch($event)">
+            <button 
+              matSuffix 
+              mat-icon-button 
+              *ngIf="searchQuery"
+              (click)="clearSearch()">
+              <mat-icon>clear</mat-icon>
+            </button>
+          </mat-form-field>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+          <!-- Notifications -->
+          <button 
+            mat-icon-button 
+            class="notification-btn"
+            [matBadge]="notificationCount"
+            matBadgeColor="warn"
+            [matBadgeHidden]="notificationCount === 0"
+            [matMenuTriggerFor]="notificationMenu"
+            matTooltip="Notifications">
+            <mat-icon>notifications</mat-icon>
+          </button>
+
+          <!-- Quick Add Menu -->
+          <button 
+            mat-icon-button 
+            class="quick-add-btn"
+            [matMenuTriggerFor]="quickAddMenu"
+            matTooltip="Quick add">
+            <mat-icon>add_circle</mat-icon>
+          </button>
+
+          <!-- Settings -->
+          <button 
+            mat-icon-button 
+            class="settings-btn"
+            routerLink="/settings"
+            matTooltip="Settings">
+            <mat-icon>settings</mat-icon>
+          </button>
+
+          <!-- User Profile Menu -->
+          <button 
+            mat-icon-button 
+            class="user-profile-btn"
+            [matMenuTriggerFor]="userMenu"
+            matTooltip="User menu">
+            <div class="header-user-avatar">
+              <img 
+                [src]="getUserAvatar((currentUser$ | async)?.username)" 
+                [alt]="(currentUser$ | async)?.username"
+                class="header-avatar-img"
+                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+              <div class="header-avatar-fallback">
+                {{ getUserInitials((currentUser$ | async)?.username) }}
+              </div>
+            </div>
+          </button>
+
+        </div>
+      </div>
+    </header>
+
+    <!-- Content Container -->
+    <div class="content-container">
+      <div class="content-wrapper animate-fadeIn">
+        <router-outlet></router-outlet>
+      </div>
     </div>
-    <div class="content-area">
-      <router-outlet></router-outlet>
+  </main>
+
+  <!-- User Menu -->
+  <mat-menu #userMenu="matMenu" class="professional-user-menu">
+    <div class="user-menu-header">
+      <div class="user-menu-info">
+        <p class="user-menu-name">{{ (currentUser$ | async)?.username }}</p>
+        <p class="user-menu-email">{{ (currentUser$ | async)?.email }}</p>
+      </div>
     </div>
+    
+    <mat-divider></mat-divider>
+    
+    <button mat-menu-item routerLink="/profile">
+      <mat-icon>person</mat-icon>
+      <span>My Profile</span>
+    </button>
+    
+    <button mat-menu-item routerLink="/account">
+      <mat-icon>account_circle</mat-icon>
+      <span>Account Settings</span>
+    </button>
+    
+    <button mat-menu-item>
+      <mat-icon>help</mat-icon>
+      <span>Help & Support</span>
+    </button>
+    
+    <mat-divider></mat-divider>
+    
+    <button mat-menu-item (click)="onLogout()" class="logout-menu-item">
+      <mat-icon>logout</mat-icon>
+      <span>Sign Out</span>
+    </button>
+  </mat-menu>
+
+  <!-- Notification Menu -->
+  <mat-menu #notificationMenu="matMenu" class="notification-menu">
+    <div class="notification-header">
+      <h3>Notifications</h3>
+      <button mat-button color="primary">Mark all as read</button>
+    </div>
+    
+    <mat-divider></mat-divider>
+    
+    <div class="notification-list">
+      <div class="notification-item" *ngFor="let notification of notifications">
+        <div class="notification-icon">
+          <mat-icon [class]="notification.type">{{ notification.icon }}</mat-icon>
+        </div>
+        <div class="notification-content">
+          <p class="notification-title">{{ notification.title }}</p>
+          <p class="notification-message">{{ notification.message }}</p>
+          <span class="notification-time">{{ notification.time | timeAgo }}</span>
+        </div>
+      </div>
+      
+      <div class="notification-empty" *ngIf="notifications.length === 0">
+        <mat-icon>notifications_none</mat-icon>
+        <p>No new notifications</p>
+      </div>
+    </div>
+    
+    <mat-divider></mat-divider>
+    
+    <div class="notification-footer">
+      <button mat-button routerLink="/notifications">View all notifications</button>
+    </div>
+  </mat-menu>
+
+  <!-- Quick Add Menu -->
+  <mat-menu #quickAddMenu="matMenu" class="quick-add-menu">
+    <button mat-menu-item routerLink="/shops/new">
+      <mat-icon>store</mat-icon>
+      <span>New Shop</span>
+    </button>
+    
+    <button mat-menu-item routerLink="/products/master/new">
+      <mat-icon>inventory</mat-icon>
+      <span>New Product</span>
+    </button>
+    
+    <button mat-menu-item routerLink="/categories/new">
+      <mat-icon>category</mat-icon>
+      <span>New Category</span>
+    </button>
+    
+    <button mat-menu-item routerLink="/users/new" *ngIf="hasAccess(['ADMIN'])">
+      <mat-icon>person_add</mat-icon>
+      <span>New User</span>
+    </button>
+  </mat-menu>
+
+  <!-- Mobile Sidebar Overlay -->
+  <div 
+    class="sidebar-overlay" 
+    *ngIf="isMobile && isMobileSidebarOpen"
+    (click)="closeMobileSidebar()">
   </div>
 </div>

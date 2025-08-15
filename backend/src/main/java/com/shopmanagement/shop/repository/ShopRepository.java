@@ -67,4 +67,6 @@ public interface ShopRepository extends JpaRepository<Shop, Long>, JpaSpecificat
 
     @Query("SELECT DISTINCT s FROM Shop s LEFT JOIN FETCH s.documents WHERE s.id IN :ids")
     List<Shop> findAllWithDocumentsByIds(@Param("ids") List<Long> ids);
+
+    Optional<Shop> findByCreatedBy(String createdBy);
 }

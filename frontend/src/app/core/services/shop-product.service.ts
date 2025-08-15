@@ -32,12 +32,32 @@ export class ShopProductService {
       }
     });
 
-    return this.http.get<ApiResponse<ProductPage<ShopProduct>>>(`${this.API_URL}/${shopId}/products`, { params })
+    // Add cache busting parameter to ensure fresh data
+    params = params.set('_t', Date.now().toString());
+
+    const options = {
+      params,
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    };
+
+    return this.http.get<ApiResponse<ProductPage<ShopProduct>>>(`${this.API_URL}/${shopId}/products`, options)
       .pipe(map(response => response.data));
   }
 
   getShopProduct(shopId: number, productId: number): Observable<ShopProduct> {
-    return this.http.get<ApiResponse<ShopProduct>>(`${this.API_URL}/${shopId}/products/${productId}`)
+    const params = new HttpParams().set('_t', Date.now().toString());
+    const options = {
+      params,
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    };
+
+    return this.http.get<ApiResponse<ShopProduct>>(`${this.API_URL}/${shopId}/products/${productId}`, options)
       .pipe(map(response => response.data));
   }
 

@@ -76,10 +76,22 @@ export class ConstantsService {
     switch (type?.toUpperCase()) {
       case this.BUSINESS_TYPES.GROCERY:
         return 'Grocery Store';
+      case this.BUSINESS_TYPES.SUPERMARKET:
+        return 'Supermarket';
       case this.BUSINESS_TYPES.PHARMACY:
         return 'Pharmacy';
       case this.BUSINESS_TYPES.RESTAURANT:
         return 'Restaurant';
+      case this.BUSINESS_TYPES.CAFE:
+        return 'Cafe';
+      case this.BUSINESS_TYPES.BAKERY:
+        return 'Bakery';
+      case this.BUSINESS_TYPES.ELECTRONICS:
+        return 'Electronics Store';
+      case this.BUSINESS_TYPES.CLOTHING:
+        return 'Clothing Store';
+      case this.BUSINESS_TYPES.HARDWARE:
+        return 'Hardware Store';
       case this.BUSINESS_TYPES.GENERAL:
         return 'General Store';
       default:
@@ -94,10 +106,22 @@ export class ConstantsService {
     switch (type?.toUpperCase()) {
       case this.BUSINESS_TYPES.GROCERY:
         return this.COLORS.BUSINESS_TYPE.GROCERY;
+      case this.BUSINESS_TYPES.SUPERMARKET:
+        return this.COLORS.BUSINESS_TYPE.SUPERMARKET;
       case this.BUSINESS_TYPES.PHARMACY:
         return this.COLORS.BUSINESS_TYPE.PHARMACY;
       case this.BUSINESS_TYPES.RESTAURANT:
         return this.COLORS.BUSINESS_TYPE.RESTAURANT;
+      case this.BUSINESS_TYPES.CAFE:
+        return this.COLORS.BUSINESS_TYPE.CAFE;
+      case this.BUSINESS_TYPES.BAKERY:
+        return this.COLORS.BUSINESS_TYPE.BAKERY;
+      case this.BUSINESS_TYPES.ELECTRONICS:
+        return this.COLORS.BUSINESS_TYPE.ELECTRONICS;
+      case this.BUSINESS_TYPES.CLOTHING:
+        return this.COLORS.BUSINESS_TYPE.CLOTHING;
+      case this.BUSINESS_TYPES.HARDWARE:
+        return this.COLORS.BUSINESS_TYPE.HARDWARE;
       case this.BUSINESS_TYPES.GENERAL:
         return this.COLORS.BUSINESS_TYPE.GENERAL;
       default:

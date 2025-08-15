@@ -301,4 +301,12 @@ public class ShopController {
         
         return ResponseUtil.success(stats, "Statistics retrieved successfully");
     }
+
+    @GetMapping("/my-shop")
+    @PreAuthorize("hasRole('SHOP_OWNER')")
+    public ResponseEntity<ApiResponse<ShopResponse>> getCurrentUserShop() {
+        log.info("Fetching current user's shop");
+        ShopResponse response = shopService.getCurrentUserShop();
+        return ResponseUtil.success(response, "Current user shop retrieved successfully");
+    }
 }

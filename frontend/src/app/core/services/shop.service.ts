@@ -150,6 +150,22 @@ export class ShopService {
     return this.http.put<Shop>(`${this.API_URL}/${id}/reject`, { reason });
   }
 
+  // Get current user's shop (shop owner only)
+  getMyShop(): Observable<Shop> {
+    return this.http.get<ApiResponse<any>>(`${this.API_URL}/my-shop`).pipe(
+      map(apiResponse => {
+        if (ApiResponseHelper.isError(apiResponse)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(apiResponse));
+        }
+        return this.transformShop(apiResponse.data);
+      }),
+      catchError(error => {
+        console.error('Error fetching current user shop:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
   // Transform API response to match frontend model
   private transformShop(shop: any): Shop {
     return {

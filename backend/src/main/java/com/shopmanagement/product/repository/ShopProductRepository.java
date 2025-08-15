@@ -86,6 +86,9 @@ public interface ShopProductRepository extends JpaRepository<ShopProduct, Long>,
     @Query("SELECT COUNT(sp) FROM ShopProduct sp WHERE sp.shop = :shop AND sp.status = :status")
     long countByShopAndStatus(@Param("shop") Shop shop, @Param("status") ShopProduct.ShopProductStatus status);
 
+    @Query("SELECT COUNT(sp) FROM ShopProduct sp WHERE sp.shop = :shop")
+    long countByShop(@Param("shop") Shop shop);
+    
     @Query("SELECT COUNT(sp) FROM ShopProduct sp WHERE sp.shop = :shop AND sp.isAvailable = true")
     long countAvailableProductsByShop(@Param("shop") Shop shop);
 

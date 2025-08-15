@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
 import { Shop } from '../../../../core/models/shop.model';
 import { ShopService } from '../../../../core/services/shop.service';
 import { DocumentService } from '../../../../core/services/document.service';
@@ -6,209 +7,7 @@ import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-shop-list',
-  template: `
-    <div class="shop-list-container">
-      <!-- Header -->
-      <div class="header">
-        <div class="header-left">
-          <h1>Shop Verification</h1>
-          <p class="subtitle">Verify shop details and approve registrations</p>
-        </div>
-        <button mat-stroked-button routerLink="/shops/master">
-          <mat-icon>settings</mat-icon>
-          Go to Shop Master
-        </button>
-      </div>
-
-      <!-- Search and Filters -->
-      <div class="filters-section">
-        <div class="search-box">
-          <mat-form-field appearance="outline">
-            <mat-label>Search shops...</mat-label>
-            <input matInput [(ngModel)]="searchQuery" (input)="onSearch()" placeholder="Enter shop name...">
-            <mat-icon matSuffix>search</mat-icon>
-          </mat-form-field>
-        </div>
-        
-        <div class="filter-controls">
-          <mat-form-field appearance="outline">
-            <mat-label>Status</mat-label>
-            <mat-select [(ngModel)]="selectedStatus" (selectionChange)="onStatusFilter()">
-              <mat-option value="">All Status</mat-option>
-              <mat-option value="PENDING">Pending</mat-option>
-              <mat-option value="APPROVED">Approved</mat-option>
-              <mat-option value="REJECTED">Rejected</mat-option>
-              <mat-option value="SUSPENDED">Suspended</mat-option>
-            </mat-select>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Filter by City</mat-label>
-            <mat-select [(ngModel)]="selectedCity" (selectionChange)="onCityFilter()">
-              <mat-option value="">All Cities</mat-option>
-              <mat-option *ngFor="let city of cities" [value]="city">{{city}}</mat-option>
-            </mat-select>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Business Type</mat-label>
-            <mat-select [(ngModel)]="selectedBusinessType" (selectionChange)="onBusinessTypeFilter()">
-              <mat-option value="">All Types</mat-option>
-              <mat-option value="GROCERY">Grocery</mat-option>
-              <mat-option value="PHARMACY">Pharmacy</mat-option>
-              <mat-option value="RESTAURANT">Restaurant</mat-option>
-              <mat-option value="GENERAL">General</mat-option>
-            </mat-select>
-          </mat-form-field>
-        </div>
-      </div>
-
-      <!-- Loading -->
-      <div class="loading" *ngIf="loading">
-        <mat-progress-spinner mode="indeterminate"></mat-progress-spinner>
-      </div>
-
-      <!-- Shop Table -->
-      <div class="table-container" *ngIf="!loading">
-        <table mat-table [dataSource]="shops" class="shops-table" matSort>
-          
-          <!-- Shop ID Column -->
-          <ng-container matColumnDef="shopId">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Shop ID</th>
-            <td mat-cell *matCellDef="let shop">
-              <div class="shop-id">{{ shop.shopId || shop.id }}</div>
-            </td>
-          </ng-container>
-
-          <!-- Shop Name Column -->
-          <ng-container matColumnDef="name">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Shop Name</th>
-            <td mat-cell *matCellDef="let shop">
-              <div class="shop-name">
-                <strong>{{ shop.name }}</strong>
-                <div class="shop-business">{{ shop.businessName }}</div>
-              </div>
-            </td>
-          </ng-container>
-
-          <!-- Owner Column -->
-          <ng-container matColumnDef="owner">
-            <th mat-header-cell *matHeaderCellDef>Owner</th>
-            <td mat-cell *matCellDef="let shop">
-              <div class="owner-info">
-                <div>{{ shop.ownerName }}</div>
-                <div class="owner-phone">{{ shop.ownerPhone }}</div>
-              </div>
-            </td>
-          </ng-container>
-
-          <!-- Location Column -->
-          <ng-container matColumnDef="location">
-            <th mat-header-cell *matHeaderCellDef>Location</th>
-            <td mat-cell *matCellDef="let shop">
-              <div class="location-info">
-                <div>{{ shop.city }}, {{ shop.state }}</div>
-                <div class="postal-code">{{ shop.postalCode }}</div>
-              </div>
-            </td>
-          </ng-container>
-
-          <!-- Business Type Column -->
-          <ng-container matColumnDef="businessType">
-            <th mat-header-cell *matHeaderCellDef>Type</th>
-            <td mat-cell *matCellDef="let shop">
-              <mat-chip [ngClass]="getBusinessTypeClass(shop.businessType)">
-                {{ getBusinessTypeDisplay(shop.businessType) }}
-              </mat-chip>
-            </td>
-          </ng-container>
-
-          <!-- Status Column -->
-          <ng-container matColumnDef="status">
-            <th mat-header-cell *matHeaderCellDef>Status</th>
-            <td mat-cell *matCellDef="let shop">
-              <mat-chip [ngClass]="getStatusClass(shop.status)">
-                {{ getStatusDisplay(shop.status) }}
-              </mat-chip>
-            </td>
-          </ng-container>
-
-          <!-- Rating Column -->
-          <ng-container matColumnDef="rating">
-            <th mat-header-cell *matHeaderCellDef>Rating</th>
-            <td mat-cell *matCellDef="let shop">
-              <div class="rating">
-                <mat-icon class="star-icon">star</mat-icon>
-                {{ shop.rating || 0 | number:'1.1-1' }}
-              </div>
-            </td>
-          </ng-container>
-
-          <!-- Created Column -->
-          <ng-container matColumnDef="created">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Created</th>
-            <td mat-cell *matCellDef="let shop">{{ shop.createdAt | date:'MMM dd, yyyy' }}</td>
-          </ng-container>
-
-          <!-- Actions Column -->
-          <ng-container matColumnDef="actions">
-            <th mat-header-cell *matHeaderCellDef>Actions</th>
-            <td mat-cell *matCellDef="let shop; let i = index">
-              <div class="actions">
-                <button mat-icon-button [matMenuTriggerFor]="actionsMenu" class="action-button" 
-                        [id]="'action-' + i">
-                  <mat-icon>more_vert</mat-icon>
-                </button>
-                <mat-menu #actionsMenu="matMenu">
-                  <button mat-menu-item (click)="viewShop(shop)">
-                    <mat-icon>fact_check</mat-icon>
-                    <span>Verify Details</span>
-                  </button>
-                  <button mat-menu-item (click)="editShop(shop)">
-                    <mat-icon>edit</mat-icon>
-                    <span>Edit</span>
-                  </button>
-                  <button mat-menu-item (click)="approveShop(shop)" *ngIf="shop.status === 'PENDING'">
-                    <mat-icon>check_circle</mat-icon>
-                    <span>Quick Approve</span>
-                  </button>
-                  <button mat-menu-item (click)="rejectShop(shop)" *ngIf="shop.status === 'PENDING'">
-                    <mat-icon>cancel</mat-icon>
-                    <span>Quick Reject</span>
-                  </button>
-                  <mat-divider *ngIf="shop.status === 'PENDING'"></mat-divider>
-                  <button mat-menu-item (click)="deleteShop(shop)" class="delete-action">
-                    <mat-icon>delete</mat-icon>
-                    <span>Delete</span>
-                  </button>
-                </mat-menu>
-              </div>
-            </td>
-          </ng-container>
-
-          <!-- Table Header and Rows -->
-          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="shop-row"></tr>
-        </table>
-      </div>
-
-      <!-- No Results -->
-      <div class="no-results" *ngIf="!loading && shops.length === 0">
-        <mat-icon>store</mat-icon>
-        <h3>No shops found</h3>
-        <p>Try adjusting your search criteria or add a new shop.</p>
-      </div>
-
-      <!-- Pagination -->
-      <mat-paginator 
-        *ngIf="!loading && shops.length > 0"
-        [length]="totalElements"
-        [pageSize]="pageSize"
-        [pageSizeOptions]="[10, 20, 50]"
-        (page)="onPageChange($event)">
-      </mat-paginator>
-    </div>
-  `,
+  templateUrl: './shop-list.component.html',
   styles: [`
     .shop-list-container {
       padding: 0;
@@ -256,139 +55,289 @@ import Swal from 'sweetalert2';
       width: 200px;
     }
 
-    .table-container {
+    /* Shop List Layout */
+    .shops-list-container {
+      margin-top: 0;
+    }
+
+    .shop-list-header {
+      display: grid;
+      grid-template-columns: 40px 2fr 1fr 1.5fr 1fr 100px 1fr 80px 40px;
+      align-items: center;
+      gap: 16px;
+      padding: 12px 20px;
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-bottom: 2px solid #dee2e6;
+      font-weight: 600;
+      font-size: 12px;
+      color: #495057;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .shop-list-header > div {
+      display: flex;
+      align-items: center;
+    }
+
+    .header-name,
+    .header-location {
+      justify-content: flex-start;
+    }
+
+    .header-type,
+    .header-products,
+    .header-date,
+    .header-status {
+      justify-content: center;
+    }
+
+    .header-price {
+      justify-content: flex-end;
+    }
+
+    .header-actions {
+      justify-content: center;
+    }
+
+    .shops-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
       background: white;
-      border-radius: 8px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      border: 1px solid #e9ecef;
+      border-top: none;
+      border-radius: 0 0 8px 8px;
       overflow: hidden;
     }
 
-    .shops-table {
-      width: 100%;
+    .shop-list-item {
+      background: white;
+      border: none;
+      border-bottom: 1px solid #f1f3f4;
+      padding: 14px 20px;
+      display: grid;
+      grid-template-columns: 40px 2fr 1fr 1.5fr 1fr 100px 1fr 80px 40px;
+      align-items: center;
+      gap: 16px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      min-height: 56px;
     }
 
-    .shop-row:hover {
-      background-color: #f8fafc;
+    .shop-list-item:last-child {
+      border-bottom: none;
     }
 
-    .shop-id {
-      font-family: 'Courier New', monospace;
+    .shop-list-item:hover {
+      background: #f8f9fa;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .shop-avatar {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .shop-avatar mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+
+    .shop-name-section {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .shop-name {
+      font-size: 14px;
       font-weight: 600;
-      color: #374151;
-    }
-
-    .shop-name strong {
       color: #1f2937;
-      font-size: 16px;
+      line-height: 1.3;
+      margin: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .shop-business {
+      font-size: 12px;
       color: #6b7280;
-      font-size: 13px;
-      margin-top: 2px;
+      font-weight: 400;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .owner-info div:first-child {
-      font-weight: 500;
-      color: #374151;
+    .business-type-section {
+      display: flex;
+      justify-content: flex-start;
     }
 
-    .owner-phone {
+    .location-section {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .location {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
       color: #6b7280;
-      font-size: 13px;
-      margin-top: 2px;
     }
 
-    .location-info div:first-child {
-      color: #374151;
+    .location-icon {
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
+      color: #9ca3af;
     }
 
     .postal-code {
+      font-size: 11px;
+      color: #9ca3af;
+    }
+
+    .product-count-section {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
+    }
+
+    .product-count {
+      font-size: 12px;
       color: #6b7280;
-      font-size: 13px;
-      margin-top: 2px;
+      background: #f1f5f9;
+      padding: 2px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
     }
 
     .rating {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 2px;
+      font-size: 11px;
+      color: #6b7280;
     }
 
     .star-icon {
+      font-size: 12px;
+      width: 12px;
+      height: 12px;
       color: #fbbf24;
-      font-size: 18px;
-      width: 18px;
-      height: 18px;
     }
 
-    .actions {
+    .date-section {
+      font-size: 12px;
+      color: #6b7280;
+      text-align: center;
+    }
+
+    .status-section {
+      display: flex;
+      justify-content: center;
+    }
+
+    .price-section {
+      text-align: right;
+    }
+
+    .delivery-fee {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1f2937;
+    }
+
+    .shop-actions {
       display: flex;
       justify-content: center;
     }
 
     .action-button {
       color: #6b7280;
+      transition: all 0.2s ease;
+      width: 32px;
+      height: 32px;
     }
 
-    .delete-action {
-      color: #ef4444 !important;
+    .action-button:hover {
+      color: #3b82f6;
+      background: #f3f4f6;
     }
 
     // Status chips
     mat-chip {
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 500;
-      border-radius: 12px;
-      padding: 4px 12px;
+      border-radius: 16px;
+      padding: 4px 8px;
+      min-height: auto;
+      line-height: 1.2;
     }
 
     .status-pending {
-      background-color: #fff3cd;
-      color: #856404;
-      border: 1px solid #ffeaa7;
+      background-color: #fef3c7;
+      color: #92400e;
+      border: none;
     }
 
     .status-approved {
-      background-color: #d4edda;
-      color: #155724;
-      border: 1px solid #00b894;
+      background-color: #d1fae5;
+      color: #065f46;
+      border: none;
     }
 
     .status-rejected {
-      background-color: #f8d7da;
-      color: #721c24;
-      border: 1px solid #e74c3c;
+      background-color: #fee2e2;
+      color: #991b1b;
+      border: none;
     }
 
     .status-suspended {
-      background-color: #e2e3e5;
-      color: #383d41;
-      border: 1px solid #6c757d;
+      background-color: #f3f4f6;
+      color: #4b5563;
+      border: none;
     }
 
     .type-grocery {
-      background-color: #d1f2eb;
-      color: #0e6b47;
-      border: 1px solid #00b894;
+      background-color: #ecfdf5;
+      color: #065f46;
+      border: none;
     }
 
     .type-pharmacy {
-      background-color: #cce5ff;
-      color: #0056b3;
-      border: 1px solid #007bff;
+      background-color: #dbeafe;
+      color: #1e40af;
+      border: none;
     }
 
     .type-restaurant {
-      background-color: #f3e5f5;
-      color: #6f42c1;
-      border: 1px solid #6f42c1;
+      background-color: #faf5ff;
+      color: #7c2d12;
+      border: none;
     }
 
     .type-general {
-      background-color: #f8f9fa;
-      color: #495057;
-      border: 1px solid #6c757d;
+      background-color: #f8fafc;
+      color: #64748b;
+      border: none;
     }
 
     .loading {
@@ -421,6 +370,171 @@ import Swal from 'sweetalert2';
     mat-paginator {
       background: transparent;
       margin-top: 16px;
+      border-top: 1px solid #e5e7eb;
+      padding-top: 16px;
+    }
+
+    @media (max-width: 768px) {
+      .shop-list-container {
+        padding: 12px;
+        margin: 0 -12px;
+      }
+
+      .shop-list-header {
+        grid-template-columns: 32px 1fr auto;
+        gap: 8px;
+        padding: 12px 16px;
+      }
+
+      .header-type,
+      .header-location,
+      .header-products,
+      .header-date,
+      .header-status,
+      .header-price {
+        display: none;
+      }
+
+      .shops-list {
+        gap: 1px;
+        margin: 0;
+        border-radius: 0;
+      }
+
+      .shop-list-item {
+        grid-template-columns: 32px 1fr auto;
+        gap: 8px;
+        padding: 12px 16px;
+        min-height: 50px;
+      }
+
+      .shop-avatar {
+        width: 32px;
+        height: 32px;
+      }
+
+      .shop-avatar mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+      }
+
+      .business-type-section,
+      .location-section,
+      .product-count-section,
+      .date-section,
+      .status-section,
+      .price-section {
+        display: none;
+      }
+
+      .shop-name-section {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .shop-name {
+        font-size: 14px;
+      }
+
+      .shop-business {
+        font-size: 11px;
+      }
+
+      .shop-actions {
+        flex-shrink: 0;
+      }
+
+      .header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 16px;
+        padding: 0 4px;
+      }
+
+      .header-left h1 {
+        font-size: 24px;
+      }
+
+      .filters-section {
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .search-box mat-form-field {
+        width: 100%;
+      }
+
+      .filter-controls {
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .filter-controls mat-form-field {
+        width: 100%;
+      }
+
+      .shop-list-item {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 16px;
+        min-height: auto;
+        position: relative;
+      }
+
+      .shop-image-container {
+        width: 50px;
+        height: 50px;
+        margin-right: 0;
+        align-self: flex-start;
+      }
+
+      .shop-avatar {
+        width: 50px;
+        height: 50px;
+      }
+
+      .shop-avatar mat-icon {
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+      }
+
+      .shop-content {
+        width: 100%;
+        gap: 6px;
+      }
+
+      .shop-name {
+        font-size: 16px;
+      }
+
+      .shop-details-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+      }
+
+      .shop-status-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+      }
+
+      .shop-actions {
+        align-self: flex-start;
+        margin-left: 0;
+        position: absolute;
+        top: 12px;
+        right: 12px;
+      }
+
+      .shop-location-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+      }
     }
   `]
 })
@@ -433,8 +547,8 @@ export class ShopListComponent implements OnInit {
   selectedStatus = '';
   cities: string[] = [];
   
-  // Table columns
-  displayedColumns: string[] = ['shopId', 'name', 'owner', 'location', 'businessType', 'status', 'rating', 'created', 'actions'];
+  // Remove table columns as we're using list view now
+  // displayedColumns: string[] = ['shopId', 'name', 'owner', 'location', 'businessType', 'status', 'rating', 'created', 'actions'];
   
   // Pagination
   currentPage = 0;
@@ -443,12 +557,13 @@ export class ShopListComponent implements OnInit {
 
   constructor(
     private shopService: ShopService,
-    private documentService: DocumentService
+    private documentService: DocumentService,
+    private router: Router
   ) {}
 
   ngOnInit() {
-    // Default to PENDING shops for approval workflow
-    this.selectedStatus = 'PENDING';
+    // Default to show all shops (no status filter)
+    this.selectedStatus = '';
     this.loadShops();
     this.loadCities();
   }
@@ -525,6 +640,10 @@ export class ShopListComponent implements OnInit {
     this.currentPage = event.pageIndex;
     this.pageSize = event.pageSize;
     this.loadShops();
+  }
+
+  viewShopProducts(shop: Shop) {
+    this.router.navigate(['/products/shop', shop.id]);
   }
 
   editShop(shop: Shop) {
@@ -935,6 +1054,12 @@ export class ShopListComponent implements OnInit {
         </div>
       ` : ''}
     `;
+  }
+
+  getShopProductCount(shop: Shop): number {
+    // This would ideally come from the backend API
+    // For now, return a placeholder value
+    return shop.productCount || 0;
   }
 
   getDocumentStatusHtml(shop: Shop): string {

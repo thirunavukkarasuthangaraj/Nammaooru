@@ -7,411 +7,786 @@ import Swal from 'sweetalert2';
 @Component({
   selector: 'app-category-list',
   template: `
-    <div class="category-container">
-      <div class="category-header">
+    <div class="categories-container">
+      <!-- Modern Header -->
+      <div class="page-header">
         <div class="header-content">
-          <h2 class="page-title">
-            <mat-icon class="title-icon">category</mat-icon>
-            Product Categories
-          </h2>
-          <p class="page-subtitle">Manage your product category hierarchy</p>
+          <div class="breadcrumb">
+            <span class="breadcrumb-item">
+              <mat-icon>dashboard</mat-icon>
+              Dashboard
+            </span>
+            <mat-icon class="breadcrumb-separator">chevron_right</mat-icon>
+            <span class="breadcrumb-item">Products</span>
+            <mat-icon class="breadcrumb-separator">chevron_right</mat-icon>
+            <span class="breadcrumb-item active">Categories</span>
+          </div>
+          <h1 class="page-title">Product Categories</h1>
+          <p class="page-description">
+            Organize your products into hierarchical categories
+          </p>
         </div>
         <div class="header-actions">
-          <button mat-fab color="primary" routerLink="/products/categories/new" matTooltip="Add New Category">
-            <mat-icon>add</mat-icon>
+          <button mat-raised-button class="action-button" routerLink="/products/categories/new">
+            <mat-icon>add_circle</mat-icon>
+            New Category
           </button>
         </div>
       </div>
 
-      <div class="categories-content">
-        <mat-card class="categories-card">
-          <mat-card-header>
-            <mat-card-title>
+      <!-- Statistics Cards -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-icon">
+            <mat-icon>category</mat-icon>
+          </div>
+          <div class="stat-content">
+            <div class="stat-value">{{ getTotalCategories() }}</div>
+            <div class="stat-label">Total Categories</div>
+          </div>
+        </div>
+        
+        <div class="stat-card active">
+          <div class="stat-icon">
+            <mat-icon>check_circle</mat-icon>
+          </div>
+          <div class="stat-content">
+            <div class="stat-value">{{ getActiveCategories() }}</div>
+            <div class="stat-label">Active Categories</div>
+          </div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-icon">
+            <mat-icon>account_tree</mat-icon>
+          </div>
+          <div class="stat-content">
+            <div class="stat-value">{{ getSubcategories() }}</div>
+            <div class="stat-label">Subcategories</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon">
+            <mat-icon>inventory</mat-icon>
+          </div>
+          <div class="stat-content">
+            <div class="stat-value">{{ getTotalProducts() }}</div>
+            <div class="stat-label">Products</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Categories Content -->
+      <div class="categories-section">
+        <mat-card class="modern-card">
+          <div class="card-header">
+            <h3 class="card-title">
               <mat-icon>account_tree</mat-icon>
               Category Hierarchy
-            </mat-card-title>
-            <mat-card-subtitle>All categories organized in a tree structure</mat-card-subtitle>
-          </mat-card-header>
-          
-          <mat-card-content>
-            <div *ngIf="loading" class="loading-container">
-              <mat-spinner diameter="40"></mat-spinner>
-              <p>Loading categories...</p>
-            </div>
-
-            <div *ngIf="!loading && categories.length === 0" class="empty-state">
-              <mat-icon class="empty-icon">folder_open</mat-icon>
-              <h3>No Categories Found</h3>
-              <p>Start by creating your first product category</p>
-              <button mat-raised-button color="primary" routerLink="/products/categories/new">
-                <mat-icon>add</mat-icon>
-                Create First Category
+            </h3>
+            <div class="card-actions">
+              <button mat-icon-button matTooltip="Refresh" (click)="loadCategories()">
+                <mat-icon>refresh</mat-icon>
+              </button>
+              <button mat-icon-button matTooltip="Expand All" (click)="expandAll()">
+                <mat-icon>unfold_more</mat-icon>
+              </button>
+              <button mat-icon-button matTooltip="Collapse All" (click)="collapseAll()">
+                <mat-icon>unfold_less</mat-icon>
               </button>
             </div>
+          </div>
 
-            <div *ngIf="!loading && categories.length > 0" class="categories-tree">
-              <div *ngFor="let category of categories" class="category-item">
-                <mat-expansion-panel class="category-panel">
-                  <mat-expansion-panel-header>
-                    <mat-panel-title>
-                      <div class="category-title">
-                        <mat-icon class="category-icon">folder</mat-icon>
-                        <span class="category-name">{{ category.name }}</span>
-                        <mat-chip-set class="category-chips">
-                          <mat-chip [color]="category.isActive ? 'primary' : 'warn'" selected>
-                            {{ category.isActive ? 'Active' : 'Inactive' }}
-                          </mat-chip>
-                          <mat-chip color="accent" selected>
-                            {{ category.productCount }} products
-                          </mat-chip>
-                        </mat-chip-set>
-                      </div>
-                    </mat-panel-title>
-                    <mat-panel-description>
-                      {{ category.description || 'No description available' }}
-                    </mat-panel-description>
-                  </mat-expansion-panel-header>
+          <!-- Loading State -->
+          <div *ngIf="loading" class="loading-state">
+            <mat-spinner diameter="60"></mat-spinner>
+            <h3>Loading Categories</h3>
+            <p>Please wait while we fetch your categories...</p>
+          </div>
 
-                  <div class="category-details">
-                    <div class="category-info">
-                      <div class="info-row">
-                        <strong>Slug:</strong> {{ category.slug }}
-                      </div>
-                      <div class="info-row">
-                        <strong>Full Path:</strong> {{ category.fullPath }}
-                      </div>
-                      <div class="info-row">
-                        <strong>Created:</strong> {{ category.createdAt | date:'short' }}
-                      </div>
-                      <div class="info-row">
-                        <strong>Products:</strong> {{ category.productCount }}
-                      </div>
-                      <div class="info-row" *ngIf="category.subcategoryCount > 0">
-                        <strong>Subcategories:</strong> {{ category.subcategoryCount }}
-                      </div>
-                    </div>
+          <!-- Empty State -->
+          <div *ngIf="!loading && categories.length === 0" class="empty-state">
+            <div class="empty-icon">
+              <mat-icon>category</mat-icon>
+            </div>
+            <h3>No Categories Found</h3>
+            <p>Start organizing your products by creating categories</p>
+            <button mat-raised-button color="primary" routerLink="/products/categories/new">
+              <mat-icon>add</mat-icon>
+              Create First Category
+            </button>
+          </div>
 
-                    <div class="category-actions">
-                      <button mat-button color="primary" [routerLink]="['/products/categories', category.id]">
-                        <mat-icon>edit</mat-icon>
-                        Edit
-                      </button>
-                      <button mat-button color="accent" (click)="toggleStatus(category)">
-                        <mat-icon>{{ category.isActive ? 'pause' : 'play_arrow' }}</mat-icon>
-                        {{ category.isActive ? 'Deactivate' : 'Activate' }}
-                      </button>
-                      <button mat-button color="warn" (click)="deleteCategory(category)" [disabled]="category.productCount > 0">
-                        <mat-icon>delete</mat-icon>
-                        Delete
-                      </button>
-                    </div>
+          <!-- Categories Grid -->
+          <div *ngIf="!loading && categories.length > 0" class="categories-grid">
+            <div *ngFor="let category of categories" class="category-card">
+              <div class="category-card-header">
+                <div class="category-icon-wrapper">
+                  <mat-icon class="category-main-icon">folder</mat-icon>
+                </div>
+                <div class="category-badges">
+                  <span class="badge" [class.active]="category.isActive" [class.inactive]="!category.isActive">
+                    <mat-icon class="badge-icon">
+                      {{ category.isActive ? 'check_circle' : 'cancel' }}
+                    </mat-icon>
+                    {{ category.isActive ? 'Active' : 'Inactive' }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="category-info">
+                <h3 class="category-name">{{ category.name }}</h3>
+                <p class="category-slug">{{ category.slug }}</p>
+                <p class="category-description">{{ category.description || 'No description available' }}</p>
+              </div>
+
+              <div class="category-stats">
+                <div class="stat-item">
+                  <mat-icon class="stat-icon">inventory</mat-icon>
+                  <span class="stat-text">{{ category.productCount || 0 }} products</span>
+                </div>
+                <div class="stat-item" *ngIf="category.subcategoryCount > 0">
+                  <mat-icon class="stat-icon">account_tree</mat-icon>
+                  <span class="stat-text">{{ category.subcategoryCount }} subcategories</span>
+                </div>
+              </div>
+
+              <!-- Subcategories -->
+              <div class="subcategories" *ngIf="category.subcategories && category.subcategories.length > 0">
+                <div class="subcategories-header">
+                  <mat-icon>subdirectory_arrow_right</mat-icon>
+                  <span>Subcategories</span>
+                </div>
+                <div class="subcategory-list">
+                  <div *ngFor="let sub of category.subcategories" class="subcategory-item">
+                    <mat-icon class="sub-icon">folder_open</mat-icon>
+                    <span class="sub-name">{{ sub.name }}</span>
+                    <span class="sub-count">({{ sub.productCount || 0 }})</span>
                   </div>
+                </div>
+              </div>
 
-                  <div *ngIf="category.subcategories && category.subcategories.length > 0" class="subcategories">
-                    <h4>Subcategories</h4>
-                    <div *ngFor="let subcategory of category.subcategories" class="subcategory-item">
-                      <mat-icon>subdirectory_arrow_right</mat-icon>
-                      <span>{{ subcategory.name }}</span>
-                      <mat-chip [color]="subcategory.isActive ? 'primary' : 'warn'" selected>
-                        {{ subcategory.isActive ? 'Active' : 'Inactive' }}
-                      </mat-chip>
-                    </div>
-                  </div>
-                </mat-expansion-panel>
+              <div class="category-actions">
+                <button mat-button class="action-btn edit" [routerLink]="['/products/categories', category.id]">
+                  <mat-icon>edit</mat-icon>
+                  Edit
+                </button>
+                <button mat-button 
+                        class="action-btn toggle" 
+                        [class.activate]="!category.isActive"
+                        [class.deactivate]="category.isActive"
+                        (click)="toggleStatus(category)">
+                  <mat-icon>{{ category.isActive ? 'pause' : 'play_arrow' }}</mat-icon>
+                  {{ category.isActive ? 'Deactivate' : 'Activate' }}
+                </button>
+                <button mat-button 
+                        class="action-btn delete" 
+                        (click)="deleteCategory(category)" 
+                        [disabled]="category.productCount > 0">
+                  <mat-icon>delete</mat-icon>
+                  Delete
+                </button>
               </div>
             </div>
-          </mat-card-content>
+          </div>
         </mat-card>
       </div>
     </div>
   `,
   styles: [`
-    .category-container {
-      padding: 24px;
-      max-width: 1200px;
-      margin: 0 auto;
-      min-height: calc(100vh - 100px);
+    .categories-container {
+      background: #f5f5f7;
+      min-height: 100vh;
+      padding-bottom: 32px;
     }
 
-    .category-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 24px;
-      padding: 24px;
+    /* Modern Header */
+    .page-header {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      border-radius: 12px;
+      padding: 48px 32px;
       color: white;
-    }
-
-    .header-content {
-      flex: 1;
-    }
-
-    .page-title {
-      display: flex;
-      align-items: center;
-      margin: 0 0 8px 0;
-      font-size: 28px;
-      font-weight: 600;
-      color: white;
-    }
-
-    .title-icon {
-      margin-right: 12px;
-      font-size: 32px;
-      width: 32px;
-      height: 32px;
-    }
-
-    .page-subtitle {
-      margin: 0;
-      opacity: 0.9;
-      font-size: 16px;
-    }
-
-    .header-actions {
-      display: flex;
-      gap: 12px;
-    }
-
-    .categories-content {
-      margin-top: 24px;
-    }
-
-    .categories-card {
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
-
-    .loading-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 60px;
-      color: #666;
-    }
-
-    .loading-container p {
-      margin-top: 16px;
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 60px;
-      color: #666;
-    }
-
-    .empty-icon {
-      font-size: 72px;
-      width: 72px;
-      height: 72px;
-      color: #ddd;
-      margin-bottom: 16px;
-    }
-
-    .empty-state h3 {
-      margin: 16px 0 8px 0;
-      color: #333;
-    }
-
-    .empty-state p {
-      margin-bottom: 24px;
-    }
-
-    .categories-tree {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .category-item {
-      border-radius: 8px;
-      overflow: hidden;
-    }
-
-    .category-panel {
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-
-    .category-title {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      width: 100%;
-    }
-
-    .category-icon {
-      color: #667eea;
-      font-size: 24px;
-      width: 24px;
-      height: 24px;
-    }
-
-    .category-name {
-      font-weight: 600;
-      font-size: 16px;
-    }
-
-    .category-chips {
-      margin-left: auto;
-    }
-
-    .category-details {
-      padding: 16px;
-      background: #f8f9fa;
-      border-radius: 8px;
-      margin: 16px 0;
-    }
-
-    .category-info {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-
-    .info-row {
       display: flex;
       justify-content: space-between;
-      padding: 4px 0;
-      font-size: 14px;
+      align-items: center;
+      box-shadow: 0 4px 20px rgba(102, 126, 234, 0.2);
     }
 
-    .info-row strong {
-      color: #333;
-      margin-right: 8px;
-    }
-
-    .category-actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .subcategories {
-      margin-top: 16px;
-      padding-top: 16px;
-      border-top: 1px solid #e0e0e0;
-    }
-
-    .subcategories h4 {
-      margin: 0 0 12px 0;
-      color: #333;
-      font-size: 14px;
-      font-weight: 600;
-    }
-
-    .subcategory-item {
+    .breadcrumb {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 8px 0;
+      margin-bottom: 16px;
       font-size: 14px;
+      opacity: 0.9;
     }
 
-    .subcategory-item mat-icon {
-      color: #999;
+    .breadcrumb-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .breadcrumb-item mat-icon {
       font-size: 18px;
       width: 18px;
       height: 18px;
     }
 
+    .breadcrumb-separator {
+      margin: 0 8px;
+      opacity: 0.6;
+    }
+
+    .breadcrumb-item.active {
+      font-weight: 500;
+    }
+
+    .page-title {
+      font-size: 36px;
+      font-weight: 700;
+      margin: 0 0 8px 0;
+      letter-spacing: -0.5px;
+    }
+
+    .page-description {
+      font-size: 16px;
+      opacity: 0.95;
+      margin: 0;
+    }
+
+    .action-button {
+      background: white;
+      color: #667eea;
+      font-weight: 600;
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-size: 15px;
+    }
+
+    .action-button mat-icon {
+      margin-right: 8px;
+    }
+
+    /* Statistics Row */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 24px;
+      padding: 32px;
+      padding-bottom: 0;
+    }
+
+    .stat-card {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      transition: all 0.3s ease;
+      border: 2px solid transparent;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    }
+
+    .stat-card.active {
+      border-color: #4caf50;
+      background: linear-gradient(135deg, #f1f8e9 0%, #fff 100%);
+    }
+
+    .stat-icon {
+      width: 56px;
+      height: 56px;
+      background: linear-gradient(135deg, #667eea20 0%, #764ba220 100%);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .stat-card.active .stat-icon {
+      background: linear-gradient(135deg, #4caf5020 0%, #81c78420 100%);
+    }
+
+    .stat-icon mat-icon {
+      font-size: 28px;
+      width: 28px;
+      height: 28px;
+      color: #667eea;
+    }
+
+    .stat-card.active .stat-icon mat-icon {
+      color: #4caf50;
+    }
+
+    .stat-value {
+      font-size: 32px;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 4px;
+      color: #1a1a1a;
+    }
+
+    .stat-label {
+      font-size: 14px;
+      color: #888;
+      font-weight: 500;
+    }
+
+    /* Categories Section */
+    .categories-section {
+      padding: 32px;
+    }
+
+    .modern-card {
+      border-radius: 16px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      border: none;
+      overflow: hidden;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 24px;
+      border-bottom: 1px solid #e0e0e0;
+      background: #fafafa;
+    }
+
+    .card-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0;
+      color: #1a1a1a;
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    /* Loading State */
+    .loading-state {
+      padding: 80px 20px;
+      text-align: center;
+    }
+
+    .loading-state h3 {
+      margin: 24px 0 8px 0;
+      font-size: 20px;
+      color: #333;
+    }
+
+    .loading-state p {
+      color: #888;
+      margin: 0;
+    }
+
+    /* Empty State */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 20px;
+      text-align: center;
+    }
+
+    .empty-icon {
+      width: 120px;
+      height: 120px;
+      background: linear-gradient(135deg, #f5f5f7 0%, #e8e8ea 100%);
+      border-radius: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+    }
+
+    .empty-icon mat-icon {
+      font-size: 64px;
+      width: 64px;
+      height: 64px;
+      color: #ccc;
+    }
+
+    .empty-state h3 {
+      font-size: 24px;
+      margin: 0 0 8px 0;
+      color: #333;
+    }
+
+    .empty-state p {
+      font-size: 16px;
+      color: #888;
+      margin: 0 0 24px 0;
+    }
+
+    /* Categories Grid */
+    .categories-grid {
+      padding: 24px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 24px;
+    }
+
+    .category-card {
+      background: white;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      transition: all 0.3s ease;
+      border: 2px solid transparent;
+    }
+
+    .category-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+      border-color: #667eea;
+    }
+
+    .category-card-header {
+      padding: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #f0f0f0;
+      background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%);
+    }
+
+    .category-icon-wrapper {
+      width: 60px;
+      height: 60px;
+      background: linear-gradient(135deg, #667eea20 0%, #764ba220 100%);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .category-main-icon {
+      font-size: 32px;
+      width: 32px;
+      height: 32px;
+      color: #667eea;
+    }
+
+    .category-badges {
+      display: flex;
+      gap: 8px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .badge.active {
+      background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+      color: #4caf50;
+    }
+
+    .badge.inactive {
+      background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+      color: #f44336;
+    }
+
+    .badge-icon {
+      font-size: 14px !important;
+      width: 14px !important;
+      height: 14px !important;
+    }
+
+    .category-info {
+      padding: 20px;
+    }
+
+    .category-name {
+      font-size: 20px;
+      font-weight: 600;
+      margin: 0 0 4px 0;
+      color: #1a1a1a;
+    }
+
+    .category-slug {
+      font-size: 13px;
+      color: #888;
+      margin: 0 0 12px 0;
+      font-family: 'Courier New', monospace;
+      background: #f5f5f5;
+      padding: 4px 8px;
+      border-radius: 4px;
+      display: inline-block;
+    }
+
+    .category-description {
+      font-size: 14px;
+      color: #666;
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    .category-stats {
+      padding: 0 20px 16px 20px;
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .stat-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: #666;
+    }
+
+    .stat-icon {
+      font-size: 16px !important;
+      width: 16px !important;
+      height: 16px !important;
+      color: #999;
+    }
+
+    .subcategories {
+      padding: 16px 20px;
+      background: #f8f9fa;
+      border-top: 1px solid #e0e0e0;
+    }
+
+    .subcategories-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #666;
+      margin-bottom: 12px;
+    }
+
+    .subcategory-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .subcategory-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: white;
+      border-radius: 12px;
+      font-size: 12px;
+      color: #666;
+      border: 1px solid #e0e0e0;
+    }
+
+    .sub-icon {
+      font-size: 14px !important;
+      width: 14px !important;
+      height: 14px !important;
+      color: #999;
+    }
+
+    .sub-name {
+      font-weight: 500;
+    }
+
+    .sub-count {
+      color: #888;
+      font-size: 11px;
+    }
+
+    .category-actions {
+      padding: 16px 20px;
+      background: #fafafa;
+      border-top: 1px solid #e0e0e0;
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .action-btn {
+      border-radius: 6px;
+      font-size: 12px;
+      padding: 6px 12px;
+      min-width: auto;
+    }
+
+    .action-btn.edit {
+      color: #2196f3;
+    }
+
+    .action-btn.toggle.activate {
+      color: #4caf50;
+    }
+
+    .action-btn.toggle.deactivate {
+      color: #ff9800;
+    }
+
+    .action-btn.delete {
+      color: #f44336;
+    }
+
+    .action-btn mat-icon {
+      font-size: 16px !important;
+      width: 16px !important;
+      height: 16px !important;
+      margin-right: 4px;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 1024px) {
+      .categories-grid {
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      }
+      
+      .stats-row {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      }
+    }
+
     @media (max-width: 768px) {
-      .category-container {
+      .page-header {
+        flex-direction: column;
+        text-align: center;
+        gap: 24px;
+      }
+      
+      .stats-row {
+        grid-template-columns: 1fr;
         padding: 16px;
       }
-
-      .category-header {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 16px;
-        padding: 20px;
+      
+      .categories-section {
+        padding: 16px;
       }
-
-      .header-actions {
-        justify-content: center;
-      }
-
-      .page-title {
-        font-size: 24px;
-      }
-
-      .category-info {
+      
+      .categories-grid {
         grid-template-columns: 1fr;
+        gap: 16px;
       }
-
-      .category-actions {
-        justify-content: center;
-      }
-
-      .category-title {
+      
+      .card-header {
         flex-direction: column;
         align-items: flex-start;
+        gap: 12px;
+      }
+      
+      .category-actions {
+        flex-direction: column;
         gap: 8px;
       }
-
-      .category-chips {
-        margin-left: 0;
+      
+      .action-btn {
+        justify-content: center;
+        width: 100%;
       }
     }
   `]
 })
 export class CategoryListComponent implements OnInit {
   categories: ProductCategory[] = [];
-  loading = true;
+  loading = false;
 
   constructor(
-    private categoryService: ProductCategoryService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private categoryService: ProductCategoryService
   ) {}
 
   ngOnInit() {
     this.loadCategories();
   }
 
-  private loadCategories() {
+  loadCategories() {
     this.loading = true;
-    this.categoryService.getCategories(undefined, undefined, undefined, 0, 100).subscribe({
+    this.categoryService.getCategories().subscribe({
       next: (response) => {
         this.categories = response.content || [];
         this.loading = false;
-        console.log('Categories loaded:', this.categories);
       },
       error: (error) => {
         console.error('Error loading categories:', error);
+        this.loading = false;
         Swal.fire({
           title: 'Error!',
           text: 'Failed to load categories',
           icon: 'error',
           confirmButtonText: 'OK'
         });
-        this.loading = false;
       }
     });
   }
 
+  getTotalCategories(): number {
+    return this.categories.length;
+  }
+
+  getActiveCategories(): number {
+    return this.categories.filter(c => c.isActive).length;
+  }
+
+  getSubcategories(): number {
+    return this.categories.reduce((sum, cat) => sum + (cat.subcategoryCount || 0), 0);
+  }
+
+  getTotalProducts(): number {
+    return this.categories.reduce((sum, cat) => sum + (cat.productCount || 0), 0);
+  }
+
   toggleStatus(category: ProductCategory) {
-    this.categoryService.updateCategoryStatus(category.id, !category.isActive).subscribe({
-      next: (updatedCategory) => {
-        const index = this.categories.findIndex(c => c.id === category.id);
-        if (index !== -1) {
-          this.categories[index] = updatedCategory;
-        }
-        Swal.fire({
-          title: 'Success!',
-          text: `Category ${updatedCategory.isActive ? 'activated' : 'deactivated'} successfully`,
-          icon: 'success',
-          confirmButtonText: 'OK'
-        });
-      },
-      error: (error) => {
-        console.error('Error updating category status:', error);
-        Swal.fire({
-          title: 'Error!',
-          text: 'Failed to update category status',
-          icon: 'error',
-          confirmButtonText: 'OK'
+    const action = category.isActive ? 'deactivate' : 'activate';
+    const title = category.isActive ? 'Deactivate Category?' : 'Activate Category?';
+    const text = `Are you sure you want to ${action} "${category.name}"?`;
+
+    Swal.fire({
+      title,
+      text,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: category.isActive ? '#f44336' : '#4caf50',
+      cancelButtonColor: '#666',
+      confirmButtonText: `Yes, ${action}!`,
+      cancelButtonText: 'Cancel'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const updatedCategory = { ...category, isActive: !category.isActive };
+        this.categoryService.updateCategory(category.id, updatedCategory).subscribe({
+          next: () => {
+            category.isActive = !category.isActive;
+            Swal.fire({
+              title: 'Updated!',
+              text: `Category ${action}d successfully.`,
+              icon: 'success',
+              timer: 2000,
+              showConfirmButton: false
+            });
+          },
+          error: (error) => {
+            console.error('Error updating category:', error);
+            Swal.fire({
+              title: 'Error!',
+              text: `Failed to ${action} category`,
+              icon: 'error',
+              confirmButtonText: 'OK'
+            });
+          }
         });
       }
     });
@@ -421,7 +796,7 @@ export class CategoryListComponent implements OnInit {
     if (category.productCount > 0) {
       Swal.fire({
         title: 'Cannot Delete!',
-        text: 'Cannot delete category with existing products',
+        text: `Category "${category.name}" has ${category.productCount} products. Move or delete products first.`,
         icon: 'warning',
         confirmButtonText: 'OK'
       });
@@ -429,25 +804,26 @@ export class CategoryListComponent implements OnInit {
     }
 
     Swal.fire({
-      title: 'Are you sure?',
-      text: `Do you want to delete the category "${category.name}"? This action cannot be undone.`,
+      title: 'Delete Category?',
+      text: `Are you sure you want to delete "${category.name}"? This action cannot be undone.`,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
+      confirmButtonColor: '#f44336',
+      cancelButtonColor: '#666',
       confirmButtonText: 'Yes, delete it!',
       cancelButtonText: 'Cancel'
     }).then((result) => {
       if (result.isConfirmed) {
         this.categoryService.deleteCategory(category.id).subscribe({
           next: () => {
-            this.categories = this.categories.filter(c => c.id !== category.id);
             Swal.fire({
               title: 'Deleted!',
-              text: 'Category deleted successfully',
+              text: 'Category has been deleted.',
               icon: 'success',
-              confirmButtonText: 'OK'
+              timer: 2000,
+              showConfirmButton: false
             });
+            this.loadCategories();
           },
           error: (error) => {
             console.error('Error deleting category:', error);
@@ -461,5 +837,13 @@ export class CategoryListComponent implements OnInit {
         });
       }
     });
+  }
+
+  expandAll() {
+    // Implementation for expanding all categories if using mat-expansion-panel
+  }
+
+  collapseAll() {
+    // Implementation for collapsing all categories if using mat-expansion-panel
   }
 }

@@ -87,4 +87,29 @@ export class ProductService {
     return this.http.get<ApiResponse<string[]>>(`${this.API_URL}/brands`)
       .pipe(map(response => response.data));
   }
+
+  uploadMasterProductImages(productId: number, formData: FormData): Observable<any[]> {
+    return this.http.post<ApiResponse<any[]>>(`${environment.apiUrl}/products/images/master/${productId}`, formData)
+      .pipe(map(response => response.data));
+  }
+
+  deleteMasterProductImage(imageId: number): Observable<void> {
+    return this.http.delete<ApiResponse<void>>(`${environment.apiUrl}/products/images/${imageId}`)
+      .pipe(map(() => void 0));
+  }
+
+  getMasterProductImages(productId: number): Observable<any[]> {
+    return this.http.get<ApiResponse<any[]>>(`${environment.apiUrl}/products/images/master/${productId}`)
+      .pipe(map(response => response.data));
+  }
+
+  getShopProductImages(shopId: number, productId: number): Observable<any[]> {
+    return this.http.get<ApiResponse<any[]>>(`${environment.apiUrl}/products/images/shop/${shopId}/${productId}`)
+      .pipe(map(response => response.data));
+  }
+
+  uploadShopProductImages(shopId: number, productId: number, formData: FormData): Observable<any[]> {
+    return this.http.post<ApiResponse<any[]>>(`${environment.apiUrl}/products/images/shop/${shopId}/${productId}`, formData)
+      .pipe(map(response => response.data));
+  }
 }

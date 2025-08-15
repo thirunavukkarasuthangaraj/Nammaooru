@@ -181,6 +181,11 @@ public class Shop {
     @Column(name = "total_revenue", precision = 15, scale = 2)
     private BigDecimal totalRevenue = BigDecimal.ZERO;
 
+    @Min(0)
+    @Builder.Default
+    @Column(name = "product_count")
+    private Integer productCount = 0;
+
     // Audit Fields
     @Size(max = 255)
     @Column(name = "created_by")

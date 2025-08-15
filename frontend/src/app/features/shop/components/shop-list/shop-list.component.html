@@ -1,0 +1,170 @@
+<div class="shop-list-container">
+  
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <h1>All Shops</h1>
+      <p class="subtitle">Browse all shops and view their products</p>
+    </div>
+    <button mat-stroked-button routerLink="/shops/master">
+      <mat-icon>settings</mat-icon>
+      Go to Shop Master
+    </button>
+  </div>
+
+  <!-- Search and Filters -->
+  <div class="filters-section">
+    <div class="search-box">
+      <mat-form-field appearance="outline">
+        <mat-label>Search shops...</mat-label>
+        <input matInput [(ngModel)]="searchQuery" (input)="onSearch()" placeholder="Enter shop name...">
+        <mat-icon matSuffix>search</mat-icon>
+      </mat-form-field>
+    </div>
+    
+    <div class="filter-controls">
+      <mat-form-field appearance="outline">
+        <mat-label>Status</mat-label>
+        <mat-select [(ngModel)]="selectedStatus" (selectionChange)="onStatusFilter()">
+          <mat-option value="">All Status</mat-option>
+          <mat-option value="PENDING">Pending</mat-option>
+          <mat-option value="APPROVED">Approved</mat-option>
+          <mat-option value="REJECTED">Rejected</mat-option>
+          <mat-option value="SUSPENDED">Suspended</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Filter by City</mat-label>
+        <mat-select [(ngModel)]="selectedCity" (selectionChange)="onCityFilter()">
+          <mat-option value="">All Cities</mat-option>
+          <mat-option *ngFor="let city of cities" [value]="city">{{city}}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Business Type</mat-label>
+        <mat-select [(ngModel)]="selectedBusinessType" (selectionChange)="onBusinessTypeFilter()">
+          <mat-option value="">All Types</mat-option>
+          <mat-option value="GROCERY">Grocery</mat-option>
+          <mat-option value="PHARMACY">Pharmacy</mat-option>
+          <mat-option value="RESTAURANT">Restaurant</mat-option>
+          <mat-option value="GENERAL">General</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading" *ngIf="loading">
+    <mat-progress-spinner mode="indeterminate"></mat-progress-spinner>
+  </div>
+
+  <!-- Shop List -->
+  <div class="shops-list-container" *ngIf="!loading">
+    <!-- Table Header -->
+    <div class="shop-list-header">
+      <div class="header-avatar"></div>
+      <div class="header-name">Shop Details</div>
+      <div class="header-type">Business Type</div>
+      <div class="header-location">Location</div>
+      <div class="header-products">Products</div>
+      <div class="header-date">Created</div>
+      <div class="header-status">Status</div>
+      <div class="header-price">Delivery Fee</div>
+      <div class="header-actions">Actions</div>
+    </div>
+    
+    <div class="shops-list">
+      <div class="shop-list-item" *ngFor="let shop of shops; let i = index" (click)="viewShopProducts(shop)">
+        <!-- Shop Avatar -->
+        <div class="shop-avatar">
+          <mat-icon>store</mat-icon>
+        </div>
+        
+        <!-- Shop Name and Business -->
+        <div class="shop-name-section">
+          <div class="shop-name">{{ shop.name }}</div>
+          <div class="shop-business">{{ shop.businessName || shop.ownerName }}</div>
+        </div>
+        
+        <!-- Business Type -->
+        <div class="business-type-section">
+          <mat-chip [ngClass]="getBusinessTypeClass(shop.businessType)">
+            {{ getBusinessTypeDisplay(shop.businessType) }}
+          </mat-chip>
+        </div>
+        
+        <!-- Location -->
+        <div class="location-section">
+          <div class="location">
+            <mat-icon class="location-icon">location_on</mat-icon>
+            {{ shop.city || 'N/A' }}, {{ shop.state || 'N/A' }}
+          </div>
+          <div class="postal-code">{{ shop.postalCode || 'N/A' }}</div>
+        </div>
+        
+        <!-- Product Count -->
+        <div class="product-count-section">
+          <span class="product-count">{{ getShopProductCount(shop) }} Products</span>
+          <div class="rating">
+            <mat-icon class="star-icon">star</mat-icon>
+            {{ shop.rating || 0.0 | number:'1.1-1' }}
+          </div>
+        </div>
+        
+        <!-- Created Date -->
+        <div class="date-section">
+          {{ shop.createdAt | date:'dd/MM/yyyy' }}
+        </div>
+        
+        <!-- Status -->
+        <div class="status-section">
+          <mat-chip [ngClass]="getStatusClass(shop.status)">
+            {{ getStatusDisplay(shop.status) }}
+          </mat-chip>
+        </div>
+        
+        <!-- Price/Rating -->
+        <div class="price-section">
+          <div class="delivery-fee">₹{{ shop.deliveryFee || 0 }}</div>
+        </div>
+        
+        <!-- Actions Menu -->
+        <div class="shop-actions" (click)="$event.stopPropagation()">
+          <button mat-icon-button [matMenuTriggerFor]="actionsMenu" class="action-button" 
+                  [id]="'action-' + i">
+            <mat-icon>more_vert</mat-icon>
+          </button>
+          <mat-menu #actionsMenu="matMenu">
+            <button mat-menu-item (click)="viewShopProducts(shop)">
+              <mat-icon>inventory</mat-icon>
+              <span>View Products</span>
+            </button>
+            <button mat-menu-item (click)="viewShop(shop)">
+              <mat-icon>info</mat-icon>
+              <span>View Details</span>
+            </button>
+          </mat-menu>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- No Results -->
+  <div class="no-results" *ngIf="!loading && shops.length === 0">
+    <mat-icon>store</mat-icon>
+    <h3>No shops found</h3>
+    <p>Try adjusting your search criteria or add a new shop.</p>
+  </div>
+
+  <!-- Pagination -->
+  <mat-paginator 
+    *ngIf="!loading && shops.length > 0"
+    [length]="totalElements"
+    [pageSize]="pageSize"
+    [pageSizeOptions]="[10, 20, 50]"
+    (page)="onPageChange($event)">
+  </mat-paginator>
+</div>

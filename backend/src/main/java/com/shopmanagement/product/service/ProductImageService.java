@@ -7,7 +7,9 @@ import com.shopmanagement.product.entity.ShopProduct;
 import com.shopmanagement.product.entity.ShopProductImage;
 import com.shopmanagement.product.mapper.ProductMapper;
 import com.shopmanagement.product.repository.MasterProductRepository;
+import com.shopmanagement.product.repository.MasterProductImageRepository;
 import com.shopmanagement.product.repository.ShopProductRepository;
+import com.shopmanagement.product.repository.ShopProductImageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,13 +40,15 @@ import java.util.stream.IntStream;
 public class ProductImageService {
 
     private final MasterProductRepository masterProductRepository;
+    private final MasterProductImageRepository masterProductImageRepository;
     private final ShopProductRepository shopProductRepository;
+    private final ShopProductImageRepository shopProductImageRepository;
     private final ProductMapper productMapper;
 
     @Value("${app.upload.dir}")
     private String uploadDir;
 
-    @Value("${app.upload.product-images:/uploads/products}")
+    @Value("${app.upload.product-images:products}")
     private String productImageDir;
 
     private static final List<String> ALLOWED_EXTENSIONS = Arrays.asList("jpg", "jpeg", "png", "gif", "webp");
@@ -127,23 +131,23 @@ public class ProductImageService {
 
     @Transactional(readOnly = true)
     public List<ProductImageResponse> getMasterProductImages(Long productId) {
-        MasterProduct product = masterProductRepository.findById(productId)
+        // Verify product exists
+        masterProductRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Master product not found with id: " + productId));
         
-        return product.getImages().stream()
-                .sorted((a, b) -> Integer.compare(a.getSortOrder(), b.getSortOrder()))
+        return masterProductImageRepository.findByMasterProductIdOrderBySortOrderAsc(productId).stream()
                 .map(productMapper::toResponse)
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public List<ProductImageResponse> getShopProductImages(Long shopId, Long productId) {
-        ShopProduct product = shopProductRepository.findById(productId)
+        // Verify product exists and belongs to shop
+        shopProductRepository.findById(productId)
                 .filter(p -> p.getShop().getId().equals(shopId))
                 .orElseThrow(() -> new RuntimeException("Shop product not found"));
         
-        return product.getShopImages().stream()
-                .sorted((a, b) -> Integer.compare(a.getSortOrder(), b.getSortOrder()))
+        return shopProductImageRepository.findByShopProductIdOrderBySortOrderAsc(productId).stream()
                 .map(productMapper::toResponse)
                 .toList();
     }
@@ -152,80 +156,115 @@ public class ProductImageService {
         log.info("Deleting product image: {}", imageId);
         
         // Try to find in master product images first
-        masterProductRepository.findAll().stream()
-                .flatMap(p -> p.getImages().stream())
-                .filter(img -> img.getId().equals(imageId))
-                .findFirst()
-                .ifPresentOrElse(
-                    image -> {
-                        deleteImageFile(image.getImageUrl());
-                        MasterProduct product = image.getMasterProduct();
-                        product.getImages().remove(image);
-                        
-                        // If this was primary image, set another as primary
-                        if (image.getIsPrimary() && !product.getImages().isEmpty()) {
-                            product.getImages().iterator().next().setIsPrimary(true);
+        masterProductImageRepository.findById(imageId)
+            .ifPresentOrElse(
+                image -> {
+                    log.info("Found master product image to delete: {}", imageId);
+                    
+                    // Delete the physical file
+                    deleteImageFile(image.getImageUrl());
+                    
+                    // Check if this was the primary image
+                    boolean wasPrimary = image.getIsPrimary();
+                    Long productId = image.getMasterProduct().getId();
+                    
+                    // Delete the image record from database
+                    masterProductImageRepository.delete(image);
+                    masterProductImageRepository.flush();
+                    
+                    // If this was primary image, set another as primary
+                    if (wasPrimary) {
+                        List<MasterProductImage> remainingImages = masterProductImageRepository
+                            .findByMasterProductIdOrderBySortOrderAsc(productId);
+                        if (!remainingImages.isEmpty()) {
+                            MasterProductImage newPrimary = remainingImages.get(0);
+                            newPrimary.setIsPrimary(true);
+                            masterProductImageRepository.save(newPrimary);
+                            log.info("Set new primary image: {} for master product: {}", newPrimary.getId(), productId);
                         }
-                        
-                        masterProductRepository.save(product);
-                    },
-                    () -> {
-                        // Try shop product images
-                        shopProductRepository.findAll().stream()
-                                .flatMap(p -> p.getShopImages().stream())
-                                .filter(img -> img.getId().equals(imageId))
-                                .findFirst()
-                                .ifPresentOrElse(
-                                    image -> {
-                                        deleteImageFile(image.getImageUrl());
-                                        ShopProduct product = image.getShopProduct();
-                                        product.getShopImages().remove(image);
-                                        
-                                        // If this was primary image, set another as primary
-                                        if (image.getIsPrimary() && !product.getShopImages().isEmpty()) {
-                                            product.getShopImages().iterator().next().setIsPrimary(true);
-                                        }
-                                        
-                                        shopProductRepository.save(product);
-                                    },
-                                    () -> {
-                                        throw new RuntimeException("Product image not found with id: " + imageId);
-                                    }
-                                );
                     }
-                );
+                    
+                    log.info("Successfully deleted master product image: {}", imageId);
+                },
+                () -> {
+                    // Try shop product images
+                    shopProductImageRepository.findById(imageId)
+                        .ifPresentOrElse(
+                            image -> {
+                                log.info("Found shop product image to delete: {}", imageId);
+                                
+                                // Delete the physical file
+                                deleteImageFile(image.getImageUrl());
+                                
+                                // Check if this was the primary image
+                                boolean wasPrimary = image.getIsPrimary();
+                                Long productId = image.getShopProduct().getId();
+                                
+                                // Delete the image record from database
+                                shopProductImageRepository.delete(image);
+                                shopProductImageRepository.flush();
+                                
+                                // If this was primary image, set another as primary
+                                if (wasPrimary) {
+                                    List<ShopProductImage> remainingImages = shopProductImageRepository
+                                        .findByShopProductIdOrderBySortOrderAsc(productId);
+                                    if (!remainingImages.isEmpty()) {
+                                        ShopProductImage newPrimary = remainingImages.get(0);
+                                        newPrimary.setIsPrimary(true);
+                                        shopProductImageRepository.save(newPrimary);
+                                        log.info("Set new primary image: {} for shop product: {}", newPrimary.getId(), productId);
+                                    }
+                                }
+                                
+                                log.info("Successfully deleted shop product image: {}", imageId);
+                            },
+                            () -> {
+                                log.error("Product image not found with id: {}", imageId);
+                                throw new RuntimeException("Product image not found with id: " + imageId);
+                            }
+                        );
+                }
+            );
     }
 
     public ProductImageResponse setPrimaryImage(Long imageId) {
         log.info("Setting image as primary: {}", imageId);
         
         // Try master product images first
-        return masterProductRepository.findAll().stream()
-                .flatMap(p -> p.getImages().stream())
-                .filter(img -> img.getId().equals(imageId))
-                .findFirst()
+        return masterProductImageRepository.findById(imageId)
                 .map(image -> {
-                    MasterProduct product = image.getMasterProduct();
-                    // Reset all images as non-primary
-                    product.getImages().forEach(img -> img.setIsPrimary(false));
+                    Long productId = image.getMasterProduct().getId();
+                    
+                    // Reset all images as non-primary for this product
+                    List<MasterProductImage> allImages = masterProductImageRepository
+                        .findByMasterProductIdOrderBySortOrderAsc(productId);
+                    allImages.forEach(img -> img.setIsPrimary(false));
+                    masterProductImageRepository.saveAll(allImages);
+                    
                     // Set this image as primary
                     image.setIsPrimary(true);
-                    masterProductRepository.save(product);
+                    masterProductImageRepository.save(image);
+                    
+                    log.info("Set master product image {} as primary for product {}", imageId, productId);
                     return productMapper.toResponse(image);
                 })
                 .orElseGet(() -> {
                     // Try shop product images
-                    return shopProductRepository.findAll().stream()
-                            .flatMap(p -> p.getShopImages().stream())
-                            .filter(img -> img.getId().equals(imageId))
-                            .findFirst()
+                    return shopProductImageRepository.findById(imageId)
                             .map(image -> {
-                                ShopProduct product = image.getShopProduct();
-                                // Reset all images as non-primary
-                                product.getShopImages().forEach(img -> img.setIsPrimary(false));
+                                Long productId = image.getShopProduct().getId();
+                                
+                                // Reset all images as non-primary for this product
+                                List<ShopProductImage> allImages = shopProductImageRepository
+                                    .findByShopProductIdOrderBySortOrderAsc(productId);
+                                allImages.forEach(img -> img.setIsPrimary(false));
+                                shopProductImageRepository.saveAll(allImages);
+                                
                                 // Set this image as primary
                                 image.setIsPrimary(true);
-                                shopProductRepository.save(product);
+                                shopProductImageRepository.save(image);
+                                
+                                log.info("Set shop product image {} as primary for product {}", imageId, productId);
                                 return productMapper.toResponse(image);
                             })
                             .orElseThrow(() -> new RuntimeException("Product image not found with id: " + imageId));
@@ -281,7 +320,7 @@ public class ProductImageService {
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
             
             // Return the relative URL path
-            return String.format("%s/%s/%s", productImageDir, type, filename);
+            return String.format("/uploads/%s/%s/%s", productImageDir, type, filename);
             
         } catch (IOException e) {
             log.error("Error saving image file", e);
@@ -291,13 +330,19 @@ public class ProductImageService {
 
     private void deleteImageFile(String imageUrl) {
         try {
-            Path filePath = Paths.get(uploadDir, imageUrl);
+            // Remove leading slash and construct proper path
+            String relativePath = imageUrl.startsWith("/") ? imageUrl.substring(1) : imageUrl;
+            Path filePath = Paths.get(uploadDir).resolve(relativePath);
+            
             if (Files.exists(filePath)) {
                 Files.delete(filePath);
-                log.info("Deleted image file: {}", filePath);
+                log.info("Successfully deleted image file: {}", filePath);
+            } else {
+                log.warn("Image file not found for deletion: {}", filePath);
             }
         } catch (IOException e) {
             log.error("Error deleting image file: {}", imageUrl, e);
+            // Don't throw exception - we still want to delete from database even if file deletion fails
         }
     }
 

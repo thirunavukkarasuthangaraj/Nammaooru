@@ -58,8 +58,14 @@ export const SHOP_STATUS = {
 // Business Types
 export const BUSINESS_TYPES = {
   GROCERY: 'GROCERY',
+  SUPERMARKET: 'SUPERMARKET',
   PHARMACY: 'PHARMACY',
   RESTAURANT: 'RESTAURANT',
+  CAFE: 'CAFE',
+  BAKERY: 'BAKERY',
+  ELECTRONICS: 'ELECTRONICS',
+  CLOTHING: 'CLOTHING',
+  HARDWARE: 'HARDWARE',
   GENERAL: 'GENERAL'
 } as const;
 
@@ -115,6 +121,7 @@ export const API_ENDPOINTS = {
     FEATURED: '/shops/featured',
     CITIES: '/shops/cities',
     STATISTICS: '/shops/statistics',
+    MY_SHOP: '/shops/my-shop',
     APPROVE: (id: number) => `/shops/${id}/approve`,
     REJECT: (id: number) => `/shops/${id}/reject`,
     SUSPEND: (id: number) => `/shops/${id}/suspend`,
@@ -252,8 +259,14 @@ export const UI_COLORS = {
   },
   BUSINESS_TYPE: {
     GROCERY: '#28a745',
+    SUPERMARKET: '#22c55e',
     PHARMACY: '#007bff',
     RESTAURANT: '#6f42c1',
+    CAFE: '#8b5cf6',
+    BAKERY: '#f59e0b',
+    ELECTRONICS: '#3b82f6',
+    CLOTHING: '#ec4899',
+    HARDWARE: '#64748b',
     GENERAL: '#6c757d'
   },
   DOCUMENT: {

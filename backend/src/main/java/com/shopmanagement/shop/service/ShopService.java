@@ -276,4 +276,14 @@ public class ShopService {
     public long getSuspendedShopsCount() {
         return shopRepository.countByStatus(Shop.ShopStatus.SUSPENDED);
     }
+
+    public ShopResponse getCurrentUserShop() {
+        String currentUsername = getCurrentUsername();
+        log.info("Getting shop for current user: {}", currentUsername);
+        
+        Shop shop = shopRepository.findByCreatedBy(currentUsername)
+            .orElseThrow(() -> new ShopNotFoundException("No shop found for current user"));
+        
+        return shopMapper.toResponse(shop);
+    }
 }

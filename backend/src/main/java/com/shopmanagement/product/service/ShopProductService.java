@@ -143,6 +143,10 @@ public class ShopProductService {
         }
         
         ShopProduct savedProduct = shopProductRepository.save(shopProduct);
+        
+        // Update shop's product count
+        updateShopProductCount(shop);
+        
         log.info("Product added to shop successfully: Shop {} - Product {}", shopId, savedProduct.getId());
         
         return productMapper.toResponse(savedProduct);
@@ -187,7 +191,14 @@ public class ShopProductService {
                 .filter(p -> p.getShop().getId().equals(shopId))
                 .orElseThrow(() -> new RuntimeException("Shop product not found"));
         
+        // Get shop before deleting the product
+        Shop shop = shopProduct.getShop();
+        
         shopProductRepository.delete(shopProduct);
+        
+        // Update shop's product count
+        updateShopProductCount(shop);
+        
         log.info("Product removed from shop successfully: {}", productId);
     }
 
@@ -286,6 +297,13 @@ public class ShopProductService {
                 "minPrice", priceRange != null && priceRange[0] != null ? priceRange[0] : BigDecimal.ZERO,
                 "maxPrice", priceRange != null && priceRange[1] != null ? priceRange[1] : BigDecimal.ZERO
         );
+    }
+
+    private void updateShopProductCount(Shop shop) {
+        long productCount = shopProductRepository.countByShop(shop);
+        shop.setProductCount((int) productCount);
+        shopRepository.save(shop);
+        log.debug("Updated product count for shop {}: {}", shop.getId(), productCount);
     }
 
     private String getCurrentUsername() {

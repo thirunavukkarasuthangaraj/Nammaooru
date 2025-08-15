@@ -74,7 +74,7 @@ app:
     dir: ${APP_UPLOAD_DIR:./uploads}
     documents:
       path: ${DOCUMENT_UPLOAD_PATH:uploads/documents/shops}
-    product-images: ${PRODUCT_IMAGES_PATH:/uploads/products}
+    product-images: ${PRODUCT_IMAGES_PATH:products}
     max-file-size: 10MB
     allowed-types: pdf,jpg,jpeg,png,docx,doc
 

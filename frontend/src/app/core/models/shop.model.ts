@@ -30,6 +30,7 @@ export interface Shop {
   rating: number;
   totalOrders: number;
   totalRevenue: number;
+  productCount?: number;
   createdBy?: string;
   updatedBy?: string;
   createdAt: Date;

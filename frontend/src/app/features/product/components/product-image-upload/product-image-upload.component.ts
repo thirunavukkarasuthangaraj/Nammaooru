@@ -3,6 +3,7 @@ import { HttpClient, HttpEventType } from '@angular/common/http';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ProductImage } from '../../../../core/models/product.model';
 import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
+import { API_ENDPOINTS } from '../../../../core/constants/app.constants';
 
 @Component({
   selector: 'app-product-image-upload',
@@ -95,9 +96,16 @@ import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
                 <mat-label>Alt text</mat-label>
                 <input matInput 
                        [(ngModel)]="image.altText"
-                       (blur)="updateImageDetails(image)"
-                       placeholder="Describe this image">
+                       placeholder="Describe this image"
+                       #altTextInput>
               </mat-form-field>
+              <button mat-icon-button 
+                      (click)="updateImageDetails(image)" 
+                      matTooltip="Update image details"
+                      class="save-details-btn"
+                      *ngIf="image.altText && image.altText.trim()">
+                <mat-icon>save</mat-icon>
+              </button>
             </div>
             
             <!-- Drag Handle -->
@@ -255,10 +263,23 @@ import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 
     .image-info {
       padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     .alt-text-field {
-      width: 100%;
+      flex: 1;
+    }
+
+    .save-details-btn {
+      color: #4caf50;
+      background: rgba(76, 175, 80, 0.1);
+      border-radius: 50%;
+    }
+
+    .save-details-btn:hover {
+      background: rgba(76, 175, 80, 0.2);
     }
 
     .drag-handle {
@@ -394,8 +415,11 @@ export class ProductImageUploadComponent implements OnInit {
     });
 
     const url = this.productType === 'master' 
-      ? `/api/products/images/master/${this.productId}`
-      : `/api/products/images/shop/${this.shopId}/${this.productId}`;
+      ? `${API_ENDPOINTS.BASE_URL}/products/images/master/${this.productId}`
+      : `${API_ENDPOINTS.BASE_URL}/products/images/shop/${this.shopId}/${this.productId}`;
+
+    console.log(`Uploading ${validFiles.length} files to:`, url);
+    console.log(`Product Type: ${this.productType}, Product ID: ${this.productId}, Shop ID: ${this.shopId}`);
 
     this.uploadProgress = 0;
 
@@ -409,7 +433,10 @@ export class ProductImageUploadComponent implements OnInit {
         } else if (event.type === HttpEventType.Response) {
           this.uploadProgress = 100;
           const uploadedImages = event.body.data;
+          console.log('Images uploaded successfully:', uploadedImages);
+          console.log('Current images before:', this.images.length);
           this.images.push(...uploadedImages);
+          console.log('Current images after:', this.images.length);
           this.imagesChange.emit(this.images);
           this.imagesUploaded.emit(uploadedImages);
           this.snackBar.open(`${uploadedImages.length} images uploaded successfully`, 'Close', { duration: 3000 });
@@ -446,8 +473,8 @@ export class ProductImageUploadComponent implements OnInit {
 
   private loadImages(): void {
     const url = this.productType === 'master' 
-      ? `/api/products/images/master/${this.productId}`
-      : `/api/products/images/shop/${this.shopId}/${this.productId}`;
+      ? `${API_ENDPOINTS.BASE_URL}/products/images/master/${this.productId}`
+      : `${API_ENDPOINTS.BASE_URL}/products/images/shop/${this.shopId}/${this.productId}`;
 
     this.http.get<any>(url).subscribe({
       next: (response) => {
@@ -461,7 +488,15 @@ export class ProductImageUploadComponent implements OnInit {
   }
 
   getImageUrl(image: ProductImage): string {
-    return image.imageUrl;
+    // If the imageUrl is already a full URL, return as is
+    if (image.imageUrl.startsWith('http://') || image.imageUrl.startsWith('https://')) {
+      return image.imageUrl;
+    }
+    // Otherwise, construct the full URL with the backend base URL (without /api)
+    const baseUrl = API_ENDPOINTS.BASE_URL.replace('/api', '');
+    const fullUrl = `${baseUrl}${image.imageUrl}`;
+    console.log('Image URL constructed:', fullUrl, 'from imageUrl:', image.imageUrl);
+    return fullUrl;
   }
 
   onImageError(event: any): void {
@@ -469,7 +504,7 @@ export class ProductImageUploadComponent implements OnInit {
   }
 
   setPrimaryImage(image: ProductImage): void {
-    this.http.patch<any>(`/api/products/images/${image.id}/primary`, {}).subscribe({
+    this.http.patch<any>(`${API_ENDPOINTS.BASE_URL}/products/images/${image.id}/primary`, {}).subscribe({
       next: (response) => {
         // Update local state
         this.images.forEach(img => img.isPrimary = false);
@@ -494,29 +529,59 @@ export class ProductImageUploadComponent implements OnInit {
 
   deleteImage(image: ProductImage): void {
     if (confirm('Are you sure you want to delete this image?')) {
-      this.http.delete<any>(`/api/products/images/${image.id}`).subscribe({
+      console.log('Deleting image:', image.id);
+      console.log('Images before delete:', this.images.length);
+      
+      this.http.delete<any>(`${API_ENDPOINTS.BASE_URL}/products/images/${image.id}`).subscribe({
         next: () => {
+          console.log('Image deleted successfully from server');
           this.images = this.images.filter(img => img.id !== image.id);
+          console.log('Images after delete:', this.images.length);
+          
+          // Emit the updated images list
           this.imagesChange.emit(this.images);
+          
+          // Force a reload of images from server to ensure consistency
+          setTimeout(() => {
+            this.loadImages();
+          }, 1000);
+          
           this.snackBar.open('Image deleted successfully', 'Close', { duration: 2000 });
         },
         error: (error) => {
           console.error('Failed to delete image:', error);
-          this.snackBar.open('Failed to delete image', 'Close', { duration: 3000 });
+          console.error('Error details:', error.error);
+          
+          let errorMessage = 'Failed to delete image';
+          if (error.error?.message) {
+            errorMessage = `Failed to delete image: ${error.error.message}`;
+          }
+          
+          this.snackBar.open(errorMessage, 'Close', { duration: 3000 });
         }
       });
     }
   }
 
   updateImageDetails(image: ProductImage): void {
-    this.http.put<any>(`/api/products/images/${image.id}`, {
-      altText: image.altText
+    this.http.put<any>(`${API_ENDPOINTS.BASE_URL}/products/images/${image.id}`, {
+      altText: image.altText,
+      sortOrder: image.sortOrder
     }).subscribe({
       next: (response) => {
-        // Image details updated
+        console.log('Image details updated successfully');
       },
       error: (error) => {
         console.error('Failed to update image details:', error);
+        
+        // Check if it's the "not implemented" error
+        if (error.error?.statusCode === "9999" || error.error?.message?.includes("not implemented")) {
+          console.warn('Image detail updates not implemented yet on backend - skipping update');
+          return;
+        }
+        
+        // Show error for other types of failures
+        console.error('Unexpected error updating image details:', error);
       }
     });
   }
@@ -531,7 +596,7 @@ export class ProductImageUploadComponent implements OnInit {
       });
       
       const imageIds = this.images.map(img => img.id);
-      this.http.post<any>(`/api/products/images/${this.images[0].id}/reorder`, imageIds).subscribe({
+      this.http.post<any>(`${API_ENDPOINTS.BASE_URL}/products/images/${this.images[0].id}/reorder`, imageIds).subscribe({
         next: () => {
           this.imagesChange.emit(this.images);
         },

@@ -19,13 +19,17 @@
       "Bash(java:*)",
       "Bash(timeout:*)",
       "Bash(ng build:*)",
-      "Bash(./gradlew compileJava:*)"
+      "Bash(./gradlew compileJava:*)",
+      "Bash(cp:*)",
+      "Bash(npm start:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": [],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [
-      "D:\\mnt\\d\\AAWS\\nammaooru\\shop-management-system"
+      "D:\\mnt\\d\\AAWS\\nammaooru\\shop-management-system",
+      "D:\\d\\AAWS\\nammaooru\\shop-management-system"
     ]
   }
 }

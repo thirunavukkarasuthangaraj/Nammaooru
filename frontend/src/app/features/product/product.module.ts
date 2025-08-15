@@ -44,6 +44,8 @@ import { ProductStatsCardComponent } from './components/product-stats-card/produ
 import { CategoryTreeComponent } from './components/category-tree/category-tree.component';
 import { InventoryDialogComponent } from './components/inventory-dialog/inventory-dialog.component';
 import { ProductImageUploadComponent } from './components/product-image-upload/product-image-upload.component';
+import { BulkProductAssignmentComponent } from './components/bulk-product-assignment/bulk-product-assignment.component';
+import { ShopOwnerProductsComponent } from './components/shop-owner-products/shop-owner-products.component';
 
 @NgModule({
   declarations: [
@@ -59,7 +61,9 @@ import { ProductImageUploadComponent } from './components/product-image-upload/p
     ProductStatsCardComponent,
     CategoryTreeComponent,
     InventoryDialogComponent,
-    ProductImageUploadComponent
+    ProductImageUploadComponent,
+    BulkProductAssignmentComponent,
+    ShopOwnerProductsComponent
   ],
   imports: [
     CommonModule,

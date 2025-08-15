@@ -52,6 +52,7 @@ public class ShopResponse {
     private BigDecimal rating;
     private Integer totalOrders;
     private BigDecimal totalRevenue;
+    private Integer productCount;
     
     private String createdBy;
     private String updatedBy;
