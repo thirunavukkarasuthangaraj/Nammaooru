@@ -5,6 +5,7 @@ import { MatSort } from '@angular/material/sort';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { FormControl } from '@angular/forms';
+import { Router } from '@angular/router';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 interface Product {
@@ -725,7 +726,8 @@ export class MyProductsComponent implements OnInit {
 
   constructor(
     private dialog: MatDialog,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private router: Router
   ) {
     this.dataSource.data = this.products;
   }
@@ -791,7 +793,7 @@ export class MyProductsComponent implements OnInit {
 
   editProduct(product: Product): void {
     console.log('Edit product:', product);
-    // Navigate to edit form or open dialog
+    this.router.navigate(['/shop-owner/products/edit', product.id]);
   }
 
   updateStock(product: Product): void {

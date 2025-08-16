@@ -1,0 +1,200 @@
+<div class="user-detail-container">
+  <div class="detail-header">
+    <button mat-icon-button (click)="goBack()" class="back-btn">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <h2>User Details</h2>
+    <div class="header-actions">
+      <button mat-raised-button color="primary" (click)="editUser()" [disabled]="!user">
+        <mat-icon>edit</mat-icon>
+        Edit User
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="loading-container">
+    <mat-spinner></mat-spinner>
+    <p>Loading user details...</p>
+  </div>
+
+  <div *ngIf="user && !loading" class="user-content">
+    <!-- User Summary Card -->
+    <mat-card class="summary-card">
+      <mat-card-content>
+        <div class="user-summary">
+          <div class="user-avatar">
+            <mat-icon class="avatar-icon">person</mat-icon>
+          </div>
+          <div class="user-info">
+            <h3>{{ user.fullName }}</h3>
+            <p class="username">@{{ user.username }}</p>
+            <mat-chip-set>
+              <mat-chip [color]="getRoleColor(user.role)" selected>{{ user.role }}</mat-chip>
+              <mat-chip [color]="getStatusColor(user.status)" selected>{{ user.status }}</mat-chip>
+            </mat-chip-set>
+          </div>
+          <div class="user-actions">
+            <button mat-icon-button [matMenuTriggerFor]="userMenu" class="action-menu">
+              <mat-icon>more_vert</mat-icon>
+            </button>
+            <mat-menu #userMenu="matMenu">
+              <button mat-menu-item (click)="editUser()">
+                <mat-icon>edit</mat-icon>
+                Edit User
+              </button>
+              <button mat-menu-item (click)="toggleUserStatus()">
+                <mat-icon>{{ user.isActive ? 'block' : 'check_circle' }}</mat-icon>
+                {{ user.isActive ? 'Deactivate' : 'Activate' }}
+              </button>
+              <button mat-menu-item (click)="resetPassword()">
+                <mat-icon>lock_reset</mat-icon>
+                Reset Password
+              </button>
+              <mat-divider></mat-divider>
+              <button mat-menu-item (click)="lockUser()" *ngIf="!user.isLocked">
+                <mat-icon>lock</mat-icon>
+                Lock User
+              </button>
+              <button mat-menu-item (click)="unlockUser()" *ngIf="user.isLocked">
+                <mat-icon>lock_open</mat-icon>
+                Unlock User
+              </button>
+              <mat-divider></mat-divider>
+              <button mat-menu-item (click)="deleteUser()" class="delete-action">
+                <mat-icon>delete</mat-icon>
+                Delete User
+              </button>
+            </mat-menu>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Detailed Information -->
+    <div class="detail-grid">
+      <!-- Personal Information -->
+      <mat-card class="info-card">
+        <mat-card-header>
+          <mat-card-title>Personal Information</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="info-grid">
+            <div class="info-item">
+              <span class="label">Full Name:</span>
+              <span class="value">{{ user.fullName }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">Email:</span>
+              <span class="value">{{ user.email }}</span>
+              <mat-icon class="status-icon" [class.verified]="user.emailVerified">
+                {{ user.emailVerified ? 'verified' : 'cancel' }}
+              </mat-icon>
+            </div>
+            <div class="info-item" *ngIf="user.mobileNumber">
+              <span class="label">Mobile:</span>
+              <span class="value">{{ user.mobileNumber }}</span>
+              <mat-icon class="status-icon" [class.verified]="user.mobileVerified">
+                {{ user.mobileVerified ? 'verified' : 'cancel' }}
+              </mat-icon>
+            </div>
+            <div class="info-item" *ngIf="user.department">
+              <span class="label">Department:</span>
+              <span class="value">{{ user.department }}</span>
+            </div>
+            <div class="info-item" *ngIf="user.designation">
+              <span class="label">Designation:</span>
+              <span class="value">{{ user.designation }}</span>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Security Information -->
+      <mat-card class="info-card">
+        <mat-card-header>
+          <mat-card-title>Security Settings</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="security-grid">
+            <div class="security-item">
+              <mat-icon [class.enabled]="user.twoFactorEnabled">security</mat-icon>
+              <div class="security-info">
+                <span class="security-title">Two-Factor Authentication</span>
+                <span class="security-status">{{ user.twoFactorEnabled ? 'Enabled' : 'Disabled' }}</span>
+              </div>
+            </div>
+            <div class="security-item">
+              <mat-icon [class.warning]="user.passwordChangeRequired">lock</mat-icon>
+              <div class="security-info">
+                <span class="security-title">Password Change</span>
+                <span class="security-status">{{ user.passwordChangeRequired ? 'Required' : 'Not Required' }}</span>
+              </div>
+            </div>
+            <div class="security-item" *ngIf="user.lastLogin">
+              <mat-icon>schedule</mat-icon>
+              <div class="security-info">
+                <span class="security-title">Last Login</span>
+                <span class="security-status">{{ user.lastLogin | date:'medium' }}</span>
+              </div>
+            </div>
+            <div class="security-item" *ngIf="user.isLocked">
+              <mat-icon class="warning">warning</mat-icon>
+              <div class="security-info">
+                <span class="security-title">Account Status</span>
+                <span class="security-status warning">Locked</span>
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Activity Information -->
+      <mat-card class="info-card">
+        <mat-card-header>
+          <mat-card-title>Activity Information</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="info-grid">
+            <div class="info-item">
+              <span class="label">Created At:</span>
+              <span class="value">{{ user.createdAt | date:'medium' }}</span>
+            </div>
+            <div class="info-item" *ngIf="user.updatedAt">
+              <span class="label">Last Updated:</span>
+              <span class="value">{{ user.updatedAt | date:'medium' }}</span>
+            </div>
+            <div class="info-item" *ngIf="user.lastLogin">
+              <span class="label">Last Login:</span>
+              <span class="value">{{ user.lastLogin | date:'medium' }}</span>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Subordinates Section -->
+    <mat-card class="subordinates-card" *ngIf="subordinates.length > 0">
+      <mat-card-header>
+        <mat-card-title>Team Members ({{ subordinates.length }})</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="subordinates-grid">
+          <div class="subordinate-item" *ngFor="let subordinate of subordinates">
+            <div class="subordinate-avatar">
+              <mat-icon>person</mat-icon>
+            </div>
+            <div class="subordinate-info">
+              <span class="subordinate-name">{{ subordinate.fullName }}</span>
+              <span class="subordinate-role">{{ subordinate.role }}</span>
+            </div>
+            <div class="subordinate-actions">
+              <button mat-icon-button [routerLink]="['/users', subordinate.id]">
+                <mat-icon>visibility</mat-icon>
+              </button>
+            </div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

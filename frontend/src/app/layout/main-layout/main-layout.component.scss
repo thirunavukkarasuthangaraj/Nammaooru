@@ -24,6 +24,11 @@
   width: 80px;
 }
 
+.professional-sidebar.collapsed .professional-nav {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
 /* Brand Header */
 .brand-header {
   display: flex;
@@ -93,12 +98,36 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   padding: var(--spacing-md) 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar for navigation */
+.professional-nav::-webkit-scrollbar {
+  width: 4px;
+}
+
+.professional-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.professional-nav::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+}
+
+.professional-nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
 }
 
 .nav-section {
   padding: 0 var(--spacing-md);
+}
+
+.nav-section:last-child {
+  padding-bottom: var(--spacing-lg);
 }
 
 .nav-section-title {

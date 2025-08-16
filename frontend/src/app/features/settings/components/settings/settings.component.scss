@@ -1,0 +1,219 @@
+.settings-container {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+
+  .settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+
+    h2 {
+      margin: 0;
+      color: #333;
+      font-weight: 500;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 12px;
+
+      button {
+        min-width: 120px;
+
+        mat-spinner {
+          margin-right: 8px;
+        }
+      }
+    }
+  }
+
+  .loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px;
+    gap: 16px;
+
+    p {
+      color: #666;
+      margin: 0;
+    }
+  }
+
+  .settings-content {
+    .tab-content {
+      padding: 24px 0;
+
+      .setting-card {
+        margin-bottom: 16px;
+
+        .setting-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 24px;
+
+          .setting-info {
+            flex: 1;
+
+            h4 {
+              margin: 0 0 8px 0;
+              color: #333;
+              font-weight: 500;
+              font-size: 16px;
+              text-transform: capitalize;
+            }
+
+            .setting-description {
+              margin: 0 0 12px 0;
+              color: #666;
+              font-size: 14px;
+              line-height: 1.4;
+            }
+
+            .scope-chip {
+              font-size: 12px;
+              height: 24px;
+            }
+          }
+
+          .setting-control {
+            min-width: 200px;
+            display: flex;
+            justify-content: flex-end;
+
+            .setting-field {
+              width: 100%;
+            }
+
+            mat-slide-toggle {
+              margin: 0;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  .quick-actions-card {
+    margin-top: 32px;
+
+    mat-card-header {
+      mat-card-title {
+        color: #333;
+        font-weight: 500;
+      }
+    }
+
+    .quick-actions-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+
+      .action-btn {
+        padding: 16px;
+        height: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+
+        mat-icon {
+          font-size: 24px;
+          width: 24px;
+          height: 24px;
+        }
+      }
+    }
+  }
+}
+
+// Tab styling
+mat-tab-group {
+  ::ng-deep {
+    .mat-tab-header {
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .mat-tab-label {
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .mat-tab-body-content {
+      overflow: visible;
+    }
+  }
+}
+
+// Form styling
+mat-form-field {
+  &.setting-field {
+    .mat-form-field-outline {
+      background: #f8f9fa;
+    }
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .settings-container {
+    padding: 16px;
+
+    .settings-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 16px;
+
+      .header-actions {
+        width: 100%;
+        justify-content: flex-end;
+
+        button {
+          flex: 1;
+          min-width: auto;
+        }
+      }
+    }
+
+    .settings-content {
+      .tab-content {
+        .setting-card {
+          .setting-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 16px;
+
+            .setting-control {
+              width: 100%;
+              min-width: auto;
+            }
+          }
+        }
+      }
+    }
+
+    .quick-actions-card {
+      .quick-actions-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  }
+}
+
+// Chip colors
+mat-chip {
+  &.global-scope {
+    background-color: #1976d2;
+    color: white;
+  }
+
+  &.user-scope {
+    background-color: #ff4081;
+    color: white;
+  }
+}

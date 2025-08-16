@@ -1,0 +1,143 @@
+<div class="user-form-container">
+  <div class="form-header">
+    <button mat-icon-button (click)="goBack()" class="back-btn">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <h2>{{ isEditMode ? 'Edit User' : 'Create New User' }}</h2>
+  </div>
+
+  <mat-card class="form-card">
+    <form [formGroup]="userForm" (ngSubmit)="onSubmit()">
+      <div class="form-grid">
+        <!-- Basic Information Section -->
+        <div class="form-section">
+          <h3>Basic Information</h3>
+          
+          <div class="form-row">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Username *</mat-label>
+              <input matInput formControlName="username" placeholder="Enter username">
+              <mat-error>{{ getErrorMessage('username') }}</mat-error>
+            </mat-form-field>
+          </div>
+
+          <div class="form-row">
+            <mat-form-field appearance="outline" class="half-width">
+              <mat-label>First Name *</mat-label>
+              <input matInput formControlName="firstName" placeholder="Enter first name">
+              <mat-error>{{ getErrorMessage('firstName') }}</mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="half-width">
+              <mat-label>Last Name *</mat-label>
+              <input matInput formControlName="lastName" placeholder="Enter last name">
+              <mat-error>{{ getErrorMessage('lastName') }}</mat-error>
+            </mat-form-field>
+          </div>
+
+          <div class="form-row">
+            <mat-form-field appearance="outline" class="half-width">
+              <mat-label>Email *</mat-label>
+              <input matInput formControlName="email" type="email" placeholder="Enter email address">
+              <mat-error>{{ getErrorMessage('email') }}</mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="half-width">
+              <mat-label>Mobile Number</mat-label>
+              <input matInput formControlName="mobileNumber" placeholder="Enter mobile number">
+              <mat-error>{{ getErrorMessage('mobileNumber') }}</mat-error>
+            </mat-form-field>
+          </div>
+
+          <div class="form-row" *ngIf="!isEditMode">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Password *</mat-label>
+              <input matInput formControlName="password" type="password" placeholder="Enter password">
+              <mat-hint>Minimum 8 characters with uppercase, lowercase, number and special character</mat-hint>
+              <mat-error>{{ getErrorMessage('password') }}</mat-error>
+            </mat-form-field>
+          </div>
+
+          <div class="form-row" *ngIf="isEditMode">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>New Password (leave blank to keep current)</mat-label>
+              <input matInput formControlName="password" type="password" placeholder="Enter new password">
+              <mat-hint>Leave blank to keep current password</mat-hint>
+            </mat-form-field>
+          </div>
+        </div>
+
+        <!-- Role and Access Section -->
+        <div class="form-section">
+          <h3>Role and Access</h3>
+          
+          <div class="form-row">
+            <mat-form-field appearance="outline" class="half-width">
+              <mat-label>Role *</mat-label>
+              <mat-select formControlName="role">
+                <mat-option *ngFor="let role of roleOptions" [value]="role.value">
+                  {{ role.label }}
+                </mat-option>
+              </mat-select>
+              <mat-error>{{ getErrorMessage('role') }}</mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="half-width">
+              <mat-label>Status</mat-label>
+              <mat-select formControlName="status">
+                <mat-option *ngFor="let status of statusOptions" [value]="status.value">
+                  {{ status.label }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+
+          <div class="form-row">
+            <mat-form-field appearance="outline" class="half-width">
+              <mat-label>Department</mat-label>
+              <mat-select formControlName="department">
+                <mat-option value="">None</mat-option>
+                <mat-option *ngFor="let dept of departmentOptions" [value]="dept">
+                  {{ dept }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="half-width">
+              <mat-label>Designation</mat-label>
+              <input matInput formControlName="designation" placeholder="Enter designation">
+            </mat-form-field>
+          </div>
+        </div>
+
+        <!-- Security Settings Section -->
+        <div class="form-section">
+          <h3>Security Settings</h3>
+          
+          <div class="form-checkboxes">
+            <mat-checkbox formControlName="emailVerified">Email Verified</mat-checkbox>
+            <mat-checkbox formControlName="mobileVerified">Mobile Verified</mat-checkbox>
+            <mat-checkbox formControlName="twoFactorEnabled">Two-Factor Authentication</mat-checkbox>
+            <mat-checkbox formControlName="passwordChangeRequired">Password Change Required</mat-checkbox>
+          </div>
+        </div>
+      </div>
+
+      <!-- Form Actions -->
+      <div class="form-actions">
+        <button mat-button type="button" (click)="goBack()" [disabled]="loading">
+          Cancel
+        </button>
+        <button mat-raised-button color="primary" type="submit" [disabled]="!userForm.valid || loading">
+          <mat-spinner diameter="20" *ngIf="loading"></mat-spinner>
+          {{ isEditMode ? 'Update User' : 'Create User' }}
+        </button>
+      </div>
+    </form>
+  </mat-card>
+
+  <div *ngIf="loading && !userForm.dirty" class="loading-container">
+    <mat-spinner></mat-spinner>
+    <p>Loading user details...</p>
+  </div>
+</div>

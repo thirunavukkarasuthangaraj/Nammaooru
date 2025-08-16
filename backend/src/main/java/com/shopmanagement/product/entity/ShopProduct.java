@@ -134,12 +134,12 @@ public class ShopProduct {
     }
 
     public boolean isInStock() {
-        if (!trackInventory) return true;
+        if (trackInventory == null || !trackInventory) return true;
         return stockQuantity != null && stockQuantity > 0;
     }
 
     public boolean isLowStock() {
-        if (!trackInventory || minStockLevel == null) return false;
+        if (trackInventory == null || !trackInventory || minStockLevel == null) return false;
         return stockQuantity != null && stockQuantity <= minStockLevel;
     }
 

@@ -1,0 +1,226 @@
+<div class="notifications-container">
+  <div class="notifications-header">
+    <h2>Notifications</h2>
+    <div class="header-actions">
+      <button mat-button (click)="markAllAsRead()" [disabled]="unreadNotifications.length === 0">
+        <mat-icon>done_all</mat-icon>
+        Mark All Read
+      </button>
+      <button mat-icon-button (click)="loadNotifications()" [disabled]="loading">
+        <mat-icon>refresh</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="loading-container">
+    <mat-spinner></mat-spinner>
+    <p>Loading notifications...</p>
+  </div>
+
+  <div *ngIf="!loading" class="notifications-content">
+    <!-- Summary Cards -->
+    <div class="summary-cards">
+      <mat-card class="summary-card">
+        <mat-card-content>
+          <div class="summary-item">
+            <mat-icon class="summary-icon total">notifications</mat-icon>
+            <div class="summary-info">
+              <span class="summary-count">{{ notifications.length }}</span>
+              <span class="summary-label">Total</span>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="summary-card">
+        <mat-card-content>
+          <div class="summary-item">
+            <mat-icon class="summary-icon unread">notification_important</mat-icon>
+            <div class="summary-info">
+              <span class="summary-count">{{ unreadNotifications.length }}</span>
+              <span class="summary-label">Unread</span>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="summary-card">
+        <mat-card-content>
+          <div class="summary-item">
+            <mat-icon class="summary-icon read">done_all</mat-icon>
+            <div class="summary-info">
+              <span class="summary-count">{{ readNotifications.length }}</span>
+              <span class="summary-label">Read</span>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Notifications Tabs -->
+    <mat-card class="notifications-card">
+      <mat-card-content>
+        <mat-tab-group (selectedTabChange)="onTabChange($event)">
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <span>All</span>
+              <mat-chip class="tab-badge">{{ allNotifications.length }}</mat-chip>
+            </ng-template>
+            <div class="tab-content">
+              <div class="notifications-list">
+                <div 
+                  class="notification-item" 
+                  *ngFor="let notification of getCurrentNotifications()"
+                  [class.unread]="!notification.isRead"
+                  (click)="markAsRead(notification)">
+                  
+                  <div class="notification-icon" [style.background-color]="getNotificationColor(notification.type)">
+                    <mat-icon>{{ getNotificationIcon(notification.type) }}</mat-icon>
+                  </div>
+                  
+                  <div class="notification-content">
+                    <div class="notification-header">
+                      <h4>{{ notification.title }}</h4>
+                      <div class="notification-meta">
+                        <mat-chip class="priority-chip" [color]="getPriorityColor(notification.priority)" selected>
+                          {{ notification.priority }}
+                        </mat-chip>
+                        <span class="notification-time">{{ formatTime(notification.createdAt) }}</span>
+                      </div>
+                    </div>
+                    <p class="notification-message">{{ notification.message }}</p>
+                    <div class="notification-actions" *ngIf="notification.action">
+                      <button mat-button color="primary" class="action-btn">
+                        {{ notification.action }}
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div class="notification-menu">
+                    <button mat-icon-button [matMenuTriggerFor]="notificationMenu">
+                      <mat-icon>more_vert</mat-icon>
+                    </button>
+                    <mat-menu #notificationMenu="matMenu">
+                      <button mat-menu-item (click)="markAsRead(notification)" *ngIf="!notification.isRead">
+                        <mat-icon>done</mat-icon>
+                        Mark as Read
+                      </button>
+                      <button mat-menu-item (click)="deleteNotification(notification)">
+                        <mat-icon>delete</mat-icon>
+                        Delete
+                      </button>
+                    </mat-menu>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </mat-tab>
+
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <span>Unread</span>
+              <mat-chip class="tab-badge unread-badge" *ngIf="unreadNotifications.length > 0">
+                {{ unreadNotifications.length }}
+              </mat-chip>
+            </ng-template>
+            <div class="tab-content">
+              <div class="notifications-list">
+                <div 
+                  class="notification-item unread" 
+                  *ngFor="let notification of unreadNotifications"
+                  (click)="markAsRead(notification)">
+                  
+                  <div class="notification-icon" [style.background-color]="getNotificationColor(notification.type)">
+                    <mat-icon>{{ getNotificationIcon(notification.type) }}</mat-icon>
+                  </div>
+                  
+                  <div class="notification-content">
+                    <div class="notification-header">
+                      <h4>{{ notification.title }}</h4>
+                      <div class="notification-meta">
+                        <mat-chip class="priority-chip" [color]="getPriorityColor(notification.priority)" selected>
+                          {{ notification.priority }}
+                        </mat-chip>
+                        <span class="notification-time">{{ formatTime(notification.createdAt) }}</span>
+                      </div>
+                    </div>
+                    <p class="notification-message">{{ notification.message }}</p>
+                    <div class="notification-actions" *ngIf="notification.action">
+                      <button mat-button color="primary" class="action-btn">
+                        {{ notification.action }}
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div class="notification-menu">
+                    <button mat-icon-button [matMenuTriggerFor]="notificationMenu2">
+                      <mat-icon>more_vert</mat-icon>
+                    </button>
+                    <mat-menu #notificationMenu2="matMenu">
+                      <button mat-menu-item (click)="markAsRead(notification)">
+                        <mat-icon>done</mat-icon>
+                        Mark as Read
+                      </button>
+                      <button mat-menu-item (click)="deleteNotification(notification)">
+                        <mat-icon>delete</mat-icon>
+                        Delete
+                      </button>
+                    </mat-menu>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </mat-tab>
+
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <span>Read</span>
+            </ng-template>
+            <div class="tab-content">
+              <div class="notifications-list">
+                <div 
+                  class="notification-item read" 
+                  *ngFor="let notification of readNotifications">
+                  
+                  <div class="notification-icon" [style.background-color]="getNotificationColor(notification.type)">
+                    <mat-icon>{{ getNotificationIcon(notification.type) }}</mat-icon>
+                  </div>
+                  
+                  <div class="notification-content">
+                    <div class="notification-header">
+                      <h4>{{ notification.title }}</h4>
+                      <div class="notification-meta">
+                        <mat-chip class="priority-chip" [color]="getPriorityColor(notification.priority)" selected>
+                          {{ notification.priority }}
+                        </mat-chip>
+                        <span class="notification-time">{{ formatTime(notification.createdAt) }}</span>
+                      </div>
+                    </div>
+                    <p class="notification-message">{{ notification.message }}</p>
+                    <div class="notification-actions" *ngIf="notification.action">
+                      <button mat-button color="primary" class="action-btn">
+                        {{ notification.action }}
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div class="notification-menu">
+                    <button mat-icon-button [matMenuTriggerFor]="notificationMenu3">
+                      <mat-icon>more_vert</mat-icon>
+                    </button>
+                    <mat-menu #notificationMenu3="matMenu">
+                      <button mat-menu-item (click)="deleteNotification(notification)">
+                        <mat-icon>delete</mat-icon>
+                        Delete
+                      </button>
+                    </mat-menu>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </mat-tab>
+        </mat-tab-group>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

@@ -1,0 +1,32 @@
+<h2 mat-dialog-title>Update Order Status</h2>
+
+<div mat-dialog-content>
+  <p class="order-info">
+    <strong>Order:</strong> {{ data.orderNumber }}<br>
+    <strong>Current Status:</strong> {{ data.currentStatus | titlecase }}
+  </p>
+
+  <form [formGroup]="statusForm">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>New Status</mat-label>
+      <mat-select formControlName="status">
+        <mat-option *ngFor="let status of statusOptions" [value]="status.value">
+          {{ status.label }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width" *ngIf="statusForm.get('status')?.value === 'CANCELLED'">
+      <mat-label>Cancellation Reason</mat-label>
+      <textarea matInput formControlName="reason" rows="3" placeholder="Enter reason for cancellation..."></textarea>
+    </mat-form-field>
+  </form>
+</div>
+
+<div mat-dialog-actions>
+  <button mat-button (click)="onCancel()" [disabled]="loading">Cancel</button>
+  <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="!statusForm.valid || loading">
+    <mat-spinner diameter="20" *ngIf="loading"></mat-spinner>
+    Update Status
+  </button>
+</div>

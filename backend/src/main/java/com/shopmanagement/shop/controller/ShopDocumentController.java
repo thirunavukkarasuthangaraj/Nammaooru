@@ -22,7 +22,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/documents")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:4200")
+@CrossOrigin(originPatterns = {"*"})
 public class ShopDocumentController {
 
     private final ShopDocumentService documentService;

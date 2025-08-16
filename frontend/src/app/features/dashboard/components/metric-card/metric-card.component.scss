@@ -1,0 +1,121 @@
+.metric-card {
+  height: 140px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  }
+
+  &.metric-primary {
+    border-top: 4px solid #1976d2;
+  }
+
+  &.metric-accent {
+    border-top: 4px solid #ff4081;
+  }
+
+  &.metric-warn {
+    border-top: 4px solid #ff9800;
+  }
+
+  mat-card-content {
+    padding: 20px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+
+    .metric-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+
+      .metric-icon {
+        mat-icon {
+          font-size: 28px;
+          width: 28px;
+          height: 28px;
+        }
+      }
+
+      .metric-growth {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 12px;
+        font-weight: 500;
+        padding: 4px 8px;
+        border-radius: 12px;
+        background: rgba(0, 0, 0, 0.05);
+
+        &.success {
+          color: #2e7d32;
+          background: rgba(76, 175, 80, 0.1);
+        }
+
+        &.error {
+          color: #d32f2f;
+          background: rgba(244, 67, 54, 0.1);
+        }
+
+        &.neutral {
+          color: #757575;
+          background: rgba(158, 158, 158, 0.1);
+        }
+
+        mat-icon {
+          font-size: 16px;
+          width: 16px;
+          height: 16px;
+        }
+      }
+    }
+
+    .metric-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+
+      .metric-value {
+        margin: 0 0 8px 0;
+        font-size: 24px;
+        font-weight: 600;
+        color: #333;
+        line-height: 1.2;
+      }
+
+      .metric-title {
+        margin: 0;
+        font-size: 14px;
+        color: #666;
+        font-weight: 500;
+      }
+    }
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .metric-card {
+    height: 120px;
+
+    mat-card-content {
+      padding: 16px;
+
+      .metric-content {
+        .metric-value {
+          font-size: 20px;
+        }
+
+        .metric-title {
+          font-size: 13px;
+        }
+      }
+    }
+  }
+}

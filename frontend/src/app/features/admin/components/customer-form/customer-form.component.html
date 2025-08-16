@@ -1,0 +1,216 @@
+<div class="customer-form-container">
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>
+        {{ isEditMode ? 'Edit Customer' : 'Create New Customer' }}
+      </mat-card-title>
+    </mat-card-header>
+
+    <mat-card-content>
+      <form [formGroup]="customerForm" (ngSubmit)="onSubmit()" class="customer-form">
+        
+        <!-- Basic Information Section -->
+        <div class="form-section">
+          <h3>Basic Information</h3>
+          <div class="form-row">
+            <mat-form-field appearance="outline" class="half-width">
+              <mat-label>First Name</mat-label>
+              <input matInput formControlName="firstName" placeholder="Enter first name">
+              <mat-error *ngIf="isFieldInvalid('firstName')">
+                {{ getErrorMessage('firstName') }}
+              </mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="half-width">
+              <mat-label>Last Name</mat-label>
+              <input matInput formControlName="lastName" placeholder="Enter last name">
+              <mat-error *ngIf="isFieldInvalid('lastName')">
+                {{ getErrorMessage('lastName') }}
+              </mat-error>
+            </mat-form-field>
+          </div>
+
+          <div class="form-row">
+            <mat-form-field appearance="outline" class="half-width">
+              <mat-label>Email</mat-label>
+              <input matInput type="email" formControlName="email" placeholder="Enter email address">
+              <mat-error *ngIf="isFieldInvalid('email')">
+                {{ getErrorMessage('email') }}
+              </mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="half-width">
+              <mat-label>Mobile Number</mat-label>
+              <input matInput formControlName="mobileNumber" placeholder="10-digit mobile number">
+              <mat-error *ngIf="isFieldInvalid('mobileNumber')">
+                {{ getErrorMessage('mobileNumber') }}
+              </mat-error>
+            </mat-form-field>
+          </div>
+
+          <div class="form-row">
+            <mat-form-field appearance="outline" class="half-width">
+              <mat-label>Alternate Mobile Number</mat-label>
+              <input matInput formControlName="alternateMobileNumber" placeholder="Optional alternate number">
+              <mat-error *ngIf="isFieldInvalid('alternateMobileNumber')">
+                {{ getErrorMessage('alternateMobileNumber') }}
+              </mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="half-width">
+              <mat-label>Gender</mat-label>
+              <mat-select formControlName="gender">
+                <mat-option value="">Not Specified</mat-option>
+                <mat-option *ngFor="let option of genderOptions" [value]="option.value">
+                  {{ option.label }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+
+          <div class="form-row">
+            <mat-form-field appearance="outline" class="half-width">
+              <mat-label>Date of Birth</mat-label>
+              <input matInput [matDatepicker]="dobPicker" formControlName="dateOfBirth" readonly>
+              <mat-datepicker-toggle matSuffix [for]="dobPicker"></mat-datepicker-toggle>
+              <mat-datepicker #dobPicker></mat-datepicker>
+            </mat-form-field>
+          </div>
+        </div>
+
+        <!-- Address Information Section -->
+        <div class="form-section">
+          <h3>Address Information</h3>
+          <div class="form-row">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Address Line 1</mat-label>
+              <input matInput formControlName="addressLine1" placeholder="House/Flat number, Street name">
+            </mat-form-field>
+          </div>
+
+          <div class="form-row">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Address Line 2</mat-label>
+              <input matInput formControlName="addressLine2" placeholder="Landmark, Area (Optional)">
+            </mat-form-field>
+          </div>
+
+          <div class="form-row">
+            <mat-form-field appearance="outline" class="third-width">
+              <mat-label>City</mat-label>
+              <input matInput formControlName="city" placeholder="City">
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="third-width">
+              <mat-label>State</mat-label>
+              <input matInput formControlName="state" placeholder="State">
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="third-width">
+              <mat-label>Postal Code</mat-label>
+              <input matInput formControlName="postalCode" placeholder="6-digit PIN code">
+              <mat-error *ngIf="isFieldInvalid('postalCode')">
+                {{ getErrorMessage('postalCode') }}
+              </mat-error>
+            </mat-form-field>
+          </div>
+
+          <div class="form-row">
+            <mat-form-field appearance="outline" class="half-width">
+              <mat-label>Country</mat-label>
+              <input matInput formControlName="country" placeholder="Country">
+            </mat-form-field>
+          </div>
+        </div>
+
+        <!-- Preferences Section -->
+        <div class="form-section">
+          <h3>Preferences</h3>
+          <div class="form-row">
+            <div class="checkbox-group">
+              <mat-checkbox formControlName="emailNotifications">
+                Email Notifications
+              </mat-checkbox>
+              <mat-checkbox formControlName="smsNotifications">
+                SMS Notifications
+              </mat-checkbox>
+              <mat-checkbox formControlName="promotionalEmails">
+                Promotional Emails
+              </mat-checkbox>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <mat-form-field appearance="outline" class="half-width">
+              <mat-label>Preferred Language</mat-label>
+              <mat-select formControlName="preferredLanguage">
+                <mat-option value="English">English</mat-option>
+                <mat-option value="Hindi">Hindi</mat-option>
+                <mat-option value="Kannada">Kannada</mat-option>
+                <mat-option value="Telugu">Telugu</mat-option>
+                <mat-option value="Tamil">Tamil</mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+        </div>
+
+        <!-- Status & Additional Information -->
+        <div class="form-section">
+          <h3>Status & Additional Information</h3>
+          <div class="form-row">
+            <mat-form-field appearance="outline" class="half-width">
+              <mat-label>Status</mat-label>
+              <mat-select formControlName="status">
+                <mat-option *ngFor="let option of statusOptions" [value]="option.value">
+                  {{ option.label }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <div class="checkbox-group half-width">
+              <mat-checkbox formControlName="isActive">
+                Active Account
+              </mat-checkbox>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <mat-form-field appearance="outline" class="half-width">
+              <mat-label>Referred By</mat-label>
+              <input matInput formControlName="referredBy" placeholder="Referral code or customer">
+            </mat-form-field>
+          </div>
+
+          <div class="form-row">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Notes</mat-label>
+              <textarea matInput formControlName="notes" rows="3" placeholder="Additional notes about the customer"></textarea>
+            </mat-form-field>
+          </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="form-actions">
+          <button 
+            mat-raised-button 
+            color="primary" 
+            type="submit" 
+            [disabled]="isSubmitting || customerForm.invalid">
+            <mat-icon *ngIf="isSubmitting">
+              <mat-spinner diameter="16"></mat-spinner>
+            </mat-icon>
+            {{ isEditMode ? 'Update Customer' : 'Create Customer' }}
+          </button>
+          
+          <button 
+            mat-button 
+            type="button" 
+            (click)="onCancel()"
+            [disabled]="isSubmitting">
+            Cancel
+          </button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>

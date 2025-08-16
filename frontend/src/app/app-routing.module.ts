@@ -23,7 +23,33 @@ const routes: Routes = [
     children: [
       {
         path: 'dashboard',
-        loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent)
+        loadChildren: () => import('./features/dashboard/dashboard.module').then(m => m.DashboardModule)
+      },
+      {
+        path: 'orders',
+        loadChildren: () => import('./features/orders/orders.module').then(m => m.OrdersModule)
+      },
+      {
+        path: 'users',
+        loadChildren: () => import('./features/users/users.module').then(m => m.UsersModule),
+        canActivate: [RoleGuard],
+        data: { roles: [UserRole.ADMIN] }
+      },
+      {
+        path: 'analytics',
+        loadChildren: () => import('./features/analytics/analytics.module').then(m => m.AnalyticsModule),
+        canActivate: [RoleGuard],
+        data: { roles: [UserRole.ADMIN, UserRole.SHOP_OWNER] }
+      },
+      {
+        path: 'settings',
+        loadChildren: () => import('./features/settings/settings.module').then(m => m.SettingsModule),
+        canActivate: [RoleGuard],
+        data: { roles: [UserRole.ADMIN] }
+      },
+      {
+        path: 'notifications',
+        loadChildren: () => import('./features/notifications/notifications.module').then(m => m.NotificationsModule)
       },
       {
         path: 'shops',

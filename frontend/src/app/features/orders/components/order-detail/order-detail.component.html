@@ -1,0 +1,195 @@
+<div class="order-detail-container" *ngIf="!loading && order">
+  <div class="header-section">
+    <button mat-icon-button (click)="goBack()" class="back-btn">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <div class="title-section">
+      <h2>Order Details</h2>
+      <span class="order-number">{{ order.orderNumber }}</span>
+    </div>
+    <div class="status-badges">
+      <mat-chip-listbox>
+        <mat-chip-option [color]="getStatusColor(order.status)" selected>
+          {{ order.status | titlecase }}
+        </mat-chip-option>
+      </mat-chip-listbox>
+      <mat-chip-listbox>
+        <mat-chip-option [color]="getPaymentStatusColor(order.paymentStatus)" selected>
+          {{ order.paymentStatus | titlecase }}
+        </mat-chip-option>
+      </mat-chip-listbox>
+    </div>
+  </div>
+
+  <div class="content-grid">
+    <!-- Customer Information -->
+    <mat-card class="info-card">
+      <mat-card-header>
+        <mat-card-title>Customer Information</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="info-row">
+          <span class="label">Name:</span>
+          <span class="value">{{ order.customerName }}</span>
+        </div>
+        <div class="info-row">
+          <span class="label">Email:</span>
+          <span class="value">{{ order.customerEmail }}</span>
+        </div>
+        <div class="info-row">
+          <span class="label">Phone:</span>
+          <span class="value">{{ order.customerPhone }}</span>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Shop Information -->
+    <mat-card class="info-card">
+      <mat-card-header>
+        <mat-card-title>Shop Information</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="info-row">
+          <span class="label">Shop Name:</span>
+          <span class="value">{{ order.shopName }}</span>
+        </div>
+        <div class="info-row">
+          <span class="label">Address:</span>
+          <span class="value">{{ order.shopAddress }}</span>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Delivery Information -->
+    <mat-card class="info-card">
+      <mat-card-header>
+        <mat-card-title>Delivery Information</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="info-row">
+          <span class="label">Contact:</span>
+          <span class="value">{{ order.deliveryContactName }}</span>
+        </div>
+        <div class="info-row">
+          <span class="label">Phone:</span>
+          <span class="value">{{ order.deliveryPhone }}</span>
+        </div>
+        <div class="info-row">
+          <span class="label">Address:</span>
+          <span class="value">{{ order.fullDeliveryAddress }}</span>
+        </div>
+        <div class="info-row" *ngIf="order.estimatedDeliveryTime">
+          <span class="label">Estimated Delivery:</span>
+          <span class="value">{{ order.estimatedDeliveryTime | date:'dd/MM/yyyy HH:mm' }}</span>
+        </div>
+        <div class="info-row" *ngIf="order.actualDeliveryTime">
+          <span class="label">Actual Delivery:</span>
+          <span class="value">{{ order.actualDeliveryTime | date:'dd/MM/yyyy HH:mm' }}</span>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Order Timeline -->
+    <mat-card class="info-card">
+      <mat-card-header>
+        <mat-card-title>Order Timeline</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="info-row">
+          <span class="label">Order Placed:</span>
+          <span class="value">{{ order.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
+        </div>
+        <div class="info-row">
+          <span class="label">Last Updated:</span>
+          <span class="value">{{ order.updatedAt | date:'dd/MM/yyyy HH:mm' }}</span>
+        </div>
+        <div class="info-row">
+          <span class="label">Order Age:</span>
+          <span class="value">{{ order.orderAge }}</span>
+        </div>
+        <div class="info-row" *ngIf="order.cancellationReason">
+          <span class="label">Cancellation Reason:</span>
+          <span class="value">{{ order.cancellationReason }}</span>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Order Items -->
+  <mat-card class="items-card">
+    <mat-card-header>
+      <mat-card-title>Order Items ({{ order.itemCount }} items)</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="items-list">
+        <div class="item-row" *ngFor="let item of order.orderItems">
+          <div class="item-image">
+            <img [src]="item.productImageUrl || '/assets/placeholder-product.png'" [alt]="item.productName">
+          </div>
+          <div class="item-details">
+            <h4>{{ item.productName }}</h4>
+            <p class="item-description">{{ item.productDescription }}</p>
+            <p class="item-sku">SKU: {{ item.productSku }}</p>
+            <p class="item-instructions" *ngIf="item.specialInstructions">
+              <strong>Special Instructions:</strong> {{ item.specialInstructions }}
+            </p>
+          </div>
+          <div class="item-pricing">
+            <div class="quantity">Qty: {{ item.quantity }}</div>
+            <div class="unit-price">₹{{ item.unitPrice | number:'1.2-2' }} each</div>
+            <div class="total-price">₹{{ item.totalPrice | number:'1.2-2' }}</div>
+          </div>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Order Summary -->
+  <mat-card class="summary-card">
+    <mat-card-header>
+      <mat-card-title>Order Summary</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="summary-row">
+        <span class="summary-label">Subtotal:</span>
+        <span class="summary-value">₹{{ order.subtotal | number:'1.2-2' }}</span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-label">Tax:</span>
+        <span class="summary-value">₹{{ order.taxAmount | number:'1.2-2' }}</span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-label">Delivery Fee:</span>
+        <span class="summary-value">₹{{ order.deliveryFee | number:'1.2-2' }}</span>
+      </div>
+      <div class="summary-row" *ngIf="order.discountAmount > 0">
+        <span class="summary-label">Discount:</span>
+        <span class="summary-value discount">-₹{{ order.discountAmount | number:'1.2-2' }}</span>
+      </div>
+      <mat-divider></mat-divider>
+      <div class="summary-row total">
+        <span class="summary-label">Total Amount:</span>
+        <span class="summary-value">₹{{ order.totalAmount | number:'1.2-2' }}</span>
+      </div>
+      <div class="payment-method">
+        <span class="summary-label">Payment Method:</span>
+        <span class="summary-value">{{ order.paymentMethodLabel }}</span>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Notes -->
+  <mat-card class="notes-card" *ngIf="order.notes">
+    <mat-card-header>
+      <mat-card-title>Order Notes</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <p>{{ order.notes }}</p>
+    </mat-card-content>
+  </mat-card>
+</div>
+
+<div *ngIf="loading" class="loading-container">
+  <mat-spinner></mat-spinner>
+  <p>Loading order details...</p>
+</div>

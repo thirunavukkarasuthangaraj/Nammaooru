@@ -1,4 +1,4 @@
-package com.shopmanagement.controller;
+package com.shopmanagement.auth.controller;
 
 import com.shopmanagement.dto.auth.AuthRequest;
 import com.shopmanagement.dto.auth.AuthResponse;
@@ -18,6 +18,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
+@CrossOrigin(originPatterns = {"*"})
 public class AuthController {
 
     private final AuthService authService;

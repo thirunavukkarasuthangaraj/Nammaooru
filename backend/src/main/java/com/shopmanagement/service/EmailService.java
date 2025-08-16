@@ -5,6 +5,7 @@ import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -23,6 +24,27 @@ public class EmailService {
     private final JavaMailSender mailSender;
     private final EmailProperties emailProperties;
     private final TemplateEngine templateEngine;
+    
+    @Value("${app.frontend.auth.login-url}")
+    private String loginUrl;
+    
+    @Value("${app.frontend.auth.reset-password-url}")
+    private String resetPasswordUrl;
+    
+    @Value("${app.frontend.shop-owner.dashboard-url}")
+    private String dashboardUrl;
+    
+    @Value("${app.frontend.urls.shops}")
+    private String shopsUrl;
+    
+    @Value("${app.frontend.urls.contact}")
+    private String contactUrl;
+    
+    @Value("${app.frontend.urls.unsubscribe}")
+    private String unsubscribeUrl;
+    
+    @Value("${app.frontend.base-url}")
+    private String frontendBaseUrl;
 
     @Async
     public void sendSimpleEmail(String to, String subject, String text) {
@@ -79,7 +101,7 @@ public class EmailService {
                 "username", username,
                 "temporaryPassword", temporaryPassword,
                 "shopName", shopName,
-                "loginUrl", "http://localhost:4200/auth/login",
+                "loginUrl", loginUrl,
                 "supportEmail", emailProperties.getFrom()
             );
             
@@ -99,7 +121,7 @@ public class EmailService {
             Map<String, Object> variables = Map.of(
                 "username", username,
                 "resetToken", resetToken,
-                "resetUrl", "http://localhost:4200/auth/reset-password?token=" + resetToken,
+                "resetUrl", resetPasswordUrl + "?token=" + resetToken,
                 "expirationMinutes", "30",
                 "supportEmail", emailProperties.getFrom()
             );
@@ -121,8 +143,8 @@ public class EmailService {
                 "shopOwnerName", shopOwnerName,
                 "shopName", shopName,
                 "status", status,
-                "loginUrl", "http://localhost:4200/auth/login",
-                "dashboardUrl", "http://localhost:4200/shop-owner",
+                "loginUrl", loginUrl,
+                "dashboardUrl", dashboardUrl,
                 "supportEmail", emailProperties.getFrom()
             );
             
@@ -142,4 +164,241 @@ public class EmailService {
             "This is a test email from NammaOoru Shop Management System. " +
             "If you received this email, the email configuration is working correctly!");
     }
+
+    // Customer-specific email methods
+    public void sendCustomerWelcomeEmail(String to, String customerName, String referralCode) {
+        try {
+            Map<String, Object> variables = Map.of(
+                "customerName", customerName,
+                "referralCode", referralCode,
+                "loginUrl", loginUrl,
+                "shopUrl", shopsUrl,
+                "supportEmail", emailProperties.getFrom(),
+                "companyName", "NammaOoru"
+            );
+            
+            String subject = "Welcome to NammaOoru - Your Account is Ready!";
+            sendHtmlEmail(to, subject, "customer-welcome", variables);
+            log.info("Customer welcome email sent to: {}", to);
+        } catch (Exception e) {
+            log.error("Failed to send customer welcome email to: {}", to, e);
+            throw new RuntimeException("Failed to send customer welcome email", e);
+        }
+    }
+
+    public void sendEmailVerificationEmail(String to, String customerName, String verificationToken) {
+        try {
+            Map<String, Object> variables = Map.of(
+                "customerName", customerName,
+                "verificationToken", verificationToken,
+                "verificationUrl", frontendBaseUrl + "/verify-email?token=" + verificationToken,
+                "expirationHours", "24",
+                "supportEmail", emailProperties.getFrom(),
+                "companyName", "NammaOoru"
+            );
+            
+            String subject = "Please verify your email address - NammaOoru";
+            sendHtmlEmail(to, subject, "email-verification", variables);
+            log.info("Email verification email sent to: {}", to);
+        } catch (Exception e) {
+            log.error("Failed to send email verification email to: {}", to, e);
+            throw new RuntimeException("Failed to send email verification email", e);
+        }
+    }
+
+    public void sendOrderConfirmationEmail(String to, String customerName, String orderId, Double orderAmount, String orderDate) {
+        try {
+            Map<String, Object> variables = Map.of(
+                "customerName", customerName,
+                "orderId", orderId,
+                "orderAmount", String.format("₹%.2f", orderAmount),
+                "orderDate", orderDate,
+                "trackingUrl", frontendBaseUrl + "/orders/" + orderId,
+                "supportEmail", emailProperties.getFrom(),
+                "companyName", "NammaOoru"
+            );
+            
+            String subject = "Order Confirmed #" + orderId + " - NammaOoru";
+            sendHtmlEmail(to, subject, "order-confirmation", variables);
+            log.info("Order confirmation email sent to: {} for order: {}", to, orderId);
+        } catch (Exception e) {
+            log.error("Failed to send order confirmation email to: {} for order: {}", to, orderId, e);
+            throw new RuntimeException("Failed to send order confirmation email", e);
+        }
+    }
+
+    public void sendOrderStatusUpdateEmail(String to, String customerName, String orderId, String oldStatus, String newStatus) {
+        try {
+            Map<String, Object> variables = Map.of(
+                "customerName", customerName,
+                "orderId", orderId,
+                "oldStatus", oldStatus,
+                "newStatus", newStatus,
+                "trackingUrl", frontendBaseUrl + "/orders/" + orderId,
+                "supportEmail", emailProperties.getFrom(),
+                "companyName", "NammaOoru"
+            );
+            
+            String subject = "Order Update #" + orderId + " - " + newStatus + " - NammaOoru";
+            sendHtmlEmail(to, subject, "order-status-update", variables);
+            log.info("Order status update email sent to: {} for order: {} (status: {})", to, orderId, newStatus);
+        } catch (Exception e) {
+            log.error("Failed to send order status update email to: {} for order: {}", to, orderId, e);
+            throw new RuntimeException("Failed to send order status update email", e);
+        }
+    }
+
+    public void sendPromotionalEmail(String to, String customerName, String promoTitle, String promoDescription, String promoCode, String validUntil) {
+        try {
+            Map<String, Object> variables = Map.of(
+                "customerName", customerName,
+                "promoTitle", promoTitle,
+                "promoDescription", promoDescription,
+                "promoCode", promoCode,
+                "validUntil", validUntil,
+                "shopUrl", shopsUrl,
+                "unsubscribeUrl", unsubscribeUrl,
+                "supportEmail", emailProperties.getFrom(),
+                "companyName", "NammaOoru"
+            );
+            
+            String subject = promoTitle + " - Special Offer from NammaOoru";
+            sendHtmlEmail(to, subject, "promotional-offer", variables);
+            log.info("Promotional email sent to: {} with promo: {}", to, promoTitle);
+        } catch (Exception e) {
+            log.error("Failed to send promotional email to: {}", to, e);
+            throw new RuntimeException("Failed to send promotional email", e);
+        }
+    }
+
+    public void sendAccountStatusUpdateEmail(String to, String customerName, String oldStatus, String newStatus, String reason) {
+        try {
+            Map<String, Object> variables = Map.of(
+                "customerName", customerName,
+                "oldStatus", oldStatus,
+                "newStatus", newStatus,
+                "reason", reason != null ? reason : "Administrative action",
+                "contactUrl", contactUrl,
+                "supportEmail", emailProperties.getFrom(),
+                "companyName", "NammaOoru"
+            );
+            
+            String subject = "Account Status Update - NammaOoru";
+            sendHtmlEmail(to, subject, "account-status-update", variables);
+            log.info("Account status update email sent to: {} (status: {})", to, newStatus);
+        } catch (Exception e) {
+            log.error("Failed to send account status update email to: {}", to, e);
+            throw new RuntimeException("Failed to send account status update email", e);
+        }
+    }
+
+    public void sendPasswordResetCustomerEmail(String to, String customerName, String resetToken) {
+        try {
+            Map<String, Object> variables = Map.of(
+                "customerName", customerName,
+                "resetToken", resetToken,
+                "resetUrl", resetPasswordUrl + "?token=" + resetToken,
+                "expirationMinutes", "30",
+                "supportEmail", emailProperties.getFrom(),
+                "companyName", "NammaOoru"
+            );
+            
+            String subject = "Reset Your Password - NammaOoru";
+            sendHtmlEmail(to, subject, "customer-password-reset", variables);
+            log.info("Customer password reset email sent to: {}", to);
+        } catch (Exception e) {
+            log.error("Failed to send customer password reset email to: {}", to, e);
+            throw new RuntimeException("Failed to send customer password reset email", e);
+        }
+    }
+
+    public void sendBulkCustomerNotification(java.util.List<String> emailList, String subject, String message, String notificationType) {
+        log.info("Sending bulk notification to {} customers", emailList.size());
+        
+        for (String email : emailList) {
+            try {
+                if ("HTML".equalsIgnoreCase(notificationType)) {
+                    Map<String, Object> variables = Map.of(
+                        "message", message,
+                        "subject", subject,
+                        "supportEmail", emailProperties.getFrom(),
+                        "companyName", "NammaOoru"
+                    );
+                    sendHtmlEmail(email, subject, "bulk-notification", variables);
+                } else {
+                    sendSimpleEmail(email, subject, message);
+                }
+                
+                // Add small delay to avoid overwhelming the email server
+                Thread.sleep(100);
+            } catch (Exception e) {
+                log.error("Failed to send bulk notification to: {}", email, e);
+                // Continue with other emails even if one fails
+            }
+        }
+        
+        log.info("Bulk notification completed for {} customers", emailList.size());
+    }
+
+    public void sendNewsletterEmail(String to, String customerName, String newsletterTitle, String newsletterContent) {
+        try {
+            Map<String, Object> variables = Map.of(
+                "customerName", customerName,
+                "newsletterTitle", newsletterTitle,
+                "newsletterContent", newsletterContent,
+                "websiteUrl", frontendBaseUrl,
+                "unsubscribeUrl", unsubscribeUrl,
+                "supportEmail", emailProperties.getFrom(),
+                "companyName", "NammaOoru"
+            );
+            
+            String subject = newsletterTitle + " - NammaOoru Newsletter";
+            sendHtmlEmail(to, subject, "newsletter", variables);
+            log.info("Newsletter email sent to: {}", to);
+        } catch (Exception e) {
+            log.error("Failed to send newsletter email to: {}", to, e);
+            throw new RuntimeException("Failed to send newsletter email", e);
+        }
+    }
+
+    public void sendCustomerSurveyEmail(String to, String customerName, String surveyTitle, String surveyUrl) {
+        try {
+            Map<String, Object> variables = Map.of(
+                "customerName", customerName,
+                "surveyTitle", surveyTitle,
+                "surveyUrl", surveyUrl,
+                "incentiveText", "Complete the survey and get 10% off your next order!",
+                "supportEmail", emailProperties.getFrom(),
+                "companyName", "NammaOoru"
+            );
+            
+            String subject = "We'd love your feedback - " + surveyTitle;
+            sendHtmlEmail(to, subject, "customer-survey", variables);
+            log.info("Customer survey email sent to: {}", to);
+        } catch (Exception e) {
+            log.error("Failed to send customer survey email to: {}", to, e);
+            throw new RuntimeException("Failed to send customer survey email", e);
+        }
+    }
+
+    // User management email methods
+    public void sendWelcomeEmail(String to, String fullName, String username) {
+        try {
+            Map<String, Object> variables = Map.of(
+                "fullName", fullName,
+                "username", username,
+                "loginUrl", loginUrl,
+                "supportEmail", emailProperties.getFrom(),
+                "companyName", "NammaOoru"
+            );
+            
+            String subject = "Welcome to NammaOoru - Your Account is Ready!";
+            sendHtmlEmail(to, subject, "user-welcome", variables);
+            log.info("Welcome email sent to user: {}", username);
+        } catch (Exception e) {
+            log.error("Failed to send welcome email to user: {}", username, e);
+            throw new RuntimeException("Failed to send welcome email", e);
+        }
+    }
+
 }

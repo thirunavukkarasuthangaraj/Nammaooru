@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { ProductService } from '@core/services/product.service';
 import { ShopProductService } from '@core/services/shop-product.service';
 import { ShopService } from '@core/services/shop.service';
@@ -24,8 +24,8 @@ import { switchMap, catchError, map } from 'rxjs/operators';
             Back to Products
           </button>
           <div class="header-content">
-            <h1 class="page-title">Add New Product</h1>
-            <p class="page-subtitle">Add products to your shop inventory</p>
+            <h1 class="page-title">{{ isEditMode ? 'Edit Product' : 'Add New Product' }}</h1>
+            <p class="page-subtitle">{{ isEditMode ? 'Update product information' : 'Add products to your shop inventory' }}</p>
           </div>
         </div>
       </div>
@@ -34,7 +34,7 @@ import { switchMap, catchError, map } from 'rxjs/operators';
       <mat-card class="form-card">
         <mat-card-header>
           <mat-card-title>
-            <mat-icon>add_box</mat-icon>
+            <mat-icon>{{ isEditMode ? 'edit' : 'add_box' }}</mat-icon>
             Product Information
           </mat-card-title>
         </mat-card-header>
@@ -230,7 +230,7 @@ import { switchMap, catchError, map } from 'rxjs/operators';
               <button mat-raised-button color="primary" type="submit" [disabled]="productForm.invalid || isLoading">
                 <mat-spinner *ngIf="isLoading" diameter="20" style="margin-right: 8px;"></mat-spinner>
                 <mat-icon *ngIf="!isLoading" style="margin-right: 8px;">save</mat-icon>
-                Save Product
+                {{ isEditMode ? 'Update Product' : 'Save Product' }}
               </button>
               
               <button mat-stroked-button type="button" (click)="saveDraft()" [disabled]="isLoading">
@@ -485,6 +485,8 @@ export class AddProductComponent implements OnInit {
   selectedFile: File | null = null;
   currentShop: Shop | null = null;
   productCategories: ProductCategory[] = [];
+  isEditMode = false;
+  editingProductId: number | null = null;
 
   categories = [
     'Groceries',
@@ -503,6 +505,7 @@ export class AddProductComponent implements OnInit {
     private fb: FormBuilder,
     private snackBar: MatSnackBar,
     private router: Router,
+    private route: ActivatedRoute,
     private productService: ProductService,
     private shopProductService: ShopProductService,
     private shopService: ShopService,
@@ -531,15 +534,26 @@ export class AddProductComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.loadInitialData();
-    
-    // Auto-generate SKU if not provided
-    this.productForm.get('name')?.valueChanges.subscribe(name => {
-      if (name && !this.productForm.get('sku')?.value) {
-        const sku = this.generateSKU(name);
-        this.productForm.patchValue({ sku });
+    // Check if we're in edit mode
+    this.route.params.subscribe(params => {
+      if (params['id']) {
+        this.isEditMode = true;
+        this.editingProductId = +params['id'];
+        this.loadProductForEdit(this.editingProductId);
       }
     });
+
+    this.loadInitialData();
+    
+    // Auto-generate SKU if not provided (only in add mode)
+    if (!this.isEditMode) {
+      this.productForm.get('name')?.valueChanges.subscribe(name => {
+        if (name && !this.productForm.get('sku')?.value) {
+          const sku = this.generateSKU(name);
+          this.productForm.patchValue({ sku });
+        }
+      });
+    }
   }
 
   private loadInitialData(): void {
@@ -599,6 +613,92 @@ export class AddProductComponent implements OnInit {
         this.isLoading = false;
       }
     });
+  }
+
+  private loadProductForEdit(productId: number): void {
+    // For demo purposes, load from mock data
+    // In a real application, you would call an API to get the product details
+    const mockProducts = [
+      {
+        id: 1,
+        name: 'Organic Rice',
+        category: 'Groceries',
+        brand: 'Organic Farm',
+        description: 'Premium quality organic rice',
+        price: 120,
+        stock: 50,
+        unit: 'kg',
+        sku: 'ORG-RICE-001',
+        isActive: true,
+        isFeatured: false,
+        trackStock: true,
+        image: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDE1MCAxNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxNTAiIGhlaWdodD0iMTUwIiBmaWxsPSIjRjNGNEY2Ii8+Cjx0ZXh0IHg9Ijc1IiB5PSI3NSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZG9taW5hbnQtYmFzZWxpbmU9ImNlbnRyYWwiIGZpbGw9IiM5Q0EzQUYiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxOCI+UmljZTwvdGV4dD4KPC9zdmc+'
+      },
+      {
+        id: 2,
+        name: 'Fresh Tomatoes',
+        category: 'Vegetables',
+        brand: 'Fresh Farm',
+        description: 'Farm fresh red tomatoes',
+        price: 40,
+        stock: 3,
+        unit: 'kg',
+        sku: 'FRS-TOM-002',
+        isActive: true,
+        isFeatured: false,
+        trackStock: true,
+        image: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDE1MCAxNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxNTAiIGhlaWdodD0iMTUwIiBmaWxsPSIjRkVGMkYyIi8+Cjx0ZXh0IHg9Ijc1IiB5PSI3NSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZG9taW5hbnQtYmFzZWxpbmU9ImNlbnRyYWwiIGZpbGw9IiNEQzI2MjYiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiI+VG9tYXRvPC90ZXh0Pgo8L3N2Zz4='
+      },
+      {
+        id: 3,
+        name: 'Whole Wheat Bread',
+        category: 'Bakery',
+        brand: 'Healthy Bakery',
+        description: 'Nutritious whole wheat bread',
+        price: 35,
+        stock: 25,
+        unit: 'piece',
+        sku: 'WW-BREAD-003',
+        isActive: true,
+        isFeatured: false,
+        trackStock: true,
+        image: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDE1MCAxNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxNTAiIGhlaWdodD0iMTUwIiBmaWxsPSIjRkZGQkVCIi8+Cjx0ZXh0IHg9Ijc1IiB5PSI3NSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZG9taW5hbnQtYmFzZWxpbmU9ImNlbnRyYWwiIGZpbGw9IiNBRjY1MDkiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiI+QnJlYWQ8L3RleHQ+Cjwvc3ZnPg=='
+      },
+      {
+        id: 4,
+        name: 'Fresh Milk',
+        category: 'Dairy',
+        brand: 'Pure Dairy',
+        description: 'Fresh pasteurized milk',
+        price: 60,
+        stock: 0,
+        unit: 'liter',
+        sku: 'FRS-MILK-004',
+        isActive: false,
+        isFeatured: false,
+        trackStock: true,
+        image: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDE1MCAxNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxNTAiIGhlaWdodD0iMTUwIiBmaWxsPSIjRkNGRkZGIi8+Cjx0ZXh0IHg9Ijc1IiB5PSI3NSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZG9taW5hbnQtYmFzZWxpbmU9ImNlbnRyYWwiIGZpbGw9IiM2Mzc1OEYiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxOCI+TWlsazwvdGV4dD4KPC9zdmc+'
+      }
+    ];
+
+    const product = mockProducts.find(p => p.id === productId);
+    if (product) {
+      this.productForm.patchValue({
+        name: product.name,
+        category: product.category,
+        brand: product.brand,
+        description: product.description,
+        price: product.price,
+        stock: product.stock,
+        unit: product.unit,
+        sku: product.sku,
+        isActive: product.isActive,
+        isFeatured: product.isFeatured,
+        trackStock: product.trackStock
+      });
+      
+      this.imagePreview = product.image;
+    }
   }
 
   private getDefaultCategories(): ProductCategory[] {

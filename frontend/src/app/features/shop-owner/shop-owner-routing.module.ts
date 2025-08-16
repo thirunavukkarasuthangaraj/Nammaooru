@@ -32,6 +32,10 @@ const routes: Routes = [
     component: AddProductComponent
   },
   {
+    path: 'products/edit/:id',
+    component: AddProductComponent
+  },
+  {
     path: 'products/bulk-upload',
     component: BulkUploadComponent
   },

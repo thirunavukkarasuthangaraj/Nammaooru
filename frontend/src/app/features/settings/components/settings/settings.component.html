@@ -1,0 +1,86 @@
+<div class="settings-container">
+  <div class="settings-header">
+    <h2>System Settings</h2>
+    <div class="header-actions">
+      <button mat-button (click)="resetToDefaults()" [disabled]="loading">
+        <mat-icon>restore</mat-icon>
+        Reset to Defaults
+      </button>
+      <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="loading">
+        <mat-spinner diameter="20" *ngIf="loading"></mat-spinner>
+        {{ loading ? 'Saving...' : 'Save Settings' }}
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="loading && !settingsForm.dirty" class="loading-container">
+    <mat-spinner></mat-spinner>
+    <p>Loading settings...</p>
+  </div>
+
+  <div *ngIf="!loading || settingsForm.dirty" class="settings-content">
+    <form [formGroup]="settingsForm" (ngSubmit)="onSubmit()">
+      <mat-tab-group>
+        <mat-tab *ngFor="let category of categories" [label]="category">
+          <div class="tab-content">
+            <mat-card *ngFor="let setting of getSettingsByCategory(category)" class="setting-card">
+              <mat-card-content>
+                <div class="setting-item">
+                  <div class="setting-info">
+                    <h4>{{ getSettingDisplayName(setting.key) }}</h4>
+                    <p class="setting-description">{{ setting.description }}</p>
+                    <mat-chip class="scope-chip" [class.global-scope]="setting.scope === 'GLOBAL'" [class.user-scope]="setting.scope === 'USER'" selected>
+                      {{ setting.scope }}
+                    </mat-chip>
+                  </div>
+                  
+                  <div class="setting-control">
+                    <mat-slide-toggle 
+                      *ngIf="isToggleSetting(setting.key)"
+                      [formControlName]="setting.key">
+                    </mat-slide-toggle>
+                    
+                    <mat-form-field 
+                      *ngIf="!isToggleSetting(setting.key)"
+                      appearance="outline" 
+                      class="setting-field">
+                      <mat-label>{{ getSettingDisplayName(setting.key) }}</mat-label>
+                      <input matInput [formControlName]="setting.key">
+                    </mat-form-field>
+                  </div>
+                </div>
+              </mat-card-content>
+            </mat-card>
+          </div>
+        </mat-tab>
+      </mat-tab-group>
+    </form>
+  </div>
+
+  <!-- Quick Actions -->
+  <mat-card class="quick-actions-card">
+    <mat-card-header>
+      <mat-card-title>Quick Actions</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="quick-actions-grid">
+        <button mat-stroked-button class="action-btn">
+          <mat-icon>backup</mat-icon>
+          Export Settings
+        </button>
+        <button mat-stroked-button class="action-btn">
+          <mat-icon>restore</mat-icon>
+          Import Settings
+        </button>
+        <button mat-stroked-button class="action-btn">
+          <mat-icon>refresh</mat-icon>
+          Clear Cache
+        </button>
+        <button mat-stroked-button class="action-btn">
+          <mat-icon>bug_report</mat-icon>
+          System Health
+        </button>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

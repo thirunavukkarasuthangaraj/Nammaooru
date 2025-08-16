@@ -166,6 +166,129 @@ export class ShopService {
     );
   }
 
+  // Dashboard methods for shop owner
+  getTodaysRevenue(): Observable<number> {
+    return this.http.get<ApiResponse<number>>(`${this.API_URL}/dashboard/todays-revenue`).pipe(
+      map(apiResponse => {
+        if (ApiResponseHelper.isError(apiResponse)) {
+          return 0;
+        }
+        return apiResponse.data || 0;
+      }),
+      catchError(error => {
+        console.error('Error fetching todays revenue:', error);
+        return throwError(() => 0);
+      })
+    );
+  }
+
+  getTodaysOrderCount(): Observable<number> {
+    return this.http.get<ApiResponse<number>>(`${this.API_URL}/dashboard/todays-orders`).pipe(
+      map(apiResponse => {
+        if (ApiResponseHelper.isError(apiResponse)) {
+          return 0;
+        }
+        return apiResponse.data || 0;
+      }),
+      catchError(error => {
+        console.error('Error fetching todays orders:', error);
+        return throwError(() => 0);
+      })
+    );
+  }
+
+  getTotalProductCount(): Observable<number> {
+    return this.http.get<ApiResponse<number>>(`${this.API_URL}/dashboard/product-count`).pipe(
+      map(apiResponse => {
+        if (ApiResponseHelper.isError(apiResponse)) {
+          return 0;
+        }
+        return apiResponse.data || 0;
+      }),
+      catchError(error => {
+        console.error('Error fetching product count:', error);
+        return throwError(() => 0);
+      })
+    );
+  }
+
+  getLowStockCount(): Observable<number> {
+    return this.http.get<ApiResponse<number>>(`${this.API_URL}/dashboard/low-stock-count`).pipe(
+      map(apiResponse => {
+        if (ApiResponseHelper.isError(apiResponse)) {
+          return 0;
+        }
+        return apiResponse.data || 0;
+      }),
+      catchError(error => {
+        console.error('Error fetching low stock count:', error);
+        return throwError(() => 0);
+      })
+    );
+  }
+
+  getRecentOrders(limit: number = 5): Observable<any[]> {
+    const params = new HttpParams().set('limit', limit.toString());
+    return this.http.get<ApiResponse<any[]>>(`${this.API_URL}/dashboard/recent-orders`, { params }).pipe(
+      map(apiResponse => {
+        if (ApiResponseHelper.isError(apiResponse)) {
+          return [];
+        }
+        return apiResponse.data || [];
+      }),
+      catchError(error => {
+        console.error('Error fetching recent orders:', error);
+        return throwError(() => []);
+      })
+    );
+  }
+
+  getLowStockProducts(limit: number = 10): Observable<any[]> {
+    const params = new HttpParams().set('limit', limit.toString());
+    return this.http.get<ApiResponse<any[]>>(`${this.API_URL}/dashboard/low-stock-products`, { params }).pipe(
+      map(apiResponse => {
+        if (ApiResponseHelper.isError(apiResponse)) {
+          return [];
+        }
+        return apiResponse.data || [];
+      }),
+      catchError(error => {
+        console.error('Error fetching low stock products:', error);
+        return throwError(() => []);
+      })
+    );
+  }
+
+  getTotalCustomerCount(): Observable<number> {
+    return this.http.get<ApiResponse<number>>(`${this.API_URL}/dashboard/customer-count`).pipe(
+      map(apiResponse => {
+        if (ApiResponseHelper.isError(apiResponse)) {
+          return 0;
+        }
+        return apiResponse.data || 0;
+      }),
+      catchError(error => {
+        console.error('Error fetching customer count:', error);
+        return throwError(() => 0);
+      })
+    );
+  }
+
+  getNewCustomerCount(): Observable<number> {
+    return this.http.get<ApiResponse<number>>(`${this.API_URL}/dashboard/new-customers`).pipe(
+      map(apiResponse => {
+        if (ApiResponseHelper.isError(apiResponse)) {
+          return 0;
+        }
+        return apiResponse.data || 0;
+      }),
+      catchError(error => {
+        console.error('Error fetching new customer count:', error);
+        return throwError(() => 0);
+      })
+    );
+  }
+
   // Transform API response to match frontend model
   private transformShop(shop: any): Shop {
     return {

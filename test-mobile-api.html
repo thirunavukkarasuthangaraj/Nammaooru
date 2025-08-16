@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile API Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+        .section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
+        input, button { margin: 5px 0; padding: 10px; width: 300px; }
+        button { background: #007bff; color: white; border: none; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .response { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 3px; }
+        .error { background: #f8d7da; color: #721c24; }
+        .success { background: #d4edda; color: #155724; }
+    </style>
+</head>
+<body>
+    <h1>Mobile Customer API Test</h1>
+    
+    <!-- Step 1: Request OTP -->
+    <div class="section">
+        <h3>Step 1: Request OTP</h3>
+        <input type="text" id="mobileNumber" placeholder="Mobile Number (e.g., 9876543210)" value="9876543210">
+        <br>
+        <button onclick="requestOTP()">Request OTP</button>
+        <div id="otpResponse" class="response"></div>
+    </div>
+    
+    <!-- Step 2: Verify OTP -->
+    <div class="section">
+        <h3>Step 2: Verify OTP</h3>
+        <input type="text" id="otpCode" placeholder="Enter OTP from console/logs">
+        <br>
+        <button onclick="verifyOTP()">Verify OTP</button>
+        <div id="verifyResponse" class="response"></div>
+    </div>
+    
+    <!-- Step 3: Register Customer -->
+    <div class="section">
+        <h3>Step 3: Register Customer</h3>
+        <input type="text" id="firstName" placeholder="First Name" value="John">
+        <input type="text" id="lastName" placeholder="Last Name" value="Doe">
+        <input type="email" id="email" placeholder="Email" value="john@example.com">
+        <br>
+        <button onclick="registerCustomer()">Register Customer</button>
+        <div id="registerResponse" class="response"></div>
+    </div>
+    
+    <!-- App Config -->
+    <div class="section">
+        <h3>App Configuration</h3>
+        <button onclick="getAppConfig()">Get App Config</button>
+        <div id="configResponse" class="response"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8082/api/mobile';
+        
+        function requestOTP() {
+            const mobileNumber = document.getElementById('mobileNumber').value;
+            
+            fetch(`${API_BASE}/auth/request-otp`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    mobileNumber: mobileNumber,
+                    deviceId: "web-test-" + Date.now(),
+                    deviceType: "WEB",
+                    appVersion: "1.0.0"
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const responseDiv = document.getElementById('otpResponse');
+                responseDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                responseDiv.className = data.success ? 'response success' : 'response error';
+                
+                if (data.success) {
+                    console.log('✅ OTP Request Successful');
+                    console.log('📱 Check your server logs for the OTP code');
+                }
+            })
+            .catch(error => {
+                document.getElementById('otpResponse').innerHTML = `<span class="error">Error: ${error.message}</span>`;
+            });
+        }
+        
+        function verifyOTP() {
+            const mobileNumber = document.getElementById('mobileNumber').value;
+            const otpCode = document.getElementById('otpCode').value;
+            
+            fetch(`${API_BASE}/otp/verify`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    mobileNumber: mobileNumber,
+                    otp: otpCode,
+                    purpose: "LOGIN",
+                    deviceId: "web-test-" + Date.now()
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const responseDiv = document.getElementById('verifyResponse');
+                responseDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                responseDiv.className = data.success ? 'response success' : 'response error';
+            })
+            .catch(error => {
+                document.getElementById('verifyResponse').innerHTML = `<span class="error">Error: ${error.message}</span>`;
+            });
+        }
+        
+        function registerCustomer() {
+            const mobileNumber = document.getElementById('mobileNumber').value;
+            const firstName = document.getElementById('firstName').value;
+            const lastName = document.getElementById('lastName').value;
+            const email = document.getElementById('email').value;
+            
+            fetch(`${API_BASE}/customer/register`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    firstName: firstName,
+                    lastName: lastName,
+                    mobileNumber: mobileNumber,
+                    email: email,
+                    deviceId: "web-test-" + Date.now(),
+                    appVersion: "1.0.0",
+                    acceptTerms: true,
+                    acceptPrivacy: true
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const responseDiv = document.getElementById('registerResponse');
+                responseDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                responseDiv.className = data.success ? 'response success' : 'response error';
+            })
+            .catch(error => {
+                document.getElementById('registerResponse').innerHTML = `<span class="error">Error: ${error.message}</span>`;
+            });
+        }
+        
+        function getAppConfig() {
+            fetch(`${API_BASE}/config`)
+            .then(response => response.json())
+            .then(data => {
+                const responseDiv = document.getElementById('configResponse');
+                responseDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                responseDiv.className = 'response success';
+            })
+            .catch(error => {
+                document.getElementById('configResponse').innerHTML = `<span class="error">Error: ${error.message}</span>`;
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,276 @@
+.customer-detail-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+// Header section
+.header-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+
+  .back-button {
+    margin-right: 8px;
+  }
+
+  h2 {
+    flex: 1;
+    margin: 0;
+    color: #1976d2;
+    font-weight: 500;
+  }
+
+  button {
+    mat-icon {
+      margin-right: 8px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    flex-wrap: wrap;
+    gap: 12px;
+
+    h2 {
+      order: 2;
+      flex-basis: 100%;
+    }
+
+    .back-button {
+      order: 1;
+      margin-right: 0;
+    }
+
+    button:not(.back-button) {
+      order: 3;
+      width: 100%;
+    }
+  }
+}
+
+// Content layout
+.detail-content {
+  display: grid;
+  gap: 24px;
+
+  @media (min-width: 1024px) {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+// Info cards
+.info-card {
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border-radius: 8px;
+
+  &:first-child {
+    @media (min-width: 1024px) {
+      grid-column: 1 / -1;
+    }
+  }
+
+  mat-card-header {
+    padding-bottom: 16px;
+    border-bottom: 1px solid #e0e0e0;
+    margin-bottom: 16px;
+
+    mat-card-title {
+      font-size: 18px;
+      font-weight: 500;
+      color: #1976d2;
+    }
+  }
+
+  mat-card-content {
+    padding: 0;
+  }
+}
+
+// Info grid layout
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    &.full-width {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      font-size: 12px;
+      font-weight: 500;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    span {
+      font-size: 14px;
+      color: #333;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .verified-icon {
+        color: #4caf50;
+        font-size: 16px;
+      }
+    }
+  }
+}
+
+// Metrics grid
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 24px;
+
+  .metric-item {
+    text-align: center;
+    padding: 16px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+
+    .metric-value {
+      font-size: 24px;
+      font-weight: 600;
+      color: #1976d2;
+      margin-bottom: 4px;
+    }
+
+    .metric-label {
+      font-size: 12px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+  }
+}
+
+// Status chips
+mat-chip {
+  &.status-active {
+    background-color: #e8f5e8;
+    color: #2e7d32;
+  }
+
+  &.status-inactive {
+    background-color: #fff3e0;
+    color: #f57c00;
+  }
+
+  &.status-blocked {
+    background-color: #ffebee;
+    color: #d32f2f;
+  }
+
+  &.status-pending {
+    background-color: #e3f2fd;
+    color: #1976d2;
+  }
+}
+
+// Status icons
+mat-icon {
+  &.status-active {
+    color: #4caf50;
+  }
+
+  &.status-inactive {
+    color: #ff9800;
+  }
+
+  &.verified-icon {
+    color: #4caf50;
+  }
+}
+
+// Notes content
+.notes-content {
+  background-color: #f8f9fa;
+  padding: 16px;
+  border-radius: 8px;
+  border-left: 4px solid #1976d2;
+  margin: 0;
+  line-height: 1.5;
+  color: #333;
+}
+
+// Loading state
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+  gap: 16px;
+
+  p {
+    color: #666;
+    margin: 0;
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 1024px) {
+  .customer-detail-container {
+    padding: 16px;
+  }
+
+  .detail-content {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .customer-detail-container {
+    padding: 8px;
+  }
+
+  .info-card {
+    mat-card-header {
+      mat-card-title {
+        font-size: 16px;
+      }
+    }
+  }
+
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+
+    .metric-item {
+      padding: 12px;
+
+      .metric-value {
+        font-size: 20px;
+      }
+    }
+  }
+}
+
+// Print styles
+@media print {
+  .header-section {
+    button {
+      display: none;
+    }
+  }
+
+  .info-card {
+    break-inside: avoid;
+    box-shadow: none;
+    border: 1px solid #e0e0e0;
+  }
+}

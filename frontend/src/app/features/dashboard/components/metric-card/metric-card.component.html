@@ -1,0 +1,18 @@
+<mat-card class="metric-card" [ngClass]="'metric-' + color">
+  <mat-card-content>
+    <div class="metric-header">
+      <div class="metric-icon">
+        <mat-icon [color]="color">{{ icon }}</mat-icon>
+      </div>
+      <div class="metric-growth" *ngIf="growth !== null" [ngClass]="growthColor">
+        <mat-icon>{{ growthIcon }}</mat-icon>
+        <span>{{ growth | number:'1.1-1' }}%</span>
+      </div>
+    </div>
+    
+    <div class="metric-content">
+      <h3 class="metric-value">{{ value }}</h3>
+      <p class="metric-title">{{ title }}</p>
+    </div>
+  </mat-card-content>
+</mat-card>

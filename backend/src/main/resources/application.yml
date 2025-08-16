@@ -6,14 +6,14 @@ spring:
     name: shop-management-system
   
   datasource:
-    url: jdbc:postgresql://localhost:5432/shop_management
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/shop_management}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:password}
     driver-class-name: org.postgresql.Driver
     
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: create-drop
     show-sql: false
     properties:
       hibernate:
@@ -94,6 +94,22 @@ app:
     product-images: ${PRODUCT_IMAGES_PATH:products}
     max-file-size: 10MB
     allowed-types: pdf,jpg,jpeg,png,docx,doc
+  frontend:
+    base-url: ${FRONTEND_BASE_URL:http://localhost:4200}
+    auth:
+      login-url: ${FRONTEND_LOGIN_URL:${app.frontend.base-url}/auth/login}
+      reset-password-url: ${FRONTEND_RESET_PASSWORD_URL:${app.frontend.base-url}/auth/reset-password}
+    shop-owner:
+      dashboard-url: ${SHOP_OWNER_DASHBOARD_URL:${app.frontend.base-url}/shop-owner}
+    urls:
+      shops: ${SHOPS_URL:${app.frontend.base-url}/shops}
+      contact: ${CONTACT_URL:${app.frontend.base-url}/contact}
+      unsubscribe: ${UNSUBSCRIBE_URL:${app.frontend.base-url}/unsubscribe}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:*}
+    allowed-methods: ${CORS_ALLOWED_METHODS:GET,POST,PUT,DELETE,OPTIONS}
+    allowed-headers: ${CORS_ALLOWED_HEADERS:*}
+    allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
 
 # Shop Module Configuration
 shop:

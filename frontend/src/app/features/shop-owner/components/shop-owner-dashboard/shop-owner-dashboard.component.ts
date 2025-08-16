@@ -563,37 +563,18 @@ import { Observable } from 'rxjs';
 })
 export class ShopOwnerDashboardComponent implements OnInit {
   currentUser$: Observable<User | null>;
+  loading = false;
   
-  // Mock data - replace with actual API calls
-  todaysRevenue = 15750;
-  todaysOrders = 23;
-  totalProducts = 145;
-  lowStockCount = 8;
-  totalCustomers = 892;
-  newCustomers = 12;
+  // Dashboard data from API
+  todaysRevenue = 0;
+  todaysOrders = 0;
+  totalProducts = 0;
+  lowStockCount = 0;
+  totalCustomers = 0;
+  newCustomers = 0;
 
-  recentOrders = [
-    { id: 'ORD-001', customerName: 'Rajesh Kumar', total: 850, status: 'Processing', createdAt: new Date() },
-    { id: 'ORD-002', customerName: 'Priya Sharma', total: 1200, status: 'Completed', createdAt: new Date() },
-    { id: 'ORD-003', customerName: 'Amit Singh', total: 650, status: 'Pending', createdAt: new Date() }
-  ];
-
-  lowStockProducts = [
-    { 
-      id: 1, 
-      name: 'Organic Rice', 
-      category: 'Groceries', 
-      stock: 5, 
-      imageUrl: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjRjNGNEY2Ii8+Cjx0ZXh0IHg9IjIwIiB5PSIyMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZG9taW5hbnQtYmFzZWxpbmU9ImNlbnRyYWwiIGZpbGw9IiM5Q0EzQUYiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSI4Ij5SPC90ZXh0Pgo8L3N2Zz4=' 
-    },
-    { 
-      id: 2, 
-      name: 'Fresh Tomatoes', 
-      category: 'Vegetables', 
-      stock: 3, 
-      imageUrl: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjRkVGMkYyIi8+Cjx0ZXh0IHg9IjIwIiB5PSIyMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZG9taW5hbnQtYmFzZWxpbmU9ImNlbnRyYWwiIGZpbGw9IiNEQzI2MjYiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSI4Ij5UPC90ZXh0Pgo8L3N2Zz4=' 
-    }
-  ];
+  recentOrders: any[] = [];
+  lowStockProducts: any[] = [];
 
   constructor(
     private authService: AuthService,
@@ -607,13 +588,108 @@ export class ShopOwnerDashboardComponent implements OnInit {
   }
 
   private loadDashboardData(): void {
-    // Load dashboard statistics
-    // Replace with actual API calls
-    console.log('Loading shop owner dashboard data...');
+    this.loading = true;
+    this.loadTodaysStats();
+    this.loadRecentOrders();
+    this.loadLowStockProducts();
+    this.loadCustomerStats();
+  }
+
+  private loadTodaysStats(): void {
+    // Get today's revenue and orders from backend
+    this.shopService.getTodaysRevenue().subscribe({
+      next: (revenue) => {
+        this.todaysRevenue = revenue || 0;
+      },
+      error: (error) => {
+        console.error('Error loading todays revenue:', error);
+        this.todaysRevenue = 0;
+      }
+    });
+
+    this.shopService.getTodaysOrderCount().subscribe({
+      next: (count) => {
+        this.todaysOrders = count || 0;
+      },
+      error: (error) => {
+        console.error('Error loading todays orders:', error);
+        this.todaysOrders = 0;
+      }
+    });
+
+    this.shopService.getTotalProductCount().subscribe({
+      next: (count) => {
+        this.totalProducts = count || 0;
+      },
+      error: (error) => {
+        console.error('Error loading product count:', error);
+        this.totalProducts = 0;
+      }
+    });
+
+    this.shopService.getLowStockCount().subscribe({
+      next: (count) => {
+        this.lowStockCount = count || 0;
+      },
+      error: (error) => {
+        console.error('Error loading low stock count:', error);
+        this.lowStockCount = 0;
+      }
+    });
+  }
+
+  private loadRecentOrders(): void {
+    this.shopService.getRecentOrders(5).subscribe({
+      next: (orders) => {
+        this.recentOrders = orders || [];
+      },
+      error: (error) => {
+        console.error('Error loading recent orders:', error);
+        this.recentOrders = [];
+      }
+    });
+  }
+
+  private loadLowStockProducts(): void {
+    this.shopService.getLowStockProducts(10).subscribe({
+      next: (products) => {
+        this.lowStockProducts = products || [];
+        this.loading = false;
+      },
+      error: (error) => {
+        console.error('Error loading low stock products:', error);
+        this.lowStockProducts = [];
+        this.loading = false;
+      }
+    });
+  }
+
+  private loadCustomerStats(): void {
+    this.shopService.getTotalCustomerCount().subscribe({
+      next: (count) => {
+        this.totalCustomers = count || 0;
+      },
+      error: (error) => {
+        console.error('Error loading customer count:', error);
+        this.totalCustomers = 0;
+      }
+    });
+
+    this.shopService.getNewCustomerCount().subscribe({
+      next: (count) => {
+        this.newCustomers = count || 0;
+      },
+      error: (error) => {
+        console.error('Error loading new customer count:', error);
+        this.newCustomers = 0;
+      }
+    });
   }
 
   updateStock(product: any): void {
-    // Implement stock update functionality
+    // Navigate to product edit page or show update dialog
     console.log('Updating stock for product:', product.name);
+    // TODO: Implement actual stock update functionality
+    // this.router.navigate(['/products/edit', product.id]);
   }
 }

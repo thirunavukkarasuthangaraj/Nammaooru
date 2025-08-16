@@ -1,0 +1,242 @@
+<div class="customer-detail-container" *ngIf="!isLoading && customer">
+  <!-- Header -->
+  <div class="header-section">
+    <button mat-icon-button (click)="goBack()" class="back-button">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <h2>Customer Details</h2>
+    <button mat-raised-button color="primary" (click)="editCustomer()">
+      <mat-icon>edit</mat-icon>
+      Edit Customer
+    </button>
+  </div>
+
+  <div class="detail-content">
+    <!-- Basic Information -->
+    <mat-card class="info-card">
+      <mat-card-header>
+        <mat-card-title>Basic Information</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="info-grid">
+          <div class="info-item">
+            <label>Full Name</label>
+            <span>{{ customer.firstName }} {{ customer.lastName }}</span>
+          </div>
+          <div class="info-item">
+            <label>Email</label>
+            <span>
+              {{ customer.email }}
+              <mat-icon *ngIf="customer.emailVerified" class="verified-icon" matTooltip="Email Verified">verified</mat-icon>
+            </span>
+          </div>
+          <div class="info-item">
+            <label>Mobile Number</label>
+            <span>
+              {{ customer.mobileNumber }}
+              <mat-icon *ngIf="customer.mobileVerified" class="verified-icon" matTooltip="Mobile Verified">verified</mat-icon>
+            </span>
+          </div>
+          <div class="info-item" *ngIf="customer.alternateMobileNumber">
+            <label>Alternate Mobile</label>
+            <span>{{ customer.alternateMobileNumber }}</span>
+          </div>
+          <div class="info-item" *ngIf="customer.gender">
+            <label>Gender</label>
+            <span>{{ getGenderLabel(customer.gender) }}</span>
+          </div>
+          <div class="info-item" *ngIf="customer.dateOfBirth">
+            <label>Date of Birth</label>
+            <span>{{ formatDate(customer.dateOfBirth) }}</span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Address Information -->
+    <mat-card class="info-card" *ngIf="customer.addressLine1 || customer.city">
+      <mat-card-header>
+        <mat-card-title>Address Information</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="info-grid">
+          <div class="info-item full-width" *ngIf="customer.addressLine1">
+            <label>Address Line 1</label>
+            <span>{{ customer.addressLine1 }}</span>
+          </div>
+          <div class="info-item full-width" *ngIf="customer.addressLine2">
+            <label>Address Line 2</label>
+            <span>{{ customer.addressLine2 }}</span>
+          </div>
+          <div class="info-item" *ngIf="customer.city">
+            <label>City</label>
+            <span>{{ customer.city }}</span>
+          </div>
+          <div class="info-item" *ngIf="customer.state">
+            <label>State</label>
+            <span>{{ customer.state }}</span>
+          </div>
+          <div class="info-item" *ngIf="customer.postalCode">
+            <label>Postal Code</label>
+            <span>{{ customer.postalCode }}</span>
+          </div>
+          <div class="info-item" *ngIf="customer.country">
+            <label>Country</label>
+            <span>{{ customer.country }}</span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Status & Account Information -->
+    <mat-card class="info-card">
+      <mat-card-header>
+        <mat-card-title>Account Status</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="info-grid">
+          <div class="info-item">
+            <label>Status</label>
+            <mat-chip [class]="getStatusClass(customer.status || 'ACTIVE')">
+              {{ customer.status || 'ACTIVE' }}
+            </mat-chip>
+          </div>
+          <div class="info-item">
+            <label>Account Active</label>
+            <span>
+              <mat-icon [class]="customer.isActive ? 'status-active' : 'status-inactive'">
+                {{ customer.isActive ? 'check_circle' : 'cancel' }}
+              </mat-icon>
+              {{ customer.isActive ? 'Yes' : 'No' }}
+            </span>
+          </div>
+          <div class="info-item">
+            <label>Verified</label>
+            <span>
+              <mat-icon [class]="customer.isVerified ? 'status-active' : 'status-inactive'">
+                {{ customer.isVerified ? 'verified_user' : 'pending' }}
+              </mat-icon>
+              {{ customer.isVerified ? 'Yes' : 'No' }}
+            </span>
+          </div>
+          <div class="info-item" *ngIf="customer.referredBy">
+            <label>Referred By</label>
+            <span>{{ customer.referredBy }}</span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Preferences -->
+    <mat-card class="info-card">
+      <mat-card-header>
+        <mat-card-title>Preferences</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="info-grid">
+          <div class="info-item">
+            <label>Email Notifications</label>
+            <span>
+              <mat-icon [class]="customer.emailNotifications ? 'status-active' : 'status-inactive'">
+                {{ customer.emailNotifications ? 'notifications_active' : 'notifications_off' }}
+              </mat-icon>
+              {{ customer.emailNotifications ? 'Enabled' : 'Disabled' }}
+            </span>
+          </div>
+          <div class="info-item">
+            <label>SMS Notifications</label>
+            <span>
+              <mat-icon [class]="customer.smsNotifications ? 'status-active' : 'status-inactive'">
+                {{ customer.smsNotifications ? 'sms' : 'sms_failed' }}
+              </mat-icon>
+              {{ customer.smsNotifications ? 'Enabled' : 'Disabled' }}
+            </span>
+          </div>
+          <div class="info-item">
+            <label>Promotional Emails</label>
+            <span>
+              <mat-icon [class]="customer.promotionalEmails ? 'status-active' : 'status-inactive'">
+                {{ customer.promotionalEmails ? 'mark_email_read' : 'mark_email_unread' }}
+              </mat-icon>
+              {{ customer.promotionalEmails ? 'Enabled' : 'Disabled' }}
+            </span>
+          </div>
+          <div class="info-item" *ngIf="customer.preferredLanguage">
+            <label>Preferred Language</label>
+            <span>{{ customer.preferredLanguage }}</span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Customer Metrics -->
+    <mat-card class="info-card">
+      <mat-card-header>
+        <mat-card-title>Customer Metrics</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="metrics-grid">
+          <div class="metric-item">
+            <div class="metric-value">{{ customer.totalOrders || 0 }}</div>
+            <div class="metric-label">Total Orders</div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-value">{{ formatCurrency(customer.totalSpent || 0) }}</div>
+            <div class="metric-label">Total Spent</div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-value">{{ customer.referralCount || 0 }}</div>
+            <div class="metric-label">Referrals</div>
+          </div>
+          <div class="metric-item" *ngIf="customer.lastOrderDate">
+            <div class="metric-value">{{ formatDate(customer.lastOrderDate) }}</div>
+            <div class="metric-label">Last Order</div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Timestamps -->
+    <mat-card class="info-card">
+      <mat-card-header>
+        <mat-card-title>Account Timeline</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="info-grid">
+          <div class="info-item">
+            <label>Member Since</label>
+            <span>{{ formatDateTime(customer.createdAt || '') }}</span>
+          </div>
+          <div class="info-item">
+            <label>Last Updated</label>
+            <span>{{ formatDateTime(customer.updatedAt || '') }}</span>
+          </div>
+          <div class="info-item" *ngIf="customer.lastLoginDate">
+            <label>Last Login</label>
+            <span>{{ formatDateTime(customer.lastLoginDate) }}</span>
+          </div>
+          <div class="info-item" *ngIf="customer.createdBy">
+            <label>Created By</label>
+            <span>{{ customer.createdBy }}</span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Notes -->
+    <mat-card class="info-card" *ngIf="customer.notes">
+      <mat-card-header>
+        <mat-card-title>Notes</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <p class="notes-content">{{ customer.notes }}</p>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>
+
+<!-- Loading State -->
+<div *ngIf="isLoading" class="loading-container">
+  <mat-spinner></mat-spinner>
+  <p>Loading customer details...</p>
+</div>

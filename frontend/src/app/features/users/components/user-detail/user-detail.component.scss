@@ -1,0 +1,339 @@
+.user-detail-container {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+
+  .detail-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+
+    .back-btn {
+      color: #1976d2;
+      margin-right: 16px;
+    }
+
+    h2 {
+      margin: 0;
+      color: #333;
+      font-weight: 500;
+      flex: 1;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 12px;
+
+      button {
+        min-width: 120px;
+      }
+    }
+  }
+
+  .loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px;
+    gap: 16px;
+
+    p {
+      color: #666;
+      margin: 0;
+    }
+  }
+
+  .user-content {
+    .summary-card {
+      margin-bottom: 24px;
+
+      .user-summary {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+
+        .user-avatar {
+          width: 80px;
+          height: 80px;
+          border-radius: 50%;
+          background: linear-gradient(45deg, #1976d2, #42a5f5);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          .avatar-icon {
+            font-size: 40px;
+            width: 40px;
+            height: 40px;
+            color: white;
+          }
+        }
+
+        .user-info {
+          flex: 1;
+
+          h3 {
+            margin: 0 0 8px 0;
+            color: #333;
+            font-weight: 500;
+            font-size: 24px;
+          }
+
+          .username {
+            margin: 0 0 12px 0;
+            color: #666;
+            font-size: 16px;
+          }
+
+          mat-chip-set {
+            mat-chip {
+              margin-right: 8px;
+            }
+          }
+        }
+
+        .user-actions {
+          .action-menu {
+            color: #666;
+          }
+        }
+      }
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 24px;
+      margin-bottom: 24px;
+
+      .info-card {
+        mat-card-header {
+          mat-card-title {
+            color: #333;
+            font-weight: 500;
+            font-size: 18px;
+          }
+        }
+
+        .info-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+
+          .info-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+
+            &:last-child {
+              border-bottom: none;
+            }
+
+            .label {
+              font-weight: 500;
+              color: #666;
+              min-width: 120px;
+            }
+
+            .value {
+              color: #333;
+              flex: 1;
+            }
+
+            .status-icon {
+              font-size: 18px;
+              width: 18px;
+              height: 18px;
+              color: #f44336;
+
+              &.verified {
+                color: #4caf50;
+              }
+            }
+          }
+        }
+
+        .security-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+
+          .security-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+
+            mat-icon {
+              font-size: 24px;
+              width: 24px;
+              height: 24px;
+              color: #666;
+
+              &.enabled {
+                color: #4caf50;
+              }
+
+              &.warning {
+                color: #ff9800;
+              }
+            }
+
+            .security-info {
+              flex: 1;
+
+              .security-title {
+                display: block;
+                font-weight: 500;
+                color: #333;
+                margin-bottom: 4px;
+              }
+
+              .security-status {
+                display: block;
+                color: #666;
+                font-size: 14px;
+
+                &.warning {
+                  color: #ff9800;
+                  font-weight: 500;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    .subordinates-card {
+      .subordinates-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 16px;
+
+        .subordinate-item {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          padding: 16px;
+          background: #f8f9fa;
+          border-radius: 8px;
+          border: 1px solid #e9ecef;
+
+          .subordinate-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #42a5f5, #1976d2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            mat-icon {
+              color: white;
+              font-size: 20px;
+              width: 20px;
+              height: 20px;
+            }
+          }
+
+          .subordinate-info {
+            flex: 1;
+
+            .subordinate-name {
+              display: block;
+              font-weight: 500;
+              color: #333;
+              margin-bottom: 4px;
+            }
+
+            .subordinate-role {
+              display: block;
+              color: #666;
+              font-size: 14px;
+            }
+          }
+
+          .subordinate-actions {
+            button {
+              color: #1976d2;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// Menu styling
+.delete-action {
+  color: #f44336 !important;
+
+  mat-icon {
+    color: #f44336 !important;
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .user-detail-container {
+    padding: 16px;
+
+    .detail-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 16px;
+
+      .header-actions {
+        width: 100%;
+        justify-content: flex-end;
+      }
+    }
+
+    .user-content {
+      .summary-card {
+        .user-summary {
+          flex-direction: column;
+          text-align: center;
+          gap: 16px;
+        }
+      }
+
+      .detail-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+
+      .subordinates-card {
+        .subordinates-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    }
+  }
+}
+
+// Status colors
+mat-chip {
+  &[color="primary"] {
+    background-color: #1976d2;
+    color: white;
+  }
+
+  &[color="accent"] {
+    background-color: #ff4081;
+    color: white;
+  }
+
+  &[color="warn"] {
+    background-color: #f44336;
+    color: white;
+  }
+}
