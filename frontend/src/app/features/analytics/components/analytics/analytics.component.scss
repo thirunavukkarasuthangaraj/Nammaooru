@@ -1,7 +1,9 @@
 .analytics-dashboard {
   padding: 24px;
-  background-color: #f5f5f5;
+  background-color: #f8f9fa;
   min-height: 100vh;
+  max-width: 1400px;
+  margin: 0 auto;
 
   .header-section {
     display: flex;
@@ -10,8 +12,14 @@
     margin-bottom: 32px;
     background: white;
     padding: 24px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    
+    @media (max-width: 768px) {
+      flex-direction: column;
+      gap: 16px;
+      align-items: flex-start;
+    }
 
     .header-left {
       h2 {
@@ -64,9 +72,17 @@
   .dashboard-content {
     .metrics-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 24px;
       margin-bottom: 32px;
+      
+      @media (max-width: 1200px) {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      
+      @media (max-width: 768px) {
+        grid-template-columns: 1fr;
+      }
 
       .metric-card {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -97,6 +113,10 @@
 
         mat-card-content {
           padding: 24px;
+          min-height: 140px;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
 
           .metric-header {
             display: flex;
@@ -121,6 +141,7 @@
             font-size: 32px;
             font-weight: 700;
             margin-bottom: 8px;
+            line-height: 1.2;
           }
 
           .metric-growth {
@@ -155,9 +176,13 @@
 
     .charts-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      grid-template-columns: repeat(2, 1fr);
       gap: 24px;
       margin-bottom: 32px;
+      
+      @media (max-width: 968px) {
+        grid-template-columns: 1fr;
+      }
 
       .chart-card {
         border-radius: 12px;
@@ -260,9 +285,10 @@
     }
 
     .data-table-card {
-      margin-bottom: 24px;
+      margin-bottom: 32px;
       border-radius: 12px;
       box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      overflow: hidden;
 
       mat-card-header {
         background: #f8f9fa;
@@ -468,52 +494,3 @@
   }
 }
 
-// Dark theme support
-@media (prefers-color-scheme: dark) {
-  .analytics-dashboard {
-    background-color: #121212;
-
-    .header-section {
-      background: #1e1e1e;
-      color: white;
-
-      .header-left {
-        h2 {
-          color: white;
-        }
-
-        p {
-          color: #aaa;
-        }
-      }
-    }
-
-    .loading-container,
-    .no-data {
-      background: #1e1e1e;
-      color: white;
-
-      p {
-        color: #aaa;
-      }
-    }
-
-    .data-table-card,
-    .chart-card {
-      background: #1e1e1e;
-      color: white;
-
-      mat-card-header {
-        background: #2a2a2a;
-
-        mat-card-title {
-          color: white;
-        }
-
-        mat-card-subtitle {
-          color: #aaa;
-        }
-      }
-    }
-  }
-}

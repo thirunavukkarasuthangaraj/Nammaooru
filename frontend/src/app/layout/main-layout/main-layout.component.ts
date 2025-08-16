@@ -153,16 +153,11 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
 
   get currentMenuItems() {
     const user = this.authService.getCurrentUser();
-    console.log('Current user in menu:', user);
-    console.log('User role:', user?.role);
     if (user?.role === 'SHOP_OWNER') {
-      console.log('Returning shop owner menu items');
       return this.shopOwnerMenuItems;
     } else if (user?.role === 'ADMIN') {
-      console.log('Returning admin menu items');
       return this.adminMenuItems;
     }
-    console.log('Returning empty menu items');
     return [];
   }
 
