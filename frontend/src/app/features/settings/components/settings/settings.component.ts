@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { SettingsService, Setting } from '../../../../core/services/settings.service';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-settings',
@@ -47,7 +48,12 @@ export class SettingsComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error loading settings:', error);
-        this.snackBar.open('Error loading settings', 'Close', { duration: 3000 });
+        Swal.fire({
+          title: 'Error!',
+          text: 'Failed to load settings. Please try again.',
+          icon: 'error',
+          confirmButtonText: 'OK'
+        });
         this.loading = false;
       }
     });
@@ -65,36 +71,67 @@ export class SettingsComponent implements OnInit {
       this.settingsService.updateMultipleSettings(formValues).subscribe({
         next: (updatedSettings) => {
           this.settings = updatedSettings;
-          this.snackBar.open('Settings updated successfully', 'Close', { duration: 3000 });
           this.loading = false;
+          Swal.fire({
+            title: 'Success!',
+            text: 'Settings updated successfully.',
+            icon: 'success',
+            confirmButtonText: 'OK'
+          });
         },
         error: (error) => {
           console.error('Error updating settings:', error);
-          this.snackBar.open('Error updating settings', 'Close', { duration: 3000 });
           this.loading = false;
+          Swal.fire({
+            title: 'Error!',
+            text: 'Failed to update settings. Please try again.',
+            icon: 'error',
+            confirmButtonText: 'OK'
+          });
         }
       });
     }
   }
 
   resetToDefaults(): void {
-    if (confirm('Are you sure you want to reset all settings to default values?')) {
-      this.loading = true;
-      
-      this.settingsService.resetToDefaults().subscribe({
-        next: (resetSettings) => {
-          this.settings = resetSettings;
-          this.settingsForm = this.createForm();
-          this.snackBar.open('Settings reset to defaults', 'Close', { duration: 3000 });
-          this.loading = false;
-        },
-        error: (error) => {
-          console.error('Error resetting settings:', error);
-          this.snackBar.open('Error resetting settings', 'Close', { duration: 3000 });
-          this.loading = false;
-        }
-      });
-    }
+    Swal.fire({
+      title: 'Reset Settings',
+      text: 'Are you sure you want to reset all settings to default values? This action cannot be undone.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Yes, reset',
+      cancelButtonText: 'Cancel'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        this.loading = true;
+        
+        this.settingsService.resetToDefaults().subscribe({
+          next: (resetSettings) => {
+            this.settings = resetSettings;
+            this.settingsForm = this.createForm();
+            this.loading = false;
+            Swal.fire({
+              title: 'Success!',
+              text: 'Settings have been reset to defaults.',
+              icon: 'success',
+              confirmButtonText: 'OK'
+            });
+          },
+          error: (error) => {
+            console.error('Error resetting settings:', error);
+            this.loading = false;
+            Swal.fire({
+              title: 'Error!',
+              text: 'Failed to reset settings. Please try again.',
+              icon: 'error',
+              confirmButtonText: 'OK'
+            });
+          }
+        });
+      }
+    });
   }
 
   isToggleSetting(key: string): boolean {

@@ -1,0 +1,233 @@
+<div class="shop-approvals-container">
+  <!-- Header -->
+  <div class="header-section">
+    <div class="header-content">
+      <h1 class="page-title">
+        <mat-icon>store_mall_directory</mat-icon>
+        Shop Approvals
+      </h1>
+      <p class="page-subtitle">Review and approve pending shop registrations</p>
+    </div>
+    <div class="header-actions">
+      <button mat-raised-button color="primary" (click)="refreshData()">
+        <mat-icon>refresh</mat-icon>
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- Statistics Cards -->
+  <div class="stats-section" *ngIf="stats">
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-content">
+          <div class="stat-icon pending">
+            <mat-icon>schedule</mat-icon>
+          </div>
+          <div class="stat-details">
+            <div class="stat-number">{{ stats.pending || 0 }}</div>
+            <div class="stat-label">Pending</div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-content">
+          <div class="stat-icon approved">
+            <mat-icon>check_circle</mat-icon>
+          </div>
+          <div class="stat-details">
+            <div class="stat-number">{{ stats.approved || 0 }}</div>
+            <div class="stat-label">Approved</div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-content">
+          <div class="stat-icon rejected">
+            <mat-icon>cancel</mat-icon>
+          </div>
+          <div class="stat-details">
+            <div class="stat-number">{{ stats.rejected || 0 }}</div>
+            <div class="stat-label">Rejected</div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-content">
+          <div class="stat-icon total">
+            <mat-icon>assessment</mat-icon>
+          </div>
+          <div class="stat-details">
+            <div class="stat-number">{{ stats.total || 0 }}</div>
+            <div class="stat-label">Total</div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Filters -->
+  <mat-card class="filters-card">
+    <mat-card-content>
+      <div class="filters-row">
+        <mat-form-field appearance="outline" class="filter-field">
+          <mat-label>Search shops</mat-label>
+          <input matInput 
+                 placeholder="Search by name, owner, email..." 
+                 [(ngModel)]="searchQuery"
+                 (keyup.enter)="applyFilters()">
+          <mat-icon matSuffix>search</mat-icon>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="filter-field">
+          <mat-label>Status</mat-label>
+          <mat-select [(ngModel)]="statusFilter" (selectionChange)="applyFilters()">
+            <mat-option value="">All Statuses</mat-option>
+            <mat-option value="PENDING">Pending</mat-option>
+            <mat-option value="APPROVED">Approved</mat-option>
+            <mat-option value="REJECTED">Rejected</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="filter-field">
+          <mat-label>Business Type</mat-label>
+          <mat-select [(ngModel)]="businessTypeFilter" (selectionChange)="applyFilters()">
+            <mat-option value="">All Types</mat-option>
+            <mat-option value="GROCERY">Grocery</mat-option>
+            <mat-option value="PHARMACY">Pharmacy</mat-option>
+            <mat-option value="RESTAURANT">Restaurant</mat-option>
+            <mat-option value="GENERAL">General</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <button mat-raised-button color="accent" (click)="clearFilters()">
+          <mat-icon>clear</mat-icon>
+          Clear Filters
+        </button>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Shops List -->
+  <mat-card class="shops-card">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>list</mat-icon>
+        Pending Shop Approvals
+        <span class="count-badge" *ngIf="totalElements > 0">({{ totalElements }})</span>
+      </mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <!-- Loading State -->
+      <div class="loading-container" *ngIf="loading">
+        <mat-spinner diameter="40"></mat-spinner>
+        <p>Loading shops...</p>
+      </div>
+
+      <!-- No Data State -->
+      <div class="no-data" *ngIf="!loading && shops.length === 0">
+        <mat-icon>store_mall_directory</mat-icon>
+        <h3>No shops found</h3>
+        <p>There are no shops matching your current filters.</p>
+        <button mat-raised-button color="primary" (click)="clearFilters()">
+          Clear Filters
+        </button>
+      </div>
+
+      <!-- Shops Grid -->
+      <div class="shops-grid" *ngIf="!loading && shops.length > 0">
+        <mat-card class="shop-card" *ngFor="let shop of shops">
+          <mat-card-header>
+            <div mat-card-avatar class="shop-avatar">
+              <img *ngIf="getShopLogo(shop)" [src]="getShopLogo(shop)" [alt]="shop.name" />
+              <mat-icon *ngIf="!getShopLogo(shop)">store</mat-icon>
+            </div>
+            <mat-card-title>{{ shop.name }}</mat-card-title>
+            <mat-card-subtitle>{{ shop.businessName }}</mat-card-subtitle>
+            <div class="status-chip">
+              <mat-chip [ngClass]="getStatusClass(shop.status)">
+                <mat-icon>{{ getStatusIcon(shop.status) }}</mat-icon>
+                {{ getStatusDisplay(shop.status) }}
+              </mat-chip>
+            </div>
+          </mat-card-header>
+          
+          <mat-card-content>
+            <div class="shop-details">
+              <div class="detail-row">
+                <mat-icon>person</mat-icon>
+                <span>{{ shop.ownerName }}</span>
+              </div>
+              <div class="detail-row" *ngIf="shop.ownerEmail">
+                <mat-icon>email</mat-icon>
+                <span>{{ shop.ownerEmail }}</span>
+              </div>
+              <div class="detail-row" *ngIf="shop.ownerPhone">
+                <mat-icon>phone</mat-icon>
+                <span>{{ shop.ownerPhone }}</span>
+              </div>
+              <div class="detail-row">
+                <mat-icon>location_on</mat-icon>
+                <span>{{ shop.city }}, {{ shop.state }}</span>
+              </div>
+              <div class="detail-row">
+                <mat-icon>business</mat-icon>
+                <mat-chip [ngClass]="getBusinessTypeClass(shop.businessType)">
+                  {{ getBusinessTypeDisplay(shop.businessType) }}
+                </mat-chip>
+              </div>
+              <div class="detail-row">
+                <mat-icon>calendar_today</mat-icon>
+                <span>{{ shop.createdAt | date:'MMM dd, yyyy' }}</span>
+              </div>
+            </div>
+          </mat-card-content>
+          
+          <mat-card-actions>
+            <button mat-button color="primary" (click)="viewShop(shop)">
+              <mat-icon>visibility</mat-icon>
+              View Details
+            </button>
+            <button mat-button 
+                    *ngIf="shop.status === 'PENDING'"
+                    color="primary" 
+                    (click)="approveShop(shop)">
+              <mat-icon>check_circle</mat-icon>
+              Approve
+            </button>
+            <button mat-button 
+                    *ngIf="shop.status === 'PENDING'"
+                    color="warn" 
+                    (click)="rejectShop(shop)">
+              <mat-icon>cancel</mat-icon>
+              Reject
+            </button>
+            <button mat-button color="accent" (click)="editShop(shop)">
+              <mat-icon>edit</mat-icon>
+              Edit
+            </button>
+          </mat-card-actions>
+        </mat-card>
+      </div>
+
+      <!-- Pagination -->
+      <mat-paginator 
+        *ngIf="!loading && shops.length > 0"
+        [pageSizeOptions]="[5, 10, 20, 50]"
+        [pageSize]="pageSize"
+        [length]="totalElements"
+        (page)="onPageChange($event)"
+        showFirstLastButtons>
+      </mat-paginator>
+    </mat-card-content>
+  </mat-card>
+</div>

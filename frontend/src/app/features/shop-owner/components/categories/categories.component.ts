@@ -2,6 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { ProductCategoryService } from '@core/services/product-category.service';
+import { finalize } from 'rxjs/operators';
 
 interface Category {
   id: number;
@@ -943,10 +945,13 @@ export class CategoriesComponent implements OnInit {
     { value: '#f97316', label: 'Orange Red' }
   ];
 
+  loading = false;
+
   constructor(
     private fb: FormBuilder,
     private dialog: MatDialog,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private categoryService: ProductCategoryService
   ) {
     this.quickAddForm = this.fb.group({
       name: ['', Validators.required],
@@ -961,9 +966,65 @@ export class CategoriesComponent implements OnInit {
   }
 
   loadCategories(): void {
-    // Categories are already loaded with mock data
-    console.log('Categories loaded:', this.categories.length);
+    this.loading = true;
+    this.categoryService.getCategories()
+      .pipe(
+        finalize(() => this.loading = false)
+      )
+      .subscribe({
+        next: (response: any) => {
+          // Map API response to Category interface
+          const categories = Array.isArray(response) ? response : (response.content || []);
+          this.categories = categories.map((cat: any) => ({
+            id: cat.id,
+            name: cat.name,
+            description: cat.description || '',
+            productCount: cat.productCount || 0,
+            isActive: cat.active !== false,
+            color: this.getRandomColor(),
+            icon: this.getCategoryIcon(cat.name),
+            createdAt: new Date(cat.createdAt || Date.now())
+          }));
+        },
+        error: (error) => {
+          console.error('Error loading categories:', error);
+          this.snackBar.open('Failed to load categories. Showing sample data.', 'Close', { duration: 3000 });
+          // Keep mock data on error
+        }
+      });
   }
+
+  private getRandomColor(): string {
+    const colors = [
+      '#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', 
+      '#ef4444', '#06b6d4', '#84cc16', '#f97316'
+    ];
+    return colors[Math.floor(Math.random() * colors.length)];
+  }
+
+  private getCategoryIcon(categoryName: string): string {
+    const iconMap: { [key: string]: string } = {
+      'groceries': 'shopping_basket',
+      'electronics': 'devices',
+      'fashion': 'style',
+      'home': 'home',
+      'kitchen': 'kitchen',
+      'health': 'health_and_safety',
+      'beauty': 'face_6',
+      'sports': 'sports',
+      'books': 'menu_book',
+      'toys': 'toys'
+    };
+    
+    const normalizedName = categoryName.toLowerCase();
+    for (const [key, icon] of Object.entries(iconMap)) {
+      if (normalizedName.includes(key)) {
+        return icon;
+      }
+    }
+    return 'category';
+  }
+
 
   openAddDialog(): void {
     this.showQuickAdd = true;

@@ -1,0 +1,366 @@
+<div class="analytics-dashboard">
+  <!-- Header Section -->
+  <div class="header-section">
+    <div class="header-left">
+      <h2>Analytics Dashboard</h2>
+      <p>Comprehensive business insights and metrics</p>
+    </div>
+    <div class="header-actions">
+      <mat-form-field appearance="outline" class="date-picker">
+        <mat-label>Start Date</mat-label>
+        <input matInput [matDatepicker]="startPicker" [(ngModel)]="dateRange.start" (dateChange)="onDateRangeChange()">
+        <mat-datepicker-toggle matSuffix [for]="startPicker"></mat-datepicker-toggle>
+        <mat-datepicker #startPicker></mat-datepicker>
+      </mat-form-field>
+      
+      <mat-form-field appearance="outline" class="date-picker">
+        <mat-label>End Date</mat-label>
+        <input matInput [matDatepicker]="endPicker" [(ngModel)]="dateRange.end" (dateChange)="onDateRangeChange()">
+        <mat-datepicker-toggle matSuffix [for]="endPicker"></mat-datepicker-toggle>
+        <mat-datepicker #endPicker></mat-datepicker>
+      </mat-form-field>
+
+      <button mat-raised-button color="primary" (click)="generateReport()">
+        <mat-icon>assessment</mat-icon>
+        Generate Report
+      </button>
+      
+      <button mat-raised-button color="accent" (click)="exportData()">
+        <mat-icon>download</mat-icon>
+        Export Data
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-container">
+    <mat-spinner></mat-spinner>
+    <p>Loading analytics data...</p>
+  </div>
+
+  <!-- Dashboard Content -->
+  <div *ngIf="!loading && dashboardMetrics" class="dashboard-content">
+    
+    <!-- Key Metrics Cards -->
+    <div class="metrics-grid">
+      <mat-card class="metric-card revenue">
+        <mat-card-content>
+          <div class="metric-header">
+            <mat-icon>monetization_on</mat-icon>
+            <span class="metric-label">Total Revenue</span>
+          </div>
+          <div class="metric-value">{{ formatCurrency(dashboardMetrics.totalRevenue) }}</div>
+          <div class="metric-growth positive">
+            <mat-icon>trending_up</mat-icon>
+            <span>{{ formatPercentage(dashboardMetrics.monthlyGrowth) }} vs last month</span>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="metric-card orders">
+        <mat-card-content>
+          <div class="metric-header">
+            <mat-icon>shopping_cart</mat-icon>
+            <span class="metric-label">Total Orders</span>
+          </div>
+          <div class="metric-value">{{ dashboardMetrics.totalOrders | number }}</div>
+          <div class="metric-secondary">
+            Avg Order Value: {{ formatCurrency(dashboardMetrics.averageOrderValue) }}
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="metric-card customers">
+        <mat-card-content>
+          <div class="metric-header">
+            <mat-icon>people</mat-icon>
+            <span class="metric-label">Total Customers</span>
+          </div>
+          <div class="metric-value">{{ dashboardMetrics.totalCustomers | number }}</div>
+          <div class="metric-secondary">
+            Retention: {{ formatPercentage(dashboardMetrics.customerRetentionRate) }}
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="metric-card shops">
+        <mat-card-content>
+          <div class="metric-header">
+            <mat-icon>store</mat-icon>
+            <span class="metric-label">Active Shops</span>
+          </div>
+          <div class="metric-value">{{ dashboardMetrics.totalShops | number }}</div>
+          <div class="metric-secondary">
+            Conversion: {{ formatPercentage(dashboardMetrics.conversionRate) }}
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Charts Section - Temporarily disabled -->
+    <div class="charts-grid">
+      <!-- Revenue Chart Placeholder -->
+      <mat-card class="chart-card">
+        <mat-card-header>
+          <mat-card-title>Revenue Trend</mat-card-title>
+          <mat-card-subtitle>Weekly revenue performance</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="chart-placeholder">
+            <mat-icon>bar_chart</mat-icon>
+            <p>Revenue trend chart will be displayed here</p>
+            <div class="trend-data">
+              <div *ngFor="let item of dashboardMetrics.revenueData" class="trend-item">
+                <span class="period">{{ item.period }}:</span>
+                <span class="value">{{ formatCurrency(item.revenue) }}</span>
+                <span class="growth" [class.positive]="item.growthPercentage > 0" [class.negative]="item.growthPercentage < 0">
+                  ({{ formatPercentage(item.growthPercentage) }})
+                </span>
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Orders Chart Placeholder -->
+      <mat-card class="chart-card">
+        <mat-card-header>
+          <mat-card-title>Orders Trend</mat-card-title>
+          <mat-card-subtitle>Weekly order count</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="chart-placeholder">
+            <mat-icon>trending_up</mat-icon>
+            <p>Orders trend chart will be displayed here</p>
+            <div class="trend-data">
+              <div *ngFor="let item of dashboardMetrics.orderData" class="trend-item">
+                <span class="period">{{ item.period }}:</span>
+                <span class="value">{{ item.orderCount }}</span>
+                <span class="growth" [class.positive]="item.growthPercentage > 0" [class.negative]="item.growthPercentage < 0">
+                  ({{ formatPercentage(item.growthPercentage) }})
+                </span>
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Category Distribution Placeholder -->
+      <mat-card class="chart-card">
+        <mat-card-header>
+          <mat-card-title>Revenue by Category</mat-card-title>
+          <mat-card-subtitle>Category-wise distribution</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="chart-placeholder">
+            <mat-icon>pie_chart</mat-icon>
+            <p>Category distribution chart will be displayed here</p>
+            <div class="category-summary">
+              <div *ngFor="let item of dashboardMetrics.categoryData" class="category-item">
+                <span class="category-name">{{ item.categoryName }}:</span>
+                <span class="category-revenue">{{ formatCurrency(item.revenue) }}</span>
+                <span class="market-share">({{ formatPercentage(item.marketShare) }})</span>
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Top Performing Shops -->
+    <mat-card class="data-table-card">
+      <mat-card-header>
+        <mat-card-title>Top Performing Shops</mat-card-title>
+        <mat-card-subtitle>Highest revenue generating shops</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <table mat-table [dataSource]="dashboardMetrics.topShops" class="analytics-table">
+          <!-- Shop Name Column -->
+          <ng-container matColumnDef="shopName">
+            <th mat-header-cell *matHeaderCellDef>Shop Name</th>
+            <td mat-cell *matCellDef="let shop">
+              <div class="shop-info">
+                <span class="shop-name">{{ shop.shopName }}</span>
+                <span class="shop-owner">by {{ shop.shopOwner }}</span>
+              </div>
+            </td>
+          </ng-container>
+
+          <!-- Revenue Column -->
+          <ng-container matColumnDef="revenue">
+            <th mat-header-cell *matHeaderCellDef>Revenue</th>
+            <td mat-cell *matCellDef="let shop">{{ formatCurrency(shop.revenue) }}</td>
+          </ng-container>
+
+          <!-- Orders Column -->
+          <ng-container matColumnDef="orderCount">
+            <th mat-header-cell *matHeaderCellDef>Orders</th>
+            <td mat-cell *matCellDef="let shop">{{ shop.orderCount | number }}</td>
+          </ng-container>
+
+          <!-- Customers Column -->
+          <ng-container matColumnDef="customerCount">
+            <th mat-header-cell *matHeaderCellDef>Customers</th>
+            <td mat-cell *matCellDef="let shop">{{ shop.customerCount | number }}</td>
+          </ng-container>
+
+          <!-- Rating Column -->
+          <ng-container matColumnDef="rating">
+            <th mat-header-cell *matHeaderCellDef>Rating</th>
+            <td mat-cell *matCellDef="let shop">
+              <div class="rating">
+                <mat-icon>star</mat-icon>
+                <span>{{ shop.rating }}</span>
+              </div>
+            </td>
+          </ng-container>
+
+          <!-- Growth Column -->
+          <ng-container matColumnDef="growth">
+            <th mat-header-cell *matHeaderCellDef>Growth</th>
+            <td mat-cell *matCellDef="let shop">
+              <div class="growth-indicator" [class.positive]="shop.growthPercentage > 0" [class.negative]="shop.growthPercentage < 0">
+                <mat-icon>{{ shop.growthPercentage > 0 ? 'trending_up' : shop.growthPercentage < 0 ? 'trending_down' : 'trending_flat' }}</mat-icon>
+                <span>{{ formatPercentage(shop.growthPercentage) }}</span>
+              </div>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="['shopName', 'revenue', 'orderCount', 'customerCount', 'rating', 'growth']"></tr>
+          <tr mat-row *matRowDef="let row; columns: ['shopName', 'revenue', 'orderCount', 'customerCount', 'rating', 'growth'];"></tr>
+        </table>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Top Products -->
+    <mat-card class="data-table-card">
+      <mat-card-header>
+        <mat-card-title>Top Products</mat-card-title>
+        <mat-card-subtitle>Best selling products by revenue</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <table mat-table [dataSource]="dashboardMetrics.topProducts" class="analytics-table">
+          <!-- Product Name Column -->
+          <ng-container matColumnDef="productName">
+            <th mat-header-cell *matHeaderCellDef>Product</th>
+            <td mat-cell *matCellDef="let product">
+              <div class="product-info">
+                <span class="product-name">{{ product.productName }}</span>
+                <span class="product-category">{{ product.category }}</span>
+              </div>
+            </td>
+          </ng-container>
+
+          <!-- Quantity Sold Column -->
+          <ng-container matColumnDef="quantitySold">
+            <th mat-header-cell *matHeaderCellDef>Sold</th>
+            <td mat-cell *matCellDef="let product">{{ product.quantitySold | number }}</td>
+          </ng-container>
+
+          <!-- Revenue Column -->
+          <ng-container matColumnDef="productRevenue">
+            <th mat-header-cell *matHeaderCellDef>Revenue</th>
+            <td mat-cell *matCellDef="let product">{{ formatCurrency(product.revenue) }}</td>
+          </ng-container>
+
+          <!-- Stock Level Column -->
+          <ng-container matColumnDef="stockLevel">
+            <th mat-header-cell *matHeaderCellDef>Stock</th>
+            <td mat-cell *matCellDef="let product">
+              <div class="stock-indicator" [class.low]="product.stockLevel < 50" [class.medium]="product.stockLevel >= 50 && product.stockLevel < 100" [class.high]="product.stockLevel >= 100">
+                {{ product.stockLevel }}
+              </div>
+            </td>
+          </ng-container>
+
+          <!-- Conversion Rate Column -->
+          <ng-container matColumnDef="conversionRate">
+            <th mat-header-cell *matHeaderCellDef>Conversion</th>
+            <td mat-cell *matCellDef="let product">{{ formatPercentage(product.conversionRate) }}</td>
+          </ng-container>
+
+          <!-- Trend Column -->
+          <ng-container matColumnDef="trend">
+            <th mat-header-cell *matHeaderCellDef>Trend</th>
+            <td mat-cell *matCellDef="let product">
+              <div class="trend-indicator" [class]="product.trendDirection.toLowerCase()">
+                <mat-icon>{{ product.trendDirection === 'UP' ? 'trending_up' : product.trendDirection === 'DOWN' ? 'trending_down' : 'trending_flat' }}</mat-icon>
+                <span>{{ product.trendDirection }}</span>
+              </div>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="['productName', 'quantitySold', 'productRevenue', 'stockLevel', 'conversionRate', 'trend']"></tr>
+          <tr mat-row *matRowDef="let row; columns: ['productName', 'quantitySold', 'productRevenue', 'stockLevel', 'conversionRate', 'trend'];"></tr>
+        </table>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Category Performance -->
+    <mat-card class="data-table-card">
+      <mat-card-header>
+        <mat-card-title>Category Performance</mat-card-title>
+        <mat-card-subtitle>Revenue breakdown by category</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <table mat-table [dataSource]="dashboardMetrics.categoryData" class="analytics-table">
+          <!-- Category Name Column -->
+          <ng-container matColumnDef="categoryName">
+            <th mat-header-cell *matHeaderCellDef>Category</th>
+            <td mat-cell *matCellDef="let category">{{ category.categoryName }}</td>
+          </ng-container>
+
+          <!-- Revenue Column -->
+          <ng-container matColumnDef="categoryRevenue">
+            <th mat-header-cell *matHeaderCellDef>Revenue</th>
+            <td mat-cell *matCellDef="let category">{{ formatCurrency(category.revenue) }}</td>
+          </ng-container>
+
+          <!-- Order Count Column -->
+          <ng-container matColumnDef="categoryOrders">
+            <th mat-header-cell *matHeaderCellDef>Orders</th>
+            <td mat-cell *matCellDef="let category">{{ category.orderCount | number }}</td>
+          </ng-container>
+
+          <!-- Market Share Column -->
+          <ng-container matColumnDef="marketShare">
+            <th mat-header-cell *matHeaderCellDef>Market Share</th>
+            <td mat-cell *matCellDef="let category">
+              <div class="market-share">
+                <div class="progress-bar">
+                  <div class="progress-fill" [style.width.%]="category.marketShare"></div>
+                </div>
+                <span>{{ formatPercentage(category.marketShare) }}</span>
+              </div>
+            </td>
+          </ng-container>
+
+          <!-- Growth Column -->
+          <ng-container matColumnDef="categoryGrowth">
+            <th mat-header-cell *matHeaderCellDef>Growth</th>
+            <td mat-cell *matCellDef="let category">
+              <div class="growth-indicator" [class.positive]="category.growthPercentage > 0" [class.negative]="category.growthPercentage < 0">
+                <mat-icon>{{ category.growthPercentage > 0 ? 'trending_up' : category.growthPercentage < 0 ? 'trending_down' : 'trending_flat' }}</mat-icon>
+                <span>{{ formatPercentage(category.growthPercentage) }}</span>
+              </div>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="['categoryName', 'categoryRevenue', 'categoryOrders', 'marketShare', 'categoryGrowth']"></tr>
+          <tr mat-row *matRowDef="let row; columns: ['categoryName', 'categoryRevenue', 'categoryOrders', 'marketShare', 'categoryGrowth'];"></tr>
+        </table>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- No Data State -->
+  <div *ngIf="!loading && !dashboardMetrics" class="no-data">
+    <mat-icon>analytics</mat-icon>
+    <h3>No Analytics Data Available</h3>
+    <p>Analytics data will be displayed here once orders and transactions are processed.</p>
+    <button mat-raised-button color="primary" (click)="loadDashboardMetrics()">
+      <mat-icon>refresh</mat-icon>
+      Refresh Data
+    </button>
+  </div>
+</div>

@@ -38,12 +38,11 @@ public class WebConfig implements WebMvcConfigurer {
     public void addCorsMappings(CorsRegistry registry) {
         String[] originsArray = allowedOrigins.split(",");
         String[] methodsArray = allowedMethods.split(",");
-        String[] headersArray = allowedHeaders.split(",");
         
         registry.addMapping("/**")
                 .allowedOriginPatterns(originsArray)
                 .allowedMethods(methodsArray)
-                .allowedHeaders(headersArray)
+                .allowedHeaders("*")
                 .allowCredentials(allowCredentials);
     }
 

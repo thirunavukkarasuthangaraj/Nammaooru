@@ -72,15 +72,13 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     {
       category: 'Order Management',
       items: [
-        { title: 'All Orders', icon: 'receipt_long', route: '/orders', badge: '12' },
-        { title: 'Order Processing', icon: 'pending_actions', route: '/orders?status=PENDING', badge: '5' }
+        { title: 'All Orders', icon: 'receipt_long', route: '/orders', badge: '12' }
       ]
     },
     {
       category: 'Shop Management',
       items: [
         { title: 'Shop Master', icon: 'store', route: '/shops/master', badge: null },
-        { title: 'All Shops', icon: 'store_mall_directory', route: '/shops', badge: 'new' },
         { title: 'Shop Approvals', icon: 'check_circle', route: '/shops/approvals', badge: '3' }
       ]
     },
@@ -88,24 +86,21 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       category: 'Product Management',
       items: [
         { title: 'Product Master', icon: 'inventory_2', route: '/products/master', badge: null },
-        { title: 'Categories', icon: 'category', route: '/products/categories', badge: null },
-        { title: 'Bulk Assignment', icon: 'assignment', route: '/products/bulk-assignment', badge: null }
+        { title: 'Categories', icon: 'category', route: '/products/categories', badge: null }
       ]
     },
     {
       category: 'User Management',
       items: [
         { title: 'Users', icon: 'people', route: '/users', badge: null },
-        { title: 'Customers', icon: 'person', route: '/admin/customers', badge: null },
-        { title: 'Roles & Permissions', icon: 'security', route: '/users/roles', badge: null }
+        { title: 'Customers', icon: 'person', route: '/admin/customers', badge: null }
       ]
     },
     {
       category: 'System',
       items: [
         { title: 'Settings', icon: 'settings', route: '/settings', badge: null },
-        { title: 'Notifications', icon: 'notifications', route: '/notifications', badge: '8' },
-        { title: 'System Reports', icon: 'analytics', route: '/reports/system', badge: null }
+        { title: 'Notifications', icon: 'notifications', route: '/notifications', badge: '8' }
       ]
     }
   ];
@@ -115,7 +110,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       category: 'Main',
       items: [
         { title: 'Dashboard', icon: 'dashboard', route: '/shop-owner', badge: null },
-        { title: 'Shop Overview', icon: 'storefront', route: '/shop-owner/overview', badge: null }
+        { title: 'Shop Overview', icon: 'store', route: '/shop-owner/overview', badge: null }
       ]
     },
     {
@@ -123,63 +118,51 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       items: [
         { title: 'My Products', icon: 'inventory', route: '/shop-owner/products', badge: null },
         { title: 'Add Product', icon: 'add_box', route: '/shop-owner/products/add', badge: null },
-        { title: 'Browse Products', icon: 'shopping_basket', route: '/shop-owner/products/browse', badge: null },
-        { title: 'Bulk Upload', icon: 'cloud_upload', route: '/shop-owner/products/bulk-upload', badge: null },
-        { title: 'Categories', icon: 'category', route: '/shop-owner/products/categories', badge: null }
-      ]
-    },
-    {
-      category: 'Inventory',
-      items: [
-        { title: 'Stock Management', icon: 'inventory_2', route: '/shop-owner/inventory', badge: null },
-        { title: 'Low Stock Alerts', icon: 'warning', route: '/shop-owner/inventory/alerts', badge: '8' },
-        { title: 'Pricing Management', icon: 'local_offer', route: '/shop-owner/inventory/pricing', badge: null }
+        { title: 'Categories', icon: 'category', route: '/shop-owner/products/categories', badge: null },
+        { title: 'Bulk Upload', icon: 'cloud_upload', route: '/shop-owner/products/bulk-upload', badge: null }
       ]
     },
     {
       category: 'Orders & Sales',
       items: [
-        { title: 'My Orders', icon: 'receipt_long', route: '/orders', badge: '5' },
-        { title: 'Customers', icon: 'people', route: '/shop-owner/customers', badge: null },
-        { title: 'Sales Analytics', icon: 'trending_up', route: '/analytics', badge: null },
-        { title: 'Promotions', icon: 'local_offer', route: '/shop-owner/promotions', badge: 'new' }
+        { title: 'My Orders', icon: 'receipt_long', route: '/orders', badge: null },
+        { title: 'Sales Analytics', icon: 'trending_up', route: '/analytics', badge: null }
+      ]
+    },
+    {
+      category: 'Inventory',
+      items: [
+        { title: 'Stock Management', icon: 'inventory_2', route: '/shop-owner/inventory', badge: null }
+      ]
+    },
+    {
+      category: 'Customer & Management',
+      items: [
+        { title: 'Customer Management', icon: 'people', route: '/shop-owner/customers', badge: null },
+        { title: 'Notifications', icon: 'notifications', route: '/shop-owner/notifications', badge: this.getNotificationCount().toString() }
       ]
     },
     {
       category: 'Shop Management',
       items: [
-        { title: 'Shop Profile', icon: 'store', route: '/shop-owner/shop/profile', badge: null },
-        { title: 'Settings', icon: 'settings', route: '/settings', badge: null },
-        { title: 'Business Hours', icon: 'schedule', route: '/shop-owner/business-hours', badge: null },
-        { title: 'Delivery Settings', icon: 'local_shipping', route: '/shop-owner/delivery', badge: null }
-      ]
-    },
-    {
-      category: 'Reports',
-      items: [
-        { title: 'Performance', icon: 'assessment', route: '/shop-owner/reports/performance', badge: null },
-        { title: 'Inventory Reports', icon: 'inventory', route: '/shop-owner/reports/inventory', badge: null },
-        { title: 'Financial Reports', icon: 'account_balance', route: '/shop-owner/reports/financial', badge: null }
-      ]
-    },
-    {
-      category: 'Account',
-      items: [
-        { title: 'Profile', icon: 'person', route: '/shop-owner/profile', badge: null },
-        { title: 'Notifications', icon: 'notifications', route: '/notifications', badge: '3' },
-        { title: 'Help', icon: 'help', route: '/shop-owner/help', badge: null },
-        { title: 'Feedback', icon: 'feedback', route: '/shop-owner/feedback', badge: null }
+        { title: 'Shop Profile', icon: 'business', route: '/shop-owner/shop/profile', badge: null },
+        { title: 'Settings', icon: 'settings', route: '/shop-owner/settings', badge: null }
       ]
     }
   ];
 
   get currentMenuItems() {
     const user = this.authService.getCurrentUser();
+    console.log('Current user in menu:', user);
+    console.log('User role:', user?.role);
     if (user?.role === 'SHOP_OWNER') {
+      console.log('Returning shop owner menu items');
       return this.shopOwnerMenuItems;
     } else if (user?.role === 'ADMIN') {
+      console.log('Returning admin menu items');
       return this.adminMenuItems;
     }
+    console.log('Returning empty menu items');
     return [];
   }
 
@@ -312,11 +295,16 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     this.authService.logout();
   }
 
+  // Notification methods
+  getNotificationCount(): number {
+    return this.notifications.filter(n => !n.read).length;
+  }
+
   // Page title methods
   getCurrentPageTitle(): string {
     const url = this.router.url;
     const allItems = this.currentMenuItems.flatMap(section => section.items);
-    const menuItem = allItems.find(item => url.startsWith(item.route));
+    const menuItem = allItems.find((item: any) => url.startsWith(item.route));
     return menuItem ? menuItem.title : 'NammaOoru Shop Management';
   }
 

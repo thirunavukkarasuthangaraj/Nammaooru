@@ -9,11 +9,18 @@ import { ShopDetailsComponent } from './components/shop-details/shop-details.com
 import { ShopFormComponent } from './components/shop-form/shop-form.component';
 import { ShopMasterComponent } from './components/shop-master/shop-master.component';
 import { ShopApprovalComponent } from './components/shop-approval/shop-approval.component';
+import { ShopApprovalsListComponent } from './components/shop-approvals-list/shop-approvals-list.component';
 
 const routes: Routes = [
   {
     path: '',
     component: ShopListComponent
+  },
+  {
+    path: 'approvals',
+    component: ShopApprovalsListComponent,
+    canActivate: [AuthGuard, RoleGuard],
+    data: { roles: [UserRole.ADMIN] }
   },
   {
     path: 'master',

@@ -56,7 +56,7 @@ export class ExampleComponent implements OnInit {
   readonly VALIDATION_MESSAGES = VALIDATION_MESSAGES;
   
   // ✅ CORRECT: Use constants for component properties
-  shopForm: FormGroup;
+  shopForm!: FormGroup;
   shop: any = { status: SHOP_STATUS.PENDING };
   
   constructor(

@@ -140,14 +140,90 @@ export class ShopService {
     );
   }
 
+  // Get pending shops for approval (admin only)
+  getPendingShops(params?: any): Observable<ShopResponse> {
+    let httpParams = new HttpParams();
+    
+    if (params) {
+      Object.keys(params).forEach(key => {
+        if (params[key] !== null && params[key] !== undefined && params[key] !== '') {
+          httpParams = httpParams.set(key, params[key].toString());
+        }
+      });
+    }
+
+    return this.http.get<ApiResponse<any>>(`${this.API_URL}/approvals`, { params: httpParams }).pipe(
+      map(apiResponse => {
+        if (ApiResponseHelper.isError(apiResponse)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(apiResponse));
+        }
+        const shopPageResponse = apiResponse.data;
+        return {
+          content: shopPageResponse.content.map((shop: any) => this.transformShop(shop)),
+          totalElements: shopPageResponse.totalElements,
+          totalPages: shopPageResponse.totalPages,
+          size: shopPageResponse.size,
+          number: shopPageResponse.page,
+          first: shopPageResponse.first,
+          last: shopPageResponse.last,
+          hasNext: shopPageResponse.hasNext,
+          hasPrevious: shopPageResponse.hasPrevious
+        };
+      }),
+      catchError(error => {
+        console.error('Error fetching pending shops:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  // Get approval statistics (admin only)
+  getApprovalStats(): Observable<any> {
+    return this.http.get<ApiResponse<any>>(`${this.API_URL}/approvals/stats`).pipe(
+      map(apiResponse => {
+        if (ApiResponseHelper.isError(apiResponse)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(apiResponse));
+        }
+        return apiResponse.data;
+      }),
+      catchError(error => {
+        console.error('Error fetching approval stats:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
   // Approve shop (admin only)
-  approveShop(id: number): Observable<Shop> {
-    return this.http.put<Shop>(`${this.API_URL}/${id}/approve`, {});
+  approveShop(id: number, notes?: string): Observable<Shop> {
+    const body = notes ? { notes } : {};
+    return this.http.put<ApiResponse<any>>(`${this.API_URL}/approvals/${id}/approve`, body).pipe(
+      map(apiResponse => {
+        if (ApiResponseHelper.isError(apiResponse)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(apiResponse));
+        }
+        return this.transformShop(apiResponse.data);
+      }),
+      catchError(error => {
+        console.error('Error approving shop:', error);
+        return throwError(() => error);
+      })
+    );
   }
 
   // Reject shop (admin only)
   rejectShop(id: number, reason: string): Observable<Shop> {
-    return this.http.put<Shop>(`${this.API_URL}/${id}/reject`, { reason });
+    return this.http.put<ApiResponse<any>>(`${this.API_URL}/approvals/${id}/reject`, { reason }).pipe(
+      map(apiResponse => {
+        if (ApiResponseHelper.isError(apiResponse)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(apiResponse));
+        }
+        return this.transformShop(apiResponse.data);
+      }),
+      catchError(error => {
+        console.error('Error rejecting shop:', error);
+        return throwError(() => error);
+      })
+    );
   }
 
   // Get current user's shop (shop owner only)
@@ -285,6 +361,38 @@ export class ShopService {
       catchError(error => {
         console.error('Error fetching new customer count:', error);
         return throwError(() => 0);
+      })
+    );
+  }
+
+  // Get shop by ID
+  getShopById(id: number): Observable<any> {
+    return this.http.get<ApiResponse<any>>(`${this.API_URL}/${id}`).pipe(
+      map(apiResponse => {
+        if (ApiResponseHelper.isError(apiResponse)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(apiResponse));
+        }
+        return apiResponse.data;
+      }),
+      catchError(error => {
+        console.error('Error fetching shop by ID:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  // Get shop analytics
+  getShopAnalytics(shopId: number): Observable<any> {
+    return this.http.get<ApiResponse<any>>(`${this.API_URL}/${shopId}/analytics`).pipe(
+      map(apiResponse => {
+        if (ApiResponseHelper.isError(apiResponse)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(apiResponse));
+        }
+        return apiResponse.data;
+      }),
+      catchError(error => {
+        console.error('Error fetching shop analytics:', error);
+        return throwError(() => error);
       })
     );
   }

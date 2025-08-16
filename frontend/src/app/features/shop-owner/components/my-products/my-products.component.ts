@@ -7,6 +7,9 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { FormControl } from '@angular/forms';
 import { Router } from '@angular/router';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { ShopProductService } from '@core/services/shop-product.service';
+import { AuthService } from '@core/services/auth.service';
+import { finalize } from 'rxjs/operators';
 
 interface Product {
   id: number;
@@ -148,6 +151,12 @@ interface Product {
           </div>
         </mat-card-content>
       </mat-card>
+
+      <!-- Loading State -->
+      <div *ngIf="loading" class="loading-container">
+        <mat-spinner></mat-spinner>
+        <p>Loading products...</p>
+      </div>
 
       <!-- Products Table View -->
       <mat-card class="products-table-card" *ngIf="viewMode === 'table'">
@@ -724,16 +733,81 @@ export class MyProductsComponent implements OnInit {
     }
   ];
 
+  loading = false;
+
   constructor(
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
-    private router: Router
+    private router: Router,
+    private shopProductService: ShopProductService,
+    private authService: AuthService
   ) {
-    this.dataSource.data = this.products;
+    // Initialize with empty data, will load from API
+    this.dataSource.data = [];
   }
 
   ngOnInit(): void {
     this.setupSearch();
+    this.loadProducts();
+  }
+
+  loadProducts(): void {
+    this.loading = true;
+    const currentUser = this.authService.getCurrentUser();
+    
+    if (!currentUser || !currentUser.shopId) {
+      this.snackBar.open('Shop information not found', 'Close', { duration: 3000 });
+      this.loading = false;
+      // Fallback to mock data if no shop ID
+      this.dataSource.data = this.products;
+      return;
+    }
+
+    this.shopProductService.getShopProducts(currentUser.shopId, 0, 100)
+      .pipe(
+        finalize(() => this.loading = false)
+      )
+      .subscribe({
+        next: (response) => {
+          // Map API response to our Product interface
+          const apiProducts = response.content.map((item: any) => ({
+            id: item.id,
+            name: item.masterProduct.name,
+            category: item.masterProduct.category?.name || 'Uncategorized',
+            price: item.sellingPrice,
+            stock: item.stockQuantity,
+            unit: item.unit || 'piece',
+            status: item.status?.toLowerCase() || 'active',
+            image: item.masterProduct.imageUrl || this.getDefaultImage(item.masterProduct.name),
+            lastUpdated: new Date(item.updatedAt || item.createdAt),
+            totalSales: item.totalSales || 0,
+            lowStockThreshold: item.lowStockThreshold || 10
+          }));
+          
+          this.products = apiProducts;
+          this.dataSource.data = this.products;
+        },
+        error: (error) => {
+          console.error('Error loading products:', error);
+          this.snackBar.open('Failed to load products. Showing sample data.', 'Close', { duration: 3000 });
+          // Fallback to mock data on error
+          this.dataSource.data = this.products;
+        }
+      });
+  }
+
+  private getDefaultImage(productName: string): string {
+    // Generate a simple default image based on product name
+    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57', '#FF9FF3'];
+    const color = colors[productName.length % colors.length];
+    const initials = productName.split(' ').map(word => word[0]).join('').substring(0, 2);
+    
+    return `data:image/svg+xml;base64,${btoa(`
+      <svg width="150" height="150" viewBox="0 0 150 150" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="150" height="150" fill="${color}"/>
+        <text x="75" y="75" text-anchor="middle" dominant-baseline="central" fill="white" font-family="Arial" font-size="24" font-weight="bold">${initials}</text>
+      </svg>
+    `)}`;
   }
 
   ngAfterViewInit(): void {

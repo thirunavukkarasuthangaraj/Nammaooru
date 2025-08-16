@@ -26,6 +26,7 @@ export interface User {
   email: string;
   role: UserRole;
   isActive: boolean;
+  shopId?: number;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -144,4 +144,70 @@ export class NotificationService {
       })
     );
   }
+
+  clearAllNotifications(): Observable<void> {
+    return this.http.delete<ApiResponse<void>>(`${this.API_URL}/clear-all`).pipe(
+      map(apiResponse => {
+        if (ApiResponseHelper.isError(apiResponse)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(apiResponse));
+        }
+      }),
+      catchError(error => {
+        console.error('Error clearing all notifications:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  sendTestNotification(notificationData: any): Observable<void> {
+    return this.http.post<ApiResponse<void>>(`${this.API_URL}/test`, notificationData).pipe(
+      map(apiResponse => {
+        if (ApiResponseHelper.isError(apiResponse)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(apiResponse));
+        }
+      }),
+      catchError(error => {
+        console.error('Error sending test notification:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  exportNotifications(format: string): Observable<Blob> {
+    const params = new HttpParams().set('format', format);
+    return this.http.get(`${this.API_URL}/export`, { 
+      params, 
+      responseType: 'blob' 
+    }).pipe(
+      catchError(error => {
+        console.error('Error exporting notifications:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  getShopNotifications(page: number = 0, size: number = 20): Observable<{ content: Notification[], totalElements: number }> {
+    const params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString());
+
+    return this.http.get<ApiResponse<any>>(`${this.API_URL}/shop`, { params }).pipe(
+      map(apiResponse => {
+        if (ApiResponseHelper.isError(apiResponse)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(apiResponse));
+        }
+        return {
+          content: (apiResponse.data?.content || []).map((notification: any) => ({
+            ...notification,
+            createdAt: new Date(notification.createdAt)
+          })),
+          totalElements: apiResponse.data?.totalElements || 0
+        };
+      }),
+      catchError(error => {
+        console.error('Error fetching shop notifications:', error);
+        return throwError(() => error);
+      })
+    );
+  }
 }

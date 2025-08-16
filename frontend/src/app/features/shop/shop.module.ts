@@ -41,6 +41,7 @@ import { ShopMasterComponent } from './components/shop-master/shop-master.compon
 import { DocumentUploadComponent } from './components/document-upload/document-upload.component';
 import { SimpleDocumentUploadComponent } from './components/simple-document-upload/simple-document-upload.component';
 import { ShopApprovalComponent } from './components/shop-approval/shop-approval.component';
+import { ShopApprovalsListComponent } from './components/shop-approvals-list/shop-approvals-list.component';
 
 @NgModule({
   declarations: [
@@ -54,7 +55,8 @@ import { ShopApprovalComponent } from './components/shop-approval/shop-approval.
     ShopMasterComponent,
     DocumentUploadComponent,
     SimpleDocumentUploadComponent,
-    ShopApprovalComponent
+    ShopApprovalComponent,
+    ShopApprovalsListComponent
   ],
   imports: [
     CommonModule,

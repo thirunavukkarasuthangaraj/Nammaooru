@@ -1,39 +1,37 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
-import { OrderService } from '../../../../core/services/order.service';
+import { OrderService, OrderResponse } from '../../../../core/services/order.service';
 import { OrderStatusDialogComponent } from '../order-status-dialog/order-status-dialog.component';
-
-export interface Order {
-  id: number;
-  orderNumber: string;
-  customerName: string;
-  shopName: string;
-  status: string;
-  totalAmount: number;
-  createdAt: string;
-  itemCount: number;
-  paymentStatus: string;
-}
+import Swal from 'sweetalert2';
+import { interval, Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-order-list',
   templateUrl: './order-list.component.html',
   styleUrls: ['./order-list.component.scss']
 })
-export class OrderListComponent implements OnInit {
+export class OrderListComponent implements OnInit, OnDestroy {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
-  displayedColumns: string[] = ['orderNumber', 'customerName', 'shopName', 'status', 'totalAmount', 'createdAt', 'actions'];
-  dataSource = new MatTableDataSource<Order>();
+  displayedColumns: string[] = ['orderNumber', 'customerName', 'shopName', 'status', 'paymentStatus', 'totalAmount', 'createdAt', 'actions'];
+  dataSource = new MatTableDataSource<OrderResponse>();
   loading = false;
   searchText = '';
   statusFilter = '';
+  totalOrders = 0;
+  pageSize = 10;
+  currentPage = 0;
+  
+  // Real-time updates
+  autoRefreshEnabled = true;
+  refreshInterval = 60000; // 60 seconds for orders
+  private refreshSubscription?: Subscription;
   
   statusOptions = [
     { value: '', label: 'All Statuses' },
@@ -55,6 +53,11 @@ export class OrderListComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadOrders();
+    this.startAutoRefresh();
+  }
+
+  ngOnDestroy(): void {
+    this.stopAutoRefresh();
   }
 
   ngAfterViewInit(): void {
@@ -64,14 +67,20 @@ export class OrderListComponent implements OnInit {
 
   loadOrders(): void {
     this.loading = true;
-    this.orderService.getAllOrders(0, 100).subscribe({
+    this.orderService.getAllOrders(this.currentPage, this.pageSize).subscribe({
       next: (response) => {
         this.dataSource.data = response.content;
+        this.totalOrders = response.totalElements;
         this.loading = false;
       },
       error: (error) => {
         console.error('Error loading orders:', error);
-        this.snackBar.open('Error loading orders', 'Close', { duration: 3000 });
+        Swal.fire({
+          title: 'Error!',
+          text: 'Failed to load orders. Please try again.',
+          icon: 'error',
+          confirmButtonText: 'OK'
+        });
         this.loading = false;
       }
     });
@@ -101,25 +110,71 @@ export class OrderListComponent implements OnInit {
     this.loadOrders();
   }
 
-  viewOrder(order: Order): void {
+  viewOrder(order: OrderResponse): void {
     this.router.navigate(['/orders', order.id]);
   }
 
-  updateOrderStatus(order: Order): void {
-    const dialogRef = this.dialog.open(OrderStatusDialogComponent, {
-      width: '400px',
-      data: { 
-        orderId: order.id, 
-        currentStatus: order.status,
-        orderNumber: order.orderNumber
+  updateOrderStatus(order: OrderResponse): void {
+    Swal.fire({
+      title: 'Update Order Status',
+      input: 'select',
+      inputOptions: {
+        'PENDING': 'Pending',
+        'CONFIRMED': 'Confirmed',
+        'PREPARING': 'Preparing',
+        'READY_FOR_PICKUP': 'Ready for Pickup',
+        'OUT_FOR_DELIVERY': 'Out for Delivery',
+        'DELIVERED': 'Delivered',
+        'CANCELLED': 'Cancelled'
+      },
+      inputValue: order.status,
+      showCancelButton: true,
+      confirmButtonText: 'Update',
+      cancelButtonText: 'Cancel'
+    }).then((result) => {
+      if (result.isConfirmed && result.value !== order.status) {
+        this.orderService.updateOrderStatus(order.id, result.value).subscribe({
+          next: () => {
+            Swal.fire('Success!', 'Order status updated successfully', 'success');
+            this.loadOrders();
+          },
+          error: (error) => {
+            Swal.fire('Error!', 'Failed to update order status', 'error');
+          }
+        });
       }
     });
+  }
 
-    dialogRef.afterClosed().subscribe(result => {
-      if (result) {
-        this.loadOrders();
+  cancelOrder(order: OrderResponse): void {
+    Swal.fire({
+      title: 'Cancel Order',
+      text: 'Please provide a reason for cancellation:',
+      input: 'textarea',
+      inputPlaceholder: 'Cancellation reason...',
+      showCancelButton: true,
+      confirmButtonText: 'Cancel Order',
+      cancelButtonText: 'Close',
+      confirmButtonColor: '#d33'
+    }).then((result) => {
+      if (result.isConfirmed && result.value) {
+        this.orderService.cancelOrder(order.id, result.value).subscribe({
+          next: () => {
+            Swal.fire('Success!', 'Order cancelled successfully', 'success');
+            this.loadOrders();
+          },
+          error: (error) => {
+            Swal.fire('Error!', 'Failed to cancel order', 'error');
+          }
+        });
       }
     });
+  }
+
+  onPageChange(event: any): void {
+    this.currentPage = event.pageIndex;
+    this.pageSize = event.pageSize;
+    this.loadOrders();
   }
 
   getStatusColor(status: string): string {
@@ -142,6 +197,76 @@ export class OrderListComponent implements OnInit {
       case 'FAILED': return 'warn';
       case 'REFUNDED': return 'accent';
       default: return '';
+    }
+  }
+
+  startAutoRefresh(): void {
+    if (this.autoRefreshEnabled && !this.refreshSubscription) {
+      this.refreshSubscription = interval(this.refreshInterval).subscribe(() => {
+        this.loadOrdersQuietly();
+      });
+    }
+  }
+
+  stopAutoRefresh(): void {
+    if (this.refreshSubscription) {
+      this.refreshSubscription.unsubscribe();
+      this.refreshSubscription = undefined;
+    }
+  }
+
+  loadOrdersQuietly(): void {
+    // Load orders without showing loading indicator for background refresh
+    this.orderService.getAllOrders(this.currentPage, this.pageSize).subscribe({
+      next: (response) => {
+        const currentOrderCount = this.dataSource.data.length;
+        const newOrderCount = response.content.length;
+        
+        this.dataSource.data = response.content;
+        this.totalOrders = response.totalElements;
+        
+        // Show toast if new orders arrived
+        if (newOrderCount > currentOrderCount) {
+          const newItems = newOrderCount - currentOrderCount;
+          Swal.fire({
+            title: 'New Orders',
+            text: `${newItems} new order${newItems > 1 ? 's' : ''} received.`,
+            icon: 'info',
+            timer: 3000,
+            showConfirmButton: false,
+            position: 'top-end',
+            toast: true
+          });
+        }
+      },
+      error: (error) => {
+        console.error('Error loading orders quietly:', error);
+        // Don't show error message for background refresh failures
+      }
+    });
+  }
+
+  toggleAutoRefresh(): void {
+    this.autoRefreshEnabled = !this.autoRefreshEnabled;
+    
+    if (this.autoRefreshEnabled) {
+      this.startAutoRefresh();
+      Swal.fire({
+        title: 'Auto-refresh Enabled',
+        text: `Orders will refresh every ${this.refreshInterval / 1000} seconds.`,
+        icon: 'info',
+        timer: 2000,
+        showConfirmButton: false
+      });
+    } else {
+      this.stopAutoRefresh();
+      Swal.fire({
+        title: 'Auto-refresh Disabled',
+        text: 'Orders will no longer refresh automatically.',
+        icon: 'info',
+        timer: 2000,
+        showConfirmButton: false
+      });
     }
   }
 }

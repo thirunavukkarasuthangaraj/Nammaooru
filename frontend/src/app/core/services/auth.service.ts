@@ -26,6 +26,8 @@ export class AuthService {
   ) {}
 
   login(credentials: LoginRequest): Observable<AuthResponse> {
+    // Clear any existing auth data first to avoid role conflicts
+    this.clearStoredAuth();
     return this.http.post<AuthResponse>(`${this.API_URL}/login`, credentials)
       .pipe(
         tap(response => {

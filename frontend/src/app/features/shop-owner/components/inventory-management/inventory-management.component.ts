@@ -5,6 +5,9 @@ import { MatSort } from '@angular/material/sort';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { FormControl, FormGroup, FormBuilder, Validators } from '@angular/forms';
+import { ShopProductService } from '@core/services/shop-product.service';
+import { AuthService } from '@core/services/auth.service';
+import { finalize } from 'rxjs/operators';
 
 interface InventoryItem {
   id: number;
@@ -729,12 +732,16 @@ export class InventoryManagementComponent implements OnInit {
     }
   ];
 
+  loading = false;
+
   constructor(
     private fb: FormBuilder,
     private dialog: MatDialog,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private shopProductService: ShopProductService,
+    private authService: AuthService
   ) {
-    this.dataSource.data = this.inventoryData;
+    this.dataSource.data = [];
     this.quickUpdateForm = this.fb.group({
       productId: ['', Validators.required],
       updateType: ['add', Validators.required],
@@ -745,6 +752,62 @@ export class InventoryManagementComponent implements OnInit {
 
   ngOnInit(): void {
     this.setupFilters();
+    this.loadInventoryData();
+  }
+
+  loadInventoryData(): void {
+    this.loading = true;
+    const currentUser = this.authService.getCurrentUser();
+    
+    if (!currentUser || !currentUser.shopId) {
+      this.snackBar.open('Shop information not found', 'Close', { duration: 3000 });
+      this.loading = false;
+      // Fallback to mock data if no shop ID
+      this.dataSource.data = this.inventoryData;
+      return;
+    }
+
+    this.shopProductService.getShopProducts(currentUser.shopId, 0, 100)
+      .pipe(
+        finalize(() => this.loading = false)
+      )
+      .subscribe({
+        next: (response) => {
+          // Map API response to InventoryItem interface
+          const inventoryItems = response.content.map((item: any) => ({
+            id: item.id,
+            productName: item.masterProduct.name,
+            category: item.masterProduct.category?.name || 'Uncategorized',
+            currentStock: item.stockQuantity,
+            minStock: item.lowStockThreshold || 10,
+            maxStock: item.maxStockThreshold || 100,
+            unit: item.unit || 'piece',
+            price: item.sellingPrice,
+            cost: item.costPrice || item.sellingPrice * 0.7,
+            supplier: item.supplier || 'Local Supplier',
+            lastRestocked: new Date(item.lastRestockedAt || item.updatedAt),
+            status: this.getStockStatus(item.stockQuantity, item.lowStockThreshold || 10),
+            location: item.location || 'Main Store',
+            reorderPoint: item.lowStockThreshold || 10
+          }));
+          
+          this.inventoryData = inventoryItems;
+          this.dataSource.data = this.inventoryData;
+        },
+        error: (error) => {
+          console.error('Error loading inventory:', error);
+          this.snackBar.open('Failed to load inventory. Showing sample data.', 'Close', { duration: 3000 });
+          // Fallback to mock data on error
+          this.dataSource.data = this.inventoryData;
+        }
+      });
+  }
+
+  private getStockStatus(currentStock: number, minStock: number): 'healthy' | 'low' | 'critical' | 'overstock' {
+    if (currentStock === 0) return 'critical';
+    if (currentStock <= minStock) return 'low';
+    if (currentStock > minStock * 3) return 'overstock';
+    return 'healthy';
   }
 
   ngAfterViewInit(): void {

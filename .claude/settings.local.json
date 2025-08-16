@@ -28,7 +28,9 @@
       "Bash(cmd /c:*)",
       "Bash(psql:*)",
       "Bash(where psql)",
-      "Bash(\"C:\\Program Files\\PostgreSQL\\16\\bin\\psql.exe\" -U postgres -h localhost -p 5432 -d shop_management_db -c \"UPDATE shop_products SET track_inventory = true WHERE track_inventory IS NULL;\")"
+      "Bash(\"C:\\Program Files\\PostgreSQL\\16\\bin\\psql.exe\" -U postgres -h localhost -p 5432 -d shop_management_db -c \"UPDATE shop_products SET track_inventory = true WHERE track_inventory IS NULL;\")",
+      "Bash(\"C:\\Program Files\\PostgreSQL\\16\\bin\\psql.exe\" -U postgres -h localhost -p 5432 -d shop_management_db -c \"SELECT COUNT(*) as customer_count FROM customers;\")",
+      "Bash(npx ng build:*)"
     ],
     "deny": [],
     "ask": [],

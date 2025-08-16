@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CustomerService, Customer } from '../../../../core/services/customer.service';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-customer-detail',
@@ -34,7 +35,14 @@ export class CustomerDetailComponent implements OnInit {
       error: (error) => {
         console.error('Error loading customer:', error);
         this.isLoading = false;
-        this.router.navigate(['/admin/customers']);
+        Swal.fire({
+          title: 'Error!',
+          text: 'Failed to load customer details. Redirecting to customer list.',
+          icon: 'error',
+          confirmButtonText: 'OK'
+        }).then(() => {
+          this.router.navigate(['/admin/customers']);
+        });
       }
     });
   }

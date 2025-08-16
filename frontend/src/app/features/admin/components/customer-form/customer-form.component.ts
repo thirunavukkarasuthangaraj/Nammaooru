@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { CustomerService, Customer } from '../../../../core/services/customer.service';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-customer-form',
@@ -136,25 +137,27 @@ export class CustomerFormComponent implements OnInit {
       if (this.isEditMode && this.customerId) {
         this.customerService.updateCustomer(this.customerId, formValue).subscribe({
           next: (result) => {
-            console.log('Customer updated successfully:', result);
-            this.router.navigate(['/admin/customers']);
+            Swal.fire('Success!', 'Customer updated successfully.', 'success').then(() => {
+              this.router.navigate(['/admin/customers']);
+            });
           },
           error: (error) => {
             console.error('Error updating customer:', error);
             this.isSubmitting = false;
-            // Show error message
+            Swal.fire('Error!', 'Failed to update customer. Please try again.', 'error');
           }
         });
       } else {
         this.customerService.createCustomer(formValue).subscribe({
           next: (result) => {
-            console.log('Customer created successfully:', result);
-            this.router.navigate(['/admin/customers']);
+            Swal.fire('Success!', 'Customer created successfully.', 'success').then(() => {
+              this.router.navigate(['/admin/customers']);
+            });
           },
           error: (error) => {
             console.error('Error creating customer:', error);
             this.isSubmitting = false;
-            // Show error message
+            Swal.fire('Error!', 'Failed to create customer. Please try again.', 'error');
           }
         });
       }

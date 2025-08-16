@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams, HttpEvent } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
@@ -22,8 +22,10 @@ export class ShopProductService {
   constructor(private http: HttpClient) {}
 
   // Shop Products
-  getShopProducts(shopId: number, filters: ShopProductFilters = {}): Observable<ProductPage<ShopProduct>> {
-    let params = new HttpParams();
+  getShopProducts(shopId: number, page: number = 0, size: number = 20, filters: ShopProductFilters = {}): Observable<ProductPage<ShopProduct>> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString());
     
     Object.keys(filters).forEach(key => {
       const value = (filters as any)[key];
@@ -111,5 +113,12 @@ export class ShopProductService {
   getShopProductStats(shopId: number): Observable<ShopProductStats> {
     return this.http.get<ApiResponse<ShopProductStats>>(`${this.API_URL}/${shopId}/products/stats`)
       .pipe(map(response => response.data));
+  }
+
+  bulkUploadProducts(formData: FormData): Observable<HttpEvent<any>> {
+    return this.http.post<any>(`${this.API_URL}/bulk-upload`, formData, {
+      reportProgress: true,
+      observe: 'events'
+    });
   }
 }

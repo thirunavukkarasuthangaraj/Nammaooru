@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
-import { ApiResponse, ApiResponseHelper, ResponseConstants } from '../models/api-response.model';
+import { ApiResponse, ApiResponseHelper, ResponseConstants, ResponseStatusCode } from '../models/api-response.model';
 import Swal from 'sweetalert2';
 
 @Injectable({
@@ -17,14 +17,14 @@ export class ErrorHandlerService {
   handleError(error: HttpErrorResponse | ApiResponse<any> | any): Observable<never> {
     let errorMessage = 'An unexpected error occurred';
     let errorTitle = 'Error';
-    let statusCode = ResponseConstants.GENERAL_ERROR;
+    let statusCode: ResponseStatusCode = ResponseConstants.GENERAL_ERROR;
 
     // Check if it's an API response error
     if (error && typeof error === 'object' && 'statusCode' in error) {
       const apiResponse = error as ApiResponse<any>;
       
       if (ApiResponseHelper.isError(apiResponse)) {
-        statusCode = apiResponse.statusCode;
+        statusCode = apiResponse.statusCode as ResponseStatusCode;
         errorMessage = ApiResponseHelper.getErrorMessage(apiResponse);
         errorTitle = this.getErrorTitle(apiResponse.statusCode);
       }
@@ -114,7 +114,7 @@ export class ErrorHandlerService {
   /**
    * Map HTTP status codes to API response codes
    */
-  private mapHttpStatusToResponseCode(httpStatus: number): string {
+  private mapHttpStatusToResponseCode(httpStatus: number): ResponseStatusCode {
     switch (httpStatus) {
       case 401:
         return ResponseConstants.UNAUTHORIZED;

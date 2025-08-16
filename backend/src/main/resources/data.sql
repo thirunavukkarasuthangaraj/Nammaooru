@@ -35,6 +35,148 @@ VALUES (
     CURRENT_TIMESTAMP
 ) ON CONFLICT (username) DO NOTHING;
 
+-- Insert sample shops
+INSERT INTO shops (name, description, address, city, state, country, pincode, contact_number, email, status, business_type, verified, created_at, updated_at)
+VALUES 
+    (
+        'Green Valley Grocery',
+        'Fresh groceries and daily essentials for your family',
+        '123 Main Street, Gandhi Nagar',
+        'Bangalore',
+        'Karnataka',
+        'India',
+        '560001',
+        '+91 9876543210',
+        'greenvalley@gmail.com',
+        'ACTIVE',
+        'GROCERY',
+        true,
+        CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'Tech Central Store',
+        'Latest electronics and gadgets',
+        '456 Tech Park, Whitefield',
+        'Bangalore', 
+        'Karnataka',
+        'India',
+        '560066',
+        '+91 9876543211',
+        'techcentral@gmail.com',
+        'ACTIVE',
+        'ELECTRONICS',
+        true,
+        CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'Fashion Hub',
+        'Trendy clothes and accessories',
+        '789 Commercial Street',
+        'Bangalore',
+        'Karnataka', 
+        'India',
+        '560001',
+        '+91 9876543212',
+        'fashionhub@gmail.com',
+        'ACTIVE',
+        'FASHION',
+        true,
+        CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP
+    ) ON CONFLICT (name) DO NOTHING;
+
+-- Update shop owner with shop association
+UPDATE users SET shop_id = (SELECT id FROM shops WHERE name = 'Green Valley Grocery' LIMIT 1)
+WHERE username = 'shopowner';
+
+-- Insert sample product categories
+INSERT INTO product_categories (name, description, created_at, updated_at)
+VALUES 
+    ('Groceries', 'Fresh groceries and food items', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('Electronics', 'Electronic devices and gadgets', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('Fashion', 'Clothing and accessories', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('Home & Kitchen', 'Home appliances and kitchen items', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('Health & Beauty', 'Health and beauty products', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (name) DO NOTHING;
+
+-- Insert sample master products
+INSERT INTO master_products (name, description, category_id, created_at, updated_at)
+VALUES 
+    ('Organic Apples', 'Fresh organic red apples', (SELECT id FROM product_categories WHERE name = 'Groceries'), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('Basmati Rice', 'Premium quality basmati rice 1kg', (SELECT id FROM product_categories WHERE name = 'Groceries'), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('Smartphone X1', 'Latest Android smartphone with 128GB storage', (SELECT id FROM product_categories WHERE name = 'Electronics'), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('Cotton T-Shirt', 'Comfortable cotton t-shirt in various colors', (SELECT id FROM product_categories WHERE name = 'Fashion'), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('Pressure Cooker', '5L stainless steel pressure cooker', (SELECT id FROM product_categories WHERE name = 'Home & Kitchen'), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (name) DO NOTHING;
+
+-- Insert sample shop products
+INSERT INTO shop_products (shop_id, master_product_id, selling_price, cost_price, stock_quantity, low_stock_threshold, unit, status, created_at, updated_at)
+VALUES 
+    ((SELECT id FROM shops WHERE name = 'Green Valley Grocery'), (SELECT id FROM master_products WHERE name = 'Organic Apples'), 150.00, 120.00, 50, 10, 'kg', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ((SELECT id FROM shops WHERE name = 'Green Valley Grocery'), (SELECT id FROM master_products WHERE name = 'Basmati Rice'), 180.00, 160.00, 25, 5, 'kg', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ((SELECT id FROM shops WHERE name = 'Tech Central Store'), (SELECT id FROM master_products WHERE name = 'Smartphone X1'), 25000.00, 22000.00, 10, 2, 'piece', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ((SELECT id FROM shops WHERE name = 'Fashion Hub'), (SELECT id FROM master_products WHERE name = 'Cotton T-Shirt'), 599.00, 400.00, 30, 5, 'piece', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ((SELECT id FROM shops WHERE name = 'Green Valley Grocery'), (SELECT id FROM master_products WHERE name = 'Pressure Cooker'), 2500.00, 2200.00, 8, 2, 'piece', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT DO NOTHING;
+
+-- Insert sample customers
+INSERT INTO customers (first_name, last_name, email, phone_number, created_at, updated_at)
+VALUES 
+    ('Rajesh', 'Kumar', 'rajesh.kumar@email.com', '+91 9876543213', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('Priya', 'Sharma', 'priya.sharma@email.com', '+91 9876543214', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('Amit', 'Patel', 'amit.patel@email.com', '+91 9876543215', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('Sneha', 'Reddy', 'sneha.reddy@email.com', '+91 9876543216', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (email) DO NOTHING;
+
+-- Insert sample orders
+INSERT INTO orders (customer_id, shop_id, order_number, status, payment_status, payment_method, subtotal, tax_amount, delivery_fee, discount_amount, total_amount, delivery_address, delivery_city, delivery_state, delivery_postal_code, delivery_contact_name, delivery_phone, created_at, updated_at)
+VALUES 
+    (
+        (SELECT id FROM customers WHERE email = 'rajesh.kumar@email.com'),
+        (SELECT id FROM shops WHERE name = 'Green Valley Grocery'),
+        'ORD-2024-001',
+        'DELIVERED',
+        'PAID',
+        'ONLINE',
+        330.00,
+        16.50,
+        30.00,
+        0.00,
+        376.50,
+        '123 Customer Street',
+        'Bangalore',
+        'Karnataka',
+        '560001',
+        'Rajesh Kumar',
+        '+91 9876543213',
+        CURRENT_TIMESTAMP - INTERVAL '2 days',
+        CURRENT_TIMESTAMP - INTERVAL '2 days'
+    ),
+    (
+        (SELECT id FROM customers WHERE email = 'priya.sharma@email.com'),
+        (SELECT id FROM shops WHERE name = 'Fashion Hub'),
+        'ORD-2024-002',
+        'PROCESSING',
+        'PAID',
+        'CASH_ON_DELIVERY',
+        599.00,
+        29.95,
+        50.00,
+        60.00,
+        618.95,
+        '456 Customer Road',
+        'Bangalore',
+        'Karnataka',
+        '560066',
+        'Priya Sharma',
+        '+91 9876543214',
+        CURRENT_TIMESTAMP - INTERVAL '1 day',
+        CURRENT_TIMESTAMP - INTERVAL '1 day'
+    )
+ON CONFLICT (order_number) DO NOTHING;
+
 -- Insert a regular user
 INSERT INTO users (username, email, password, first_name, last_name, role, is_active, status, created_at, updated_at)
 VALUES (

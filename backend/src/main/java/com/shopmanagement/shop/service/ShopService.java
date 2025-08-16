@@ -64,9 +64,18 @@ public class ShopService {
     }
 
     @Transactional(readOnly = true)
-    public Page<ShopResponse> getAllShops(Pageable pageable) {
+    public Page<ShopResponse> getAllShops(Specification<Shop> spec, Pageable pageable) {
+        if (spec != null) {
+            return shopRepository.findAll(spec, pageable)
+                    .map(shopMapper::toResponse);
+        }
         return shopRepository.findAll(pageable)
                 .map(shopMapper::toResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ShopResponse> getAllShops(Pageable pageable) {
+        return getAllShops(null, pageable);
     }
 
     @Transactional(readOnly = true)
@@ -193,8 +202,16 @@ public class ShopService {
         return updateShopStatus(id, Shop.ShopStatus.APPROVED);
     }
 
+    public ShopResponse approveShop(Long id, String notes) {
+        return updateShopStatus(id, Shop.ShopStatus.APPROVED, notes);
+    }
+
     public ShopResponse rejectShop(Long id) {
         return updateShopStatus(id, Shop.ShopStatus.REJECTED);
+    }
+
+    public ShopResponse rejectShop(Long id, String reason) {
+        return updateShopStatus(id, Shop.ShopStatus.REJECTED, reason);
     }
 
     public ShopResponse suspendShop(Long id) {
@@ -202,7 +219,11 @@ public class ShopService {
     }
 
     private ShopResponse updateShopStatus(Long id, Shop.ShopStatus status) {
-        log.info("Updating shop status to {} for shop ID: {}", status, id);
+        return updateShopStatus(id, status, null);
+    }
+
+    private ShopResponse updateShopStatus(Long id, Shop.ShopStatus status, String notes) {
+        log.info("Updating shop status to {} for shop ID: {} with notes: {}", status, id, notes);
         
         Shop shop = shopRepository.findById(id)
                 .orElseThrow(() -> new ShopNotFoundException("Shop not found with id: " + id));
@@ -348,6 +369,25 @@ public class ShopService {
             .orElseThrow(() -> new ShopNotFoundException("No shop found for current user"));
         
         return shopMapper.toResponse(shop);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getApprovalStats() {
+        long totalShops = getTotalShopsCount();
+        long pendingShops = getPendingShopsCount();
+        long approvedShops = shopRepository.countByStatus(Shop.ShopStatus.APPROVED);
+        long rejectedShops = getRejectedShopsCount();
+        long suspendedShops = getSuspendedShopsCount();
+        
+        return Map.of(
+            "total", totalShops,
+            "pending", pendingShops,
+            "approved", approvedShops,
+            "rejected", rejectedShops,
+            "suspended", suspendedShops,
+            "pendingPercentage", totalShops > 0 ? (pendingShops * 100.0 / totalShops) : 0,
+            "approvedPercentage", totalShops > 0 ? (approvedShops * 100.0 / totalShops) : 0
+        );
     }
 
 }

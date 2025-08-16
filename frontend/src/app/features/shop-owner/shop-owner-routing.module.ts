@@ -9,6 +9,9 @@ import { OrdersManagementComponent } from './components/orders-management/orders
 import { AddProductComponent } from './components/add-product/add-product.component';
 import { BulkUploadComponent } from './components/bulk-upload/bulk-upload.component';
 import { CategoriesComponent } from './components/categories/categories.component';
+import { CustomerManagementComponent } from './components/customer-management/customer-management.component';
+import { ShopSettingsComponent } from './components/shop-settings/shop-settings.component';
+import { NotificationsComponent } from './components/notifications/notifications.component';
 
 const routes: Routes = [
   {
@@ -54,6 +57,18 @@ const routes: Routes = [
   {
     path: 'shop/profile',
     component: ShopProfileComponent
+  },
+  {
+    path: 'customers',
+    component: CustomerManagementComponent
+  },
+  {
+    path: 'settings',
+    component: ShopSettingsComponent
+  },
+  {
+    path: 'notifications',
+    component: NotificationsComponent
   },
   // TODO: Implement orders and analytics modules
   // {

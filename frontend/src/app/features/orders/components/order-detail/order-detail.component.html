@@ -1,23 +1,35 @@
 <div class="order-detail-container" *ngIf="!loading && order">
   <div class="header-section">
-    <button mat-icon-button (click)="goBack()" class="back-btn">
-      <mat-icon>arrow_back</mat-icon>
-    </button>
-    <div class="title-section">
-      <h2>Order Details</h2>
-      <span class="order-number">{{ order.orderNumber }}</span>
+    <div class="header-left">
+      <button mat-icon-button (click)="goBack()" class="back-btn">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <div class="title-section">
+        <h2>Order Details</h2>
+        <span class="order-number">{{ order.orderNumber }}</span>
+      </div>
     </div>
-    <div class="status-badges">
-      <mat-chip-listbox>
-        <mat-chip-option [color]="getStatusColor(order.status)" selected>
+    <div class="header-center">
+      <div class="status-badges">
+        <mat-chip [color]="getStatusColor(order.status)">
           {{ order.status | titlecase }}
-        </mat-chip-option>
-      </mat-chip-listbox>
-      <mat-chip-listbox>
-        <mat-chip-option [color]="getPaymentStatusColor(order.paymentStatus)" selected>
+        </mat-chip>
+        <mat-chip [color]="getPaymentStatusColor(order.paymentStatus)">
           {{ order.paymentStatus | titlecase }}
-        </mat-chip-option>
-      </mat-chip-listbox>
+        </mat-chip>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button mat-raised-button color="primary" (click)="updateOrderStatus()" 
+              *ngIf="order.status !== 'DELIVERED' && order.status !== 'CANCELLED'">
+        <mat-icon>update</mat-icon>
+        Update Status
+      </button>
+      <button mat-raised-button color="warn" (click)="cancelOrder()" 
+              *ngIf="order.canBeCancelled">
+        <mat-icon>cancel</mat-icon>
+        Cancel Order
+      </button>
     </div>
   </div>
 

@@ -24,6 +24,8 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatTabsModule } from '@angular/material/tabs';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 
 import { ShopOwnerRoutingModule } from './shop-owner-routing.module';
 import { ShopOwnerDashboardComponent } from './components/shop-owner-dashboard/shop-owner-dashboard.component';
@@ -35,6 +37,9 @@ import { OrdersManagementComponent } from './components/orders-management/orders
 import { AddProductComponent } from './components/add-product/add-product.component';
 import { BulkUploadComponent } from './components/bulk-upload/bulk-upload.component';
 import { CategoriesComponent } from './components/categories/categories.component';
+import { CustomerManagementComponent } from './components/customer-management/customer-management.component';
+import { ShopSettingsComponent } from './components/shop-settings/shop-settings.component';
+import { NotificationsComponent } from './components/notifications/notifications.component';
 
 @NgModule({
   declarations: [
@@ -46,7 +51,10 @@ import { CategoriesComponent } from './components/categories/categories.componen
     OrdersManagementComponent,
     AddProductComponent,
     BulkUploadComponent,
-    CategoriesComponent
+    CategoriesComponent,
+    CustomerManagementComponent,
+    ShopSettingsComponent,
+    NotificationsComponent
   ],
   imports: [
     CommonModule,
@@ -74,7 +82,9 @@ import { CategoriesComponent } from './components/categories/categories.componen
     MatDatepickerModule,
     MatNativeDateModule,
     MatRadioModule,
-    MatCheckboxModule
+    MatCheckboxModule,
+    MatTabsModule,
+    MatSlideToggleModule
   ]
 })
 export class ShopOwnerModule { }

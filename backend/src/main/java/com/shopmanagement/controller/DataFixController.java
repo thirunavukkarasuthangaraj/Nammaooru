@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -16,6 +17,7 @@ import java.util.Map;
 public class DataFixController {
 
     private final JdbcTemplate jdbcTemplate;
+    private final PasswordEncoder passwordEncoder;
 
     @PostMapping("/track-inventory")
     public ResponseEntity<Map<String, Object>> fixTrackInventory() {
@@ -120,6 +122,34 @@ public class DataFixController {
             return ResponseEntity.badRequest().body(Map.of(
                 "status", "error",
                 "message", "Failed to get fix status: " + e.getMessage()
+            ));
+        }
+    }
+
+    @PostMapping("/reset-admin-password")
+    public ResponseEntity<Map<String, Object>> resetAdminPassword() {
+        try {
+            // Generate a new BCrypt hash for 'admin123'
+            String newPassword = "admin123";
+            String hashedPassword = passwordEncoder.encode(newPassword);
+            
+            // Update admin user password
+            String updateSql = "UPDATE users SET password = ? WHERE username = 'admin'";
+            int updated = jdbcTemplate.update(updateSql, hashedPassword);
+            
+            log.info("Reset password for admin user. Updated {} records", updated);
+            
+            return ResponseEntity.ok(Map.of(
+                "status", "success",
+                "message", "Admin password reset successfully",
+                "updatedCount", updated,
+                "password", newPassword
+            ));
+        } catch (Exception e) {
+            log.error("Failed to reset admin password", e);
+            return ResponseEntity.badRequest().body(Map.of(
+                "status", "error",
+                "message", "Failed to reset admin password: " + e.getMessage()
             ));
         }
     }

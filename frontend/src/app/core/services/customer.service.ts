@@ -231,6 +231,11 @@ export class CustomerService {
     return this.http.post<CustomerAddress>(`${this.apiUrl}/${customerId}/addresses/${addressId}/set-default`, {});
   }
 
+  // Get customers for a specific shop
+  getShopCustomers(shopId: number): Observable<Customer[]> {
+    return this.http.get<Customer[]>(`${environment.apiUrl}/shops/${shopId}/customers`);
+  }
+
   // Utility methods
   getGenderOptions() {
     return [

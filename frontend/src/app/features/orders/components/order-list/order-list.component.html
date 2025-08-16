@@ -55,18 +55,19 @@
       <ng-container matColumnDef="status">
         <mat-header-cell *matHeaderCellDef mat-sort-header>Status</mat-header-cell>
         <mat-cell *matCellDef="let order">
-          <mat-chip-listbox>
-            <mat-chip-option [color]="getStatusColor(order.status)" selected>
-              {{ order.status | titlecase }}
-            </mat-chip-option>
-          </mat-chip-listbox>
-          <div class="payment-status">
-            <mat-chip-listbox>
-              <mat-chip-option [color]="getPaymentStatusColor(order.paymentStatus)" selected>
-                {{ order.paymentStatus | titlecase }}
-              </mat-chip-option>
-            </mat-chip-listbox>
-          </div>
+          <mat-chip [color]="getStatusColor(order.status)">
+            {{ order.status | titlecase }}
+          </mat-chip>
+        </mat-cell>
+      </ng-container>
+
+      <!-- Payment Status Column -->
+      <ng-container matColumnDef="paymentStatus">
+        <mat-header-cell *matHeaderCellDef mat-sort-header>Payment</mat-header-cell>
+        <mat-cell *matCellDef="let order">
+          <mat-chip [color]="getPaymentStatusColor(order.paymentStatus)">
+            {{ order.paymentStatus | titlecase }}
+          </mat-chip>
         </mat-cell>
       </ng-container>
 
@@ -102,6 +103,10 @@
               <mat-icon>update</mat-icon>
               <span>Update Status</span>
             </button>
+            <button mat-menu-item (click)="cancelOrder(order)" *ngIf="order.canBeCancelled">
+              <mat-icon>cancel</mat-icon>
+              <span>Cancel Order</span>
+            </button>
           </mat-menu>
         </mat-cell>
       </ng-container>
@@ -110,7 +115,14 @@
       <mat-row *matRowDef="let row; columns: displayedColumns;" class="order-row" (click)="viewOrder(row)"></mat-row>
     </mat-table>
 
-    <mat-paginator [pageSizeOptions]="[5, 10, 25, 100]" showFirstLastButtons></mat-paginator>
+    <mat-paginator 
+      [length]="totalOrders"
+      [pageSize]="pageSize"
+      [pageIndex]="currentPage"
+      [pageSizeOptions]="[5, 10, 25, 100]" 
+      (page)="onPageChange($event)"
+      showFirstLastButtons>
+    </mat-paginator>
   </div>
 
   <div *ngIf="loading" class="loading-container">
