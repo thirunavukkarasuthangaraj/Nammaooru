@@ -41,6 +41,7 @@ public class OrderService {
     private final ShopRepository shopRepository;
     private final ShopProductRepository shopProductRepository;
     private final EmailService emailService;
+    private final InvoiceService invoiceService;
     
     @Transactional
     public OrderResponse createOrder(OrderRequest request) {
@@ -196,6 +197,16 @@ public class OrderService {
             );
         } catch (Exception e) {
             log.error("Failed to send order status update email", e);
+        }
+        
+        // Auto-send invoice when order is delivered
+        if (status == Order.OrderStatus.DELIVERED) {
+            try {
+                invoiceService.sendInvoiceEmail(orderId);
+                log.info("Invoice email automatically sent for delivered order: {}", order.getOrderNumber());
+            } catch (Exception e) {
+                log.error("Failed to send automatic invoice email for order: {}", order.getOrderNumber(), e);
+            }
         }
         
         return mapToResponse(updatedOrder);
@@ -360,7 +371,7 @@ public class OrderService {
         
         // Shop info
         trackingInfo.put("shopName", order.getShop().getName());
-        trackingInfo.put("shopPhone", order.getShop().getPhone());
+        trackingInfo.put("shopPhone", order.getShop().getOwnerPhone());
         trackingInfo.put("shopAddress", order.getShop().getAddressLine1() + ", " + order.getShop().getCity());
         
         // Delivery info
@@ -424,12 +435,12 @@ public class OrderService {
                 "icon", "restaurant"
             ),
             Map.of(
-                "status", "READY",
+                "status", "READY_FOR_PICKUP",
                 "label", "Ready for Pickup/Delivery",
                 "description", "Your order is ready",
-                "timestamp", order.getStatus().ordinal() >= Order.OrderStatus.READY.ordinal() ? 
+                "timestamp", order.getStatus().ordinal() >= Order.OrderStatus.READY_FOR_PICKUP.ordinal() ? 
                     order.getUpdatedAt() : null,
-                "completed", order.getStatus().ordinal() >= Order.OrderStatus.READY.ordinal(),
+                "completed", order.getStatus().ordinal() >= Order.OrderStatus.READY_FOR_PICKUP.ordinal(),
                 "icon", "done_all"
             ),
             Map.of(
@@ -482,10 +493,12 @@ public class OrderService {
             case PENDING -> 15;
             case CONFIRMED -> 30;
             case PREPARING -> 50;
-            case READY -> 70;
+            case READY_FOR_PICKUP -> 70;
             case OUT_FOR_DELIVERY -> 85;
             case DELIVERED -> 100;
             case CANCELLED -> 0;
+            case REFUNDED -> 0;
+            default -> 0;
         };
     }
     
@@ -494,10 +507,12 @@ public class OrderService {
             case PENDING -> "Order Placed";
             case CONFIRMED -> "Order Confirmed";
             case PREPARING -> "Being Prepared";
-            case READY -> "Ready for Delivery";
+            case READY_FOR_PICKUP -> "Ready for Delivery";
             case OUT_FOR_DELIVERY -> "Out for Delivery";
             case DELIVERED -> "Delivered";
             case CANCELLED -> "Cancelled";
+            case REFUNDED -> "Refunded";
+            default -> "Unknown";
         };
     }
     

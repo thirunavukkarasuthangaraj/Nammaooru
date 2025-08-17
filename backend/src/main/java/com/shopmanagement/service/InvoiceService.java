@@ -39,9 +39,9 @@ public class InvoiceService {
                 .orElseThrow(() -> new RuntimeException("Order not found"));
 
         // Get delivery assignment for distance and partner info
-        OrderAssignment assignment = assignmentRepository.findByOrderId(orderId).orElse(null);
-        PartnerEarning earning = assignment != null ? 
-            earningRepository.findByOrderAssignmentId(assignment.getId()).orElse(null) : null;
+        OrderAssignment assignment = assignmentRepository.findByOrderId(orderId).stream().findFirst().orElse(null);
+        PartnerEarning earning = null; // assignment != null ? 
+            // earningRepository.findByOrderAssignment(assignment).orElse(null) : null;
 
         Map<String, Object> invoiceData = new HashMap<>();
 
@@ -61,7 +61,7 @@ public class InvoiceService {
         // Shop information
         invoiceData.put("shopName", order.getShop().getName());
         invoiceData.put("shopEmail", order.getShop().getOwnerEmail());
-        invoiceData.put("shopPhone", order.getShop().getPhone());
+        invoiceData.put("shopPhone", order.getShop().getOwnerPhone());
         invoiceData.put("shopAddress", order.getShop().getAddressLine1() + ", " + order.getShop().getCity());
 
         // Order information

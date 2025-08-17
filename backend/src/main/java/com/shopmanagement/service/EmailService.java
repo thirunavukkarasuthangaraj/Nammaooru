@@ -503,4 +503,21 @@ public class EmailService {
         }
     }
 
+    public void sendInvoiceEmail(String to, String customerName, String orderNumber, Map<String, Object> invoiceData) {
+        try {
+            // Add common email variables
+            invoiceData.put("customerName", customerName);
+            invoiceData.put("orderNumber", orderNumber);
+            invoiceData.put("supportEmail", emailProperties.getFrom());
+            invoiceData.put("companyName", "NammaOoru");
+            
+            String subject = "Order Invoice #" + orderNumber + " - NammaOoru";
+            sendHtmlEmail(to, subject, "order-invoice", invoiceData);
+            log.info("Invoice email sent to: {} for order: {}", to, orderNumber);
+        } catch (Exception e) {
+            log.error("Failed to send invoice email to: {} for order: {}", to, orderNumber, e);
+            throw new RuntimeException("Failed to send invoice email", e);
+        }
+    }
+
 }

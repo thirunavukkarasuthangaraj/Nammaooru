@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -99,7 +101,7 @@ public class DeliveryPartner {
     @Column(name = "account_holder_name")
     private String accountHolderName;
 
-    @Column(name = "service_areas", columnDefinition = "jsonb")
+    @Column(name = "service_areas")
     private String serviceAreas;
 
     @Column(name = "max_delivery_radius", precision = 8, scale = 2)

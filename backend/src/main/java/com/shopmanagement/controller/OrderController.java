@@ -181,7 +181,7 @@ public class OrderController {
     @PreAuthorize("hasRole('ADMIN') or hasRole('SHOP_OWNER')")
     public ResponseEntity<OrderResponse> markOrderReady(@PathVariable Long orderId) {
         log.info("Marking order ready: {}", orderId);
-        OrderResponse response = orderService.updateOrderStatus(orderId, Order.OrderStatus.READY);
+        OrderResponse response = orderService.updateOrderStatus(orderId, Order.OrderStatus.READY_FOR_PICKUP);
         return ResponseEntity.ok(response);
     }
     
