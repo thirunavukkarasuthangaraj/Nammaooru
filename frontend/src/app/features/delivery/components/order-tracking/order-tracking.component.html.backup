@@ -1,0 +1,378 @@
+<div class="tracking-container" *ngIf="!isLoading">
+  <!-- Header Section -->
+  <mat-card class="tracking-header">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>local_shipping</mat-icon>
+        Order Tracking
+      </mat-card-title>
+      <mat-card-subtitle *ngIf="assignment">
+        Order #{{assignment?.orderNumber}} • {{assignment?.partnerName}}
+      </mat-card-subtitle>
+    </mat-card-header>
+    
+    <mat-card-content>
+      <div class="tracking-status">
+        <mat-chip-set>
+          <mat-chip [color]="trackingStatusColor" selected>
+            <mat-icon matChipAvatar>{{isTrackingActive ? 'gps_fixed' : 'gps_off'}}</mat-icon>
+            {{trackingStatusText}}
+          </mat-chip>
+          <mat-chip *ngIf="currentPartnerLocation" color="accent" selected>
+            <mat-icon matChipAvatar>speed</mat-icon>
+            {{currentSpeed}}
+          </mat-chip>
+          <mat-chip *ngIf="isTrackingActive" color="primary" selected>
+            <mat-icon matChipAvatar>schedule</mat-icon>
+            ETA: {{estimatedArrival}}
+          </mat-chip>
+          <mat-chip [color]="locationStatusColor" selected>
+            <mat-icon matChipAvatar>{{isLocationPermissionGranted ? 'location_on' : 'location_off'}}</mat-icon>
+            {{locationStatusText}}
+          </mat-chip>
+        </mat-chip-set>
+      </div>
+    </mat-card-content>
+
+    <mat-card-actions>
+      <button mat-raised-button color="primary" (click)="callPartner()" *ngIf="assignment?.partnerPhone">
+        <mat-icon>phone</mat-icon>
+        Call Partner
+      </button>
+      <button mat-button (click)="refreshTracking()">
+        <mat-icon>refresh</mat-icon>
+        Refresh
+      </button>
+      <button mat-button (click)="shareLocation()">
+        <mat-icon>share</mat-icon>
+        Share
+      </button>
+      <button mat-button (click)="centerMapOnUser()" *ngIf="userLocation">
+        <mat-icon>my_location</mat-icon>
+        My Location
+      </button>
+      <button mat-button (click)="getDirectionsToLocation()" *ngIf="userLocation && deliveryLocation">
+        <mat-icon>directions</mat-icon>
+        Get Directions
+      </button>
+    </mat-card-actions>
+  </mat-card>
+
+  <!-- Live Map Section -->
+  <mat-card class="map-container">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>map</mat-icon>
+        Live Tracking Map
+      </mat-card-title>
+      <div class="map-controls">
+        <button mat-icon-button matTooltip="Center on Partner" 
+                *ngIf="partnerLocation" 
+                (click)="googleMapsService.setCenter(partnerLocation, 16)">
+          <mat-icon>my_location</mat-icon>
+        </button>
+        <button mat-icon-button matTooltip="Fit All Locations"
+                *ngIf="partnerLocation && deliveryLocation"
+                (click)="googleMapsService.fitBounds([partnerLocation, deliveryLocation])">
+          <mat-icon>zoom_out_map</mat-icon>
+        </button>
+        <button mat-icon-button matTooltip="Toggle Directions"
+                *ngIf="userLocation && deliveryLocation"
+                [color]="showDirections ? 'primary' : 'basic'"
+                (click)="toggleDirections()">
+          <mat-icon>directions</mat-icon>
+        </button>
+        <button mat-icon-button matTooltip="Find Nearby Places"
+                *ngIf="deliveryLocation"
+                [matMenuTriggerFor]="placesMenu">
+          <mat-icon>place</mat-icon>
+        </button>
+      </div>
+    </mat-card-header>
+    
+    <mat-card-content>
+      <div #mapContainer class="google-map" 
+           [style.height.px]="400" 
+           [style.width]="'100%'"></div>
+      
+      <!-- Map Legend -->
+      <div class="map-legend">
+        <div class="legend-item">
+          <div class="legend-marker partner"></div>
+          <span>Delivery Partner</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-marker customer"></div>
+          <span>Delivery Location</span>
+        </div>
+        <div class="legend-item" *ngIf="userLocation">
+          <div class="legend-marker user"></div>
+          <span>Your Location</span>
+        </div>
+        <div class="legend-item" *ngIf="isTrackingActive">
+          <div class="legend-line"></div>
+          <span>Delivery Route</span>
+        </div>
+        <div class="legend-item" *ngIf="showDirections">
+          <div class="legend-line directions"></div>
+          <span>Your Directions</span>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Status Progress -->
+  <mat-card class="status-progress">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>timeline</mat-icon>
+        Delivery Progress
+      </mat-card-title>
+    </mat-card-header>
+    
+    <mat-card-content>
+      <div class="progress-stepper">
+        <div class="step" 
+             *ngFor="let step of statusSteps; let i = index"
+             [class.completed]="step.completed"
+             [class.current]="i === statusSteps.findIndex(s => !s.completed)">
+          
+          <div class="step-icon">
+            <mat-icon [color]="step.completed ? 'primary' : 'basic'">
+              {{step.icon}}
+            </mat-icon>
+          </div>
+          
+          <div class="step-content">
+            <div class="step-label">{{step.label}}</div>
+            <div class="step-time" *ngIf="step.completed && assignment">
+              {{formatTime(assignment.updatedAt)}}
+            </div>
+          </div>
+          
+          <div class="step-connector" *ngIf="i < statusSteps.length - 1"
+               [class.completed]="statusSteps[i + 1]?.completed"></div>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Partner Information -->
+  <mat-card class="partner-info" *ngIf="assignment">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>person</mat-icon>
+        Delivery Partner Details
+      </mat-card-title>
+    </mat-card-header>
+    
+    <mat-card-content>
+      <div class="partner-details">
+        <div class="detail-row">
+          <mat-icon>person</mat-icon>
+          <span class="label">Partner:</span>
+          <span class="value">{{assignment?.partnerName}}</span>
+        </div>
+        
+        <div class="detail-row" *ngIf="assignment.partnerPhone">
+          <mat-icon>phone</mat-icon>
+          <span class="label">Phone:</span>
+          <span class="value">{{assignment?.partnerPhone}}</span>
+        </div>
+        
+        <div class="detail-row" *ngIf="assignment.vehicleType">
+          <mat-icon>{{getVehicleIcon(assignment.vehicleType)}}</mat-icon>
+          <span class="label">Vehicle:</span>
+          <span class="value">{{assignment?.vehicleType}}</span>
+        </div>
+        
+        <div class="detail-row" *ngIf="assignment.vehicleNumber">
+          <mat-icon>confirmation_number</mat-icon>
+          <span class="label">Vehicle Number:</span>
+          <span class="value">{{assignment?.vehicleNumber}}</span>
+        </div>
+        
+        <div class="detail-row" *ngIf="currentPartnerLocation">
+          <mat-icon [style.color]="getBatteryColor(tracking?.batteryLevel)">
+            {{getBatteryIcon(tracking?.batteryLevel)}}
+          </mat-icon>
+          <span class="label">Battery:</span>
+          <span class="value">{{tracking?.batteryLevel || 'N/A'}}%</span>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Live Tracking Statistics -->
+  <mat-card class="tracking-stats" *ngIf="isTrackingActive && currentPartnerLocation">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>analytics</mat-icon>
+        Live Statistics
+      </mat-card-title>
+    </mat-card-header>
+    
+    <mat-card-content>
+      <div class="stats-grid">
+        <div class="stat-item">
+          <mat-icon>speed</mat-icon>
+          <div class="stat-value">{{currentSpeed}}</div>
+          <div class="stat-label">Current Speed</div>
+        </div>
+        
+        <div class="stat-item">
+          <mat-icon>schedule</mat-icon>
+          <div class="stat-value">{{estimatedArrival}}</div>
+          <div class="stat-label">Estimated Arrival</div>
+        </div>
+        
+        <div class="stat-item" *ngIf="deliveryLocation && partnerLocation">
+          <mat-icon>straighten</mat-icon>
+          <div class="stat-value">
+            {{remainingDistance}}
+          </div>
+          <div class="stat-label">Distance Remaining</div>
+        </div>
+        
+        <div class="stat-item" *ngIf="userLocation && deliveryLocation">
+          <mat-icon>place</mat-icon>
+          <div class="stat-value">{{distanceToDelivery}}</div>
+          <div class="stat-label">Your Distance to Delivery</div>
+        </div>
+        
+        <div class="stat-item" *ngIf="userLocation && partnerLocation">
+          <mat-icon>person_pin_circle</mat-icon>
+          <div class="stat-value">{{distanceToPartner}}</div>
+          <div class="stat-label">Your Distance to Partner</div>
+        </div>
+        
+        <div class="stat-item">
+          <mat-icon>update</mat-icon>
+          <div class="stat-value">{{formatTime(lastUpdateTime)}}</div>
+          <div class="stat-label">Last Update</div>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Order Details -->
+  <mat-card class="order-details" *ngIf="assignment">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>shopping_bag</mat-icon>
+        Order Information
+      </mat-card-title>
+    </mat-card-header>
+    
+    <mat-card-content>
+      <div class="order-info">
+        <div class="detail-row">
+          <mat-icon>confirmation_number</mat-icon>
+          <span class="label">Order Number:</span>
+          <span class="value">#{{assignment?.orderNumber}}</span>
+        </div>
+        
+        <div class="detail-row">
+          <mat-icon>location_on</mat-icon>
+          <span class="label">Delivery Address:</span>
+          <span class="value">{{assignment?.deliveryAddress}}</span>
+        </div>
+        
+        <div class="detail-row">
+          <mat-icon>schedule</mat-icon>
+          <span class="label">Assigned At:</span>
+          <span class="value">{{formatTime(assignment.assignedAt)}}</span>
+        </div>
+        
+        <div class="detail-row">
+          <mat-icon>payments</mat-icon>
+          <span class="label">Delivery Fee:</span>
+          <span class="value">{{formatEarnings(assignment.deliveryFee || 0)}}</span>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Emergency Section -->
+  <mat-card class="emergency-section" *ngIf="isTrackingActive">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>emergency</mat-icon>
+        Need Help?
+      </mat-card-title>
+    </mat-card-header>
+    
+    <mat-card-content>
+      <div class="emergency-actions">
+        <button mat-raised-button color="primary" (click)="callPartner()" *ngIf="assignment?.partnerPhone">
+          <mat-icon>phone</mat-icon>
+          Call Partner
+        </button>
+        
+        <button mat-raised-button color="accent">
+          <mat-icon>support_agent</mat-icon>
+          Contact Support
+        </button>
+        
+        <button mat-raised-button color="warn">
+          <mat-icon>report_problem</mat-icon>
+          Report Issue
+        </button>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>
+
+<!-- Places Menu -->
+<mat-menu #placesMenu="matMenu" class="places-menu">
+  <button mat-menu-item (click)="searchNearbyPlaces('restaurant')">
+    <mat-icon>restaurant</mat-icon>
+    <span>Restaurants</span>
+  </button>
+  <button mat-menu-item (click)="searchNearbyPlaces('hospital')">
+    <mat-icon>local_hospital</mat-icon>
+    <span>Hospitals</span>
+  </button>
+  <button mat-menu-item (click)="searchNearbyPlaces('gas_station')">
+    <mat-icon>local_gas_station</mat-icon>
+    <span>Gas Stations</span>
+  </button>
+  <button mat-menu-item (click)="searchNearbyPlaces('atm')">
+    <mat-icon>atm</mat-icon>
+    <span>ATMs</span>
+  </button>
+  <button mat-menu-item (click)="searchNearbyPlaces('pharmacy')">
+    <mat-icon>local_pharmacy</mat-icon>
+    <span>Pharmacies</span>
+  </button>
+</mat-menu>
+
+<!-- Loading State -->
+<div class="loading-container" *ngIf="isLoading">
+  <mat-card>
+    <mat-card-content>
+      <div class="loading-content">
+        <mat-spinner diameter="50"></mat-spinner>
+        <h3>Loading tracking information...</h3>
+        <p>Please wait while we fetch the latest delivery details.</p>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>
+
+<!-- Error State -->
+<div class="error-container" *ngIf="!isLoading && !assignment">
+  <mat-card>
+    <mat-card-content>
+      <div class="error-content">
+        <mat-icon color="warn">error_outline</mat-icon>
+        <h3>Order Not Found</h3>
+        <p>We couldn't find the tracking information for this order.</p>
+        <button mat-raised-button color="primary" (click)="loadAssignmentData()">
+          <mat-icon>refresh</mat-icon>
+          Try Again
+        </button>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

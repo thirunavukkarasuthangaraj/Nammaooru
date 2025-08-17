@@ -1,0 +1,102 @@
+<div class="analytics-container">
+  <mat-card class="analytics-header">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>analytics</mat-icon>
+        Delivery Analytics Dashboard
+      </mat-card-title>
+      <mat-card-subtitle>Performance metrics and insights</mat-card-subtitle>
+    </mat-card-header>
+    
+    <mat-card-content>
+      <div class="date-range-selector">
+        <mat-form-field appearance="outline">
+          <mat-label>Start Date</mat-label>
+          <input matInput [matDatepicker]="startPicker" [(ngModel)]="startDate">
+          <mat-datepicker-toggle matSuffix [for]="startPicker"></mat-datepicker-toggle>
+          <mat-datepicker #startPicker></mat-datepicker>
+        </mat-form-field>
+        
+        <mat-form-field appearance="outline">
+          <mat-label>End Date</mat-label>
+          <input matInput [matDatepicker]="endPicker" [(ngModel)]="endDate">
+          <mat-datepicker-toggle matSuffix [for]="endPicker"></mat-datepicker-toggle>
+          <mat-datepicker #endPicker></mat-datepicker>
+        </mat-form-field>
+        
+        <button mat-raised-button color="primary" (click)="loadAnalytics()">
+          <mat-icon>refresh</mat-icon>
+          Refresh Data
+        </button>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Key Metrics Cards -->
+  <div class="metrics-grid">
+    <mat-card class="metric-card">
+      <mat-card-content>
+        <div class="metric-header">
+          <mat-icon>local_shipping</mat-icon>
+          <span>Total Deliveries</span>
+        </div>
+        <div class="metric-value">{{metrics.totalDeliveries || 0}}</div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="metric-card">
+      <mat-card-content>
+        <div class="metric-header">
+          <mat-icon>check_circle</mat-icon>
+          <span>Success Rate</span>
+        </div>
+        <div class="metric-value">{{(metrics.successRate || 0) | number:'1.1-1'}}%</div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="metric-card">
+      <mat-card-content>
+        <div class="metric-header">
+          <mat-icon>schedule</mat-icon>
+          <span>Avg Delivery Time</span>
+        </div>
+        <div class="metric-value">{{metrics.avgDeliveryTime || 0}} min</div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="metric-card">
+      <mat-card-content>
+        <div class="metric-header">
+          <mat-icon>payments</mat-icon>
+          <span>Total Revenue</span>
+        </div>
+        <div class="metric-value">₹{{metrics.totalRevenue || 0}}</div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Charts Section -->
+  <div class="charts-section">
+    <mat-card class="chart-card">
+      <mat-card-header>
+        <mat-card-title>Delivery Trends</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="chart-placeholder">
+          <p>Chart will be implemented here</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="chart-card">
+      <mat-card-header>
+        <mat-card-title>Partner Performance</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="chart-placeholder">
+          <p>Partner performance chart will be implemented here</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

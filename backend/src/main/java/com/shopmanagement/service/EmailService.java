@@ -159,6 +159,26 @@ public class EmailService {
         }
     }
 
+    public void sendShopRegistrationConfirmationEmail(String to, String shopOwnerName, String shopName, String shopId) {
+        try {
+            Map<String, Object> variables = Map.of(
+                "shopOwnerName", shopOwnerName,
+                "shopName", shopName,
+                "shopId", shopId,
+                "dashboardUrl", dashboardUrl,
+                "supportEmail", emailProperties.getFrom(),
+                "companyName", "NammaOoru"
+            );
+            
+            String subject = "Shop Registration Received - " + shopName;
+            sendHtmlEmail(to, subject, "shop-registration-confirmation", variables);
+            log.info("Shop registration confirmation email sent to: {} for shop: {}", to, shopName);
+        } catch (Exception e) {
+            log.error("Failed to send shop registration confirmation email to: {} for shop: {}", to, shopName, e);
+            throw new RuntimeException("Failed to send shop registration confirmation email", e);
+        }
+    }
+
     public void sendTestEmail(String to) {
         sendSimpleEmail(to, "NammaOoru - Test Email", 
             "This is a test email from NammaOoru Shop Management System. " +
@@ -398,6 +418,88 @@ public class EmailService {
         } catch (Exception e) {
             log.error("Failed to send welcome email to user: {}", username, e);
             throw new RuntimeException("Failed to send welcome email", e);
+        }
+    }
+
+    // Order notification methods
+    public void sendOrderPlacedNotificationToShop(String shopOwnerEmail, String shopOwnerName, String orderNumber, 
+                                                   String customerName, String totalAmount, String items) {
+        try {
+            Map<String, Object> variables = Map.of(
+                "shopOwnerName", shopOwnerName,
+                "orderNumber", orderNumber,
+                "customerName", customerName,
+                "totalAmount", totalAmount,
+                "items", items,
+                "dashboardUrl", dashboardUrl,
+                "supportEmail", emailProperties.getFrom()
+            );
+            
+            String subject = "New Order Received - Order #" + orderNumber;
+            sendHtmlEmail(shopOwnerEmail, subject, "order-notification-shop", variables);
+            log.info("Order notification sent to shop owner: {} for order: {}", shopOwnerEmail, orderNumber);
+        } catch (Exception e) {
+            log.error("Failed to send order notification to shop owner: {} for order: {}", shopOwnerEmail, orderNumber, e);
+        }
+    }
+
+    public void sendOrderConfirmationToCustomer(String customerEmail, String customerName, String orderNumber, 
+                                                 String totalAmount, String items, String estimatedDelivery) {
+        try {
+            Map<String, Object> variables = Map.of(
+                "customerName", customerName,
+                "orderNumber", orderNumber,
+                "totalAmount", totalAmount,
+                "items", items,
+                "estimatedDelivery", estimatedDelivery,
+                "supportEmail", emailProperties.getFrom()
+            );
+            
+            String subject = "Order Confirmation - Order #" + orderNumber;
+            sendHtmlEmail(customerEmail, subject, "order-confirmation-customer", variables);
+            log.info("Order confirmation sent to customer: {} for order: {}", customerEmail, orderNumber);
+        } catch (Exception e) {
+            log.error("Failed to send order confirmation to customer: {} for order: {}", customerEmail, orderNumber, e);
+        }
+    }
+
+    public void sendOrderStatusUpdateToCustomer(String customerEmail, String customerName, String orderNumber, 
+                                                 String oldStatus, String newStatus, String trackingUrl) {
+        try {
+            Map<String, Object> variables = Map.of(
+                "customerName", customerName,
+                "orderNumber", orderNumber,
+                "oldStatus", oldStatus,
+                "newStatus", newStatus,
+                "trackingUrl", trackingUrl,
+                "supportEmail", emailProperties.getFrom()
+            );
+            
+            String subject = "Order Update - Order #" + orderNumber + " is " + newStatus;
+            sendHtmlEmail(customerEmail, subject, "order-status-update", variables);
+            log.info("Order status update sent to customer: {} for order: {} - {}", customerEmail, orderNumber, newStatus);
+        } catch (Exception e) {
+            log.error("Failed to send order status update to customer: {} for order: {}", customerEmail, orderNumber, e);
+        }
+    }
+
+    public void sendDeliveryAssignmentNotification(String partnerEmail, String partnerName, String orderNumber, 
+                                                    String shopName, String customerAddress, String customerPhone) {
+        try {
+            Map<String, Object> variables = Map.of(
+                "partnerName", partnerName,
+                "orderNumber", orderNumber,
+                "shopName", shopName,
+                "customerAddress", customerAddress,
+                "customerPhone", customerPhone,
+                "supportEmail", emailProperties.getFrom()
+            );
+            
+            String subject = "New Delivery Assignment - Order #" + orderNumber;
+            sendHtmlEmail(partnerEmail, subject, "delivery-assignment", variables);
+            log.info("Delivery assignment notification sent to partner: {} for order: {}", partnerEmail, orderNumber);
+        } catch (Exception e) {
+            log.error("Failed to send delivery assignment notification to partner: {} for order: {}", partnerEmail, orderNumber, e);
         }
     }
 

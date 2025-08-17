@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Confirmation - NammaOoru</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .content {
+            padding: 30px;
+        }
+        .order-details {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-left: 4px solid #28a745;
+            margin: 20px 0;
+        }
+        .footer {
+            background-color: #34495e;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .highlight {
+            color: #28a745;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Order Confirmed!</h1>
+            <p>Thank you for your order</p>
+        </div>
+        
+        <div class="content">
+            <h2>Hello <span th:text="${customerName}">Customer</span>!</h2>
+            
+            <p>We're excited to confirm that your order has been successfully placed and is being prepared for delivery.</p>
+            
+            <div class="order-details">
+                <h3>Order Details</h3>
+                <p><strong>Order Number:</strong> <span class="highlight" th:text="${orderId}">ORD123456</span></p>
+                <p><strong>Order Amount:</strong> <span class="highlight" th:text="${orderAmount}">₹500.00</span></p>
+                <p><strong>Order Date:</strong> <span th:text="${orderDate}">01/01/2025 10:30</span></p>
+                <p><strong>Payment Method:</strong> Cash on Delivery</p>
+            </div>
+            
+            <h3>What's Next?</h3>
+            <ul>
+                <li>Your order is being prepared by the shop</li>
+                <li>You'll receive updates on your order status</li>
+                <li>Our delivery partner will contact you once the order is ready for delivery</li>
+                <li>Payment will be collected upon delivery</li>
+            </ul>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="#" th:href="${trackingUrl}" class="btn">Track Your Order</a>
+            </div>
+            
+            <p>If you have any questions about your order, please don't hesitate to contact our support team.</p>
+            
+            <p>Thank you for choosing NammaOoru!</p>
+        </div>
+        
+        <div class="footer">
+            <p>&copy; 2025 <span th:text="${companyName}">NammaOoru</span>. All rights reserved.</p>
+            <p>Need help? Contact us at <a href="mailto:" th:href="'mailto:' + ${supportEmail}" th:text="${supportEmail}" style="color: #ffffff;">support@nammaooru.com</a></p>
+        </div>
+    </div>
+</body>
+</html>

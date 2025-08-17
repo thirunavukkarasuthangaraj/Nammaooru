@@ -103,6 +103,14 @@ public class ResponseUtil {
     }
     
     /**
+     * Create a simple error response with default error code and internal server error status
+     */
+    public static <T> ResponseEntity<ApiResponse<T>> error(String message) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(message));
+    }
+    
+    /**
      * Create a paginated response
      */
     public static <T> ResponseEntity<ApiResponse<Map<String, Object>>> paginated(Page<T> page) {

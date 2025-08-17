@@ -1,0 +1,20 @@
+.earnings-overview {
+  margin-bottom: 2rem;
+}
+
+.earnings-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.earning-card {
+  text-align: center;
+  
+  .amount {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #4caf50;
+  }
+}

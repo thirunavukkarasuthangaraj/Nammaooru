@@ -1,0 +1,19 @@
+<h2 mat-dialog-title>Document Verification</h2>
+
+<div mat-dialog-content>
+  <div class="documents-list" *ngIf="data.documents?.length; else noDocuments">
+    <div *ngFor="let doc of data.documents" class="document-item">
+      <p><strong>{{doc.type}}:</strong> {{doc.status}}</p>
+    </div>
+  </div>
+  
+  <ng-template #noDocuments>
+    <p>No documents available for verification.</p>
+  </ng-template>
+</div>
+
+<div mat-dialog-actions align="end">
+  <button mat-button (click)="onClose()">Cancel</button>
+  <button mat-raised-button color="warn" (click)="onReject()">Reject</button>
+  <button mat-raised-button color="primary" (click)="onApprove()">Approve</button>
+</div>

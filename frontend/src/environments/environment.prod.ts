@@ -1,5 +1,17 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://your-production-api.com/api',
-  googleMapsApiKey: 'YOUR_GOOGLE_MAPS_API_KEY_HERE'
+  apiUrl: 'https://your-production-api.com',
+  googleMapsApiKey: 'AIzaSyAr_uGbaOnhebjRyz7ohU6N-hWZJVV_R3U',
+  websocketUrl: 'wss://your-production-api.com/ws',
+  defaultMapCenter: {
+    lat: 12.9716, // Bangalore coordinates
+    lng: 77.5946
+  },
+  defaultMapZoom: 13,
+  trackingUpdateInterval: 40000, // 40 seconds
+  locationAccuracy: {
+    enableHighAccuracy: true,
+    timeout: 10000,
+    maximumAge: 60000
+  }
 };

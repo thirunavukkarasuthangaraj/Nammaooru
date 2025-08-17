@@ -133,4 +133,63 @@ public class OrderController {
                 "paymentMethods", Order.PaymentMethod.values()
         ));
     }
+    
+    @PostMapping("/{orderId}/accept")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SHOP_OWNER')")
+    public ResponseEntity<OrderResponse> acceptOrder(
+            @PathVariable Long orderId,
+            @RequestBody(required = false) Map<String, Object> requestBody) {
+        log.info("Accepting order: {}", orderId);
+        
+        String estimatedPreparationTime = null;
+        String notes = null;
+        
+        if (requestBody != null) {
+            estimatedPreparationTime = (String) requestBody.get("estimatedPreparationTime");
+            notes = (String) requestBody.get("notes");
+        }
+        
+        OrderResponse response = orderService.acceptOrder(orderId, estimatedPreparationTime, notes);
+        return ResponseEntity.ok(response);
+    }
+    
+    @PostMapping("/{orderId}/reject")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SHOP_OWNER')")
+    public ResponseEntity<OrderResponse> rejectOrder(
+            @PathVariable Long orderId,
+            @RequestBody Map<String, String> requestBody) {
+        log.info("Rejecting order: {}", orderId);
+        
+        String reason = requestBody.get("reason");
+        if (reason == null || reason.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(null);
+        }
+        
+        OrderResponse response = orderService.rejectOrder(orderId, reason);
+        return ResponseEntity.ok(response);
+    }
+    
+    @GetMapping("/{orderId}/tracking")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SHOP_OWNER') or hasRole('CUSTOMER')")
+    public ResponseEntity<Map<String, Object>> getOrderTracking(@PathVariable Long orderId) {
+        log.info("Fetching tracking information for order: {}", orderId);
+        Map<String, Object> trackingInfo = orderService.getOrderTracking(orderId);
+        return ResponseEntity.ok(trackingInfo);
+    }
+    
+    @PostMapping("/{orderId}/ready")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SHOP_OWNER')")
+    public ResponseEntity<OrderResponse> markOrderReady(@PathVariable Long orderId) {
+        log.info("Marking order ready: {}", orderId);
+        OrderResponse response = orderService.updateOrderStatus(orderId, Order.OrderStatus.READY);
+        return ResponseEntity.ok(response);
+    }
+    
+    @PostMapping("/{orderId}/prepare")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SHOP_OWNER')")
+    public ResponseEntity<OrderResponse> startPreparingOrder(@PathVariable Long orderId) {
+        log.info("Starting preparation for order: {}", orderId);
+        OrderResponse response = orderService.updateOrderStatus(orderId, Order.OrderStatus.PREPARING);
+        return ResponseEntity.ok(response);
+    }
 }

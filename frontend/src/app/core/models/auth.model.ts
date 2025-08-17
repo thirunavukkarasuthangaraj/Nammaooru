@@ -32,7 +32,10 @@ export interface User {
 }
 
 export enum UserRole {
+  SUPER_ADMIN = 'SUPER_ADMIN',
   ADMIN = 'ADMIN',
-  USER = 'USER',
-  SHOP_OWNER = 'SHOP_OWNER'
+  MANAGER = 'MANAGER',
+  SHOP_OWNER = 'SHOP_OWNER',
+  DELIVERY_PARTNER = 'DELIVERY_PARTNER',
+  USER = 'USER'
 }

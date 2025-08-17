@@ -27,6 +27,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -116,7 +118,7 @@ public class OrderService {
         
         Order savedOrder = orderRepository.save(order);
         
-        // Send confirmation email
+        // Send confirmation email to customer
         try {
             emailService.sendOrderConfirmationEmail(
                 customer.getEmail(),
@@ -127,6 +129,27 @@ public class OrderService {
             );
         } catch (Exception e) {
             log.error("Failed to send order confirmation email", e);
+        }
+        
+        // Send new order notification to shop owner
+        try {
+            String itemsSummary = orderItems.stream()
+                .map(item -> String.format("%s x%d (₹%.2f)", 
+                    item.getProductName(), 
+                    item.getQuantity(), 
+                    item.getTotalPrice()))
+                .collect(Collectors.joining(", "));
+                
+            emailService.sendOrderPlacedNotificationToShop(
+                shop.getOwnerEmail(),
+                shop.getOwnerName(),
+                savedOrder.getOrderNumber(),
+                customer.getFullName(),
+                String.format("₹%.2f", savedOrder.getTotalAmount()),
+                itemsSummary
+            );
+        } catch (Exception e) {
+            log.error("Failed to send order notification to shop owner", e);
         }
         
         log.info("Order created successfully: {}", savedOrder.getOrderNumber());
@@ -228,6 +251,254 @@ public class OrderService {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Order> orders = orderRepository.searchOrders(searchTerm, pageable);
         return orders.map(this::mapToResponse);
+    }
+    
+    @Transactional
+    public OrderResponse acceptOrder(Long orderId, String estimatedPreparationTime, String notes) {
+        log.info("Accepting order: {} with estimated preparation time: {}", orderId, estimatedPreparationTime);
+        
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+        
+        if (order.getStatus() != Order.OrderStatus.PENDING) {
+            throw new RuntimeException("Order cannot be accepted in current status: " + order.getStatus());
+        }
+        
+        order.setStatus(Order.OrderStatus.CONFIRMED);
+        order.setUpdatedBy(getCurrentUsername());
+        
+        if (estimatedPreparationTime != null && !estimatedPreparationTime.trim().isEmpty()) {
+            // Parse and set estimated delivery time based on preparation time
+            try {
+                int minutes = Integer.parseInt(estimatedPreparationTime);
+                order.setEstimatedDeliveryTime(LocalDateTime.now().plusMinutes(minutes));
+            } catch (NumberFormatException e) {
+                log.warn("Invalid preparation time format: {}", estimatedPreparationTime);
+            }
+        }
+        
+        if (notes != null && !notes.trim().isEmpty()) {
+            String existingNotes = order.getNotes();
+            String updatedNotes = existingNotes != null ? 
+                existingNotes + "\n[Shop Owner] " + notes : 
+                "[Shop Owner] " + notes;
+            order.setNotes(updatedNotes);
+        }
+        
+        Order acceptedOrder = orderRepository.save(order);
+        
+        // Send order acceptance email to customer
+        try {
+            emailService.sendOrderStatusUpdateToCustomer(
+                order.getCustomer().getEmail(),
+                order.getCustomer().getFullName(),
+                order.getOrderNumber(),
+                "PENDING",
+                "CONFIRMED",
+                "Order accepted by " + order.getShop().getName()
+            );
+        } catch (Exception e) {
+            log.error("Failed to send order acceptance email to customer", e);
+        }
+        
+        log.info("Order accepted successfully: {}", acceptedOrder.getOrderNumber());
+        return mapToResponse(acceptedOrder);
+    }
+    
+    @Transactional
+    public OrderResponse rejectOrder(Long orderId, String reason) {
+        log.info("Rejecting order: {} with reason: {}", orderId, reason);
+        
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+        
+        if (order.getStatus() != Order.OrderStatus.PENDING) {
+            throw new RuntimeException("Order cannot be rejected in current status: " + order.getStatus());
+        }
+        
+        order.setStatus(Order.OrderStatus.CANCELLED);
+        order.setCancellationReason(reason);
+        order.setUpdatedBy(getCurrentUsername());
+        
+        Order rejectedOrder = orderRepository.save(order);
+        
+        // Send order rejection email to customer
+        try {
+            emailService.sendOrderStatusUpdateToCustomer(
+                order.getCustomer().getEmail(),
+                order.getCustomer().getFullName(),
+                order.getOrderNumber(),
+                "PENDING",
+                "CANCELLED",
+                "Order rejected by " + order.getShop().getName() + ". Reason: " + reason
+            );
+        } catch (Exception e) {
+            log.error("Failed to send order rejection email to customer", e);
+        }
+        
+        log.info("Order rejected successfully: {}", rejectedOrder.getOrderNumber());
+        return mapToResponse(rejectedOrder);
+    }
+    
+    public Map<String, Object> getOrderTracking(Long orderId) {
+        log.info("Fetching tracking information for order: {}", orderId);
+        
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+        
+        Map<String, Object> trackingInfo = new HashMap<>();
+        
+        // Basic order info
+        trackingInfo.put("orderId", order.getId());
+        trackingInfo.put("orderNumber", order.getOrderNumber());
+        trackingInfo.put("currentStatus", order.getStatus().name());
+        trackingInfo.put("statusLabel", getStatusLabel(order.getStatus()));
+        
+        // Customer info
+        trackingInfo.put("customerName", order.getCustomer().getFullName());
+        trackingInfo.put("customerPhone", order.getCustomer().getMobileNumber());
+        
+        // Shop info
+        trackingInfo.put("shopName", order.getShop().getName());
+        trackingInfo.put("shopPhone", order.getShop().getPhone());
+        trackingInfo.put("shopAddress", order.getShop().getAddressLine1() + ", " + order.getShop().getCity());
+        
+        // Delivery info
+        String fullDeliveryAddress = String.format("%s, %s, %s - %s",
+                order.getDeliveryAddress(),
+                order.getDeliveryCity(),
+                order.getDeliveryState(),
+                order.getDeliveryPostalCode());
+        trackingInfo.put("deliveryAddress", fullDeliveryAddress);
+        trackingInfo.put("deliveryPhone", order.getDeliveryPhone());
+        trackingInfo.put("deliveryContactName", order.getDeliveryContactName());
+        
+        // Timeline
+        trackingInfo.put("timeline", buildOrderTimeline(order));
+        
+        // Progress percentage
+        trackingInfo.put("progressPercentage", calculateProgressPercentage(order.getStatus()));
+        
+        // Estimated times
+        trackingInfo.put("estimatedDeliveryTime", order.getEstimatedDeliveryTime());
+        trackingInfo.put("actualDeliveryTime", order.getActualDeliveryTime());
+        
+        // Order details
+        trackingInfo.put("totalAmount", order.getTotalAmount());
+        trackingInfo.put("paymentMethod", order.getPaymentMethod().name());
+        trackingInfo.put("paymentStatus", order.getPaymentStatus().name());
+        
+        // Special instructions
+        trackingInfo.put("notes", order.getNotes());
+        trackingInfo.put("cancellationReason", order.getCancellationReason());
+        
+        return trackingInfo;
+    }
+    
+    private List<Map<String, Object>> buildOrderTimeline(Order order) {
+        List<Map<String, Object>> timeline = List.of(
+            Map.of(
+                "status", "PENDING",
+                "label", "Order Placed",
+                "description", "Your order has been placed successfully",
+                "timestamp", order.getCreatedAt(),
+                "completed", true,
+                "icon", "shopping_cart"
+            ),
+            Map.of(
+                "status", "CONFIRMED",
+                "label", "Order Confirmed",
+                "description", "Shop has confirmed your order",
+                "timestamp", order.getStatus().ordinal() >= Order.OrderStatus.CONFIRMED.ordinal() ? 
+                    order.getUpdatedAt() : null,
+                "completed", order.getStatus().ordinal() >= Order.OrderStatus.CONFIRMED.ordinal(),
+                "icon", "check_circle"
+            ),
+            Map.of(
+                "status", "PREPARING",
+                "label", "Preparing Order",
+                "description", "Your order is being prepared",
+                "timestamp", order.getStatus().ordinal() >= Order.OrderStatus.PREPARING.ordinal() ? 
+                    order.getUpdatedAt() : null,
+                "completed", order.getStatus().ordinal() >= Order.OrderStatus.PREPARING.ordinal(),
+                "icon", "restaurant"
+            ),
+            Map.of(
+                "status", "READY",
+                "label", "Ready for Pickup/Delivery",
+                "description", "Your order is ready",
+                "timestamp", order.getStatus().ordinal() >= Order.OrderStatus.READY.ordinal() ? 
+                    order.getUpdatedAt() : null,
+                "completed", order.getStatus().ordinal() >= Order.OrderStatus.READY.ordinal(),
+                "icon", "done_all"
+            ),
+            Map.of(
+                "status", "OUT_FOR_DELIVERY",
+                "label", "Out for Delivery",
+                "description", "Your order is on the way",
+                "timestamp", order.getStatus().ordinal() >= Order.OrderStatus.OUT_FOR_DELIVERY.ordinal() ? 
+                    order.getUpdatedAt() : null,
+                "completed", order.getStatus().ordinal() >= Order.OrderStatus.OUT_FOR_DELIVERY.ordinal(),
+                "icon", "local_shipping"
+            ),
+            Map.of(
+                "status", "DELIVERED",
+                "label", "Delivered",
+                "description", "Order delivered successfully",
+                "timestamp", order.getActualDeliveryTime(),
+                "completed", order.getStatus() == Order.OrderStatus.DELIVERED,
+                "icon", "home"
+            )
+        );
+        
+        // Handle cancelled orders
+        if (order.getStatus() == Order.OrderStatus.CANCELLED) {
+            return List.of(
+                Map.of(
+                    "status", "PENDING",
+                    "label", "Order Placed",
+                    "description", "Your order was placed",
+                    "timestamp", order.getCreatedAt(),
+                    "completed", true,
+                    "icon", "shopping_cart"
+                ),
+                Map.of(
+                    "status", "CANCELLED",
+                    "label", "Order Cancelled",
+                    "description", "Order was cancelled. Reason: " + order.getCancellationReason(),
+                    "timestamp", order.getUpdatedAt(),
+                    "completed", true,
+                    "icon", "cancel",
+                    "error", true
+                )
+            );
+        }
+        
+        return timeline;
+    }
+    
+    private int calculateProgressPercentage(Order.OrderStatus status) {
+        return switch (status) {
+            case PENDING -> 15;
+            case CONFIRMED -> 30;
+            case PREPARING -> 50;
+            case READY -> 70;
+            case OUT_FOR_DELIVERY -> 85;
+            case DELIVERED -> 100;
+            case CANCELLED -> 0;
+        };
+    }
+    
+    private String getStatusLabel(Order.OrderStatus status) {
+        return switch (status) {
+            case PENDING -> "Order Placed";
+            case CONFIRMED -> "Order Confirmed";
+            case PREPARING -> "Being Prepared";
+            case READY -> "Ready for Delivery";
+            case OUT_FOR_DELIVERY -> "Out for Delivery";
+            case DELIVERED -> "Delivered";
+            case CANCELLED -> "Cancelled";
+        };
     }
     
     private String getCurrentUsername() {

@@ -1,0 +1,21 @@
+<h2 mat-dialog-title>Update Partner Status</h2>
+
+<div mat-dialog-content>
+  <p>Update status for partner: <strong>{{data.partnerName}}</strong></p>
+  
+  <mat-form-field appearance="outline" class="full-width">
+    <mat-label>Status</mat-label>
+    <mat-select [(value)]="selectedStatus">
+      <mat-option *ngFor="let status of availableStatuses" [value]="status.value">
+        {{status.label}}
+      </mat-option>
+    </mat-select>
+  </mat-form-field>
+</div>
+
+<div mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()">Cancel</button>
+  <button mat-raised-button color="primary" (click)="onConfirm()" [disabled]="!selectedStatus">
+    Update Status
+  </button>
+</div>

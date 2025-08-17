@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Invoice - NammaOoru</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f8f9fa;
+        }
+        
+        .invoice-container {
+            max-width: 800px;
+            margin: 20px auto;
+            background-color: white;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .invoice-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            position: relative;
+        }
+        
+        .invoice-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="20" cy="20" r="1" fill="white" opacity="0.1"/><circle cx="60" cy="40" r="1" fill="white" opacity="0.1"/><circle cx="40" cy="70" r="1" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+        }
+        
+        .header-content {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .company-info h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .company-tagline {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .invoice-details {
+            text-align: right;
+        }
+        
+        .invoice-number {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .invoice-date {
+            opacity: 0.9;
+        }
+        
+        .invoice-body {
+            padding: 40px;
+        }
+        
+        .billing-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+        
+        .billing-info h3 {
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+        
+        .billing-info p {
+            margin-bottom: 5px;
+            color: #555;
+        }
+        
+        .order-info {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .order-info h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .order-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .order-detail {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .order-detail strong {
+            color: #333;
+        }
+        
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .items-table th {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        .items-table td {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .items-table tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .price-column {
+            text-align: right;
+            font-weight: 500;
+        }
+        
+        .delivery-section {
+            background: linear-gradient(135deg, #e8f5e8, #f0fff0);
+            border: 1px solid #28a745;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .delivery-section h3 {
+            color: #28a745;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .delivery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        
+        .delivery-metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #d4edda;
+        }
+        
+        .delivery-metric .label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .delivery-metric .value {
+            font-weight: 600;
+            color: #28a745;
+        }
+        
+        .totals-section {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 8px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .totals-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .totals-table td {
+            padding: 8px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .totals-table .label {
+            font-weight: 500;
+            color: #555;
+        }
+        
+        .totals-table .amount {
+            text-align: right;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .total-row {
+            border-top: 2px solid #667eea !important;
+            font-size: 1.2rem;
+        }
+        
+        .total-row .label {
+            color: #667eea;
+            font-weight: 700;
+        }
+        
+        .total-row .amount {
+            color: #667eea;
+            font-weight: 700;
+        }
+        
+        .platform-fees-section {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-fees-section h3 {
+            color: #856404;
+            margin-bottom: 15px;
+        }
+        
+        .fees-breakdown {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .fee-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #f5c6cb;
+        }
+        
+        .payment-info {
+            background: linear-gradient(135deg, #d1ecf1, #b8daff);
+            border: 1px solid #17a2b8;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .payment-info h3 {
+            color: #0c5460;
+            margin-bottom: 15px;
+        }
+        
+        .payment-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .footer {
+            background: #f8f9fa;
+            padding: 20px 40px;
+            border-top: 1px solid #dee2e6;
+            text-align: center;
+            color: #666;
+        }
+        
+        .footer p {
+            margin-bottom: 5px;
+        }
+        
+        .print-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        
+        @media print {
+            .print-btn { display: none; }
+            .invoice-container { box-shadow: none; margin: 0; }
+        }
+        
+        @media (max-width: 768px) {
+            .billing-section { grid-template-columns: 1fr; gap: 20px; }
+            .header-content { flex-direction: column; text-align: center; gap: 20px; }
+            .invoice-body { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <button class="print-btn" onclick="window.print()">🖨️ Print Invoice</button>
+    
+    <div class="invoice-container">
+        <!-- Header -->
+        <div class="invoice-header">
+            <div class="header-content">
+                <div class="company-info">
+                    <h1>NammaOoru</h1>
+                    <p class="company-tagline">Local Commerce, Global Standards</p>
+                </div>
+                <div class="invoice-details">
+                    <div class="invoice-number">Invoice #<span th:text="${invoiceNumber}">INV-001</span></div>
+                    <div class="invoice-date" th:text="'Date: ' + ${invoiceDate}">Date: 2024-01-15</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="invoice-body">
+            <!-- Billing Information -->
+            <div class="billing-section">
+                <div class="billing-info">
+                    <h3>📍 Billing To:</h3>
+                    <p><strong th:text="${customerName}">John Doe</strong></p>
+                    <p th:text="${customerEmail}">john@example.com</p>
+                    <p th:text="${customerPhone}">+91 9876543210</p>
+                    <p th:text="${deliveryAddress}">123 Main Street, Bangalore</p>
+                    <p th:text="${deliveryCity + ', ' + deliveryState + ' - ' + deliveryPostalCode}">Bangalore, Karnataka - 560001</p>
+                </div>
+                
+                <div class="billing-info">
+                    <h3>🏪 Shop Details:</h3>
+                    <p><strong th:text="${shopName}">ABC Store</strong></p>
+                    <p th:text="${shopEmail}">shop@example.com</p>
+                    <p th:text="${shopPhone}">+91 9876543211</p>
+                    <p th:text="${shopAddress}">456 Shop Street, Bangalore</p>
+                </div>
+            </div>
+
+            <!-- Order Information -->
+            <div class="order-info">
+                <h3>📦 Order Information</h3>
+                <div class="order-grid">
+                    <div class="order-detail">
+                        <span>Order Number:</span>
+                        <strong th:text="${orderNumber}">ORD123456</strong>
+                    </div>
+                    <div class="order-detail">
+                        <span>Order Date:</span>
+                        <strong th:text="${orderDate}">2024-01-15 14:30</strong>
+                    </div>
+                    <div class="order-detail">
+                        <span>Payment Method:</span>
+                        <strong th:text="${paymentMethod}">Cash on Delivery</strong>
+                    </div>
+                    <div class="order-detail">
+                        <span>Order Status:</span>
+                        <strong th:text="${orderStatus}">Delivered</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Delivery Tracking Information -->
+            <div class="delivery-section">
+                <h3>🚚 Delivery Information</h3>
+                <div class="delivery-grid">
+                    <div class="delivery-metric">
+                        <span class="label">Distance Covered:</span>
+                        <span class="value" th:text="${distanceCovered + ' km'}">12.5 km</span>
+                    </div>
+                    <div class="delivery-metric">
+                        <span class="label">Delivery Time:</span>
+                        <span class="value" th:text="${deliveryTime}">45 minutes</span>
+                    </div>
+                    <div class="delivery-metric">
+                        <span class="label">Partner:</span>
+                        <span class="value" th:text="${deliveryPartnerName}">Ravi Kumar</span>
+                    </div>
+                    <div class="delivery-metric">
+                        <span class="label">Vehicle:</span>
+                        <span class="value" th:text="${vehicleType + ' - ' + vehicleNumber}">Bike - KA01AB1234</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Items Table -->
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>SKU</th>
+                        <th style="text-align: center;">Qty</th>
+                        <th class="price-column">Unit Price</th>
+                        <th class="price-column">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="item : ${orderItems}">
+                        <td>
+                            <strong th:text="${item.productName}">Product Name</strong>
+                            <br>
+                            <small th:text="${item.productDescription}" style="color: #666;">Product Description</small>
+                        </td>
+                        <td th:text="${item.productSku}">SKU123</td>
+                        <td style="text-align: center;" th:text="${item.quantity}">2</td>
+                        <td class="price-column" th:text="'₹' + ${#numbers.formatDecimal(item.unitPrice, 1, 2)}">₹250.00</td>
+                        <td class="price-column" th:text="'₹' + ${#numbers.formatDecimal(item.totalPrice, 1, 2)}">₹500.00</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Platform Fees Breakdown -->
+            <div class="platform-fees-section">
+                <h3>💰 Platform Fees Breakdown</h3>
+                <div class="fees-breakdown">
+                    <div class="fee-item">
+                        <span>Service Fee:</span>
+                        <strong th:text="'₹' + ${#numbers.formatDecimal(serviceFee, 1, 2)}">₹25.00</strong>
+                    </div>
+                    <div class="fee-item">
+                        <span>Platform Commission:</span>
+                        <strong th:text="'₹' + ${#numbers.formatDecimal(platformCommission, 1, 2)}">₹50.00</strong>
+                    </div>
+                    <div class="fee-item">
+                        <span>Payment Gateway:</span>
+                        <strong th:text="'₹' + ${#numbers.formatDecimal(paymentGatewayFee, 1, 2)}">₹15.00</strong>
+                    </div>
+                    <div class="fee-item">
+                        <span>Delivery Partner Fee:</span>
+                        <strong th:text="'₹' + ${#numbers.formatDecimal(deliveryPartnerFee, 1, 2)}">₹80.00</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Totals Section -->
+            <div class="totals-section">
+                <table class="totals-table">
+                    <tr>
+                        <td class="label">Subtotal:</td>
+                        <td class="amount" th:text="'₹' + ${#numbers.formatDecimal(subtotal, 1, 2)}">₹1,200.00</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Delivery Fee:</td>
+                        <td class="amount" th:text="'₹' + ${#numbers.formatDecimal(deliveryFee, 1, 2)}">₹50.00</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Tax (GST):</td>
+                        <td class="amount" th:text="'₹' + ${#numbers.formatDecimal(taxAmount, 1, 2)}">₹60.00</td>
+                    </tr>
+                    <tr th:if="${discountAmount > 0}">
+                        <td class="label">Discount:</td>
+                        <td class="amount" style="color: #28a745;" th:text="'-₹' + ${#numbers.formatDecimal(discountAmount, 1, 2)}">-₹100.00</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Platform Fees:</td>
+                        <td class="amount" th:text="'₹' + ${#numbers.formatDecimal(totalPlatformFees, 1, 2)}">₹170.00</td>
+                    </tr>
+                    <tr class="total-row">
+                        <td class="label">TOTAL AMOUNT:</td>
+                        <td class="amount" th:text="'₹' + ${#numbers.formatDecimal(totalAmount, 1, 2)}">₹1,380.00</td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- Payment Information -->
+            <div class="payment-info">
+                <h3>💳 Payment Information</h3>
+                <div class="payment-grid">
+                    <div class="order-detail">
+                        <span>Payment Status:</span>
+                        <strong th:text="${paymentStatus}">Paid</strong>
+                    </div>
+                    <div class="order-detail">
+                        <span>Payment Date:</span>
+                        <strong th:text="${paymentDate}">2024-01-15 15:45</strong>
+                    </div>
+                    <div class="order-detail">
+                        <span>Transaction ID:</span>
+                        <strong th:text="${transactionId}">TXN123456789</strong>
+                    </div>
+                    <div class="order-detail">
+                        <span>Amount Paid:</span>
+                        <strong th:text="'₹' + ${#numbers.formatDecimal(amountPaid, 1, 2)}">₹1,380.00</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p><strong>Thank you for choosing NammaOoru!</strong></p>
+            <p>For support, contact us at support@nammaooru.com | +91 80-1234-5678</p>
+            <p>This is a computer-generated invoice and does not require a signature.</p>
+        </div>
+    </div>
+
+    <script>
+        // Add print functionality
+        function printInvoice() {
+            window.print();
+        }
+        
+        // Auto-calculate totals on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Invoice loaded successfully');
+        });
+    </script>
+</body>
+</html>

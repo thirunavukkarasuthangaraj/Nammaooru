@@ -1,0 +1,365 @@
+<div class="delivery-dashboard" *ngIf="!isLoading">
+  <!-- Header Section -->
+  <mat-toolbar color="primary" class="dashboard-header">
+    <div class="header-content">
+      <div class="partner-info">
+        <mat-icon class="partner-avatar">account_circle</mat-icon>
+        <div class="partner-details">
+          <h2>{{ partner?.fullName }}</h2>
+          <span class="partner-id">{{ partner?.partnerId }}</span>
+        </div>
+      </div>
+      
+      <div class="status-controls">
+        <div class="status-toggle">
+          <mat-slide-toggle 
+            [(ngModel)]="isOnline" 
+            (change)="toggleOnlineStatus()"
+            color="accent">
+            <span [class.online]="isOnline" [class.offline]="!isOnline">
+              {{ isOnline ? 'Online' : 'Offline' }}
+            </span>
+          </mat-slide-toggle>
+        </div>
+        
+        <div class="status-toggle" *ngIf="isOnline">
+          <mat-slide-toggle 
+            [(ngModel)]="isAvailable" 
+            (change)="toggleAvailability()"
+            color="accent">
+            <span [class.available]="isAvailable" [class.unavailable]="!isAvailable">
+              {{ isAvailable ? 'Available' : 'Busy' }}
+            </span>
+          </mat-slide-toggle>
+        </div>
+      </div>
+    </div>
+  </mat-toolbar>
+
+  <!-- Stats Cards -->
+  <div class="stats-grid">
+    <mat-card class="stat-card deliveries">
+      <mat-card-content>
+        <div class="stat-icon">
+          <mat-icon>local_shipping</mat-icon>
+        </div>
+        <div class="stat-info">
+          <div class="stat-value">{{ todayStats.deliveries }}</div>
+          <div class="stat-label">Today's Deliveries</div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card earnings">
+      <mat-card-content>
+        <div class="stat-icon">
+          <mat-icon>currency_rupee</mat-icon>
+        </div>
+        <div class="stat-info">
+          <div class="stat-value">{{ formatEarnings(todayStats.earnings) }}</div>
+          <div class="stat-label">Today's Earnings</div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card rating">
+      <mat-card-content>
+        <div class="stat-icon">
+          <mat-icon>star</mat-icon>
+        </div>
+        <div class="stat-info">
+          <div class="stat-value">{{ formatRating(todayStats.rating) }}</div>
+          <div class="stat-label">Current Rating</div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card hours">
+      <mat-card-content>
+        <div class="stat-icon">
+          <mat-icon>schedule</mat-icon>
+        </div>
+        <div class="stat-info">
+          <div class="stat-value">{{ todayStats.hoursWorked }}h</div>
+          <div class="stat-label">Hours Worked</div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Main Content Tabs -->
+  <mat-tab-group [(selectedIndex)]="currentTab" animationDuration="0ms">
+    
+    <!-- Active Orders Tab -->
+    <mat-tab label="Active Orders">
+      <ng-template mat-tab-label>
+        <mat-icon>assignment</mat-icon>
+        Active Orders
+        <span class="tab-badge" *ngIf="activeOrders.length > 0">{{ activeOrders.length }}</span>
+      </ng-template>
+      
+      <div class="tab-content">
+        <div class="empty-state" *ngIf="activeOrders.length === 0">
+          <mat-icon class="empty-icon">assignment_late</mat-icon>
+          <h3>No Active Orders</h3>
+          <p>You don't have any active deliveries at the moment.</p>
+        </div>
+
+        <div class="orders-list" *ngIf="activeOrders.length > 0">
+          <mat-card class="order-card" *ngFor="let order of activeOrders">
+            <mat-card-header>
+              <div mat-card-avatar class="order-avatar">
+                <mat-icon>shopping_bag</mat-icon>
+              </div>
+              <mat-card-title>Order #{{ order.orderNumber }}</mat-card-title>
+              <mat-card-subtitle>
+                <mat-chip [color]="getStatusColor(order.status)" selected>
+                  {{ order.status }}
+                </mat-chip>
+              </mat-card-subtitle>
+            </mat-card-header>
+
+            <mat-card-content>
+              <div class="order-details">
+                <div class="detail-row">
+                  <mat-icon>store</mat-icon>
+                  <span>{{ order.shopName }}</span>
+                </div>
+                <div class="detail-row">
+                  <mat-icon>location_on</mat-icon>
+                  <span>{{ order.deliveryAddress }}</span>
+                </div>
+                <div class="detail-row">
+                  <mat-icon>phone</mat-icon>
+                  <span>{{ order.customerPhone }}</span>
+                </div>
+                <div class="detail-row">
+                  <mat-icon>currency_rupee</mat-icon>
+                  <span>{{ formatEarnings(order.deliveryFee) }}</span>
+                </div>
+                <div class="detail-row" *ngIf="order.distanceToDestination">
+                  <mat-icon>navigation</mat-icon>
+                  <span>{{ formatDistance(order.distanceToDestination) }}</span>
+                </div>
+              </div>
+            </mat-card-content>
+
+            <mat-card-actions align="end">
+              <button mat-raised-button 
+                      color="primary" 
+                      *ngIf="order.status === 'ACCEPTED'"
+                      (click)="markPickedUp(order.id)">
+                <mat-icon>shopping_cart</mat-icon>
+                Mark Picked Up
+              </button>
+              
+              <button mat-raised-button 
+                      color="primary" 
+                      *ngIf="order.status === 'PICKED_UP'"
+                      (click)="startDelivery(order.id)">
+                <mat-icon>local_shipping</mat-icon>
+                Start Delivery
+              </button>
+              
+              <button mat-raised-button 
+                      color="accent" 
+                      *ngIf="order.status === 'IN_TRANSIT'"
+                      (click)="completeDelivery(order.id)">
+                <mat-icon>check_circle</mat-icon>
+                Complete
+              </button>
+              
+              <button mat-button [routerLink]="['/delivery/tracking', order.id]">
+                <mat-icon>map</mat-icon>
+                Track
+              </button>
+            </mat-card-actions>
+          </mat-card>
+        </div>
+      </div>
+    </mat-tab>
+
+    <!-- Available Orders Tab -->
+    <mat-tab label="Available Orders" *ngIf="isOnline && isAvailable">
+      <ng-template mat-tab-label>
+        <mat-icon>notifications</mat-icon>
+        Available
+        <span class="tab-badge" *ngIf="availableOrders.length > 0">{{ availableOrders.length }}</span>
+      </ng-template>
+      
+      <div class="tab-content">
+        <div class="empty-state" *ngIf="availableOrders.length === 0">
+          <mat-icon class="empty-icon">search</mat-icon>
+          <h3>No Orders Available</h3>
+          <p>No new orders are available for pickup at the moment.</p>
+        </div>
+
+        <div class="orders-list" *ngIf="availableOrders.length > 0">
+          <mat-card class="order-card available-order" *ngFor="let order of availableOrders">
+            <mat-card-header>
+              <div mat-card-avatar class="order-avatar">
+                <mat-icon>new_releases</mat-icon>
+              </div>
+              <mat-card-title>New Order #{{ order.orderNumber }}</mat-card-title>
+              <mat-card-subtitle>
+                <span class="time-remaining">{{ order.timeRemaining }} mins to accept</span>
+              </mat-card-subtitle>
+            </mat-card-header>
+
+            <mat-card-content>
+              <div class="order-details">
+                <div class="detail-row">
+                  <mat-icon>store</mat-icon>
+                  <span>{{ order.shopName }}</span>
+                </div>
+                <div class="detail-row">
+                  <mat-icon>location_on</mat-icon>
+                  <span>{{ order.deliveryAddress }}</span>
+                </div>
+                <div class="detail-row">
+                  <mat-icon>currency_rupee</mat-icon>
+                  <span>{{ formatEarnings(order.deliveryFee) }}</span>
+                </div>
+                <div class="detail-row">
+                  <mat-icon>navigation</mat-icon>
+                  <span>{{ formatDistance(order.distance) }}</span>
+                </div>
+                <div class="detail-row">
+                  <mat-icon>schedule</mat-icon>
+                  <span>{{ order.estimatedTime }} mins</span>
+                </div>
+              </div>
+            </mat-card-content>
+
+            <mat-card-actions align="end">
+              <button mat-button 
+                      color="warn" 
+                      (click)="rejectOrder(order.id)">
+                <mat-icon>close</mat-icon>
+                Reject
+              </button>
+              
+              <button mat-raised-button 
+                      color="primary" 
+                      (click)="acceptOrder(order.id)">
+                <mat-icon>check</mat-icon>
+                Accept
+              </button>
+            </mat-card-actions>
+          </mat-card>
+        </div>
+      </div>
+    </mat-tab>
+
+    <!-- Earnings Tab -->
+    <mat-tab label="Earnings">
+      <ng-template mat-tab-label>
+        <mat-icon>account_balance_wallet</mat-icon>
+        Earnings
+      </ng-template>
+      
+      <div class="tab-content">
+        <app-earnings-overview 
+          [partnerId]="partner?.id"
+          [totalEarnings]="partner?.totalEarnings || 0">
+        </app-earnings-overview>
+      </div>
+    </mat-tab>
+
+    <!-- Profile Tab -->
+    <mat-tab label="Profile">
+      <ng-template mat-tab-label>
+        <mat-icon>person</mat-icon>
+        Profile
+      </ng-template>
+      
+      <div class="tab-content">
+        <div class="profile-section">
+          <mat-card class="profile-card">
+            <mat-card-header>
+              <mat-card-title>Personal Information</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="profile-grid">
+                <div class="profile-item">
+                  <label>Name:</label>
+                  <span>{{ partner?.fullName }}</span>
+                </div>
+                <div class="profile-item">
+                  <label>Email:</label>
+                  <span>{{ partner?.email }}</span>
+                </div>
+                <div class="profile-item">
+                  <label>Phone:</label>
+                  <span>{{ partner?.phoneNumber }}</span>
+                </div>
+                <div class="profile-item">
+                  <label>Vehicle:</label>
+                  <span>
+                    <mat-icon>{{ getVehicleIcon(partner?.vehicleType || '') }}</mat-icon>
+                    {{ partner?.vehicleType }} - {{ partner?.vehicleNumber }}
+                  </span>
+                </div>
+                <div class="profile-item">
+                  <label>Status:</label>
+                  <mat-chip [color]="getStatusColor(partner?.status || '')" selected>
+                    {{ partner?.status }}
+                  </mat-chip>
+                </div>
+                <div class="profile-item">
+                  <label>Rating:</label>
+                  <span>{{ formatRating(partner?.rating || 0) }} ⭐</span>
+                </div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+
+          <mat-card class="profile-card">
+            <mat-card-header>
+              <mat-card-title>Performance Stats</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="stats-grid">
+                <div class="stat-item">
+                  <div class="stat-number">{{ partner?.totalDeliveries || 0 }}</div>
+                  <div class="stat-label">Total Deliveries</div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-number">{{ partner?.successfulDeliveries || 0 }}</div>
+                  <div class="stat-label">Successful</div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-number">{{ formatRating(partner?.successRate || 0) }}%</div>
+                  <div class="stat-label">Success Rate</div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-number">{{ formatEarnings(partner?.totalEarnings || 0) }}</div>
+                  <div class="stat-label">Total Earnings</div>
+                </div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+
+  <!-- Location Status -->
+  <div class="location-status" *ngIf="isOnline">
+    <mat-icon [class.enabled]="isLocationEnabled" [class.disabled]="!isLocationEnabled">
+      {{ isLocationEnabled ? 'location_on' : 'location_off' }}
+    </mat-icon>
+    <span>
+      {{ isLocationEnabled ? 'Location tracking enabled' : 'Location tracking disabled' }}
+    </span>
+    <span class="last-update" *ngIf="lastLocationUpdate">
+      Last updated: {{ lastLocationUpdate | date:'short' }}
+    </span>
+  </div>
+</div>
+
+<!-- Loading State -->
+<div class="loading-container" *ngIf="isLoading">
+  <mat-spinner></mat-spinner>
+  <p>Loading dashboard...</p>
+</div>

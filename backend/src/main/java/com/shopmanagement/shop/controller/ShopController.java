@@ -309,4 +309,45 @@ public class ShopController {
         ShopResponse response = shopService.getCurrentUserShop();
         return ResponseUtil.success(response, "Current user shop retrieved successfully");
     }
+
+    @GetMapping("/{shopId}/dashboard")
+    @PreAuthorize("hasRole('SHOP_OWNER') or hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getShopDashboard(@PathVariable String shopId) {
+        log.info("Fetching dashboard data for shop: {}", shopId);
+        Map<String, Object> dashboardData = shopService.getShopDashboard(shopId);
+        return ResponseUtil.success(dashboardData, "Shop dashboard data retrieved successfully");
+    }
+
+    @GetMapping("/{shopId}/orders")
+    @PreAuthorize("hasRole('SHOP_OWNER') or hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getShopOrders(
+            @PathVariable String shopId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String dateFrom,
+            @RequestParam(required = false) String dateTo) {
+        
+        log.info("Fetching orders for shop: {} with filters - status: {}, dateFrom: {}, dateTo: {}", 
+                shopId, status, dateFrom, dateTo);
+        
+        Sort sort = Sort.by(sortDir.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC, sortBy);
+        Pageable pageable = PageRequest.of(page, size, sort);
+        
+        Map<String, Object> ordersData = shopService.getShopOrders(shopId, pageable, status, dateFrom, dateTo);
+        return ResponseUtil.success(ordersData, "Shop orders retrieved successfully");
+    }
+
+    @GetMapping("/{shopId}/analytics")
+    @PreAuthorize("hasRole('SHOP_OWNER') or hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getShopAnalytics(
+            @PathVariable String shopId,
+            @RequestParam(defaultValue = "30") int days) {
+        
+        log.info("Fetching analytics for shop: {} for {} days", shopId, days);
+        Map<String, Object> analytics = shopService.getShopAnalytics(shopId, days);
+        return ResponseUtil.success(analytics, "Shop analytics retrieved successfully");
+    }
 }

@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shop Registration Received - NammaOoru</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap');
+        
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #1a1a1a;
+            max-width: 650px;
+            margin: 0 auto;
+            padding: 0;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        }
+        
+        .email-wrapper {
+            padding: 30px 15px;
+        }
+        
+        .email-container {
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.05);
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
+            position: relative;
+            color: white;
+            text-align: center;
+            padding: 50px 30px;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="20" cy="20" r="1" fill="white" opacity="0.1"/><circle cx="60" cy="40" r="1" fill="white" opacity="0.1"/><circle cx="40" cy="70" r="1" fill="white" opacity="0.1"/><circle cx="80" cy="80" r="1" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            pointer-events: none;
+        }
+        
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            backdrop-filter: blur(10px);
+            position: relative;
+            z-index: 1;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-family: 'Playfair Display', serif;
+            font-size: 2.8rem;
+            font-weight: 700;
+            position: relative;
+            z-index: 1;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .header .tagline {
+            margin: 15px 0 0 0;
+            font-size: 1.2rem;
+            opacity: 0.95;
+            font-weight: 400;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .content {
+            padding: 45px 40px;
+            background: white;
+        }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+        }
+        
+        .greeting {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin: 0 0 25px 0;
+            font-family: 'Playfair Display', serif;
+        }
+        
+        .intro-text {
+            font-size: 1.1rem;
+            color: #4b5563;
+            margin-bottom: 35px;
+            line-height: 1.7;
+        }
+        
+        .shop-card {
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+            border: 2px solid #bbf7d0;
+            border-radius: 16px;
+            padding: 25px;
+            margin: 30px 0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .shop-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #10b981, #059669, #047857);
+        }
+        
+        .shop-card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+        
+        .shop-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: white;
+        }
+        
+        .shop-card h3 {
+            margin: 0;
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #065f46;
+        }
+        
+        .shop-name {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #10b981;
+            margin: 10px 0 15px 0;
+            font-family: 'Playfair Display', serif;
+        }
+        
+        .shop-id {
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            background: #f3f4f6;
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid #d1d5db;
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: #1f2937;
+            letter-spacing: 0.5px;
+            margin: 15px 0;
+            display: inline-block;
+        }
+        
+        .info-section {
+            background: linear-gradient(135deg, #eff6ff, #dbeafe);
+            border: 1px solid #3b82f6;
+            border-radius: 16px;
+            padding: 30px;
+            margin: 40px 0;
+        }
+        
+        .info-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .info-icon {
+            width: 40px;
+            height: 40px;
+            background: #3b82f6;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2rem;
+        }
+        
+        .info-section h3 {
+            margin: 0;
+            color: #1e40af;
+            font-weight: 600;
+            font-size: 1.3rem;
+        }
+        
+        .info-text {
+            color: #1e40af;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        
+        .timeline-container {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 25px;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .timeline-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 25px;
+            font-family: 'Playfair Display', serif;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .timeline-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .timeline-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .timeline-number {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+        
+        .timeline-content {
+            flex: 1;
+            padding-top: 4px;
+        }
+        
+        .timeline-title-text {
+            font-weight: 600;
+            color: #1f2937;
+            margin: 0 0 4px 0;
+        }
+        
+        .timeline-description {
+            color: #6b7280;
+            font-size: 0.95rem;
+            margin: 0;
+            line-height: 1.5;
+        }
+        
+        .support-section {
+            background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+            border: 1px solid #10b981;
+            border-radius: 16px;
+            padding: 30px;
+            margin: 40px 0;
+        }
+        
+        .support-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .support-icon {
+            width: 40px;
+            height: 40px;
+            background: #10b981;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2rem;
+        }
+        
+        .support-section h3 {
+            margin: 0;
+            color: #065f46;
+            font-weight: 600;
+            font-size: 1.3rem;
+        }
+        
+        .support-text {
+            color: #047857;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        
+        .support-links {
+            display: grid;
+            gap: 12px;
+        }
+        
+        .support-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #047857;
+            text-decoration: none;
+            padding: 8px 0;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+        
+        .support-link:hover {
+            color: #065f46;
+        }
+        
+        .footer {
+            background: linear-gradient(135deg, #1f2937, #374151);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        
+        .footer-logo {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        
+        .footer-tagline {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            margin-bottom: 25px;
+            font-weight: 400;
+        }
+        
+        .footer-disclaimer {
+            font-size: 0.85rem;
+            opacity: 0.7;
+            margin-top: 25px;
+            padding-top: 25px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+            line-height: 1.6;
+        }
+        
+        /* Mobile Responsiveness */
+        @media (max-width: 600px) {
+            .email-wrapper {
+                padding: 15px 10px;
+            }
+            
+            .content {
+                padding: 30px 20px;
+            }
+            
+            .header {
+                padding: 40px 20px;
+            }
+            
+            .header h1 {
+                font-size: 2.2rem;
+            }
+            
+            .logo {
+                width: 60px;
+                height: 60px;
+                font-size: 2rem;
+            }
+            
+            .greeting {
+                font-size: 1.3rem;
+            }
+            
+            .shop-card,
+            .info-section,
+            .timeline-container,
+            .support-section {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-wrapper">
+        <div class="email-container">
+            <!-- Header -->
+            <div class="header">
+                <div class="logo">🏪</div>
+                <h1>NammaOoru</h1>
+                <div class="tagline">Your Shop Registration Received</div>
+            </div>
+
+            <!-- Content -->
+            <div class="content">
+                <div class="status-badge">
+                    📋 Registration Under Review
+                </div>
+                
+                <div class="greeting">
+                    Hello <span th:text="${shopOwnerName}">Shop Owner</span>! 
+                </div>
+
+                <div class="intro-text">
+                    Thank you for registering your shop with NammaOoru! We have successfully received your shop registration application and it is currently under review by our team.
+                </div>
+
+                <div class="shop-card">
+                    <div class="shop-card-header">
+                        <div class="shop-icon">🏬</div>
+                        <h3>Shop Registration Details</h3>
+                    </div>
+                    <div class="shop-name" th:text="${shopName}">Your Shop Name</div>
+                    <p><strong>Shop ID:</strong> <span class="shop-id" th:text="${shopId}">SH12345678</span></p>
+                    <p>Your shop registration has been successfully submitted to our system. Please keep this Shop ID for your records as you may need it for future reference.</p>
+                </div>
+
+                <div class="info-section">
+                    <div class="info-header">
+                        <div class="info-icon">ℹ️</div>
+                        <h3>What Happens Next?</h3>
+                    </div>
+                    <div class="info-text">
+                        Our team will carefully review your shop details and verify the information provided. This process typically takes 1-2 business days. Once approved, you'll receive login credentials to access your shop dashboard.
+                    </div>
+                </div>
+
+                <div class="timeline-container">
+                    <div class="timeline-title">
+                        ⏱️ Registration Timeline
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-number">✓</div>
+                        <div class="timeline-content">
+                            <div class="timeline-title-text">Registration Submitted</div>
+                            <div class="timeline-description">Your shop details have been successfully submitted</div>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-number">2</div>
+                        <div class="timeline-content">
+                            <div class="timeline-title-text">Document Verification</div>
+                            <div class="timeline-description">Our team will verify your business documents (1-2 days)</div>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-number">3</div>
+                        <div class="timeline-content">
+                            <div class="timeline-title-text">Approval & Account Creation</div>
+                            <div class="timeline-description">You'll receive login credentials via email upon approval</div>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-number">4</div>
+                        <div class="timeline-content">
+                            <div class="timeline-title-text">Start Selling</div>
+                            <div class="timeline-description">Access your dashboard and begin managing your shop</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="support-section">
+                    <div class="support-header">
+                        <div class="support-icon">🤝</div>
+                        <h3>Need Help?</h3>
+                    </div>
+                    <div class="support-text">
+                        If you have any questions about your registration or need assistance, our support team is here to help you.
+                    </div>
+                    <div class="support-links">
+                        <a th:href="'mailto:' + ${supportEmail}" class="support-link">
+                            📧 <span th:text="${supportEmail}">support@nammaooru.com</span>
+                        </a>
+                        <div class="support-link">
+                            📞 Call our support line (Mon-Fri, 9 AM - 6 PM)
+                        </div>
+                        <div class="support-link">
+                            💬 Live chat support available on our website
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer">
+                <div class="footer-logo">NammaOoru</div>
+                <div class="footer-tagline">Building Stronger Local Communities</div>
+                
+                <div class="footer-disclaimer">
+                    This email was sent to confirm your shop registration with <span th:text="${companyName}">NammaOoru</span>. 
+                    We'll keep you updated on the status of your application. Please do not reply to this email as it is automatically generated.
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,84 @@
+<div class="partner-registration-container">
+  <mat-card class="registration-card">
+    <mat-card-header>
+      <mat-card-title>Delivery Partner Registration</mat-card-title>
+      <mat-card-subtitle>Join our delivery network</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      <form [formGroup]="registrationForm" (ngSubmit)="onSubmit()">
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Full Name</mat-label>
+            <input matInput formControlName="name" required>
+            <mat-error *ngIf="registrationForm.get('name')?.hasError('required')">Name is required</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Email</mat-label>
+            <input matInput type="email" formControlName="email" required>
+            <mat-error *ngIf="registrationForm.get('email')?.hasError('email')">Enter valid email</mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Phone Number</mat-label>
+            <input matInput formControlName="phone" required>
+            <mat-error *ngIf="registrationForm.get('phone')?.hasError('pattern')">Enter valid 10-digit phone number</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Vehicle Type</mat-label>
+            <mat-select formControlName="vehicleType" required>
+              <mat-option *ngFor="let type of vehicleTypes" [value]="type">{{type}}</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Address</mat-label>
+          <textarea matInput formControlName="address" rows="3" required></textarea>
+        </mat-form-field>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Vehicle Number</mat-label>
+            <input matInput formControlName="vehicleNumber" required>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>License Number</mat-label>
+            <input matInput formControlName="licenseNumber" required>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Aadhar Number</mat-label>
+            <input matInput formControlName="aadharNumber" required>
+            <mat-error *ngIf="registrationForm.get('aadharNumber')?.hasError('pattern')">Enter valid 12-digit Aadhar number</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Bank Account Number</mat-label>
+            <input matInput formControlName="bankAccountNumber" required>
+          </mat-form-field>
+        </div>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>IFSC Code</mat-label>
+          <input matInput formControlName="ifscCode" required>
+        </mat-form-field>
+
+        <div class="form-actions">
+          <button mat-raised-button type="button" color="secondary" (click)="router.navigate(['/'])">Cancel</button>
+          <button mat-raised-button type="submit" color="primary" [disabled]="!registrationForm.valid || isLoading">
+            <mat-icon *ngIf="isLoading">hourglass_empty</mat-icon>
+            {{isLoading ? 'Registering...' : 'Register'}}
+          </button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>

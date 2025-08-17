@@ -96,6 +96,17 @@ public class ApiResponse<T> {
     }
     
     /**
+     * Create a simple error response with default error code
+     */
+    public static <T> ApiResponse<T> error(String message) {
+        return ApiResponse.<T>builder()
+                .statusCode("E001")
+                .message(message)
+                .data(null)
+                .build();
+    }
+    
+    /**
      * Error details for more specific error information
      */
     @Data

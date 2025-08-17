@@ -60,6 +60,13 @@ public class ShopService {
         Shop savedShop = shopRepository.save(shop);
         log.info("Shop created successfully with ID: {} - Status: {}", savedShop.getShopId(), savedShop.getStatus());
         
+        // Send shop registration confirmation email
+        try {
+            sendShopRegistrationConfirmationEmail(savedShop);
+        } catch (Exception e) {
+            log.error("Failed to send shop registration confirmation email for shop: {}", savedShop.getShopId(), e);
+        }
+        
         return shopMapper.toResponse(savedShop);
     }
 
@@ -371,6 +378,21 @@ public class ShopService {
         return shopMapper.toResponse(shop);
     }
 
+    private void sendShopRegistrationConfirmationEmail(Shop shop) {
+        try {
+            emailService.sendShopRegistrationConfirmationEmail(
+                shop.getOwnerEmail(),
+                shop.getOwnerName(),
+                shop.getName(),
+                shop.getShopId()
+            );
+            log.info("Shop registration confirmation email sent to: {}", shop.getOwnerEmail());
+        } catch (Exception e) {
+            log.error("Failed to send shop registration confirmation email for shop: {}", shop.getShopId(), e);
+            throw e;
+        }
+    }
+
     @Transactional(readOnly = true)
     public Map<String, Object> getApprovalStats() {
         long totalShops = getTotalShopsCount();
@@ -388,6 +410,179 @@ public class ShopService {
             "pendingPercentage", totalShops > 0 ? (pendingShops * 100.0 / totalShops) : 0,
             "approvedPercentage", totalShops > 0 ? (approvedShops * 100.0 / totalShops) : 0
         );
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getShopDashboard(String shopId) {
+        Shop shop = shopRepository.findByShopId(shopId)
+                .orElseThrow(() -> new ShopNotFoundException("Shop not found with shop ID: " + shopId));
+        
+        Map<String, Object> dashboard = new HashMap<>();
+        
+        // Basic shop info
+        dashboard.put("shopInfo", Map.of(
+            "shopId", shop.getShopId(),
+            "name", shop.getName(),
+            "status", shop.getStatus().toString(),
+            "isActive", shop.getIsActive(),
+            "isVerified", shop.getIsVerified(),
+            "businessType", shop.getBusinessType().toString(),
+            "city", shop.getCity(),
+            "state", shop.getState()
+        ));
+        
+        // TODO: Add real order metrics when Order entity is available
+        // For now, using mock data
+        dashboard.put("orderMetrics", Map.of(
+            "totalOrders", 0,
+            "todayOrders", 0,
+            "pendingOrders", 0,
+            "completedOrders", 0,
+            "cancelledOrders", 0,
+            "totalRevenue", BigDecimal.ZERO,
+            "todayRevenue", BigDecimal.ZERO,
+            "monthlyRevenue", BigDecimal.ZERO,
+            "averageOrderValue", BigDecimal.ZERO
+        ));
+        
+        // TODO: Add real product metrics when ShopProduct entity is available
+        dashboard.put("productMetrics", Map.of(
+            "totalProducts", 0,
+            "activeProducts", 0,
+            "inactiveProducts", 0,
+            "outOfStockProducts", 0,
+            "lowStockProducts", 0
+        ));
+        
+        // Performance metrics
+        dashboard.put("performanceMetrics", Map.of(
+            "rating", shop.getRating() != null ? shop.getRating() : BigDecimal.ZERO,
+            "totalReviews", 0,
+            "completionRate", 0.0,
+            "responseTime", "N/A",
+            "customerSatisfaction", 0.0
+        ));
+        
+        // Recent activity (mock data for now)
+        dashboard.put("recentActivity", List.of());
+        
+        // Quick stats for the last 30 days
+        dashboard.put("last30Days", Map.of(
+            "newOrders", 0,
+            "revenue", BigDecimal.ZERO,
+            "newCustomers", 0,
+            "avgOrderValue", BigDecimal.ZERO
+        ));
+        
+        return dashboard;
+    }
+    
+    @Transactional(readOnly = true)
+    public Map<String, Object> getShopOrders(String shopId, Pageable pageable, String status, String dateFrom, String dateTo) {
+        Shop shop = shopRepository.findByShopId(shopId)
+                .orElseThrow(() -> new ShopNotFoundException("Shop not found with shop ID: " + shopId));
+        
+        // TODO: Implement actual order retrieval when Order repository is available
+        // For now, return empty result with proper structure
+        Map<String, Object> ordersData = new HashMap<>();
+        ordersData.put("orders", List.of());
+        ordersData.put("totalElements", 0);
+        ordersData.put("totalPages", 0);
+        ordersData.put("currentPage", pageable.getPageNumber());
+        ordersData.put("pageSize", pageable.getPageSize());
+        ordersData.put("hasNext", false);
+        ordersData.put("hasPrevious", false);
+        
+        // Summary data
+        ordersData.put("summary", Map.of(
+            "totalOrders", 0,
+            "totalRevenue", BigDecimal.ZERO,
+            "avgOrderValue", BigDecimal.ZERO,
+            "statusBreakdown", Map.of(
+                "PENDING", 0,
+                "CONFIRMED", 0,
+                "PREPARING", 0,
+                "READY", 0,
+                "OUT_FOR_DELIVERY", 0,
+                "DELIVERED", 0,
+                "CANCELLED", 0
+            )
+        ));
+        
+        return ordersData;
+    }
+    
+    @Transactional(readOnly = true)
+    public Map<String, Object> getShopAnalytics(String shopId, int days) {
+        Shop shop = shopRepository.findByShopId(shopId)
+                .orElseThrow(() -> new ShopNotFoundException("Shop not found with shop ID: " + shopId));
+        
+        Map<String, Object> analytics = new HashMap<>();
+        
+        // Time period info
+        LocalDateTime endDate = LocalDateTime.now();
+        LocalDateTime startDate = endDate.minusDays(days);
+        
+        analytics.put("period", Map.of(
+            "startDate", startDate.toString(),
+            "endDate", endDate.toString(),
+            "days", days
+        ));
+        
+        // Sales analytics (mock data for now)
+        analytics.put("salesAnalytics", Map.of(
+            "totalRevenue", BigDecimal.ZERO,
+            "totalOrders", 0,
+            "avgOrderValue", BigDecimal.ZERO,
+            "revenueGrowth", 0.0,
+            "orderGrowth", 0.0,
+            "dailyRevenue", List.of(),
+            "dailyOrders", List.of(),
+            "hourlyPattern", Map.of(),
+            "weekdayPattern", Map.of()
+        ));
+        
+        // Customer analytics
+        analytics.put("customerAnalytics", Map.of(
+            "totalCustomers", 0,
+            "newCustomers", 0,
+            "returningCustomers", 0,
+            "customerRetentionRate", 0.0,
+            "avgOrdersPerCustomer", 0.0,
+            "topCustomers", List.of()
+        ));
+        
+        // Product analytics
+        analytics.put("productAnalytics", Map.of(
+            "totalProducts", 0,
+            "bestSellingProducts", List.of(),
+            "lowPerformingProducts", List.of(),
+            "categoryPerformance", Map.of(),
+            "stockAnalysis", Map.of(
+                "totalItems", 0,
+                "lowStock", 0,
+                "outOfStock", 0,
+                "overStock", 0
+            )
+        ));
+        
+        // Performance metrics
+        analytics.put("performanceMetrics", Map.of(
+            "orderFulfillmentRate", 0.0,
+            "avgDeliveryTime", "N/A",
+            "customerSatisfactionScore", 0.0,
+            "returnRate", 0.0,
+            "cancellationRate", 0.0
+        ));
+        
+        // Geographic analytics
+        analytics.put("geographicAnalytics", Map.of(
+            "ordersByLocation", Map.of(),
+            "deliveryZones", List.of(),
+            "topDeliveryAreas", List.of()
+        ));
+        
+        return analytics;
     }
 
 }

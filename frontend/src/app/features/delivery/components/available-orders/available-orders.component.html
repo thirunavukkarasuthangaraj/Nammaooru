@@ -1,0 +1,66 @@
+<div class="available-orders-container">
+  <mat-card class="orders-card">
+    <mat-card-header>
+      <mat-card-title>Available Orders</mat-card-title>
+      <mat-card-subtitle>Accept orders to start earning</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      <div *ngIf="isLoading" class="loading-container">
+        <mat-spinner></mat-spinner>
+        <p>Loading available orders...</p>
+      </div>
+
+      <div *ngIf="!isLoading">
+        <mat-table [dataSource]="dataSource" class="orders-table">
+          <ng-container matColumnDef="orderId">
+            <mat-header-cell *matHeaderCellDef>Order ID</mat-header-cell>
+            <mat-cell *matCellDef="let order">#{{order.orderId}}</mat-cell>
+          </ng-container>
+
+          <ng-container matColumnDef="customerName">
+            <mat-header-cell *matHeaderCellDef>Customer</mat-header-cell>
+            <mat-cell *matCellDef="let order">{{order.customerName}}</mat-cell>
+          </ng-container>
+
+          <ng-container matColumnDef="pickupAddress">
+            <mat-header-cell *matHeaderCellDef>Pickup</mat-header-cell>
+            <mat-cell *matCellDef="let order">{{order.pickupAddress}}</mat-cell>
+          </ng-container>
+
+          <ng-container matColumnDef="deliveryAddress">
+            <mat-header-cell *matHeaderCellDef>Delivery</mat-header-cell>
+            <mat-cell *matCellDef="let order">{{order.deliveryAddress}}</mat-cell>
+          </ng-container>
+
+          <ng-container matColumnDef="distance">
+            <mat-header-cell *matHeaderCellDef>Distance</mat-header-cell>
+            <mat-cell *matCellDef="let order">{{order.distance}} km</mat-cell>
+          </ng-container>
+
+          <ng-container matColumnDef="estimatedEarning">
+            <mat-header-cell *matHeaderCellDef>Earning</mat-header-cell>
+            <mat-cell *matCellDef="let order">₹{{order.estimatedEarning}}</mat-cell>
+          </ng-container>
+
+          <ng-container matColumnDef="actions">
+            <mat-header-cell *matHeaderCellDef>Actions</mat-header-cell>
+            <mat-cell *matCellDef="let order">
+              <button mat-raised-button color="primary" (click)="acceptOrder(order.orderId)">
+                Accept
+              </button>
+            </mat-cell>
+          </ng-container>
+
+          <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
+          <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
+        </mat-table>
+
+        <div *ngIf="dataSource.data.length === 0" class="no-orders">
+          <mat-icon>assignment</mat-icon>
+          <p>No available orders at the moment</p>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

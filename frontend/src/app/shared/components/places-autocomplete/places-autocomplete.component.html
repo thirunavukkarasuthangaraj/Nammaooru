@@ -1,0 +1,75 @@
+<div class="places-autocomplete-container">
+  <mat-form-field appearance="outline" class="full-width">
+    <mat-label>{{label}}</mat-label>
+    
+    <input matInput
+           #addressInput
+           [placeholder]="placeholder"
+           [disabled]="disabled"
+           [required]="required"
+           [value]="value"
+           (input)="onInputChange($event)"
+           (focus)="onInputFocus()"
+           autocomplete="off">
+    
+    <mat-icon matSuffix 
+              *ngIf="selectedPlace"
+              class="clear-icon"
+              (click)="clearSelection()"
+              matTooltip="Clear selection">
+      clear
+    </mat-icon>
+    
+    <mat-icon matSuffix 
+              *ngIf="!selectedPlace && biasToCurrentLocation"
+              class="location-icon"
+              (click)="useCurrentLocation()"
+              matTooltip="Use current location">
+      my_location
+    </mat-icon>
+
+    <mat-error *ngIf="required && !value">
+      {{label}} is required
+    </mat-error>
+    
+    <mat-hint *ngIf="selectedPlace">
+      <mat-icon class="place-icon">place</mat-icon>
+      Selected: {{selectedPlace.name}}
+    </mat-hint>
+  </mat-form-field>
+
+  <!-- Place Details Card (optional, shown when place is selected) -->
+  <mat-card *ngIf="selectedPlace && selectedPlace.placeId !== 'current_location'" 
+            class="place-details">
+    <mat-card-content>
+      <div class="place-info">
+        <div class="place-header">
+          <mat-icon>place</mat-icon>
+          <span class="place-name">{{selectedPlace.name}}</span>
+        </div>
+        <div class="place-address">{{selectedPlace.formattedAddress}}</div>
+        <div class="place-types" *ngIf="selectedPlace.types.length > 0">
+          <mat-chip-set>
+            <mat-chip *ngFor="let type of selectedPlace.types.slice(0, 3)">
+              {{formatPlaceType(type)}}
+            </mat-chip>
+          </mat-chip-set>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Current Location Card -->
+  <mat-card *ngIf="selectedPlace && selectedPlace.placeId === 'current_location'" 
+            class="current-location-card">
+    <mat-card-content>
+      <div class="current-location-info">
+        <mat-icon class="current-location-icon">my_location</mat-icon>
+        <div>
+          <div class="location-title">Current Location</div>
+          <div class="location-address">{{selectedPlace.formattedAddress}}</div>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

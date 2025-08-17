@@ -1,8 +1,8 @@
 package com.shopmanagement.controller;
 
 import com.shopmanagement.dto.customer.*;
-import com.shopmanagement.entity.Customer;
 import com.shopmanagement.service.CustomerService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,115 +18,168 @@ import java.util.Map;
 @RequestMapping("/api/customers")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*", maxAge = 3600)
+@CrossOrigin(origins = "*")
 public class CustomerController {
-    
+
     private final CustomerService customerService;
-    
-    @PostMapping
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SHOP_OWNER')")
-    public ResponseEntity<CustomerResponse> createCustomer(@Valid @RequestBody CustomerRequest request) {
-        log.info("Creating new customer with email: {}", request.getEmail());
-        CustomerResponse response = customerService.createCustomer(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+
+    @PostMapping("/register")
+    public ResponseEntity<Map<String, Object>> registerCustomer(
+            @Valid @RequestBody CustomerRegistrationRequest request,
+            HttpServletRequest httpRequest) {
+        
+        try {
+            log.info("Customer registration request received for email: {}", request.getEmail());
+            
+            // Add IP address from request
+            String ipAddress = getClientIpAddress(httpRequest);
+            
+            Map<String, Object> response = customerService.registerCustomer(request, ipAddress);
+            
+            if ((Boolean) response.get("success")) {
+                return ResponseEntity.status(HttpStatus.CREATED).body(response);
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+            }
+            
+        } catch (Exception e) {
+            log.error("Error registering customer for email: {}", request.getEmail(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(
+                        "success", false,
+                        "message", "Registration failed. Please try again.",
+                        "errorCode", "REGISTRATION_ERROR"
+                    ));
+        }
     }
-    
-    @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SHOP_OWNER')")
-    public ResponseEntity<CustomerResponse> getCustomerById(@PathVariable Long id) {
-        log.info("Fetching customer with ID: {}", id);
-        CustomerResponse response = customerService.getCustomerById(id);
+
+    @PostMapping("/login")
+    public ResponseEntity<Map<String, Object>> loginCustomer(
+            @Valid @RequestBody CustomerLoginRequest request,
+            HttpServletRequest httpRequest) {
+        
+        try {
+            log.info("Customer login request received for: {}", request.getEmailOrMobile());
+            
+            // Add IP address from request
+            request.setIpAddress(getClientIpAddress(httpRequest));
+            
+            Map<String, Object> response = customerService.loginCustomer(request);
+            
+            if ((Boolean) response.get("success")) {
+                return ResponseEntity.ok(response);
+            } else {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+            }
+            
+        } catch (Exception e) {
+            log.error("Error during customer login for: {}", request.getEmailOrMobile(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(
+                        "success", false,
+                        "message", "Login failed. Please try again.",
+                        "errorCode", "LOGIN_ERROR"
+                    ));
+        }
+    }
+
+    @GetMapping("/profile")
+    @PreAuthorize("hasRole('CUSTOMER') or hasRole('USER')")
+    public ResponseEntity<CustomerResponse> getCustomerProfile() {
+        log.info("Fetching customer profile");
+        CustomerResponse response = customerService.getCurrentCustomerProfile();
         return ResponseEntity.ok(response);
     }
-    
-    @GetMapping("/email/{email}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SHOP_OWNER')")
-    public ResponseEntity<CustomerResponse> getCustomerByEmail(@PathVariable String email) {
-        log.info("Fetching customer with email: {}", email);
-        CustomerResponse response = customerService.getCustomerByEmail(email);
-        return ResponseEntity.ok(response);
-    }
-    
-    @GetMapping("/mobile/{mobileNumber}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SHOP_OWNER')")
-    public ResponseEntity<CustomerResponse> getCustomerByMobileNumber(@PathVariable String mobileNumber) {
-        log.info("Fetching customer with mobile: {}", mobileNumber);
-        CustomerResponse response = customerService.getCustomerByMobileNumber(mobileNumber);
-        return ResponseEntity.ok(response);
-    }
-    
-    @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SHOP_OWNER')")
-    public ResponseEntity<CustomerResponse> updateCustomer(@PathVariable Long id, @Valid @RequestBody CustomerRequest request) {
-        log.info("Updating customer with ID: {}", id);
-        CustomerResponse response = customerService.updateCustomer(id, request);
-        return ResponseEntity.ok(response);
-    }
-    
-    @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Map<String, String>> deleteCustomer(@PathVariable Long id) {
-        log.info("Deleting customer with ID: {}", id);
-        customerService.deleteCustomer(id);
-        return ResponseEntity.ok(Map.of("message", "Customer deleted successfully"));
-    }
-    
-    @GetMapping
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SHOP_OWNER')")
-    public ResponseEntity<Page<CustomerResponse>> getAllCustomers(
+
+    @GetMapping("/shops")
+    @PreAuthorize("hasRole('CUSTOMER') or hasRole('USER')")
+    public ResponseEntity<Map<String, Object>> getAvailableShops(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDirection) {
-        log.info("Fetching customers - page: {}, size: {}, sortBy: {}, direction: {}", page, size, sortBy, sortDirection);
-        Page<CustomerResponse> response = customerService.getAllCustomers(page, size, sortBy, sortDirection);
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) Double latitude,
+            @RequestParam(required = false) Double longitude,
+            @RequestParam(defaultValue = "10") Double radiusKm) {
+        
+        log.info("Fetching available shops - page: {}, size: {}, city: {}", page, size, city);
+        
+        Map<String, Object> response = customerService.getAvailableShops(
+            page, size, city, category, latitude, longitude, radiusKm);
+        
         return ResponseEntity.ok(response);
     }
-    
-    @GetMapping("/search")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SHOP_OWNER')")
-    public ResponseEntity<Page<CustomerResponse>> searchCustomers(
-            @RequestParam String searchTerm,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        log.info("Searching customers with term: {}", searchTerm);
-        Page<CustomerResponse> response = customerService.searchCustomers(searchTerm, page, size);
+
+    @PostMapping("/orders")
+    @PreAuthorize("hasRole('CUSTOMER') or hasRole('USER')")
+    public ResponseEntity<Map<String, Object>> placeOrder(
+            @Valid @RequestBody CustomerOrderRequest request) {
+        
+        try {
+            log.info("Customer placing order for shop: {}", request.getShopId());
+            
+            Map<String, Object> response = customerService.placeOrder(request);
+            
+            if ((Boolean) response.get("success")) {
+                return ResponseEntity.status(HttpStatus.CREATED).body(response);
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+            }
+            
+        } catch (Exception e) {
+            log.error("Error placing customer order", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(
+                        "success", false,
+                        "message", "Failed to place order. Please try again.",
+                        "errorCode", "ORDER_CREATION_ERROR"
+                    ));
+        }
+    }
+
+    @GetMapping("/cart")
+    @PreAuthorize("hasRole('CUSTOMER') or hasRole('USER')")
+    public ResponseEntity<Map<String, Object>> getCart() {
+        log.info("Fetching customer cart");
+        Map<String, Object> response = customerService.getCustomerCart();
         return ResponseEntity.ok(response);
     }
-    
-    @GetMapping("/status/{status}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SHOP_OWNER')")
-    public ResponseEntity<Page<CustomerResponse>> getCustomersByStatus(
-            @PathVariable String status,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        log.info("Fetching customers with status: {}", status);
-        Customer.CustomerStatus customerStatus = Customer.CustomerStatus.valueOf(status.toUpperCase());
-        Page<CustomerResponse> response = customerService.getCustomersByStatus(customerStatus, page, size);
-        return ResponseEntity.ok(response);
+
+    @PostMapping("/cart/add")
+    @PreAuthorize("hasRole('CUSTOMER') or hasRole('USER')")
+    public ResponseEntity<Map<String, Object>> addToCart(
+            @Valid @RequestBody CartItemRequest request) {
+        
+        try {
+            log.info("Adding item to cart - product: {}, quantity: {}", 
+                request.getShopProductId(), request.getQuantity());
+            
+            Map<String, Object> response = customerService.addToCart(request);
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("Error adding item to cart", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(
+                        "success", false,
+                        "message", "Failed to add item to cart",
+                        "errorCode", "CART_ERROR"
+                    ));
+        }
     }
-    
-    @PostMapping("/{id}/verify-email")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SHOP_OWNER')")
-    public ResponseEntity<CustomerResponse> verifyEmail(@PathVariable Long id) {
-        log.info("Verifying email for customer ID: {}", id);
-        CustomerResponse response = customerService.verifyEmail(id);
-        return ResponseEntity.ok(response);
-    }
-    
-    @PostMapping("/{id}/verify-mobile")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SHOP_OWNER')")
-    public ResponseEntity<CustomerResponse> verifyMobile(@PathVariable Long id) {
-        log.info("Verifying mobile for customer ID: {}", id);
-        CustomerResponse response = customerService.verifyMobile(id);
-        return ResponseEntity.ok(response);
-    }
-    
-    @GetMapping("/stats")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<CustomerStatsResponse> getCustomerStats() {
-        log.info("Fetching customer statistics");
-        CustomerStatsResponse response = customerService.getCustomerStats();
-        return ResponseEntity.ok(response);
+
+    // Helper method
+    private String getClientIpAddress(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+        
+        String xRealIp = request.getHeader("X-Real-IP");
+        if (xRealIp != null && !xRealIp.isEmpty()) {
+            return xRealIp;
+        }
+        
+        return request.getRemoteAddr();
     }
 }

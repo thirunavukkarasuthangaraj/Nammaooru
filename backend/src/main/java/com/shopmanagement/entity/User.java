@@ -173,7 +173,7 @@ public class User implements UserDetails {
     }
 
     public enum UserRole {
-        SUPER_ADMIN, ADMIN, SHOP_OWNER, MANAGER, EMPLOYEE, CUSTOMER_SERVICE, DELIVERY_AGENT, USER
+        SUPER_ADMIN, ADMIN, SHOP_OWNER, MANAGER, EMPLOYEE, CUSTOMER_SERVICE, DELIVERY_PARTNER, USER
     }
 
     public enum UserStatus {

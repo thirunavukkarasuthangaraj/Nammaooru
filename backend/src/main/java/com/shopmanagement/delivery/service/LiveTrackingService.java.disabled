@@ -1,0 +1,316 @@
+package com.shopmanagement.delivery.service;
+
+import com.shopmanagement.delivery.dto.PartnerLocationDto;
+import com.shopmanagement.delivery.entity.DeliveryPartner;
+import com.shopmanagement.delivery.entity.DeliveryTracking;
+import com.shopmanagement.delivery.entity.OrderAssignment;
+import com.shopmanagement.delivery.repository.DeliveryPartnerRepository;
+import com.shopmanagement.delivery.repository.DeliveryTrackingRepository;
+import com.shopmanagement.delivery.repository.OrderAssignmentRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+//@Service
+@RequiredArgsConstructor
+@Slf4j
+public class LiveTrackingService {
+
+    private final DeliveryPartnerRepository partnerRepository;
+    private final DeliveryTrackingRepository trackingRepository;
+    private final OrderAssignmentRepository assignmentRepository;
+    private final SimpMessagingTemplate messagingTemplate;
+
+    public PartnerLocationDto getCurrentPartnerLocation(Long partnerId) {
+        Optional<DeliveryPartner> partnerOpt = partnerRepository.findById(partnerId);
+        if (partnerOpt.isEmpty()) {
+            throw new RuntimeException("Partner not found");
+        }
+
+        DeliveryPartner partner = partnerOpt.get();
+        
+        // Get latest tracking data
+        Optional<DeliveryTracking> latestTracking = trackingRepository
+                .findTopByPartnerIdOrderByTrackedAtDesc(partnerId);
+
+        if (latestTracking.isEmpty()) {
+            return null;
+        }
+
+        DeliveryTracking tracking = latestTracking.get();
+        
+        // Get current assignment if any
+        List<OrderAssignment> assignments = assignmentRepository
+                .findByPartnerIdAndStatusIn(partnerId, 
+                    List.of(OrderAssignment.AssignmentStatus.ACCEPTED, 
+                           OrderAssignment.AssignmentStatus.PICKED_UP, 
+                           OrderAssignment.AssignmentStatus.IN_TRANSIT));
+        Optional<OrderAssignment> currentAssignment = assignments.isEmpty() ? Optional.empty() : Optional.of(assignments.get(0));
+
+        return PartnerLocationDto.builder()
+                .partnerId(partnerId.toString())
+                .partnerName(partner.getFullName())
+                .lat(tracking.getLatitude() != null ? tracking.getLatitude().doubleValue() : 0.0)
+                .lng(tracking.getLongitude() != null ? tracking.getLongitude().doubleValue() : 0.0)
+                .heading(tracking.getHeading() != null ? tracking.getHeading().doubleValue() : 0.0)
+                .speed(tracking.getSpeed() != null ? tracking.getSpeed().doubleValue() : 0.0)
+                .accuracy(tracking.getAccuracy() != null ? tracking.getAccuracy().doubleValue() : 0.0)
+                .timestamp(tracking.getTrackedAt())
+                .orderId(currentAssignment.map(a -> a.getId().toString()).orElse(null))
+                .status(determinePartnerStatus(partner, currentAssignment.orElse(null)))
+                .vehicleType(partner.getVehicleType() != null ? partner.getVehicleType().toString() : null)
+                .vehicleNumber(partner.getVehicleNumber())
+                .batteryLevel(tracking.getBatteryLevel() != null ? tracking.getBatteryLevel().doubleValue() : null)
+                .isMoving(tracking.getSpeed() != null && tracking.getSpeed().compareTo(BigDecimal.valueOf(5)) > 0) // Moving if speed > 5 km/h
+                .distanceTraveled(tracking.getDistanceTraveled() != null ? tracking.getDistanceTraveled().doubleValue() : 0.0)
+                .build();
+    }
+
+    @Transactional
+    public void updatePartnerLocation(Long partnerId, PartnerLocationDto locationDto) {
+        Optional<DeliveryPartner> partnerOpt = partnerRepository.findById(partnerId);
+        if (partnerOpt.isEmpty()) {
+            throw new RuntimeException("Partner not found");
+        }
+
+        DeliveryPartner partner = partnerOpt.get();
+        
+        // Find current active assignment
+        List<OrderAssignment> assignments = assignmentRepository
+                .findByPartnerIdAndStatusIn(partnerId, 
+                    List.of(OrderAssignment.AssignmentStatus.ACCEPTED, 
+                           OrderAssignment.AssignmentStatus.PICKED_UP, 
+                           OrderAssignment.AssignmentStatus.IN_TRANSIT));
+        Optional<OrderAssignment> currentAssignment = assignments.isEmpty() ? Optional.empty() : Optional.of(assignments.get(0));
+
+        // Create new tracking record
+        DeliveryTracking tracking = DeliveryTracking.builder()
+                .orderAssignment(currentAssignment.orElse(null))
+                .latitude(BigDecimal.valueOf(locationDto.getLat()))
+                .longitude(BigDecimal.valueOf(locationDto.getLng()))
+                .accuracy(locationDto.getAccuracy() != null ? BigDecimal.valueOf(locationDto.getAccuracy()) : null)
+                .speed(locationDto.getSpeed() != null ? BigDecimal.valueOf(locationDto.getSpeed()) : null)
+                .heading(locationDto.getHeading() != null ? BigDecimal.valueOf(locationDto.getHeading()) : null)
+                .batteryLevel(locationDto.getBatteryLevel() != null ? BigDecimal.valueOf(locationDto.getBatteryLevel().doubleValue()) : null)
+                .trackedAt(LocalDateTime.now())
+                .isMoving(locationDto.getSpeed() != null && locationDto.getSpeed() > 5)
+                .build();
+
+        // Calculate distance traveled if there's a previous location
+        Optional<DeliveryTracking> previousTracking = trackingRepository
+                .findTopByPartnerIdOrderByTrackedAtDesc(partnerId);
+        
+        if (previousTracking.isPresent()) {
+            double distance = calculateDistance(
+                previousTracking.get().getLatitude().doubleValue(), 
+                previousTracking.get().getLongitude().doubleValue(),
+                locationDto.getLat(), 
+                locationDto.getLng()
+            );
+            tracking.setDistanceTraveled(BigDecimal.valueOf(distance));
+        }
+
+        trackingRepository.save(tracking);
+
+        // Update partner's last known location and last seen time
+        partner.setCurrentLatitude(BigDecimal.valueOf(locationDto.getLat()));
+        partner.setCurrentLongitude(BigDecimal.valueOf(locationDto.getLng()));
+        partner.setLastLocationUpdate(LocalDateTime.now());
+        partner.setLastSeen(LocalDateTime.now());
+        partnerRepository.save(partner);
+
+        // Broadcast location update via WebSocket
+        PartnerLocationDto broadcastDto = PartnerLocationDto.builder()
+                .partnerId(partnerId.toString())
+                .partnerName(partner.getFullName())
+                .lat(locationDto.getLat())
+                .lng(locationDto.getLng())
+                .heading(locationDto.getHeading() != null ? locationDto.getHeading() : 0.0)
+                .speed(locationDto.getSpeed() != null ? locationDto.getSpeed() : 0.0)
+                .accuracy(locationDto.getAccuracy() != null ? locationDto.getAccuracy() : 0.0)
+                .timestamp(LocalDateTime.now())
+                .orderId(currentAssignment.map(a -> a.getId().toString()).orElse(null))
+                .status(determinePartnerStatus(partner, currentAssignment.orElse(null)))
+                .vehicleType(partner.getVehicleType() != null ? partner.getVehicleType().toString() : null)
+                .vehicleNumber(partner.getVehicleNumber())
+                .batteryLevel(locationDto.getBatteryLevel())
+                .isMoving(locationDto.getSpeed() != null && locationDto.getSpeed() > 5)
+                .distanceTraveled(tracking.getDistanceTraveled() != null ? tracking.getDistanceTraveled().doubleValue() : 0.0)
+                .build();
+
+        // Broadcast to all subscribers
+        messagingTemplate.convertAndSend("/topic/delivery/location/updates", broadcastDto);
+        
+        // Send to specific assignment subscribers if there's an active delivery
+        if (currentAssignment.isPresent()) {
+            messagingTemplate.convertAndSend(
+                "/topic/tracking/assignment/" + currentAssignment.get().getId(), 
+                broadcastDto
+            );
+        }
+
+        log.info("Partner {} location updated: lat={}, lng={}, speed={}", 
+                partnerId, locationDto.getLat(), locationDto.getLng(), locationDto.getSpeed());
+    }
+
+    public List<PartnerLocationDto> getAllActivePartners() {
+        // Get partners who have been active in the last 10 minutes
+        LocalDateTime cutoffTime = LocalDateTime.now().minusMinutes(10);
+        List<DeliveryPartner> activePartners = partnerRepository
+                .findByLastSeenAfterAndStatus(cutoffTime, DeliveryPartner.PartnerStatus.ACTIVE);
+
+        return activePartners.stream()
+                .map(partner -> {
+                    Optional<DeliveryTracking> latestTracking = trackingRepository
+                            .findTopByPartnerIdOrderByTrackedAtDesc(partner.getId());
+
+                    if (latestTracking.isPresent()) {
+                        DeliveryTracking tracking = latestTracking.get();
+                        Optional<OrderAssignment> currentAssignment = assignmentRepository
+                                .findByPartnerIdAndStatusIn(partner.getId(), 
+                                    List.of(OrderAssignment.AssignmentStatus.ACCEPTED, 
+                                           OrderAssignment.AssignmentStatus.PICKED_UP, 
+                                           OrderAssignment.AssignmentStatus.IN_TRANSIT))
+                                .stream().findFirst();
+
+                        return PartnerLocationDto.builder()
+                                .partnerId(partner.getId().toString())
+                                .partnerName(partner.getFullName())
+                                .lat(tracking.getLatitude() != null ? tracking.getLatitude().doubleValue() : 0.0)
+                                .lng(tracking.getLongitude() != null ? tracking.getLongitude().doubleValue() : 0.0)
+                                .heading(tracking.getHeading())
+                                .speed(tracking.getSpeed())
+                                .accuracy(tracking.getAccuracy())
+                                .timestamp(tracking.getTrackedAt())
+                                .orderId(currentAssignment.map(a -> a.getId().toString()).orElse(null))
+                                .status(determinePartnerStatus(partner, currentAssignment.orElse(null)))
+                                .vehicleType(partner.getVehicleType())
+                                .vehicleNumber(partner.getVehicleNumber())
+                                .batteryLevel(tracking.getBatteryLevel())
+                                .isMoving(tracking.getSpeed() != null && tracking.getSpeed().compareTo(BigDecimal.valueOf(5)) > 0)
+                                .distanceTraveled(tracking.getDistanceTraveled() != null ? tracking.getDistanceTraveled().doubleValue() : 0.0)
+                                .build();
+                    }
+                    return null;
+                })
+                .filter(dto -> dto != null)
+                .collect(Collectors.toList());
+    }
+
+    public List<PartnerLocationDto> getPartnerLocationHistory(Long partnerId, int hours) {
+        LocalDateTime startTime = LocalDateTime.now().minusHours(hours);
+        List<DeliveryTracking> trackingHistory = trackingRepository
+                .findByPartnerIdAndTrackedAtAfterOrderByTrackedAtDesc(partnerId, startTime);
+
+        Optional<DeliveryPartner> partnerOpt = partnerRepository.findById(partnerId);
+        String partnerName = partnerOpt.map(DeliveryPartner::getFullName).orElse("Unknown");
+
+        return trackingHistory.stream()
+                .map(tracking -> PartnerLocationDto.builder()
+                        .partnerId(partnerId.toString())
+                        .partnerName(partnerName)
+                        .lat(tracking.getLatitude() != null ? tracking.getLatitude().doubleValue() : 0.0)
+                        .lng(tracking.getLongitude() != null ? tracking.getLongitude().doubleValue() : 0.0)
+                        .heading(tracking.getHeading())
+                        .speed(tracking.getSpeed())
+                        .accuracy(tracking.getAccuracy())
+                        .timestamp(tracking.getTrackedAt())
+                        .batteryLevel(tracking.getBatteryLevel())
+                        .isMoving(tracking.getIsMoving())
+                        .distanceTraveled(tracking.getDistanceTraveled() != null ? tracking.getDistanceTraveled().doubleValue() : 0.0)
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void startTrackingSession(Long partnerId, Long assignmentId) {
+        Optional<DeliveryPartner> partnerOpt = partnerRepository.findById(partnerId);
+        if (partnerOpt.isEmpty()) {
+            throw new RuntimeException("Partner not found");
+        }
+
+        DeliveryPartner partner = partnerOpt.get();
+        partner.setIsOnline(true);
+        partner.setLastSeen(LocalDateTime.now());
+        partnerRepository.save(partner);
+
+        log.info("Tracking session started for partner {} on assignment {}", partnerId, assignmentId);
+    }
+
+    @Transactional
+    public void stopTrackingSession(Long partnerId, Long assignmentId) {
+        Optional<DeliveryPartner> partnerOpt = partnerRepository.findById(partnerId);
+        if (partnerOpt.isEmpty()) {
+            throw new RuntimeException("Partner not found");
+        }
+
+        DeliveryPartner partner = partnerOpt.get();
+        partner.setIsOnline(false);
+        partnerRepository.save(partner);
+
+        log.info("Tracking session stopped for partner {} on assignment {}", partnerId, assignmentId);
+    }
+
+    @Transactional
+    public void updatePartnerStatus(Long partnerId, String status) {
+        Optional<DeliveryPartner> partnerOpt = partnerRepository.findById(partnerId);
+        if (partnerOpt.isEmpty()) {
+            throw new RuntimeException("Partner not found");
+        }
+
+        DeliveryPartner partner = partnerOpt.get();
+        
+        // Update online status based on status
+        switch (status.toUpperCase()) {
+            case "ONLINE":
+                partner.setIsOnline(true);
+                partner.setIsAvailable(true);
+                break;
+            case "BUSY":
+                partner.setIsOnline(true);
+                partner.setIsAvailable(false);
+                break;
+            case "OFFLINE":
+                partner.setIsOnline(false);
+                partner.setIsAvailable(false);
+                break;
+        }
+        
+        partner.setLastSeen(LocalDateTime.now());
+        partnerRepository.save(partner);
+
+        log.info("Partner {} status updated to {}", partnerId, status);
+    }
+
+    private String determinePartnerStatus(DeliveryPartner partner, OrderAssignment assignment) {
+        if (!partner.getIsOnline()) {
+            return "OFFLINE";
+        }
+        
+        if (assignment != null && List.of("ACCEPTED", "PICKED_UP", "IN_TRANSIT").contains(assignment.getStatus())) {
+            return "BUSY";
+        }
+        
+        return "ONLINE";
+    }
+
+    private double calculateDistance(double lat1, double lng1, double lat2, double lng2) {
+        final int R = 6371; // Earth's radius in kilometers
+
+        double latDistance = Math.toRadians(lat2 - lat1);
+        double lonDistance = Math.toRadians(lng2 - lng1);
+        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    }
+}

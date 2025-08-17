@@ -6,7 +6,7 @@ spring:
     name: shop-management-system
   
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/postgres}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/shop_management_db}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:password}
     driver-class-name: org.postgresql.Driver
@@ -106,10 +106,10 @@ app:
       contact: ${CONTACT_URL:${app.frontend.base-url}/contact}
       unsubscribe: ${UNSUBSCRIBE_URL:${app.frontend.base-url}/unsubscribe}
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200,http://localhost:4201,http://localhost:4202,http://localhost:4205}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
     allowed-methods: ${CORS_ALLOWED_METHODS:GET,POST,PUT,DELETE,OPTIONS}
     allowed-headers: ${CORS_ALLOWED_HEADERS:*}
-    allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
+    allow-credentials: ${CORS_ALLOW_CREDENTIALS:false}
 
 # Shop Module Configuration
 shop:

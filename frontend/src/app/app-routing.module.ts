@@ -17,6 +17,10 @@ const routes: Routes = [
     loadChildren: () => import('./features/auth/auth.module').then(m => m.AuthModule)
   },
   {
+    path: 'test-delivery',
+    loadChildren: () => import('./features/delivery/delivery.module').then(m => m.DeliveryModule)
+  },
+  {
     path: '',
     component: MainLayoutComponent,
     canActivate: [AuthGuard],
@@ -70,6 +74,10 @@ const routes: Routes = [
         loadChildren: () => import('./features/shop-owner/shop-owner.module').then(m => m.ShopOwnerModule),
         canActivate: [RoleGuard],
         data: { roles: [UserRole.SHOP_OWNER, UserRole.ADMIN] }
+      },
+      {
+        path: 'delivery',
+        loadChildren: () => import('./features/delivery/delivery.module').then(m => m.DeliveryModule)
       }
     ]
   },

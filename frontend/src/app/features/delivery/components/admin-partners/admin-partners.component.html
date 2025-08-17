@@ -1,0 +1,280 @@
+<div class="admin-partners-container">
+  <!-- Header -->
+  <mat-toolbar class="page-header">
+    <h1>Delivery Partner Management</h1>
+    <span class="spacer"></span>
+    <button mat-icon-button (click)="refreshData()" [disabled]="isLoading">
+      <mat-icon>refresh</mat-icon>
+    </button>
+    <button mat-raised-button color="primary" (click)="exportPartnerData()">
+      <mat-icon>download</mat-icon>
+      Export Data
+    </button>
+  </mat-toolbar>
+
+  <!-- Statistics Cards -->
+  <div class="stats-container">
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-value">{{ stats.total }}</div>
+        <div class="stat-label">Total Partners</div>
+        <mat-icon class="stat-icon">group</mat-icon>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card active">
+      <mat-card-content>
+        <div class="stat-value">{{ stats.active }}</div>
+        <div class="stat-label">Active</div>
+        <mat-icon class="stat-icon">check_circle</mat-icon>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card pending">
+      <mat-card-content>
+        <div class="stat-value">{{ stats.pending }}</div>
+        <div class="stat-label">Pending Approval</div>
+        <mat-icon class="stat-icon">pending</mat-icon>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card online">
+      <mat-card-content>
+        <div class="stat-value">{{ stats.online }}</div>
+        <div class="stat-label">Currently Online</div>
+        <mat-icon class="stat-icon">wifi</mat-icon>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card verified">
+      <mat-card-content>
+        <div class="stat-value">{{ stats.verified }}</div>
+        <div class="stat-label">Verified</div>
+        <mat-icon class="stat-icon">verified_user</mat-icon>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Emergency Alerts -->
+  <mat-expansion-panel *ngIf="emergencyAlerts.length > 0" class="emergency-panel">
+    <mat-expansion-panel-header>
+      <mat-panel-title>
+        <mat-icon color="warn">warning</mat-icon>
+        Emergency Alerts ({{ emergencyAlerts.length }})
+      </mat-panel-title>
+    </mat-expansion-panel-header>
+    <div class="emergency-list">
+      <div class="emergency-item" *ngFor="let alert of emergencyAlerts">
+        <mat-icon color="warn">emergency</mat-icon>
+        <div class="alert-details">
+          <div class="alert-partner">{{ alert.partnerName }} - {{ alert.type }}</div>
+          <div class="alert-time">{{ alert.timestamp | date:'short' }}</div>
+        </div>
+        <button mat-icon-button (click)="viewEmergencyDetails(alert)">
+          <mat-icon>visibility</mat-icon>
+        </button>
+      </div>
+    </div>
+  </mat-expansion-panel>
+
+  <!-- Filters -->
+  <mat-card class="filters-card">
+    <mat-card-content>
+      <div class="filters-row">
+        <mat-form-field appearance="outline">
+          <mat-label>Search Partners</mat-label>
+          <input matInput [(ngModel)]="searchTerm" (keyup)="applyFilter()" 
+                 placeholder="Name, ID, Phone, or Email">
+          <mat-icon matPrefix>search</mat-icon>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Status Filter</mat-label>
+          <mat-select [(ngModel)]="statusFilter" (selectionChange)="onStatusFilterChange()">
+            <mat-option value="ALL">All Status</mat-option>
+            <mat-option value="ACTIVE">Active</mat-option>
+            <mat-option value="PENDING">Pending</mat-option>
+            <mat-option value="SUSPENDED">Suspended</mat-option>
+            <mat-option value="BLOCKED">Blocked</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Verification Filter</mat-label>
+          <mat-select [(ngModel)]="verificationFilter" (selectionChange)="onVerificationFilterChange()">
+            <mat-option value="ALL">All Verification</mat-option>
+            <mat-option value="VERIFIED">Verified</mat-option>
+            <mat-option value="PENDING">Pending</mat-option>
+            <mat-option value="REJECTED">Rejected</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Partners Table -->
+  <mat-card class="table-card">
+    <mat-card-content>
+      <div class="table-container">
+        <table mat-table [dataSource]="dataSource" matSort class="partners-table">
+          
+          <!-- Partner ID Column -->
+          <ng-container matColumnDef="partnerId">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Partner ID</th>
+            <td mat-cell *matCellDef="let partner">
+              <span class="partner-id">{{ partner.partnerId }}</span>
+            </td>
+          </ng-container>
+
+          <!-- Name Column -->
+          <ng-container matColumnDef="fullName">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Name</th>
+            <td mat-cell *matCellDef="let partner">
+              <div class="partner-name">
+                <mat-icon class="avatar-icon">account_circle</mat-icon>
+                {{ partner.fullName }}
+              </div>
+            </td>
+          </ng-container>
+
+          <!-- Phone Column -->
+          <ng-container matColumnDef="phoneNumber">
+            <th mat-header-cell *matHeaderCellDef>Phone</th>
+            <td mat-cell *matCellDef="let partner">
+              <a href="tel:{{ partner.phoneNumber }}">{{ partner.phoneNumber }}</a>
+            </td>
+          </ng-container>
+
+          <!-- Vehicle Type Column -->
+          <ng-container matColumnDef="vehicleType">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Vehicle</th>
+            <td mat-cell *matCellDef="let partner">
+              <div class="vehicle-info">
+                <mat-icon>{{ getVehicleIcon(partner.vehicleType) }}</mat-icon>
+                {{ partner.vehicleType }}
+              </div>
+            </td>
+          </ng-container>
+
+          <!-- Status Column -->
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
+            <td mat-cell *matCellDef="let partner">
+              <mat-chip [color]="getStatusColor(partner.status)" selected>
+                {{ partner.status }}
+              </mat-chip>
+            </td>
+          </ng-container>
+
+          <!-- Verification Status Column -->
+          <ng-container matColumnDef="verificationStatus">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Verification</th>
+            <td mat-cell *matCellDef="let partner">
+              <div class="verification-status">
+                <mat-icon [color]="partner.verificationStatus === 'VERIFIED' ? 'primary' : 'warn'">
+                  {{ getVerificationIcon(partner.verificationStatus) }}
+                </mat-icon>
+                {{ partner.verificationStatus }}
+              </div>
+            </td>
+          </ng-container>
+
+          <!-- Rating Column -->
+          <ng-container matColumnDef="rating">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Rating</th>
+            <td mat-cell *matCellDef="let partner">
+              <div class="rating">
+                <mat-icon class="star-icon">star</mat-icon>
+                {{ partner.rating | number:'1.1-1' }}
+              </div>
+            </td>
+          </ng-container>
+
+          <!-- Total Deliveries Column -->
+          <ng-container matColumnDef="totalDeliveries">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Deliveries</th>
+            <td mat-cell *matCellDef="let partner">{{ partner.totalDeliveries }}</td>
+          </ng-container>
+
+          <!-- Online Status Column -->
+          <ng-container matColumnDef="isOnline">
+            <th mat-header-cell *matHeaderCellDef>Online</th>
+            <td mat-cell *matCellDef="let partner">
+              <mat-icon [class.online]="partner.isOnline" [class.offline]="!partner.isOnline">
+                {{ partner.isOnline ? 'wifi' : 'wifi_off' }}
+              </mat-icon>
+            </td>
+          </ng-container>
+
+          <!-- Actions Column -->
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Actions</th>
+            <td mat-cell *matCellDef="let partner">
+              <button mat-icon-button [matMenuTriggerFor]="menu" [disabled]="isProcessing">
+                <mat-icon>more_vert</mat-icon>
+              </button>
+              <mat-menu #menu="matMenu">
+                <button mat-menu-item (click)="viewPartnerDetails(partner)">
+                  <mat-icon>visibility</mat-icon>
+                  <span>View Details</span>
+                </button>
+                
+                <button mat-menu-item (click)="verifyDocuments(partner)" 
+                        *ngIf="partner.verificationStatus !== 'VERIFIED'">
+                  <mat-icon>verified_user</mat-icon>
+                  <span>Verify Documents</span>
+                </button>
+                
+                <mat-divider></mat-divider>
+                
+                <button mat-menu-item (click)="approvePartner(partner)" 
+                        *ngIf="partner.status === 'PENDING'">
+                  <mat-icon color="primary">check_circle</mat-icon>
+                  <span>Approve</span>
+                </button>
+                
+                <button mat-menu-item (click)="rejectPartner(partner)" 
+                        *ngIf="partner.status === 'PENDING'">
+                  <mat-icon color="warn">cancel</mat-icon>
+                  <span>Reject</span>
+                </button>
+                
+                <button mat-menu-item (click)="activatePartner(partner)" 
+                        *ngIf="partner.status === 'SUSPENDED'">
+                  <mat-icon color="primary">play_circle</mat-icon>
+                  <span>Activate</span>
+                </button>
+                
+                <button mat-menu-item (click)="suspendPartner(partner)" 
+                        *ngIf="partner.status === 'ACTIVE'">
+                  <mat-icon color="warn">pause_circle</mat-icon>
+                  <span>Suspend</span>
+                </button>
+                
+                <button mat-menu-item (click)="blockPartner(partner)" 
+                        *ngIf="partner.status !== 'BLOCKED'">
+                  <mat-icon color="warn">block</mat-icon>
+                  <span>Block</span>
+                </button>
+              </mat-menu>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+              [class.pending-row]="row.status === 'PENDING'"
+              [class.suspended-row]="row.status === 'SUSPENDED'"></tr>
+        </table>
+      </div>
+
+      <mat-paginator [pageSizeOptions]="[10, 25, 50, 100]" 
+                     showFirstLastButtons>
+      </mat-paginator>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Loading Spinner -->
+  <div class="loading-overlay" *ngIf="isLoading">
+    <mat-spinner></mat-spinner>
+  </div>
+</div>

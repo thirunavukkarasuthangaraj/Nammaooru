@@ -1,0 +1,41 @@
+<div class="earnings-overview">
+  <h3>Earnings Overview</h3>
+  
+  <div class="earnings-cards">
+    <mat-card class="earning-card">
+      <mat-card-header>
+        <mat-card-title>Today</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="amount">₹{{todayEarnings}}</div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="earning-card">
+      <mat-card-header>
+        <mat-card-title>This Week</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="amount">₹{{weeklyEarnings}}</div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="earning-card">
+      <mat-card-header>
+        <mat-card-title>This Month</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="amount">₹{{monthlyEarnings}}</div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="earning-card">
+      <mat-card-header>
+        <mat-card-title>Total</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="amount">₹{{totalEarnings}}</div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

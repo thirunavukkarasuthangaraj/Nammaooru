@@ -57,6 +57,12 @@
             <artifactId>spring-boot-starter-thymeleaf</artifactId>
         </dependency>
         
+        <!-- WebSocket Support -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+        
         <!-- Database -->
         <dependency>
             <groupId>org.postgresql</groupId>

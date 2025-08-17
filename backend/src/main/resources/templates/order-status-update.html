@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Status Update - NammaOoru</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            background-color: #3498db;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .status-banner {
+            padding: 15px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .status-confirmed { background-color: #d4edda; color: #155724; }
+        .status-preparing { background-color: #fff3cd; color: #856404; }
+        .status-ready { background-color: #cce5ff; color: #004085; }
+        .status-out-for-delivery { background-color: #f0e6ff; color: #6610f2; }
+        .status-delivered { background-color: #d1ecf1; color: #0c5460; }
+        .status-cancelled { background-color: #f8d7da; color: #721c24; }
+        
+        .content {
+            padding: 30px;
+        }
+        .order-details {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-left: 4px solid #3498db;
+            margin: 20px 0;
+        }
+        .status-timeline {
+            background-color: #e8f4f8;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .footer {
+            background-color: #34495e;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .highlight {
+            color: #3498db;
+            font-weight: bold;
+        }
+        .status-icon {
+            font-size: 24px;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📦 Order Status Update</h1>
+            <p>Your order has been updated</p>
+        </div>
+        
+        <div class="status-banner" th:classappend="${newStatus == 'CONFIRMED'} ? 'status-confirmed' : (${newStatus == 'PREPARING'} ? 'status-preparing' : (${newStatus == 'READY_FOR_PICKUP'} ? 'status-ready' : (${newStatus == 'OUT_FOR_DELIVERY'} ? 'status-out-for-delivery' : (${newStatus == 'DELIVERED'} ? 'status-delivered' : 'status-cancelled'))))">
+            <span class="status-icon">
+                <span th:if="${newStatus == 'CONFIRMED'}">✅</span>
+                <span th:if="${newStatus == 'PREPARING'}">👨‍🍳</span>
+                <span th:if="${newStatus == 'READY_FOR_PICKUP'}">📋</span>
+                <span th:if="${newStatus == 'OUT_FOR_DELIVERY'}">🚚</span>
+                <span th:if="${newStatus == 'DELIVERED'}">🎉</span>
+                <span th:if="${newStatus == 'CANCELLED'}">❌</span>
+            </span>
+            <span th:text="${newStatus}">CONFIRMED</span>
+        </div>
+        
+        <div class="content">
+            <h2>Hello <span th:text="${customerName}">Customer</span>!</h2>
+            
+            <p>We wanted to update you on the status of your recent order.</p>
+            
+            <div class="order-details">
+                <h3>Order Information</h3>
+                <p><strong>Order Number:</strong> <span class="highlight" th:text="${orderId}">ORD123456</span></p>
+                <p><strong>Previous Status:</strong> <span th:text="${oldStatus}">PENDING</span></p>
+                <p><strong>Current Status:</strong> <span class="highlight" th:text="${newStatus}">CONFIRMED</span></p>
+            </div>
+            
+            <div class="status-timeline">
+                <h3>🔄 Status Updates</h3>
+                <div th:if="${newStatus == 'CONFIRMED'}">
+                    <p><strong>Great news!</strong> Your order has been confirmed by the shop and they're preparing your items.</p>
+                    <p><strong>Next:</strong> You'll be notified when your order is ready for pickup.</p>
+                </div>
+                <div th:if="${newStatus == 'PREPARING'}">
+                    <p><strong>Your order is being prepared!</strong> The shop is currently getting your items ready.</p>
+                    <p><strong>Next:</strong> You'll be notified when your order is ready for delivery.</p>
+                </div>
+                <div th:if="${newStatus == 'READY_FOR_PICKUP'}">
+                    <p><strong>Your order is ready!</strong> We're now looking for a delivery partner to pick up your order.</p>
+                    <p><strong>Next:</strong> You'll be notified when your order is out for delivery.</p>
+                </div>
+                <div th:if="${newStatus == 'OUT_FOR_DELIVERY'}">
+                    <p><strong>Your order is on the way!</strong> Our delivery partner is heading to your location.</p>
+                    <p><strong>Next:</strong> Please be available to receive your order and make payment.</p>
+                </div>
+                <div th:if="${newStatus == 'DELIVERED'}">
+                    <p><strong>Order delivered successfully!</strong> Thank you for choosing NammaOoru.</p>
+                    <p><strong>Please rate your experience</strong> and help us serve you better next time.</p>
+                </div>
+                <div th:if="${newStatus == 'CANCELLED'}">
+                    <p><strong>Your order has been cancelled.</strong> If this was unexpected, please contact our support team.</p>
+                    <p><strong>Refund:</strong> Any payments will be refunded within 3-5 business days.</p>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="#" th:href="${trackingUrl}" class="btn">Track Your Order</a>
+            </div>
+            
+            <p>If you have any questions about your order, please don't hesitate to contact our support team.</p>
+            
+            <p>Thank you for choosing NammaOoru!</p>
+        </div>
+        
+        <div class="footer">
+            <p>&copy; 2025 <span th:text="${companyName}">NammaOoru</span>. All rights reserved.</p>
+            <p>Need help? Contact us at <a href="mailto:" th:href="'mailto:' + ${supportEmail}" th:text="${supportEmail}" style="color: #ffffff;">support@nammaooru.com</a></p>
+        </div>
+    </div>
+</body>
+</html>
