@@ -22,9 +22,8 @@ RUN chmod -R 755 /usr/share/nginx/html
 # Expose port
 EXPOSE 80
 
-# Health check - simple check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=5 \
-    CMD curl -f http://localhost/ || exit 1
+# Health check - removed as it causes issues
+# Health checks will be handled by docker-compose or external monitoring
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]
