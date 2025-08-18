@@ -15,8 +15,7 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatChipsModule } from '@angular/material/chips';
 
-// Chart.js - Disabled for now due to compatibility issues
-// import { NgChartsModule } from 'ng2-charts';
+// Chart.js integration removed due to ng2-charts dependency conflicts
 
 // Components
 import { AnalyticsComponent } from './components/analytics/analytics.component';
@@ -46,7 +45,6 @@ const routes = [
     MatDatepickerModule,
     MatNativeDateModule,
     MatChipsModule
-    // NgChartsModule // Disabled for now
   ],
   providers: [
     DecimalPipe

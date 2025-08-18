@@ -1,10 +1,9 @@
-import { Component, OnInit, ViewChild, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Subject, takeUntil } from 'rxjs';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { DeliveryAnalyticsService } from '../../services/delivery-analytics.service';
 import { ApiResponseHelper } from '../../../../core/models/api-response.model';
 import { ChartConfiguration, ChartType } from 'chart.js';
-import { BaseChartDirective } from 'ng2-charts';
 
 @Component({
   selector: 'app-delivery-analytics',
@@ -13,8 +12,6 @@ import { BaseChartDirective } from 'ng2-charts';
 })
 export class DeliveryAnalyticsComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
-  
-  @ViewChild(BaseChartDirective) chart?: BaseChartDirective;
 
   // Date Range
   startDate: Date = new Date(new Date().setDate(new Date().getDate() - 30));
@@ -195,7 +192,6 @@ export class DeliveryAnalyticsComponent implements OnInit, OnDestroy {
             if (ApiResponseHelper.isSuccess(response) && response.data) {
               this.deliveryTrendChartData.labels = response.data.labels;
               this.deliveryTrendChartData.datasets[0].data = response.data.values;
-              this.chart?.update();
             }
             resolve();
           },
