@@ -31,6 +31,13 @@
     "tslib": "^2.3.0",
     "zone.js": "~0.13.0"
   },
+  "overrides": {
+    "@angular/cdk": "^16.2.14",
+    "@angular/material": "^16.2.14",
+    "ng2-charts": {
+      "@angular/cdk": "^16.2.14"
+    }
+  },
   "devDependencies": {
     "@angular-devkit/build-angular": "^16.2.0",
     "@angular/cli": "~16.2.0",
