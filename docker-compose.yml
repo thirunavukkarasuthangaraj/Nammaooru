@@ -27,7 +27,6 @@ services:
   backend:
     build: 
       context: ./backend
-      dockerfile: Dockerfile
     container_name: shop-backend
     environment:
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-docker}
@@ -57,7 +56,6 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
     container_name: shop-frontend
     ports:
       - "80:80"

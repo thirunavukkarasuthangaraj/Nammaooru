@@ -2,9 +2,7 @@ name: Deploy to Hetzner
 
 on:
   push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+    branches: [ main ]
 
 jobs:
   test:
@@ -51,7 +49,7 @@ jobs:
   deploy:
     needs: test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/main'
     
     steps:
     - uses: actions/checkout@v4
@@ -86,14 +84,16 @@ jobs:
         mkdir -p deploy/frontend
         mkdir -p deploy/config
         
-        # Copy backend JAR
+        # Copy backend JAR and Dockerfile
         cp backend/target/shop-management-backend-1.0.0.jar deploy/backend/app.jar
+        cp backend/Dockerfile deploy/backend/
         
-        # Copy frontend build
+        # Copy frontend build and Dockerfile
         cp -r frontend/dist/shop-management-frontend/* deploy/frontend/
+        cp frontend/Dockerfile deploy/frontend/
+        cp frontend/nginx.conf deploy/frontend/
         
         # Copy configuration files
-        cp frontend/nginx.conf deploy/config/
         cp docker-compose.yml deploy/
         cp -r database deploy/ || true
         
