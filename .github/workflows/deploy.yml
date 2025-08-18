@@ -29,13 +29,13 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/.m2
-        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        key: ${{ runner.os }}-m2-${{ hashFiles('backend/pom.xml') }}
         restore-keys: ${{ runner.os }}-m2
         
     - name: Build Backend
       run: |
         cd backend
-        ./mvnw clean package -DskipTests
+        mvn clean package -DskipTests
         
     - name: Build Frontend
       run: |
@@ -46,7 +46,7 @@ jobs:
     - name: Run Backend Tests
       run: |
         cd backend
-        ./mvnw test
+        mvn test
         
   deploy:
     needs: test
@@ -72,7 +72,7 @@ jobs:
     - name: Build Backend
       run: |
         cd backend
-        ./mvnw clean package -DskipTests
+        mvn clean package -DskipTests
         
     - name: Build Frontend
       run: |
@@ -87,7 +87,7 @@ jobs:
         mkdir -p deploy/config
         
         # Copy backend JAR
-        cp backend/target/*.jar deploy/backend/app.jar
+        cp backend/target/shop-management-backend-1.0.0.jar deploy/backend/app.jar
         
         # Copy frontend build
         cp -r frontend/dist/shop-management-frontend/* deploy/frontend/
