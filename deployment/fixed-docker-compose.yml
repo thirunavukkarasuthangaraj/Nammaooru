@@ -1,0 +1,50 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: shop-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: shop_management_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - shop-network
+  backend:
+    image: eclipse-temurin:17-jre-alpine
+    container_name: shop-backend
+    restart: unless-stopped
+    volumes:
+      - ./app.jar:/app/app.jar
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/shop_management_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres123
+    ports:
+      - "8082:8082"
+    command: java -jar /app/app.jar
+    depends_on:
+      - postgres
+    networks:
+      - shop-network
+  frontend:
+    image: nginx:alpine
+    container_name: shop-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+    networks:
+      - shop-network
+volumes:
+  postgres_data:
+networks:
+  shop-network:
+    driver: bridge

@@ -1,8 +1,12 @@
+import packageInfo from '../../package.json';
+
 export const environment = {
   production: true,
   apiUrl: '/api',  // Use relative URL when frontend and backend are behind same proxy
   googleMapsApiKey: 'AIzaSyAr_uGbaOnhebjRyz7ohU6N-hWZJVV_R3U',
   websocketUrl: '/ws',  // Use relative URL for WebSocket
+  version: packageInfo.version,
+  buildDate: new Date().toISOString(),
   defaultMapCenter: {
     lat: 12.9716, // Bangalore coordinates
     lng: 77.5946

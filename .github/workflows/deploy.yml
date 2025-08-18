@@ -1,0 +1,217 @@
+name: Deploy to Hetzner
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Cache Maven dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+        
+    - name: Build Backend
+      run: |
+        cd backend
+        ./mvnw clean package -DskipTests
+        
+    - name: Build Frontend
+      run: |
+        cd frontend
+        npm ci --legacy-peer-deps
+        npm run build --prod
+        
+    - name: Run Backend Tests
+      run: |
+        cd backend
+        ./mvnw test
+        
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Build Backend
+      run: |
+        cd backend
+        ./mvnw clean package -DskipTests
+        
+    - name: Build Frontend
+      run: |
+        cd frontend
+        npm ci --legacy-peer-deps
+        npm run build --prod
+        
+    - name: Prepare deployment files
+      run: |
+        mkdir -p deploy/backend
+        mkdir -p deploy/frontend
+        mkdir -p deploy/config
+        
+        # Copy backend JAR
+        cp backend/target/*.jar deploy/backend/app.jar
+        
+        # Copy frontend build
+        cp -r frontend/dist/shop-management-frontend/* deploy/frontend/
+        
+        # Copy configuration files
+        cp frontend/nginx.conf deploy/config/
+        cp docker-compose.yml deploy/
+        cp -r database deploy/ || true
+        
+    - name: Create deployment archive
+      run: |
+        tar -czf deployment.tar.gz -C deploy .
+        
+    - name: Deploy to Hetzner Server
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.HETZNER_HOST }}
+        username: ${{ secrets.HETZNER_USER }}
+        password: ${{ secrets.HETZNER_PASSWORD }}
+        port: 22
+        script: |
+          # Create backup of current deployment
+          if [ -d "/opt/shop-management" ]; then
+            cp -r /opt/shop-management /opt/shop-management-backup-$(date +%Y%m%d-%H%M%S) || true
+          fi
+          
+          # Create deployment directory
+          mkdir -p /opt/shop-management-new
+          cd /opt/shop-management-new
+          
+    - name: Upload deployment files
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.HETZNER_HOST }}
+        username: ${{ secrets.HETZNER_USER }}
+        password: ${{ secrets.HETZNER_PASSWORD }}
+        port: 22
+        source: "deployment.tar.gz"
+        target: "/opt/shop-management-new/"
+        
+    - name: Deploy Application
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.HETZNER_HOST }}
+        username: ${{ secrets.HETZNER_USER }}
+        password: ${{ secrets.HETZNER_PASSWORD }}
+        port: 22
+        script: |
+          cd /opt/shop-management-new
+          
+          # Extract deployment files
+          tar -xzf deployment.tar.gz
+          rm deployment.tar.gz
+          
+          # Stop current containers if running
+          if [ -d "/opt/shop-management" ]; then
+            cd /opt/shop-management
+            docker-compose down || true
+            cd /opt/shop-management-new
+          fi
+          
+          # Start new deployment
+          docker-compose up -d --build
+          
+          # Wait for containers to be ready
+          sleep 30
+          
+          # Check if deployment successful
+          if docker ps | grep -q "shop-backend\|shop-frontend\|shop-postgres"; then
+            echo "✅ Deployment successful!"
+            
+            # Replace old deployment with new one
+            if [ -d "/opt/shop-management" ]; then
+              rm -rf /opt/shop-management
+            fi
+            mv /opt/shop-management-new /opt/shop-management
+            
+            # Clean up old backups (keep last 3)
+            cd /opt
+            ls -t shop-management-backup-* 2>/dev/null | tail -n +4 | xargs rm -rf || true
+            
+            echo "🚀 Application deployed successfully at http://65.21.4.236"
+          else
+            echo "❌ Deployment failed!"
+            
+            # Restore old version if exists
+            if [ -d "/opt/shop-management" ]; then
+              cd /opt/shop-management
+              docker-compose up -d
+            fi
+            
+            exit 1
+          fi
+          
+    - name: Health Check
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.HETZNER_HOST }}
+        username: ${{ secrets.HETZNER_USER }}
+        password: ${{ secrets.HETZNER_PASSWORD }}
+        port: 22
+        script: |
+          # Wait a bit more for services to be fully ready
+          sleep 10
+          
+          # Check container health
+          echo "Container status:"
+          docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+          
+          # Test frontend
+          if curl -f -s http://localhost > /dev/null; then
+            echo "✅ Frontend is responding"
+          else
+            echo "❌ Frontend health check failed"
+            exit 1
+          fi
+          
+          # Test backend API
+          if curl -f -s http://localhost:8082/api/auth/login -H "Content-Type: application/json" -d '{"username":"test","password":"test"}' > /dev/null; then
+            echo "✅ Backend API is responding"
+          else
+            echo "❌ Backend API health check failed"
+            exit 1
+          fi
+          
+          echo "🎉 Deployment completed successfully!"
+          echo "Your application is live at: http://65.21.4.236"
