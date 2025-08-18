@@ -25,7 +25,9 @@ services:
 
   # Spring Boot Backend
   backend:
-    image: shop-backend
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: shop-backend
     environment:
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-docker}
@@ -53,13 +55,12 @@ services:
 
   # Angular Frontend (Simple Nginx with test page)
   frontend:
-    image: nginx:alpine
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     container_name: shop-frontend
     ports:
       - "80:80"
-    volumes:
-      - ./frontend/dist/shop-management-frontend:/usr/share/nginx/html
-      - ./frontend/nginx.conf:/etc/nginx/nginx.conf
     networks:
       - shop-network
     depends_on:
