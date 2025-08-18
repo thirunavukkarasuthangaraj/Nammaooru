@@ -61,9 +61,15 @@ export class OrderTrackingComponent implements OnInit, OnDestroy, AfterViewInit 
 
   ngOnInit(): void {
     this.route.params.pipe(takeUntil(this.destroy$)).subscribe(params => {
-      this.assignmentId = +params['assignmentId'];
-      if (this.assignmentId) {
+      const numericId = parseInt(params['assignmentId'], 10);
+      if (!isNaN(numericId)) {
+        this.assignmentId = numericId;
         this.loadAssignmentData();
+      } else {
+        console.error('Invalid assignment ID:', params['assignmentId']);
+        this.snackBar.open('Invalid assignment ID provided', 'Close', { duration: 3000 });
+        // You can add navigation to a default page if needed
+        // this.router.navigate(['/delivery/assignments']);
       }
     });
   }

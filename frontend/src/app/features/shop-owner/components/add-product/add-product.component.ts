@@ -537,9 +537,16 @@ export class AddProductComponent implements OnInit {
     // Check if we're in edit mode
     this.route.params.subscribe(params => {
       if (params['id']) {
-        this.isEditMode = true;
-        this.editingProductId = +params['id'];
-        this.loadProductForEdit(this.editingProductId);
+        const numericId = parseInt(params['id'], 10);
+        if (!isNaN(numericId)) {
+          this.isEditMode = true;
+          this.editingProductId = numericId;
+          this.loadProductForEdit(this.editingProductId);
+        } else {
+          console.error('Invalid product ID:', params['id']);
+          this.snackBar.open('Invalid product ID provided', 'Close', { duration: 3000 });
+          this.router.navigate(['/shop-owner/products']);
+        }
       }
     });
 

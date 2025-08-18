@@ -23,7 +23,14 @@ export class UserDetailComponent implements OnInit {
   ngOnInit(): void {
     const userId = this.route.snapshot.paramMap.get('id');
     if (userId) {
-      this.loadUser(+userId);
+      const numericUserId = parseInt(userId, 10);
+      if (!isNaN(numericUserId)) {
+        this.loadUser(numericUserId);
+      } else {
+        console.error('Invalid user ID:', userId);
+        this.snackBar.open('Invalid user ID', 'Close', { duration: 3000 });
+        this.router.navigate(['/users']);
+      }
     }
   }
 

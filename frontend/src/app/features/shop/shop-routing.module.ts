@@ -20,31 +20,31 @@ const routes: Routes = [
     path: 'approvals',
     component: ShopApprovalsListComponent,
     canActivate: [AuthGuard, RoleGuard],
-    data: { roles: [UserRole.ADMIN] }
+    data: { roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN] }
   },
   {
     path: 'master',
     component: ShopMasterComponent,
     canActivate: [AuthGuard, RoleGuard],
-    data: { roles: [UserRole.ADMIN] }
+    data: { roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN] }
   },
   {
     path: 'create',
     component: ShopFormComponent,
     canActivate: [AuthGuard, RoleGuard],
-    data: { roles: [UserRole.ADMIN, UserRole.SHOP_OWNER] }
+    data: { roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SHOP_OWNER] }
   },
   {
     path: ':id/edit',
     component: ShopFormComponent,
     canActivate: [AuthGuard, RoleGuard],
-    data: { roles: [UserRole.ADMIN, UserRole.SHOP_OWNER] }
+    data: { roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SHOP_OWNER] }
   },
   {
     path: ':shopId/approval',
     component: ShopApprovalComponent,
     canActivate: [AuthGuard, RoleGuard],
-    data: { roles: [UserRole.ADMIN] }
+    data: { roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN] }
   },
   {
     path: ':id',

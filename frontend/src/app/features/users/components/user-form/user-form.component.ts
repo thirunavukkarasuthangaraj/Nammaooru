@@ -57,9 +57,16 @@ export class UserFormComponent implements OnInit {
   ngOnInit(): void {
     this.route.params.subscribe(params => {
       if (params['id']) {
-        this.userId = +params['id'];
-        this.isEditMode = true;
-        this.loadUser();
+        const numericUserId = parseInt(params['id'], 10);
+        if (!isNaN(numericUserId)) {
+          this.userId = numericUserId;
+          this.isEditMode = true;
+          this.loadUser();
+        } else {
+          console.error('Invalid user ID:', params['id']);
+          this.snackBar.open('Invalid user ID', 'Close', { duration: 3000 });
+          this.router.navigate(['/users']);
+        }
       }
     });
   }

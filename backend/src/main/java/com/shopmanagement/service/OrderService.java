@@ -157,14 +157,16 @@ public class OrderService {
         return mapToResponse(savedOrder);
     }
     
+    @Transactional(readOnly = true)
     public OrderResponse getOrderById(Long id) {
-        Order order = orderRepository.findById(id)
+        Order order = orderRepository.findByIdWithOrderItems(id)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
         return mapToResponse(order);
     }
     
+    @Transactional(readOnly = true)
     public OrderResponse getOrderByNumber(String orderNumber) {
-        Order order = orderRepository.findByOrderNumber(orderNumber)
+        Order order = orderRepository.findByOrderNumberWithOrderItems(orderNumber)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
         return mapToResponse(order);
     }
@@ -232,35 +234,40 @@ public class OrderService {
         return mapToResponse(cancelledOrder);
     }
     
+    @Transactional(readOnly = true)
     public Page<OrderResponse> getAllOrders(int page, int size, String sortBy, String sortDirection) {
         Sort.Direction direction = sortDirection.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
         
-        Page<Order> orders = orderRepository.findAll(pageable);
+        Page<Order> orders = orderRepository.findAllWithOrderItems(pageable);
         return orders.map(this::mapToResponse);
     }
     
+    @Transactional(readOnly = true)
     public Page<OrderResponse> getOrdersByShop(Long shopId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<Order> orders = orderRepository.findByShopId(shopId, pageable);
+        Page<Order> orders = orderRepository.findByShopIdWithOrderItems(shopId, pageable);
         return orders.map(this::mapToResponse);
     }
     
+    @Transactional(readOnly = true)
     public Page<OrderResponse> getOrdersByCustomer(Long customerId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<Order> orders = orderRepository.findByCustomerId(customerId, pageable);
+        Page<Order> orders = orderRepository.findByCustomerIdWithOrderItems(customerId, pageable);
         return orders.map(this::mapToResponse);
     }
     
+    @Transactional(readOnly = true)
     public Page<OrderResponse> getOrdersByStatus(Order.OrderStatus status, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<Order> orders = orderRepository.findByStatus(status, pageable);
+        Page<Order> orders = orderRepository.findByStatusWithOrderItems(status, pageable);
         return orders.map(this::mapToResponse);
     }
     
+    @Transactional(readOnly = true)
     public Page<OrderResponse> searchOrders(String searchTerm, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<Order> orders = orderRepository.searchOrders(searchTerm, pageable);
+        Page<Order> orders = orderRepository.searchOrdersWithOrderItems(searchTerm, pageable);
         return orders.map(this::mapToResponse);
     }
     
@@ -351,10 +358,11 @@ public class OrderService {
         return mapToResponse(rejectedOrder);
     }
     
+    @Transactional(readOnly = true)
     public Map<String, Object> getOrderTracking(Long orderId) {
         log.info("Fetching tracking information for order: {}", orderId);
         
-        Order order = orderRepository.findById(orderId)
+        Order order = orderRepository.findByIdWithOrderItems(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
         
         Map<String, Object> trackingInfo = new HashMap<>();

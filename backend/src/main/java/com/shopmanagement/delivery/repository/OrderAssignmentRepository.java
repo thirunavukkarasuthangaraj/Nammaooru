@@ -15,9 +15,11 @@ import java.util.Optional;
 @Repository
 public interface OrderAssignmentRepository extends JpaRepository<OrderAssignment, Long> {
 
-    List<OrderAssignment> findByOrderId(Long orderId);
+    @Query("SELECT oa FROM OrderAssignment oa LEFT JOIN FETCH oa.trackingPoints LEFT JOIN FETCH oa.earning WHERE oa.order.id = :orderId")
+    List<OrderAssignment> findByOrderId(@Param("orderId") Long orderId);
     
-    List<OrderAssignment> findByDeliveryPartnerId(Long partnerId);
+    @Query("SELECT oa FROM OrderAssignment oa LEFT JOIN FETCH oa.trackingPoints LEFT JOIN FETCH oa.earning WHERE oa.deliveryPartner.id = :partnerId")
+    List<OrderAssignment> findByDeliveryPartnerId(@Param("partnerId") Long partnerId);
     
     Page<OrderAssignment> findByDeliveryPartnerId(Long partnerId, Pageable pageable);
     
@@ -77,4 +79,7 @@ public interface OrderAssignmentRepository extends JpaRepository<OrderAssignment
     
     @Query("SELECT AVG(oa.customerRating) FROM OrderAssignment oa WHERE oa.deliveryPartner.id = :partnerId AND oa.customerRating IS NOT NULL")
     Double getAverageRatingForPartner(@Param("partnerId") Long partnerId);
+    
+    @Query("SELECT oa FROM OrderAssignment oa LEFT JOIN FETCH oa.trackingPoints LEFT JOIN FETCH oa.earning WHERE oa.id = :id")
+    Optional<OrderAssignment> findByIdWithTracking(@Param("id") Long id);
 }

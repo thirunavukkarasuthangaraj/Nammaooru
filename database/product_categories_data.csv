@@ -1,0 +1,6 @@
+id,created_at,created_by,description,icon_url,is_active,name,slug,sort_order,updated_at,updated_by,parent_id
+1,2025-08-17 15:21:10.378334,admin,Electronic devices and accessories,,t,Electronics,electronics,1,2025-08-17 15:21:10.378334,,
+2,2025-08-17 15:21:10.378334,admin,Apparel and fashion items,,t,Clothing,clothing,2,2025-08-17 15:21:10.378334,,
+3,2025-08-17 15:21:10.378334,admin,Food items and drinks,,t,Food & Beverages,food-beverages,3,2025-08-17 15:21:10.378334,,
+4,2025-08-17 15:21:10.378334,admin,Home improvement and gardening items,,t,Home & Garden,home-garden,4,2025-08-17 15:21:10.378334,,
+5,2025-08-17 15:21:10.378334,admin,Books and educational materials,,t,Books,books,5,2025-08-17 15:21:10.378334,,

@@ -34,10 +34,10 @@ spring:
       max-file-size: 10MB
       max-request-size: 10MB
       
-  security:
-    user:
-      name: admin
-      password: admin123
+  # security:
+    # user:
+      # name: admin
+      # password: admin123
       
   # Email Configuration
   mail:

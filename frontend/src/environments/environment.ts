@@ -1,6 +1,6 @@
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:8082',
+  apiUrl: 'http://localhost:8082/api',
   googleMapsApiKey: 'AIzaSyAr_uGbaOnhebjRyz7ohU6N-hWZJVV_R3U',
   websocketUrl: 'ws://localhost:8082/ws',
   defaultMapCenter: {

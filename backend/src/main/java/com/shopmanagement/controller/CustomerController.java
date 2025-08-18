@@ -23,6 +23,27 @@ public class CustomerController {
 
     private final CustomerService customerService;
 
+    @GetMapping
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN')")
+    public ResponseEntity<Page<CustomerResponse>> getAllCustomers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "DESC") String sortDirection) {
+        
+        log.info("Fetching all customers - page: {}, size: {}", page, size);
+        Page<CustomerResponse> customers = customerService.getAllCustomers(page, size, sortBy, sortDirection);
+        return ResponseEntity.ok(customers);
+    }
+    
+    @GetMapping("/{id}")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN')")
+    public ResponseEntity<CustomerResponse> getCustomerById(@PathVariable Long id) {
+        log.info("Fetching customer with ID: {}", id);
+        CustomerResponse customer = customerService.getCustomerById(id);
+        return ResponseEntity.ok(customer);
+    }
+
     @PostMapping("/register")
     public ResponseEntity<Map<String, Object>> registerCustomer(
             @Valid @RequestBody CustomerRegistrationRequest request,

@@ -1,0 +1,16 @@
+id,account_locked_until,created_at,created_by,department,designation,email,email_verified,failed_login_attempts,first_name,is_active,is_temporary_password,last_login,last_name,last_password_change,mobile_number,mobile_verified,password,password_change_required,profile_image_url,reports_to,role,status,two_factor_enabled,updated_at,updated_by,username
+54,,2025-08-17 16:02:14.435036,,,,shopowner@shopmanagement.com,,,Shop,t,,,Owner,,,,$2a$10$TkFJqCLjeEGmW5OESQ5cLOxbnrx3a2GG5p9nnixNHJKKLXqEKq3vy,,,,SHOP_OWNER,ACTIVE,,2025-08-17 16:02:14.435036,,shopowner
+55,,2025-08-17 16:02:14.47403,,,,user@shopmanagement.com,,,Regular,t,,,User,,,,$2a$10$TkFJqCLjeEGmW5OESQ5cLOxbnrx3a2GG5p9nnixNHJKKLXqEKq3vy,,,,USER,ACTIVE,,2025-08-17 16:02:14.47403,,user
+56,,2025-08-17 16:30:13.565668,system,,,john.doe@customer.com,t,0,John,t,f,,Doe,,,t,$2a$10$NqqgFA82ohQl2XsW0Jf.fOsO804cwYkUUWNOILzZ4miDaqtI0cCO2,f,,,USER,ACTIVE,f,2025-08-17 16:30:13.565668,system,customer1
+131,,2025-08-18 01:18:11.665391,,,,admin@shopmanagement.com,t,,Admin,t,,,User,,,,$2a$10$TkFJqCLjeEGmW5OESQ5cLOxbnrx3a2GG5p9nnixNHJKKLXqEKq3vy,,,,ADMIN,ACTIVE,,2025-08-18 11:54:16.793969,,admin
+49,,2025-08-17 15:58:00.755381,system,,,owner1@electronics.com,t,0,Rajesh,t,f,,Kumar,,,t,$2a$10$N9qo8uLOickgx2ZMRJWqNOeWGuyqvvrVt3p/C4.WQ5FHC5yNEVJ/6,f,,,SHOP_OWNER,ACTIVE,f,2025-08-17 15:58:00.755381,system,shopowner1
+50,,2025-08-17 15:58:00.755381,system,,,raj.kumar@delivery.com,t,0,Raj,t,f,,Kumar,,,t,\a\0\/C4.WQ5FHC5yNEVJ/6,f,,,DELIVERY_PARTNER,ACTIVE,f,2025-08-17 15:58:00.755381,system,delivery1
+51,,2025-08-17 15:58:00.755381,system,,,user1@example.com,t,0,Regular,t,f,,User,,,t,\a\0\/C4.WQ5FHC5yNEVJ/6,f,,,USER,ACTIVE,f,2025-08-17 15:58:00.755381,system,user1
+69,,2025-08-17 12:59:25.50435,,,,thiruna2394@gmail.com,f,0,,t,t,,,,,f,$2a$10$a2XNFPo.ZZa3dKAoIQJKSeOj2/qRxWFkciR81pEYC14vf.IEZVBJ6,t,,,SHOP_OWNER,ACTIVE,f,2025-08-17 12:59:25.50435,,thirunakum100
+90,,2025-08-17 13:36:31.656076,,,,helec60392@jobzyy.com,f,0,Ravi,t,f,,Kumar,,9876543210,f,$2a$10$YslF08ioyJ8TGyMjwNX7i.VWzqK/vh1M5Ohrq2QChRaJthJ/nL/Dm,f,,,DELIVERY_PARTNER,ACTIVE,f,2025-08-17 13:36:31.656076,,helec60392
+92,,2025-08-17 19:09:34.414105,,,,thoruncse75@gmail.com,t,,Test,t,,,Admin,,,,\a\0\.qGNr7b5R2BaFwBxOwLwCBdBgBQAMEoGBWZe7hAWlP2vhNvW,,,,ADMIN,ACTIVE,,2025-08-17 19:09:34.414105,,testadmin
+129,,2025-08-17 17:21:01.794114,,,,owner@techstore.com,f,0,,t,t,,,,,f,$2a$10$91OCFNZ4vrGcUKiZ57BLfOBoGHYS.JsaQoEdmikc4klf7eSiJUCV2,t,,,SHOP_OWNER,ACTIVE,f,2025-08-17 17:21:01.794114,,rajeshkuma71
+48,,2025-08-17 15:58:00.755381,system,,,admin1@shopmanagement.com,t,0,Admin,t,f,,One,,,t,\a\0\2IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi,f,,,ADMIN,ACTIVE,f,2025-08-17 15:58:00.755381,system,admin1
+52,,2025-08-17 10:29:49.859779,,,,test@test.com,f,0,,t,f,,,,,f,\a\0\/zo88UkrvQXSi6OQ.fLV4LUJXsLUBvG,f,,,SUPER_ADMIN,ACTIVE,f,2025-08-17 10:29:49.859779,,testuser
+47,,2025-08-17 15:58:00.755381,system,,,superadmin@shopmanagement.com,t,0,Super,t,f,,Admin,,,t,\a\0\/C4.WQ5FHC5yNEVJ/6,f,,,SUPER_ADMIN,ACTIVE,f,2025-08-17 15:58:00.755381,system,superadmin
+133,,2025-08-17 19:53:10.057504,,,,test@work.com,f,0,,t,f,,,,,f,$2a$10$.VYrpp5dug8maWYJrvOs2eSXpweQeH7QC0Y1uddPvZF5mOWImIxUW,f,,,SUPER_ADMIN,ACTIVE,f,2025-08-17 19:53:10.057504,,testwork

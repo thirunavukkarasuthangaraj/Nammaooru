@@ -20,7 +20,7 @@ const routes: Routes = [
     component: DeliveryPartnerDashboardComponent,
     canActivate: [AuthGuard, RoleGuard],
     data: { 
-      expectedRoles: ['DELIVERY_PARTNER'],
+      expectedRoles: ['SUPER_ADMIN', 'DELIVERY_PARTNER'],
       title: 'Delivery Partner Dashboard'
     }
   },
@@ -29,7 +29,7 @@ const routes: Routes = [
     component: PartnerOrdersComponent,
     canActivate: [AuthGuard, RoleGuard],
     data: { 
-      expectedRoles: ['DELIVERY_PARTNER'],
+      expectedRoles: ['SUPER_ADMIN', 'DELIVERY_PARTNER'],
       title: 'My Orders'
     }
   },
@@ -38,7 +38,7 @@ const routes: Routes = [
     component: AdminPartnersComponent,
     canActivate: [AuthGuard, RoleGuard],
     data: { 
-      expectedRoles: ['ADMIN', 'MANAGER'],
+      expectedRoles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER'],
       title: 'Manage Partners'
     }
   },
@@ -52,7 +52,7 @@ const routes: Routes = [
     component: DeliveryAnalyticsComponent,
     canActivate: [AuthGuard, RoleGuard],
     data: { 
-      expectedRoles: ['ADMIN', 'MANAGER'],
+      expectedRoles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER'],
       title: 'Delivery Analytics'
     }
   },
@@ -61,7 +61,7 @@ const routes: Routes = [
     component: AdminPartnersComponent, // Temporary - will show assignments tab
     canActivate: [AuthGuard, RoleGuard],
     data: { 
-      expectedRoles: ['ADMIN', 'MANAGER'],
+      expectedRoles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER'],
       title: 'Order Assignments'
     }
   },
@@ -70,7 +70,7 @@ const routes: Routes = [
     component: OrderTrackingComponent, // Live tracking view for admins
     canActivate: [AuthGuard, RoleGuard],
     data: { 
-      expectedRoles: ['ADMIN', 'MANAGER'],
+      expectedRoles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER'],
       title: 'Live Tracking Dashboard'
     }
   },

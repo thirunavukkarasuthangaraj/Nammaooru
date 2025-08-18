@@ -98,4 +98,30 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query("SELECT COUNT(o) FROM Order o WHERE o.createdAt >= :startDate AND o.createdAt <= :endDate")
     Long countAnalyticsByPeriod(@Param("startDate") LocalDateTime startDate, 
                                @Param("endDate") LocalDateTime endDate);
+    
+    // Find orders with order items eagerly loaded
+    @Query("SELECT DISTINCT o FROM Order o LEFT JOIN FETCH o.orderItems LEFT JOIN FETCH o.customer LEFT JOIN FETCH o.shop")
+    Page<Order> findAllWithOrderItems(Pageable pageable);
+    
+    @Query("SELECT o FROM Order o LEFT JOIN FETCH o.orderItems LEFT JOIN FETCH o.customer LEFT JOIN FETCH o.shop WHERE o.id = :id")
+    Optional<Order> findByIdWithOrderItems(@Param("id") Long id);
+    
+    @Query("SELECT o FROM Order o LEFT JOIN FETCH o.orderItems LEFT JOIN FETCH o.customer LEFT JOIN FETCH o.shop WHERE o.orderNumber = :orderNumber")
+    Optional<Order> findByOrderNumberWithOrderItems(@Param("orderNumber") String orderNumber);
+    
+    @Query("SELECT DISTINCT o FROM Order o LEFT JOIN FETCH o.orderItems LEFT JOIN FETCH o.customer LEFT JOIN FETCH o.shop WHERE o.shop.id = :shopId")
+    Page<Order> findByShopIdWithOrderItems(@Param("shopId") Long shopId, Pageable pageable);
+    
+    @Query("SELECT DISTINCT o FROM Order o LEFT JOIN FETCH o.orderItems LEFT JOIN FETCH o.customer LEFT JOIN FETCH o.shop WHERE o.customer.id = :customerId")
+    Page<Order> findByCustomerIdWithOrderItems(@Param("customerId") Long customerId, Pageable pageable);
+    
+    @Query("SELECT DISTINCT o FROM Order o LEFT JOIN FETCH o.orderItems LEFT JOIN FETCH o.customer LEFT JOIN FETCH o.shop WHERE o.status = :status")
+    Page<Order> findByStatusWithOrderItems(@Param("status") Order.OrderStatus status, Pageable pageable);
+    
+    @Query("SELECT DISTINCT o FROM Order o LEFT JOIN FETCH o.orderItems LEFT JOIN FETCH o.customer LEFT JOIN FETCH o.shop WHERE " +
+           "LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(o.customer.firstName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(o.customer.lastName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(o.shop.name) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
+    Page<Order> searchOrdersWithOrderItems(@Param("searchTerm") String searchTerm, Pageable pageable);
 }

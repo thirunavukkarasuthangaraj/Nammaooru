@@ -47,6 +47,24 @@ public class CustomerService {
     private final ShopProductRepository shopProductRepository;
     private final OrderService orderService;
     
+    // Get all customers for admin
+    public Page<CustomerResponse> getAllCustomers(int page, int size, String sortBy, String sortDirection) {
+        Sort.Direction direction = sortDirection.equalsIgnoreCase("DESC") ? 
+            Sort.Direction.DESC : Sort.Direction.ASC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
+        
+        Page<Customer> customers = customerRepository.findAll(pageable);
+        return customers.map(this::mapToResponse);
+    }
+    
+    // Get customer by ID
+    public CustomerResponse getCustomerById(Long id) {
+        Customer customer = customerRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Customer not found"));
+        return mapToResponse(customer);
+    }
+    
+    
     // Create Customer
     public CustomerResponse createCustomer(CustomerRequest request) {
         log.info("Creating new customer with email: {}", request.getEmail());
@@ -99,14 +117,6 @@ public class CustomerService {
         
         log.info("Successfully created customer with ID: {}", savedCustomer.getId());
         return mapToResponse(savedCustomer);
-    }
-    
-    // Get Customer by ID
-    @Transactional(readOnly = true)
-    public CustomerResponse getCustomerById(Long id) {
-        Customer customer = customerRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Customer not found with ID: " + id));
-        return mapToResponse(customer);
     }
     
     // Get Customer by Email
@@ -194,16 +204,6 @@ public class CustomerService {
         customerRepository.save(customer);
         
         log.info("Successfully deleted customer with ID: {}", id);
-    }
-    
-    // Get All Customers with Pagination
-    @Transactional(readOnly = true)
-    public Page<CustomerResponse> getAllCustomers(int page, int size, String sortBy, String sortDirection) {
-        Sort.Direction direction = sortDirection.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
-        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
-        
-        Page<Customer> customers = customerRepository.findAll(pageable);
-        return customers.map(this::mapToResponse);
     }
     
     // Search Customers

@@ -325,14 +325,19 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   get currentMenuItems() {
     const user = this.authService.getCurrentUser();
     switch (user?.role) {
+      case UserRole.SUPER_ADMIN:
       case 'SUPER_ADMIN':
         return this.superAdminMenuItems;
+      case UserRole.ADMIN:
       case 'ADMIN':
         return this.adminMenuItems;
+      case UserRole.MANAGER:
       case 'MANAGER':
         return this.managerMenuItems;
+      case UserRole.SHOP_OWNER:
       case 'SHOP_OWNER':
         return this.shopOwnerMenuItems;
+      case UserRole.DELIVERY_PARTNER:
       case 'DELIVERY_PARTNER':
         return this.deliveryPartnerMenuItems;
       default:

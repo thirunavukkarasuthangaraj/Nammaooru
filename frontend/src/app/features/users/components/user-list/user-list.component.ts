@@ -4,7 +4,7 @@ import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
-import { UserService } from '../../../../core/services/user.service';
+import { UserService, UserResponse } from '../../../../core/services/user.service';
 
 export interface User {
   id: number;
@@ -33,7 +33,7 @@ export class UserListComponent implements OnInit {
   @ViewChild(MatSort) sort!: MatSort;
 
   displayedColumns: string[] = ['fullName', 'email', 'role', 'department', 'status', 'lastLogin', 'actions'];
-  dataSource = new MatTableDataSource<User>();
+  dataSource = new MatTableDataSource<UserResponse>();
   loading = false;
   searchText = '';
   roleFilter = '';
@@ -78,6 +78,8 @@ export class UserListComponent implements OnInit {
     this.loading = true;
     this.userService.getAllUsers(0, 100).subscribe({
       next: (response) => {
+        console.log('Users API response:', response); // Debug log
+        console.log('Users data:', response.content); // Debug log
         this.dataSource.data = response.content;
         this.loading = false;
       },
@@ -123,15 +125,22 @@ export class UserListComponent implements OnInit {
     this.router.navigate(['/users/new']);
   }
 
-  viewUser(user: User): void {
-    this.router.navigate(['/users', user.id]);
+  viewUser(user: UserResponse): void {
+    console.log('Viewing user:', user); // Debug log
+    console.log('User ID:', user.id, 'Type:', typeof user.id); // Debug log
+    if (user.id) {
+      this.router.navigate(['/users', user.id]);
+    } else {
+      console.error('User ID is missing or invalid:', user);
+      this.snackBar.open('Invalid user ID', 'Close', { duration: 3000 });
+    }
   }
 
-  editUser(user: User): void {
+  editUser(user: UserResponse): void {
     this.router.navigate(['/users', user.id, 'edit']);
   }
 
-  toggleUserStatus(user: User): void {
+  toggleUserStatus(user: UserResponse): void {
     this.userService.toggleUserStatus(user.id).subscribe({
       next: () => {
         this.snackBar.open(`User ${user.isActive ? 'deactivated' : 'activated'} successfully`, 'Close', { duration: 3000 });
@@ -144,7 +153,7 @@ export class UserListComponent implements OnInit {
     });
   }
 
-  resetPassword(user: User): void {
+  resetPassword(user: UserResponse): void {
     if (confirm(`Reset password for ${user.fullName}?`)) {
       this.userService.resetPassword(user.id).subscribe({
         next: () => {
@@ -158,7 +167,7 @@ export class UserListComponent implements OnInit {
     }
   }
 
-  deleteUser(user: User): void {
+  deleteUser(user: UserResponse): void {
     if (confirm(`Are you sure you want to delete ${user.fullName}?`)) {
       this.userService.deleteUser(user.id).subscribe({
         next: () => {

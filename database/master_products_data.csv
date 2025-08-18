@@ -1,0 +1,9 @@
+id,barcode,base_unit,base_weight,brand,created_at,created_by,description,is_featured,is_global,name,sku,specifications,status,updated_at,updated_by,category_id
+1,1234567890123,pcs,0.168,Samsung,2025-08-17 15:21:10.381402,admin,Latest Samsung smartphone with advanced camera,t,t,Samsung Galaxy S24,SGS24-001,"Display: 6.2 inches, RAM: 8GB, Storage: 256GB",ACTIVE,2025-08-17 15:21:10.381402,admin,1
+2,2345678901234,pcs,0.500,Nike,2025-08-17 15:21:10.381402,admin,Comfortable running shoes,t,t,Nike Air Max 270,NAM270-001,"Size: Various, Color: Multiple options available",ACTIVE,2025-08-17 15:21:10.381402,admin,2
+3,3456789012345,box,0.100,Twinings,2025-08-17 15:21:10.381402,admin,Premium organic green tea leaves,f,t,Organic Green Tea,OGT-001,"Weight: 100g, Organic certified, 20 tea bags",ACTIVE,2025-08-17 15:21:10.381402,admin,3
+4,4567890123456,pcs,1.200,Dell,2025-08-17 15:21:10.381402,admin,High-performance ultrabook for professionals,t,t,Dell Laptop XPS 13,DELL-XPS13-001,"Intel i7, 16GB RAM, 512GB SSD, 13.3 inch display",ACTIVE,2025-08-17 15:21:10.381402,admin,1
+5,5678901234567,pcs,0.600,Levi's,2025-08-17 15:21:10.381402,admin,Classic straight fit denim jeans,f,t,Levi's Jeans 501,LEVI-501-001,"Cotton denim, available in multiple sizes and washes",ACTIVE,2025-08-17 15:21:10.381402,admin,2
+6,6789012345678,kg,1.000,Blue Tokai,2025-08-17 15:21:10.381402,admin,Premium roasted coffee beans,t,t,Coffee Beans Arabica,COFFEE-ARB-001,"Single origin, medium roast, 250g pack",ACTIVE,2025-08-17 15:21:10.381402,admin,3
+7,7890123456789,bag,5.000,Cocopeat,2025-08-17 15:21:10.381402,admin,Premium organic potting soil,f,t,Garden Soil Organic,SOIL-ORG-001,"10kg bag, enriched with compost",ACTIVE,2025-08-17 15:21:10.381402,admin,4
+8,8901234567890,pcs,0.800,O'Reilly,2025-08-17 15:21:10.381402,admin,Complete guide to Java programming,t,t,Programming Book Java,BOOK-JAVA-001,"800 pages, includes examples and exercises",ACTIVE,2025-08-17 15:21:10.381402,admin,5

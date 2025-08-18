@@ -1,0 +1,25 @@
+# Simple Dockerfile that uses pre-built JAR
+FROM eclipse-temurin:17-jre-alpine
+
+# Create app user for security
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -u 1001 -S appuser -G appgroup
+
+# Set working directory
+WORKDIR /app
+
+# Copy the pre-built JAR file (you need to build it first with mvn package)
+COPY target/*.jar app.jar
+
+# Create uploads directory and set permissions
+RUN mkdir -p /app/uploads && \
+    chown -R appuser:appgroup /app
+
+# Switch to non-root user
+USER appuser
+
+# Expose port
+EXPOSE 8082
+
+# Run the application
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

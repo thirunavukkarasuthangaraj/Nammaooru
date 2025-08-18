@@ -38,14 +38,17 @@ export class RoleGuard implements CanActivate {
     const user = this.authService.getCurrentUser();
     if (user) {
       switch (user.role) {
+        case UserRole.SUPER_ADMIN:
+          this.router.navigate(['/dashboard']);
+          break;
         case UserRole.ADMIN:
-          this.router.navigate(['/admin']);
+          this.router.navigate(['/dashboard']);
           break;
         case UserRole.SHOP_OWNER:
           this.router.navigate(['/shop-owner']);
           break;
         default:
-          this.router.navigate(['/shops']);
+          this.router.navigate(['/dashboard']);
           break;
       }
     } else {

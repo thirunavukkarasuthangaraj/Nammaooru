@@ -338,6 +338,20 @@
     .mat-mdc-text-field-wrapper {
       background-color: #fafafa;
     }
+    
+    // Ensure password toggle button is visible
+    .mat-mdc-form-field-icon-suffix {
+      button[mat-icon-button] {
+        color: #666 !important;
+        z-index: 10 !important;
+        
+        mat-icon {
+          font-size: 20px !important;
+          width: 20px !important;
+          height: 20px !important;
+        }
+      }
+    }
   }
 
   .success-snackbar {

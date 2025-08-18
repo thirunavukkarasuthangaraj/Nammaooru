@@ -75,7 +75,7 @@ export interface LocationUpdateRequest {
   providedIn: 'root'
 })
 export class DeliveryTrackingService {
-  private readonly apiUrl = `${environment.apiUrl}/api/delivery/tracking`;
+  private readonly apiUrl = `${environment.apiUrl}/delivery/tracking`;
 
   constructor(private http: HttpClient) {}
 

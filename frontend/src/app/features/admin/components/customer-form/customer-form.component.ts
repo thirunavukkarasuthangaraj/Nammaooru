@@ -42,9 +42,15 @@ export class CustomerFormComponent implements OnInit {
   ngOnInit(): void {
     this.route.params.subscribe(params => {
       if (params['id']) {
-        this.isEditMode = true;
-        this.customerId = +params['id'];
-        this.loadCustomer();
+        const numericId = parseInt(params['id'], 10);
+        if (!isNaN(numericId)) {
+          this.isEditMode = true;
+          this.customerId = numericId;
+          this.loadCustomer();
+        } else {
+          console.error('Invalid customer ID:', params['id']);
+          this.router.navigate(['/admin/customers']);
+        }
       }
     });
   }

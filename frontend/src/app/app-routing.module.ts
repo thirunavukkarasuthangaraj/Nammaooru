@@ -37,19 +37,19 @@ const routes: Routes = [
         path: 'users',
         loadChildren: () => import('./features/users/users.module').then(m => m.UsersModule),
         canActivate: [RoleGuard],
-        data: { roles: [UserRole.ADMIN] }
+        data: { roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN] }
       },
       {
         path: 'analytics',
         loadChildren: () => import('./features/analytics/analytics.module').then(m => m.AnalyticsModule),
         canActivate: [RoleGuard],
-        data: { roles: [UserRole.ADMIN, UserRole.SHOP_OWNER] }
+        data: { roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SHOP_OWNER] }
       },
       {
         path: 'settings',
         loadChildren: () => import('./features/settings/settings.module').then(m => m.SettingsModule),
         canActivate: [RoleGuard],
-        data: { roles: [UserRole.ADMIN] }
+        data: { roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN] }
       },
       {
         path: 'notifications',
@@ -67,13 +67,13 @@ const routes: Routes = [
         path: 'admin',
         loadChildren: () => import('./features/admin/admin.module').then(m => m.AdminModule),
         canActivate: [RoleGuard],
-        data: { roles: [UserRole.ADMIN] }
+        data: { roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN] }
       },
       {
         path: 'shop-owner',
         loadChildren: () => import('./features/shop-owner/shop-owner.module').then(m => m.ShopOwnerModule),
         canActivate: [RoleGuard],
-        data: { roles: [UserRole.SHOP_OWNER, UserRole.ADMIN] }
+        data: { roles: [UserRole.SUPER_ADMIN, UserRole.SHOP_OWNER, UserRole.ADMIN] }
       },
       {
         path: 'delivery',

@@ -88,10 +88,10 @@ public class OrderAssignment {
     @Column(name = "customer_feedback", columnDefinition = "TEXT")
     private String customerFeedback;
 
-    @OneToMany(mappedBy = "orderAssignment", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "orderAssignment", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<DeliveryTracking> trackingPoints;
 
-    @OneToOne(mappedBy = "orderAssignment", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToOne(mappedBy = "orderAssignment", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private PartnerEarning earning;
 
     @CreationTimestamp

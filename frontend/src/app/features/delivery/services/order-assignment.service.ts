@@ -75,7 +75,7 @@ export interface OrderAssignmentRequest {
   providedIn: 'root'
 })
 export class OrderAssignmentService {
-  private readonly apiUrl = `${environment.apiUrl}/api/delivery/assignments`;
+  private readonly apiUrl = `${environment.apiUrl}/delivery/assignments`;
 
   constructor(private http: HttpClient) {}
 

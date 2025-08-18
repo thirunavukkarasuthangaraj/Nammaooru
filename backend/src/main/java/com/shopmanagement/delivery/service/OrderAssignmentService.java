@@ -260,7 +260,7 @@ public class OrderAssignmentService {
     }
 
     private OrderAssignment getAssignmentEntity(Long assignmentId) {
-        return assignmentRepository.findById(assignmentId)
+        return assignmentRepository.findByIdWithTracking(assignmentId)
                 .orElseThrow(() -> new IllegalArgumentException("Assignment not found: " + assignmentId));
     }
 

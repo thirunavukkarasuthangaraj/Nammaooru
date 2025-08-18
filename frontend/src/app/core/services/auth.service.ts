@@ -118,8 +118,12 @@ export class AuthService {
     return user ? roles.includes(user.role) : false;
   }
 
+  isSuperAdmin(): boolean {
+    return this.hasRole(UserRole.SUPER_ADMIN);
+  }
+
   isAdmin(): boolean {
-    return this.hasRole(UserRole.ADMIN);
+    return this.hasAnyRole([UserRole.SUPER_ADMIN, UserRole.ADMIN]);
   }
 
   isShopOwner(): boolean {
@@ -127,7 +131,7 @@ export class AuthService {
   }
 
   canManageShops(): boolean {
-    return this.hasAnyRole([UserRole.ADMIN, UserRole.SHOP_OWNER]);
+    return this.hasAnyRole([UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SHOP_OWNER]);
   }
 
   changePassword(request: { currentPassword: string; newPassword: string; confirmPassword: string }): Observable<any> {

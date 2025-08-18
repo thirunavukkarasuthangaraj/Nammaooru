@@ -73,7 +73,7 @@ export interface CustomerSatisfaction {
   providedIn: 'root'
 })
 export class DeliveryAnalyticsService {
-  private readonly apiUrl = `${environment.apiUrl}/api/delivery/analytics`;
+  private readonly apiUrl = `${environment.apiUrl}/delivery/analytics`;
 
   constructor(private http: HttpClient) {}
 

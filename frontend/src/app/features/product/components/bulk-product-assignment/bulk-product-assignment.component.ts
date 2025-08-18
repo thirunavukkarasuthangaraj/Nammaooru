@@ -1071,10 +1071,16 @@ export class BulkProductAssignmentComponent implements OnInit {
   ngOnInit() {
     this.route.params.subscribe(params => {
       if (params['shopId']) {
-        this.shopId = +params['shopId'];
-        this.selectedShopId = this.shopId;
-        this.loadShopDetails();
-        this.loadMasterProducts();
+        const numericId = parseInt(params['shopId'], 10);
+        if (!isNaN(numericId)) {
+          this.shopId = numericId;
+          this.selectedShopId = this.shopId;
+          this.loadShopDetails();
+          this.loadMasterProducts();
+        } else {
+          console.error('Invalid shop ID:', params['shopId']);
+          this.router.navigate(['/products/bulk-assignment']);
+        }
       } else {
         this.loadShops();
       }

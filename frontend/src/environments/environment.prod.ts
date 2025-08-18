@@ -1,8 +1,8 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://your-production-api.com',
+  apiUrl: '/api',  // Use relative URL when frontend and backend are behind same proxy
   googleMapsApiKey: 'AIzaSyAr_uGbaOnhebjRyz7ohU6N-hWZJVV_R3U',
-  websocketUrl: 'wss://your-production-api.com/ws',
+  websocketUrl: '/ws',  // Use relative URL for WebSocket
   defaultMapCenter: {
     lat: 12.9716, // Bangalore coordinates
     lng: 77.5946

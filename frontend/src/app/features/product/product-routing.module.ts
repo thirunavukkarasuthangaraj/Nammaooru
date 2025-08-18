@@ -35,7 +35,7 @@ const routes: Routes = [
         canActivate: [RoleGuard],
         data: { 
           title: 'Master Products',
-          roles: ['ADMIN', 'MANAGER']
+          roles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER']
         }
       },
       {
@@ -44,7 +44,7 @@ const routes: Routes = [
         canActivate: [RoleGuard],
         data: { 
           title: 'New Master Product',
-          roles: ['ADMIN', 'MANAGER']
+          roles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER']
         }
       },
       {
@@ -53,7 +53,7 @@ const routes: Routes = [
         canActivate: [RoleGuard],
         data: { 
           title: 'Edit Master Product',
-          roles: ['ADMIN', 'MANAGER']
+          roles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER']
         }
       },
       {
@@ -62,7 +62,7 @@ const routes: Routes = [
         canActivate: [RoleGuard],
         data: { 
           title: 'Shop Products',
-          roles: ['ADMIN', 'MANAGER', 'SHOP_OWNER']
+          roles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'SHOP_OWNER']
         }
       },
       {
@@ -71,7 +71,7 @@ const routes: Routes = [
         canActivate: [RoleGuard],
         data: { 
           title: 'Add Product to Shop',
-          roles: ['ADMIN', 'MANAGER', 'SHOP_OWNER']
+          roles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'SHOP_OWNER']
         }
       },
       {
@@ -80,7 +80,7 @@ const routes: Routes = [
         canActivate: [RoleGuard],
         data: { 
           title: 'Edit Shop Product',
-          roles: ['ADMIN', 'MANAGER', 'SHOP_OWNER']
+          roles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'SHOP_OWNER']
         }
       },
       {
@@ -89,7 +89,7 @@ const routes: Routes = [
         canActivate: [RoleGuard],
         data: { 
           title: 'Product Categories',
-          roles: ['ADMIN', 'MANAGER']
+          roles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER']
         }
       },
       {
@@ -98,7 +98,7 @@ const routes: Routes = [
         canActivate: [RoleGuard],
         data: { 
           title: 'New Category',
-          roles: ['ADMIN', 'MANAGER']
+          roles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER']
         }
       },
       {
@@ -107,7 +107,7 @@ const routes: Routes = [
         canActivate: [RoleGuard],
         data: { 
           title: 'Edit Category',
-          roles: ['ADMIN', 'MANAGER']
+          roles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER']
         }
       },
       {
@@ -116,7 +116,7 @@ const routes: Routes = [
         canActivate: [RoleGuard],
         data: { 
           title: 'Bulk Assign Products',
-          roles: ['ADMIN']
+          roles: ['SUPER_ADMIN', 'ADMIN']
         }
       },
       {
@@ -125,7 +125,7 @@ const routes: Routes = [
         canActivate: [RoleGuard],
         data: { 
           title: 'Assign Products to Shop',
-          roles: ['ADMIN', 'MANAGER']
+          roles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER']
         }
       },
       {

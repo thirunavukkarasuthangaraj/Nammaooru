@@ -118,7 +118,7 @@ export interface PartnerRegistrationRequest {
   providedIn: 'root'
 })
 export class DeliveryPartnerService {
-  private readonly apiUrl = `${environment.apiUrl}/api/delivery/partners`;
+  private readonly apiUrl = `${environment.apiUrl}/delivery/partners`;
   
   private currentPartnerSubject = new BehaviorSubject<DeliveryPartner | null>(null);
   public currentPartner$ = this.currentPartnerSubject.asObservable();

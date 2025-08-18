@@ -107,13 +107,17 @@ public class DeliveryPartnerMapper {
         BigDecimal distanceToDestination = null;
         LocalDateTime estimatedArrivalTime = null;
 
-        if (assignment.getTrackingPoints() != null && !assignment.getTrackingPoints().isEmpty()) {
-            DeliveryTracking latestTracking = assignment.getTrackingPoints().get(0);
-            currentLatitude = latestTracking.getLatitude();
-            currentLongitude = latestTracking.getLongitude();
-            lastLocationUpdate = latestTracking.getTrackedAt();
-            distanceToDestination = latestTracking.getDistanceToDestination();
-            estimatedArrivalTime = latestTracking.getEstimatedArrivalTime();
+        try {
+            if (assignment.getTrackingPoints() != null && !assignment.getTrackingPoints().isEmpty()) {
+                DeliveryTracking latestTracking = assignment.getTrackingPoints().get(0);
+                currentLatitude = latestTracking.getLatitude();
+                currentLongitude = latestTracking.getLongitude();
+                lastLocationUpdate = latestTracking.getTrackedAt();
+                distanceToDestination = latestTracking.getDistanceToDestination();
+                estimatedArrivalTime = latestTracking.getEstimatedArrivalTime();
+            }
+        } catch (Exception e) {
+            // Ignore lazy loading errors - tracking points will be empty
         }
 
         return OrderAssignmentResponse.builder()
