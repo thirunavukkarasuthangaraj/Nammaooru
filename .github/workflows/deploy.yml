@@ -84,13 +84,13 @@ jobs:
         mkdir -p deploy/frontend
         mkdir -p deploy/config
         
-        # Copy backend JAR and Dockerfile
+        # Copy backend JAR and deployment Dockerfile
         cp backend/target/shop-management-backend-1.0.0.jar deploy/backend/app.jar
-        cp backend/Dockerfile deploy/backend/
+        cp deployment/Dockerfile.backend deploy/backend/Dockerfile
         
-        # Copy frontend build and Dockerfile
+        # Copy frontend build and deployment Dockerfile
         cp -r frontend/dist/shop-management-frontend/* deploy/frontend/
-        cp frontend/Dockerfile deploy/frontend/
+        cp deployment/Dockerfile.frontend deploy/frontend/Dockerfile
         cp frontend/nginx.conf deploy/frontend/
         
         # Copy configuration files
