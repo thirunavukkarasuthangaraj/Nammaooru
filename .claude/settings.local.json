@@ -87,7 +87,8 @@
     "additionalDirectories": [
       "D:\\mnt\\d\\AAWS\\nammaooru\\shop-management-system",
       "D:\\d\\AAWS\\nammaooru\\shop-management-system",
-      "C:\\Program Files\\PostgreSQL\\16"
+      "C:\\Program Files\\PostgreSQL\\16",
+      "D:\\d\\AAWS\\nammaooru"
     ]
   }
 }
