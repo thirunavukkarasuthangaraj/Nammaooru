@@ -197,19 +197,59 @@ jobs:
           echo "Container status:"
           docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
           
+          # Check if containers are actually running
+          echo ""
+          echo "Detailed container inspection:"
+          docker ps -a
+          
+          # Check logs for any errors
+          echo ""
+          echo "Frontend container logs (last 10 lines):"
+          docker logs --tail 10 shop-frontend || echo "No frontend logs"
+          
+          echo ""
+          echo "Backend container logs (last 10 lines):"
+          docker logs --tail 10 shop-backend || echo "No backend logs"
+          
+          # Check if ports are actually listening
+          echo ""
+          echo "Checking listening ports:"
+          netstat -tlnp | grep -E ':80|:8082' || echo "Ports not listening"
+          
           # Test frontend
           if curl -f -s http://localhost > /dev/null 2>&1; then
             echo "✅ Frontend is responding"
           else
-            echo "⚠️ Frontend check skipped (may take time to start)"
+            echo "⚠️ Frontend check failed - container may not be running properly"
           fi
           
           # Test backend API - using a simple GET endpoint
           if curl -f -s http://localhost:8082 > /dev/null 2>&1; then
             echo "✅ Backend API is responding"
           else
-            echo "⚠️ Backend API check skipped (may take time to start)"
+            echo "⚠️ Backend API check failed - container may not be running properly"
           fi
           
+          # Final verification 
+          echo ""
+          echo "=== FINAL DIAGNOSTICS ==="
+          echo "Docker containers running:"
+          docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+          
+          echo ""
+          echo "Port bindings on server:"
+          ss -tlnp | grep -E ':80|:8082' || echo "No ports 80/8082 listening"
+          
+          echo ""
+          echo "Testing internal connectivity:"
+          curl -I http://localhost 2>&1 | head -5 || echo "localhost:80 failed"
+          curl -I http://localhost:8082 2>&1 | head -5 || echo "localhost:8082 failed"
+          
+          echo ""
+          echo "Testing external connectivity:"
+          curl -I http://65.21.4.236 2>&1 | head -5 || echo "External IP failed"
+          
+          echo ""
           echo "🎉 Deployment completed successfully!"
-          echo "Your application is live at: http://65.21.4.236"
+          echo "Your application should be live at: http://65.21.4.236"
+          echo "If not accessible, check Hetzner firewall settings for port 80"
