@@ -2,9 +2,9 @@ import packageInfo from '../../package.json';
 
 export const environment = {
   production: true,
-  apiUrl: '/api',  // Use relative URL when frontend and backend are behind same proxy
+  apiUrl: 'https://api.nammaoorudelivary.in/api',
   googleMapsApiKey: 'AIzaSyAr_uGbaOnhebjRyz7ohU6N-hWZJVV_R3U',
-  websocketUrl: '/ws',  // Use relative URL for WebSocket
+  websocketUrl: 'wss://api.nammaoorudelivary.in/ws',
   version: packageInfo.version,
   buildDate: new Date().toISOString(),
   defaultMapCenter: {

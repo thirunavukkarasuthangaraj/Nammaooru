@@ -34,8 +34,8 @@ RUN chown -R nginx:nginx /usr/share/nginx/html && \
     chown -R nginx:nginx /var/log/nginx && \
     chown -R nginx:nginx /etc/nginx/conf.d
 
-# Switch to non-root user
-USER nginx
+# Don't switch user - run as root for local development
+# USER nginx
 
 # Expose port
 EXPOSE 80

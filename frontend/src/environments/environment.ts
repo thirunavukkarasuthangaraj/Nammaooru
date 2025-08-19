@@ -2,9 +2,9 @@ import packageInfo from '../../package.json';
 
 export const environment = {
   production: false,
-  apiUrl: 'http://65.21.4.236:8082/api',
+  apiUrl: 'http://localhost:8082/api',
   googleMapsApiKey: 'AIzaSyAr_uGbaOnhebjRyz7ohU6N-hWZJVV_R3U',
-  websocketUrl: 'ws://65.21.4.236:8082/ws',
+  websocketUrl: 'ws://localhost:8082/ws',
   version: packageInfo.version,
   buildDate: new Date().toISOString(),
   defaultMapCenter: {
