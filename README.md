@@ -243,3 +243,4 @@ For support and questions:
 ---
 
 **Built with ❤️ using Spring Boot, Angular, and PostgreSQL**"# Nammaooru" 
+# Trigger deployment Tue, Aug 19, 2025  6:33:34 PM
