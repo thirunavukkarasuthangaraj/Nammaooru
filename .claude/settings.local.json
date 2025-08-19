@@ -76,7 +76,10 @@
       "Bash(docker-compose:*)",
       "Bash(\"C:\\Program Files\\PostgreSQL\\15\\bin\\psql.exe\" -U postgres -h localhost -p 5432 -d shop_management_db -c \"\\dt\")",
       "Bash(\"C:\\Program Files\\PostgreSQL\\15\\bin\\psql.exe\" -U postgres -h localhost -p 5432 -d shop_management_db -c \"SELECT COUNT(*) as orders_count FROM orders;\")",
-      "Bash(\"C:\\Program Files\\PostgreSQL\\15\\bin\\psql.exe\" -U postgres -h localhost -p 5432 -d shop_management_db -c \"SELECT COUNT(*) as users_count FROM users;\")"
+      "Bash(\"C:\\Program Files\\PostgreSQL\\15\\bin\\psql.exe\" -U postgres -h localhost -p 5432 -d shop_management_db -c \"SELECT COUNT(*) as users_count FROM users;\")",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": [],
