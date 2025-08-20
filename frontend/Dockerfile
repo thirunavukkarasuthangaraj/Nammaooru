@@ -32,7 +32,10 @@ COPY --from=build /app/dist/shop-management-frontend /usr/share/nginx/html
 RUN chown -R nginx:nginx /usr/share/nginx/html && \
     chown -R nginx:nginx /var/cache/nginx && \
     chown -R nginx:nginx /var/log/nginx && \
-    chown -R nginx:nginx /etc/nginx/conf.d
+    chown -R nginx:nginx /etc/nginx/conf.d && \
+    chown -R nginx:nginx /run && \
+    touch /run/nginx.pid && \
+    chown nginx:nginx /run/nginx.pid
 
 # Don't switch user - run as root for local development
 # USER nginx
