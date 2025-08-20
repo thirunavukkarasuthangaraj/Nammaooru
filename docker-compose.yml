@@ -58,7 +58,7 @@ services:
       context: ./frontend
     container_name: shop-frontend
     ports:
-      - "0.0.0.0:80:80"
+      - "0.0.0.0:8080:80"
     networks:
       - shop-network
     depends_on:
