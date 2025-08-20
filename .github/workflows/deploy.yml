@@ -150,8 +150,11 @@ jobs:
             cd /opt/shop-management-new
           fi
           
-          # Start new deployment
-          docker-compose up -d --build
+          # Start new deployment with unique build ID
+          export BUILD_ID=$(date +%Y%m%d_%H%M%S)
+          echo "Building with BUILD_ID: $BUILD_ID"
+          docker-compose build --no-cache
+          docker-compose up -d
           
           # Wait for containers to be ready
           sleep 30
