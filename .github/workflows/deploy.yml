@@ -146,9 +146,14 @@ jobs:
           # Stop current containers if running
           if [ -d "/opt/shop-management" ]; then
             cd /opt/shop-management
-            docker-compose down || true
+            docker-compose down --remove-orphans || true
             cd /opt/shop-management-new
           fi
+          
+          # Clean up any leftover containers and images
+          docker stop shop-postgres shop-redis shop-frontend shop-backend 2>/dev/null || true
+          docker rm shop-postgres shop-redis shop-frontend shop-backend 2>/dev/null || true
+          docker rmi shop-frontend:latest shop-backend:latest 2>/dev/null || true
           
           # Start new deployment with unique build ID
           export BUILD_ID=$(date +%Y%m%d_%H%M%S)
