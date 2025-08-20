@@ -1,59 +1,54 @@
-.login-wrapper {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 20px;
-}
-
 .login-container {
-  width: 100%;
-  max-width: 400px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  padding: 30px;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
-}
-
-.login-card {
-  background: white;
-  border-radius: 12px;
-  padding: 40px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  width: 100%;
-  max-width: 400px;
+  justify-content: center;
+  color: white;
 }
 
 .login-header {
   text-align: center;
   margin-bottom: 30px;
+  color: white;
 }
 
-.brand-title {
-  font-size: 32px;
-  font-weight: 700;
-  color: #667eea;
-  margin: 0 0 10px 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+.login-header .login-icon {
+  font-size: 64px;
+  width: 64px;
+  height: 64px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  padding: 16px;
+  margin-bottom: 16px;
 }
 
-.login-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: #333;
-  margin: 0 0 8px 0;
+.login-header h1 {
+  font-size: 2.5rem;
+  font-weight: 300;
+  margin: 0 0 12px 0;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
 
-.login-description {
-  color: #666;
-  font-size: 16px;
+.login-header p {
+  font-size: 1.1rem;
+  opacity: 0.9;
   margin: 0;
+  font-weight: 300;
+  max-width: 400px;
+  line-height: 1.4;
 }
 
 .login-form {
+  background: white;
+  padding: 40px;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+  color: #333;
+  width: 100%;
+  max-width: 450px;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -64,45 +59,46 @@
 }
 
 .login-button {
-  height: 48px;
+  height: 56px;
   font-size: 16px;
-  font-weight: 600;
-  margin-top: 10px;
-  border-radius: 8px;
+  font-weight: 500;
+  background: linear-gradient(45deg, #667eea, #764ba2);
+  margin-top: 8px;
 }
 
-.login-spinner {
-  margin-right: 10px;
-}
-
-.login-icon {
-  margin-right: 8px;
-}
-
-.alert {
+.error-message {
+  background: #fee2e2;
+  border: 2px solid #f87171;
+  border-radius: 12px;
+  padding: 16px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  border-radius: 8px;
-  margin-top: 16px;
+  gap: 12px;
+  margin: 16px 0;
 }
 
-.alert-error {
-  background-color: #fee2e2;
+.error-message mat-icon {
   color: #dc2626;
-  border: 1px solid #fecaca;
+  font-size: 24px;
+  width: 24px;
+  height: 24px;
+}
+
+.error-message p {
+  margin: 0;
+  color: #dc2626;
+  font-weight: 500;
 }
 
 .auth-links {
-  margin-top: 24px;
   text-align: center;
+  margin-top: 16px;
 }
 
 .auth-links p {
   color: #666;
   font-size: 14px;
-  margin: 0 0 12px 0;
+  margin: 8px 0;
 }
 
 .auth-links a {
@@ -110,84 +106,143 @@
   font-weight: 500;
 }
 
-.forgot-link,
-.support-link {
+.forgot-link {
   color: #667eea;
   font-size: 14px;
-  display: block;
-  margin: 8px 0;
-  transition: color 0.3s ease;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
   text-decoration: none;
+  transition: color 0.3s ease;
 }
 
-.forgot-link:hover,
-.support-link:hover {
+.forgot-link:hover {
   color: #5a67d8;
   text-decoration: underline;
 }
 
-// Version Footer
-.version-footer-global {
+.help-section {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 24px;
+  margin-top: 20px;
+  width: 100%;
+  max-width: 450px;
+  backdrop-filter: blur(10px);
+}
+
+.help-section h3 {
+  margin: 0 0 20px 0;
+  font-weight: 400;
+  text-align: center;
+}
+
+.help-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.help-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.help-item mat-icon {
+  font-size: 24px;
+  width: 24px;
+  height: 24px;
+  margin-top: 2px;
+  opacity: 0.9;
+}
+
+.help-item strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.95rem;
+}
+
+.help-item p {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.8;
+  line-height: 1.4;
+}
+
+.version-footer {
   position: fixed;
   bottom: 20px;
   right: 20px;
-  background: rgba(255, 255, 255, 0.95);
-  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 8px 12px;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 4px;
+  gap: 2px;
   z-index: 1000;
-  border: 1px solid #e5e7eb;
+  backdrop-filter: blur(10px);
 }
 
-.version-footer-global .version-text {
-  font-weight: 700;
+.version-footer .version-text {
+  font-weight: 600;
   color: #667eea;
-  font-size: 14px;
+  font-size: 12px;
 }
 
-.version-footer-global .build-info {
-  font-size: 11px;
-  color: #6b7280;
-  font-weight: 500;
+.version-footer .build-info {
+  font-size: 10px;
+  color: #666;
+  font-weight: 400;
 }
 
-// Responsive Design
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .login-container {
+    padding: 16px;
+  }
+
+  .login-header h1 {
+    font-size: 2rem;
+  }
+
+  .login-form {
+    padding: 24px;
+  }
+
+  .help-section {
+    margin-top: 16px;
+  }
+}
+
 @media (max-width: 480px) {
-  .login-wrapper {
-    padding: 10px;
+  .login-header h1 {
+    font-size: 1.8rem;
   }
-  
-  .login-card {
-    padding: 30px 20px;
+
+  .login-form {
+    padding: 20px;
   }
-  
-  .brand-title {
-    font-size: 28px;
+
+  .help-item {
+    flex-direction: column;
+    gap: 8px;
   }
-  
-  .login-title {
-    font-size: 20px;
+
+  .help-item mat-icon {
+    align-self: center;
   }
-  
-  .version-footer-global {
+
+  .version-footer {
     bottom: 10px;
     right: 10px;
-    padding: 8px 12px;
+    padding: 6px 8px;
   }
-  
-  .version-footer-global .version-text {
-    font-size: 12px;
+
+  .version-footer .version-text {
+    font-size: 11px;
   }
-  
-  .version-footer-global .build-info {
-    font-size: 10px;
+
+  .version-footer .build-info {
+    font-size: 9px;
   }
 }

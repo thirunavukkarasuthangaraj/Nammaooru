@@ -98,7 +98,8 @@
       "Bash(\"C:\\Program Files\\PostgreSQL\\15\\bin\\psql.exe\" -U postgres -h localhost -p 5432 -d shop_management_db -c \"SELECT username, email FROM users WHERE username = ''superadmin'';\")",
       "Bash(del \"D:\\AAWS\\nammaooru\\shop-management-system\\frontend\\src\\app\\features\\auth\\components\\change-password\\change-password.component.spec.ts\")",
       "Bash(tree:*)",
-      "Bash(ping:*)"
+      "Bash(ping:*)",
+      "Bash(scripts/manual-deploy.sh:*)"
     ],
     "deny": [],
     "ask": [],

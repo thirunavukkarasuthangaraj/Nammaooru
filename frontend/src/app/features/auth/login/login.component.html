@@ -1,80 +1,86 @@
-<div class="login-wrapper">
-  <div class="login-container">
-    <div class="login-card">
-      <div class="login-header">
-        <h1 class="brand-title">NammaOoru</h1>
-        <h2 class="login-title">Shop Management System</h2>
-        <p class="login-description">Sign in to access your dashboard</p>
-      </div>
-      
-      <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
-        <!-- Username Field -->
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-icon matPrefix>person</mat-icon>
-          <input 
-            matInput
-            type="text" 
-            formControlName="username"
-            placeholder="Username"
-            [class.error]="hasFieldError('username')">
-          <mat-error *ngIf="hasFieldError('username')">
-            {{ getFieldError('username') }}
-          </mat-error>
-        </mat-form-field>
+<div class="login-container">
+  <!-- Header -->
+  <div class="login-header">
+    <mat-icon class="login-icon">storefront</mat-icon>
+    <h1>NammaOoru</h1>
+    <p>Shop Management System<br>Sign in to access your dashboard</p>
+  </div>
 
-        <!-- Password Field -->
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-icon matPrefix>lock</mat-icon>
-          <input 
-            matInput
-            [type]="hidePassword ? 'password' : 'text'"
-            formControlName="password"
-            placeholder="Password"
-            [class.error]="hasFieldError('password')">
-          <button 
-            matSuffix
-            mat-icon-button
-            type="button"
-            (click)="hidePassword = !hidePassword">
-            <mat-icon>{{ hidePassword ? 'visibility' : 'visibility_off' }}</mat-icon>
-          </button>
-          <mat-error *ngIf="hasFieldError('password')">
-            {{ getFieldError('password') }}
-          </mat-error>
-        </mat-form-field>
+  <!-- Form -->
+  <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Username</mat-label>
+      <mat-icon matPrefix>person</mat-icon>
+      <input matInput 
+             formControlName="username" 
+             placeholder="Enter your username">
+      <mat-error *ngIf="hasFieldError('username')">
+        {{ getFieldError('username') }}
+      </mat-error>
+    </mat-form-field>
 
-        <!-- Login Button -->
-        <button 
-          mat-raised-button
-          color="primary"
-          type="submit" 
-          class="login-button"
-          [disabled]="isLoading || !loginForm.valid">
-          <mat-spinner *ngIf="isLoading" diameter="20" class="login-spinner"></mat-spinner>
-          <mat-icon *ngIf="!isLoading" class="login-icon">login</mat-icon>
-          <span>{{ isLoading ? 'Signing In...' : 'Sign In' }}</span>
-        </button>
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Password</mat-label>
+      <mat-icon matPrefix>lock</mat-icon>
+      <input matInput 
+             [type]="hidePassword ? 'password' : 'text'"
+             formControlName="password" 
+             placeholder="Enter your password">
+      <button matSuffix
+              mat-icon-button
+              type="button"
+              (click)="hidePassword = !hidePassword">
+        <mat-icon>{{ hidePassword ? 'visibility' : 'visibility_off' }}</mat-icon>
+      </button>
+      <mat-error *ngIf="hasFieldError('password')">
+        {{ getFieldError('password') }}
+      </mat-error>
+    </mat-form-field>
 
-        <!-- General Error -->
-        <div class="alert alert-error" *ngIf="error">
-          <mat-icon>error_outline</mat-icon>
-          <span>{{ error }}</span>
-        </div>
-      </form>
+    <button 
+      mat-raised-button 
+      color="primary" 
+      type="submit" 
+      class="full-width login-button"
+      [disabled]="loginForm.invalid || isLoading">
+      <mat-spinner *ngIf="isLoading" diameter="20" style="margin-right: 8px;"></mat-spinner>
+      <mat-icon *ngIf="!isLoading" style="margin-right: 8px;">login</mat-icon>
+      {{ isLoading ? 'Signing In...' : 'Sign In' }}
+    </button>
 
-      <!-- Links -->
-      <div class="auth-links">
-        <p>Don't have an account? 
-          <a routerLink="/auth/register" mat-button color="primary">Sign Up</a>
-        </p>
+    <!-- Error Message -->
+    <div class="error-message" *ngIf="error">
+      <mat-icon>error_outline</mat-icon>
+      <p>{{ error }}</p>
+    </div>
+
+    <!-- Auth Links -->
+    <div class="auth-links">
+      <p>Don't have an account? 
+        <a routerLink="/auth/register" mat-button color="primary">Sign Up</a>
+      </p>
+      <p>
         <a routerLink="/auth/forgot-password" class="forgot-link">Forgot Password?</a>
-        <button type="button" class="support-link" (click)="onContactSupport()">Need help? Contact Support</button>
+      </p>
+    </div>
+  </form>
+
+  <!-- Help Section -->
+  <div class="help-section">
+    <h3>Need Help?</h3>
+    <div class="help-content">
+      <div class="help-item">
+        <mat-icon>support</mat-icon>
+        <div>
+          <strong>Contact Support</strong>
+          <p>Get help from our support team</p>
+        </div>
       </div>
     </div>
   </div>
-  
-  <!-- Version Footer - Fixed position -->
-  <div class="version-footer-global">
+
+  <!-- Version Footer -->
+  <div class="version-footer">
     <span class="version-text">{{ versionService.getVersion() }}</span>
     <span class="build-info">Build: {{ versionService.getBuildDate() }}</span>
   </div>
