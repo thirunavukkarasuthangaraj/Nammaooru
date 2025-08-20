@@ -152,5 +152,8 @@ export class LoginComponent implements OnInit, OnDestroy {
     return !!(field?.errors && field.touched);
   }
 
-
+  onContactSupport(): void {
+    // You can implement modal, navigation to support page, or email functionality here
+    alert('For support, please email: support@nammaoorudelivary.in');
+  }
 }
