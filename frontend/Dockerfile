@@ -33,12 +33,14 @@ RUN chown -R nginx:nginx /usr/share/nginx/html && \
     chown -R nginx:nginx /var/cache/nginx && \
     chown -R nginx:nginx /var/log/nginx && \
     chown -R nginx:nginx /etc/nginx/conf.d && \
-    chown -R nginx:nginx /run && \
+    mkdir -p /run/nginx && \
+    chown -R nginx:nginx /run/nginx && \
     touch /run/nginx.pid && \
-    chown nginx:nginx /run/nginx.pid
+    chown nginx:nginx /run/nginx.pid && \
+    chmod 755 /run/nginx
 
-# Don't switch user - run as root for local development
-# USER nginx
+# Switch to nginx user for security
+USER nginx
 
 # Expose port
 EXPOSE 80
