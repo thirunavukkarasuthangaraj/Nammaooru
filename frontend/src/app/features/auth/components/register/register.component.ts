@@ -36,7 +36,10 @@ import { RegisterRequest, UserRole } from '@core/models/auth.model';
 
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Password</mat-label>
-          <input matInput type="password" formControlName="password" placeholder="Enter password">
+          <input matInput [type]="hidePassword ? 'password' : 'text'" formControlName="password" placeholder="Enter password">
+          <mat-icon matSuffix (click)="hidePassword = !hidePassword" class="password-toggle">
+            {{hidePassword ? 'visibility' : 'visibility_off'}}
+          </mat-icon>
           <mat-error *ngIf="registerForm.get('password')?.hasError('required')">
             Password is required
           </mat-error>
@@ -114,6 +117,16 @@ import { RegisterRequest, UserRole } from '@core/models/auth.model';
       font-weight: 500;
     }
 
+    .password-toggle {
+      cursor: pointer;
+      color: #666;
+      transition: color 0.3s ease;
+    }
+
+    .password-toggle:hover {
+      color: #333;
+    }
+
     @media (max-width: 480px) {
       .register-container {
         padding: 20px;
@@ -124,6 +137,7 @@ import { RegisterRequest, UserRole } from '@core/models/auth.model';
 export class RegisterComponent implements OnInit {
   registerForm: FormGroup;
   isLoading = false;
+  hidePassword = true;
 
   constructor(
     private fb: FormBuilder,

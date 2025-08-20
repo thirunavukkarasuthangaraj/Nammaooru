@@ -32,7 +32,10 @@ import { LoginRequest, UserRole } from '@core/models/auth.model';
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Password</mat-label>
           <mat-icon matPrefix>lock</mat-icon>
-          <input matInput type="password" formControlName="password" placeholder="Enter your password">
+          <input matInput [type]="hidePassword ? 'password' : 'text'" formControlName="password" placeholder="Enter your password">
+          <mat-icon matSuffix (click)="hidePassword = !hidePassword" class="password-toggle">
+            {{hidePassword ? 'visibility' : 'visibility_off'}}
+          </mat-icon>
           <mat-error *ngIf="loginForm.get('password')?.hasError('required')">
             Password is required
           </mat-error>
@@ -166,6 +169,16 @@ import { LoginRequest, UserRole } from '@core/models/auth.model';
       font-size: 0.9rem !important;
     }
 
+    .password-toggle {
+      cursor: pointer;
+      color: #666;
+      transition: color 0.3s ease;
+    }
+
+    .password-toggle:hover {
+      color: #333;
+    }
+
     @media (max-width: 768px) {
       .login-container {
         padding: 16px;
@@ -199,6 +212,7 @@ export class LoginComponent implements OnInit {
   loginForm: FormGroup;
   isLoading = false;
   returnUrl = '/';
+  hidePassword = true;
 
   constructor(
     private fb: FormBuilder,
