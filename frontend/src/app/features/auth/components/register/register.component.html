@@ -1,0 +1,90 @@
+<div class="register-wrapper">
+  <div class="register-container">
+    <div class="register-card">
+      <div class="register-header">
+        <h1 class="brand-title">NammaOoru</h1>
+        <h2 class="register-title">Create Account</h2>
+        <p class="register-description">Sign up to get started</p>
+      </div>
+    
+      <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="register-form">
+    
+        <!-- Username Field -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-icon matPrefix>person</mat-icon>
+          <input matInput formControlName="username" placeholder="Username">
+          <mat-error *ngIf="registerForm.get('username')?.hasError('required')">
+            Username is required
+          </mat-error>
+          <mat-error *ngIf="registerForm.get('username')?.hasError('minlength')">
+            Username must be at least 3 characters
+          </mat-error>
+        </mat-form-field>
+
+        <!-- Email Field -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-icon matPrefix>email</mat-icon>
+          <input matInput type="email" formControlName="email" placeholder="Email address">
+          <mat-error *ngIf="registerForm.get('email')?.hasError('required')">
+            Email is required
+          </mat-error>
+          <mat-error *ngIf="registerForm.get('email')?.hasError('email')">
+            Please enter a valid email address
+          </mat-error>
+        </mat-form-field>
+
+        <!-- Password Field -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-icon matPrefix>lock</mat-icon>
+          <input matInput [type]="hidePassword ? 'password' : 'text'" formControlName="password" placeholder="Password">
+          <button mat-icon-button matSuffix type="button" (click)="hidePassword = !hidePassword">
+            <mat-icon>{{hidePassword ? 'visibility' : 'visibility_off'}}</mat-icon>
+          </button>
+          <mat-error *ngIf="registerForm.get('password')?.hasError('required')">
+            Password is required
+          </mat-error>
+          <mat-error *ngIf="registerForm.get('password')?.hasError('minlength')">
+            Password must be at least 6 characters
+          </mat-error>
+        </mat-form-field>
+
+        <!-- Role Field -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-icon matPrefix>badge</mat-icon>
+          <mat-select formControlName="role" placeholder="Select Role">
+            <mat-option value="USER">User</mat-option>
+            <mat-option value="SHOP_OWNER">Shop Owner</mat-option>
+          </mat-select>
+          <mat-error *ngIf="registerForm.get('role')?.hasError('required')">
+            Please select a role
+          </mat-error>
+        </mat-form-field>
+
+        <!-- Submit Button -->
+        <button 
+          mat-raised-button 
+          color="primary" 
+          type="submit" 
+          class="register-button"
+          [disabled]="registerForm.invalid || isLoading">
+          <mat-spinner *ngIf="isLoading" diameter="20" class="register-spinner"></mat-spinner>
+          <mat-icon *ngIf="!isLoading" class="register-icon">person_add</mat-icon>
+          <span>{{ isLoading ? 'Creating Account...' : 'Sign Up' }}</span>
+        </button>
+      </form>
+
+      <!-- Links -->
+      <div class="auth-links">
+        <p>Already have an account? 
+          <a routerLink="/auth/login" mat-button color="primary">Sign In</a>
+        </p>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Version Footer -->
+  <div class="version-footer-global">
+    <span class="version-text">{{ versionService.getVersion() }}</span>
+    <span class="build-info">Build: {{ versionService.getBuildDate() }}</span>
+  </div>
+</div>

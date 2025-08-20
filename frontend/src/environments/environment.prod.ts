@@ -6,7 +6,7 @@ export const environment = {
   googleMapsApiKey: 'AIzaSyAr_uGbaOnhebjRyz7ohU6N-hWZJVV_R3U',
   websocketUrl: 'wss://api.nammaoorudelivary.in/ws',
   version: packageInfo.version,
-  buildDate: new Date().toISOString(),
+  buildDate: '2025-08-20T19:00:00Z', // Updated for deployment verification
   defaultMapCenter: {
     lat: 12.9716, // Bangalore coordinates
     lng: 77.5946

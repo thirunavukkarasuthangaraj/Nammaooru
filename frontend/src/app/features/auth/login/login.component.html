@@ -1,133 +1,81 @@
 <div class="login-wrapper">
-  <!-- Background Elements -->
-  <div class="background-elements">
-    <div class="bg-circle circle-1"></div>
-    <div class="bg-circle circle-2"></div>
-    <div class="bg-circle circle-3"></div>
-  </div>
-
-  <!-- Main Login Container -->
   <div class="login-container">
-    <!-- Left Side - Branding -->
-    <div class="login-branding">
-      <div class="brand-content">
-        <div class="brand-logo">
-          <div class="logo-icon">
-            <mat-icon class="shop-icon">store</mat-icon>
-          </div>
-          <h1 class="brand-title">Shop Management</h1>
-          <p class="brand-subtitle">Admin Portal</p>
-        </div>
-        
-        <div class="brand-features">
-          <div class="feature-item">
-            <mat-icon>dashboard</mat-icon>
-            <span>Powerful Dashboard</span>
-          </div>
-          <div class="feature-item">
-            <mat-icon>store</mat-icon>
-            <span>Shop Management</span>
-          </div>
-          <div class="feature-item">
-            <mat-icon>security</mat-icon>
-            <span>Secure Platform</span>
-          </div>
-        </div>
+    <div class="login-card">
+      <div class="login-header">
+        <h1 class="brand-title">NammaOoru</h1>
+        <h2 class="login-title">Shop Management System</h2>
+        <p class="login-description">Sign in to access your dashboard</p>
       </div>
-    </div>
+      
+      <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
+        <!-- Username Field -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-icon matPrefix>person</mat-icon>
+          <input 
+            matInput
+            type="text" 
+            formControlName="username"
+            placeholder="Username"
+            [class.error]="hasFieldError('username')">
+          <mat-error *ngIf="hasFieldError('username')">
+            {{ getFieldError('username') }}
+          </mat-error>
+        </mat-form-field>
 
-    <!-- Right Side - Login Form -->
-    <div class="login-form-section">
-      <div class="login-card">
-        <div class="login-header">
-          <h2 class="login-title">Welcome Back</h2>
-          <p class="login-description">Sign in to your admin dashboard</p>
-        </div>
-        
-        <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
-          <!-- Username Field -->
-          <div class="input-group">
-            <label class="input-label">Username</label>
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-icon matPrefix>person</mat-icon>
-              <input 
-                matInput
-                type="text" 
-                formControlName="username"
-                placeholder="Enter your username"
-                [class.error]="hasFieldError('username')">
-              <mat-error *ngIf="hasFieldError('username')">
-                {{ getFieldError('username') }}
-              </mat-error>
-            </mat-form-field>
-          </div>
-
-          <!-- Password Field -->
-          <div class="input-group">
-            <label class="input-label">Password</label>
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-icon matPrefix>lock</mat-icon>
-              <input 
-                matInput
-                [type]="hidePassword ? 'password' : 'text'"
-                formControlName="password"
-                placeholder="Enter your password"
-                [class.error]="hasFieldError('password')">
-              <button 
-                matSuffix
-                mat-icon-button
-                type="button"
-                (click)="hidePassword = !hidePassword">
-                <mat-icon>{{ hidePassword ? 'visibility' : 'visibility_off' }}</mat-icon>
-              </button>
-              <mat-error *ngIf="hasFieldError('password')">
-                {{ getFieldError('password') }}
-              </mat-error>
-            </mat-form-field>
-          </div>
-
-          <!-- Login Button -->
+        <!-- Password Field -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-icon matPrefix>lock</mat-icon>
+          <input 
+            matInput
+            [type]="hidePassword ? 'password' : 'text'"
+            formControlName="password"
+            placeholder="Password"
+            [class.error]="hasFieldError('password')">
           <button 
-            mat-raised-button
-            color="primary"
-            type="submit" 
-            class="login-button"
-            [disabled]="isLoading || !loginForm.valid">
-            <mat-spinner *ngIf="isLoading" diameter="20" class="login-spinner"></mat-spinner>
-            <mat-icon *ngIf="!isLoading" class="login-icon">login</mat-icon>
-            <span>{{ isLoading ? 'Signing In...' : 'Sign In' }}</span>
+            matSuffix
+            mat-icon-button
+            type="button"
+            (click)="hidePassword = !hidePassword">
+            <mat-icon>{{ hidePassword ? 'visibility' : 'visibility_off' }}</mat-icon>
           </button>
+          <mat-error *ngIf="hasFieldError('password')">
+            {{ getFieldError('password') }}
+          </mat-error>
+        </mat-form-field>
 
-          <!-- General Error -->
-          <div class="alert alert-error" *ngIf="error">
-            <mat-icon>error_outline</mat-icon>
-            <span>{{ error }}</span>
-          </div>
-        </form>
+        <!-- Login Button -->
+        <button 
+          mat-raised-button
+          color="primary"
+          type="submit" 
+          class="login-button"
+          [disabled]="isLoading || !loginForm.valid">
+          <mat-spinner *ngIf="isLoading" diameter="20" class="login-spinner"></mat-spinner>
+          <mat-icon *ngIf="!isLoading" class="login-icon">login</mat-icon>
+          <span>{{ isLoading ? 'Signing In...' : 'Sign In' }}</span>
+        </button>
 
-        <!-- Quick Demo Login -->
-        <div class="demo-section" *ngIf="!isLoading">
-          <div class="demo-divider">
-            <span>Quick Demo Access</span>
-          </div>
-          <div class="demo-buttons">
-            <button 
-              mat-stroked-button
-              color="primary"
-              class="demo-btn admin" 
-              (click)="loginAsAdmin()">
-              <mat-icon>admin_panel_settings</mat-icon>
-              <span>Admin Demo</span>
-            </button>
-          </div>
+        <!-- General Error -->
+        <div class="alert alert-error" *ngIf="error">
+          <mat-icon>error_outline</mat-icon>
+          <span>{{ error }}</span>
         </div>
+      </form>
 
-        <!-- Version Footer -->
-        <div class="version-footer">
-          <span class="version-text">{{ getVersion() }}</span>
-          <span class="build-info">Build: {{ getBuildDate() }}</span>
-        </div>
+      <!-- Links -->
+      <div class="auth-links">
+        <p>Don't have an account? 
+          <a routerLink="/auth/register" mat-button color="primary">Sign Up</a>
+        </p>
+        <a routerLink="/auth/forgot-password" class="forgot-link">Forgot Password?</a>
+        <a href="#" class="support-link">Need help? Contact Support</a>
       </div>
     </div>
+  </div>
+  
+  <!-- Version Footer - Fixed position -->
+  <div class="version-footer-global">
+    <span class="version-text">{{ versionService.getVersion() }}</span>
+    <span class="build-info">Build: {{ versionService.getBuildDate() }}</span>
   </div>
 </div>

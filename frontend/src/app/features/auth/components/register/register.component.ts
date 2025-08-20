@@ -4,135 +4,12 @@ import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '@core/services/auth.service';
 import { RegisterRequest, UserRole } from '@core/models/auth.model';
+import { VersionService } from '@core/services/version.service';
 
 @Component({
   selector: 'app-register',
-  template: `
-    <div class="register-container">
-      <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="register-form">
-        <h2>Sign Up</h2>
-        
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Username</mat-label>
-          <input matInput formControlName="username" placeholder="Enter username">
-          <mat-error *ngIf="registerForm.get('username')?.hasError('required')">
-            Username is required
-          </mat-error>
-          <mat-error *ngIf="registerForm.get('username')?.hasError('minlength')">
-            Username must be at least 3 characters
-          </mat-error>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Email</mat-label>
-          <input matInput type="email" formControlName="email" placeholder="Enter email address">
-          <mat-error *ngIf="registerForm.get('email')?.hasError('required')">
-            Email is required
-          </mat-error>
-          <mat-error *ngIf="registerForm.get('email')?.hasError('email')">
-            Please enter a valid email address
-          </mat-error>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Password</mat-label>
-          <input matInput [type]="hidePassword ? 'password' : 'text'" formControlName="password" placeholder="Enter password">
-          <mat-icon matSuffix (click)="hidePassword = !hidePassword" class="password-toggle">
-            {{hidePassword ? 'visibility' : 'visibility_off'}}
-          </mat-icon>
-          <mat-error *ngIf="registerForm.get('password')?.hasError('required')">
-            Password is required
-          </mat-error>
-          <mat-error *ngIf="registerForm.get('password')?.hasError('minlength')">
-            Password must be at least 6 characters
-          </mat-error>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Role</mat-label>
-          <mat-select formControlName="role">
-            <mat-option value="USER">User</mat-option>
-            <mat-option value="SHOP_OWNER">Shop Owner</mat-option>
-          </mat-select>
-          <mat-error *ngIf="registerForm.get('role')?.hasError('required')">
-            Please select a role
-          </mat-error>
-        </mat-form-field>
-
-        <button 
-          mat-raised-button 
-          color="primary" 
-          type="submit" 
-          class="full-width register-button"
-          [disabled]="registerForm.invalid || isLoading">
-          <mat-spinner *ngIf="isLoading" diameter="20" style="margin-right: 8px;"></mat-spinner>
-          Sign Up
-        </button>
-
-        <div class="auth-links">
-          <p>Already have an account? 
-            <a routerLink="/auth/login" mat-button color="primary">Sign In</a>
-          </p>
-        </div>
-      </form>
-    </div>
-  `,
-  styles: [`
-    .register-container {
-      padding: 30px;
-    }
-
-    .register-form {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .register-form h2 {
-      text-align: center;
-      color: #333;
-      margin-bottom: 24px;
-      font-weight: 500;
-    }
-
-    .register-button {
-      height: 48px;
-      margin-top: 16px;
-      font-size: 16px;
-    }
-
-    .auth-links {
-      text-align: center;
-      margin-top: 16px;
-    }
-
-    .auth-links p {
-      color: #666;
-      font-size: 14px;
-      margin: 0;
-    }
-
-    .auth-links a {
-      text-decoration: none;
-      font-weight: 500;
-    }
-
-    .password-toggle {
-      cursor: pointer;
-      color: #666;
-      transition: color 0.3s ease;
-    }
-
-    .password-toggle:hover {
-      color: #333;
-    }
-
-    @media (max-width: 480px) {
-      .register-container {
-        padding: 20px;
-      }
-    }
-  `]
+  templateUrl: './register.component.html',
+  styleUrls: ['./register.component.scss']
 })
 export class RegisterComponent implements OnInit {
   registerForm: FormGroup;
@@ -143,7 +20,8 @@ export class RegisterComponent implements OnInit {
     private fb: FormBuilder,
     private authService: AuthService,
     private router: Router,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    public versionService: VersionService
   ) {
     this.registerForm = this.fb.group({
       username: ['', [Validators.required, Validators.minLength(3)]],
@@ -206,4 +84,5 @@ export class RegisterComponent implements OnInit {
       }
     }
   }
+
 }

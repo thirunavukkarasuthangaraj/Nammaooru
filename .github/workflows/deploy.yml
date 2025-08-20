@@ -89,7 +89,8 @@ jobs:
         cp deployment/Dockerfile.backend deploy/backend/Dockerfile
         
         # Copy frontend build and deployment Dockerfile
-        cp -r frontend/dist/shop-management-frontend/* deploy/frontend/
+        ls -la frontend/dist/
+        cp -r frontend/dist/shop-management-frontend/* deploy/frontend/ || cp -r frontend/dist/* deploy/frontend/
         cp deployment/Dockerfile.frontend deploy/frontend/Dockerfile
         cp frontend/nginx.conf deploy/frontend/
         

@@ -94,7 +94,10 @@
       "Bash(\"C:\\Program Files\\PostgreSQL\\15\\bin\\psql.exe\" -U postgres -h localhost -p 5432 -d shop_management_db -f \"D:\\AAWS\\nammaooru\\shop-management-system\\create_shopowner.sql\")",
       "Bash(\"C:\\Program Files\\PostgreSQL\\15\\bin\\psql.exe\" -U postgres -h localhost -p 5432 -d shop_management_db -c \"SELECT username, email, role, status, is_active FROM users WHERE username = ''shopowner'';\")",
       "Bash(for endpoint in \"dashboard\" \"products\" \"shops\" \"orders\" \"users\" \"analytics\" \"settings\" \"delivery/partners\")",
-      "Bash(\"C:\\Program Files\\PostgreSQL\\15\\bin\\psql.exe\" -U postgres -h localhost -p 5432 -d shop_management_db -c \"SELECT COUNT(*) as user_count, STRING_AGG(DISTINCT role, '', '') as roles FROM users;\")"
+      "Bash(\"C:\\Program Files\\PostgreSQL\\15\\bin\\psql.exe\" -U postgres -h localhost -p 5432 -d shop_management_db -c \"SELECT COUNT(*) as user_count, STRING_AGG(DISTINCT role, '', '') as roles FROM users;\")",
+      "Bash(\"C:\\Program Files\\PostgreSQL\\15\\bin\\psql.exe\" -U postgres -h localhost -p 5432 -d shop_management_db -c \"SELECT username, email FROM users WHERE username = ''superadmin'';\")",
+      "Bash(del \"D:\\AAWS\\nammaooru\\shop-management-system\\frontend\\src\\app\\features\\auth\\components\\change-password\\change-password.component.spec.ts\")",
+      "Bash(tree:*)"
     ],
     "deny": [],
     "ask": [],

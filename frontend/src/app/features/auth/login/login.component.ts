@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { Router, ActivatedRoute } from '@angular/router';
+import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
@@ -12,14 +12,15 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 
 import { AuthService } from '../../../core/services/auth.service';
 import { LoginRequest, UserRole } from '../../../core/models/auth.model';
-import { environment } from '../../../../environments/environment';
+import { VersionService } from '../../../core/services/version.service';
 
 @Component({
   selector: 'app-login',
   standalone: true,
   imports: [
     CommonModule, 
-    ReactiveFormsModule, 
+    ReactiveFormsModule,
+    RouterModule,
     MatIconModule, 
     MatButtonModule, 
     MatCheckboxModule, 
@@ -43,7 +44,8 @@ export class LoginComponent implements OnInit, OnDestroy {
     private formBuilder: FormBuilder,
     private authService: AuthService,
     private router: Router,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    public versionService: VersionService
   ) {
     this.initializeForm();
   }
@@ -150,35 +152,5 @@ export class LoginComponent implements OnInit, OnDestroy {
     return !!(field?.errors && field.touched);
   }
 
-  // Demo login method for testing
-  loginAsAdmin(): void {
-    this.loginForm.patchValue({
-      username: 'admin',
-      password: 'admin123'
-    });
-    this.onSubmit();
-  }
 
-  getVersion(): string {
-    return `v${environment.version}`;
-  }
-
-  getBuildDate(): string {
-    if (environment.buildDate) {
-      return new Date(environment.buildDate).toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'short', 
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    }
-    return new Date().toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  }
 }

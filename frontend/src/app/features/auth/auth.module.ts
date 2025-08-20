@@ -1,6 +1,7 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
+import { RouterModule } from '@angular/router';
 
 // Angular Material
 import { MatCardModule } from '@angular/material/card';
@@ -14,7 +15,6 @@ import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { HttpClientModule } from '@angular/common/http';
 
 import { AuthRoutingModule } from './auth-routing.module';
-import { LoginComponent } from './components/login/login.component';
 import { RegisterComponent } from './components/register/register.component';
 import { AuthLayoutComponent } from './components/auth-layout/auth-layout.component';
 import { ForgotPasswordComponent } from './components/forgot-password/forgot-password.component';
@@ -22,7 +22,6 @@ import { ChangePasswordComponent } from './components/change-password/change-pas
 
 @NgModule({
   declarations: [
-    LoginComponent,
     RegisterComponent,
     AuthLayoutComponent,
     ForgotPasswordComponent,
@@ -32,6 +31,7 @@ import { ChangePasswordComponent } from './components/change-password/change-pas
     CommonModule,
     AuthRoutingModule,
     ReactiveFormsModule,
+    RouterModule,
     
     // Angular Material
     MatCardModule,
