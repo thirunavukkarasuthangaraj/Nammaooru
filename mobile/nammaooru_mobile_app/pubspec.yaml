@@ -17,21 +17,21 @@ dependencies:
   provider: ^6.1.2
   
   # Navigation
-  go_router: ^12.1.3
+  go_router: ^16.2.0
   
   # HTTP & API
   dio: ^5.3.3
   
   # Maps & Location
   google_maps_flutter: ^2.5.0
-  geolocator: ^10.1.0
-  geocoding: ^2.1.1
+  geolocator: ^14.0.2
+  geocoding: ^4.0.0
   
   # Firebase & Notifications
-  firebase_core: ^2.24.2
-  firebase_messaging: ^14.7.10
-  firebase_analytics: ^10.7.4
-  firebase_crashlytics: ^2.8.13
+  firebase_core: ^4.0.0
+  firebase_messaging: ^16.0.0
+  firebase_analytics: ^12.0.0
+  firebase_crashlytics: ^5.0.0
   
   # Storage
   shared_preferences: ^2.2.2
@@ -41,41 +41,41 @@ dependencies:
   # Images
   image_picker: ^1.0.4
   cached_network_image: ^3.3.0
-  image_cropper: ^5.0.1
+  image_cropper: ^9.1.0
   
   # Localization
-  intl: ^0.18.1
+  intl: ^0.20.2
   
   # UI & UX
-  permission_handler: ^10.0.0
+  permission_handler: ^12.0.1
   url_launcher: ^6.0.0
-  package_info_plus: ^4.0.0
-  device_info_plus: ^9.0.0
+  package_info_plus: ^8.3.1
+  device_info_plus: ^11.5.0
   
   # Utilities
   jwt_decode: ^0.3.1
-  connectivity_plus: ^4.0.0
+  connectivity_plus: ^6.1.5
   path_provider: ^2.0.0
   
   # Additional Features
-  speech_to_text: ^6.1.0
+  speech_to_text: ^7.3.0
   local_auth: ^2.1.0
-  share_plus: ^7.0.0
+  share_plus: ^11.1.0
   pdf: ^3.8.0
   
   # UI Components
   cupertino_icons: ^1.0.6
   flutter_rating_bar: ^4.0.1
   shimmer: ^3.0.0
-  lottie: ^2.7.0
-  carousel_slider: ^4.2.1
+  lottie: ^3.3.1
+  carousel_slider: ^5.1.1
   expandable: ^5.0.1
   pull_to_refresh: ^2.0.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.1
+  flutter_lints: ^6.0.0
   integration_test:
     sdk: flutter
 
@@ -89,11 +89,11 @@ flutter:
     - assets/animations/
     - assets/translations/
 
-  fonts:
-    - family: Roboto
-      fonts:
-        - asset: assets/fonts/Roboto-Regular.ttf
-        - asset: assets/fonts/Roboto-Bold.ttf
-          weight: 700
-        - asset: assets/fonts/Roboto-Medium.ttf
-          weight: 500
+  # fonts:
+    # - family: Roboto
+    #   fonts:
+    #     - asset: assets/fonts/Roboto-Regular.ttf
+    #     - asset: assets/fonts/Roboto-Bold.ttf
+    #       weight: 700
+    #     - asset: assets/fonts/Roboto-Medium.ttf
+    #       weight: 500

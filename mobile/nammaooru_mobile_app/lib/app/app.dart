@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+// import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'routes.dart';
 import 'theme.dart';
 import '../core/auth/auth_provider.dart';
@@ -20,7 +20,7 @@ class NammaOoruApp extends StatelessWidget {
           themeMode: ThemeMode.system,
           routerConfig: AppRouter.router,
           localizationsDelegates: const [
-            AppLocalizations.delegate,
+            // AppLocalizations.delegate,
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,

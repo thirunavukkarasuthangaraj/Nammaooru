@@ -15,6 +15,7 @@ class ProductModel {
   final int reviewCount;
   final Map<String, dynamic>? nutritionInfo;
   final List<String> tags;
+  final int minStockLevel;
   final DateTime createdAt;
   final DateTime updatedAt;
   
@@ -35,6 +36,7 @@ class ProductModel {
     this.reviewCount = 0,
     this.nutritionInfo,
     this.tags = const [],
+    this.minStockLevel = 5,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -57,6 +59,7 @@ class ProductModel {
       reviewCount: json['reviewCount'] ?? 0,
       nutritionInfo: json['nutritionInfo'],
       tags: List<String>.from(json['tags'] ?? []),
+      minStockLevel: json['minStockLevel'] ?? 5,
       createdAt: DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String()),
       updatedAt: DateTime.parse(json['updatedAt'] ?? DateTime.now().toIso8601String()),
     );
@@ -80,6 +83,7 @@ class ProductModel {
       'reviewCount': reviewCount,
       'nutritionInfo': nutritionInfo,
       'tags': tags,
+      'minStockLevel': minStockLevel,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };
@@ -113,6 +117,7 @@ class ProductModel {
     int? reviewCount,
     Map<String, dynamic>? nutritionInfo,
     List<String>? tags,
+    int? minStockLevel,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -133,6 +138,7 @@ class ProductModel {
       reviewCount: reviewCount ?? this.reviewCount,
       nutritionInfo: nutritionInfo ?? this.nutritionInfo,
       tags: tags ?? this.tags,
+      minStockLevel: minStockLevel ?? this.minStockLevel,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

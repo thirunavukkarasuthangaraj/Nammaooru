@@ -69,6 +69,8 @@ class _InventoryScreenState extends State<InventoryScreen>
         isAvailable: true,
         rating: 4.5,
         reviewCount: 125,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       ),
       ProductModel(
         id: 'P002',
@@ -85,6 +87,8 @@ class _InventoryScreenState extends State<InventoryScreen>
         isAvailable: true,
         rating: 4.3,
         reviewCount: 89,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       ),
       ProductModel(
         id: 'P003',
@@ -101,6 +105,8 @@ class _InventoryScreenState extends State<InventoryScreen>
         isAvailable: false,
         rating: 4.2,
         reviewCount: 67,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       ),
       ProductModel(
         id: 'P004',
@@ -118,6 +124,8 @@ class _InventoryScreenState extends State<InventoryScreen>
         isAvailable: true,
         rating: 4.1,
         reviewCount: 93,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       ),
       ProductModel(
         id: 'P005',
@@ -134,6 +142,8 @@ class _InventoryScreenState extends State<InventoryScreen>
         isAvailable: true,
         rating: 4.6,
         reviewCount: 156,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       ),
     ];
   }

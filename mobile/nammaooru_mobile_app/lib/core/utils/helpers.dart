@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -129,12 +130,8 @@ class Helpers {
   static double _degreesToRadians(double degrees) {
     return degrees * (pi / 180);
   }
+  
+  static String formatDateTime(DateTime date) {
+    return DateFormat('dd MMM yyyy, hh:mm a').format(date);
+  }
 }
-
-import 'dart:math';
-
-double sin(double x) => math.sin(x);
-double cos(double x) => math.cos(x);
-double sqrt(double x) => math.sqrt(x);
-double atan2(double y, double x) => math.atan2(y, x);
-const double pi = math.pi;
