@@ -293,61 +293,111 @@ SELECT COUNT(*) FROM users;
 
 ## Troubleshooting
 
-### Common Issues and Solutions
-
-#### 1. CORS Errors
+### ⚠️ CRITICAL: Correct Project Path
 ```bash
-# Fix: Update nginx and backend CORS settings
-cd /root/shop-management-system
-./scripts/fix-cors-production.sh
+# CORRECT path on server:
+cd /opt/shop-management
+
+# WRONG path (doesn't exist):
+cd /root/shop-management-system  # ❌ NO!
 ```
 
-#### 2. Container Won't Start
+### Common Issues and Solutions (Updated from Recent Deployment)
+
+#### 1. CORS Errors - Mixed www/non-www domains
+**Symptoms**: Login fails with "Unknown Error", CORS blocked
 ```bash
-# Check logs
-docker-compose logs backend
+# Fix nginx config for both domains
+cat > /etc/nginx/sites-available/api.nammaoorudelivary.in << 'EOF'
+# ... (use config from deployment/nginx-api.conf)
+EOF
 
-# Common fixes:
-# - Check port conflicts
-netstat -tlnp | grep -E ':8082|:8080|:5432'
+nginx -t
+systemctl reload nginx
 
-# - Check disk space
-df -h
+# Verify CORS headers
+curl -I https://api.nammaoorudelivary.in/api/auth/login \
+  -H "Origin: https://nammaoorudelivary.in"
+```
 
-# - Rebuild container
-docker-compose build --no-cache backend
+#### 2. Container Name Conflicts
+**Error**: "Container name '/backend' is already in use"
+```bash
+# Remove conflicting containers
+docker ps -a | grep backend
+docker rm -f backend
+docker rm -f [any_corrupted_name]
+
+# Start fresh
 docker-compose up -d backend
 ```
 
-#### 3. Database Connection Issues
+#### 3. PostgreSQL Password Authentication Failed
+**Error**: "FATAL: password authentication failed for user 'postgres'"
 ```bash
-# Test database connection
-docker exec shop-postgres pg_isready -U postgres
+# Fix password mismatch
+docker exec -it shop-postgres psql -U postgres -c "ALTER USER postgres PASSWORD 'postgres';"
 
-# Reset database password
-docker-compose exec postgres psql -U postgres
-ALTER USER postgres PASSWORD 'newpassword';
+# Create/update .env file
+cat > .env << 'EOF'
+POSTGRES_DB=shop_management_db
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+JWT_SECRET=mySecretKey123456789012345678901234567890
+EOF
+
+# Restart backend
+docker-compose restart backend
+
+# Wait for startup (30+ seconds)
+sleep 30
+docker-compose logs --tail=50 backend
 ```
 
-#### 4. Frontend Not Loading
+#### 4. Backend Environment Variables Not Applied
+**Issue**: CORS not working despite docker-compose changes
 ```bash
-# Check nginx in frontend container
-docker exec shop-frontend nginx -t
+# Ensure correct variable names in docker-compose.yml:
+# USE: APP_CORS_ALLOWED_ORIGINS (not CORS_ALLOWED_ORIGINS)
+# USE: APP_CORS_ALLOWED_METHODS
+# USE: APP_CORS_ALLOWED_HEADERS
+# USE: APP_CORS_ALLOW_CREDENTIALS
 
-# Restart frontend
-docker-compose restart frontend
-
-# Check frontend logs
-docker logs shop-frontend
+# After updating, rebuild:
+docker-compose stop backend
+docker-compose up -d --build backend
 ```
 
-#### 5. SSL Certificate Issues
+#### 5. Docker Compose KeyError: 'ContainerConfig'
+**Error during**: docker-compose up
 ```bash
-# Renew certificates
-certbot renew
+# Complete cleanup and restart
+docker-compose down
+docker system prune -f
+docker-compose up -d
+```
 
-# Restart nginx
-systemctl restart nginx
+#### 6. Backend Takes Too Long to Start
+```bash
+# Backend needs 30-60 seconds to fully start
+# Don't panic if health check fails immediately
+
+# Wait and retry
+sleep 45
+curl http://localhost:8082/actuator/health
+
+# Check startup progress
+docker-compose logs --tail=100 backend | grep "Started ShopManagementApplication"
+```
+
+#### 7. Git Pull Fails - Not a Repository
+```bash
+# You're in wrong directory, navigate to:
+cd /opt/shop-management
+git pull origin main
+
+# If still issues, check remote:
+git remote -v
 ```
 
 ---

@@ -101,7 +101,8 @@
       "Bash(ping:*)",
       "Bash(scripts/manual-deploy.sh:*)",
       "Bash(apt-get:*)",
-      "Bash(apt-get install:*)"
+      "Bash(apt-get install:*)",
+      "Bash(tasklist:*)"
     ],
     "deny": [],
     "ask": [],
