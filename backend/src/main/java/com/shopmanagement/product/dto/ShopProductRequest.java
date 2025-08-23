@@ -30,6 +30,7 @@ public class ShopProductRequest {
     private BigDecimal costPrice;
 
     @Min(value = 0, message = "Stock quantity cannot be negative")
+    @Builder.Default
     private Integer stockQuantity = 0;
 
     @Min(value = 0, message = "Minimum stock level cannot be negative")
@@ -38,12 +39,16 @@ public class ShopProductRequest {
     @Min(value = 0, message = "Maximum stock level cannot be negative")
     private Integer maxStockLevel;
 
+    @Builder.Default
     private Boolean trackInventory = true;
 
+    @Builder.Default
     private ShopProduct.ShopProductStatus status = ShopProduct.ShopProductStatus.ACTIVE;
 
+    @Builder.Default
     private Boolean isAvailable = true;
 
+    @Builder.Default
     private Boolean isFeatured = false;
 
     @Size(max = 255, message = "Custom name must be less than 255 characters")

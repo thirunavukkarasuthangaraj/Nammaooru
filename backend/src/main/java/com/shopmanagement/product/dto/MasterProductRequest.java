@@ -44,10 +44,13 @@ public class MasterProductRequest {
     @Size(max = 1000, message = "Specifications must be less than 1000 characters")
     private String specifications;
 
+    @Builder.Default
     private MasterProduct.ProductStatus status = MasterProduct.ProductStatus.ACTIVE;
 
+    @Builder.Default
     private Boolean isFeatured = false;
 
+    @Builder.Default
     private Boolean isGlobal = true;
 
     private List<String> imageUrls;

@@ -112,7 +112,8 @@
       "Bash(ng generate component:*)",
       "Bash(ng generate:*)",
       "mcp__ide__getDiagnostics",
-      "Bash(npx ng serve:*)"
+      "Bash(npx ng serve:*)",
+      "Bash(start chrome \"file:///D:/AAWS/nammaooru/shop-management-system/test-all-menus.html\")"
     ],
     "deny": [],
     "ask": [],

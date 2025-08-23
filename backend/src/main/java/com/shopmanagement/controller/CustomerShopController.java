@@ -2,10 +2,10 @@ package com.shopmanagement.controller;
 
 import com.shopmanagement.common.dto.ApiResponse;
 import com.shopmanagement.common.util.ResponseUtil;
-import com.shopmanagement.dto.product.ProductResponse;
-import com.shopmanagement.dto.shop.ShopResponse;
-import com.shopmanagement.service.ProductService;
-import com.shopmanagement.service.ShopService;
+import com.shopmanagement.product.dto.ShopProductResponse;
+import com.shopmanagement.shop.dto.ShopResponse;
+import com.shopmanagement.product.service.ShopProductService;
+import com.shopmanagement.shop.service.ShopService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -24,7 +24,7 @@ import java.util.List;
 public class CustomerShopController {
 
     private final ShopService shopService;
-    private final ProductService productService;
+    private final ShopProductService shopProductService;
 
     @GetMapping("/shops")
     public ResponseEntity<ApiResponse<List<ShopResponse>>> getShopsForCustomers(
@@ -42,12 +42,12 @@ public class CustomerShopController {
             if (search != null && !search.trim().isEmpty()) {
                 shops = shopService.searchShops(search, pageable);
             } else {
-                shops = shopService.getAllShops(page, size, "name", "asc");
+                shops = shopService.getAllShops(pageable);
             }
             
             // Filter only approved and active shops for customers
             List<ShopResponse> customerShops = shops.getContent().stream()
-                    .filter(shop -> "APPROVED".equals(shop.getStatus()) && shop.isActive())
+                    .filter(shop -> "APPROVED".equals(shop.getStatus()) && Boolean.TRUE.equals(shop.getIsActive()))
                     .toList();
             
             return ResponseUtil.success(customerShops, "Shops retrieved successfully");
@@ -66,7 +66,7 @@ public class CustomerShopController {
             ShopResponse shop = shopService.getShopById(shopId);
             
             // Only return approved and active shops
-            if (!"APPROVED".equals(shop.getStatus()) || !shop.isActive()) {
+            if (!"APPROVED".equals(shop.getStatus()) || !Boolean.TRUE.equals(shop.getIsActive())) {
                 return ResponseUtil.error("Shop not available");
             }
             
@@ -79,7 +79,7 @@ public class CustomerShopController {
     }
 
     @GetMapping("/shops/{shopId}/products")
-    public ResponseEntity<ApiResponse<List<ProductResponse>>> getShopProducts(
+    public ResponseEntity<ApiResponse<List<ShopProductResponse>>> getShopProducts(
             @PathVariable Long shopId,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String category,
@@ -91,19 +91,19 @@ public class CustomerShopController {
                     shopId, search, category);
             
             Pageable pageable = PageRequest.of(page, size);
-            Page<ProductResponse> products;
+            Page<ShopProductResponse> products;
             
             if (search != null && !search.trim().isEmpty()) {
-                products = productService.searchProductsByShop(shopId, search, pageable);
-            } else if (category != null && !category.trim().isEmpty()) {
-                products = productService.getProductsByShopAndCategory(shopId, category, pageable);
+                products = shopProductService.searchShopProducts(shopId, search, pageable);
             } else {
-                products = productService.getProductsByShop(shopId, pageable);
+                // Use the getShopProducts method with null specification for all products
+                products = shopProductService.getShopProducts(shopId, null, pageable);
             }
             
-            // Filter only active and in-stock products for customers
-            List<ProductResponse> customerProducts = products.getContent().stream()
-                    .filter(product -> product.isActive() && product.getStockQuantity() > 0)
+            // Filter only available and in-stock products for customers
+            List<ShopProductResponse> customerProducts = products.getContent().stream()
+                    .filter(product -> Boolean.TRUE.equals(product.getIsAvailable()) && 
+                            (product.getInStock() == null || Boolean.TRUE.equals(product.getInStock())))
                     .toList();
             
             return ResponseUtil.success(customerProducts, "Products retrieved successfully");
@@ -119,7 +119,8 @@ public class CustomerShopController {
         try {
             log.info("Customer categories request for shop ID: {}", shopId);
             
-            List<String> categories = productService.getCategoriesByShop(shopId);
+            // For now, return empty list as category functionality is not implemented in ShopProductService
+            List<String> categories = List.of();
             
             return ResponseUtil.success(categories, "Categories retrieved successfully");
             
@@ -144,7 +145,7 @@ public class CustomerShopController {
             
             // Filter only approved and active shops
             List<ShopResponse> customerResults = results.getContent().stream()
-                    .filter(shop -> "APPROVED".equals(shop.getStatus()) && shop.isActive())
+                    .filter(shop -> "APPROVED".equals(shop.getStatus()) && Boolean.TRUE.equals(shop.getIsActive()))
                     .toList();
             
             return ResponseUtil.success(customerResults, "Search results retrieved successfully");

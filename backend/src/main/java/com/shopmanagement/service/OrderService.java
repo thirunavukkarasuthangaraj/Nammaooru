@@ -743,10 +743,8 @@ public class OrderService {
             return List.of(); // Return empty list for guest customers
         }
         
-        Page<Order> orders = getOrdersByCustomer(customerId, page, size);
-        return orders.getContent().stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+        Page<OrderResponse> orders = getOrdersByCustomer(customerId, page, size);
+        return orders.getContent();
     }
     
     public void rateOrder(Long orderId, int rating, String review) {

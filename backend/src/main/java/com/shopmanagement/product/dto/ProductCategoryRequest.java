@@ -25,6 +25,7 @@ public class ProductCategoryRequest {
 
     private Long parentId;
 
+    @Builder.Default
     private Boolean isActive = true;
 
     private Integer sortOrder;

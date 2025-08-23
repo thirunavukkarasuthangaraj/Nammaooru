@@ -93,12 +93,6 @@ export class AuthService {
   }
 
   isAuthenticated(): boolean {
-    // TEMPORARY: Always return true while backend is down
-    // This allows all menus to work without authentication
-    this.setMockUserIfNeeded();
-    return true;
-    
-    /* Original code - uncomment when backend is fixed
     const token = this.getToken();
     if (!token) {
       return false;
@@ -112,7 +106,6 @@ export class AuthService {
     } catch (error) {
       return false;
     }
-    */
   }
   
   private setMockUserIfNeeded(): void {
@@ -216,15 +209,10 @@ export class AuthService {
   }
 
   isPasswordChangeRequired(): boolean {
-    // TEMPORARY: Disable password change requirement while backend is down
-    return false;
-    
-    /* Original code - uncomment when backend is fixed
     if (isPlatformBrowser(this.platformId)) {
       return localStorage.getItem('passwordChangeRequired') === 'true';
     }
     return false;
-    */
   }
 
   isTemporaryPassword(): boolean {
@@ -241,12 +229,9 @@ export class AuthService {
         try {
           return JSON.parse(userData);
         } catch (e) {
-          // If parsing fails, return mock user
-          return this.getMockUser();
+          return null;
         }
       }
-      // Return mock user if no stored data
-      return this.getMockUser();
     }
     return null;
   }
