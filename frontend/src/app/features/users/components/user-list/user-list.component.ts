@@ -85,10 +85,178 @@ export class UserListComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error loading users:', error);
-        this.snackBar.open('Error loading users', 'Close', { duration: 3000 });
+        this.loadMockData();
         this.loading = false;
       }
     });
+  }
+
+  private loadMockData(): void {
+    const mockUsers: any[] = [
+      {
+        id: 1,
+        username: 'superadmin',
+        email: 'admin@nammaooru.com',
+        firstName: 'Super',
+        lastName: 'Admin',
+        fullName: 'Super Admin',
+        role: 'SUPER_ADMIN',
+        status: 'ACTIVE',
+        department: 'Administration',
+        designation: 'System Administrator',
+        isActive: true,
+        emailVerified: true,
+        lastLogin: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+        createdAt: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        id: 2,
+        username: 'adminuser',
+        email: 'admin@management.com',
+        firstName: 'Admin',
+        lastName: 'User',
+        fullName: 'Admin User',
+        role: 'ADMIN',
+        status: 'ACTIVE',
+        department: 'Management',
+        designation: 'Platform Administrator',
+        isActive: true,
+        emailVerified: true,
+        lastLogin: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+        createdAt: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        id: 3,
+        username: 'rajeshkumar',
+        email: 'rajesh@annamalai.com',
+        firstName: 'Rajesh',
+        lastName: 'Kumar',
+        fullName: 'Rajesh Kumar',
+        role: 'SHOP_OWNER',
+        status: 'ACTIVE',
+        department: 'Operations',
+        designation: 'Shop Owner',
+        isActive: true,
+        emailVerified: true,
+        lastLogin: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+        createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        id: 4,
+        username: 'priyasharma',
+        email: 'priya@example.com',
+        firstName: 'Priya',
+        lastName: 'Sharma',
+        fullName: 'Priya Sharma',
+        role: 'USER',
+        status: 'ACTIVE',
+        department: 'Customer',
+        designation: 'Customer',
+        isActive: true,
+        emailVerified: true,
+        lastLogin: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+        createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        id: 5,
+        username: 'csmanager',
+        email: 'support@nammaooru.com',
+        firstName: 'Customer',
+        lastName: 'Support',
+        fullName: 'Customer Support Manager',
+        role: 'CUSTOMER_SERVICE',
+        status: 'ACTIVE',
+        department: 'Customer Service',
+        designation: 'Support Manager',
+        isActive: true,
+        emailVerified: true,
+        lastLogin: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+        createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        id: 6,
+        username: 'deliveryboy1',
+        email: 'delivery1@nammaooru.com',
+        firstName: 'Ravi',
+        lastName: 'Delivery',
+        fullName: 'Ravi Delivery',
+        role: 'DELIVERY_AGENT',
+        status: 'ACTIVE',
+        department: 'Logistics',
+        designation: 'Delivery Agent',
+        isActive: true,
+        emailVerified: true,
+        lastLogin: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+        createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        id: 7,
+        username: 'opsmanager',
+        email: 'ops@nammaooru.com',
+        firstName: 'Operations',
+        lastName: 'Manager',
+        fullName: 'Operations Manager',
+        role: 'MANAGER',
+        status: 'ACTIVE',
+        department: 'Operations',
+        designation: 'Operations Manager',
+        isActive: true,
+        emailVerified: true,
+        lastLogin: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
+        createdAt: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        id: 8,
+        username: 'employee1',
+        email: 'emp1@nammaooru.com',
+        firstName: 'John',
+        lastName: 'Employee',
+        fullName: 'John Employee',
+        role: 'EMPLOYEE',
+        status: 'ACTIVE',
+        department: 'Operations',
+        designation: 'Operations Executive',
+        isActive: true,
+        emailVerified: true,
+        lastLogin: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
+        createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        id: 9,
+        username: 'inactiveuser',
+        email: 'inactive@example.com',
+        firstName: 'Inactive',
+        lastName: 'User',
+        fullName: 'Inactive User',
+        role: 'USER',
+        status: 'INACTIVE',
+        department: 'Customer',
+        designation: 'Customer',
+        isActive: false,
+        emailVerified: false,
+        lastLogin: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+        createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        id: 10,
+        username: 'pendinguser',
+        email: 'pending@example.com',
+        firstName: 'Pending',
+        lastName: 'Verification',
+        fullName: 'Pending Verification',
+        role: 'USER',
+        status: 'PENDING_VERIFICATION',
+        department: 'Customer',
+        designation: 'Customer',
+        isActive: false,
+        emailVerified: false,
+        lastLogin: '',
+        createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
+      }
+    ];
+
+    this.dataSource.data = mockUsers as any;
+    this.snackBar.open('Loaded mock user data - API not available', 'Close', { duration: 3000 });
   }
 
   applyFilter(): void {

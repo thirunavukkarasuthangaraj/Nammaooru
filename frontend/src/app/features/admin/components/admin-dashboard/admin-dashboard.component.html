@@ -1,0 +1,259 @@
+<div class="admin-dashboard chennai-page">
+  <div class="page-header">
+    <h1>Admin Dashboard</h1>
+    <div class="header-actions">
+      <button mat-raised-button color="primary" (click)="refreshDashboard()">
+        <mat-icon>refresh</mat-icon> Refresh
+      </button>
+    </div>
+  </div>
+
+  <div class="dashboard-content" *ngIf="!isLoading">
+    <!-- Stats Cards Row -->
+    <div class="stats-row">
+      <mat-card class="stat-card" (click)="navigateToUsers()">
+        <mat-card-content>
+          <div class="stat-icon users">
+            <mat-icon>people</mat-icon>
+          </div>
+          <div class="stat-info">
+            <h3>{{ stats.totalUsers | number }}</h3>
+            <p>Total Users</p>
+            <div class="stat-growth" [ngClass]="getGrowthClass(stats.userGrowth)">
+              <mat-icon>{{ stats.userGrowth >= 0 ? 'trending_up' : 'trending_down' }}</mat-icon>
+              {{ formatPercentage(stats.userGrowth) }}
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="stat-card" (click)="navigateToShops()">
+        <mat-card-content>
+          <div class="stat-icon shops">
+            <mat-icon>store</mat-icon>
+          </div>
+          <div class="stat-info">
+            <h3>{{ stats.totalShops | number }}</h3>
+            <p>Total Shops</p>
+            <div class="stat-growth" [ngClass]="getGrowthClass(stats.shopGrowth)">
+              <mat-icon>{{ stats.shopGrowth >= 0 ? 'trending_up' : 'trending_down' }}</mat-icon>
+              {{ formatPercentage(stats.shopGrowth) }}
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="stat-card" (click)="navigateToOrders()">
+        <mat-card-content>
+          <div class="stat-icon orders">
+            <mat-icon>shopping_cart</mat-icon>
+          </div>
+          <div class="stat-info">
+            <h3>{{ stats.totalOrders | number }}</h3>
+            <p>Total Orders</p>
+            <div class="stat-growth" [ngClass]="getGrowthClass(stats.orderGrowth)">
+              <mat-icon>{{ stats.orderGrowth >= 0 ? 'trending_up' : 'trending_down' }}</mat-icon>
+              {{ formatPercentage(stats.orderGrowth) }}
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="stat-card" (click)="navigateToAnalytics()">
+        <mat-card-content>
+          <div class="stat-icon revenue">
+            <mat-icon>attach_money</mat-icon>
+          </div>
+          <div class="stat-info">
+            <h3>{{ formatCurrency(stats.totalRevenue) }}</h3>
+            <p>Total Revenue</p>
+            <div class="stat-growth" [ngClass]="getGrowthClass(stats.revenueGrowth)">
+              <mat-icon>{{ stats.revenueGrowth >= 0 ? 'trending_up' : 'trending_down' }}</mat-icon>
+              {{ formatPercentage(stats.revenueGrowth) }}
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Quick Stats Row -->
+    <div class="quick-stats-row">
+      <mat-card class="quick-stat-card">
+        <mat-card-content>
+          <div class="quick-stat-header">
+            <h4>Active Users</h4>
+            <mat-icon>people_outline</mat-icon>
+          </div>
+          <div class="quick-stat-value">{{ stats.activeUsers | number }}</div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="quick-stat-card">
+        <mat-card-content>
+          <div class="quick-stat-header">
+            <h4>Pending Shops</h4>
+            <mat-icon>hourglass_empty</mat-icon>
+          </div>
+          <div class="quick-stat-value">{{ stats.pendingShops | number }}</div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="quick-stat-card">
+        <mat-card-content>
+          <div class="quick-stat-header">
+            <h4>Today's Orders</h4>
+            <mat-icon>today</mat-icon>
+          </div>
+          <div class="quick-stat-value">{{ stats.todayOrders | number }}</div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="quick-stat-card">
+        <mat-card-content>
+          <div class="quick-stat-header">
+            <h4>Today's Revenue</h4>
+            <mat-icon>monetization_on</mat-icon>
+          </div>
+          <div class="quick-stat-value">{{ formatCurrency(stats.todayRevenue) }}</div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- System Metrics and Activity Row -->
+    <div class="content-row">
+      <!-- System Metrics -->
+      <mat-card class="metrics-card">
+        <mat-card-header>
+          <mat-card-title>System Metrics</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="metric-item">
+            <div class="metric-label">
+              <mat-icon>memory</mat-icon>
+              <span>CPU Usage</span>
+            </div>
+            <div class="metric-value">
+              <mat-progress-bar 
+                mode="determinate" 
+                [value]="systemMetrics.cpuUsage"
+                [color]="getMetricStatus(systemMetrics.cpuUsage, 80) === 'danger' ? 'warn' : 'primary'">
+              </mat-progress-bar>
+              <span>{{ formatPercentage(systemMetrics.cpuUsage) }}</span>
+            </div>
+          </div>
+
+          <div class="metric-item">
+            <div class="metric-label">
+              <mat-icon>storage</mat-icon>
+              <span>Memory Usage</span>
+            </div>
+            <div class="metric-value">
+              <mat-progress-bar 
+                mode="determinate" 
+                [value]="systemMetrics.memoryUsage"
+                [color]="getMetricStatus(systemMetrics.memoryUsage, 90) === 'danger' ? 'warn' : 'primary'">
+              </mat-progress-bar>
+              <span>{{ formatPercentage(systemMetrics.memoryUsage) }}</span>
+            </div>
+          </div>
+
+          <div class="metric-item">
+            <div class="metric-label">
+              <mat-icon>hard_drive</mat-icon>
+              <span>Disk Usage</span>
+            </div>
+            <div class="metric-value">
+              <mat-progress-bar 
+                mode="determinate" 
+                [value]="systemMetrics.diskUsage"
+                [color]="getMetricStatus(systemMetrics.diskUsage, 85) === 'danger' ? 'warn' : 'primary'">
+              </mat-progress-bar>
+              <span>{{ formatPercentage(systemMetrics.diskUsage) }}</span>
+            </div>
+          </div>
+
+          <div class="metric-grid">
+            <div class="metric-box">
+              <mat-icon>wifi</mat-icon>
+              <div class="metric-text">
+                <span class="metric-number">{{ systemMetrics.activeConnections }}</span>
+                <span class="metric-desc">Active Connections</span>
+              </div>
+            </div>
+
+            <div class="metric-box">
+              <mat-icon>speed</mat-icon>
+              <div class="metric-text">
+                <span class="metric-number">{{ systemMetrics.responseTime }}ms</span>
+                <span class="metric-desc">Response Time</span>
+              </div>
+            </div>
+
+            <div class="metric-box">
+              <mat-icon>error_outline</mat-icon>
+              <div class="metric-text">
+                <span class="metric-number">{{ formatPercentage(systemMetrics.errorRate) }}</span>
+                <span class="metric-desc">Error Rate</span>
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Recent Activity -->
+      <mat-card class="activity-card">
+        <mat-card-header>
+          <mat-card-title>Recent Activity</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="activity-list">
+            <div *ngFor="let activity of recentActivity" class="activity-item">
+              <div class="activity-icon" [ngClass]="getActivityColor(activity.severity)">
+                <mat-icon>{{ getActivityIcon(activity.type) }}</mat-icon>
+              </div>
+              <div class="activity-content">
+                <p class="activity-message">{{ activity.message }}</p>
+                <span class="activity-time">{{ activity.timestamp | date:'short' }}</span>
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="actions-row">
+      <mat-card class="actions-card">
+        <mat-card-header>
+          <mat-card-title>Quick Actions</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="action-buttons">
+            <button mat-raised-button color="primary" (click)="navigateToUsers()">
+              <mat-icon>person_add</mat-icon>
+              Manage Users
+            </button>
+            <button mat-raised-button color="accent" (click)="navigateToShops()">
+              <mat-icon>store_mall_directory</mat-icon>
+              Approve Shops
+            </button>
+            <button mat-stroked-button (click)="navigateToOrders()">
+              <mat-icon>assignment</mat-icon>
+              View Orders
+            </button>
+            <button mat-stroked-button (click)="navigateToAnalytics()">
+              <mat-icon>analytics</mat-icon>
+              Analytics
+            </button>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-container" *ngIf="isLoading">
+    <mat-spinner></mat-spinner>
+    <p>Loading dashboard...</p>
+  </div>
+</div>

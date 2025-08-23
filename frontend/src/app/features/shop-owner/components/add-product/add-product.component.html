@@ -1,0 +1,272 @@
+<div class="add-product chennai-page">
+  <div class="page-header">
+    <h1>{{ isEditMode ? 'Edit Product' : 'Add New Product' }}</h1>
+    <div class="header-actions">
+      <button mat-stroked-button (click)="goBack()">
+        <mat-icon>arrow_back</mat-icon> Back to Products
+      </button>
+    </div>
+  </div>
+
+  <form [formGroup]="productForm" (ngSubmit)="onSubmit()" class="product-form">
+    <div class="form-sections">
+      <!-- Basic Information -->
+      <mat-card class="form-section">
+        <mat-card-header>
+          <mat-card-title>Basic Information</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="form-row">
+            <mat-form-field class="full-width">
+              <mat-label>Product Name *</mat-label>
+              <input matInput formControlName="name" placeholder="Enter product name">
+              <mat-error *ngIf="productForm.get('name')?.hasError('required')">
+                Product name is required
+              </mat-error>
+            </mat-form-field>
+          </div>
+          
+          <div class="form-row">
+            <mat-form-field class="full-width">
+              <mat-label>Description</mat-label>
+              <textarea matInput formControlName="description" 
+                        placeholder="Describe your product" 
+                        rows="4"></textarea>
+            </mat-form-field>
+          </div>
+          
+          <div class="form-row">
+            <mat-form-field>
+              <mat-label>Category *</mat-label>
+              <mat-select formControlName="categoryId">
+                <mat-option *ngFor="let category of categories" [value]="category.id">
+                  {{ category.name }}
+                </mat-option>
+              </mat-select>
+              <mat-error *ngIf="productForm.get('categoryId')?.hasError('required')">
+                Category is required
+              </mat-error>
+            </mat-form-field>
+            
+            <mat-form-field>
+              <mat-label>SKU</mat-label>
+              <input matInput formControlName="sku" placeholder="Product SKU">
+            </mat-form-field>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Pricing & Inventory -->
+      <mat-card class="form-section">
+        <mat-card-header>
+          <mat-card-title>Pricing & Inventory</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="form-row">
+            <mat-form-field>
+              <mat-label>Price *</mat-label>
+              <input matInput type="number" formControlName="price" 
+                     placeholder="0.00" min="0" step="0.01">
+              <span matPrefix>₹&nbsp;</span>
+              <mat-error *ngIf="productForm.get('price')?.hasError('required')">
+                Price is required
+              </mat-error>
+              <mat-error *ngIf="productForm.get('price')?.hasError('min')">
+                Price must be greater than 0
+              </mat-error>
+            </mat-form-field>
+            
+            <mat-form-field>
+              <mat-label>Compare Price</mat-label>
+              <input matInput type="number" formControlName="comparePrice" 
+                     placeholder="0.00" min="0" step="0.01">
+              <span matPrefix>₹&nbsp;</span>
+            </mat-form-field>
+          </div>
+          
+          <div class="form-row">
+            <mat-form-field>
+              <mat-label>Stock Quantity *</mat-label>
+              <input matInput type="number" formControlName="stock" 
+                     placeholder="0" min="0">
+              <mat-error *ngIf="productForm.get('stock')?.hasError('required')">
+                Stock quantity is required
+              </mat-error>
+            </mat-form-field>
+            
+            <mat-form-field>
+              <mat-label>Low Stock Alert</mat-label>
+              <input matInput type="number" formControlName="lowStockAlert" 
+                     placeholder="5" min="0">
+            </mat-form-field>
+          </div>
+          
+          <div class="form-row">
+            <mat-checkbox formControlName="trackInventory">
+              Track inventory for this product
+            </mat-checkbox>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Product Images -->
+      <mat-card class="form-section">
+        <mat-card-header>
+          <mat-card-title>Product Images</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="image-upload-section">
+            <div class="upload-area" (click)="triggerFileInput()" 
+                 [class.has-images]="productImages.length > 0">
+              <input #fileInput type="file" hidden multiple accept="image/*" 
+                     (change)="onImageSelected($event)">
+              
+              <div class="upload-placeholder" *ngIf="productImages.length === 0">
+                <mat-icon>cloud_upload</mat-icon>
+                <h3>Upload Product Images</h3>
+                <p>Click to browse or drag and drop images here</p>
+                <p class="upload-hint">Supported formats: JPG, PNG, WebP (Max 5MB each)</p>
+              </div>
+              
+              <div class="images-grid" *ngIf="productImages.length > 0">
+                <div *ngFor="let image of productImages; let i = index" 
+                     class="image-item" [class.primary]="i === 0">
+                  <img [src]="image.url" [alt]="'Product image ' + (i + 1)">
+                  <div class="image-overlay">
+                    <button mat-icon-button (click)="removeImage(i); $event.stopPropagation()">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                    <button mat-icon-button *ngIf="i !== 0" 
+                            (click)="setPrimaryImage(i); $event.stopPropagation()">
+                      <mat-icon>star_border</mat-icon>
+                    </button>
+                  </div>
+                  <div class="primary-badge" *ngIf="i === 0">Primary</div>
+                </div>
+                
+                <div class="add-more-button" (click)="triggerFileInput(); $event.stopPropagation()">
+                  <mat-icon>add</mat-icon>
+                  <span>Add More</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Product Details -->
+      <mat-card class="form-section">
+        <mat-card-header>
+          <mat-card-title>Additional Details</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="form-row">
+            <mat-form-field>
+              <mat-label>Weight (grams)</mat-label>
+              <input matInput type="number" formControlName="weight" 
+                     placeholder="0" min="0">
+            </mat-form-field>
+            
+            <mat-form-field>
+              <mat-label>Preparation Time (minutes)</mat-label>
+              <input matInput type="number" formControlName="preparationTime" 
+                     placeholder="15" min="0">
+            </mat-form-field>
+          </div>
+          
+          <div class="form-row">
+            <mat-checkbox formControlName="isVegetarian">
+              Vegetarian
+            </mat-checkbox>
+            
+            <mat-checkbox formControlName="isVegan">
+              Vegan
+            </mat-checkbox>
+            
+            <mat-checkbox formControlName="isGlutenFree">
+              Gluten Free
+            </mat-checkbox>
+          </div>
+          
+          <div class="form-row">
+            <mat-form-field class="full-width">
+              <mat-label>Ingredients</mat-label>
+              <textarea matInput formControlName="ingredients" 
+                        placeholder="List the main ingredients" 
+                        rows="3"></textarea>
+            </mat-form-field>
+          </div>
+          
+          <div class="form-row">
+            <mat-form-field class="full-width">
+              <mat-label>Allergen Information</mat-label>
+              <textarea matInput formControlName="allergens" 
+                        placeholder="List any allergens" 
+                        rows="2"></textarea>
+            </mat-form-field>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Availability -->
+      <mat-card class="form-section">
+        <mat-card-header>
+          <mat-card-title>Availability</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="form-row">
+            <mat-checkbox formControlName="isActive">
+              Product is active and available for sale
+            </mat-checkbox>
+          </div>
+          
+          <div class="form-row">
+            <mat-checkbox formControlName="isFeatured">
+              Featured product (appears in promotional sections)
+            </mat-checkbox>
+          </div>
+          
+          <div class="availability-schedule" *ngIf="showAdvancedOptions">
+            <h4>Availability Schedule</h4>
+            <div class="schedule-grid">
+              <div *ngFor="let day of weekDays" class="day-schedule">
+                <mat-checkbox [formControlName]="'available_' + day.value">
+                  {{ day.label }}
+                </mat-checkbox>
+                <div class="time-range" *ngIf="productForm.get('available_' + day.value)?.value">
+                  <mat-form-field>
+                    <mat-label>From</mat-label>
+                    <input matInput type="time" [formControlName]="'from_' + day.value">
+                  </mat-form-field>
+                  <mat-form-field>
+                    <mat-label>To</mat-label>
+                    <input matInput type="time" [formControlName]="'to_' + day.value">
+                  </mat-form-field>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <button type="button" mat-button (click)="showAdvancedOptions = !showAdvancedOptions">
+            {{ showAdvancedOptions ? 'Hide' : 'Show' }} Advanced Options
+          </button>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Form Actions -->
+    <div class="form-actions">
+      <button type="button" mat-stroked-button (click)="saveDraft()" 
+              [disabled]="isSubmitting">
+        <mat-icon>save</mat-icon> Save as Draft
+      </button>
+      
+      <button type="submit" mat-raised-button color="primary" 
+              [disabled]="productForm.invalid || isSubmitting">
+        <mat-spinner diameter="20" *ngIf="isSubmitting"></mat-spinner>
+        <mat-icon *ngIf="!isSubmitting">{{ isEditMode ? 'update' : 'add' }}</mat-icon>
+        {{ isSubmitting ? 'Saving...' : (isEditMode ? 'Update Product' : 'Add Product') }}
+      </button>
+    </div>
+  </form>
+</div>

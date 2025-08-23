@@ -1,13 +1,14 @@
 {
-  "name": "Delivery Partner App",
-  "short_name": "DeliveryApp",
-  "description": "Mobile app for delivery partners to manage orders and track deliveries",
-  "theme_color": "#667eea",
+  "name": "NammaOoru Multi-Service Delivery",
+  "short_name": "NammaOoru",
+  "description": "Complete delivery and shopping platform for Chennai",
+  "theme_color": "#2563eb",
   "background_color": "#ffffff",
   "display": "standalone",
   "orientation": "portrait",
   "scope": "/",
-  "start_url": "/delivery/partner/dashboard",
+  "start_url": "/customer/shops",
+  "gcm_sender_id": "368788713881",
   "icons": [
     {
       "src": "assets/icons/icon-72x72.png",
@@ -61,18 +62,18 @@
   "categories": ["business", "productivity", "utilities"],
   "shortcuts": [
     {
-      "name": "Active Orders",
-      "short_name": "Orders",
-      "description": "View active delivery orders",
-      "url": "/delivery/partner/orders",
-      "icons": [{ "src": "assets/icons/orders-96x96.png", "sizes": "96x96" }]
+      "name": "Browse Shops",
+      "short_name": "Shops",
+      "description": "Browse available shops and restaurants",
+      "url": "/customer/shops",
+      "icons": [{ "src": "assets/icons/shop-96x96.png", "sizes": "96x96" }]
     },
     {
-      "name": "Earnings",
-      "short_name": "Earnings",
-      "description": "View earnings and payouts",
-      "url": "/delivery/partner/earnings",
-      "icons": [{ "src": "assets/icons/earnings-96x96.png", "sizes": "96x96" }]
+      "name": "My Cart",
+      "short_name": "Cart",
+      "description": "View shopping cart and checkout",
+      "url": "/customer/cart",
+      "icons": [{ "src": "assets/icons/cart-96x96.png", "sizes": "96x96" }]
     }
   ],
   "features": [

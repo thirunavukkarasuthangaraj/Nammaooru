@@ -26,11 +26,13 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatStepperModule } from '@angular/material/stepper';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatListModule } from '@angular/material/list';
 
 import { DeliveryRoutingModule } from './delivery-routing.module';
 import { SharedModule } from '../../shared/shared.module';
 
 // Components
+import { DeliveryDashboardComponent } from './components/delivery-dashboard/delivery-dashboard.component';
 import { DeliveryPartnerDashboardComponent } from './components/delivery-partner-dashboard/delivery-partner-dashboard.component';
 import { PartnerRegistrationComponent } from './components/partner-registration/partner-registration.component';
 import { AdminPartnersComponent } from './components/admin-partners/admin-partners.component';
@@ -49,9 +51,11 @@ import { DocumentVerificationDialogComponent } from './components/document-verif
 import { DeliveryPartnerService } from './services/delivery-partner.service';
 import { OrderAssignmentService } from './services/order-assignment.service';
 import { DeliveryTrackingService } from './services/delivery-tracking.service';
+import { DeliveryAssignmentService } from './services/delivery-assignment.service';
 
 @NgModule({
   declarations: [
+    DeliveryDashboardComponent,
     DeliveryPartnerDashboardComponent,
     PartnerRegistrationComponent,
     AdminPartnersComponent,
@@ -98,12 +102,14 @@ import { DeliveryTrackingService } from './services/delivery-tracking.service';
     MatMenuModule,
     MatTooltipModule,
     MatStepperModule,
-    MatDividerModule
+    MatDividerModule,
+    MatListModule
   ],
   providers: [
     DeliveryPartnerService,
     OrderAssignmentService,
-    DeliveryTrackingService
+    DeliveryTrackingService,
+    DeliveryAssignmentService
   ]
 })
 export class DeliveryModule { }

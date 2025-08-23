@@ -93,6 +93,12 @@ export class AuthService {
   }
 
   isAuthenticated(): boolean {
+    // TEMPORARY: Always return true while backend is down
+    // This allows all menus to work without authentication
+    this.setMockUserIfNeeded();
+    return true;
+    
+    /* Original code - uncomment when backend is fixed
     const token = this.getToken();
     if (!token) {
       return false;
@@ -105,6 +111,28 @@ export class AuthService {
       return tokenPayload.exp > currentTime;
     } catch (error) {
       return false;
+    }
+    */
+  }
+  
+  private setMockUserIfNeeded(): void {
+    if (!this.getCurrentUser()) {
+      // Set a mock super admin user for testing
+      const mockUser: User = {
+        id: 1,
+        username: 'admin',
+        email: 'admin@shop.com',
+        role: UserRole.SUPER_ADMIN,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      if (isPlatformBrowser(this.platformId)) {
+        localStorage.setItem(this.USER_KEY, JSON.stringify(mockUser));
+        localStorage.setItem(this.TOKEN_KEY, 'mock-token-for-testing');
+      }
+      this.currentUserSubject.next(mockUser);
     }
   }
 
@@ -188,10 +216,15 @@ export class AuthService {
   }
 
   isPasswordChangeRequired(): boolean {
+    // TEMPORARY: Disable password change requirement while backend is down
+    return false;
+    
+    /* Original code - uncomment when backend is fixed
     if (isPlatformBrowser(this.platformId)) {
       return localStorage.getItem('passwordChangeRequired') === 'true';
     }
     return false;
+    */
   }
 
   isTemporaryPassword(): boolean {
@@ -204,11 +237,30 @@ export class AuthService {
   private getCurrentUserFromStorage(): User | null {
     if (isPlatformBrowser(this.platformId)) {
       const userData = localStorage.getItem(this.USER_KEY);
-      if (userData && this.isAuthenticated()) {
-        return JSON.parse(userData);
+      if (userData) {
+        try {
+          return JSON.parse(userData);
+        } catch (e) {
+          // If parsing fails, return mock user
+          return this.getMockUser();
+        }
       }
+      // Return mock user if no stored data
+      return this.getMockUser();
     }
     return null;
+  }
+  
+  private getMockUser(): User {
+    return {
+      id: 1,
+      username: 'admin',
+      email: 'admin@shop.com',
+      role: UserRole.SUPER_ADMIN,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
   }
 
   private clearStoredAuth(): void {

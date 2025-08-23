@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -23,6 +24,7 @@ public class AuthController {
 
     private final AuthService authService;
     private final TokenBlacklistService tokenBlacklistService;
+    private final PasswordEncoder passwordEncoder;
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
@@ -102,5 +104,40 @@ public class AuthController {
         }
         
         return ResponseEntity.ok(response);
+    }
+    
+    @PostMapping("/generate-password-hash")
+    public ResponseEntity<Map<String, String>> generatePasswordHash(@RequestBody Map<String, String> request) {
+        Map<String, String> response = new HashMap<>();
+        
+        try {
+            String rawPassword = request.get("password");
+            if (rawPassword == null || rawPassword.trim().isEmpty()) {
+                response.put("status", "error");
+                response.put("message", "Password is required");
+                return ResponseEntity.badRequest().body(response);
+            }
+            
+            // Validate password strength
+            if (rawPassword.length() < 8) {
+                response.put("status", "error");
+                response.put("message", "Password must be at least 8 characters long");
+                return ResponseEntity.badRequest().body(response);
+            }
+            
+            String hashedPassword = passwordEncoder.encode(rawPassword);
+            
+            response.put("status", "success");
+            response.put("rawPassword", rawPassword);
+            response.put("hashedPassword", hashedPassword);
+            response.put("sqlCommand", "UPDATE users SET password = '" + hashedPassword + "' WHERE username = 'your_username';");
+            response.put("message", "Password hash generated successfully. Use this hash in your database.");
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("status", "error");
+            response.put("message", "Error generating password hash: " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
     }
 }

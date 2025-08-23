@@ -90,9 +90,24 @@
                     </div>
                     <p class="notification-message">{{ notification.message }}</p>
                     <div class="notification-actions" *ngIf="notification.action">
-                      <button mat-button color="primary" class="action-btn">
-                        {{ notification.action }}
-                      </button>
+                      <div *ngIf="notification.action === 'PENDING_APPROVAL'" class="approval-buttons">
+                        <button mat-raised-button color="primary" (click)="acceptNotification(notification)">
+                          <mat-icon>check</mat-icon>
+                          Accept
+                        </button>
+                        <button mat-raised-button color="warn" (click)="rejectNotification(notification)">
+                          <mat-icon>close</mat-icon>
+                          Reject
+                        </button>
+                      </div>
+                      <div *ngIf="notification.action === 'APPROVED'" class="status-badge approved">
+                        <mat-icon>check_circle</mat-icon>
+                        Approved
+                      </div>
+                      <div *ngIf="notification.action === 'REJECTED'" class="status-badge rejected">
+                        <mat-icon>cancel</mat-icon>
+                        Rejected
+                      </div>
                     </div>
                   </div>
                   
@@ -146,9 +161,24 @@
                     </div>
                     <p class="notification-message">{{ notification.message }}</p>
                     <div class="notification-actions" *ngIf="notification.action">
-                      <button mat-button color="primary" class="action-btn">
-                        {{ notification.action }}
-                      </button>
+                      <div *ngIf="notification.action === 'PENDING_APPROVAL'" class="approval-buttons">
+                        <button mat-raised-button color="primary" (click)="acceptNotification(notification)">
+                          <mat-icon>check</mat-icon>
+                          Accept
+                        </button>
+                        <button mat-raised-button color="warn" (click)="rejectNotification(notification)">
+                          <mat-icon>close</mat-icon>
+                          Reject
+                        </button>
+                      </div>
+                      <div *ngIf="notification.action === 'APPROVED'" class="status-badge approved">
+                        <mat-icon>check_circle</mat-icon>
+                        Approved
+                      </div>
+                      <div *ngIf="notification.action === 'REJECTED'" class="status-badge rejected">
+                        <mat-icon>cancel</mat-icon>
+                        Rejected
+                      </div>
                     </div>
                   </div>
                   
@@ -198,9 +228,24 @@
                     </div>
                     <p class="notification-message">{{ notification.message }}</p>
                     <div class="notification-actions" *ngIf="notification.action">
-                      <button mat-button color="primary" class="action-btn">
-                        {{ notification.action }}
-                      </button>
+                      <div *ngIf="notification.action === 'PENDING_APPROVAL'" class="approval-buttons">
+                        <button mat-raised-button color="primary" (click)="acceptNotification(notification)">
+                          <mat-icon>check</mat-icon>
+                          Accept
+                        </button>
+                        <button mat-raised-button color="warn" (click)="rejectNotification(notification)">
+                          <mat-icon>close</mat-icon>
+                          Reject
+                        </button>
+                      </div>
+                      <div *ngIf="notification.action === 'APPROVED'" class="status-badge approved">
+                        <mat-icon>check_circle</mat-icon>
+                        Approved
+                      </div>
+                      <div *ngIf="notification.action === 'REJECTED'" class="status-badge rejected">
+                        <mat-icon>cancel</mat-icon>
+                        Rejected
+                      </div>
                     </div>
                   </div>
                   

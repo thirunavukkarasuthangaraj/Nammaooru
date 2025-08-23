@@ -5,7 +5,7 @@ import { ShopProfileComponent } from './components/shop-profile/shop-profile.com
 import { ShopOverviewComponent } from './components/shop-overview/shop-overview.component';
 import { MyProductsComponent } from './components/my-products/my-products.component';
 import { InventoryManagementComponent } from './components/inventory-management/inventory-management.component';
-import { OrdersManagementComponent } from './components/orders-management/orders-management.component';
+import { OrderManagementComponent } from './components/order-management/order-management.component';
 import { AddProductComponent } from './components/add-product/add-product.component';
 import { BulkUploadComponent } from './components/bulk-upload/bulk-upload.component';
 import { CategoriesComponent } from './components/categories/categories.component';
@@ -52,7 +52,7 @@ const routes: Routes = [
   },
   {
     path: 'orders',
-    component: OrdersManagementComponent
+    component: OrderManagementComponent
   },
   {
     path: 'shop/profile',

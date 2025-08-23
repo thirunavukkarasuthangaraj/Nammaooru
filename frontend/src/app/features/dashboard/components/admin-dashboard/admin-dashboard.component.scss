@@ -1,0 +1,165 @@
+.admin-dashboard {
+  padding: var(--chennai-spacing-lg);
+  
+  .dashboard-header {
+    margin-bottom: var(--chennai-spacing-xl);
+    border-radius: var(--chennai-radius-lg);
+    
+    .header-content {
+      h1 {
+        margin: 0;
+        color: white;
+        font-size: 1.75rem;
+        font-weight: 600;
+      }
+      
+      p {
+        margin: 0;
+        opacity: 0.8;
+        color: white;
+      }
+    }
+    
+    .header-actions {
+      display: flex;
+      gap: var(--chennai-spacing-sm);
+    }
+  }
+  
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--chennai-spacing-lg);
+    margin-bottom: var(--chennai-spacing-xl);
+    
+    .metric-card {
+      padding: var(--chennai-spacing-lg);
+      
+      mat-card-content {
+        display: flex;
+        align-items: center;
+        gap: var(--chennai-spacing-md);
+        
+        .metric-icon {
+          width: 50px;
+          height: 50px;
+          border-radius: var(--chennai-radius-round);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          
+          &.shops {
+            background: var(--chennai-banana-leaf-green);
+          }
+          
+          &.orders {
+            background: var(--chennai-marina);
+          }
+          
+          &.delivery {
+            background: var(--chennai-saffron);
+          }
+          
+          &.complaints {
+            background: var(--chennai-temple-red);
+          }
+          
+          mat-icon {
+            color: white;
+            font-size: 24px;
+          }
+        }
+        
+        .metric-info {
+          h3 {
+            margin: 0 0 var(--chennai-spacing-xs) 0;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--chennai-charcoal);
+          }
+          
+          p {
+            margin: 0;
+            color: var(--chennai-ash-gray);
+            font-size: 0.875rem;
+          }
+        }
+      }
+    }
+  }
+  
+  .content-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: var(--chennai-spacing-lg);
+    
+    .shop-monitoring, .order-management, .support-tickets, .quality-metrics {
+      .shop-list, .quality-item {
+        margin-bottom: var(--chennai-spacing-sm);
+        
+        .shop-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: var(--chennai-spacing-sm);
+          border-radius: var(--chennai-radius-sm);
+          
+          &.warning {
+            background: rgba(255, 107, 53, 0.1);
+          }
+        }
+      }
+      
+      .quality-item {
+        display: flex;
+        align-items: center;
+        gap: var(--chennai-spacing-md);
+        margin-bottom: var(--chennai-spacing-md);
+        
+        span:first-child {
+          min-width: 100px;
+          font-weight: 500;
+        }
+        
+        mat-progress-bar {
+          flex: 1;
+        }
+        
+        .value {
+          font-weight: 600;
+          color: var(--chennai-charcoal);
+        }
+      }
+    }
+    
+    .support-tickets {
+      .badge {
+        background: var(--chennai-temple-red);
+        color: white;
+        padding: 4px 8px;
+        border-radius: var(--chennai-radius-sm);
+        font-size: 0.75rem;
+      }
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-dashboard {
+    padding: var(--chennai-spacing-md);
+    
+    .metrics-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .content-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .dashboard-header {
+      flex-direction: column;
+      gap: var(--chennai-spacing-md);
+      text-align: center;
+    }
+  }
+}

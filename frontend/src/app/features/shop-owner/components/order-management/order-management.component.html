@@ -1,0 +1,285 @@
+<div class="order-management">
+  <!-- Stats Cards -->
+  <div class="stats-row">
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-icon">
+          <mat-icon>shopping_cart</mat-icon>
+        </div>
+        <div class="stat-info">
+          <h3>{{ todayStats.totalOrders }}</h3>
+          <p>Total Orders</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-icon pending">
+          <mat-icon>hourglass_empty</mat-icon>
+        </div>
+        <div class="stat-info">
+          <h3>{{ todayStats.pendingOrders }}</h3>
+          <p>Pending</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-icon completed">
+          <mat-icon>check_circle</mat-icon>
+        </div>
+        <div class="stat-info">
+          <h3>{{ todayStats.completedOrders }}</h3>
+          <p>Completed</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-icon revenue">
+          <mat-icon>payments</mat-icon>
+        </div>
+        <div class="stat-info">
+          <h3>₹{{ todayStats.revenue | number }}</h3>
+          <p>Today's Revenue</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card" (click)="toggleProfitDetails()" style="cursor: pointer;">
+      <mat-card-content>
+        <div class="stat-icon profit" style="background: #10b981;">
+          <mat-icon>trending_up</mat-icon>
+        </div>
+        <div class="stat-info">
+          <h3>₹{{ todayStats.totalProfit | number }}</h3>
+          <p>Today's Profit</p>
+          <small style="color: #10b981;">{{ todayStats.profitMargin }}% margin</small>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Profit Details Panel -->
+  <mat-card *ngIf="showProfitDetails && profitBreakdown" class="profit-details">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>analytics</mat-icon> Profit Analysis
+      </mat-card-title>
+      <button mat-icon-button (click)="toggleProfitDetails()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="profit-breakdown">
+        <div class="profit-item">
+          <span>Total Revenue:</span>
+          <strong>₹{{ profitBreakdown.totalRevenue | number }}</strong>
+        </div>
+        <div class="profit-item">
+          <span>Total Cost:</span>
+          <strong style="color: #ef4444;">-₹{{ profitBreakdown.totalCost | number }}</strong>
+        </div>
+        <div class="profit-item" style="border-top: 2px solid #10b981; padding-top: 10px;">
+          <span>Net Profit:</span>
+          <strong style="color: #10b981; font-size: 1.2em;">₹{{ profitBreakdown.totalProfit | number }}</strong>
+        </div>
+      </div>
+      
+      <div class="top-profitable-items" *ngIf="profitBreakdown.topProfitableItems">
+        <h4>Top Profitable Items</h4>
+        <div *ngFor="let item of profitBreakdown.topProfitableItems" class="item-profit">
+          <span>{{ item.name }}</span>
+          <span>₹{{ item.profit }} ({{ item.margin }}%)</span>
+        </div>
+      </div>
+      
+      <button mat-raised-button color="primary" (click)="sendDailySummary()" style="margin-top: 20px;">
+        <mat-icon>email</mat-icon> Send Daily Summary to Email
+      </button>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Orders Tabs -->
+  <mat-tab-group [(selectedIndex)]="selectedTab" class="orders-tabs">
+    <!-- Pending Orders Tab -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">hourglass_empty</mat-icon>
+        Pending ({{ pendingOrders.length }})
+      </ng-template>
+
+      <div class="orders-list">
+        <mat-card *ngFor="let order of pendingOrders" class="order-card pending">
+          <mat-card-header>
+            <mat-card-title>
+              Order #{{ order.orderNumber }}
+              <mat-chip [style.background-color]="getStatusColor(order.status)">
+                <mat-icon>{{ getStatusIcon(order.status) }}</mat-icon>
+                {{ order.status }}
+              </mat-chip>
+            </mat-card-title>
+            <mat-card-subtitle>
+              {{ order.createdAt | date:'short' }}
+            </mat-card-subtitle>
+          </mat-card-header>
+
+          <mat-card-content>
+            <div class="order-info">
+              <p><mat-icon>person</mat-icon> {{ order.customerName }}</p>
+              <p><mat-icon>phone</mat-icon> {{ order.customerPhone }}</p>
+              <p><mat-icon>location_on</mat-icon> {{ order.deliveryAddress }}</p>
+            </div>
+
+            <div class="order-items">
+              <h4>Items:</h4>
+              <div *ngFor="let item of order.items" class="item">
+                <span>{{ item.quantity }}x {{ item.productName }}</span>
+                <span>₹{{ item.totalPrice }}</span>
+              </div>
+            </div>
+
+            <div class="order-total">
+              <strong>Total: ₹{{ order.totalAmount }}</strong>
+              <mat-chip>{{ order.paymentMethod }}</mat-chip>
+            </div>
+          </mat-card-content>
+
+          <mat-card-actions>
+            <button mat-raised-button color="primary" (click)="acceptOrder(order)">
+              <mat-icon>check</mat-icon> Accept
+            </button>
+            <button mat-raised-button color="warn" (click)="rejectOrder(order)">
+              <mat-icon>close</mat-icon> Reject
+            </button>
+            <button mat-button (click)="viewOrderDetails(order)">
+              <mat-icon>visibility</mat-icon> Details
+            </button>
+          </mat-card-actions>
+        </mat-card>
+
+        <div *ngIf="pendingOrders.length === 0" class="empty-state">
+          <mat-icon>inbox</mat-icon>
+          <p>No pending orders</p>
+        </div>
+      </div>
+    </mat-tab>
+
+    <!-- Active Orders Tab -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">restaurant</mat-icon>
+        Active ({{ activeOrders.length }})
+      </ng-template>
+
+      <div class="orders-list">
+        <mat-card *ngFor="let order of activeOrders" class="order-card active">
+          <mat-card-header>
+            <mat-card-title>
+              Order #{{ order.orderNumber }}
+              <mat-chip [style.background-color]="getStatusColor(order.status)">
+                <mat-icon>{{ getStatusIcon(order.status) }}</mat-icon>
+                {{ order.status }}
+              </mat-chip>
+            </mat-card-title>
+            <mat-card-subtitle>
+              {{ order.estimatedPreparationTime }}
+            </mat-card-subtitle>
+          </mat-card-header>
+
+          <mat-card-content>
+            <div class="order-info">
+              <p><mat-icon>person</mat-icon> {{ order.customerName }}</p>
+              <p><mat-icon>phone</mat-icon> {{ order.customerPhone }}</p>
+            </div>
+
+            <div class="order-items">
+              <h4>Items:</h4>
+              <div *ngFor="let item of order.items" class="item">
+                <span>{{ item.quantity }}x {{ item.productName }}</span>
+                <span>₹{{ item.totalPrice }}</span>
+              </div>
+            </div>
+
+            <div class="order-total">
+              <strong>Total: ₹{{ order.totalAmount }}</strong>
+            </div>
+          </mat-card-content>
+
+          <mat-card-actions>
+            <button mat-raised-button color="accent" 
+                    *ngIf="order.status === 'CONFIRMED'"
+                    (click)="markAsPreparing(order)">
+              <mat-icon>restaurant</mat-icon> Start Preparing
+            </button>
+            <button mat-raised-button color="primary" 
+                    *ngIf="order.status === 'PREPARING'"
+                    (click)="markAsReady(order)">
+              <mat-icon>check</mat-icon> Ready for Pickup
+            </button>
+            <button mat-button (click)="viewOrderDetails(order)">
+              <mat-icon>visibility</mat-icon> Details
+            </button>
+            <button mat-button (click)="printOrder(order)">
+              <mat-icon>print</mat-icon> Print
+            </button>
+          </mat-card-actions>
+        </mat-card>
+
+        <div *ngIf="activeOrders.length === 0" class="empty-state">
+          <mat-icon>inbox</mat-icon>
+          <p>No active orders</p>
+        </div>
+      </div>
+    </mat-tab>
+
+    <!-- Completed Orders Tab -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">done_all</mat-icon>
+        Completed ({{ completedOrders.length }})
+      </ng-template>
+
+      <div class="orders-list">
+        <mat-card *ngFor="let order of completedOrders" class="order-card completed">
+          <mat-card-header>
+            <mat-card-title>
+              Order #{{ order.orderNumber }}
+              <mat-chip color="primary">
+                <mat-icon>done_all</mat-icon>
+                COMPLETED
+              </mat-chip>
+            </mat-card-title>
+            <mat-card-subtitle>
+              {{ order.createdAt | date:'short' }}
+            </mat-card-subtitle>
+          </mat-card-header>
+
+          <mat-card-content>
+            <div class="order-info">
+              <p><mat-icon>person</mat-icon> {{ order.customerName }}</p>
+              <p><mat-icon>payments</mat-icon> ₹{{ order.totalAmount }}</p>
+            </div>
+          </mat-card-content>
+
+          <mat-card-actions>
+            <button mat-button (click)="viewOrderDetails(order)">
+              <mat-icon>visibility</mat-icon> Details
+            </button>
+            <button mat-button (click)="printOrder(order)">
+              <mat-icon>print</mat-icon> Print
+            </button>
+          </mat-card-actions>
+        </mat-card>
+
+        <div *ngIf="completedOrders.length === 0" class="empty-state">
+          <mat-icon>inbox</mat-icon>
+          <p>No completed orders today</p>
+        </div>
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</div>

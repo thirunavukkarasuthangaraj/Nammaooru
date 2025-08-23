@@ -1,0 +1,196 @@
+<div class="container-fluid py-4">
+  <!-- Shop Info Header -->
+  <div class="row mb-4" *ngIf="shop">
+    <div class="col-12">
+      <div class="card bg-gradient-primary text-white">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <img [src]="shop.image || '/assets/images/shop-placeholder.jpg'" 
+                 class="rounded-circle me-3" 
+                 width="80" 
+                 height="80" 
+                 [alt]="shop.name">
+            <div class="flex-grow-1">
+              <h4 class="mb-1">{{shop.name}}</h4>
+              <p class="mb-0 opacity-75">{{shop.description}}</p>
+              <div class="mt-2">
+                <span class="me-3">
+                  <mat-icon class="small">star</mat-icon>
+                  {{shop.rating || '4.2'}}
+                </span>
+                <span class="me-3">
+                  <mat-icon class="small">access_time</mat-icon>
+                  {{shop.deliveryTime || '30-45'}} min
+                </span>
+                <span>
+                  <mat-icon class="small">currency_rupee</mat-icon>
+                  Delivery ₹{{shop.deliveryFee || '40'}}
+                </span>
+              </div>
+            </div>
+            <div class="text-end">
+              <button mat-raised-button 
+                      class="btn-outline-light"
+                      (click)="goBack()">
+                <mat-icon>arrow_back</mat-icon>
+                Back to Shops
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Filters Sidebar -->
+    <div class="col-lg-3 col-md-4">
+      <div class="card mb-4">
+        <div class="card-header">
+          <h6 class="mb-0">Filters</h6>
+        </div>
+        <div class="card-body">
+          <!-- Search -->
+          <mat-form-field appearance="outline" class="w-100 mb-3">
+            <mat-label>Search products...</mat-label>
+            <input matInput 
+                   [(ngModel)]="searchTerm" 
+                   (keyup)="onSearch()"
+                   placeholder="Enter product name">
+            <mat-icon matSuffix>search</mat-icon>
+          </mat-form-field>
+
+          <!-- Categories -->
+          <h6>Categories</h6>
+          <mat-radio-group [(ngModel)]="selectedCategory" 
+                           (change)="onCategoryChange()" 
+                           class="d-flex flex-column">
+            <mat-radio-button value="" class="mb-2">All Categories</mat-radio-button>
+            <mat-radio-button *ngFor="let category of categories" 
+                              [value]="category" 
+                              class="mb-2 text-capitalize">
+              {{category}}
+            </mat-radio-button>
+          </mat-radio-group>
+        </div>
+      </div>
+
+      <!-- Cart Summary -->
+      <div class="card" *ngIf="cartItemCount > 0">
+        <div class="card-header bg-success text-white">
+          <h6 class="mb-0">
+            <mat-icon class="me-2">shopping_cart</mat-icon>
+            Cart ({{cartItemCount}} items)
+          </h6>
+        </div>
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span>Subtotal:</span>
+            <span>₹{{cartTotal}}</span>
+          </div>
+          <button mat-raised-button 
+                  color="primary" 
+                  class="w-100"
+                  (click)="goToCart()">
+            View Cart & Checkout
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Products Grid -->
+    <div class="col-lg-9 col-md-8">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h6 class="mb-0">Products ({{products.length}})</h6>
+          <mat-form-field appearance="outline" class="sort-field">
+            <mat-label>Sort by</mat-label>
+            <mat-select [(value)]="sortBy" (selectionChange)="onSortChange()">
+              <mat-option value="name">Name</mat-option>
+              <mat-option value="price-low">Price: Low to High</mat-option>
+              <mat-option value="price-high">Price: High to Low</mat-option>
+              <mat-option value="popular">Most Popular</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+        <div class="card-body">
+          <!-- Loading -->
+          <div class="row" *ngIf="loading">
+            <div class="col-12 text-center py-5">
+              <mat-spinner diameter="50"></mat-spinner>
+              <p class="mt-3">Loading products...</p>
+            </div>
+          </div>
+
+          <!-- Products Grid -->
+          <div class="row" *ngIf="!loading && products.length > 0">
+            <div class="col-lg-4 col-md-6 col-sm-12 mb-4" *ngFor="let product of products">
+              <div class="card h-100 product-card">
+                <div class="position-relative">
+                  <img [src]="product.image || '/assets/images/product-placeholder.jpg'" 
+                       class="card-img-top product-image" 
+                       [alt]="product.name">
+                  <div class="position-absolute top-0 end-0 p-2" *ngIf="product.discount">
+                    <span class="badge bg-danger">{{product.discount}}% OFF</span>
+                  </div>
+                  <div class="position-absolute top-0 start-0 p-2" *ngIf="!product.inStock">
+                    <span class="badge bg-warning">Out of Stock</span>
+                  </div>
+                </div>
+                <div class="card-body">
+                  <h6 class="card-title">{{product.name}}</h6>
+                  <p class="card-text text-muted small">{{product.description}}</p>
+                  <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                      <span class="h6 text-success">₹{{product.price}}</span>
+                      <small class="text-muted">/{{product.unit}}</small>
+                    </div>
+                    <span class="badge bg-light text-dark">{{product.category}}</span>
+                  </div>
+                  
+                  <div class="d-flex justify-content-between align-items-center" *ngIf="product.inStock">
+                    <div class="quantity-controls" *ngIf="getProductCartQuantity(product.id) > 0">
+                      <button mat-icon-button 
+                              color="primary"
+                              (click)="decreaseQuantity(product)">
+                        <mat-icon>remove</mat-icon>
+                      </button>
+                      <span class="mx-2 fw-bold">{{getProductCartQuantity(product.id)}}</span>
+                      <button mat-icon-button 
+                              color="primary"
+                              (click)="increaseQuantity(product)">
+                        <mat-icon>add</mat-icon>
+                      </button>
+                    </div>
+                    <button mat-raised-button 
+                            color="primary" 
+                            *ngIf="getProductCartQuantity(product.id) === 0"
+                            (click)="addToCart(product)">
+                      <mat-icon>add_shopping_cart</mat-icon>
+                      Add to Cart
+                    </button>
+                  </div>
+                  
+                  <div *ngIf="!product.inStock" class="text-center">
+                    <button mat-button disabled>
+                      Out of Stock
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- No Products -->
+          <div class="row" *ngIf="!loading && products.length === 0">
+            <div class="col-12 text-center py-5">
+              <mat-icon class="display-1 text-muted">shopping_basket</mat-icon>
+              <h5 class="text-muted mt-3">No products found</h5>
+              <p class="text-muted">Try adjusting your search or category filter</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

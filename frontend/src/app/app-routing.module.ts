@@ -17,6 +17,10 @@ const routes: Routes = [
     loadChildren: () => import('./features/auth/auth.module').then(m => m.AuthModule)
   },
   {
+    path: 'customer',
+    loadChildren: () => import('./features/customer/customer.module').then(m => m.CustomerModule)
+  },
+  {
     path: 'test-delivery',
     loadChildren: () => import('./features/delivery/delivery.module').then(m => m.DeliveryModule)
   },
@@ -78,6 +82,18 @@ const routes: Routes = [
       {
         path: 'delivery',
         loadChildren: () => import('./features/delivery/delivery.module').then(m => m.DeliveryModule)
+      },
+      {
+        path: 'financial',
+        loadChildren: () => import('./features/financial-management/financial-management.module').then(m => m.FinancialManagementModule),
+        canActivate: [RoleGuard],
+        data: { roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN] }
+      },
+      {
+        path: 'inventory',
+        loadChildren: () => import('./features/inventory-management/inventory-management.module').then(m => m.InventoryManagementModule),
+        canActivate: [RoleGuard],
+        data: { roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SHOP_OWNER] }
       }
     ]
   },

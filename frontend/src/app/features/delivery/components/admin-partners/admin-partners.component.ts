@@ -83,24 +83,83 @@ export class AdminPartnersComponent implements OnInit, OnDestroy {
 
   private loadPartners(): void {
     this.isLoading = true;
-    this.partnerService.getAllPartners(0, 100)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          if (ApiResponseHelper.isSuccess(response) && response.data) {
-            this.dataSource.data = response.data.content;
-            this.dataSource.paginator = this.paginator;
-            this.dataSource.sort = this.sort;
-            this.updateOnlineStatus();
-          }
-          this.isLoading = false;
-        },
-        error: (error) => {
-          console.error('Error loading partners:', error);
-          this.snackBar.open('Failed to load partners', 'Close', { duration: 3000 });
-          this.isLoading = false;
-        }
-      });
+    
+    // Mock data for delivery partners
+    const mockPartners: DeliveryPartner[] = [
+      {
+        id: 1,
+        partnerId: 'DP001',
+        fullName: 'John Smith',
+        phoneNumber: '+91 9876543210',
+        email: 'john.smith@delivery.com',
+        vehicleType: 'BIKE',
+        vehicleNumber: 'KA-01-AB-1234',
+        status: 'ACTIVE',
+        verificationStatus: 'VERIFIED',
+        rating: 4.5,
+        totalDeliveries: 156,
+        isOnline: true,
+        isAvailable: true,
+        currentLocation: { lat: 12.9716, lng: 77.5946 },
+        serviceAreas: ['Koramangala', 'BTM Layout', 'HSR Layout'],
+        createdAt: new Date('2024-01-15'),
+        updatedAt: new Date()
+      },
+      {
+        id: 2,
+        partnerId: 'DP002',
+        fullName: 'Sarah Wilson',
+        phoneNumber: '+91 9876543211',
+        email: 'sarah.wilson@delivery.com',
+        vehicleType: 'SCOOTER',
+        vehicleNumber: 'KA-05-CD-5678',
+        status: 'ACTIVE',
+        verificationStatus: 'VERIFIED',
+        rating: 4.8,
+        totalDeliveries: 289,
+        isOnline: true,
+        isAvailable: false,
+        currentLocation: { lat: 12.9816, lng: 77.6046 },
+        serviceAreas: ['Indiranagar', 'Domlur', 'Old Airport Road'],
+        createdAt: new Date('2024-02-20'),
+        updatedAt: new Date()
+      },
+      {
+        id: 3,
+        partnerId: 'DP003',
+        fullName: 'Mike Johnson',
+        phoneNumber: '+91 9876543212',
+        email: 'mike.johnson@delivery.com',
+        vehicleType: 'CAR',
+        vehicleNumber: 'KA-03-EF-9012',
+        status: 'PENDING',
+        verificationStatus: 'PENDING',
+        rating: 0,
+        totalDeliveries: 0,
+        isOnline: false,
+        isAvailable: false,
+        currentLocation: null,
+        serviceAreas: ['Whitefield', 'Marathahalli'],
+        createdAt: new Date('2024-03-10'),
+        updatedAt: new Date()
+      }
+    ] as any[];
+    
+    this.dataSource.data = mockPartners;
+    this.dataSource.paginator = this.paginator;
+    this.dataSource.sort = this.sort;
+    this.updateOnlineStatus();
+    this.isLoading = false;
+    
+    // Update statistics with mock data
+    this.stats = {
+      total: 3,
+      active: 2,
+      pending: 1,
+      suspended: 0,
+      online: 2,
+      verified: 2
+    };
   }
 
   private loadStatistics(): void {

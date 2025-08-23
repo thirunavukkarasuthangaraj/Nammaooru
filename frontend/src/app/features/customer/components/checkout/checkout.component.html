@@ -1,0 +1,312 @@
+<div class="container-fluid py-4" *ngIf="!orderPlaced">
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <mat-icon class="me-2">payment</mat-icon>
+            Checkout
+          </h5>
+        </div>
+        <div class="card-body">
+          <form [formGroup]="checkoutForm" (ngSubmit)="placeOrder()">
+            <div class="row">
+              <!-- Customer Information -->
+              <div class="col-lg-8">
+                <div class="card mb-4">
+                  <div class="card-header">
+                    <h6 class="mb-0">
+                      <mat-icon class="me-2">person</mat-icon>
+                      Customer Information
+                    </h6>
+                  </div>
+                  <div class="card-body">
+                    <div class="row">
+                      <div class="col-md-6">
+                        <mat-form-field appearance="outline" class="w-100">
+                          <mat-label>First Name</mat-label>
+                          <input matInput formControlName="firstName" placeholder="Enter first name">
+                          <mat-error *ngIf="checkoutForm.get('firstName')?.hasError('required')">
+                            First name is required
+                          </mat-error>
+                        </mat-form-field>
+                      </div>
+                      <div class="col-md-6">
+                        <mat-form-field appearance="outline" class="w-100">
+                          <mat-label>Last Name</mat-label>
+                          <input matInput formControlName="lastName" placeholder="Enter last name">
+                          <mat-error *ngIf="checkoutForm.get('lastName')?.hasError('required')">
+                            Last name is required
+                          </mat-error>
+                        </mat-form-field>
+                      </div>
+                    </div>
+                    <div class="row">
+                      <div class="col-md-6">
+                        <mat-form-field appearance="outline" class="w-100">
+                          <mat-label>Phone Number</mat-label>
+                          <input matInput formControlName="phone" placeholder="Enter phone number">
+                          <mat-error *ngIf="checkoutForm.get('phone')?.hasError('required')">
+                            Phone number is required
+                          </mat-error>
+                          <mat-error *ngIf="checkoutForm.get('phone')?.hasError('pattern')">
+                            Please enter a valid phone number
+                          </mat-error>
+                        </mat-form-field>
+                      </div>
+                      <div class="col-md-6">
+                        <mat-form-field appearance="outline" class="w-100">
+                          <mat-label>Email</mat-label>
+                          <input matInput formControlName="email" placeholder="Enter email address">
+                          <mat-error *ngIf="checkoutForm.get('email')?.hasError('required')">
+                            Email is required
+                          </mat-error>
+                          <mat-error *ngIf="checkoutForm.get('email')?.hasError('email')">
+                            Please enter a valid email
+                          </mat-error>
+                        </mat-form-field>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Delivery Address -->
+                <div class="card mb-4">
+                  <div class="card-header">
+                    <h6 class="mb-0">
+                      <mat-icon class="me-2">location_on</mat-icon>
+                      Delivery Address
+                    </h6>
+                  </div>
+                  <div class="card-body">
+                    <div class="row">
+                      <div class="col-12">
+                        <mat-form-field appearance="outline" class="w-100">
+                          <mat-label>Street Address</mat-label>
+                          <textarea matInput 
+                                    formControlName="streetAddress" 
+                                    placeholder="Enter complete street address"
+                                    rows="2"></textarea>
+                          <mat-error *ngIf="checkoutForm.get('streetAddress')?.hasError('required')">
+                            Street address is required
+                          </mat-error>
+                        </mat-form-field>
+                      </div>
+                    </div>
+                    <div class="row">
+                      <div class="col-md-6">
+                        <mat-form-field appearance="outline" class="w-100">
+                          <mat-label>Landmark</mat-label>
+                          <input matInput formControlName="landmark" placeholder="Near landmark (optional)">
+                        </mat-form-field>
+                      </div>
+                      <div class="col-md-6">
+                        <mat-form-field appearance="outline" class="w-100">
+                          <mat-label>Pincode</mat-label>
+                          <input matInput formControlName="pincode" placeholder="Enter pincode">
+                          <mat-error *ngIf="checkoutForm.get('pincode')?.hasError('required')">
+                            Pincode is required
+                          </mat-error>
+                          <mat-error *ngIf="checkoutForm.get('pincode')?.hasError('pattern')">
+                            Please enter a valid pincode
+                          </mat-error>
+                        </mat-form-field>
+                      </div>
+                    </div>
+                    <div class="row">
+                      <div class="col-md-6">
+                        <mat-form-field appearance="outline" class="w-100">
+                          <mat-label>City</mat-label>
+                          <input matInput formControlName="city" placeholder="Enter city">
+                          <mat-error *ngIf="checkoutForm.get('city')?.hasError('required')">
+                            City is required
+                          </mat-error>
+                        </mat-form-field>
+                      </div>
+                      <div class="col-md-6">
+                        <mat-form-field appearance="outline" class="w-100">
+                          <mat-label>State</mat-label>
+                          <input matInput formControlName="state" placeholder="Enter state">
+                          <mat-error *ngIf="checkoutForm.get('state')?.hasError('required')">
+                            State is required
+                          </mat-error>
+                        </mat-form-field>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Special Instructions -->
+                <div class="card mb-4">
+                  <div class="card-header">
+                    <h6 class="mb-0">
+                      <mat-icon class="me-2">notes</mat-icon>
+                      Special Instructions (Optional)
+                    </h6>
+                  </div>
+                  <div class="card-body">
+                    <mat-form-field appearance="outline" class="w-100">
+                      <mat-label>Delivery Instructions</mat-label>
+                      <textarea matInput 
+                                formControlName="notes" 
+                                placeholder="Any special delivery instructions..."
+                                rows="3"></textarea>
+                    </mat-form-field>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Order Summary -->
+              <div class="col-lg-4">
+                <div class="card mb-4">
+                  <div class="card-header">
+                    <h6 class="mb-0">Order Summary</h6>
+                  </div>
+                  <div class="card-body">
+                    <!-- Shop Info -->
+                    <div class="d-flex align-items-center mb-3 p-2 bg-light rounded">
+                      <mat-icon class="me-2 text-primary">store</mat-icon>
+                      <div>
+                        <small class="text-muted">Ordering from</small>
+                        <div class="fw-bold">{{cart.shopName}}</div>
+                      </div>
+                    </div>
+
+                    <!-- Items -->
+                    <div class="order-items mb-3">
+                      <div class="d-flex justify-content-between align-items-center mb-2" 
+                           *ngFor="let item of cart.items">
+                        <div class="flex-grow-1">
+                          <small class="fw-bold">{{item.productName}}</small>
+                          <small class="text-muted d-block">{{item.quantity}} × ₹{{item.price}}</small>
+                        </div>
+                        <small class="fw-bold">₹{{item.price * item.quantity}}</small>
+                      </div>
+                    </div>
+
+                    <hr>
+                    
+                    <!-- Pricing -->
+                    <div class="d-flex justify-content-between mb-2">
+                      <span>Items Subtotal:</span>
+                      <span>₹{{cart.subtotal}}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                      <span>Delivery Fee:</span>
+                      <span>₹{{cart.deliveryFee}}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2" *ngIf="cart.discount > 0">
+                      <span class="text-success">Discount:</span>
+                      <span class="text-success">-₹{{cart.discount}}</span>
+                    </div>
+                    <hr>
+                    <div class="d-flex justify-content-between mb-3">
+                      <strong>Total Amount:</strong>
+                      <strong class="text-success">₹{{cart.total}}</strong>
+                    </div>
+
+                    <!-- Payment Method -->
+                    <div class="alert alert-info small mb-3">
+                      <mat-icon class="me-2 small">payments</mat-icon>
+                      <strong>Payment Method:</strong> Cash on Delivery
+                      <small class="d-block mt-1">Pay ₹{{cart.total}} when your order is delivered</small>
+                    </div>
+
+                    <!-- Terms and Conditions -->
+                    <div class="mb-3">
+                      <mat-checkbox formControlName="agreeToTerms" color="primary">
+                        I agree to the <a href="/terms" target="_blank">terms and conditions</a>
+                      </mat-checkbox>
+                      <mat-error *ngIf="checkoutForm.get('agreeToTerms')?.hasError('required') && checkoutForm.get('agreeToTerms')?.touched">
+                        Please accept terms and conditions
+                      </mat-error>
+                    </div>
+
+                    <!-- Place Order Button -->
+                    <button mat-raised-button 
+                            color="primary" 
+                            size="large"
+                            type="submit"
+                            class="w-100"
+                            [disabled]="checkoutForm.invalid || placingOrder">
+                      <mat-icon *ngIf="!placingOrder">shopping_bag</mat-icon>
+                      <mat-spinner *ngIf="placingOrder" diameter="20" class="me-2"></mat-spinner>
+                      {{placingOrder ? 'Placing Order...' : 'Place Order'}}
+                    </button>
+
+                    <!-- Back to Cart -->
+                    <button mat-button 
+                            color="accent" 
+                            class="w-100 mt-2"
+                            type="button"
+                            (click)="goBackToCart()"
+                            [disabled]="placingOrder">
+                      <mat-icon>arrow_back</mat-icon>
+                      Back to Cart
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Estimated Delivery -->
+                <div class="card">
+                  <div class="card-body">
+                    <div class="text-center">
+                      <mat-icon class="text-success mb-2">local_shipping</mat-icon>
+                      <h6>Estimated Delivery</h6>
+                      <p class="text-muted small mb-0">30-45 minutes after order confirmation</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Order Success -->
+<div class="container-fluid py-4" *ngIf="orderPlaced">
+  <div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+      <div class="card">
+        <div class="card-body text-center py-5">
+          <mat-icon class="display-1 text-success mb-3">check_circle</mat-icon>
+          <h4 class="text-success mb-3">Order Placed Successfully!</h4>
+          <p class="text-muted mb-4">
+            Your order has been placed successfully. You will receive a confirmation notification shortly.
+          </p>
+          
+          <div class="alert alert-info mb-4">
+            <div class="row text-start">
+              <div class="col-6">
+                <strong>Order Number:</strong><br>
+                <span class="text-primary">{{orderResponse?.orderNumber}}</span>
+              </div>
+              <div class="col-6">
+                <strong>Total Amount:</strong><br>
+                <span class="text-success">₹{{cart.total}}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+            <button mat-raised-button 
+                    color="primary"
+                    (click)="trackOrder()">
+              <mat-icon>visibility</mat-icon>
+              Track Order
+            </button>
+            <button mat-button 
+                    color="accent"
+                    (click)="continueShopping()">
+              <mat-icon>store</mat-icon>
+              Continue Shopping
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

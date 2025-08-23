@@ -1,6 +1,9 @@
-/* Professional Shop Management System - Inspired by Modern E-commerce Platforms */
+/* NammaOoru Shop Management System - Chennai Themed */
 @use '@angular/material' as mat;
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700&family=Noto+Sans+Tamil:wght@300;400;500;600;700&display=swap');
+
+// Import Chennai Theme
+@import 'app/shared/themes/chennai-theme.scss';
 
 /* Define Professional Theme */
 @include mat.core();

@@ -2,6 +2,8 @@ package com.shopmanagement.service;
 
 import com.shopmanagement.dto.order.OrderRequest;
 import com.shopmanagement.dto.order.OrderResponse;
+import com.shopmanagement.dto.order.CustomerOrderRequest;
+import com.shopmanagement.dto.order.OrderTrackingResponse;
 import com.shopmanagement.entity.Customer;
 import com.shopmanagement.entity.Order;
 import com.shopmanagement.entity.OrderItem;
@@ -42,6 +44,7 @@ public class OrderService {
     private final ShopProductRepository shopProductRepository;
     private final EmailService emailService;
     private final InvoiceService invoiceService;
+    private final FirebaseNotificationService firebaseNotificationService;
     
     @Transactional
     public OrderResponse createOrder(OrderRequest request) {
@@ -599,5 +602,165 @@ public class OrderService {
                 .orderAge(orderAge)
                 .itemCount(order.getOrderItems().size())
                 .build();
+    }
+    
+    @Transactional
+    public OrderResponse createCustomerOrder(CustomerOrderRequest request) {
+        log.info("Creating customer order for shop: {}", request.getShopId());
+        
+        // Create a customer if not exists (guest checkout)
+        Customer customer = null;
+        if (request.getCustomerId() != null) {
+            customer = customerRepository.findById(request.getCustomerId())
+                    .orElseThrow(() -> new RuntimeException("Customer not found"));
+        } else {
+            // Create guest customer
+            customer = Customer.builder()
+                    .firstName(request.getCustomerInfo().getFirstName())
+                    .lastName(request.getCustomerInfo().getLastName())
+                    .email(request.getCustomerInfo().getEmail())
+                    .mobileNumber(request.getCustomerInfo().getPhone())
+                    .isActive(true)
+                    .build();
+            customer = customerRepository.save(customer);
+        }
+        
+        // Validate shop
+        Shop shop = shopRepository.findById(request.getShopId())
+                .orElseThrow(() -> new RuntimeException("Shop not found"));
+        
+        // Create order items
+        List<OrderItem> orderItems = request.getItems().stream()
+                .map(itemRequest -> {
+                    ShopProduct shopProduct = shopProductRepository.findById(itemRequest.getProductId())
+                            .orElseThrow(() -> new RuntimeException("Product not found"));
+                    
+                    BigDecimal itemTotal = itemRequest.getPrice()
+                            .multiply(BigDecimal.valueOf(itemRequest.getQuantity()));
+                    
+                    return OrderItem.builder()
+                            .shopProduct(shopProduct)
+                            .quantity(itemRequest.getQuantity())
+                            .unitPrice(itemRequest.getPrice())
+                            .totalPrice(itemTotal)
+                            .productName(itemRequest.getProductName())
+                            .productDescription(shopProduct.getMasterProduct().getDescription())
+                            .productSku(shopProduct.getMasterProduct().getSku())
+                            .productImageUrl(shopProduct.getMasterProduct().getPrimaryImageUrl())
+                            .build();
+                })
+                .collect(Collectors.toList());
+        
+        // Create order
+        Order order = Order.builder()
+                .customer(customer)
+                .shop(shop)
+                .status(Order.OrderStatus.PENDING)
+                .paymentStatus(Order.PaymentStatus.PENDING)
+                .paymentMethod(Order.PaymentMethod.valueOf(request.getPaymentMethod()))
+                .subtotal(request.getSubtotal())
+                .taxAmount(BigDecimal.ZERO)
+                .deliveryFee(request.getDeliveryFee())
+                .discountAmount(request.getDiscount())
+                .totalAmount(request.getTotal())
+                .notes(request.getNotes())
+                .deliveryAddress(request.getDeliveryAddress().getStreetAddress())
+                .deliveryCity(request.getDeliveryAddress().getCity())
+                .deliveryState(request.getDeliveryAddress().getState())
+                .deliveryPostalCode(request.getDeliveryAddress().getPincode())
+                .deliveryPhone(request.getCustomerInfo().getPhone())
+                .deliveryContactName(request.getCustomerInfo().getFirstName() + " " + request.getCustomerInfo().getLastName())
+                .estimatedDeliveryTime(LocalDateTime.now().plusMinutes(30))
+                .createdBy("customer")
+                .updatedBy("customer")
+                .build();
+        
+        // Set order reference in items
+        orderItems.forEach(item -> item.setOrder(order));
+        order.setOrderItems(orderItems);
+        
+        Order savedOrder = orderRepository.save(order);
+        
+        log.info("Customer order created successfully: {}", savedOrder.getOrderNumber());
+        return mapToResponse(savedOrder);
+    }
+    
+    public OrderTrackingResponse getOrderTracking(String orderNumber) {
+        log.info("Getting tracking for order: {}", orderNumber);
+        
+        Order order = orderRepository.findByOrderNumberWithOrderItems(orderNumber)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+        
+        // Create status history
+        List<OrderTrackingResponse.OrderStatusUpdate> statusHistory = List.of(
+            new OrderTrackingResponse.OrderStatusUpdate() {{
+                setStatus("PLACED");
+                setTimestamp(order.getCreatedAt());
+                setMessage("Order placed successfully");
+            }},
+            new OrderTrackingResponse.OrderStatusUpdate() {{
+                setStatus("CONFIRMED");
+                setTimestamp(order.getStatus().ordinal() >= Order.OrderStatus.CONFIRMED.ordinal() ? 
+                    order.getUpdatedAt() : null);
+                setMessage("Order confirmed by restaurant");
+            }},
+            new OrderTrackingResponse.OrderStatusUpdate() {{
+                setStatus("PREPARING");
+                setTimestamp(order.getStatus().ordinal() >= Order.OrderStatus.PREPARING.ordinal() ? 
+                    order.getUpdatedAt() : null);
+                setMessage("Order is being prepared");
+            }}
+        );
+        
+        // Create delivery partner info (mock for now)
+        OrderTrackingResponse.DeliveryPartnerInfo deliveryPartner = null;
+        if (order.getStatus().ordinal() >= Order.OrderStatus.OUT_FOR_DELIVERY.ordinal()) {
+            deliveryPartner = new OrderTrackingResponse.DeliveryPartnerInfo();
+            deliveryPartner.setId(1L);
+            deliveryPartner.setName("Ravi Kumar");
+            deliveryPartner.setPhone("+91 98765 43210");
+            deliveryPartner.setVehicleType("Bike");
+            deliveryPartner.setVehicleNumber("TN01AB1234");
+            deliveryPartner.setRating(4.8);
+        }
+        
+        OrderTrackingResponse response = new OrderTrackingResponse();
+        response.setOrderId(order.getId());
+        response.setOrderNumber(order.getOrderNumber());
+        response.setStatus(order.getStatus().name());
+        response.setTotal(order.getTotalAmount());
+        response.setStatusHistory(statusHistory);
+        response.setDeliveryPartner(deliveryPartner);
+        response.setEstimatedDeliveryTime("20 minutes");
+        
+        return response;
+    }
+    
+    public List<OrderResponse> getCustomerOrders(Long customerId, int page, int size) {
+        log.info("Getting orders for customer: {}", customerId);
+        
+        if (customerId == null) {
+            return List.of(); // Return empty list for guest customers
+        }
+        
+        Page<Order> orders = getOrdersByCustomer(customerId, page, size);
+        return orders.getContent().stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+    
+    public void rateOrder(Long orderId, int rating, String review) {
+        log.info("Rating order: {} with rating: {}", orderId, rating);
+        
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+        
+        if (order.getStatus() != Order.OrderStatus.DELIVERED) {
+            throw new RuntimeException("Order must be delivered to rate");
+        }
+        
+        // Add rating logic here (would need OrderRating entity)
+        // For now, just log the rating
+        log.info("Order {} rated with {} stars. Review: {}", orderId, rating, review);
     }
 }

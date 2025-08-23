@@ -1,0 +1,313 @@
+// Chennai-themed color palette inspired by Tamil culture and Marina Beach
+@use '@angular/material' as mat;
+
+// Define Chennai-inspired colors
+$chennai-primary-palette: (
+  50: #e3f2fd,
+  100: #bbdefb,
+  200: #90caf9,
+  300: #64b5f6,
+  400: #42a5f5,
+  500: #FF6B35, // Saffron - represents Tamil culture
+  600: #FF5722,
+  700: #F4511E,
+  800: #E64A19,
+  900: #D84315,
+  A100: #ff8a65,
+  A200: #ff6e40,
+  A400: #ff3d00,
+  A700: #dd2c00,
+  contrast: (
+    50: rgba(black, 0.87),
+    100: rgba(black, 0.87),
+    200: rgba(black, 0.87),
+    300: rgba(black, 0.87),
+    400: rgba(black, 0.87),
+    500: white,
+    600: white,
+    700: white,
+    800: white,
+    900: white,
+    A100: rgba(black, 0.87),
+    A200: rgba(black, 0.87),
+    A400: white,
+    A700: white
+  )
+);
+
+$chennai-accent-palette: (
+  50: #fce4ec,
+  100: #f8bbd0,
+  200: #f48fb1,
+  300: #f06292,
+  400: #ec407a,
+  500: #FFD700, // Gold - represents prosperity
+  600: #FFC107,
+  700: #FFB300,
+  800: #FFA000,
+  900: #FF8F00,
+  A100: #ff80ab,
+  A200: #ff4081,
+  A400: #f50057,
+  A700: #c51162,
+  contrast: (
+    50: rgba(black, 0.87),
+    100: rgba(black, 0.87),
+    200: rgba(black, 0.87),
+    300: rgba(black, 0.87),
+    400: rgba(black, 0.87),
+    500: rgba(black, 0.87),
+    600: rgba(black, 0.87),
+    700: rgba(black, 0.87),
+    800: rgba(black, 0.87),
+    900: rgba(black, 0.87),
+    A100: rgba(black, 0.87),
+    A200: white,
+    A400: white,
+    A700: white
+  )
+);
+
+$chennai-warn-palette: (
+  50: #ffebee,
+  100: #ffcdd2,
+  200: #ef9a9a,
+  300: #e57373,
+  400: #ef5350,
+  500: #f44336,
+  600: #e53935,
+  700: #d32f2f,
+  800: #c62828,
+  900: #b71c1c,
+  A100: #ff8a80,
+  A200: #ff5252,
+  A400: #ff1744,
+  A700: #d50000,
+  contrast: (
+    50: rgba(black, 0.87),
+    100: rgba(black, 0.87),
+    200: rgba(black, 0.87),
+    300: rgba(black, 0.87),
+    400: rgba(black, 0.87),
+    500: white,
+    600: white,
+    700: white,
+    800: white,
+    900: white,
+    A100: rgba(black, 0.87),
+    A200: white,
+    A400: white,
+    A700: white
+  )
+);
+
+// Create Material theme
+$chennai-primary: mat.define-palette($chennai-primary-palette, 500);
+$chennai-accent: mat.define-palette($chennai-accent-palette, 500);
+$chennai-warn: mat.define-palette($chennai-warn-palette);
+
+// Light theme
+$chennai-light-theme: mat.define-light-theme((
+  color: (
+    primary: $chennai-primary,
+    accent: $chennai-accent,
+    warn: $chennai-warn
+  ),
+  typography: mat.define-typography-config(
+    $font-family: '"Roboto", "Noto Sans Tamil", sans-serif'
+  ),
+  density: 0
+));
+
+// Dark theme
+$chennai-dark-theme: mat.define-dark-theme((
+  color: (
+    primary: $chennai-primary,
+    accent: $chennai-accent,
+    warn: $chennai-warn
+  ),
+  typography: mat.define-typography-config(
+    $font-family: '"Roboto", "Noto Sans Tamil", sans-serif'
+  ),
+  density: 0
+));
+
+// Custom Chennai-specific styles
+:root {
+  // Primary colors
+  --chennai-saffron: #FF6B35;
+  --chennai-gold: #FFD700;
+  --chennai-marina-blue: #006994;
+  --chennai-temple-red: #C41E3A;
+  
+  // Secondary colors
+  --chennai-jasmine-white: #F8F8FF;
+  --chennai-banana-leaf-green: #4CAF50;
+  --chennai-sand-beige: #F5E6D3;
+  --chennai-evening-purple: #6B46C1;
+  
+  // Neutral colors
+  --chennai-charcoal: #2C3E50;
+  --chennai-ash-gray: #95A5A6;
+  --chennai-cloud-white: #ECF0F1;
+  
+  // Gradient backgrounds
+  --chennai-sunrise: linear-gradient(135deg, #FF6B35 0%, #FFD700 100%);
+  --chennai-marina: linear-gradient(135deg, #006994 0%, #00ACC1 100%);
+  --chennai-sunset: linear-gradient(135deg, #FF6B35 0%, #C41E3A 100%);
+  
+  // Shadows
+  --chennai-shadow-sm: 0 2px 4px rgba(44, 62, 80, 0.1);
+  --chennai-shadow-md: 0 4px 8px rgba(44, 62, 80, 0.15);
+  --chennai-shadow-lg: 0 8px 16px rgba(44, 62, 80, 0.2);
+  --chennai-shadow-xl: 0 12px 24px rgba(44, 62, 80, 0.25);
+  
+  // Border radius
+  --chennai-radius-sm: 4px;
+  --chennai-radius-md: 8px;
+  --chennai-radius-lg: 12px;
+  --chennai-radius-xl: 16px;
+  --chennai-radius-round: 50%;
+  
+  // Spacing
+  --chennai-spacing-xs: 4px;
+  --chennai-spacing-sm: 8px;
+  --chennai-spacing-md: 16px;
+  --chennai-spacing-lg: 24px;
+  --chennai-spacing-xl: 32px;
+  --chennai-spacing-xxl: 48px;
+}
+
+// Chennai-themed component styles
+.chennai-card {
+  background: var(--chennai-jasmine-white);
+  border-radius: var(--chennai-radius-lg);
+  box-shadow: var(--chennai-shadow-md);
+  padding: var(--chennai-spacing-lg);
+  transition: all 0.3s ease;
+  
+  &:hover {
+    box-shadow: var(--chennai-shadow-xl);
+    transform: translateY(-2px);
+  }
+}
+
+.chennai-button {
+  background: var(--chennai-sunrise);
+  color: white;
+  border: none;
+  border-radius: var(--chennai-radius-md);
+  padding: var(--chennai-spacing-sm) var(--chennai-spacing-lg);
+  font-weight: 500;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: scale(1.05);
+    box-shadow: var(--chennai-shadow-lg);
+  }
+}
+
+.chennai-header {
+  background: var(--chennai-marina);
+  color: white;
+  padding: var(--chennai-spacing-md);
+  box-shadow: var(--chennai-shadow-md);
+}
+
+// Tamil typography
+.tamil-font {
+  font-family: 'Noto Sans Tamil', sans-serif;
+}
+
+// Animations
+@keyframes chennai-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes chennai-pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.chennai-animate {
+  animation: chennai-fade-in 0.5s ease-out;
+}
+
+.chennai-pulse {
+  animation: chennai-pulse 2s infinite;
+}
+
+// Dashboard specific styles
+.chennai-dashboard {
+  background: linear-gradient(135deg, #F5E6D3 0%, #ECF0F1 100%);
+  min-height: 100vh;
+  
+  .metric-card {
+    @extend .chennai-card;
+    
+    .metric-icon {
+      background: var(--chennai-sunrise);
+      color: white;
+      width: 48px;
+      height: 48px;
+      border-radius: var(--chennai-radius-round);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .metric-value {
+      font-size: 2rem;
+      font-weight: bold;
+      color: var(--chennai-charcoal);
+    }
+    
+    .metric-label {
+      color: var(--chennai-ash-gray);
+      font-size: 0.875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+  }
+}
+
+// Responsive breakpoints
+$chennai-breakpoints: (
+  xs: 0,
+  sm: 576px,
+  md: 768px,
+  lg: 992px,
+  xl: 1200px,
+  xxl: 1400px
+);
+
+// Include Material theme
+@include mat.all-component-themes($chennai-light-theme);
+
+// Dark mode support
+.dark-mode {
+  @include mat.all-component-colors($chennai-dark-theme);
+  
+  .chennai-card {
+    background: #2C3E50;
+    color: white;
+  }
+  
+  .chennai-dashboard {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2C3E50 100%);
+  }
+}

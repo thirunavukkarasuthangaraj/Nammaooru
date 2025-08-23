@@ -37,22 +37,78 @@ export class NotificationsComponent implements OnInit, OnDestroy {
 
   loadNotifications(): void {
     this.loading = true;
-    this.notificationService.getAllNotifications().subscribe({
-      next: (response) => {
-        this.notifications = response.content;
-        this.loading = false;
+    
+    // Mock notifications with accept/reject functionality
+    this.notifications = [
+      {
+        id: 1,
+        title: 'New Shop Registration',
+        message: 'Fresh Foods Market has applied to join your platform. Please review and approve their application.',
+        type: 'SHOP',
+        priority: 'HIGH',
+        isRead: false,
+        createdAt: new Date('2025-01-22T10:30:00'),
+        action: 'PENDING_APPROVAL',
+        actionData: { shopId: 123, shopName: 'Fresh Foods Market' }
       },
-      error: (error) => {
-        console.error('Error loading notifications:', error);
-        Swal.fire({
-          title: 'Error!',
-          text: 'Failed to load notifications. Please try again.',
-          icon: 'error',
-          confirmButtonText: 'OK'
-        });
-        this.loading = false;
+      {
+        id: 2,
+        title: 'Delivery Partner Application',
+        message: 'John Smith has applied to become a delivery partner. Background check completed.',
+        type: 'USER',
+        priority: 'MEDIUM',
+        isRead: false,
+        createdAt: new Date('2025-01-22T09:15:00'),
+        action: 'PENDING_APPROVAL',
+        actionData: { partnerId: 456, partnerName: 'John Smith' }
+      },
+      {
+        id: 3,
+        title: 'Product Approval Request',
+        message: 'Organic Apples product needs approval for sale on your platform.',
+        type: 'INVENTORY',
+        priority: 'MEDIUM',
+        isRead: false,
+        createdAt: new Date('2025-01-22T08:45:00'),
+        action: 'PENDING_APPROVAL',
+        actionData: { productId: 789, productName: 'Organic Apples' }
+      },
+      {
+        id: 4,
+        title: 'Order Cancellation Request',
+        message: 'Customer Sarah Wilson has requested to cancel order #ORD-2025-002 (₹1,200)',
+        type: 'ORDER',
+        priority: 'HIGH',
+        isRead: false,
+        createdAt: new Date('2025-01-22T07:20:00'),
+        action: 'PENDING_APPROVAL',
+        actionData: { orderId: 'ORD-2025-002', customerName: 'Sarah Wilson', amount: 1200 }
+      },
+      {
+        id: 5,
+        title: 'Refund Request',
+        message: 'Mike Johnson has requested a refund for damaged goods (₹675)',
+        type: 'PAYMENT',
+        priority: 'HIGH',
+        isRead: true,
+        createdAt: new Date('2025-01-21T16:10:00'),
+        action: 'APPROVED',
+        actionData: { refundId: 101, customerName: 'Mike Johnson', amount: 675 }
+      },
+      {
+        id: 6,
+        title: 'Low Stock Alert',
+        message: 'Fresh Bread inventory is running low (3 items remaining)',
+        type: 'INVENTORY',
+        priority: 'LOW',
+        isRead: true,
+        createdAt: new Date('2025-01-21T14:30:00'),
+        action: undefined,
+        actionData: undefined
       }
-    });
+    ];
+    
+    this.loading = false;
   }
 
   get unreadNotifications(): Notification[] {
@@ -436,6 +492,67 @@ export class NotificationsComponent implements OnInit, OnDestroy {
       error: (error) => {
         console.error('Error loading notifications quietly:', error);
         // Don't show error message for background refresh failures
+      }
+    });
+  }
+
+  // Accept/Reject functionality
+  acceptNotification(notification: any): void {
+    Swal.fire({
+      title: 'Accept Request',
+      text: `Are you sure you want to accept this ${notification.type.toLowerCase()} request?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Accept',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#4caf50'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        // Update notification status
+        notification.action = 'APPROVED';
+        notification.isRead = true;
+        
+        Swal.fire({
+          title: 'Accepted!',
+          text: `${notification.actionData?.shopName || notification.actionData?.partnerName || notification.actionData?.productName || 'Request'} has been approved.`,
+          icon: 'success',
+          timer: 3000,
+          showConfirmButton: false
+        });
+      }
+    });
+  }
+
+  rejectNotification(notification: any): void {
+    Swal.fire({
+      title: 'Reject Request',
+      html: `
+        <p>Are you sure you want to reject this ${notification.type.toLowerCase()} request?</p>
+        <textarea id="reject-reason" class="swal2-textarea" placeholder="Please provide a reason for rejection (optional)"></textarea>
+      `,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Reject',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#f44336',
+      preConfirm: () => {
+        const reason = (document.getElementById('reject-reason') as HTMLTextAreaElement).value;
+        return reason;
+      }
+    }).then((result) => {
+      if (result.isConfirmed) {
+        // Update notification status
+        notification.action = 'REJECTED';
+        notification.isRead = true;
+        notification.rejectionReason = result.value;
+        
+        Swal.fire({
+          title: 'Rejected!',
+          text: `${notification.actionData?.shopName || notification.actionData?.partnerName || notification.actionData?.productName || 'Request'} has been rejected.`,
+          icon: 'success',
+          timer: 3000,
+          showConfirmButton: false
+        });
       }
     });
   }

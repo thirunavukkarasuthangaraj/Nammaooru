@@ -1,0 +1,135 @@
+<div class="financial-dashboard chennai-dashboard">
+  <!-- Header -->
+  <div class="dashboard-header chennai-header">
+    <h1>Financial Management Dashboard</h1>
+    <div class="header-actions">
+      <button mat-raised-button (click)="refreshData()">
+        <mat-icon>refresh</mat-icon> Refresh
+      </button>
+      <button mat-raised-button color="accent" (click)="exportReport('summary')">
+        <mat-icon>download</mat-icon> Export Report
+      </button>
+    </div>
+  </div>
+
+  <!-- Financial Summary Cards -->
+  <div class="summary-grid">
+    <mat-card class="summary-card chennai-card">
+      <mat-card-content>
+        <div class="metric-icon revenue">
+          <mat-icon>account_balance</mat-icon>
+        </div>
+        <div class="metric-info">
+          <h3>{{ formatCurrency(financialSummary.totalRevenue) }}</h3>
+          <p>Total Revenue</p>
+          <span class="growth positive">+{{ formatPercentage(financialSummary.monthlyGrowth) }}</span>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="summary-card chennai-card">
+      <mat-card-content>
+        <div class="metric-icon commission">
+          <mat-icon>percent</mat-icon>
+        </div>
+        <div class="metric-info">
+          <h3>{{ formatCurrency(financialSummary.totalCommission) }}</h3>
+          <p>Total Commission</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="summary-card chennai-card">
+      <mat-card-content>
+        <div class="metric-icon payouts">
+          <mat-icon>payments</mat-icon>
+        </div>
+        <div class="metric-info">
+          <h3>{{ formatCurrency(financialSummary.pendingPayouts) }}</h3>
+          <p>Pending Payouts</p>
+          <span class="count">{{ pendingApprovals.payouts }} pending</span>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="summary-card chennai-card">
+      <mat-card-content>
+        <div class="metric-icon profit">
+          <mat-icon>trending_up</mat-icon>
+        </div>
+        <div class="metric-info">
+          <h3>{{ formatCurrency(financialSummary.netProfit) }}</h3>
+          <p>Net Profit</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Charts Section -->
+  <div class="charts-section">
+    <mat-card class="chart-card chennai-card">
+      <mat-card-header>
+        <mat-card-title>Revenue & Commission Trends</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <canvas baseChart
+          [data]="revenueChartData"
+          [options]="chartOptions"
+          [type]="'line'"
+          height="300">
+        </canvas>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="chart-card chennai-card">
+      <mat-card-header>
+        <mat-card-title>Revenue by Category</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <canvas baseChart
+          [data]="categoryRevenueData"
+          [type]="'doughnut'"
+          height="300">
+        </canvas>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Recent Transactions -->
+  <mat-card class="transactions-card chennai-card">
+    <mat-card-header>
+      <mat-card-title>Recent Transactions</mat-card-title>
+      <button mat-button (click)="navigateToSection('transactions')">View All</button>
+    </mat-card-header>
+    <mat-card-content>
+      <mat-table [dataSource]="recentTransactions">
+        <ng-container matColumnDef="id">
+          <mat-header-cell *matHeaderCellDef>Transaction ID</mat-header-cell>
+          <mat-cell *matCellDef="let transaction">{{ transaction.id }}</mat-cell>
+        </ng-container>
+
+        <ng-container matColumnDef="type">
+          <mat-header-cell *matHeaderCellDef>Type</mat-header-cell>
+          <mat-cell *matCellDef="let transaction">{{ transaction.type }}</mat-cell>
+        </ng-container>
+
+        <ng-container matColumnDef="amount">
+          <mat-header-cell *matHeaderCellDef>Amount</mat-header-cell>
+          <mat-cell *matCellDef="let transaction">{{ formatCurrency(transaction.amount) }}</mat-cell>
+        </ng-container>
+
+        <ng-container matColumnDef="status">
+          <mat-header-cell *matHeaderCellDef>Status</mat-header-cell>
+          <mat-cell *matCellDef="let transaction">
+            <mat-chip [color]="transaction.status === 'COMPLETED' ? 'primary' : 'accent'">
+              {{ transaction.status }}
+            </mat-chip>
+          </mat-cell>
+        </ng-container>
+
+        <mat-header-row *matHeaderRowDef="['id', 'type', 'amount', 'status']"></mat-header-row>
+        <mat-row *matRowDef="let row; columns: ['id', 'type', 'amount', 'status']"></mat-row>
+      </mat-table>
+    </mat-card-content>
+  </mat-card>
+</div>

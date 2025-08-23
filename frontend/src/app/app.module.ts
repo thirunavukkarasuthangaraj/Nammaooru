@@ -4,6 +4,21 @@ import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
 import { ReactiveFormsModule, FormsModule } from '@angular/forms';
 
+// Firebase
+import { AngularFireModule } from '@angular/fire/compat';
+import { AngularFireMessagingModule } from '@angular/fire/compat/messaging';
+import { environment } from '../environments/environment';
+
+// NgRx
+import { StoreModule } from '@ngrx/store';
+import { EffectsModule } from '@ngrx/effects';
+import { StoreDevtoolsModule } from '@ngrx/store-devtools';
+import { authReducer } from './store/auth/auth.reducer';
+import { dashboardReducer } from './store/dashboard/dashboard.reducer';
+
+// Charts
+import { NgChartsModule } from 'ng2-charts';
+
 // Angular Material
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
@@ -93,7 +108,32 @@ import { ShopModule } from './features/shop/shop.module';
     
     // Feature Modules
     AuthModule,
-    ShopModule
+    ShopModule,
+    
+    // NgRx Store
+    StoreModule.forRoot({
+      auth: authReducer,
+      dashboard: dashboardReducer
+    }),
+    EffectsModule.forRoot([]),
+    StoreDevtoolsModule.instrument({
+      maxAge: 25,
+      logOnly: false
+    }),
+    
+    // Charts
+    NgChartsModule,
+    
+    // Firebase
+    AngularFireModule.initializeApp((environment as any).firebase || {
+      apiKey: "demo-key",
+      authDomain: "nammaooru-demo.firebaseapp.com",
+      projectId: "nammaooru-demo",
+      storageBucket: "nammaooru-demo.appspot.com",
+      messagingSenderId: "123456789",
+      appId: "1:123456789:web:demo"
+    }),
+    AngularFireMessagingModule
   ],
   providers: [
     {

@@ -16,6 +16,8 @@ export interface Notification {
   createdAt: Date;
   action?: string;
   actionUrl?: string;
+  actionData?: any;
+  rejectionReason?: string;
 }
 
 @Injectable({

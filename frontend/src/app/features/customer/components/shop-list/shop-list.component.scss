@@ -1,0 +1,38 @@
+.shop-card {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 1px solid #e0e0e0;
+  
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    border-color: var(--chennai-blue);
+  }
+}
+
+.shop-image {
+  height: 200px;
+  object-fit: cover;
+  border-radius: 8px 8px 0 0;
+}
+
+.card-title {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.badge {
+  font-size: 0.75rem;
+}
+
+.small {
+  font-size: 0.875rem;
+}
+
+.text-chennai-blue {
+  color: var(--chennai-blue);
+}
+
+.bg-chennai-blue {
+  background-color: var(--chennai-blue);
+}

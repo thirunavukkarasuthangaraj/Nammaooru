@@ -1,0 +1,377 @@
+<div class="super-admin-dashboard chennai-dashboard">
+  <!-- Header Section -->
+  <div class="dashboard-header chennai-header">
+    <div class="header-content">
+      <div class="header-left">
+        <h1 class="dashboard-title">Super Admin Dashboard</h1>
+        <p class="dashboard-subtitle">NammaOoru Delivery Platform</p>
+      </div>
+      <div class="header-right">
+        <div class="time-display">
+          <mat-icon>access_time</mat-icon>
+          <span>{{ currentTime | date:'medium' }}</span>
+        </div>
+        <div class="system-status" [class.operational]="systemStatus === 'Operational'">
+          <mat-icon>fiber_manual_record</mat-icon>
+          <span>{{ systemStatus }}</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Quick Actions Bar -->
+    <div class="quick-actions">
+      <button mat-raised-button class="chennai-button" (click)="refreshDashboard()">
+        <mat-icon>refresh</mat-icon> Refresh
+      </button>
+      <button mat-raised-button (click)="changeTimeRange('today')">Today</button>
+      <button mat-raised-button (click)="changeTimeRange('7days')">7 Days</button>
+      <button mat-raised-button (click)="changeTimeRange('30days')">30 Days</button>
+      <button mat-raised-button (click)="changeTimeRange('90days')">90 Days</button>
+      <button mat-raised-button color="accent" (click)="exportReport('pdf')">
+        <mat-icon>download</mat-icon> Export Report
+      </button>
+    </div>
+  </div>
+
+  <!-- Critical Alerts Section -->
+  <div class="alerts-section" *ngIf="criticalAlerts.length > 0">
+    <mat-card class="alerts-card chennai-card">
+      <mat-card-header>
+        <mat-icon class="alert-icon">warning</mat-icon>
+        <mat-card-title>Critical Alerts</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="alert-item" *ngFor="let alert of criticalAlerts">
+          <span class="alert-message">{{ alert.message }}</span>
+          <button mat-icon-button (click)="handleAlert(alert)">
+            <mat-icon>arrow_forward</mat-icon>
+          </button>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- KPI Metrics Grid -->
+  <div class="kpi-grid">
+    <div class="kpi-card chennai-card chennai-animate">
+      <div class="kpi-icon revenue-icon">
+        <mat-icon>account_balance</mat-icon>
+      </div>
+      <div class="kpi-content">
+        <div class="kpi-value">₹{{ kpis.totalRevenue | number:'1.0-0' }}</div>
+        <div class="kpi-label">Total Revenue</div>
+        <div class="kpi-trend positive">
+          <mat-icon>trending_up</mat-icon>
+          <span>+{{ kpis.monthlyGrowth }}%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpi-card chennai-card chennai-animate">
+      <div class="kpi-icon orders-icon">
+        <mat-icon>shopping_cart</mat-icon>
+      </div>
+      <div class="kpi-content">
+        <div class="kpi-value">{{ kpis.totalOrders | number }}</div>
+        <div class="kpi-label">Total Orders</div>
+        <div class="kpi-trend">
+          <mat-icon>schedule</mat-icon>
+          <span>{{ kpis.avgOrderValue | currency:'INR' }} avg</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpi-card chennai-card chennai-animate">
+      <div class="kpi-icon shops-icon">
+        <mat-icon>store</mat-icon>
+      </div>
+      <div class="kpi-content">
+        <div class="kpi-value">{{ kpis.activeShops | number }}</div>
+        <div class="kpi-label">Active Shops</div>
+        <div class="kpi-badge">
+          <span class="pending-badge">{{ pendingApprovals.shops }} pending</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpi-card chennai-card chennai-animate">
+      <div class="kpi-icon customers-icon">
+        <mat-icon>people</mat-icon>
+      </div>
+      <div class="kpi-content">
+        <div class="kpi-value">{{ kpis.totalCustomers | number }}</div>
+        <div class="kpi-label">Total Customers</div>
+        <div class="kpi-trend positive">
+          <mat-icon>person_add</mat-icon>
+          <span>{{ liveUsers }} online</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpi-card chennai-card chennai-animate">
+      <div class="kpi-icon delivery-icon">
+        <mat-icon>local_shipping</mat-icon>
+      </div>
+      <div class="kpi-content">
+        <div class="kpi-value">{{ kpis.deliverySuccessRate }}%</div>
+        <div class="kpi-label">Delivery Success</div>
+        <div class="kpi-badge">
+          <span class="active-badge">{{ (metrics$ | async)?.activeDeliveries || 0 }} active</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpi-card chennai-card chennai-animate">
+      <div class="kpi-icon conversion-icon">
+        <mat-icon>insights</mat-icon>
+      </div>
+      <div class="kpi-content">
+        <div class="kpi-value">{{ kpis.conversionRate }}%</div>
+        <div class="kpi-label">Conversion Rate</div>
+        <div class="kpi-trend neutral">
+          <mat-icon>swap_horiz</mat-icon>
+          <span>Stable</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts Section -->
+  <div class="charts-grid">
+    <!-- Revenue Chart -->
+    <mat-card class="chart-card chennai-card">
+      <mat-card-header>
+        <mat-card-title>Revenue Analytics</mat-card-title>
+        <button mat-icon-button [matMenuTriggerFor]="revenueMenu">
+          <mat-icon>more_vert</mat-icon>
+        </button>
+        <mat-menu #revenueMenu="matMenu">
+          <button mat-menu-item (click)="exportReport('revenue')">Export Data</button>
+          <button mat-menu-item>View Details</button>
+        </mat-menu>
+      </mat-card-header>
+      <mat-card-content>
+        <canvas baseChart
+          [data]="revenueChartData"
+          [options]="revenueChartOptions"
+          [type]="'line'"
+          height="300">
+        </canvas>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Order Volume Chart -->
+    <mat-card class="chart-card chennai-card">
+      <mat-card-header>
+        <mat-card-title>Order Volume Trends</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <canvas baseChart
+          [data]="orderVolumeChartData"
+          [options]="revenueChartOptions"
+          [type]="'bar'"
+          height="300">
+        </canvas>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Shop Distribution -->
+    <mat-card class="chart-card chennai-card">
+      <mat-card-header>
+        <mat-card-title>Shop Status Distribution</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <canvas baseChart
+          [data]="shopDistributionData"
+          [type]="'doughnut'"
+          height="300">
+        </canvas>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- User Growth Chart -->
+    <mat-card class="chart-card chennai-card">
+      <mat-card-header>
+        <mat-card-title>User Growth Analysis</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <canvas baseChart
+          [data]="userGrowthData"
+          [type]="'line'"
+          height="300">
+        </canvas>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- System Health & Financial Summary -->
+  <div class="info-grid">
+    <!-- System Health Card -->
+    <mat-card class="system-health-card chennai-card">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon>monitor_heart</mat-icon>
+          System Health
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="health-metrics">
+          <div class="health-item">
+            <span class="health-label">CPU Usage</span>
+            <mat-progress-bar [value]="systemHealth.cpu" mode="determinate"></mat-progress-bar>
+            <span class="health-value">{{ systemHealth.cpu }}%</span>
+          </div>
+          <div class="health-item">
+            <span class="health-label">Memory</span>
+            <mat-progress-bar [value]="systemHealth.memory" mode="determinate"></mat-progress-bar>
+            <span class="health-value">{{ systemHealth.memory }}%</span>
+          </div>
+          <div class="health-item">
+            <span class="health-label">Response Time</span>
+            <span class="health-value">{{ systemHealth.responseTime }}ms</span>
+          </div>
+          <div class="health-item">
+            <span class="health-label">Active Connections</span>
+            <span class="health-value">{{ systemHealth.activeConnections }}</span>
+          </div>
+          <div class="health-item">
+            <span class="health-label">Uptime</span>
+            <span class="health-value success">{{ systemHealth.uptime }}</span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Financial Summary -->
+    <mat-card class="financial-summary-card chennai-card">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon>account_balance_wallet</mat-icon>
+          Financial Summary
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="financial-items">
+          <div class="financial-item">
+            <span class="financial-label">Today's Revenue</span>
+            <span class="financial-value">₹{{ financialSummary.todayRevenue | number }}</span>
+          </div>
+          <div class="financial-item">
+            <span class="financial-label">This Week</span>
+            <span class="financial-value">₹{{ financialSummary.weekRevenue | number }}</span>
+          </div>
+          <div class="financial-item">
+            <span class="financial-label">This Month</span>
+            <span class="financial-value">₹{{ financialSummary.monthRevenue | number }}</span>
+          </div>
+          <div class="financial-item highlight">
+            <span class="financial-label">Pending Payouts</span>
+            <span class="financial-value">₹{{ financialSummary.pendingPayouts | number }}</span>
+          </div>
+          <div class="financial-item">
+            <span class="financial-label">Total Commission</span>
+            <span class="financial-value">₹{{ financialSummary.totalCommission | number }}</span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Pending Approvals -->
+    <mat-card class="approvals-card chennai-card">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon>pending_actions</mat-icon>
+          Pending Approvals
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="approval-items">
+          <div class="approval-item" (click)="navigateToSection('shops')">
+            <div class="approval-info">
+              <mat-icon>store</mat-icon>
+              <span>Shop Registrations</span>
+            </div>
+            <span class="approval-count">{{ pendingApprovals.shops }}</span>
+          </div>
+          <div class="approval-item" (click)="navigateToSection('delivery-partners')">
+            <div class="approval-info">
+              <mat-icon>two_wheeler</mat-icon>
+              <span>Delivery Partners</span>
+            </div>
+            <span class="approval-count">{{ pendingApprovals.deliveryPartners }}</span>
+          </div>
+          <div class="approval-item" (click)="navigateToSection('withdrawals')">
+            <div class="approval-info">
+              <mat-icon>payments</mat-icon>
+              <span>Withdrawal Requests</span>
+            </div>
+            <span class="approval-count">{{ pendingApprovals.withdrawals }}</span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Top Performers Section -->
+  <div class="performers-grid">
+    <!-- Top Shops -->
+    <mat-card class="top-shops-card chennai-card">
+      <mat-card-header>
+        <mat-card-title>Top Performing Shops</mat-card-title>
+        <button mat-button color="primary" (click)="navigateToSection('shops')">View All</button>
+      </mat-card-header>
+      <mat-card-content>
+        <mat-list>
+          <mat-list-item *ngFor="let shop of topShops; let i = index">
+            <div matListItemAvatar class="rank-badge">{{ i + 1 }}</div>
+            <div matListItemTitle>{{ shop.name }}</div>
+            <div matListItemLine>
+              <span>{{ shop.orders }} orders</span>
+              <span class="separator">•</span>
+              <span>₹{{ shop.revenue | number }} revenue</span>
+            </div>
+            <div matListItemMeta>
+              <mat-chip-set>
+                <mat-chip [color]="shop.rating >= 4 ? 'primary' : 'basic'">
+                  <mat-icon>star</mat-icon> {{ shop.rating }}
+                </mat-chip>
+              </mat-chip-set>
+            </div>
+          </mat-list-item>
+        </mat-list>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Recent Activities -->
+    <mat-card class="activities-card chennai-card">
+      <mat-card-header>
+        <mat-card-title>Recent Activities</mat-card-title>
+        <button mat-button color="primary" (click)="viewAllActivities()">View All</button>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="activity-timeline">
+          <div class="activity-item" *ngFor="let activity of recentActivities">
+            <div class="activity-icon" [ngClass]="'activity-' + activity.type">
+              <mat-icon>{{ activity.type === 'order' ? 'shopping_cart' : 
+                           activity.type === 'shop' ? 'store' : 
+                           activity.type === 'user' ? 'person' : 'info' }}</mat-icon>
+            </div>
+            <div class="activity-content">
+              <div class="activity-message">{{ activity.message }}</div>
+              <div class="activity-time">{{ activity.timestamp | date:'short' }}</div>
+            </div>
+            <div class="activity-amount" *ngIf="activity.amount">
+              ₹{{ activity.amount | number }}
+            </div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" *ngIf="loading$ | async">
+    <mat-spinner></mat-spinner>
+    <p>Loading dashboard data...</p>
+  </div>
+</div>

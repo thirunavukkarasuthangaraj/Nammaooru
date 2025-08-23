@@ -129,9 +129,9 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     {
       category: 'System Administration',
       items: [
-        { title: 'System Settings', icon: 'settings', route: '/admin/settings', badge: null },
+        { title: 'System Settings', icon: 'settings', route: '/settings', badge: null },
         { title: 'App Configuration', icon: 'tune', route: '/admin/config', badge: null },
-        { title: 'Notifications', icon: 'notifications', route: '/admin/notifications', badge: '8' },
+        { title: 'Notifications', icon: 'notifications', route: '/notifications', badge: '8' },
         { title: 'Audit Logs', icon: 'history', route: '/admin/audit', badge: null },
         { title: 'Backup & Restore', icon: 'backup', route: '/admin/backup', badge: null }
       ]
@@ -254,16 +254,16 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       category: 'Products',
       items: [
         { title: 'My Products', icon: 'inventory', route: '/shop-owner/products', badge: null },
-        { title: 'Add Product', icon: 'add_box', route: '/shop-owner/products/add', badge: null },
-        { title: 'Categories', icon: 'category', route: '/shop-owner/products/categories', badge: null },
-        { title: 'Bulk Upload', icon: 'cloud_upload', route: '/shop-owner/products/bulk-upload', badge: null }
+        { title: 'Add Product', icon: 'add_box', route: '/shop-owner/add-product', badge: null },
+        { title: 'Categories', icon: 'category', route: '/shop-owner/categories', badge: null },
+        { title: 'Bulk Upload', icon: 'cloud_upload', route: '/shop-owner/bulk-upload', badge: null }
       ]
     },
     {
       category: 'Orders & Sales',
       items: [
-        { title: 'My Orders', icon: 'receipt_long', route: '/orders', badge: null },
-        { title: 'Order Tracking', icon: 'local_shipping', route: '/delivery/tracking', badge: null },
+        { title: 'My Orders', icon: 'receipt_long', route: '/shop-owner/orders', badge: null },
+        { title: 'Order Tracking', icon: 'local_shipping', route: '/delivery/tracking/1', badge: null },
         { title: 'Sales Analytics', icon: 'trending_up', route: '/analytics', badge: null }
       ]
     },
@@ -276,14 +276,14 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     {
       category: 'Management',
       items: [
-        { title: 'Notifications', icon: 'notifications', route: '/shop-owner/notifications', badge: this.getNotificationCount().toString() }
+        { title: 'Notifications', icon: 'notifications', route: '/notifications', badge: this.getNotificationCount().toString() }
       ]
     },
     {
       category: 'Shop Management',
       items: [
-        { title: 'Shop Profile', icon: 'business', route: '/shop-owner/shop/profile', badge: null },
-        { title: 'Settings', icon: 'settings', route: '/shop-owner/settings', badge: null }
+        { title: 'Shop Profile', icon: 'business', route: '/shop-owner/profile', badge: null },
+        { title: 'Settings', icon: 'settings', route: '/settings', badge: null }
       ]
     }
   ];

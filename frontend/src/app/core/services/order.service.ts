@@ -140,4 +140,8 @@ export class OrderService {
   getOrderStatuses(): Observable<any> {
     return this.http.get(`${this.apiUrl}/statuses`);
   }
+
+  getOrderDeliveryInfo(orderId: number): Observable<any> {
+    return this.http.get(`${this.apiUrl}/${orderId}/delivery-info`);
+  }
 }

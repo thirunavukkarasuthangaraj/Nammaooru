@@ -2,6 +2,7 @@ import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { AuthGuard } from '../../core/guards/auth.guard';
 import { RoleGuard } from '../../core/guards/role.guard';
+import { DeliveryDashboardComponent } from './components/delivery-dashboard/delivery-dashboard.component';
 import { DeliveryPartnerDashboardComponent } from './components/delivery-partner-dashboard/delivery-partner-dashboard.component';
 import { PartnerRegistrationComponent } from './components/partner-registration/partner-registration.component';
 import { AdminPartnersComponent } from './components/admin-partners/admin-partners.component';
@@ -10,6 +11,12 @@ import { PartnerOrdersComponent } from './components/partner-orders/partner-orde
 import { DeliveryAnalyticsComponent } from './components/delivery-analytics/delivery-analytics.component';
 
 const routes: Routes = [
+  {
+    path: 'dashboard',
+    component: DeliveryDashboardComponent,
+    canActivate: [AuthGuard],
+    title: 'Delivery Dashboard'
+  },
   {
     path: 'partner/register',
     component: PartnerRegistrationComponent,

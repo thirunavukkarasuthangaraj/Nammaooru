@@ -1,0 +1,155 @@
+<div class="admin-dashboard chennai-dashboard">
+  <!-- Header -->
+  <div class="dashboard-header chennai-header">
+    <div class="header-content">
+      <h1>Admin Dashboard</h1>
+      <p>Platform Monitoring & Management</p>
+    </div>
+    <div class="header-actions">
+      <button mat-raised-button (click)="refreshDashboard()">
+        <mat-icon>refresh</mat-icon> Refresh
+      </button>
+      <button mat-raised-button color="accent" (click)="exportReport('daily')">
+        <mat-icon>download</mat-icon> Daily Report
+      </button>
+    </div>
+  </div>
+
+  <!-- Key Metrics -->
+  <div class="metrics-grid">
+    <mat-card class="metric-card chennai-card">
+      <mat-card-content>
+        <div class="metric-icon shops">
+          <mat-icon>store</mat-icon>
+        </div>
+        <div class="metric-info">
+          <h3>{{ metrics.activeShops }}</h3>
+          <p>Active Shops</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="metric-card chennai-card">
+      <mat-card-content>
+        <div class="metric-icon orders">
+          <mat-icon>shopping_cart</mat-icon>
+        </div>
+        <div class="metric-info">
+          <h3>{{ metrics.pendingOrders }}</h3>
+          <p>Pending Orders</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="metric-card chennai-card">
+      <mat-card-content>
+        <div class="metric-icon delivery">
+          <mat-icon>local_shipping</mat-icon>
+        </div>
+        <div class="metric-info">
+          <h3>{{ metrics.deliveriesInProgress }}</h3>
+          <p>In Progress</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="metric-card chennai-card">
+      <mat-card-content>
+        <div class="metric-icon complaints">
+          <mat-icon>report_problem</mat-icon>
+        </div>
+        <div class="metric-info">
+          <h3>{{ metrics.customerComplaints }}</h3>
+          <p>Open Complaints</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Main Content Grid -->
+  <div class="content-grid">
+    <!-- Shop Monitoring -->
+    <mat-card class="shop-monitoring chennai-card">
+      <mat-card-header>
+        <mat-card-title>Shop Performance</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <mat-tab-group>
+          <mat-tab label="Top Rated">
+            <div class="shop-list">
+              <div *ngFor="let shop of topRatedShops" class="shop-item">
+                <span>{{ shop.name }}</span>
+                <mat-chip color="primary">{{ shop.rating }}★</mat-chip>
+              </div>
+            </div>
+          </mat-tab>
+          <mat-tab label="Need Attention">
+            <div class="shop-list">
+              <div *ngFor="let shop of problematicShops" class="shop-item warning">
+                <span>{{ shop.name }}</span>
+                <span class="issue">{{ shop.issue }}</span>
+              </div>
+            </div>
+          </mat-tab>
+        </mat-tab-group>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Order Management -->
+    <mat-card class="order-management chennai-card">
+      <mat-card-header>
+        <mat-card-title>Order Overview</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <canvas baseChart
+          [data]="orderTrendData"
+          [type]="'line'"
+          height="200">
+        </canvas>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Customer Support -->
+    <mat-card class="support-tickets chennai-card">
+      <mat-card-header>
+        <mat-card-title>Customer Support</mat-card-title>
+        <span class="badge">{{ openTickets.length }} Open</span>
+      </mat-card-header>
+      <mat-card-content>
+        <mat-list>
+          <mat-list-item *ngFor="let ticket of openTickets.slice(0, 5)">
+            <div matListItemTitle>{{ ticket.subject }}</div>
+            <div matListItemLine>{{ ticket.customer }} - {{ ticket.time | date:'short' }}</div>
+            <button mat-icon-button (click)="handleComplaint(ticket.id)">
+              <mat-icon>arrow_forward</mat-icon>
+            </button>
+          </mat-list-item>
+        </mat-list>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Quality Metrics -->
+    <mat-card class="quality-metrics chennai-card">
+      <mat-card-header>
+        <mat-card-title>Quality Metrics</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="quality-item">
+          <span>Food Quality</span>
+          <mat-progress-bar [value]="qualityMetrics.foodQuality" mode="determinate"></mat-progress-bar>
+          <span class="value">{{ qualityMetrics.foodQuality }}%</span>
+        </div>
+        <div class="quality-item">
+          <span>Packaging</span>
+          <mat-progress-bar [value]="qualityMetrics.packagingQuality" mode="determinate"></mat-progress-bar>
+          <span class="value">{{ qualityMetrics.packagingQuality }}%</span>
+        </div>
+        <div class="quality-item">
+          <span>Delivery</span>
+          <mat-progress-bar [value]="qualityMetrics.deliveryQuality" mode="determinate"></mat-progress-bar>
+          <span class="value">{{ qualityMetrics.deliveryQuality }}%</span>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

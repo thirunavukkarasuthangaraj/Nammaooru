@@ -1,0 +1,221 @@
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">
+            <mat-icon class="me-2">shopping_cart</mat-icon>
+            Shopping Cart
+          </h5>
+          <button mat-button color="primary" (click)="goBack()">
+            <mat-icon>arrow_back</mat-icon>
+            Continue Shopping
+          </button>
+        </div>
+
+        <!-- Empty Cart -->
+        <div class="card-body" *ngIf="cartItems.length === 0">
+          <div class="text-center py-5">
+            <mat-icon class="display-1 text-muted">shopping_cart</mat-icon>
+            <h5 class="text-muted mt-3">Your cart is empty</h5>
+            <p class="text-muted">Add items to your cart to get started</p>
+            <button mat-raised-button 
+                    color="primary" 
+                    (click)="goToShops()">
+              <mat-icon>store</mat-icon>
+              Browse Shops
+            </button>
+          </div>
+        </div>
+
+        <!-- Cart Items -->
+        <div class="card-body" *ngIf="cartItems.length > 0">
+          <!-- Shop Info -->
+          <div class="alert alert-info mb-4" *ngIf="cart.shopName">
+            <mat-icon class="me-2">info</mat-icon>
+            <strong>Ordering from:</strong> {{cart.shopName}}
+            <small class="d-block mt-1">
+              You can only order from one shop at a time. Clear cart to order from a different shop.
+            </small>
+          </div>
+
+          <!-- Cart Items List -->
+          <div class="row">
+            <div class="col-lg-8">
+              <div class="card">
+                <div class="card-header">
+                  <h6 class="mb-0">Items ({{cartItems.length}})</h6>
+                </div>
+                <div class="card-body">
+                  <div class="cart-item mb-3 pb-3 border-bottom" 
+                       *ngFor="let item of cartItems; let last = last" 
+                       [class.border-bottom-0]="last">
+                    <div class="row align-items-center">
+                      <div class="col-2">
+                        <img [src]="item.productImage || '/assets/images/product-placeholder.jpg'" 
+                             class="img-fluid rounded cart-item-image" 
+                             [alt]="item.productName">
+                      </div>
+                      <div class="col-4">
+                        <h6 class="mb-1">{{item.productName}}</h6>
+                        <small class="text-muted">{{item.shopName}}</small>
+                        <div class="mt-1">
+                          <span class="badge bg-light text-dark">{{item.unit}}</span>
+                        </div>
+                      </div>
+                      <div class="col-2">
+                        <strong class="text-success">₹{{item.price}}</strong>
+                        <small class="text-muted d-block">/{{item.unit}}</small>
+                      </div>
+                      <div class="col-3">
+                        <div class="d-flex align-items-center justify-content-center">
+                          <button mat-icon-button 
+                                  size="small"
+                                  color="primary"
+                                  (click)="decreaseQuantity(item)">
+                            <mat-icon>remove</mat-icon>
+                          </button>
+                          <span class="mx-3 fw-bold">{{item.quantity}}</span>
+                          <button mat-icon-button 
+                                  size="small"
+                                  color="primary"
+                                  (click)="increaseQuantity(item)">
+                            <mat-icon>add</mat-icon>
+                          </button>
+                        </div>
+                      </div>
+                      <div class="col-1 text-end">
+                        <button mat-icon-button 
+                                color="warn"
+                                (click)="removeItem(item)"
+                                matTooltip="Remove item">
+                          <mat-icon>delete</mat-icon>
+                        </button>
+                      </div>
+                    </div>
+                    <div class="row mt-2">
+                      <div class="col-12 text-end">
+                        <strong>Subtotal: ₹{{item.price * item.quantity}}</strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Actions -->
+              <div class="mt-4 d-flex gap-2">
+                <button mat-button 
+                        color="warn" 
+                        (click)="clearCart()">
+                  <mat-icon>delete_sweep</mat-icon>
+                  Clear Cart
+                </button>
+                <button mat-button (click)="goToShops()">
+                  <mat-icon>store</mat-icon>
+                  Add More Items
+                </button>
+              </div>
+            </div>
+
+            <!-- Order Summary -->
+            <div class="col-lg-4">
+              <div class="card">
+                <div class="card-header">
+                  <h6 class="mb-0">Order Summary</h6>
+                </div>
+                <div class="card-body">
+                  <div class="d-flex justify-content-between mb-2">
+                    <span>Items Subtotal:</span>
+                    <span>₹{{cart.subtotal}}</span>
+                  </div>
+                  <div class="d-flex justify-content-between mb-2">
+                    <span>Delivery Fee:</span>
+                    <span>₹{{cart.deliveryFee}}</span>
+                  </div>
+                  <div class="d-flex justify-content-between mb-2" *ngIf="cart.discount > 0">
+                    <span class="text-success">Discount:</span>
+                    <span class="text-success">-₹{{cart.discount}}</span>
+                  </div>
+                  <hr>
+                  <div class="d-flex justify-content-between mb-3">
+                    <strong>Total Amount:</strong>
+                    <strong class="text-success">₹{{cart.total}}</strong>
+                  </div>
+
+                  <!-- Discount Code -->
+                  <div class="mb-3" *ngIf="!discountApplied">
+                    <mat-form-field appearance="outline" class="w-100">
+                      <mat-label>Discount Code</mat-label>
+                      <input matInput 
+                             [(ngModel)]="discountCode" 
+                             placeholder="Enter discount code">
+                      <button mat-icon-button 
+                              matSuffix
+                              color="primary"
+                              (click)="applyDiscount()"
+                              [disabled]="!discountCode || applyingDiscount">
+                        <mat-icon>local_offer</mat-icon>
+                      </button>
+                    </mat-form-field>
+                    <div class="text-success small mt-1" *ngIf="discountMessage">
+                      {{discountMessage}}
+                    </div>
+                  </div>
+
+                  <div class="alert alert-success small" *ngIf="discountApplied">
+                    <mat-icon class="me-2 small">check_circle</mat-icon>
+                    Discount applied successfully!
+                  </div>
+
+                  <!-- Payment Method Info -->
+                  <div class="alert alert-info small mb-3">
+                    <mat-icon class="me-2 small">payments</mat-icon>
+                    <strong>Payment Method:</strong> Cash on Delivery
+                    <small class="d-block mt-1">Pay when your order is delivered</small>
+                  </div>
+
+                  <!-- Checkout Button -->
+                  <button mat-raised-button 
+                          color="primary" 
+                          size="large"
+                          class="w-100"
+                          (click)="proceedToCheckout()"
+                          [disabled]="cartItems.length === 0">
+                    <mat-icon>payment</mat-icon>
+                    Proceed to Checkout
+                  </button>
+                </div>
+              </div>
+
+              <!-- Delivery Info -->
+              <div class="card mt-3">
+                <div class="card-header">
+                  <h6 class="mb-0">
+                    <mat-icon class="me-2">local_shipping</mat-icon>
+                    Delivery Info
+                  </h6>
+                </div>
+                <div class="card-body">
+                  <div class="small text-muted">
+                    <div class="d-flex align-items-center mb-2">
+                      <mat-icon class="me-2 small">access_time</mat-icon>
+                      <span>Estimated delivery: 30-45 minutes</span>
+                    </div>
+                    <div class="d-flex align-items-center mb-2">
+                      <mat-icon class="me-2 small">location_on</mat-icon>
+                      <span>Free delivery on orders above ₹500</span>
+                    </div>
+                    <div class="d-flex align-items-center">
+                      <mat-icon class="me-2 small">support_agent</mat-icon>
+                      <span>Call support: +91 98765 43210</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

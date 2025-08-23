@@ -1,0 +1,101 @@
+<div class="shop-profile chennai-page">
+  <div class="page-header">
+    <h1>Shop Profile</h1>
+    <div class="header-actions">
+      <button mat-raised-button color="primary" (click)="editProfile()">
+        <mat-icon>edit</mat-icon> Edit Profile
+      </button>
+    </div>
+  </div>
+
+  <div class="profile-content">
+    <div class="profile-overview">
+      <mat-card class="overview-card">
+        <div class="shop-banner">
+          <img [src]="shop.bannerImage || 'assets/images/default-banner.jpg'" alt="Shop Banner">
+          <div class="shop-logo">
+            <img [src]="shop.logoImage || 'assets/images/default-logo.jpg'" alt="Shop Logo">
+          </div>
+        </div>
+        
+        <mat-card-content>
+          <div class="shop-info">
+            <h2>{{ shop.name }}</h2>
+            <p class="shop-description">{{ shop.description }}</p>
+            
+            <div class="shop-stats">
+              <div class="stat">
+                <mat-icon>star</mat-icon>
+                <span>{{ shop.rating }}/5 ({{ shop.reviewCount }} reviews)</span>
+              </div>
+              <div class="stat">
+                <mat-icon>schedule</mat-icon>
+                <span>{{ shop.averageDeliveryTime }} min avg delivery</span>
+              </div>
+              <div class="stat">
+                <mat-icon>local_offer</mat-icon>
+                <span>{{ shop.totalOrders }} orders completed</span>
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <div class="profile-details">
+      <div class="details-grid">
+        <mat-card class="detail-card">
+          <mat-card-header>
+            <mat-card-title>Contact Information</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="info-item">
+              <mat-icon>phone</mat-icon>
+              <span>{{ shop.phone }}</span>
+            </div>
+            <div class="info-item">
+              <mat-icon>email</mat-icon>
+              <span>{{ shop.email }}</span>
+            </div>
+            <div class="info-item">
+              <mat-icon>location_on</mat-icon>
+              <span>{{ shop.address }}</span>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card class="detail-card">
+          <mat-card-header>
+            <mat-card-title>Business Hours</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <div *ngFor="let hours of shop.businessHours" class="hours-item">
+              <span class="day">{{ hours.day }}</span>
+              <span class="time">{{ hours.open }} - {{ hours.close }}</span>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card class="detail-card">
+          <mat-card-header>
+            <mat-card-title>Delivery Settings</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="info-item">
+              <mat-icon>delivery_dining</mat-icon>
+              <span>Delivery Range: {{ shop.deliveryRadius }} km</span>
+            </div>
+            <div class="info-item">
+              <mat-icon>payments</mat-icon>
+              <span>Delivery Fee: ₹{{ shop.deliveryFee }}</span>
+            </div>
+            <div class="info-item">
+              <mat-icon>shopping_cart</mat-icon>
+              <span>Min Order: ₹{{ shop.minimumOrderValue }}</span>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </div>
+  </div>
+</div>

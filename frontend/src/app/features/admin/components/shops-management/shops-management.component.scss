@@ -1,0 +1,270 @@
+.shops-management {
+  padding: 24px;
+
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+
+    h1 {
+      margin: 0;
+      color: #333;
+      font-weight: 500;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 12px;
+    }
+  }
+
+  // Filters Card
+  .filters-card {
+    margin-bottom: 24px;
+
+    .filters-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr auto;
+      gap: 16px;
+      align-items: center;
+
+      @media (max-width: 768px) {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+
+      mat-form-field {
+        width: 100%;
+      }
+    }
+  }
+
+  // Stats Grid
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+
+    .stat-card {
+      mat-card-content {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 20px;
+
+        .stat-icon {
+          width: 50px;
+          height: 50px;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          mat-icon {
+            font-size: 24px;
+            color: white;
+          }
+        }
+
+        .stat-info {
+          h3 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+            color: #333;
+          }
+
+          p {
+            margin: 4px 0 0 0;
+            color: #666;
+            font-size: 14px;
+          }
+        }
+      }
+
+      &.pending {
+        .stat-icon {
+          background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+        }
+      }
+
+      &.approved {
+        .stat-icon {
+          background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
+        }
+      }
+
+      &.rejected {
+        .stat-icon {
+          background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+        }
+      }
+
+      &.total {
+        .stat-icon {
+          background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+        }
+      }
+    }
+  }
+
+  // Table Card
+  .table-card {
+    .table-container {
+      .shops-table {
+        width: 100%;
+
+        .shop-name-cell {
+          strong {
+            display: block;
+            color: #333;
+            font-weight: 500;
+          }
+
+          .shop-description {
+            margin: 4px 0 0 0;
+            color: #666;
+            font-size: 12px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 200px;
+          }
+        }
+
+        .owner-info {
+          strong {
+            display: block;
+            color: #333;
+          }
+
+          .owner-phone {
+            margin: 2px 0 0 0;
+            color: #666;
+            font-size: 12px;
+          }
+        }
+
+        .location-info {
+          strong {
+            display: block;
+            color: #333;
+          }
+
+          p {
+            margin: 2px 0 0 0;
+            color: #666;
+            font-size: 12px;
+          }
+        }
+
+        // Status chips
+        mat-chip {
+          font-size: 12px;
+          font-weight: 500;
+
+          &.status-pending {
+            background-color: #fff3e0;
+            color: #e65100;
+          }
+
+          &.status-approved {
+            background-color: #e8f5e8;
+            color: #2e7d32;
+          }
+
+          &.status-rejected {
+            background-color: #ffebee;
+            color: #c62828;
+          }
+
+          &.status-suspended {
+            background-color: #fce4ec;
+            color: #ad1457;
+          }
+        }
+
+        // Action buttons
+        .action-buttons {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+
+          .pending-actions,
+          .approved-actions,
+          .default-actions {
+            display: flex;
+            gap: 8px;
+          }
+
+          button {
+            &.mat-mini-fab {
+              width: 32px;
+              height: 32px;
+              line-height: 32px;
+
+              mat-icon {
+                font-size: 16px;
+                line-height: 16px;
+              }
+            }
+          }
+        }
+      }
+
+      mat-paginator {
+        border-top: 1px solid #e0e0e0;
+        margin-top: 16px;
+      }
+    }
+  }
+
+  // Loading State
+  .loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+
+    mat-spinner {
+      margin-bottom: 16px;
+    }
+
+    p {
+      color: #666;
+      font-size: 16px;
+    }
+  }
+
+  // Empty State
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+
+    mat-icon {
+      font-size: 64px;
+      width: 64px;
+      height: 64px;
+      color: #ccc;
+      margin-bottom: 16px;
+    }
+
+    h3 {
+      color: #666;
+      margin-bottom: 8px;
+    }
+
+    p {
+      color: #999;
+      margin-bottom: 24px;
+    }
+  }
+}

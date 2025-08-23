@@ -1,0 +1,181 @@
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <!-- Loading State -->
+      <div class="card" *ngIf="loading">
+        <div class="card-body text-center py-5">
+          <mat-spinner diameter="50"></mat-spinner>
+          <p class="mt-3">Loading order details...</p>
+        </div>
+      </div>
+
+      <!-- Order Not Found -->
+      <div class="card" *ngIf="!loading && !orderTracking">
+        <div class="card-body text-center py-5">
+          <mat-icon class="display-1 text-muted">search_off</mat-icon>
+          <h5 class="text-muted mt-3">Order not found</h5>
+          <p class="text-muted">Please check your order number and try again</p>
+          <button mat-raised-button color="primary" (click)="goToShops()">
+            <mat-icon>store</mat-icon>
+            Browse Shops
+          </button>
+        </div>
+      </div>
+
+      <!-- Order Tracking Details -->
+      <div *ngIf="!loading && orderTracking">
+        <!-- Order Header -->
+        <div class="card mb-4">
+          <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+              <h5 class="mb-0">
+                <mat-icon class="me-2">receipt_long</mat-icon>
+                Order #{{orderTracking.orderNumber}}
+              </h5>
+              <span class="badge fs-6" 
+                    [ngClass]="getStatusBadgeClass(orderTracking.status)">
+                {{getStatusDisplayText(orderTracking.status)}}
+              </span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-8">
+                <div class="d-flex align-items-center mb-2">
+                  <mat-icon class="me-2 text-muted">access_time</mat-icon>
+                  <span>Estimated delivery: <strong>{{orderTracking.estimatedDeliveryTime || '30-45 minutes'}}</strong></span>
+                </div>
+                <div class="d-flex align-items-center" *ngIf="orderTracking.deliveryPartner">
+                  <mat-icon class="me-2 text-muted">person</mat-icon>
+                  <span>Delivery partner: <strong>{{orderTracking.deliveryPartner.name}}</strong></span>
+                  <a href="tel:{{orderTracking.deliveryPartner.phone}}" class="btn btn-sm btn-outline-primary ms-3">
+                    <mat-icon>phone</mat-icon>
+                    Call
+                  </a>
+                </div>
+              </div>
+              <div class="col-md-4 text-end">
+                <button mat-button color="primary" (click)="refreshTracking()">
+                  <mat-icon>refresh</mat-icon>
+                  Refresh
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <!-- Order Status Timeline -->
+          <div class="col-lg-6">
+            <div class="card">
+              <div class="card-header">
+                <h6 class="mb-0">
+                  <mat-icon class="me-2">timeline</mat-icon>
+                  Order Status
+                </h6>
+              </div>
+              <div class="card-body">
+                <div class="timeline">
+                  <div class="timeline-item" 
+                       *ngFor="let status of orderTracking.statusHistory; let i = index"
+                       [class.timeline-item-active]="i === 0">
+                    <div class="timeline-marker">
+                      <div class="timeline-marker-dot" 
+                           [class.bg-success]="i === 0"
+                           [class.bg-primary]="i !== 0"></div>
+                    </div>
+                    <div class="timeline-content">
+                      <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                          <h6 class="mb-1">{{getStatusDisplayText(status.status)}}</h6>
+                          <p class="text-muted small mb-0">{{status.message}}</p>
+                        </div>
+                        <small class="text-muted">{{formatTime(status.timestamp)}}</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Live Map Tracking -->
+          <div class="col-lg-6">
+            <div class="card">
+              <div class="card-header">
+                <h6 class="mb-0">
+                  <mat-icon class="me-2">map</mat-icon>
+                  Live Tracking
+                </h6>
+              </div>
+              <div class="card-body">
+                <div class="map-container" id="delivery-map" style="height: 400px; border-radius: 8px;">
+                  <div class="d-flex align-items-center justify-content-center h-100 bg-light">
+                    <div class="text-center" *ngIf="!mapLoaded">
+                      <mat-spinner diameter="30"></mat-spinner>
+                      <p class="mt-2 text-muted small">Loading map...</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="mt-3" *ngIf="orderTracking.deliveryPartner">
+                  <div class="d-flex align-items-center justify-content-between p-2 bg-light rounded">
+                    <div class="d-flex align-items-center">
+                      <mat-icon class="me-2 text-primary">two_wheeler</mat-icon>
+                      <div>
+                        <small class="fw-bold">{{orderTracking.deliveryPartner.name}}</small>
+                        <small class="text-muted d-block">{{orderTracking.deliveryPartner.vehicleType}} - {{orderTracking.deliveryPartner.vehicleNumber}}</small>
+                      </div>
+                    </div>
+                    <div class="text-end">
+                      <div class="d-flex align-items-center">
+                        <mat-icon class="text-warning me-1 small">star</mat-icon>
+                        <small>{{orderTracking.deliveryPartner.rating}}</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Order Actions -->
+        <div class="card mt-4" *ngIf="canCancelOrder()">
+          <div class="card-header">
+            <h6 class="mb-0">Order Actions</h6>
+          </div>
+          <div class="card-body">
+            <div class="d-flex gap-2">
+              <button mat-button color="warn" (click)="cancelOrder()">
+                <mat-icon>cancel</mat-icon>
+                Cancel Order
+              </button>
+              <button mat-button color="primary" (click)="contactSupport()">
+                <mat-icon>support_agent</mat-icon>
+                Contact Support
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Delivery Instructions -->
+        <div class="card mt-4" *ngIf="orderTracking.status === 'OUT_FOR_DELIVERY'">
+          <div class="card-header bg-warning text-dark">
+            <h6 class="mb-0">
+              <mat-icon class="me-2">local_shipping</mat-icon>
+              Your order is on the way!
+            </h6>
+          </div>
+          <div class="card-body">
+            <p class="mb-2">Your delivery partner is on the way with your order. Please:</p>
+            <ul class="mb-0">
+              <li>Keep your phone nearby for delivery updates</li>
+              <li>Have the exact cash amount ready (₹{{orderTracking.total || 0}})</li>
+              <li>Be available at the delivery address</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

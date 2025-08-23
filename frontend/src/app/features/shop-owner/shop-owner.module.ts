@@ -26,6 +26,7 @@ import { MatRadioModule } from '@angular/material/radio';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatStepperModule } from '@angular/material/stepper';
 
 import { ShopOwnerRoutingModule } from './shop-owner-routing.module';
 import { ShopOwnerDashboardComponent } from './components/shop-owner-dashboard/shop-owner-dashboard.component';
@@ -33,7 +34,7 @@ import { ShopProfileComponent } from './components/shop-profile/shop-profile.com
 import { ShopOverviewComponent } from './components/shop-overview/shop-overview.component';
 import { MyProductsComponent } from './components/my-products/my-products.component';
 import { InventoryManagementComponent } from './components/inventory-management/inventory-management.component';
-import { OrdersManagementComponent } from './components/orders-management/orders-management.component';
+import { OrderManagementComponent } from './components/order-management/order-management.component';
 import { AddProductComponent } from './components/add-product/add-product.component';
 import { BulkUploadComponent } from './components/bulk-upload/bulk-upload.component';
 import { CategoriesComponent } from './components/categories/categories.component';
@@ -48,7 +49,7 @@ import { NotificationsComponent } from './components/notifications/notifications
     ShopOverviewComponent,
     MyProductsComponent,
     InventoryManagementComponent,
-    OrdersManagementComponent,
+    OrderManagementComponent,
     AddProductComponent,
     BulkUploadComponent,
     CategoriesComponent,
@@ -84,7 +85,8 @@ import { NotificationsComponent } from './components/notifications/notifications
     MatRadioModule,
     MatCheckboxModule,
     MatTabsModule,
-    MatSlideToggleModule
+    MatSlideToggleModule,
+    MatStepperModule
   ]
 })
 export class ShopOwnerModule { }

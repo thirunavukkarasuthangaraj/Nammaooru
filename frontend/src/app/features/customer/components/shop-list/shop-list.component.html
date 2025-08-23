@@ -1,0 +1,115 @@
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="card shadow-sm">
+        <div class="card-header bg-chennai-blue text-white">
+          <h5 class="mb-0">
+            <mat-icon class="me-2">store</mat-icon>
+            Available Shops
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row mb-3">
+            <div class="col-md-5">
+              <mat-form-field appearance="outline" class="w-100">
+                <mat-label>Search shops...</mat-label>
+                <input matInput 
+                       [(ngModel)]="searchTerm" 
+                       (keyup)="onSearch()"
+                       placeholder="Enter shop name or location">
+                <mat-icon matSuffix>search</mat-icon>
+              </mat-form-field>
+            </div>
+            <div class="col-md-5">
+              <mat-form-field appearance="outline" class="w-100">
+                <mat-label>Filter by Category</mat-label>
+                <mat-select [(value)]="selectedCategory" (selectionChange)="onCategoryChange()">
+                  <mat-option value="">All Categories</mat-option>
+                  <mat-option value="grocery">Grocery</mat-option>
+                  <mat-option value="restaurant">Restaurant</mat-option>
+                  <mat-option value="pharmacy">Pharmacy</mat-option>
+                  <mat-option value="electronics">Electronics</mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+            <div class="col-md-2">
+              <button mat-raised-button 
+                      color="accent" 
+                      class="w-100"
+                      (click)="testNotification()"
+                      style="height: 56px;">
+                <mat-icon>notifications</mat-icon>
+                Test
+              </button>
+            </div>
+          </div>
+
+          <div class="row" *ngIf="loading">
+            <div class="col-12 text-center py-5">
+              <mat-spinner diameter="50"></mat-spinner>
+              <p class="mt-3">Loading shops...</p>
+            </div>
+          </div>
+
+          <div class="row" *ngIf="!loading && shops.length > 0">
+            <div class="col-lg-4 col-md-6 col-sm-12 mb-4" *ngFor="let shop of shops">
+              <div class="card h-100 shop-card" (click)="selectShop(shop)">
+                <div class="position-relative">
+                  <img [src]="shop.image || '/assets/images/shop-placeholder.jpg'" 
+                       class="card-img-top shop-image" 
+                       [alt]="shop.name">
+                  <div class="position-absolute top-0 end-0 p-2">
+                    <span class="badge" 
+                          [ngClass]="shop.isOpen ? 'bg-success' : 'bg-danger'">
+                      {{shop.isOpen ? 'Open' : 'Closed'}}
+                    </span>
+                  </div>
+                </div>
+                <div class="card-body">
+                  <h6 class="card-title text-chennai-blue">{{shop.name}}</h6>
+                  <p class="card-text text-muted small">{{shop.description}}</p>
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                      <mat-icon class="text-muted small">location_on</mat-icon>
+                      <small class="text-muted ms-1">{{shop.distance || '2.5'}} km</small>
+                    </div>
+                    <div>
+                      <mat-icon class="text-warning small">star</mat-icon>
+                      <small class="text-muted ms-1">{{shop.rating || '4.2'}}</small>
+                    </div>
+                  </div>
+                  <div class="mt-2">
+                    <span class="badge bg-light text-dark me-1" 
+                          *ngFor="let category of shop.categories">
+                      {{category}}
+                    </span>
+                  </div>
+                </div>
+                <div class="card-footer bg-transparent">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted">
+                      <mat-icon class="small">access_time</mat-icon>
+                      {{shop.deliveryTime || '30-45'}} min
+                    </small>
+                    <small class="text-muted">
+                      <mat-icon class="small">currency_rupee</mat-icon>
+                      Delivery: ₹{{shop.deliveryFee || '40'}}
+                    </small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row" *ngIf="!loading && shops.length === 0">
+            <div class="col-12 text-center py-5">
+              <mat-icon class="display-1 text-muted">store_mall_directory</mat-icon>
+              <h5 class="text-muted mt-3">No shops found</h5>
+              <p class="text-muted">Try adjusting your search or category filter</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,216 @@
+<div class="delivery-dashboard">
+  <!-- Header with Online Toggle -->
+  <div class="dashboard-header">
+    <div class="online-toggle">
+      <mat-slide-toggle [(ngModel)]="isOnline" (change)="toggleOnlineStatus()" color="primary">
+        <span *ngIf="isOnline" class="online-status">
+          <mat-icon>wifi</mat-icon> Online
+        </span>
+        <span *ngIf="!isOnline" class="offline-status">
+          <mat-icon>wifi_off</mat-icon> Offline
+        </span>
+      </mat-slide-toggle>
+    </div>
+    
+    <div class="earnings-summary">
+      <mat-chip color="primary">
+        <mat-icon>payments</mat-icon>
+        Today: ₹{{ todayEarnings.totalEarnings }}
+      </mat-chip>
+      <mat-chip>
+        <mat-icon>delivery_dining</mat-icon>
+        {{ todayEarnings.completedDeliveries }} Deliveries
+      </mat-chip>
+      <mat-chip>
+        <mat-icon>star</mat-icon>
+        {{ todayEarnings.averageRating }}/5
+      </mat-chip>
+    </div>
+  </div>
+
+  <!-- Current Assignment Card -->
+  <mat-card *ngIf="currentAssignment" class="current-assignment">
+    <mat-card-header>
+      <mat-card-title>
+        Active Delivery - Order #{{ currentAssignment.orderNumber }}
+        <mat-chip [style.background-color]="getStatusColor(currentAssignment.status)">
+          <mat-icon>{{ getStatusIcon(currentAssignment.status) }}</mat-icon>
+          {{ currentAssignment.status }}
+        </mat-chip>
+      </mat-card-title>
+    </mat-card-header>
+
+    <mat-card-content>
+      <!-- Assignment Progress -->
+      <div class="progress-tracker">
+        <mat-stepper linear #stepper selectedIndex="0">
+          <mat-step [completed]="currentAssignment.status !== 'ASSIGNED'">
+            <ng-template matStepLabel>Accepted</ng-template>
+          </mat-step>
+          <mat-step [completed]="['PICKED_UP', 'DELIVERY_STARTED', 'DELIVERED'].includes(currentAssignment.status)">
+            <ng-template matStepLabel>Pickup</ng-template>
+          </mat-step>
+          <mat-step [completed]="currentAssignment.status === 'DELIVERED'">
+            <ng-template matStepLabel>Delivery</ng-template>
+          </mat-step>
+        </mat-stepper>
+      </div>
+
+      <!-- Pickup Information -->
+      <div class="location-info" *ngIf="['ACCEPTED', 'PICKUP_STARTED'].includes(currentAssignment.status)">
+        <h3><mat-icon>store</mat-icon> Pickup Location</h3>
+        <p>{{ currentAssignment.pickupAddress }}</p>
+        <div class="action-buttons">
+          <button mat-raised-button color="primary" 
+                  *ngIf="currentAssignment.status === 'ACCEPTED'"
+                  (click)="startPickup()">
+            <mat-icon>directions</mat-icon> Start Pickup
+          </button>
+          
+          <div *ngIf="currentAssignment.status === 'PICKUP_STARTED'" class="otp-section">
+            <mat-form-field>
+              <mat-label>Enter Shop OTP</mat-label>
+              <input matInput [(ngModel)]="otpInput" placeholder="6-digit OTP" maxlength="6">
+            </mat-form-field>
+            <button mat-raised-button color="accent" (click)="verifyPickupOTP()">
+              <mat-icon>verified</mat-icon> Verify & Pickup
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Delivery Information -->
+      <div class="location-info" *ngIf="['PICKED_UP', 'DELIVERY_STARTED'].includes(currentAssignment.status)">
+        <h3><mat-icon>home</mat-icon> Delivery Location</h3>
+        <p>{{ currentAssignment.deliveryAddress }}</p>
+        <div class="action-buttons">
+          <button mat-raised-button color="primary" 
+                  *ngIf="currentAssignment.status === 'PICKED_UP'"
+                  (click)="startDelivery()">
+            <mat-icon>directions</mat-icon> Start Delivery
+          </button>
+          
+          <div *ngIf="currentAssignment.status === 'DELIVERY_STARTED'" class="otp-section">
+            <mat-form-field>
+              <mat-label>Enter Customer OTP</mat-label>
+              <input matInput [(ngModel)]="otpInput" placeholder="6-digit OTP" maxlength="6">
+            </mat-form-field>
+            <button mat-raised-button color="accent" (click)="verifyDeliveryOTP()">
+              <mat-icon>verified</mat-icon> Complete Delivery
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Assignment Details -->
+      <div class="assignment-details">
+        <div class="detail-item">
+          <mat-icon>route</mat-icon>
+          <span>Distance: {{ currentAssignment.distance }} km</span>
+        </div>
+        <div class="detail-item">
+          <mat-icon>schedule</mat-icon>
+          <span>Est. Time: {{ currentAssignment.estimatedTime }}</span>
+        </div>
+        <div class="detail-item">
+          <mat-icon>payments</mat-icon>
+          <span>Earnings: ₹{{ currentAssignment.earnings }}</span>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="quick-actions">
+        <button mat-button (click)="callCustomer()">
+          <mat-icon>phone</mat-icon> Call Customer
+        </button>
+        <button mat-button (click)="openNavigation(currentAssignment.status.includes('PICKUP') ? currentAssignment.pickupAddress : currentAssignment.deliveryAddress)">
+          <mat-icon>navigation</mat-icon> Navigate
+        </button>
+        <button mat-button color="warn" (click)="reportIssue()">
+          <mat-icon>warning</mat-icon> Report Issue
+        </button>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Available Assignments -->
+  <div *ngIf="!currentAssignment && isOnline">
+    <h2>Available Deliveries</h2>
+    
+    <div class="assignments-list">
+      <mat-card *ngFor="let assignment of availableAssignments" class="assignment-card">
+        <mat-card-header>
+          <mat-card-title>
+            Order #{{ assignment.orderNumber }}
+            <mat-chip color="accent">New</mat-chip>
+          </mat-card-title>
+        </mat-card-header>
+        
+        <mat-card-content>
+          <div class="assignment-info">
+            <div class="info-row">
+              <mat-icon>store</mat-icon>
+              <span>{{ assignment.pickupAddress }}</span>
+            </div>
+            <div class="info-row">
+              <mat-icon>home</mat-icon>
+              <span>{{ assignment.deliveryAddress }}</span>
+            </div>
+            <div class="info-row">
+              <mat-icon>route</mat-icon>
+              <span>{{ assignment.distance }} km</span>
+              <mat-icon>schedule</mat-icon>
+              <span>{{ assignment.estimatedTime }}</span>
+            </div>
+            <div class="info-row earnings">
+              <mat-icon>payments</mat-icon>
+              <strong>₹{{ assignment.earnings }}</strong>
+            </div>
+          </div>
+        </mat-card-content>
+        
+        <mat-card-actions>
+          <button mat-raised-button color="primary" (click)="acceptAssignment(assignment)">
+            <mat-icon>check</mat-icon> Accept
+          </button>
+          <button mat-button color="warn" (click)="rejectAssignment(assignment)">
+            <mat-icon>close</mat-icon> Decline
+          </button>
+        </mat-card-actions>
+      </mat-card>
+      
+      <div *ngIf="availableAssignments.length === 0" class="empty-state">
+        <mat-icon>inbox</mat-icon>
+        <p>No deliveries available</p>
+        <p class="hint">New deliveries will appear here automatically</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Offline Message -->
+  <div *ngIf="!isOnline" class="offline-message">
+    <mat-card>
+      <mat-card-content>
+        <mat-icon>wifi_off</mat-icon>
+        <h3>You are Offline</h3>
+        <p>Go online to receive delivery requests</p>
+        <button mat-raised-button color="primary" (click)="toggleOnlineStatus()">
+          <mat-icon>wifi</mat-icon> Go Online
+        </button>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Today's Completed Deliveries -->
+  <div class="completed-section" *ngIf="completedAssignments.length > 0">
+    <h3>Today's Completed Deliveries</h3>
+    <mat-list>
+      <mat-list-item *ngFor="let assignment of completedAssignments">
+        <mat-icon matListItemIcon>done_all</mat-icon>
+        <div matListItemTitle>Order #{{ assignment.orderNumber }}</div>
+        <div matListItemLine>{{ assignment.actualDeliveryTime | date:'short' }}</div>
+        <span matListItemMeta>₹{{ assignment.earnings }}</span>
+      </mat-list-item>
+    </mat-list>
+  </div>
+</div>
