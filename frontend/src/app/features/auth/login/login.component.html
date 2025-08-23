@@ -56,8 +56,8 @@
 
     <!-- Auth Links -->
     <div class="auth-links">
-      <p>Don't have an account? 
-        <a routerLink="/auth/register" mat-button color="primary">Sign Up</a>
+      <p>New customer? 
+        <a routerLink="/auth/register" mat-button color="primary">Create Account</a>
       </p>
       <p>
         <a routerLink="/auth/forgot-password" class="forgot-link">Forgot Password?</a>
@@ -77,6 +77,17 @@
         </div>
       </div>
     </div>
+    
+    <!-- Info for Shop Owners and Delivery Partners -->
+    <mat-card class="info-card" style="margin-top: 16px; background: #e3f2fd;">
+      <mat-card-content style="display: flex; align-items: center; gap: 12px;">
+        <mat-icon style="color: #1976d2;">info</mat-icon>
+        <div>
+          <strong style="color: #1976d2;">Shop Owners & Delivery Partners</strong>
+          <p style="margin: 4px 0; color: #555;">Use your company-provided credentials to login. Registration is only available for customers.</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
   </div>
 
   <!-- Version Footer -->

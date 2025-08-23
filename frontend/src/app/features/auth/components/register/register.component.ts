@@ -26,8 +26,7 @@ export class RegisterComponent implements OnInit {
     this.registerForm = this.fb.group({
       username: ['', [Validators.required, Validators.minLength(3)]],
       email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(6)]],
-      role: ['USER', [Validators.required]]
+      password: ['', [Validators.required, Validators.minLength(6)]]
     });
   }
 
@@ -41,7 +40,10 @@ export class RegisterComponent implements OnInit {
   onSubmit(): void {
     if (this.registerForm.valid) {
       this.isLoading = true;
-      const registerData: RegisterRequest = this.registerForm.value;
+      const registerData: RegisterRequest = {
+        ...this.registerForm.value,
+        role: 'CUSTOMER'
+      };
 
       this.authService.register(registerData).subscribe({
         next: (response) => {
@@ -77,6 +79,10 @@ export class RegisterComponent implements OnInit {
           break;
         case UserRole.SHOP_OWNER:
           this.router.navigate(['/shop-owner']);
+          break;
+        case UserRole.CUSTOMER:
+        case 'CUSTOMER':
+          this.router.navigate(['/shops']);
           break;
         default:
           this.router.navigate(['/shops']);

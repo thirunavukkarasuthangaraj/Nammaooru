@@ -279,25 +279,57 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildSignUpLink() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Column(
       children: [
-        const Text(
-          'Don\'t have an account? ',
-          style: TextStyle(
-            color: AppColors.textSecondary,
-          ),
-        ),
-        TextButton(
-          onPressed: () {
-            context.go('/register');
-          },
-          child: const Text(
-            'Sign Up',
-            style: TextStyle(
-              color: AppColors.primary,
-              fontWeight: FontWeight.w600,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              'New customer? ',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+              ),
             ),
+            TextButton(
+              onPressed: () {
+                context.go('/register');
+              },
+              child: const Text(
+                'Create Account',
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.blue.shade50,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.blue.shade200),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.info_outline,
+                size: 20,
+                color: Colors.blue.shade700,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Shop owners and delivery partners: Use your company-provided credentials to login',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.blue.shade700,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],

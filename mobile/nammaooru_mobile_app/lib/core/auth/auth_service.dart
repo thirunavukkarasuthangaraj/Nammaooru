@@ -5,12 +5,12 @@ import '../storage/secure_storage.dart';
 import 'jwt_helper.dart';
 
 class AuthService {
-  static Future<AuthResult> login(String email, String password) async {
+  static Future<AuthResult> login(String username, String password) async {
     try {
       final response = await ApiClient.post(
         ApiEndpoints.login,
         data: {
-          'email': email,
+          'username': username,
           'password': password,
         },
       );
@@ -52,14 +52,16 @@ class AuthService {
     required String role,
   }) async {
     try {
+      // Split name into username (using email prefix or name)
+      final username = email.split('@')[0];
+      
       final response = await ApiClient.post(
         ApiEndpoints.register,
         data: {
-          'name': name,
+          'username': username,
           'email': email,
           'password': password,
-          'phoneNumber': phoneNumber,
-          'role': role,
+          'role': role, // This will be 'CUSTOMER' always from the UI
         },
       );
       

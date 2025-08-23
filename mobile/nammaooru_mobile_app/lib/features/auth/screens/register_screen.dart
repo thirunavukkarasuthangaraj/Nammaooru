@@ -26,7 +26,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   
-  String _selectedRole = 'CUSTOMER';
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _acceptTerms = false;
@@ -60,7 +59,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       email: _emailController.text.trim(),
       password: _passwordController.text,
       phoneNumber: _phoneController.text.trim(),
-      role: _selectedRole,
+      role: 'CUSTOMER',
     );
 
     if (mounted) {
@@ -104,8 +103,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   children: [
                     _buildHeader(),
                     const SizedBox(height: 30),
-                    _buildRoleSelection(),
-                    const SizedBox(height: 20),
                     _buildNameField(),
                     const SizedBox(height: 16),
                     _buildEmailField(),
@@ -144,101 +141,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 8),
-        Text(
-          _getRoleDescription(),
-          style: const TextStyle(
+        const Text(
+          'Create your customer account to order products and track deliveries from local stores',
+          style: TextStyle(
             fontSize: 16,
             color: AppColors.textSecondary,
           ),
           textAlign: TextAlign.center,
         ),
       ],
-    );
-  }
-
-  Widget _buildRoleSelection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'I want to join as:',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: AppColors.divider),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            children: AppConstants.userRoles.entries.map((entry) {
-              return _buildRoleOption(
-                entry.key,
-                entry.value,
-                _getRoleIcon(entry.key),
-                _getRoleColor(entry.key),
-              );
-            }).toList(),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRoleOption(String role, String title, IconData icon, Color color) {
-    final isSelected = _selectedRole == role;
-    
-    return Container(
-      margin: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: isSelected ? color.withOpacity(0.1) : Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: isSelected ? color : Colors.transparent,
-          width: 2,
-        ),
-      ),
-      child: RadioListTile<String>(
-        value: role,
-        groupValue: _selectedRole,
-        onChanged: (value) {
-          setState(() {
-            _selectedRole = value!;
-          });
-        },
-        title: Row(
-          children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: isSelected ? color : AppColors.textPrimary,
-                    ),
-                  ),
-                  Text(
-                    _getRoleSubtitle(role),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        activeColor: color,
-      ),
     );
   }
 
@@ -417,7 +328,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       text: AppStrings.register,
       onPressed: _handleRegister,
       height: 56,
-      backgroundColor: _getRoleColor(_selectedRole),
+      backgroundColor: AppColors.primary,
     );
   }
 
@@ -445,48 +356,5 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
       ],
     );
-  }
-
-  String _getRoleDescription() {
-    switch (_selectedRole) {
-      case 'CUSTOMER':
-        return 'Order products and track deliveries';
-      case 'SHOP_OWNER':
-        return 'Manage your shop and process orders';
-      case 'DELIVERY_PARTNER':
-        return 'Deliver orders and earn money';
-      default:
-        return '';
-    }
-  }
-
-  String _getRoleSubtitle(String role) {
-    switch (role) {
-      case 'CUSTOMER':
-        return 'Shop from local stores';
-      case 'SHOP_OWNER':
-        return 'Sell your products online';
-      case 'DELIVERY_PARTNER':
-        return 'Flexible earning opportunity';
-      default:
-        return '';
-    }
-  }
-
-  IconData _getRoleIcon(String role) {
-    switch (role) {
-      case 'CUSTOMER':
-        return Icons.shopping_bag_outlined;
-      case 'SHOP_OWNER':
-        return Icons.store_outlined;
-      case 'DELIVERY_PARTNER':
-        return Icons.delivery_dining_outlined;
-      default:
-        return Icons.person_outlined;
-    }
-  }
-
-  Color _getRoleColor(String role) {
-    return AppColors.roleColors[role] ?? AppColors.primary;
   }
 }

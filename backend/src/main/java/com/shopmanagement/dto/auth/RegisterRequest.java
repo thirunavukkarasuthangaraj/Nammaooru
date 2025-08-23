@@ -27,7 +27,7 @@ public class RegisterRequest {
     @Size(min = 6, message = "Password must be at least 6 characters")
     private String password;
 
-    @NotBlank(message = "Role is required")
-    @Pattern(regexp = "ADMIN|USER|SHOP_OWNER", message = "Role must be ADMIN, USER, or SHOP_OWNER")
+    // Role field is optional since registration is customer-only
+    // Backend will automatically set role to CUSTOMER
     private String role;
 }
