@@ -7,6 +7,7 @@ import { ShopService } from '../../../../core/services/shop.service';
 import { MasterProduct, ShopProductRequest, ShopProductStatus, ProductStatus } from '../../../../core/models/product.model';
 import { Shop } from '../../../../core/models/shop.model';
 import Swal from 'sweetalert2';
+import { environment } from '../../../../../environments/environment';
 
 interface ProductSelection {
   product: MasterProduct;
@@ -1328,7 +1329,9 @@ export class BulkProductAssignmentComponent implements OnInit {
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
       return imageUrl;
     }
-    return `http://localhost:8082${imageUrl}`;
+    // Use the API base URL from environment (without /api)
+    const baseUrl = environment.apiUrl.replace('/api', '');
+    return `${baseUrl}${imageUrl}`;
   }
 
   onImageError(event: any): void {

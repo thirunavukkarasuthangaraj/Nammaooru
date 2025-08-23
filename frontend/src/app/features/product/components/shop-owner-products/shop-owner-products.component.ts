@@ -8,6 +8,7 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { MasterProduct, ShopProduct, ShopProductRequest, ShopProductStatus, ProductStatus } from '../../../../core/models/product.model';
 import { Shop } from '../../../../core/models/shop.model';
 import Swal from 'sweetalert2';
+import { environment } from '../../../../../environments/environment';
 
 interface ProductItem {
   masterProduct: MasterProduct;
@@ -1174,7 +1175,8 @@ export class ShopOwnerProductsComponent implements OnInit {
       return imageUrl;
     }
     // Otherwise, construct the full URL with the backend base URL
-    return `http://localhost:8082${imageUrl}`;
+    const baseUrl = environment.apiUrl.replace('/api', '');
+    return `${baseUrl}${imageUrl}`;
   }
 
   onImageError(event: any): void {

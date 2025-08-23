@@ -6,6 +6,7 @@ import { Router } from '@angular/router';
 import { ProductService } from '../../../../core/services/product.service';
 import { MasterProduct, ProductFilters } from '../../../../core/models/product.model';
 import Swal from 'sweetalert2';
+import { environment } from '../../../../../environments/environment';
 
 @Component({
   selector: 'app-master-product-list',
@@ -986,7 +987,9 @@ export class MasterProductListComponent implements OnInit {
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
       return imageUrl;
     }
-    return `http://localhost:8082${imageUrl}`;
+    // Use the API base URL from environment (without /api)
+    const baseUrl = environment.apiUrl.replace('/api', '');
+    return `${baseUrl}${imageUrl}`;
   }
 
   onImageError(event: any): void {
