@@ -61,7 +61,7 @@ class AuthService {
           'username': username,
           'email': email,
           'password': password,
-          'role': role, // This will be 'CUSTOMER' always from the UI
+          'role': 'USER', // Force USER role for customer registration
         },
       );
       

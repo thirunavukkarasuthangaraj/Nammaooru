@@ -42,7 +42,7 @@ export class RegisterComponent implements OnInit {
       this.isLoading = true;
       const registerData: RegisterRequest = {
         ...this.registerForm.value,
-        role: 'CUSTOMER'
+        role: 'USER'
       };
 
       this.authService.register(registerData).subscribe({

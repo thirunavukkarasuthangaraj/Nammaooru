@@ -59,7 +59,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       email: _emailController.text.trim(),
       password: _passwordController.text,
       phoneNumber: _phoneController.text.trim(),
-      role: 'CUSTOMER',
+      role: 'USER',
     );
 
     if (mounted) {

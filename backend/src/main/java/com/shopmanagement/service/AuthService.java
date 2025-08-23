@@ -33,13 +33,13 @@ public class AuthService {
             throw new RuntimeException("Email already exists");
         }
 
-        // Only allow CUSTOMER role for registration
+        // Only allow USER role for registration (customers)
         // Shop owners and delivery partners should be created by admin
         var user = User.builder()
                 .username(request.getUsername())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .role(User.UserRole.CUSTOMER)  // Force CUSTOMER role
+                .role(User.UserRole.USER)  // Force USER role for customers
                 .build();
         
         userRepository.save(user);
