@@ -1,28 +1,8 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
-  postgres:
-    image: postgres:15-alpine
-    container_name: shop-postgres
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-shop_management_db}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-    ports:
-      - "5433:5432"  # Changed from 5432 to 5433
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./database:/docker-entrypoint-initdb.d
-    networks:
-      - shop-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
+  # NO PostgreSQL container - using local PostgreSQL installation
+  
   # Spring Boot Backend
   backend:
     build: 
@@ -30,7 +10,8 @@ services:
     container_name: backend
     environment:
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-docker}
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB:-shop_management_db}
+      # Connect to local PostgreSQL on host machine
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://host.docker.internal:5432/${POSTGRES_DB:-shop_management_db}
       - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-postgres}
       - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       - SPRING_REDIS_HOST=redis
@@ -38,25 +19,16 @@ services:
       - SPRING_REDIS_PASSWORD=${REDIS_PASSWORD:-Thiruna$@02031994pass}
       - JWT_SECRET=${JWT_SECRET:-your-jwt-secret-key-here}
       - FILE_UPLOAD_PATH=/app/uploads
-      - APP_CORS_ALLOWED_ORIGINS=https://nammaoorudelivary.in,https://www.nammaoorudelivary.in
+      - APP_CORS_ALLOWED_ORIGINS=http://localhost:4200,http://localhost:8080
       - APP_CORS_ALLOWED_METHODS=GET,POST,PUT,DELETE,OPTIONS
       - APP_CORS_ALLOWED_HEADERS=*
       - APP_CORS_ALLOW_CREDENTIALS=true
     ports:
-      - "0.0.0.0:8082:8082"
+      - "8082:8082"
     volumes:
       - uploads_data:/app/uploads
     networks:
       - shop-network
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
     restart: unless-stopped
 
   # Angular Frontend 
@@ -67,14 +39,14 @@ services:
     container_name: shop-frontend
     image: shop-frontend:${BUILD_ID:-latest}
     ports:
-      - "0.0.0.0:8080:80"
+      - "8080:80"
     networks:
       - shop-network
     depends_on:
       - backend
     restart: unless-stopped
 
-  # Redis for caching (optional)
+  # Redis for caching
   redis:
     image: redis:7-alpine
     container_name: shop-redis
@@ -91,8 +63,6 @@ services:
     restart: unless-stopped
 
 volumes:
-  postgres_data:
-    driver: local
   uploads_data:
     driver: local
 
