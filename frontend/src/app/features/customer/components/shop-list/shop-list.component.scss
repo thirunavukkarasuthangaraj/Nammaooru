@@ -1,38 +1,339 @@
-.shop-card {
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border: 1px solid #e0e0e0;
-  
-  &:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-    border-color: var(--chennai-blue);
+.shop-list-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+// Header Section
+.header-section {
+  padding: 60px 0 40px;
+  color: white;
+  text-align: center;
+
+  .page-title {
+    font-size: 2.5rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+
+    mat-icon {
+      font-size: 3rem;
+      width: 3rem;
+      height: 3rem;
+    }
+  }
+
+  .subtitle {
+    font-size: 1.1rem;
+    opacity: 0.95;
+    max-width: 600px;
+    margin: 0 auto;
   }
 }
 
-.shop-image {
-  height: 200px;
-  object-fit: cover;
-  border-radius: 8px 8px 0 0;
+// Search Section
+.search-section {
+  background: white;
+  padding: 30px 0;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+
+  .search-bar {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    max-width: 900px;
+    margin: 0 auto;
+
+    .search-field {
+      flex: 1;
+      
+      ::ng-deep {
+        .mat-form-field-wrapper {
+          padding-bottom: 0;
+        }
+        
+        .mat-form-field-appearance-outline .mat-form-field-outline {
+          background: #f8f9fa;
+        }
+        
+        .mat-form-field-appearance-outline.mat-focused .mat-form-field-outline-thick {
+          color: #667eea;
+        }
+      }
+    }
+
+    .category-filter {
+      width: 250px;
+      
+      ::ng-deep {
+        .mat-form-field-wrapper {
+          padding-bottom: 0;
+        }
+      }
+    }
+  }
 }
 
-.card-title {
-  font-weight: 600;
-  margin-bottom: 0.5rem;
+// Main Content
+.shops-content {
+  padding: 40px 15px;
 }
 
-.badge {
-  font-size: 0.75rem;
+// Loading State
+.loading-container {
+  text-align: center;
+  padding: 80px 20px;
+  background: white;
+  border-radius: 20px;
+  margin: 40px auto;
+  max-width: 400px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+
+  mat-spinner {
+    margin: 0 auto 20px;
+  }
+
+  h3 {
+    font-size: 1.5rem;
+    color: #333;
+    margin-bottom: 10px;
+  }
+
+  p {
+    color: #666;
+  }
 }
 
-.small {
-  font-size: 0.875rem;
+// Shop Grid
+.shops-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 30px;
+  padding: 20px 0;
 }
 
-.text-chennai-blue {
-  color: var(--chennai-blue);
+// Shop Card
+.shop-card {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: 16px !important;
+  overflow: hidden;
+  background: white;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+  }
+
+  &.closed {
+    opacity: 0.7;
+    
+    .shop-image-container img {
+      filter: grayscale(100%);
+    }
+  }
+
+  .shop-image-container {
+    position: relative;
+    height: 200px;
+    overflow: hidden;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s ease;
+    }
+
+    &:hover img {
+      transform: scale(1.05);
+    }
+
+    .status-chip {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      
+      ::ng-deep {
+        .mat-chip {
+          font-weight: 600;
+          font-size: 0.75rem;
+        }
+      }
+    }
+
+    .shop-rating {
+      position: absolute;
+      bottom: 15px;
+      left: 15px;
+      background: rgba(255,255,255,0.95);
+      padding: 5px 12px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+
+      mat-icon {
+        color: #ffc107;
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+
+      span {
+        font-weight: 600;
+        color: #333;
+        font-size: 0.9rem;
+      }
+    }
+  }
+
+  mat-card-content {
+    padding: 20px !important;
+
+    .shop-name {
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: #333;
+      margin: 0 0 8px;
+    }
+
+    .shop-description {
+      color: #666;
+      font-size: 0.95rem;
+      margin-bottom: 15px;
+      line-height: 1.4;
+    }
+
+    .info-pills {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+
+      .info-pill {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        color: #555;
+        font-size: 0.9rem;
+
+        mat-icon {
+          font-size: 18px;
+          width: 18px;
+          height: 18px;
+          color: #667eea;
+        }
+      }
+    }
+
+    .shop-categories {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+
+      mat-chip {
+        height: 26px !important;
+        font-size: 0.85rem;
+        background: #f0f4ff !important;
+        color: #667eea !important;
+      }
+    }
+  }
+
+  mat-card-actions {
+    padding: 0 20px 20px !important;
+    
+    .view-shop-btn {
+      width: 100%;
+      height: 45px;
+      font-size: 1rem;
+      font-weight: 500;
+      border-radius: 8px;
+      
+      mat-icon {
+        margin-right: 8px;
+      }
+    }
+  }
 }
 
-.bg-chennai-blue {
-  background-color: var(--chennai-blue);
+// Empty State
+.empty-state {
+  text-align: center;
+  padding: 80px 20px;
+  background: white;
+  border-radius: 20px;
+  margin: 40px auto;
+  max-width: 500px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+
+  mat-icon {
+    font-size: 80px;
+    width: 80px;
+    height: 80px;
+    color: #ccc;
+    margin-bottom: 20px;
+  }
+
+  h2 {
+    font-size: 1.8rem;
+    color: #333;
+    margin-bottom: 10px;
+  }
+
+  p {
+    color: #666;
+    font-size: 1.1rem;
+    margin-bottom: 30px;
+  }
+
+  button {
+    height: 45px;
+    padding: 0 30px;
+    font-size: 1rem;
+    border-radius: 8px;
+  }
+}
+
+// Responsive Design
+@media (max-width: 768px) {
+  .header-section {
+    padding: 40px 15px 30px;
+    
+    .page-title {
+      font-size: 2rem;
+    }
+  }
+
+  .search-section {
+    .search-bar {
+      flex-direction: column;
+      padding: 0 15px;
+      
+      .search-field,
+      .category-filter {
+        width: 100%;
+      }
+    }
+  }
+
+  .shops-grid {
+    grid-template-columns: 1fr;
+    padding: 15px;
+  }
+}
+
+// Container
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 15px;
 }

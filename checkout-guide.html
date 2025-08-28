@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout Guide - How to Place Order</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        
+        .guide-card {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .step {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-left: 5px solid #48bb78;
+            border-radius: 5px;
+        }
+        
+        .step-number {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            background: #48bb78;
+            color: white;
+            text-align: center;
+            line-height: 40px;
+            border-radius: 50%;
+            font-weight: bold;
+            margin-right: 15px;
+        }
+        
+        .step-title {
+            font-size: 1.3em;
+            color: #333;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        
+        .step-content {
+            margin-left: 55px;
+            color: #666;
+            line-height: 1.6;
+        }
+        
+        .field-list {
+            list-style: none;
+            margin: 10px 0;
+        }
+        
+        .field-list li {
+            padding: 5px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+        
+        .field-list li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #48bb78;
+            font-weight: bold;
+        }
+        
+        .highlight {
+            background: #fff3cd;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: 600;
+            color: #856404;
+        }
+        
+        .button-preview {
+            display: inline-block;
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+            padding: 15px 40px;
+            border-radius: 6px;
+            font-size: 18px;
+            font-weight: 600;
+            text-decoration: none;
+            box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
+            margin: 20px 0;
+        }
+        
+        .important-note {
+            background: #fff3cd;
+            border: 1px solid #ffeeba;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #856404;
+        }
+        
+        .important-note strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .test-credentials {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #155724;
+        }
+        
+        .credentials-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 10px;
+        }
+        
+        .credential-item {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .credential-item strong {
+            display: block;
+            color: #155724;
+            margin-bottom: 5px;
+        }
+        
+        .credential-item code {
+            background: #f1f1f1;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .navigation-flow {
+            background: #e8f4f8;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        
+        .flow-step {
+            display: inline-block;
+            padding: 8px 15px;
+            background: #007bff;
+            color: white;
+            border-radius: 5px;
+            margin: 5px;
+        }
+        
+        .flow-arrow {
+            display: inline-block;
+            margin: 0 10px;
+            color: #007bff;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛒 How to Place an Order - Complete Guide</h1>
+        
+        <div class="guide-card">
+            <h2>Quick Navigation Flow</h2>
+            <div class="navigation-flow">
+                <span class="flow-step">Login</span>
+                <span class="flow-arrow">→</span>
+                <span class="flow-step">Browse Shops</span>
+                <span class="flow-arrow">→</span>
+                <span class="flow-step">Select Products</span>
+                <span class="flow-arrow">→</span>
+                <span class="flow-step">View Cart</span>
+                <span class="flow-arrow">→</span>
+                <span class="flow-step">Checkout</span>
+                <span class="flow-arrow">→</span>
+                <span class="flow-step">Place Order</span>
+            </div>
+        </div>
+        
+        <div class="guide-card">
+            <h2>Test User Credentials</h2>
+            <div class="test-credentials">
+                <strong>Use these credentials to test the customer flow:</strong>
+                <div class="credentials-grid">
+                    <div class="credential-item">
+                        <strong>Customer Account:</strong>
+                        Username: <code>customer1</code><br>
+                        Password: <code>password</code>
+                    </div>
+                    <div class="credential-item">
+                        <strong>Shop Owner Account:</strong>
+                        Username: <code>shopowner1</code><br>
+                        Password: <code>password</code>
+                    </div>
+                    <div class="credential-item">
+                        <strong>Admin Account:</strong>
+                        Username: <code>superadmin</code><br>
+                        Password: <code>password</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="guide-card">
+            <h2>Step-by-Step Checkout Process</h2>
+            
+            <div class="step">
+                <div class="step-title">
+                    <span class="step-number">1</span>
+                    Add Items to Cart
+                </div>
+                <div class="step-content">
+                    <p>First, you need items in your cart:</p>
+                    <ul class="field-list">
+                        <li>Browse shops at <code>/customer/shops</code></li>
+                        <li>Click on a shop to view products</li>
+                        <li>Click "Add to Cart" on products you want</li>
+                        <li>Click the cart icon in the header to view your cart</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-title">
+                    <span class="step-number">2</span>
+                    Go to Checkout Page
+                </div>
+                <div class="step-content">
+                    <p>From the Shopping Cart page:</p>
+                    <ul class="field-list">
+                        <li>Review your items in the cart</li>
+                        <li>Click the <span class="highlight">Proceed to Checkout</span> button</li>
+                        <li>You'll be redirected to the checkout form</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-title">
+                    <span class="step-number">3</span>
+                    Fill Customer Information
+                </div>
+                <div class="step-content">
+                    <p>In the <strong>Customer Information</strong> section, enter:</p>
+                    <ul class="field-list">
+                        <li><strong>First Name:</strong> Your first name (min 2 characters)</li>
+                        <li><strong>Last Name:</strong> Your last name (min 2 characters)</li>
+                        <li><strong>Phone Number:</strong> 10-digit mobile number starting with 6-9</li>
+                        <li><strong>Email:</strong> Valid email address</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-title">
+                    <span class="step-number">4</span>
+                    Enter Delivery Address
+                </div>
+                <div class="step-content">
+                    <p>In the <strong>Delivery Address</strong> section, provide:</p>
+                    <ul class="field-list">
+                        <li><strong>Street Address:</strong> Full address with house/flat number (min 10 characters)</li>
+                        <li><strong>Landmark:</strong> Nearby landmark (optional)</li>
+                        <li><strong>Pincode:</strong> 6-digit postal code</li>
+                        <li><strong>City:</strong> City name (default: Chennai)</li>
+                        <li><strong>State:</strong> State name (default: Tamil Nadu)</li>
+                    </ul>
+                    
+                    <div class="important-note">
+                        <strong>📍 Note about Saving Address:</strong>
+                        The delivery address is automatically saved with your order. In future orders, previously used addresses will be available for selection.
+                    </div>
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-title">
+                    <span class="step-number">5</span>
+                    Add Special Instructions (Optional)
+                </div>
+                <div class="step-content">
+                    <p>In the <strong>Special Instructions</strong> section:</p>
+                    <ul class="field-list">
+                        <li>Add any delivery instructions</li>
+                        <li>Gate codes, floor numbers, etc.</li>
+                        <li>This field is optional</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-title">
+                    <span class="step-number">6</span>
+                    Review Order Summary
+                </div>
+                <div class="step-content">
+                    <p>On the right side, you'll see:</p>
+                    <ul class="field-list">
+                        <li><strong>Shop Name:</strong> Where you're ordering from</li>
+                        <li><strong>Order Items:</strong> List of products with quantities</li>
+                        <li><strong>Price Breakdown:</strong> Subtotal, delivery fee, discount</li>
+                        <li><strong>Total Amount:</strong> Final amount to pay</li>
+                        <li><strong>Payment Method:</strong> Cash on Delivery (COD)</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-title">
+                    <span class="step-number">7</span>
+                    Accept Terms & Place Order
+                </div>
+                <div class="step-content">
+                    <p>Final steps to place your order:</p>
+                    <ul class="field-list">
+                        <li>Check the <span class="highlight">I agree to the terms and conditions</span> checkbox</li>
+                        <li>The Place Order button will become enabled</li>
+                        <li>Click the green <strong>Place Order</strong> button</li>
+                    </ul>
+                    
+                    <p style="margin-top: 15px;">The Place Order button looks like this:</p>
+                    <div class="button-preview">
+                        🛍️ Place Order
+                    </div>
+                    
+                    <div class="important-note">
+                        <strong>⚠️ Important:</strong>
+                        The Place Order button is located at the bottom of the Order Summary card on the right side. It will only be enabled when all required fields are filled and terms are accepted.
+                    </div>
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-title">
+                    <span class="step-number">8</span>
+                    Order Confirmation
+                </div>
+                <div class="step-content">
+                    <p>After placing the order:</p>
+                    <ul class="field-list">
+                        <li>You'll see an order success screen</li>
+                        <li>Your order number will be displayed</li>
+                        <li>You can track your order status</li>
+                        <li>Option to continue shopping or track the order</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="guide-card">
+            <h2>Where is the Place Order Button?</h2>
+            <div class="important-note" style="background: #d4edda; border-color: #c3e6cb; color: #155724;">
+                <strong>📍 Location of Place Order Button:</strong>
+                <p>The <strong>Place Order</strong> button is located in the <strong>Order Summary card on the RIGHT SIDE</strong> of the checkout page.</p>
+                <p style="margin-top: 10px;">It appears:</p>
+                <ul style="margin-left: 20px; margin-top: 5px;">
+                    <li>Below the payment method section</li>
+                    <li>After the terms and conditions checkbox</li>
+                    <li>As a large green button with "Place Order" text</li>
+                    <li>Only enabled when all fields are valid and terms accepted</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="guide-card">
+            <h2>Quick Test URLs</h2>
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 5px;">
+                <p><strong>Direct Links for Testing:</strong></p>
+                <ul style="list-style: none; margin-top: 10px;">
+                    <li>📱 <a href="http://localhost:4200/auth/login" target="_blank">Login Page</a></li>
+                    <li>🏪 <a href="http://localhost:4200/customer/shops" target="_blank">Browse Shops</a></li>
+                    <li>🛒 <a href="http://localhost:4200/customer/cart" target="_blank">Shopping Cart</a></li>
+                    <li>💳 <a href="http://localhost:4200/customer/checkout" target="_blank">Checkout Page</a></li>
+                    <li>📦 <a href="http://localhost:4200/customer/orders" target="_blank">My Orders</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

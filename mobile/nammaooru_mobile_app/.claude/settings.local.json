@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter:*)",
+      "Bash(./gradlew:*)",
+      "Bash(java:*)",
+      "Bash(where java)",
+      "Bash(copy:*)",
+      "Bash(del \"C:\\Users\\MVNLA\\.android\\debug.keystore\")",
+      "Bash(keytool:*)",
+      "Bash(C:/Users/MVNLA/AppData/Local/Android/Sdk/platform-tools/adb install -r \"D:\\AAWS\\nammaooru\\shop-management-system\\mobile\\nammaooru_mobile_app\\build\\app\\outputs\\flutter-apk\\app-debug.apk\")",
+      "Read(D:\\AAWS\\nammaooru\\shop-management-system/**)",
+      "Read(D:\\AAWS\\nammaooru\\shop-management-system/**)",
+      "Bash(del \"C:\\Users\\MVNLA\\.android\\debug_new.keystore\")",
+      "Bash(\"C:\\Users\\MVNLA\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb\" devices)",
+      "Bash(\"C:\\Users\\MVNLA\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb\" install -r \"D:\\AAWS\\nammaooru\\shop-management-system\\mobile\\nammaooru_mobile_app\\build\\app\\outputs\\flutter-apk\\app-debug.apk\")",
+      "Bash(dir:*)",
+      "Bash(cp:*)",
+      "Bash(\"C:\\Users\\MVNLA\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb\" install -r \"D:\\AAWS\\nammaooru\\shop-management-system\\mobile\\nammaooru_mobile_app\\build\\app\\outputs\\flutter-apk\\app-release.apk\")",
+      "Bash(rm:*)",
+      "Read(D:\\AAWS\\nammaooru\\shop-management-system/**)",
+      "Read(D:\\AAWS\\nammaooru\\shop-management-system/**)",
+      "Read(D:\\AAWS\\nammaooru\\shop-management-system/**)",
+      "Bash(taskkill:*)",
+      "Bash(curl:*)",
+      "Bash(\"C:\\Users\\MVNLA\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb\" logcat -d -v time)",
+      "Bash(\"C:\\Users\\MVNLA\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb\" shell \"ps | grep -i namma\")",
+      "Bash(\"C:\\Users\\MVNLA\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb\" logcat --pid=3390 -v time)",
+      "Bash(\"C:\\Users\\MVNLA\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb\" logcat -c)",
+      "Bash(\"C:\\Users\\MVNLA\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb\" shell \"am start -n com.nammaooru.app/.MainActivity\")"
+    ],
+    "deny": [],
+    "ask": [],
+    "additionalDirectories": [
+      "D:\\AAWS\\nammaooru\\shop-management-system\\mobile",
+      "C:\\flutter",
+      "C:\\Users\\MVNLA\\.android",
+      "D:\\c\\Users\\MVNLA\\.android",
+      "D:\\AAWS\\nammaooru\\shop-management-system"
+    ]
+  }
+}

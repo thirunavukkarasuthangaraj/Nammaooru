@@ -1,6 +1,7 @@
 package com.shopmanagement.controller;
 
 import com.shopmanagement.common.dto.ApiResponse;
+import com.shopmanagement.shop.dto.ShopPageResponse;
 import com.shopmanagement.shop.dto.ShopResponse;
 import com.shopmanagement.shop.entity.Shop;
 import com.shopmanagement.shop.service.ShopService;
@@ -26,7 +27,7 @@ public class ShopApprovalController {
     private final ShopService shopService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<ShopResponse>>> getPendingShops(
+    public ResponseEntity<ApiResponse<ShopPageResponse>> getPendingShops(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
@@ -37,10 +38,22 @@ public class ShopApprovalController {
         Sort.Direction direction = sortDirection.equalsIgnoreCase("ASC") ? Sort.Direction.ASC : Sort.Direction.DESC;
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
         
-        Page<ShopResponse> pendingShops = shopService.getShopsByStatus(Shop.ShopStatus.PENDING, pageable);
+        Page<ShopResponse> pendingShopsPage = shopService.getShopsByStatus(Shop.ShopStatus.PENDING, pageable);
+        
+        ShopPageResponse response = ShopPageResponse.builder()
+                .content(pendingShopsPage.getContent())
+                .page(pendingShopsPage.getNumber())
+                .size(pendingShopsPage.getSize())
+                .totalElements(pendingShopsPage.getTotalElements())
+                .totalPages(pendingShopsPage.getTotalPages())
+                .first(pendingShopsPage.isFirst())
+                .last(pendingShopsPage.isLast())
+                .hasNext(pendingShopsPage.hasNext())
+                .hasPrevious(pendingShopsPage.hasPrevious())
+                .build();
         
         return ResponseEntity.ok(ApiResponse.success(
-                pendingShops,
+                response,
                 "Pending shops fetched successfully"
         ));
     }
@@ -96,7 +109,7 @@ public class ShopApprovalController {
     }
 
     @GetMapping("/history")
-    public ResponseEntity<ApiResponse<Page<ShopResponse>>> getApprovalHistory(
+    public ResponseEntity<ApiResponse<ShopPageResponse>> getApprovalHistory(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) Shop.ShopStatus status) {
@@ -105,15 +118,27 @@ public class ShopApprovalController {
         
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "updatedAt"));
         
-        Page<ShopResponse> approvalHistory;
+        Page<ShopResponse> approvalHistoryPage;
         if (status != null) {
-            approvalHistory = shopService.getShopsByStatus(status, pageable);
+            approvalHistoryPage = shopService.getShopsByStatus(status, pageable);
         } else {
-            approvalHistory = shopService.getAllShops(null, pageable);
+            approvalHistoryPage = shopService.getAllShops(null, pageable);
         }
         
+        ShopPageResponse response = ShopPageResponse.builder()
+                .content(approvalHistoryPage.getContent())
+                .page(approvalHistoryPage.getNumber())
+                .size(approvalHistoryPage.getSize())
+                .totalElements(approvalHistoryPage.getTotalElements())
+                .totalPages(approvalHistoryPage.getTotalPages())
+                .first(approvalHistoryPage.isFirst())
+                .last(approvalHistoryPage.isLast())
+                .hasNext(approvalHistoryPage.hasNext())
+                .hasPrevious(approvalHistoryPage.hasPrevious())
+                .build();
+        
         return ResponseEntity.ok(ApiResponse.success(
-                approvalHistory,
+                response,
                 "Approval history fetched successfully"
         ));
     }

@@ -15,6 +15,9 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatBadgeModule } from '@angular/material/badge';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 
 import { CustomerRoutingModule } from './customer-routing.module';
 import { ShopListComponent } from './components/shop-list/shop-list.component';
@@ -23,6 +26,9 @@ import { ShoppingCartComponent } from './components/shopping-cart/shopping-cart.
 import { CheckoutComponent } from './components/checkout/checkout.component';
 import { OrderTrackingComponent } from './components/order-tracking/order-tracking.component';
 import { OrderConfirmationComponent } from './components/order-confirmation/order-confirmation.component';
+import { OrdersListComponent } from './components/orders-list/orders-list.component';
+import { CustomerDashboardComponent } from './components/customer-dashboard/customer-dashboard.component';
+import { CustomerProfileComponent } from './components/customer-profile/customer-profile.component';
 
 @NgModule({
   declarations: [
@@ -31,7 +37,10 @@ import { OrderConfirmationComponent } from './components/order-confirmation/orde
     ShoppingCartComponent,
     CheckoutComponent,
     OrderTrackingComponent,
-    OrderConfirmationComponent
+    OrderConfirmationComponent,
+    OrdersListComponent,
+    CustomerDashboardComponent,
+    CustomerProfileComponent
   ],
   imports: [
     CommonModule,
@@ -51,7 +60,10 @@ import { OrderConfirmationComponent } from './components/order-confirmation/orde
     MatProgressSpinnerModule,
     MatSnackBarModule,
     MatTooltipModule,
-    MatBadgeModule
+    MatBadgeModule,
+    MatChipsModule,
+    MatDividerModule,
+    MatSlideToggleModule
   ]
 })
 export class CustomerModule { }

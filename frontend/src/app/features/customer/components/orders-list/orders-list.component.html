@@ -1,0 +1,108 @@
+<div class="orders-page">
+  <!-- Page Header -->
+  <mat-card class="page-header">
+    <div class="header-container">
+      <button mat-stroked-button color="primary" class="back-button" (click)="continueShopping()">
+        <mat-icon>arrow_back</mat-icon>
+        Continue Shopping
+      </button>
+      <div class="header-title">
+        <mat-icon class="orders-icon">receipt_long</mat-icon>
+        <h1>My Orders</h1>
+      </div>
+    </div>
+  </mat-card>
+
+  <!-- Main Content -->
+  <div class="orders-content">
+    
+    <!-- Loading State -->
+    <div *ngIf="loading" class="loading-container">
+      <mat-spinner></mat-spinner>
+      <p>Loading your orders...</p>
+    </div>
+
+    <!-- Empty State -->
+    <div *ngIf="!loading && orders.length === 0" class="empty-state">
+      <mat-card class="empty-card">
+        <mat-icon class="empty-icon">shopping_basket</mat-icon>
+        <h2>No Orders Yet</h2>
+        <p>You haven't placed any orders yet. Start shopping to see your orders here!</p>
+        <button mat-raised-button color="primary" (click)="continueShopping()">
+          <mat-icon>store</mat-icon>
+          Start Shopping
+        </button>
+      </mat-card>
+    </div>
+
+    <!-- Orders List -->
+    <div *ngIf="!loading && orders.length > 0" class="orders-list">
+      <mat-card class="order-card" *ngFor="let order of orders">
+        <mat-card-header>
+          <mat-card-title>
+            Order #{{order.orderNumber}}
+            <mat-chip [color]="getStatusColor(order.status)" selected>
+              <mat-icon class="status-icon">{{getStatusIcon(order.status)}}</mat-icon>
+              {{order.status}}
+            </mat-chip>
+          </mat-card-title>
+          <mat-card-subtitle>
+            Placed on {{order.createdAt | date:'medium'}}
+          </mat-card-subtitle>
+        </mat-card-header>
+        
+        <mat-card-content>
+          <div class="order-details">
+            <div class="shop-info">
+              <mat-icon>store</mat-icon>
+              <span>{{order.shopName || 'Shop'}}</span>
+            </div>
+            <div class="order-total">
+              <span class="label">Total:</span>
+              <span class="amount">₹{{order.totalAmount}}</span>
+            </div>
+          </div>
+          
+          <div class="order-items" *ngIf="order.items && order.items.length > 0">
+            <div class="item" *ngFor="let item of order.items.slice(0, 3)">
+              <span class="item-name">{{item.productName}}</span>
+              <span class="item-quantity">x{{item.quantity}}</span>
+            </div>
+            <div class="more-items" *ngIf="order.items.length > 3">
+              +{{order.items.length - 3}} more items
+            </div>
+          </div>
+        </mat-card-content>
+        
+        <mat-card-actions>
+          <div class="action-buttons">
+            <button mat-button color="primary" (click)="trackOrder(order)">
+              <mat-icon>local_shipping</mat-icon>
+              Track Order
+            </button>
+            <button mat-button (click)="viewOrderDetails(order)">
+              <mat-icon>receipt</mat-icon>
+              View Details
+            </button>
+            <button mat-button 
+                    *ngIf="canCancelOrder(order)" 
+                    color="warn" 
+                    (click)="cancelOrder(order)"
+                    class="cancel-btn">
+              <mat-icon>cancel</mat-icon>
+              Cancel Order
+            </button>
+            <button mat-button 
+                    *ngIf="order.status === 'DELIVERED'" 
+                    color="accent"
+                    (click)="reorderItems(order)"
+                    class="reorder-btn">
+              <mat-icon>refresh</mat-icon>
+              Reorder
+            </button>
+          </div>
+        </mat-card-actions>
+      </mat-card>
+    </div>
+  </div>
+</div>

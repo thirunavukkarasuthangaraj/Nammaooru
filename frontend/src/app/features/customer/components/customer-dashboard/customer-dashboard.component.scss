@@ -1,0 +1,234 @@
+.customer-dashboard {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.welcome-section {
+  margin-bottom: 32px;
+  
+  h1 {
+    font-size: 32px;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+    color: #333;
+  }
+  
+  .welcome-subtitle {
+    color: #666;
+    font-size: 16px;
+    margin: 0;
+  }
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.stat-card {
+  .stat-content {
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    
+    .stat-icon {
+      font-size: 36px;
+      width: 36px;
+      height: 36px;
+      margin-right: 16px;
+      
+      &.orders { color: #2196F3; }
+      &.amount { color: #4CAF50; }
+      &.favorites { color: #E91E63; }
+    }
+    
+    .stat-details {
+      h3 {
+        font-size: 24px;
+        font-weight: 600;
+        margin: 0;
+        color: #333;
+      }
+      
+      p {
+        font-size: 12px;
+        color: #666;
+        margin: 4px 0 0 0;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+    }
+  }
+}
+
+.quick-actions-card {
+  margin-bottom: 24px;
+  
+  .actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    
+    button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 16px;
+      
+      mat-icon {
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+      }
+    }
+  }
+}
+
+.recent-orders-card, .recommended-shops {
+  margin-bottom: 24px;
+  
+  mat-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    
+    mat-card-title {
+      font-size: 18px;
+      font-weight: 500;
+    }
+  }
+}
+
+.recent-orders-list {
+  .order-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    border-bottom: 1px solid #f0f0f0;
+    
+    &:last-child {
+      border-bottom: none;
+    }
+    
+    .order-info {
+      flex: 1;
+      
+      .order-number {
+        font-weight: 500;
+        margin: 0 0 4px 0;
+        color: #333;
+      }
+      
+      .order-shop {
+        font-size: 12px;
+        color: #666;
+        margin: 0;
+      }
+    }
+    
+    .order-status {
+      margin: 0 16px;
+    }
+    
+    .order-amount {
+      font-weight: 600;
+      color: #333;
+    }
+  }
+}
+
+.shops-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+  
+  .shop-card {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    transition: transform 0.2s;
+    
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    img {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-bottom: 12px;
+    }
+    
+    .shop-details {
+      margin-bottom: 16px;
+      
+      h4 {
+        font-size: 16px;
+        font-weight: 500;
+        margin: 0 0 4px 0;
+        color: #333;
+      }
+      
+      .shop-category {
+        font-size: 12px;
+        color: #666;
+        text-transform: uppercase;
+        margin: 0 0 8px 0;
+      }
+      
+      .shop-rating {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        color: #FF9800;
+        
+        mat-icon {
+          font-size: 16px;
+          width: 16px;
+          height: 16px;
+        }
+        
+        span {
+          font-size: 14px;
+          font-weight: 500;
+        }
+      }
+    }
+    
+    button {
+      width: 100%;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .customer-dashboard {
+    padding: 16px;
+  }
+  
+  .welcome-section h1 {
+    font-size: 24px;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .actions-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .shops-grid {
+    grid-template-columns: 1fr;
+  }
+}

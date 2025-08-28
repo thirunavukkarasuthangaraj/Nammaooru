@@ -82,8 +82,17 @@ export class ShopService {
 
   // Get shop by ID
   getShop(id: number): Observable<Shop> {
-    return this.http.get<any>(`${this.API_URL}/${id}`).pipe(
-      map(shop => this.transformShop(shop))
+    return this.http.get<ApiResponse<any>>(`${this.API_URL}/${id}`).pipe(
+      map(apiResponse => {
+        if (ApiResponseHelper.isError(apiResponse)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(apiResponse));
+        }
+        return this.transformShop(apiResponse.data);
+      }),
+      catchError(error => {
+        console.error('Error fetching shop by ID:', error);
+        return throwError(() => error);
+      })
     );
   }
 

@@ -12,11 +12,31 @@ import { CategoriesComponent } from './components/categories/categories.componen
 import { CustomerManagementComponent } from './components/customer-management/customer-management.component';
 import { ShopSettingsComponent } from './components/shop-settings/shop-settings.component';
 import { NotificationsComponent } from './components/notifications/notifications.component';
+import { ProductsPricingComponent } from './components/products-pricing/products-pricing.component';
+import { BusinessSummaryComponent } from './components/business-summary/business-summary.component';
+import { BusinessHoursComponent } from './components/business-hours/business-hours.component';
 
 const routes: Routes = [
   {
     path: '',
-    component: ShopOwnerDashboardComponent
+    redirectTo: 'summary',
+    pathMatch: 'full'
+  },
+  {
+    path: 'summary',
+    component: BusinessSummaryComponent
+  },
+  {
+    path: 'profile',
+    component: ShopProfileComponent
+  },
+  {
+    path: 'products-pricing',
+    component: ProductsPricingComponent
+  },
+  {
+    path: 'orders',
+    component: OrderManagementComponent
   },
   {
     path: 'dashboard',
@@ -51,10 +71,6 @@ const routes: Routes = [
     component: InventoryManagementComponent
   },
   {
-    path: 'orders',
-    component: OrderManagementComponent
-  },
-  {
     path: 'shop/profile',
     component: ShopProfileComponent
   },
@@ -67,18 +83,54 @@ const routes: Routes = [
     component: ShopSettingsComponent
   },
   {
+    path: 'business-hours',
+    component: BusinessHoursComponent
+  },
+  {
     path: 'notifications',
     component: NotificationsComponent
   },
-  // TODO: Implement orders and analytics modules
-  // {
-  //   path: 'orders',
-  //   loadChildren: () => import('../orders/orders.module').then(m => m.OrdersModule)
-  // },
-  // {
-  //   path: 'analytics',
-  //   loadChildren: () => import('../analytics/analytics.module').then(m => m.AnalyticsModule)
-  // },
+  // Analytics route
+  {
+    path: 'analytics',
+    component: BusinessSummaryComponent // Reuse for now
+  },
+  // Categories route
+  {
+    path: 'categories',
+    component: CategoriesComponent
+  },
+  // Order routes
+  {
+    path: 'orders/today',
+    component: OrderManagementComponent // Will filter for today
+  },
+  {
+    path: 'orders/history',
+    component: OrderManagementComponent // Will show all orders
+  },
+  // Customer routes
+  {
+    path: 'reviews',
+    component: CustomerManagementComponent // Placeholder
+  },
+  {
+    path: 'loyalty',
+    component: CustomerManagementComponent // Placeholder
+  },
+  // Finance routes
+  {
+    path: 'revenue',
+    component: BusinessSummaryComponent // Shows revenue data
+  },
+  {
+    path: 'payouts',
+    component: BusinessSummaryComponent // Placeholder
+  },
+  {
+    path: 'reports',
+    component: BusinessSummaryComponent // Placeholder
+  },
   {
     path: 'products',
     loadChildren: () => import('../product/product.module').then(m => m.ProductModule)

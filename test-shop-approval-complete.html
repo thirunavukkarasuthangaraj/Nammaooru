@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Complete Shop Approval Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        button { margin: 10px; padding: 10px 20px; }
+        .success { color: green; }
+        .error { color: red; }
+        .section { border: 1px solid #ccc; margin: 20px 0; padding: 15px; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Complete Shop Approval Test</h1>
+    
+    <div class="section">
+        <h2>Step 1: Login</h2>
+        <button onclick="login()">Login as superadmin</button>
+        <div id="login-result"></div>
+    </div>
+
+    <div class="section" id="test-section" style="display:none;">
+        <h2>Step 2: Check Current State</h2>
+        <button onclick="checkShopStatus()">Check Shop 49 Status</button>
+        <button onclick="checkUserExists()">Check if User Account Exists</button>
+        <div id="status-result"></div>
+    </div>
+
+    <div class="section" id="email-section" style="display:none;">
+        <h2>Step 3: Test Email System</h2>
+        <button onclick="testSimpleEmail()">Test Simple Email</button>
+        <button onclick="testWelcomeEmail()">Test Welcome Email Template</button>
+        <div id="email-result"></div>
+    </div>
+
+    <div class="section" id="approval-section" style="display:none;">
+        <h2>Step 4: Test Approval Process</h2>
+        <button onclick="approveShopAndCheck()">Approve Shop & Check Results</button>
+        <div id="approval-result"></div>
+    </div>
+
+    <script>
+        let authToken = '';
+        const TEST_EMAIL = 'test2@owner.com'; // Email from shop 49
+
+        async function login() {
+            try {
+                const response = await fetch('http://localhost:8082/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: 'superadmin',
+                        password: 'password'
+                    })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    authToken = data.data.accessToken;
+                    document.getElementById('login-result').innerHTML = '<p class="success">✅ Login successful!</p>';
+                    document.getElementById('test-section').style.display = 'block';
+                    document.getElementById('email-section').style.display = 'block';
+                    document.getElementById('approval-section').style.display = 'block';
+                } else {
+                    document.getElementById('login-result').innerHTML = '<p class="error">❌ Login failed: ' + data.message + '</p>';
+                }
+            } catch (error) {
+                document.getElementById('login-result').innerHTML = '<p class="error">❌ Login error: ' + error.message + '</p>';
+            }
+        }
+
+        async function checkShopStatus() {
+            try {
+                const response = await fetch('http://localhost:8082/api/shops/49', {
+                    headers: { 'Authorization': 'Bearer ' + authToken }
+                });
+                const data = await response.json();
+                document.getElementById('status-result').innerHTML = 
+                    '<h3>Shop 49 Status:</h3><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            } catch (error) {
+                document.getElementById('status-result').innerHTML = '<p class="error">❌ Error: ' + error.message + '</p>';
+            }
+        }
+
+        async function checkUserExists() {
+            try {
+                // This is a simple check - we'll see if we get any users with this email
+                const response = await fetch('http://localhost:8082/api/admin/users?email=' + TEST_EMAIL, {
+                    headers: { 'Authorization': 'Bearer ' + authToken }
+                });
+                const data = await response.json();
+                document.getElementById('status-result').innerHTML += 
+                    '<h3>User Account Check:</h3><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            } catch (error) {
+                document.getElementById('status-result').innerHTML += 
+                    '<p class="error">❌ User check error: ' + error.message + '</p>';
+            }
+        }
+
+        async function testSimpleEmail() {
+            try {
+                const response = await fetch('http://localhost:8082/api/test/email/simple?to=' + TEST_EMAIL, {
+                    headers: { 'Authorization': 'Bearer ' + authToken }
+                });
+                const data = await response.json();
+                document.getElementById('email-result').innerHTML = 
+                    '<h3>Simple Email Test:</h3><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            } catch (error) {
+                document.getElementById('email-result').innerHTML = '<p class="error">❌ Email test error: ' + error.message + '</p>';
+            }
+        }
+
+        async function testWelcomeEmail() {
+            try {
+                const params = new URLSearchParams({
+                    to: TEST_EMAIL,
+                    shopOwnerName: 'Test Owner 2',
+                    username: 'testowner2',
+                    temporaryPassword: 'TempPass123!',
+                    shopName: 'New Test Shop'
+                });
+                
+                const response = await fetch('http://localhost:8082/api/test/email/welcome', {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': 'Bearer ' + authToken,
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: params
+                });
+                const data = await response.json();
+                document.getElementById('email-result').innerHTML += 
+                    '<h3>Welcome Email Test:</h3><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            } catch (error) {
+                document.getElementById('email-result').innerHTML += '<p class="error">❌ Welcome email test error: ' + error.message + '</p>';
+            }
+        }
+
+        async function approveShopAndCheck() {
+            try {
+                document.getElementById('approval-result').innerHTML = '<p>🔄 Approving shop...</p>';
+                
+                // Approve the shop
+                const approvalResponse = await fetch('http://localhost:8082/api/shops/approvals/49/approve', {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': 'Bearer ' + authToken,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        notes: 'Test approval - checking email and user creation'
+                    })
+                });
+                
+                const approvalData = await approvalResponse.json();
+                let result = '<h3>Approval Response:</h3><pre>' + JSON.stringify(approvalData, null, 2) + '</pre>';
+                
+                // Wait a moment for async processes
+                setTimeout(async () => {
+                    try {
+                        // Check if shop status changed
+                        const shopResponse = await fetch('http://localhost:8082/api/shops/49', {
+                            headers: { 'Authorization': 'Bearer ' + authToken }
+                        });
+                        const shopData = await shopResponse.json();
+                        result += '<h3>Updated Shop Status:</h3><pre>' + JSON.stringify(shopData, null, 2) + '</pre>';
+                        
+                        document.getElementById('approval-result').innerHTML = result;
+                    } catch (error) {
+                        document.getElementById('approval-result').innerHTML = result + '<p class="error">❌ Post-approval check error: ' + error.message + '</p>';
+                    }
+                }, 2000);
+                
+                document.getElementById('approval-result').innerHTML = result;
+                
+            } catch (error) {
+                document.getElementById('approval-result').innerHTML = '<p class="error">❌ Approval error: ' + error.message + '</p>';
+            }
+        }
+    </script>
+</body>
+</html>

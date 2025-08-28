@@ -60,15 +60,10 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         this.router.navigate(['/customer/shops']);
       }
     });
-
-    // Pre-fill form with Chennai defaults
-    this.checkoutForm.patchValue({
-      city: 'Chennai',
-      state: 'Tamil Nadu'
-    });
     
     this.loadSavedAddresses();
-    this.calculateDeliveryTime();
+    // Set default delivery time (API endpoint not available)
+    this.estimatedDeliveryTime = '30-45 minutes';
   }
 
   ngOnDestroy(): void {
@@ -78,16 +73,17 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
   private createForm(): FormGroup {
     return this.fb.group({
-      contactName: ['', [Validators.required, Validators.minLength(3)]],
+      firstName: ['', [Validators.required, Validators.minLength(2)]],
+      lastName: ['', [Validators.required, Validators.minLength(2)]],
       phone: ['', [Validators.required, Validators.pattern(/^[6-9]\d{9}$/)]],
       email: ['', [Validators.required, Validators.email]],
-      address: ['', [Validators.required, Validators.minLength(10)]],
+      streetAddress: ['', [Validators.required, Validators.minLength(10)]],
       landmark: [''],
-      city: ['Chennai', [Validators.required]],
-      state: ['Tamil Nadu', [Validators.required]],
-      postalCode: ['', [Validators.required, Validators.pattern(/^\d{6}$/)]],
+      pincode: ['', [Validators.required, Validators.pattern(/^\d{6}$/)]],
+      city: ['', [Validators.required]],
+      state: ['', [Validators.required]],
       notes: [''],
-      saveAddress: [false]
+      agreeToTerms: [false, [Validators.requiredTrue]]
     });
   }
   
@@ -102,23 +98,22 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   }
   
   selectAddress(address: DeliveryAddress): void {
+    const names = (address.contactName || '').split(' ');
     this.checkoutForm.patchValue({
-      contactName: address.contactName,
+      firstName: names[0] || '',
+      lastName: names.slice(1).join(' ') || '',
       phone: address.phone,
-      address: address.address,
+      streetAddress: address.address,
       landmark: address.landmark || '',
       city: address.city,
       state: address.state,
-      postalCode: address.postalCode
+      pincode: address.postalCode
     });
   }
   
   calculateDeliveryTime(): void {
-    if (this.cart && this.cart.shopId) {
-      this.checkoutService.calculateDeliveryTime(this.cart.shopId).subscribe(time => {
-        this.estimatedDeliveryTime = time;
-      });
-    }
+    // Set default delivery time (API endpoint not available)
+    this.estimatedDeliveryTime = '30-45 minutes';
   }
   
   applyPromoCode(): void {
@@ -146,19 +141,17 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
     const formValue = this.checkoutForm.value;
     const deliveryAddress: DeliveryAddress = {
-      contactName: formValue.contactName,
+      contactName: `${formValue.firstName} ${formValue.lastName}`.trim(),
       phone: formValue.phone,
-      address: formValue.address,
+      address: formValue.streetAddress,
       city: formValue.city,
       state: formValue.state,
-      postalCode: formValue.postalCode,
-      landmark: formValue.landmark
+      postalCode: formValue.pincode,
+      landmark: formValue.landmark || ''
     };
     
-    // Save address if requested
-    if (formValue.saveAddress) {
-      this.checkoutService.saveAddress(deliveryAddress).subscribe();
-    }
+    console.log('Checkout form values:', formValue);
+    console.log('Delivery address:', deliveryAddress);
 
     // Place order
     this.checkoutService.placeOrder(deliveryAddress, this.selectedPaymentMethod, formValue.notes)
@@ -233,7 +226,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
   trackOrder(): void {
     if (this.orderResponse) {
-      this.router.navigate(['/customer/track-order', this.orderResponse.orderNumber]);
+      this.router.navigate(['/customer/orders']);
     }
   }
 

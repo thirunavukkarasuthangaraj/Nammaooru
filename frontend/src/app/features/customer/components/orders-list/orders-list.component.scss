@@ -1,0 +1,277 @@
+.orders-page {
+  min-height: 100vh;
+  background: #f5f5f5;
+  padding-bottom: 40px;
+}
+
+// Page Header
+.page-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  margin-bottom: 24px;
+  border-radius: 0;
+  
+  .header-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    
+    .back-button {
+      background: white;
+      flex-shrink: 0;
+      
+      mat-icon {
+        margin-right: 4px;
+      }
+    }
+    
+    .header-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+      justify-content: center;
+      
+      .orders-icon {
+        font-size: 32px;
+        width: 32px;
+        height: 32px;
+      }
+      
+      h1 {
+        margin: 0;
+        font-size: 28px;
+        font-weight: 500;
+      }
+    }
+  }
+}
+
+// Main Content
+.orders-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+// Loading State
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  
+  mat-spinner {
+    margin-bottom: 16px;
+  }
+  
+  p {
+    color: #666;
+    font-size: 16px;
+  }
+}
+
+// Empty State
+.empty-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 60px 20px;
+  
+  .empty-card {
+    max-width: 500px;
+    text-align: center;
+    padding: 40px;
+    
+    .empty-icon {
+      font-size: 80px;
+      width: 80px;
+      height: 80px;
+      color: #ccc;
+      margin: 0 auto 24px;
+    }
+    
+    h2 {
+      margin: 0 0 12px;
+      font-size: 24px;
+      font-weight: 500;
+      color: #333;
+    }
+    
+    p {
+      margin: 0 0 24px;
+      color: #666;
+      font-size: 16px;
+    }
+    
+    button {
+      mat-icon {
+        margin-right: 8px;
+      }
+    }
+  }
+}
+
+// Orders List
+.orders-list {
+  display: grid;
+  gap: 20px;
+  
+  .order-card {
+    mat-card-header {
+      border-bottom: 1px solid #e0e0e0;
+      padding-bottom: 16px;
+      margin-bottom: 16px;
+      
+      mat-card-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 18px;
+        
+        mat-chip {
+          .status-icon {
+            font-size: 18px;
+            width: 18px;
+            height: 18px;
+            margin-right: 4px;
+          }
+        }
+      }
+      
+      mat-card-subtitle {
+        margin-top: 8px;
+        color: #666;
+      }
+    }
+    
+    .order-details {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      
+      .shop-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #666;
+        
+        mat-icon {
+          font-size: 20px;
+          width: 20px;
+          height: 20px;
+        }
+      }
+      
+      .order-total {
+        .label {
+          margin-right: 8px;
+          color: #666;
+        }
+        
+        .amount {
+          font-size: 20px;
+          font-weight: 600;
+          color: #48bb78;
+        }
+      }
+    }
+    
+    .order-items {
+      margin-bottom: 16px;
+      
+      .item {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid #f0f0f0;
+        
+        &:last-child {
+          border-bottom: none;
+        }
+        
+        .item-name {
+          color: #333;
+          font-size: 14px;
+        }
+        
+        .item-quantity {
+          color: #666;
+          font-size: 14px;
+        }
+      }
+      
+      .more-items {
+        padding: 8px 0;
+        color: #999;
+        font-size: 13px;
+        font-style: italic;
+      }
+    }
+    
+    mat-card-actions {
+      border-top: 1px solid #e0e0e0;
+      padding: 16px;
+      
+      .action-buttons {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        flex-wrap: wrap;
+
+        button {
+          min-width: auto;
+          font-size: 14px;
+          
+          mat-icon {
+            margin-right: 4px;
+            font-size: 18px;
+          }
+        }
+
+        .cancel-btn {
+          background-color: #ffebee;
+          color: #f44336;
+          font-weight: 500;
+          
+          &:hover {
+            background-color: #ffcdd2;
+          }
+        }
+
+        .reorder-btn {
+          background-color: #e8f5e8;
+          color: #4caf50;
+          font-weight: 500;
+          
+          &:hover {
+            background-color: #c8e6c9;
+          }
+        }
+      }
+    }
+  }
+}
+
+// Material Overrides
+::ng-deep {
+  .mat-card {
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+  
+  .mat-chip {
+    font-size: 12px;
+    height: 24px;
+    line-height: 24px;
+    padding: 0 8px;
+  }
+}

@@ -25,7 +25,7 @@ public class OrderController {
     private final OrderService orderService;
     
     @PostMapping
-    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER') or hasRole('CUSTOMER')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER') or hasRole('CUSTOMER') or hasRole('USER')")
     public ResponseEntity<OrderResponse> createOrder(@Valid @RequestBody OrderRequest request) {
         log.info("Creating order for customer: {}", request.getCustomerId());
         OrderResponse response = orderService.createOrder(request);
@@ -33,7 +33,7 @@ public class OrderController {
     }
     
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER') or hasRole('CUSTOMER')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER') or hasRole('CUSTOMER') or hasRole('USER')")
     public ResponseEntity<OrderResponse> getOrderById(@PathVariable Long id) {
         log.info("Fetching order with ID: {}", id);
         OrderResponse response = orderService.getOrderById(id);
@@ -92,7 +92,7 @@ public class OrderController {
     }
     
     @GetMapping("/customer/{customerId}")
-    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('CUSTOMER')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('USER')")
     public ResponseEntity<Page<OrderResponse>> getOrdersByCustomer(
             @PathVariable Long customerId,
             @RequestParam(defaultValue = "0") int page,

@@ -244,46 +244,53 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
 
   shopOwnerMenuItems = [
     {
-      category: 'Main',
+      category: 'Dashboard',
       items: [
-        { title: 'Dashboard', icon: 'dashboard', route: '/shop-owner', badge: null },
-        { title: 'Shop Overview', icon: 'store', route: '/shop-owner/overview', badge: null }
-      ]
-    },
-    {
-      category: 'Products',
-      items: [
-        { title: 'My Products', icon: 'inventory', route: '/shop-owner/products', badge: null },
-        { title: 'Add Product', icon: 'add_box', route: '/shop-owner/add-product', badge: null },
-        { title: 'Categories', icon: 'category', route: '/shop-owner/categories', badge: null },
-        { title: 'Bulk Upload', icon: 'cloud_upload', route: '/shop-owner/bulk-upload', badge: null }
-      ]
-    },
-    {
-      category: 'Orders & Sales',
-      items: [
-        { title: 'My Orders', icon: 'receipt_long', route: '/shop-owner/orders', badge: null },
-        { title: 'Order Tracking', icon: 'local_shipping', route: '/delivery/tracking/1', badge: null },
-        { title: 'Sales Analytics', icon: 'trending_up', route: '/analytics', badge: null }
-      ]
-    },
-    {
-      category: 'Inventory',
-      items: [
-        { title: 'Stock Management', icon: 'inventory_2', route: '/shop-owner/inventory', badge: null }
-      ]
-    },
-    {
-      category: 'Management',
-      items: [
-        { title: 'Notifications', icon: 'notifications', route: '/notifications', badge: this.getNotificationCount().toString() }
+        { title: 'Business Summary', icon: 'dashboard', route: '/shop-owner/summary', badge: null },
+        { title: 'Analytics', icon: 'analytics', route: '/shop-owner/analytics', badge: null }
       ]
     },
     {
       category: 'Shop Management',
       items: [
-        { title: 'Shop Profile', icon: 'business', route: '/shop-owner/profile', badge: null },
-        { title: 'Settings', icon: 'settings', route: '/settings', badge: null }
+        { title: 'Shop Profile', icon: 'store', route: '/shop-owner/profile', badge: null },
+        { title: 'Shop Settings', icon: 'settings', route: '/shop-owner/settings', badge: null },
+        { title: 'Business Hours', icon: 'schedule', route: '/shop-owner/business-hours', badge: null }
+      ]
+    },
+    {
+      category: 'Products',
+      items: [
+        { title: 'Products & Pricing', icon: 'inventory_2', route: '/shop-owner/products-pricing', badge: null },
+        { title: 'My Products', icon: 'category', route: '/shop-owner/products', badge: null },
+        { title: 'Add Product', icon: 'add_box', route: '/shop-owner/products/add', badge: null },
+        { title: 'Stock Management', icon: 'warehouse', route: '/shop-owner/inventory', badge: null },
+        { title: 'Product Categories', icon: 'label', route: '/shop-owner/categories', badge: null }
+      ]
+    },
+    {
+      category: 'Orders',
+      items: [
+        { title: 'Order Management', icon: 'receipt_long', route: '/shop-owner/orders', badge: '3' },
+        { title: 'Today\'s Orders', icon: 'today', route: '/shop-owner/orders/today', badge: '2' },
+        { title: 'Order History', icon: 'history', route: '/shop-owner/orders/history', badge: null },
+        { title: 'Order Notifications', icon: 'notifications_active', route: '/shop-owner/notifications', badge: '5' }
+      ]
+    },
+    {
+      category: 'Customers',
+      items: [
+        { title: 'Customer Management', icon: 'people', route: '/shop-owner/customers', badge: null },
+        { title: 'Customer Reviews', icon: 'rate_review', route: '/shop-owner/reviews', badge: '4' },
+        { title: 'Loyalty Program', icon: 'card_giftcard', route: '/shop-owner/loyalty', badge: null }
+      ]
+    },
+    {
+      category: 'Finance',
+      items: [
+        { title: 'Revenue', icon: 'attach_money', route: '/shop-owner/revenue', badge: null },
+        { title: 'Payouts', icon: 'payments', route: '/shop-owner/payouts', badge: null },
+        { title: 'Reports', icon: 'assessment', route: '/shop-owner/reports', badge: null }
       ]
     }
   ];
@@ -322,6 +329,50 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     }
   ];
 
+  // Customer menu items
+  customerMenuItems = [
+    {
+      category: 'Main',
+      items: [
+        { title: 'Dashboard', icon: 'dashboard', route: '/customer/dashboard', badge: null },
+        { title: 'Browse Shops', icon: 'store', route: '/customer/shops', badge: null },
+        { title: 'All Products', icon: 'shopping_bag', route: '/products', badge: null }
+      ]
+    },
+    {
+      category: 'Orders',
+      items: [
+        { title: 'My Orders', icon: 'receipt_long', route: '/customer/orders', badge: null },
+        { title: 'Track Order', icon: 'local_shipping', route: '/customer/track', badge: null },
+        { title: 'Order History', icon: 'history', route: '/customer/order-history', badge: null }
+      ]
+    },
+    {
+      category: 'Shopping',
+      items: [
+        { title: 'My Cart', icon: 'shopping_cart', route: '/customer/cart', badge: null },
+        { title: 'Wishlist', icon: 'favorite', route: '/customer/wishlist', badge: null },
+        { title: 'Recently Viewed', icon: 'visibility', route: '/customer/recent', badge: null }
+      ]
+    },
+    {
+      category: 'Account',
+      items: [
+        { title: 'My Profile', icon: 'person', route: '/customer/profile', badge: null },
+        { title: 'Addresses', icon: 'location_on', route: '/customer/addresses', badge: null },
+        { title: 'Payment Methods', icon: 'payment', route: '/customer/payments', badge: null },
+        { title: 'Settings', icon: 'settings', route: '/settings', badge: null }
+      ]
+    },
+    {
+      category: 'Support',
+      items: [
+        { title: 'Help Center', icon: 'help', route: '/customer/help', badge: null },
+        { title: 'Contact Us', icon: 'support_agent', route: '/customer/contact', badge: null }
+      ]
+    }
+  ];
+
   get currentMenuItems() {
     const user = this.authService.getCurrentUser();
     switch (user?.role) {
@@ -340,6 +391,11 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       case UserRole.DELIVERY_PARTNER:
       case 'DELIVERY_PARTNER':
         return this.deliveryPartnerMenuItems;
+      case UserRole.USER:
+      case UserRole.CUSTOMER:
+      case 'USER':
+      case 'CUSTOMER':
+        return this.customerMenuItems;
       default:
         return [];
     }

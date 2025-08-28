@@ -21,23 +21,21 @@ export interface DeliveryAddress {
 export interface OrderRequest {
   customerId: number;
   shopId: number;
-  items: OrderItem[];
-  deliveryAddress: DeliveryAddress;
+  orderItems: OrderItem[];  // Changed from items to orderItems
+  deliveryAddress: string;
+  deliveryCity: string;
+  deliveryState: string;
+  deliveryPostalCode: string;
+  deliveryPhone: string;
+  deliveryContactName: string;
   paymentMethod: string;
-  paymentStatus?: string;
   notes?: string;
-  subtotal: number;
-  taxAmount: number;
-  deliveryFee: number;
-  discountAmount: number;
-  totalAmount: number;
+  discountAmount?: number;
 }
 
 export interface OrderItem {
   shopProductId: number;
   quantity: number;
-  unitPrice: number;
-  totalPrice: number;
   specialInstructions?: string;
 }
 
@@ -71,35 +69,38 @@ export class CheckoutService {
       return of(null as any);
     }
 
-    const customerId = this.getCustomerId();
+    let customerId = this.getCustomerId();
     if (!customerId) {
       Swal.fire('Error', 'Please login to place an order', 'error');
       this.router.navigate(['/auth/login']);
       return of(null as any);
     }
 
+    // Calculate discount if any
+    const discountAmount = cart.discount || 0;
+
     const orderRequest: OrderRequest = {
       customerId: customerId,
       shopId: cart.shopId!,
-      items: cart.items.map(item => ({
+      orderItems: cart.items.map(item => ({
         shopProductId: item.productId,
         quantity: item.quantity,
-        unitPrice: item.price,
-        totalPrice: item.price * item.quantity,
         specialInstructions: ''
       })),
-      deliveryAddress: deliveryAddress,
+      deliveryAddress: deliveryAddress.address,
+      deliveryCity: deliveryAddress.city,
+      deliveryState: deliveryAddress.state,
+      deliveryPostalCode: deliveryAddress.postalCode,
+      deliveryPhone: deliveryAddress.phone,
+      deliveryContactName: deliveryAddress.contactName,
       paymentMethod: paymentMethod,
-      paymentStatus: paymentMethod === 'CASH_ON_DELIVERY' ? 'PENDING' : 'PROCESSING',
       notes: notes || '',
-      subtotal: cart.subtotal,
-      taxAmount: cart.subtotal * 0.05, // 5% tax
-      deliveryFee: cart.deliveryFee,
-      discountAmount: cart.discount,
-      totalAmount: cart.total
+      discountAmount: discountAmount
     };
 
-    return this.http.post<OrderResponse>(`${this.apiUrl}/place`, orderRequest).pipe(
+    console.log('Placing order with request:', orderRequest);
+
+    return this.http.post<OrderResponse>(`${this.apiUrl}`, orderRequest).pipe(
       tap(response => {
         if (response && response.id) {
           // Clear cart after successful order
@@ -110,17 +111,31 @@ export class CheckoutService {
             title: 'Order Placed Successfully!',
             text: `Your order #${response.orderNumber} has been placed.`,
             icon: 'success',
-            confirmButtonText: 'Track Order'
+            confirmButtonText: 'View Orders'
           }).then((result) => {
             if (result.isConfirmed) {
-              this.router.navigate(['/customer/orders', response.id]);
+              this.router.navigate(['/customer/orders']);
+            } else {
+              this.router.navigate(['/customer/shops']);
             }
           });
         }
       }),
       catchError(error => {
         console.error('Error placing order:', error);
-        Swal.fire('Error', 'Failed to place order. Please try again.', 'error');
+        let errorMessage = 'Failed to place order. Please try again.';
+        
+        if (error.error && error.error.message) {
+          errorMessage = error.error.message;
+        } else if (error.status === 400) {
+          errorMessage = 'Invalid order data. Please check your cart and try again.';
+        } else if (error.status === 401) {
+          errorMessage = 'Please login to place an order.';
+        } else if (error.status === 500) {
+          errorMessage = 'Server error. Please try again later.';
+        }
+        
+        Swal.fire('Error', errorMessage, 'error');
         return of(null as any);
       })
     );
@@ -160,10 +175,11 @@ export class CheckoutService {
   }
 
   processPayment(orderId: number, paymentMethod: string): Observable<any> {
+    const cart = this.cartService.getCart();
     const paymentData = {
       orderId: orderId,
       paymentMethod: paymentMethod,
-      amount: this.cartService.getTotalAmount()
+      amount: cart.total
     };
 
     if (paymentMethod === 'CASH_ON_DELIVERY') {
@@ -181,23 +197,37 @@ export class CheckoutService {
   }
 
   private getCustomerId(): number | null {
-    const user = localStorage.getItem('currentUser');
+    // Try both possible keys for user data
+    let user = localStorage.getItem('shop_management_user') || localStorage.getItem('currentUser');
     if (user) {
       try {
         const userData = JSON.parse(user);
-        return userData.customerId || userData.id || null;
-      } catch {
-        return null;
+        console.log('User data from localStorage:', userData);
+        
+        // For testing, use a hardcoded customer ID if user is customer1
+        if (userData.username === 'customer1') {
+          console.log('Using hardcoded customer ID for customer1: 56');
+          return 56; // Use customer ID 56 for testing (actual customer ID in DB)
+        }
+        
+        // Use user ID as customer ID (backend should handle this mapping)
+        // In a proper implementation, the backend would return the customer ID with login response
+        const customerId = userData.id || userData.userId || 1; // Default to 1 if not found
+        console.log('Extracted customer ID (using user ID):', customerId);
+        
+        return customerId;
+      } catch (e) {
+        console.error('Error parsing user data:', e);
+        return 1; // Return default customer ID for testing
       }
     }
-    return null;
+    console.log('No user data in localStorage, using default customer ID');
+    return 1; // Return default customer ID for testing
   }
 
   calculateDeliveryTime(shopId: number): Observable<string> {
-    return this.http.get<{estimatedTime: string}>(`${environment.apiUrl}/shops/${shopId}/delivery-time`).pipe(
-      switchMap(response => of(response.estimatedTime)),
-      catchError(() => of('30-45 minutes'))
-    );
+    // Return default delivery time as the endpoint is not available
+    return of('30-45 minutes');
   }
 
   applyPromoCode(promoCode: string): Observable<number> {

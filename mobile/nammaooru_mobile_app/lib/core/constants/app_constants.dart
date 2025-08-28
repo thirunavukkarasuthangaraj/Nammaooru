@@ -5,7 +5,7 @@ class AppConstants {
   // For local development, use your computer's IP address instead of localhost
   // Example: 'http://192.168.1.100:8080/api' for physical device
   // Use 'http://10.0.2.2:8080/api' for Android emulator
-  static const String baseUrl = 'http://localhost:8080/api';
+  static const String baseUrl = 'http://192.168.1.3:8082/api';
   
   static const Duration requestTimeout = Duration(seconds: 30);
   static const Duration locationUpdateInterval = Duration(seconds: 30);

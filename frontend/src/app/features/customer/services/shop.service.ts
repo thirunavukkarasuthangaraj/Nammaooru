@@ -47,9 +47,31 @@ export class ShopService {
     if (searchTerm) params = params.set('search', searchTerm);
     if (category) params = params.set('category', category);
     
-    return this.http.get<{data: Shop[]}>(`${this.apiUrl}/customer/shops`, { params })
+    // Get only active and approved shops
+    return this.http.get<any>(`${this.apiUrl}/shops`, { params })
       .pipe(
-        switchMap(response => of(response.data || [])),
+        switchMap(response => {
+          // Handle paginated response
+          if (response.data && response.data.content) {
+            // Transform backend shop data to frontend format
+            const shops = response.data.content.map((shop: any) => ({
+              id: shop.id,
+              name: shop.name,
+              description: shop.description || shop.businessName || '',
+              image: shop.logo || '/assets/images/shop-placeholder.jpg',
+              isOpen: shop.isActive || true,
+              rating: shop.rating || 4.5,
+              distance: '2.5',
+              deliveryTime: '30-45',
+              deliveryFee: shop.deliveryFee || 40,
+              categories: [shop.businessType || 'General'],
+              address: `${shop.city}, ${shop.state}`,
+              phone: shop.ownerPhone || ''
+            }));
+            return of(shops);
+          }
+          return of([]);
+        }),
         catchError(() => {
           const mockShops: Shop[] = [
             {
@@ -151,9 +173,28 @@ export class ShopService {
     if (category) params = params.set('category', category);
     if (searchTerm) params = params.set('search', searchTerm);
     
-    return this.http.get<{data: Product[]}>(`${this.apiUrl}/customer/shops/${shopId}/products`, { params })
+    return this.http.get<any>(`${this.apiUrl}/customer/shops/${shopId}/products`, { params })
       .pipe(
-        switchMap(response => of(response.data || [])),
+        switchMap(response => {
+          // Handle paginated response from backend
+          if (response.data && response.data.content) {
+            const products = response.data.content.map((product: any) => ({
+              id: product.id,
+              name: product.customName || product.displayName || (product.masterProduct && product.masterProduct.name) || 'Product',
+              description: product.customDescription || product.displayDescription || (product.masterProduct && product.masterProduct.description) || '',
+              price: product.price || 0,
+              image: product.primaryImageUrl || (product.masterProduct && product.masterProduct.primaryImageUrl) || '/assets/images/product-placeholder.jpg',
+              unit: (product.masterProduct && product.masterProduct.baseUnit) || 'piece',
+              category: (product.masterProduct && product.masterProduct.category && product.masterProduct.category.name) || 'General',
+              inStock: product.inStock !== false && product.stockQuantity > 0,
+              quantity: product.stockQuantity || 0,
+              discount: product.discountPercentage || 0,
+              shopId: shopId
+            }));
+            return of(products);
+          }
+          return of([]);
+        }),
         catchError(() => {
           const mockProducts: Product[] = [
             { id: 1, name: 'Tomatoes', description: 'Fresh red tomatoes', price: 40, unit: 'kg', category: 'vegetables', inStock: true, shopId: 1, image: '/assets/images/products/tomatoes.jpg' },

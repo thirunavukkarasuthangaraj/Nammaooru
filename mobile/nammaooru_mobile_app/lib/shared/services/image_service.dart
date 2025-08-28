@@ -125,11 +125,9 @@ class ImageService {
             toolbarWidgetColor: Colors.white,
             initAspectRatio: CropAspectRatioPreset.original,
             lockAspectRatio: false,
-            cropStyle: cropStyle,
           ),
           IOSUiSettings(
             title: 'Crop Image',
-            cropStyle: cropStyle,
           ),
         ],
       );

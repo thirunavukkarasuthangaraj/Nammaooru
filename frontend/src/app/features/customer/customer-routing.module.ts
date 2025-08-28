@@ -6,15 +6,21 @@ import { ShoppingCartComponent } from './components/shopping-cart/shopping-cart.
 import { CheckoutComponent } from './components/checkout/checkout.component';
 import { OrderTrackingComponent } from './components/order-tracking/order-tracking.component';
 import { OrderConfirmationComponent } from './components/order-confirmation/order-confirmation.component';
+import { OrdersListComponent } from './components/orders-list/orders-list.component';
+import { CustomerDashboardComponent } from './components/customer-dashboard/customer-dashboard.component';
+import { CustomerProfileComponent } from './components/customer-profile/customer-profile.component';
 
 const routes: Routes = [
-  { path: '', redirectTo: 'shops', pathMatch: 'full' },
+  { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+  { path: 'dashboard', component: CustomerDashboardComponent },
   { path: 'shops', component: ShopListComponent },
   { path: 'products/:id', component: ProductListComponent },
   { path: 'cart', component: ShoppingCartComponent },
   { path: 'checkout', component: CheckoutComponent },
+  { path: 'orders', component: OrdersListComponent },
   { path: 'track-order/:orderNumber', component: OrderTrackingComponent },
-  { path: 'order-confirmation', component: OrderConfirmationComponent }
+  { path: 'order-confirmation', component: OrderConfirmationComponent },
+  { path: 'profile', component: CustomerProfileComponent }
 ];
 
 @NgModule({

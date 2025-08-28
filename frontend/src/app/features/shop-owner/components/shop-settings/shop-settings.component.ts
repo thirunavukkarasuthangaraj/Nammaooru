@@ -695,36 +695,46 @@ export class ShopSettingsComponent implements OnInit {
 
   loadShopSettings(): void {
     this.loading = true;
-    const currentUser = this.authService.getCurrentUser();
     
-    if (!currentUser || !currentUser.shopId) {
-      this.snackBar.open('Shop information not found', 'Close', { duration: 3000 });
-      this.loading = false;
-      this.settingsLoaded = true;
-      return;
-    }
-
-    this.shopService.getShopById(currentUser.shopId)
+    // Get the current user's shop
+    this.shopService.getMyShop()
       .pipe(finalize(() => {
         this.loading = false;
         this.settingsLoaded = true;
       }))
       .subscribe({
-        next: (shop) => {
-          this.shopInfoForm.patchValue({
-            shopName: shop.name || '',
-            description: shop.description || '',
-            contactNumber: shop.contactNumber || shop.phone || '',
-            email: shop.email || '',
-            address: shop.address || '',
-            city: shop.city || '',
-            state: shop.state || '',
-            pincode: shop.pincode || shop.postalCode || ''
-          });
+        next: (shop: any) => {
+          if (shop) {
+            console.log('Shop data received:', shop);
+            this.shopInfoForm.patchValue({
+              shopName: shop.name || '',
+              description: shop.description || '',
+              contactNumber: shop.ownerPhone || shop.phone || '',
+              email: shop.ownerEmail || shop.email || '',
+              address: shop.addressLine1 || shop.address || '',
+              city: shop.city || '',
+              state: shop.state || '',
+              pincode: shop.postalCode || shop.pincode || ''
+            });
+            
+            // Load business settings if available
+            if (shop.businessType) {
+              this.businessForm.patchValue({
+                gstNumber: shop.gstNumber || '',
+                panNumber: shop.panNumber || '',
+                minimumOrderAmount: shop.minOrderAmount || 0,
+                deliveryRadius: shop.deliveryRadius || 10,
+                deliveryFee: shop.deliveryFee || 30,
+                freeDeliveryAbove: shop.freeDeliveryAbove || 500
+              });
+            }
+          } else {
+            this.snackBar.open('No shop found for this account', 'Close', { duration: 3000 });
+          }
         },
         error: (error) => {
           console.error('Error loading shop settings:', error);
-          this.snackBar.open('Failed to load shop settings. Using defaults.', 'Close', { duration: 3000 });
+          this.snackBar.open('Failed to load shop settings', 'Close', { duration: 3000 });
         }
       });
   }

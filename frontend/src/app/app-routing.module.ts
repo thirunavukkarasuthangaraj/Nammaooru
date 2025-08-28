@@ -17,10 +17,6 @@ const routes: Routes = [
     loadChildren: () => import('./features/auth/auth.module').then(m => m.AuthModule)
   },
   {
-    path: 'customer',
-    loadChildren: () => import('./features/customer/customer.module').then(m => m.CustomerModule)
-  },
-  {
     path: 'test-delivery',
     loadChildren: () => import('./features/delivery/delivery.module').then(m => m.DeliveryModule)
   },
@@ -32,6 +28,10 @@ const routes: Routes = [
       {
         path: 'dashboard',
         loadChildren: () => import('./features/dashboard/dashboard.module').then(m => m.DashboardModule)
+      },
+      {
+        path: 'customer',
+        loadChildren: () => import('./features/customer/customer.module').then(m => m.CustomerModule)
       },
       {
         path: 'orders',

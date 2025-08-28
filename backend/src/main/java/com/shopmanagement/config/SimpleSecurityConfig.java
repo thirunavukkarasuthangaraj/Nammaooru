@@ -64,7 +64,7 @@ public class SimpleSecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**", "/api/public/**", "/api/test/**", "/api/admin/fix/**", "/api/delivery/partners/register", "/api/delivery/assignments/**", "/api/invoices/**", "/api/customers", "/api/shops", "/actuator/**", "/uploads/**").permitAll()
+                        .requestMatchers("/api/auth/**", "/api/public/**", "/api/customer/**", "/api/test/**", "/api/admin/fix/**", "/api/delivery/partners/register", "/api/delivery/assignments/**", "/api/invoices/**", "/api/customers", "/api/shops", "/actuator/**", "/uploads/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
@@ -79,7 +79,7 @@ public class SimpleSecurityConfig {
         configuration.setAllowedOriginPatterns(List.of("*"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
-        configuration.setAllowCredentials(false);
+        configuration.setAllowCredentials(true);
         
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

@@ -7,7 +7,7 @@ import lombok.Data;
 @Data
 public class ChangePasswordRequest {
 
-    @NotBlank(message = "Current password is required")
+    // Current password can be empty for temporary passwords
     private String currentPassword;
 
     @NotBlank(message = "New password is required")

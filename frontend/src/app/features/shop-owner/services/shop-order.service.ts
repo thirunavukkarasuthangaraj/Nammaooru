@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { catchError, switchMap, tap } from 'rxjs/operators';
+import { catchError, switchMap, tap, map } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
 import { FirebaseService } from '../../../core/services/firebase.service';
 import Swal from 'sweetalert2';
@@ -14,11 +14,12 @@ export interface ShopOrder {
   customerName: string;
   customerPhone: string;
   customerEmail: string;
-  items: ShopOrderItem[];
+  orderItems: ShopOrderItem[];
   totalAmount: number;
   paymentMethod: string;
   paymentStatus: string;
-  deliveryAddress: string;
+  deliveryAddress?: string;
+  fullDeliveryAddress?: string;
   notes: string;
   estimatedPreparationTime?: string;
   createdAt: string;
@@ -27,7 +28,7 @@ export interface ShopOrder {
 
 export interface ShopOrderItem {
   id: number;
-  productId: number;
+  shopProductId: number;
   productName: string;
   quantity: number;
   unitPrice: number;
@@ -51,7 +52,7 @@ export interface OrderRejectRequest {
   providedIn: 'root'
 })
 export class ShopOrderService {
-  private apiUrl = `${environment.apiUrl}/shop-owner`;
+  private apiUrl = `${environment.apiUrl}/orders`;
 
   constructor(
     private http: HttpClient,
@@ -59,12 +60,16 @@ export class ShopOrderService {
   ) {}
 
   getShopOrders(shopId: number, status?: string): Observable<ShopOrder[]> {
-    let params = new HttpParams();
-    if (status) {
-      params = params.set('status', status);
-    }
-
-    return this.http.get<ShopOrder[]>(`${this.apiUrl}/shops/${shopId}/orders`, { params }).pipe(
+    return this.http.get<any>(`${this.apiUrl}/shop/${shopId}`).pipe(
+      map((response: any) => {
+        const orders = response.content || response || [];
+        if (status) {
+          // Filter orders by status on frontend side
+          const statusArray = status.split(',');
+          return orders.filter((order: any) => statusArray.includes(order.status));
+        }
+        return orders;
+      }),
       catchError(error => {
         console.error('Error loading shop orders:', error);
         return of([]);
@@ -77,21 +82,15 @@ export class ShopOrderService {
   }
 
   getActiveOrders(shopId: number): Observable<ShopOrder[]> {
-    return this.http.get<ShopOrder[]>(`${this.apiUrl}/shops/${shopId}/orders/active`).pipe(
-      catchError(error => {
-        console.error('Error loading active orders:', error);
-        return of([]);
-      })
-    );
+    return this.getShopOrders(shopId, 'CONFIRMED,PREPARING,READY_FOR_PICKUP');
   }
 
   acceptOrder(orderId: number, estimatedTime: string): Observable<ShopOrder> {
-    const request: OrderAcceptRequest = {
-      orderId: orderId,
+    const request = {
       estimatedPreparationTime: estimatedTime
     };
 
-    return this.http.post<ShopOrder>(`${this.apiUrl}/orders/${orderId}/accept`, request).pipe(
+    return this.http.post<ShopOrder>(`${this.apiUrl}/${orderId}/accept`, request).pipe(
       tap(order => {
         // Send notification to customer
         this.firebaseService.sendOrderNotification(
@@ -116,13 +115,11 @@ export class ShopOrderService {
   }
 
   rejectOrder(orderId: number, reason: string): Observable<any> {
-    const request: OrderRejectRequest = {
-      orderId: orderId,
-      reason: reason,
-      suggestAlternative: false
+    const request = {
+      reason: reason
     };
 
-    return this.http.post(`${this.apiUrl}/orders/${orderId}/reject`, request).pipe(
+    return this.http.post(`${this.apiUrl}/${orderId}/reject`, request).pipe(
       tap((response: any) => {
         // Send notification to customer
         this.firebaseService.sendOrderNotification(
@@ -294,7 +291,7 @@ export class ShopOrderService {
   }
 
   private generateReceiptHTML(order: ShopOrder): string {
-    const itemsHTML = order.items.map(item => `
+    const itemsHTML = order.orderItems.map((item: ShopOrderItem) => `
       <tr>
         <td>${item.productName}</td>
         <td>${item.quantity}</td>

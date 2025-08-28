@@ -688,7 +688,13 @@ export class ShopListComponent implements OnInit {
   }
 
   viewShopProducts(shop: Shop) {
-    this.router.navigate(['/products/shop', shop.id]);
+    // Check if user is a customer and navigate accordingly
+    const currentUser = this.authService.getCurrentUser();
+    if (currentUser?.role === 'USER' || currentUser?.role === 'CUSTOMER') {
+      this.router.navigate(['/customer/products', shop.id]);
+    } else {
+      this.router.navigate(['/products/shop', shop.id]);
+    }
   }
 
   editShop(shop: Shop) {

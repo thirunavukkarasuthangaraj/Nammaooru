@@ -46,8 +46,9 @@ export class ErrorInterceptor implements HttpInterceptor {
             break;
         }
 
-        // Don't show snackbar for auth endpoints to avoid duplicate messages
-        if (!request.url.includes('/auth/')) {
+        // Don't show snackbar for auth endpoints or customer endpoints to avoid duplicate messages
+        if (!request.url.includes('/auth/') && !request.url.includes('/customer/')) {
+          // Only show error for non-customer routes
           this.snackBar.open(errorMessage, 'Close', {
             duration: 5000,
             horizontalPosition: 'end',

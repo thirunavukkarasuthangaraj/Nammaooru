@@ -88,4 +88,10 @@ export class ShopListComponent implements OnInit, OnDestroy {
   testNotification(): void {
     this.firebaseService.testNotification();
   }
+
+  resetFilters(): void {
+    this.searchTerm = '';
+    this.selectedCategory = '';
+    this.loadShops();
+  }
 }

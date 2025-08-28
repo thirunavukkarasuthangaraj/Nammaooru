@@ -1,0 +1,121 @@
+<div class="customer-dashboard">
+  <div class="welcome-section">
+    <h1>Welcome back, {{customerName || 'Customer'}}!</h1>
+    <p class="welcome-subtitle">Ready to shop from your favorite local stores?</p>
+  </div>
+
+  <!-- Quick Stats -->
+  <div class="stats-grid">
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-content">
+          <mat-icon class="stat-icon orders">receipt_long</mat-icon>
+          <div class="stat-details">
+            <h3>{{totalOrders}}</h3>
+            <p>Total Orders</p>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-content">
+          <mat-icon class="stat-icon amount">account_balance_wallet</mat-icon>
+          <div class="stat-details">
+            <h3>₹{{totalSpent}}</h3>
+            <p>Total Spent</p>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-content">
+          <mat-icon class="stat-icon favorites">favorite</mat-icon>
+          <div class="stat-details">
+            <h3>{{favoriteShops}}</h3>
+            <p>Favorite Shops</p>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Quick Actions -->
+  <mat-card class="quick-actions-card">
+    <mat-card-header>
+      <mat-card-title>Quick Actions</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="actions-grid">
+        <button mat-raised-button color="primary" routerLink="/customer/shops">
+          <mat-icon>store</mat-icon>
+          Browse Shops
+        </button>
+        <button mat-raised-button routerLink="/customer/orders">
+          <mat-icon>receipt_long</mat-icon>
+          My Orders
+        </button>
+        <button mat-raised-button routerLink="/customer/cart">
+          <mat-icon>shopping_cart</mat-icon>
+          View Cart ({{cartItemCount}})
+        </button>
+        <button mat-raised-button routerLink="/customer/profile">
+          <mat-icon>person</mat-icon>
+          My Profile
+        </button>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Recent Orders -->
+  <mat-card class="recent-orders-card" *ngIf="recentOrders.length > 0">
+    <mat-card-header>
+      <mat-card-title>Recent Orders</mat-card-title>
+      <button mat-button routerLink="/customer/orders">View All</button>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="recent-orders-list">
+        <div class="order-item" *ngFor="let order of recentOrders.slice(0, 3)">
+          <div class="order-info">
+            <p class="order-number">#{{order.orderNumber}}</p>
+            <p class="order-shop">{{order.shopName}}</p>
+          </div>
+          <div class="order-status">
+            <mat-chip [color]="getStatusColor(order.status)" selected>
+              {{order.status}}
+            </mat-chip>
+          </div>
+          <div class="order-amount">₹{{order.totalAmount}}</div>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Recommended Shops -->
+  <mat-card class="recommended-shops">
+    <mat-card-header>
+      <mat-card-title>Recommended for You</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="shops-grid">
+        <div class="shop-card" *ngFor="let shop of recommendedShops">
+          <img [src]="shop.image || '/assets/images/default-shop.png'" alt="{{shop.name}}">
+          <div class="shop-details">
+            <h4>{{shop.name}}</h4>
+            <p class="shop-category">{{shop.category}}</p>
+            <div class="shop-rating">
+              <mat-icon>star</mat-icon>
+              <span>{{shop.rating}}</span>
+            </div>
+          </div>
+          <button mat-raised-button color="primary" [routerLink]="['/customer/products', shop.id]">
+            Shop Now
+          </button>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

@@ -41,6 +41,9 @@ import { CategoriesComponent } from './components/categories/categories.componen
 import { CustomerManagementComponent } from './components/customer-management/customer-management.component';
 import { ShopSettingsComponent } from './components/shop-settings/shop-settings.component';
 import { NotificationsComponent } from './components/notifications/notifications.component';
+import { ProductsPricingComponent } from './components/products-pricing/products-pricing.component';
+import { BusinessSummaryComponent } from './components/business-summary/business-summary.component';
+import { BusinessHoursComponent } from './components/business-hours/business-hours.component';
 
 @NgModule({
   declarations: [
@@ -55,7 +58,10 @@ import { NotificationsComponent } from './components/notifications/notifications
     CategoriesComponent,
     CustomerManagementComponent,
     ShopSettingsComponent,
-    NotificationsComponent
+    NotificationsComponent,
+    ProductsPricingComponent,
+    BusinessSummaryComponent,
+    BusinessHoursComponent
   ],
   imports: [
     CommonModule,

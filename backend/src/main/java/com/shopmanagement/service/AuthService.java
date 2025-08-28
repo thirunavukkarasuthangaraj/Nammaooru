@@ -89,8 +89,13 @@ public class AuthService {
         // Verify current password only if not temporary (handle null as false)
         Boolean isTemporary = user.getIsTemporaryPassword();
         if (isTemporary == null || !isTemporary) {
-            if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
-                throw new RuntimeException("Current password is incorrect");
+            // Only check current password if it's provided and not empty
+            if (request.getCurrentPassword() != null && !request.getCurrentPassword().trim().isEmpty()) {
+                if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+                    throw new RuntimeException("Current password is incorrect");
+                }
+            } else {
+                throw new RuntimeException("Current password is required");
             }
         }
         
@@ -113,6 +118,10 @@ public class AuthService {
         status.put("lastPasswordChange", user.getLastPasswordChange());
         
         return status;
+    }
+    
+    public boolean userExistsByUsernameOrEmail(String username, String email) {
+        return userRepository.existsByUsername(username) || userRepository.existsByEmail(email);
     }
     
     public User createShopOwnerUser(String username, String email, String temporaryPassword) {

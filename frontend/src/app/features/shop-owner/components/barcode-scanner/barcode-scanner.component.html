@@ -1,0 +1,85 @@
+<div class="barcode-scanner-container">
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>qr_code_scanner</mat-icon>
+        Product Scanner
+      </mat-card-title>
+    </mat-card-header>
+    
+    <mat-card-content>
+      <!-- Manual Entry -->
+      <div class="manual-entry">
+        <mat-form-field appearance="outline" class="barcode-input">
+          <mat-label>Enter Barcode or SKU</mat-label>
+          <input matInput 
+                 #barcodeInput
+                 [(ngModel)]="barcodeValue"
+                 (keyup.enter)="onManualBarcodeSubmit()"
+                 placeholder="Scan or type barcode..."
+                 autocomplete="off">
+          <mat-icon matSuffix>keyboard</mat-icon>
+          <mat-hint>Use scanner or type manually and press Enter</mat-hint>
+        </mat-form-field>
+        
+        <button mat-raised-button 
+                color="primary" 
+                (click)="onManualBarcodeSubmit()"
+                [disabled]="!barcodeValue">
+          <mat-icon>search</mat-icon>
+          Search Product
+        </button>
+      </div>
+
+      <!-- Scanner Status -->
+      <div class="scanner-status" *ngIf="isScanning">
+        <mat-spinner diameter="20"></mat-spinner>
+        <span>Scanner Active - Ready to scan...</span>
+      </div>
+
+      <!-- Last Scanned -->
+      <div class="last-scanned" *ngIf="lastScannedCode">
+        <mat-chip-list>
+          <mat-chip color="accent" selected>
+            Last Scanned: {{ lastScannedCode }}
+          </mat-chip>
+        </mat-chip-list>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="quick-actions">
+        <button mat-stroked-button (click)="generateTestBarcodes()">
+          <mat-icon>bug_report</mat-icon>
+          Show Test Barcodes
+        </button>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Instructions -->
+  <mat-card class="instructions">
+    <mat-card-content>
+      <h3>How to Use Scanner:</h3>
+      <mat-list>
+        <mat-list-item>
+          <mat-icon matListIcon>looks_one</mat-icon>
+          <span>Connect USB/Bluetooth barcode scanner</span>
+        </mat-list-item>
+        <mat-list-item>
+          <mat-icon matListIcon>looks_two</mat-icon>
+          <span>Point scanner at product barcode</span>
+        </mat-list-item>
+        <mat-list-item>
+          <mat-icon matListIcon>looks_3</mat-icon>
+          <span>Scanner will auto-detect and show product</span>
+        </mat-list-item>
+      </mat-list>
+      
+      <mat-divider></mat-divider>
+      
+      <p class="alternative">
+        <strong>No Scanner?</strong> Type the barcode manually or use product SKU
+      </p>
+    </mat-card-content>
+  </mat-card>
+</div>

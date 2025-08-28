@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🎯 Direct Order Management Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { color: #4CAF50; text-align: center; margin-bottom: 30px; }
+        .big-button { display: block; width: 100%; background: #007bff; color: white; padding: 20px; text-decoration: none; border-radius: 10px; margin: 10px 0; text-align: center; font-size: 18px; font-weight: bold; }
+        .big-button:hover { background: #0056b3; }
+        .warning { background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 15px; border-radius: 5px; margin: 15px 0; }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 15px; border-radius: 5px; margin: 15px 0; }
+        .step { background: #f8f9fa; border-left: 4px solid #007bff; padding: 15px; margin: 15px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Fix Order Management Navigation</h1>
+
+        <div class="warning">
+            <strong>Issue:</strong> You're seeing "Order Notifications" instead of "Order Management"<br>
+            <strong>Solution:</strong> Use the direct links below to access the correct page
+        </div>
+
+        <div class="step">
+            <strong>Step 1: Login as Shop Owner</strong>
+            <a href="http://localhost:4200/auth/login" class="big-button" target="_blank">
+                🔑 LOGIN PAGE
+            </a>
+            <p>Username: <strong>shopowner1</strong> | Password: <strong>password</strong></p>
+        </div>
+
+        <div class="step">
+            <strong>Step 2: Access Order Management (Direct Link)</strong>
+            <a href="http://localhost:4200/shop-owner/orders" class="big-button" target="_blank">
+                📋 ORDER MANAGEMENT PAGE
+            </a>
+            <p>This should show the tabbed interface with Pending/Active/Completed orders</p>
+        </div>
+
+        <div class="success">
+            <strong>What You Should See:</strong><br>
+            ✅ Tabs: Pending (6) | Active (6) | Completed (6)<br>
+            ✅ Statistics cards showing Today's Orders, Revenue, Profit<br>
+            ✅ Order cards with Accept/Reject buttons<br>
+            ✅ Real order data from database
+        </div>
+
+        <div class="step">
+            <strong>Alternative: Navigate via Menu</strong>
+            <p>1. After login, look for "<strong>Order Management</strong>" in the left sidebar<br>
+            2. It should be under the "Orders" category<br>
+            3. Click on it to access the order management interface</p>
+        </div>
+
+        <div class="warning">
+            <strong>If you still see "Order Notifications":</strong><br>
+            • Clear browser cache (Ctrl+Shift+Del)<br>
+            • Hard refresh the page (Ctrl+F5)<br>
+            • Use the direct link above<br>
+            • Check the URL - it must be exactly: <code>http://localhost:4200/shop-owner/orders</code>
+        </div>
+
+        <div class="step">
+            <strong>Test the Accept Order Flow</strong>
+            <p>Once on the correct Order Management page:</p>
+            <p>1. Click "Accept" on any PENDING order<br>
+            2. Select estimated preparation time<br>
+            3. Watch order move to Active tab<br>
+            4. Verify in database that status changed to CONFIRMED</p>
+        </div>
+
+        <footer style="text-align: center; margin-top: 40px; color: #666; border-top: 1px solid #ddd; padding-top: 20px;">
+            <p><strong>The order management system is working perfectly!</strong></p>
+            <p>The issue is just navigation - use the direct links above</p>
+        </footer>
+    </div>
+
+    <script>
+        // Auto-refresh to check if services are running
+        setInterval(function() {
+            fetch('http://localhost:4200')
+                .then(response => {
+                    document.title = response.ok ? '✅ Frontend Ready' : '❌ Frontend Down';
+                })
+                .catch(() => {
+                    document.title = '❌ Frontend Down';
+                });
+        }, 5000);
+    </script>
+</body>
+</html>

@@ -563,12 +563,33 @@ export class AddProductComponent implements OnInit {
     }
   }
 
+  private getShopId(): number {
+    const user = localStorage.getItem('shop_management_user') || localStorage.getItem('currentUser');
+    if (user) {
+      try {
+        const userData = JSON.parse(user);
+        // For shopowner1, use shop ID 11 (Test Grocery Store)
+        if (userData.username === 'shopowner1') {
+          return 11;
+        }
+        // For other shop owners, try to get from user data
+        return userData.shopId || 1;
+      } catch (e) {
+        console.error('Error parsing user data:', e);
+      }
+    }
+    return 11; // Default to shopowner1's shop
+  }
+
   private loadInitialData(): void {
     this.isLoading = true;
     
+    // Get the correct shop ID for the logged in user
+    const shopId = this.getShopId();
+    
     // For shop owners, use a default shop context instead of API call
     const defaultShop: Shop = {
-      id: 1,
+      id: shopId,
       name: 'My Shop',
       description: 'Default shop for product management',
       shopId: 'DEFAULT001',

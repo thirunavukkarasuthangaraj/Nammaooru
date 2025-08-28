@@ -1173,6 +1173,9 @@ export class ShopApprovalComponent implements OnInit {
     Swal.fire({
       title: 'Approve Shop',
       text: `Are you sure you want to approve "${this.shop.name}"?`,
+      input: 'textarea',
+      inputLabel: 'Approval Notes (Optional)',
+      inputPlaceholder: 'Enter any notes for the approval...',
       icon: 'question',
       showCancelButton: true,
       confirmButtonColor: '#10b981',
@@ -1181,7 +1184,8 @@ export class ShopApprovalComponent implements OnInit {
       cancelButtonText: 'Cancel'
     }).then((result) => {
       if (result.isConfirmed && this.shop) {
-        this.shopService.approveShop(this.shop.id).subscribe({
+        const notes = result.value?.trim();
+        this.shopService.approveShop(this.shop.id, notes).subscribe({
           next: () => {
             Swal.fire({
               title: 'Approved!',

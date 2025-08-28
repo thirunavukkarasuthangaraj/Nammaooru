@@ -26,7 +26,7 @@ services:
     ports:
       - "8082:8082"
     volumes:
-      - uploads_data:/app/uploads
+      - D:/AAWS/nammaooru/shop-uploads:/app/uploads
     networks:
       - shop-network
     restart: unless-stopped
@@ -35,9 +35,11 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev  # Use development Dockerfile
     container_name: shop-frontend
-    image: shop-frontend:${BUILD_ID:-latest}
+    image: shop-frontend:${BUILD_ID:-dev}
+    environment:
+      - NODE_ENV=development
     ports:
       - "8080:80"
     networks:

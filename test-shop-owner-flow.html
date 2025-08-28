@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shop Owner Flow Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 { color: #333; }
+        .section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .success { color: green; font-weight: bold; }
+        .warning { color: orange; font-weight: bold; }
+        .error { color: red; font-weight: bold; }
+        .info { color: blue; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        .status-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .status-table th, .status-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .status-table th {
+            background: #f2f2f2;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🏪 Shop Owner Dashboard Test</h1>
+    
+    <div class="section">
+        <h2>Test Status</h2>
+        <table class="status-table">
+            <tr>
+                <th>Component</th>
+                <th>Status</th>
+                <th>Details</th>
+            </tr>
+            <tr>
+                <td>Frontend Server</td>
+                <td id="frontend-status">Checking...</td>
+                <td>http://localhost:4200</td>
+            </tr>
+            <tr>
+                <td>Backend API</td>
+                <td id="backend-status">Checking...</td>
+                <td>http://localhost:8082</td>
+            </tr>
+            <tr>
+                <td>Shop Owner Login</td>
+                <td id="login-status">Not tested</td>
+                <td>Username: shopowner1</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>Step 1: Login as Shop Owner</h2>
+        <p>Navigate to: <a href="http://localhost:4200/auth/login" target="_blank">http://localhost:4200/auth/login</a></p>
+        <p>Credentials:</p>
+        <ul>
+            <li>Username: <strong>shopowner1</strong></li>
+            <li>Password: <strong>password</strong></li>
+        </ul>
+        <button onclick="testLogin()">Test Login API</button>
+        <div id="login-result"></div>
+    </div>
+
+    <div class="section">
+        <h2>Step 2: Shop Owner Dashboard - 4 Essential Screens</h2>
+        <p class="info">After login, you should see only these 4 menu items:</p>
+        <ol>
+            <li>
+                <strong>Business Summary</strong> - <a href="http://localhost:4200/shop-owner/summary" target="_blank">View Dashboard</a>
+                <ul>
+                    <li>Total Orders, Profit, Cancelled Orders, Returns metrics</li>
+                    <li>Revenue charts and analytics</li>
+                </ul>
+            </li>
+            <li>
+                <strong>Shop Profile</strong> - <a href="http://localhost:4200/shop-owner/profile" target="_blank">Manage Profile</a>
+                <ul>
+                    <li>Shop information and settings</li>
+                    <li>Delivery configuration</li>
+                </ul>
+            </li>
+            <li>
+                <strong>Products & Pricing</strong> - <a href="http://localhost:4200/shop-owner/products-pricing" target="_blank">Manage Products</a>
+                <ul>
+                    <li>Master product system with unique IDs</li>
+                    <li>Set your prices vs market average</li>
+                    <li>Stock management</li>
+                    <li>Bulk availability across shops</li>
+                </ul>
+            </li>
+            <li>
+                <strong>Order Notifications</strong> - <a href="http://localhost:4200/shop-owner/orders" target="_blank">View Orders</a>
+                <ul>
+                    <li>Real-time order notifications</li>
+                    <li>Accept/Reject with 10-minute timer</li>
+                </ul>
+            </li>
+        </ol>
+    </div>
+
+    <div class="section">
+        <h2>Step 3: Test Shop Products API</h2>
+        <button onclick="testShopProducts()">Get Shop Products</button>
+        <div id="products-result"></div>
+    </div>
+
+    <div class="section">
+        <h2>Step 4: Test Product Pricing Features</h2>
+        <p>The Products & Pricing screen should show:</p>
+        <ul>
+            <li>✅ Product table with Master IDs (e.g., DAIRY_CURD_500G)</li>
+            <li>✅ Your price input field for each product</li>
+            <li>✅ Market average comparison</li>
+            <li>✅ Stock level management</li>
+            <li>✅ Bulk availability (how many shops sell this)</li>
+            <li>✅ Price indicators (above/below market)</li>
+            <li>✅ Summary cards showing metrics</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>Implementation Status</h2>
+        <table class="status-table">
+            <tr>
+                <th>Feature</th>
+                <th>Status</th>
+                <th>Notes</th>
+            </tr>
+            <tr>
+                <td>Menu updated to 4 screens</td>
+                <td class="success">✅ Complete</td>
+                <td>Only essential screens shown</td>
+            </tr>
+            <tr>
+                <td>Shop Profile Screen</td>
+                <td class="success">✅ Complete</td>
+                <td>Basic form ready</td>
+            </tr>
+            <tr>
+                <td>Products & Pricing Screen</td>
+                <td class="success">✅ Complete</td>
+                <td>Master system with market comparison</td>
+            </tr>
+            <tr>
+                <td>Order Management Screen</td>
+                <td class="warning">⚠️ Partial</td>
+                <td>Exists, needs real-time features</td>
+            </tr>
+            <tr>
+                <td>Business Summary Screen</td>
+                <td class="warning">⚠️ Partial</td>
+                <td>Component created, needs charts</td>
+            </tr>
+            <tr>
+                <td>Backend APIs</td>
+                <td class="warning">⚠️ Partial</td>
+                <td>Basic APIs work, need analytics</td>
+            </tr>
+        </table>
+    </div>
+
+    <script>
+        // Check server status on load
+        window.onload = function() {
+            checkServers();
+        }
+
+        async function checkServers() {
+            // Check frontend
+            try {
+                const response = await fetch('http://localhost:4200');
+                document.getElementById('frontend-status').innerHTML = '<span class="success">✅ Running</span>';
+            } catch (error) {
+                document.getElementById('frontend-status').innerHTML = '<span class="error">❌ Not running</span>';
+            }
+
+            // Check backend
+            try {
+                const response = await fetch('http://localhost:8082/actuator/health');
+                const data = await response.json();
+                if (data.status === 'UP') {
+                    document.getElementById('backend-status').innerHTML = '<span class="success">✅ Running</span>';
+                } else {
+                    document.getElementById('backend-status').innerHTML = '<span class="warning">⚠️ Unhealthy</span>';
+                }
+            } catch (error) {
+                document.getElementById('backend-status').innerHTML = '<span class="error">❌ Not running</span>';
+            }
+        }
+
+        async function testLogin() {
+            const resultDiv = document.getElementById('login-result');
+            resultDiv.innerHTML = '<p class="info">Testing login...</p>';
+            
+            try {
+                const response = await fetch('http://localhost:8082/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: 'shopowner1',
+                        password: 'password'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.statusCode === '0000' || data.token) {
+                    resultDiv.innerHTML = `
+                        <p class="success">✅ Login successful!</p>
+                        <pre>${JSON.stringify(data.data || data, null, 2)}</pre>
+                    `;
+                    document.getElementById('login-status').innerHTML = '<span class="success">✅ Working</span>';
+                } else {
+                    resultDiv.innerHTML = `<p class="error">❌ Login failed: ${data.message}</p>`;
+                    document.getElementById('login-status').innerHTML = '<span class="error">❌ Failed</span>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">❌ Error: ${error.message}</p>`;
+                document.getElementById('login-status').innerHTML = '<span class="error">❌ Error</span>';
+            }
+        }
+
+        async function testShopProducts() {
+            const resultDiv = document.getElementById('products-result');
+            resultDiv.innerHTML = '<p class="info">Loading shop products...</p>';
+            
+            try {
+                // Get products for shop 11 (Test Grocery Store)
+                const response = await fetch('http://localhost:8082/api/shop-owner/shops/11/products');
+                const data = await response.json();
+                
+                if (data.statusCode === '0000' || data.data) {
+                    const products = data.data?.content || data.data || [];
+                    resultDiv.innerHTML = `
+                        <p class="success">✅ Found ${products.length} products</p>
+                        <table class="status-table">
+                            <tr>
+                                <th>Product Name</th>
+                                <th>Master ID</th>
+                                <th>Price</th>
+                                <th>Stock</th>
+                                <th>Status</th>
+                            </tr>
+                            ${products.slice(0, 5).map(p => `
+                                <tr>
+                                    <td>${p.displayName || p.name}</td>
+                                    <td><code>${p.masterId || 'N/A'}</code></td>
+                                    <td>₹${p.price}</td>
+                                    <td>${p.stockQuantity || p.stock || 0}</td>
+                                    <td>${p.status || 'ACTIVE'}</td>
+                                </tr>
+                            `).join('')}
+                        </table>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<p class="warning">⚠️ No products found or API needs authentication</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">❌ Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

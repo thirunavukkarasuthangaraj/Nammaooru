@@ -312,12 +312,13 @@ import { Shop } from '@core/models/shop.model';
 export class ShopProfileComponent implements OnInit {
   shopForm: FormGroup;
   isLoading = false;
+  shop: Shop | null = null;
   
-  // Mock data - replace with actual API calls
+  // Shop statistics
   shopStatus = 'Active';
-  registrationDate = new Date('2023-01-15');
-  totalProducts = 145;
-  totalOrders = 892;
+  registrationDate = new Date();
+  totalProducts = 0;
+  totalOrders = 0;
 
   constructor(
     private fb: FormBuilder,
@@ -340,35 +341,134 @@ export class ShopProfileComponent implements OnInit {
   }
 
   private loadShopProfile(): void {
-    // Load shop profile data from API
-    // Mock data for now
-    const mockShopData = {
-      name: 'Raghavendra Stores',
-      description: 'Your neighborhood grocery store with fresh products and daily essentials',
-      phone: '+91 9876543210',
-      email: 'raghavendra.stores@email.com',
-      address: '123 Main Street, Gandhi Nagar',
-      city: 'Bangalore',
-      pincode: '560001'
-    };
-
-    this.shopForm.patchValue(mockShopData);
+    this.isLoading = true;
+    
+    // Get the current user's shop from real backend
+    this.shopService.getMyShop().subscribe({
+      next: (shop: any) => {
+        if (shop) {
+          this.shop = shop;
+          console.log('Shop Profile data received:', shop);
+          
+          // Update form with actual shop data
+          this.shopForm.patchValue({
+            name: shop.name || '',
+            description: shop.description || '',
+            phone: shop.ownerPhone || shop.phone || '',
+            email: shop.ownerEmail || shop.email || '',
+            address: shop.addressLine1 || shop.address || '',
+            city: shop.city || '',
+            pincode: shop.postalCode || shop.pincode || ''
+          });
+          
+          // Update statistics with real data
+          this.shopStatus = shop.status || 'ACTIVE';
+          this.registrationDate = new Date(shop.createdAt || new Date());
+          this.totalProducts = shop.productCount || 0;
+          this.totalOrders = shop.totalOrders || 0;
+          
+          // Get additional statistics
+          this.loadShopStatistics();
+        } else {
+          this.handleNoShopFound();
+        }
+        
+        this.isLoading = false;
+      },
+      error: (error: any) => {
+        console.error('Error loading shop profile:', error);
+        this.isLoading = false;
+        
+        // Handle 404 - no shop for user
+        if (error.status === 404) {
+          this.handleNoShopFound();
+        } else {
+          this.snackBar.open('Error loading shop profile. Please try again.', 'Close', {
+            duration: 3000,
+            horizontalPosition: 'end',
+            verticalPosition: 'top',
+            panelClass: ['error-snackbar']
+          });
+        }
+      }
+    });
+  }
+  
+  private handleNoShopFound(): void {
+    this.shopForm.patchValue({
+      name: '',
+      description: '',
+      phone: '',
+      email: '',
+      address: '',
+      city: '',
+      pincode: ''
+    });
+    
+    this.snackBar.open('No shop found. Please contact admin to assign a shop.', 'Close', {
+      duration: 5000,
+      horizontalPosition: 'end',
+      verticalPosition: 'top',
+      panelClass: ['warning-snackbar']
+    });
+  }
+  
+  private loadShopStatistics(): void {
+    // Load real statistics from backend
+    if (this.shop && this.shop.id) {
+      // Get total orders count
+      this.shopService.getTodaysOrderCount().subscribe({
+        next: (count) => {
+          this.totalOrders = count;
+        }
+      });
+      
+      // Get product count
+      this.shopService.getTotalProductCount().subscribe({
+        next: (count) => {
+          this.totalProducts = count;
+        }
+      });
+    }
   }
 
   onSave(): void {
-    if (this.shopForm.valid) {
+    if (this.shopForm.valid && this.shop) {
       this.isLoading = true;
       
-      // Simulate API call
-      setTimeout(() => {
-        this.isLoading = false;
-        this.snackBar.open('Shop profile updated successfully!', 'Close', {
-          duration: 3000,
-          horizontalPosition: 'end',
-          verticalPosition: 'top',
-          panelClass: ['success-snackbar']
-        });
-      }, 1500);
+      const updatedShop = {
+        ...this.shop,
+        name: this.shopForm.value.name,
+        description: this.shopForm.value.description,
+        ownerPhone: this.shopForm.value.phone,
+        ownerEmail: this.shopForm.value.email,
+        addressLine1: this.shopForm.value.address,
+        city: this.shopForm.value.city,
+        postalCode: this.shopForm.value.pincode
+      };
+      
+      this.shopService.updateShop(this.shop.id, updatedShop).subscribe({
+        next: (response) => {
+          this.isLoading = false;
+          this.shop = response;
+          this.snackBar.open('Shop profile updated successfully!', 'Close', {
+            duration: 3000,
+            horizontalPosition: 'end',
+            verticalPosition: 'top',
+            panelClass: ['success-snackbar']
+          });
+        },
+        error: (error) => {
+          this.isLoading = false;
+          console.error('Error updating shop profile:', error);
+          this.snackBar.open('Error updating shop profile', 'Close', {
+            duration: 3000,
+            horizontalPosition: 'end',
+            verticalPosition: 'top',
+            panelClass: ['error-snackbar']
+          });
+        }
+      });
     }
   }
 
