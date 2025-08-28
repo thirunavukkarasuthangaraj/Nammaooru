@@ -206,6 +206,36 @@ public class ShopService {
         log.info("Shop deleted successfully: {}", shop.getShopId());
     }
 
+    // Customer-facing methods
+    public Page<ShopResponse> getActiveShops(Pageable pageable, String search, String category) {
+        log.info("Fetching active shops for customers - search: {}, category: {}", search, category);
+        
+        Specification<Shop> spec = Specification.where(
+            (root, query, cb) -> cb.and(
+                cb.equal(root.get("status"), Shop.ShopStatus.APPROVED),
+                cb.equal(root.get("isActive"), true)
+            )
+        );
+        
+        if (search != null && !search.isEmpty()) {
+            String searchPattern = "%" + search.toLowerCase() + "%";
+            spec = spec.and((root, query, cb) -> cb.or(
+                cb.like(cb.lower(root.get("name")), searchPattern),
+                cb.like(cb.lower(root.get("businessName")), searchPattern),
+                cb.like(cb.lower(root.get("description")), searchPattern)
+            ));
+        }
+        
+        if (category != null && !category.isEmpty()) {
+            spec = spec.and((root, query, cb) -> 
+                cb.equal(root.get("businessType"), Shop.BusinessType.valueOf(category.toUpperCase()))
+            );
+        }
+        
+        Page<Shop> shops = shopRepository.findAll(spec, pageable);
+        return shops.map(shopMapper::toResponse);
+    }
+
     public ShopResponse approveShop(Long id) {
         return updateShopStatus(id, Shop.ShopStatus.APPROVED);
     }
@@ -244,25 +274,42 @@ public class ShopService {
             
             // Create shop owner user account and send welcome email
             try {
+                log.info("Starting user creation process for shop: {}", shop.getName());
                 String username = generateUsername(shop.getOwnerName());
                 String temporaryPassword = generateTemporaryPassword();
+                log.info("Generated credentials - Username: {}, Password length: {}", username, temporaryPassword.length());
+                
+                // Check if user already exists
+                boolean userExists = authService.userExistsByUsernameOrEmail(username, shop.getOwnerEmail());
+                if (userExists) {
+                    log.warn("User already exists with username: {} or email: {}", username, shop.getOwnerEmail());
+                    // Try with different username
+                    username = generateUsername(shop.getOwnerName() + System.currentTimeMillis());
+                    log.info("Generated new username: {}", username);
+                }
                 
                 // Create user account
                 User shopOwnerUser = authService.createShopOwnerUser(username, shop.getOwnerEmail(), temporaryPassword);
-                log.info("Created shop owner user: {} for shop: {}", username, shop.getName());
+                log.info("Successfully created shop owner user: {} for shop: {}", username, shop.getName());
                 
                 // Send welcome email with credentials
-                emailService.sendShopOwnerWelcomeEmail(
-                    shop.getOwnerEmail(),
-                    shop.getOwnerName(),
-                    username,
-                    temporaryPassword,
-                    shop.getName()
-                );
-                log.info("Welcome email sent to: {}", shop.getOwnerEmail());
+                try {
+                    emailService.sendShopOwnerWelcomeEmail(
+                        shop.getOwnerEmail(),
+                        shop.getOwnerName(),
+                        username,
+                        temporaryPassword,
+                        shop.getName()
+                    );
+                    log.info("Welcome email sent successfully to: {}", shop.getOwnerEmail());
+                } catch (Exception emailError) {
+                    log.error("Failed to send welcome email to: {} for shop: {}", shop.getOwnerEmail(), shop.getName(), emailError);
+                    // Email failed but user was created - this is a partial success
+                    // Admin should be notified to manually send credentials
+                }
                 
             } catch (Exception e) {
-                log.error("Failed to create user account or send email for shop: {}", shop.getName(), e);
+                log.error("Failed to create user account for shop: {} - Error: {}", shop.getName(), e.getMessage(), e);
                 // Continue with shop approval even if user creation fails
                 // This can be handled manually by admin later
             }
@@ -377,6 +424,23 @@ public class ShopService {
             .orElseThrow(() -> new ShopNotFoundException("No shop found for current user"));
         
         return shopMapper.toResponse(shop);
+    }
+
+    @Transactional(readOnly = true)
+    public Shop getShopByOwner(String username) {
+        log.info("Getting shop entity for user: {}", username);
+        
+        // For admin users, return first active shop as demo
+        if ("admin".equals(username) || "superadmin".equals(username)) {
+            log.info("Admin user accessing shop demo - returning first active shop");
+            Page<Shop> activeShopsPage = shopRepository.findByIsActiveTrue(PageRequest.of(0, 1));
+            if (activeShopsPage.isEmpty()) {
+                return null;
+            }
+            return activeShopsPage.getContent().get(0);
+        }
+        
+        return shopRepository.findByCreatedBy(username).orElse(null);
     }
 
     private void sendShopRegistrationConfirmationEmail(Shop shop) {

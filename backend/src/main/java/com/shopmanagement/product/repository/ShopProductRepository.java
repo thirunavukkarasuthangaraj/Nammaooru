@@ -124,4 +124,8 @@ public interface ShopProductRepository extends JpaRepository<ShopProduct, Long>,
     @Transactional
     @Query("UPDATE ShopProduct sp SET sp.trackInventory = true WHERE sp.trackInventory IS NULL")
     int updateNullTrackInventory();
+    
+    // Category queries for customers
+    @Query("SELECT DISTINCT COALESCE(sp.customName, sp.masterProduct.category.name) FROM ShopProduct sp WHERE sp.shop = :shop AND sp.isAvailable = true")
+    List<String> findDistinctCategoriesByShop(@Param("shop") Shop shop);
 }

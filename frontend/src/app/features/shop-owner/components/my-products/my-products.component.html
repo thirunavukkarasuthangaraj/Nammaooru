@@ -2,7 +2,7 @@
   <div class="page-header">
     <h1>My Products</h1>
     <div class="header-actions">
-      <button mat-raised-button color="primary" (click)="addProduct()">
+      <button mat-raised-button color="primary" (click)="addNewProduct()">
         <mat-icon>add</mat-icon> Add Product
       </button>
       <button mat-raised-button (click)="bulkUpload()">
@@ -42,15 +42,15 @@
   <div class="products-grid">
     <mat-card *ngFor="let product of filteredProducts" class="product-card">
       <div class="product-image">
-        <img [src]="product.primaryImageUrl || 'assets/images/placeholder-product.jpg'" 
-             [alt]="product.name">
+        <img [src]="product.imageUrl || 'assets/images/placeholder-product.jpg'" 
+             [alt]="product.customName">
         <div class="product-status" [ngClass]="product.status">
           {{ product.status | titlecase }}
         </div>
       </div>
       
       <mat-card-content>
-        <h3>{{ product.name }}</h3>
+        <h3>{{ product.customName }}</h3>
         <p class="product-description">{{ product.description }}</p>
         
         <div class="product-info">
@@ -79,7 +79,7 @@
       </mat-card-content>
       
       <mat-card-actions>
-        <button mat-button (click)="editProduct(product.id)">
+        <button mat-button (click)="editProduct(product)">
           <mat-icon>edit</mat-icon> Edit
         </button>
         <button mat-button (click)="duplicateProduct(product.id)">
@@ -100,7 +100,7 @@
           <button mat-menu-item (click)="updateStock(product.id)">
             <mat-icon>inventory</mat-icon> Update Stock
           </button>
-          <button mat-menu-item (click)="deleteProduct(product.id)" class="danger">
+          <button mat-menu-item (click)="deleteProduct(product)" class="danger">
             <mat-icon>delete</mat-icon> Delete
           </button>
         </mat-menu>
@@ -112,7 +112,7 @@
     <mat-icon>inventory_2</mat-icon>
     <h3>No products found</h3>
     <p>Start by adding your first product to your shop</p>
-    <button mat-raised-button color="primary" (click)="addProduct()">
+    <button mat-raised-button color="primary" (click)="addNewProduct()">
       <mat-icon>add</mat-icon> Add Product
     </button>
   </div>

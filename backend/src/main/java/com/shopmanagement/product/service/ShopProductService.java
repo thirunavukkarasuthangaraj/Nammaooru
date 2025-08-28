@@ -5,10 +5,12 @@ import com.shopmanagement.product.dto.ShopProductResponse;
 import com.shopmanagement.product.entity.MasterProduct;
 import com.shopmanagement.product.entity.ShopProduct;
 import com.shopmanagement.product.entity.ShopProductImage;
+import com.shopmanagement.product.exception.ProductNotFoundException;
 import com.shopmanagement.product.mapper.ProductMapper;
 import com.shopmanagement.product.repository.MasterProductRepository;
 import com.shopmanagement.product.repository.ShopProductRepository;
 import com.shopmanagement.shop.entity.Shop;
+import com.shopmanagement.shop.exception.ShopNotFoundException;
 import com.shopmanagement.shop.repository.ShopRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -297,6 +299,58 @@ public class ShopProductService {
                 "minPrice", priceRange != null && priceRange[0] != null ? priceRange[0] : BigDecimal.ZERO,
                 "maxPrice", priceRange != null && priceRange[1] != null ? priceRange[1] : BigDecimal.ZERO
         );
+    }
+
+    // Customer-facing methods
+    public Page<ShopProductResponse> getAvailableShopProducts(Long shopId, String search, String category, Pageable pageable) {
+        log.info("Fetching available products for shop: {} for customers", shopId);
+        
+        Shop shop = shopRepository.findById(shopId)
+                .orElseThrow(() -> new ShopNotFoundException("Shop not found with id: " + shopId));
+        
+        Specification<ShopProduct> spec = Specification.where(
+            (root, query, cb) -> cb.and(
+                cb.equal(root.get("shop"), shop),
+                cb.equal(root.get("isAvailable"), true),
+                cb.equal(root.get("status"), ShopProduct.ShopProductStatus.ACTIVE)
+            )
+        );
+        
+        if (search != null && !search.isEmpty()) {
+            String searchPattern = "%" + search.toLowerCase() + "%";
+            spec = spec.and((root, query, cb) -> cb.or(
+                cb.like(cb.lower(root.get("customName")), searchPattern),
+                cb.like(cb.lower(root.get("customDescription")), searchPattern)
+            ));
+        }
+        
+        if (category != null && !category.isEmpty()) {
+            spec = spec.and((root, query, cb) -> 
+                cb.equal(root.get("category"), category)
+            );
+        }
+        
+        Page<ShopProduct> products = shopProductRepository.findAll(spec, pageable);
+        return products.map(productMapper::toResponse);
+    }
+    
+    public ShopProductResponse getProductDetails(Long shopId, Long productId) {
+        log.info("Fetching product details - shopId: {}, productId: {}", shopId, productId);
+        
+        ShopProduct product = shopProductRepository.findById(productId)
+                .filter(p -> p.getShop().getId().equals(shopId))
+                .orElseThrow(() -> new ProductNotFoundException("Product not found"));
+        
+        return productMapper.toResponse(product);
+    }
+    
+    public List<String> getShopProductCategories(Long shopId) {
+        log.info("Fetching product categories for shop: {}", shopId);
+        
+        Shop shop = shopRepository.findById(shopId)
+                .orElseThrow(() -> new ShopNotFoundException("Shop not found with id: " + shopId));
+        
+        return shopProductRepository.findDistinctCategoriesByShop(shop);
     }
 
     private void updateShopProductCount(Shop shop) {

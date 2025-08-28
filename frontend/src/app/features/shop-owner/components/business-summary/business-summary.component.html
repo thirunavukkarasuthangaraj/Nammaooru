@@ -1,0 +1,150 @@
+<div class="business-summary-container">
+  <!-- Header Section -->
+  <div class="header-section">
+    <h1 class="page-title">Business Summary</h1>
+    <p class="welcome-text">Welcome back! Here's your shop performance overview</p>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="stats-grid">
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-icon revenue">
+          <mat-icon>account_balance_wallet</mat-icon>
+        </div>
+        <div class="stat-details">
+          <p class="stat-label">Today's Revenue</p>
+          <h2 class="stat-value">₹{{stats.todayRevenue || 0}}</h2>
+          <p class="stat-change positive">
+            <mat-icon>trending_up</mat-icon>
+            +12% from yesterday
+          </p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-icon orders">
+          <mat-icon>shopping_cart</mat-icon>
+        </div>
+        <div class="stat-details">
+          <p class="stat-label">Total Orders</p>
+          <h2 class="stat-value">{{stats.totalOrders || 0}}</h2>
+          <p class="stat-change positive">
+            <mat-icon>trending_up</mat-icon>
+            +5 new today
+          </p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-icon pending">
+          <mat-icon>pending_actions</mat-icon>
+        </div>
+        <div class="stat-details">
+          <p class="stat-label">Pending Orders</p>
+          <h2 class="stat-value">{{stats.pendingOrders || 0}}</h2>
+          <p class="stat-change">Requires action</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-icon products">
+          <mat-icon>inventory_2</mat-icon>
+        </div>
+        <div class="stat-details">
+          <p class="stat-label">Active Products</p>
+          <h2 class="stat-value">{{stats.activeProducts || 0}}</h2>
+          <p class="stat-change">{{stats.lowStockCount || 0}} low in stock</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Recent Orders Section -->
+  <div class="content-grid">
+    <mat-card class="recent-orders">
+      <mat-card-header>
+        <mat-card-title>Recent Orders</mat-card-title>
+        <button mat-button color="primary" routerLink="/shop-owner/orders">View All</button>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="orders-list">
+          <div class="order-item" *ngFor="let order of recentOrders">
+            <div class="order-info">
+              <p class="order-id">#{{order.orderNumber}}</p>
+              <p class="order-customer">{{order.customerName}}</p>
+            </div>
+            <div class="order-status">
+              <mat-chip [ngClass]="'status-' + order.status.toLowerCase()">
+                {{order.status}}
+              </mat-chip>
+            </div>
+            <div class="order-amount">₹{{order.totalAmount}}</div>
+          </div>
+          <div class="no-data" *ngIf="!recentOrders || recentOrders.length === 0">
+            <mat-icon>inbox</mat-icon>
+            <p>No recent orders</p>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Low Stock Alert -->
+    <mat-card class="low-stock-alert">
+      <mat-card-header>
+        <mat-card-title>Low Stock Alert</mat-card-title>
+        <button mat-button color="primary" routerLink="/shop-owner/products-pricing">Manage</button>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="stock-list">
+          <div class="stock-item" *ngFor="let product of lowStockProducts">
+            <div class="product-info">
+              <p class="product-name">{{product.customName}}</p>
+              <p class="stock-level">Stock: {{product.stockQuantity}}</p>
+            </div>
+            <button mat-mini-fab color="accent">
+              <mat-icon>add</mat-icon>
+            </button>
+          </div>
+          <div class="no-data" *ngIf="!lowStockProducts || lowStockProducts.length === 0">
+            <mat-icon>check_circle</mat-icon>
+            <p>All products well stocked</p>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Quick Actions -->
+  <mat-card class="quick-actions">
+    <mat-card-header>
+      <mat-card-title>Quick Actions</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="actions-grid">
+        <button mat-raised-button color="primary" routerLink="/shop-owner/products-pricing">
+          <mat-icon>inventory</mat-icon>
+          Manage Products
+        </button>
+        <button mat-raised-button color="accent" routerLink="/shop-owner/orders">
+          <mat-icon>receipt</mat-icon>
+          View Orders
+        </button>
+        <button mat-raised-button routerLink="/shop-owner/profile">
+          <mat-icon>store</mat-icon>
+          Shop Profile
+        </button>
+        <button mat-raised-button>
+          <mat-icon>analytics</mat-icon>
+          View Reports
+        </button>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>
