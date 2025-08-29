@@ -13,16 +13,16 @@ services:
       # Connect to PostgreSQL on host (not in Docker)
       - SPRING_DATASOURCE_URL=jdbc:postgresql://host.docker.internal:5432/shop_management_db
       - SPRING_DATASOURCE_USERNAME=shopuser
-      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
-      - JWT_SECRET=${JWT_SECRET}
+      - SPRING_DATASOURCE_PASSWORD=SecurePassword@2024
+      - JWT_SECRET=production-jwt-secret-key-2024-very-secure-change-this
       - FILE_UPLOAD_PATH=/app/uploads
       - APP_CORS_ALLOWED_ORIGINS=https://yourdomain.com
     ports:
       - "8082:8082"
     volumes:
-      # Map to Hetzner server photo storage folder
-      - /opt/shop-uploads:/app/uploads
-      - /var/log/shop-management:/app/logs
+      # Map to local photo storage folder
+      - ./uploads:/app/uploads
+      - ./logs/backend:/app/logs
     networks:
       - shop-network
     extra_hosts:
@@ -57,13 +57,13 @@ services:
     image: redis:7-alpine
     container_name: shop-redis-prod
     restart: always
-    command: redis-server --requirepass ${REDIS_PASSWORD}
+    command: redis-server --requirepass RedisSecure@2024Pass
     ports:
       - "127.0.0.1:6379:6379"
     networks:
       - shop-network
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD", "redis-cli", "-a", "RedisSecure@2024Pass", "ping"]
       interval: 10s
       timeout: 3s
       retries: 3

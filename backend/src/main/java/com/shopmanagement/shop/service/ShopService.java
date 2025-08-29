@@ -267,7 +267,7 @@ public class ShopService {
                 .orElseThrow(() -> new ShopNotFoundException("Shop not found with id: " + id));
         
         shop.setStatus(status);
-        shop.setUpdatedBy(getCurrentUsername());
+        // Note: updatedBy will be set to shop owner username in APPROVED case
         
         if (status == Shop.ShopStatus.APPROVED) {
             shop.setIsVerified(true);
@@ -292,6 +292,10 @@ public class ShopService {
                 User shopOwnerUser = authService.createShopOwnerUser(username, shop.getOwnerEmail(), temporaryPassword);
                 log.info("Successfully created shop owner user: {} for shop: {}", username, shop.getName());
                 
+                // Update shop to be owned by the newly created user
+                shop.setCreatedBy(username);
+                shop.setUpdatedBy(username);
+                
                 // Send welcome email with credentials
                 try {
                     emailService.sendShopOwnerWelcomeEmail(
@@ -312,7 +316,12 @@ public class ShopService {
                 log.error("Failed to create user account for shop: {} - Error: {}", shop.getName(), e.getMessage(), e);
                 // Continue with shop approval even if user creation fails
                 // This can be handled manually by admin later
+                // If user creation failed, set updatedBy to current admin
+                shop.setUpdatedBy(getCurrentUsername());
             }
+        } else {
+            // For rejected/suspended statuses, set updatedBy to current admin
+            shop.setUpdatedBy(getCurrentUsername());
         }
         
         Shop updatedShop = shopRepository.save(shop);
