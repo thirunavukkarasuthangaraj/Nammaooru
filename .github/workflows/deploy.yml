@@ -28,53 +28,99 @@ jobs:
         password: ${{ secrets.HETZNER_PASSWORD }}
         script: |
           # Navigate to deployment directory
+          echo "=== STEP 1: Navigate to deployment directory ==="
           cd /opt/shop-management
+          pwd
+          ls -la
           
           # Clone/update repository
+          echo "=== STEP 2: Update repository ==="
           if [ ! -d "shop-management-system" ]; then
+            echo "Cloning repository..."
             git clone https://github.com/thirunavukkarasuthangaraj/Nammaooru.git shop-management-system
           else
+            echo "Updating existing repository..."
             cd shop-management-system && git pull origin main && cd ..
           fi
           
+          echo "Repository status:"
+          cd shop-management-system && git log --oneline -3 && cd ..
+          
           # Copy source files
+          echo "=== STEP 3: Copy source files ==="
           cp -r shop-management-system/backend ./
           cp -r shop-management-system/frontend ./
           cp shop-management-system/docker-compose.yml ./
           
+          echo "Files copied. Checking versions:"
+          grep '"version"' frontend/package.json || echo "No frontend version found"
+          grep '<version>' backend/pom.xml | head -1 || echo "No backend version found"
+          
           # Stop existing containers (check both locations)
+          echo "=== STEP 4: Stop existing containers ==="
+          docker ps -a
           docker-compose down || true
           cd /root && docker-compose down 2>/dev/null || true
           cd /opt/shop-management
+          echo "Containers stopped. Current status:"
+          docker ps -a
           
           # Remove existing images to force rebuild (fixes cache issues)
-          echo "Removing cached Docker images..."
+          echo "=== STEP 5: Remove cached images ==="
+          echo "Current images:"
+          docker images | grep -E "(nammaooru|shop-management)" || echo "No matching images"
           docker rmi nammaooru-frontend nammaooru-backend 2>/dev/null || true
           docker rmi $(docker images -f "dangling=true" -q) 2>/dev/null || true
+          echo "Images after cleanup:"
+          docker images | grep -E "(nammaooru|shop-management)" || echo "No matching images"
           
           # Ensure we're in the correct directory for deployment
+          echo "=== STEP 6: Build new containers ==="
           cd /opt/shop-management
           pwd
+          echo "Docker-compose file check:"
+          ls -la docker-compose.yml
           
           # Build and start new containers with no cache
           echo "Building containers with latest code from $(pwd)..."
-          docker-compose build --no-cache --pull
+          echo "Backend build starting..."
+          docker-compose build --no-cache --pull backend 2>&1 | tail -20
+          echo "Frontend build starting..."
+          docker-compose build --no-cache --pull frontend 2>&1 | tail -20
+          
+          echo "=== STEP 7: Start containers ==="
           docker-compose up -d
+          sleep 10
+          echo "Container status after start:"
+          docker ps -a
           
           # Clean up old/unused images
           docker image prune -af
           
           # Health check and version verification
-          sleep 20
+          echo "=== STEP 8: Health checks and debugging ==="
+          sleep 10
+          
+          echo "Final container status:"
+          docker ps -a
+          
+          echo "Backend container logs (last 20 lines):"
+          docker logs nammaooru-backend --tail 20 2>&1 || echo "No backend logs available"
+          
+          echo "Frontend container logs (last 10 lines):"
+          docker logs nammaooru-frontend --tail 10 2>&1 || echo "No frontend logs available"
+          
           echo "Checking backend health..."
-          curl -f http://localhost:8082/actuator/health || echo "Backend starting..."
+          curl -f http://localhost:8082/actuator/health 2>&1 || echo "Backend health check failed"
           
           echo "Checking version endpoints..."
-          curl -f http://localhost:8082/api/version || echo "Version endpoint check..."
+          curl -f http://localhost:8082/api/version 2>&1 || echo "Version endpoint failed"
           
           echo "Deployment summary:"
           echo "Frontend version: $(cat shop-management-system/frontend/package.json | grep version | head -1 | cut -d '"' -f 4)"
           echo "Backend version: $(cat shop-management-system/backend/pom.xml | grep -m1 '<version>' | sed 's/.*<version>\(.*\)<\/version>.*/\1/')"
+          
+          echo "=== DEPLOYMENT COMPLETE - Check logs above for issues ==="
           
     - name: Verify deployment
       uses: appleboy/ssh-action@v0.1.5
