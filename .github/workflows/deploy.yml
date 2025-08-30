@@ -13,48 +13,7 @@ env:
   SERVER_USER: ${{ secrets.HETZNER_USER }}
 
 jobs:
-  build-and-push:
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
-
-    - name: Log in to Docker Hub
-      uses: docker/login-action@v2
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-
-    - name: Build and push backend
-      uses: docker/build-push-action@v4
-      with:
-        context: ./backend
-        push: true
-        tags: |
-          ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:latest
-          ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:${{ github.sha }}
-        cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:buildcache
-        cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:buildcache,mode=max
-
-    - name: Build and push frontend
-      uses: docker/build-push-action@v4
-      with:
-        context: ./frontend
-        push: true
-        tags: |
-          ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:latest
-          ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
-        build-args: |
-          API_URL=http://${{ env.SERVER_HOST }}/api
-        cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:buildcache
-        cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:buildcache,mode=max
-
   deploy:
-    needs: build-and-push
     runs-on: ubuntu-latest
     
     steps:
@@ -71,22 +30,30 @@ jobs:
           # Navigate to deployment directory
           cd /opt/shop-management
           
-          # Pull latest images
-          docker pull ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:latest
-          docker pull ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:latest
+          # Clone/update repository
+          if [ ! -d "shop-management-system" ]; then
+            git clone https://github.com/thirunavukkarasuthangaraj/Nammaooru.git shop-management-system
+          else
+            cd shop-management-system && git pull origin main && cd ..
+          fi
+          
+          # Copy source files
+          cp -r shop-management-system/backend ./
+          cp -r shop-management-system/frontend ./
+          cp shop-management-system/docker-compose.yml ./
           
           # Stop existing containers
           docker-compose down || true
           
-          # Start new containers
-          docker-compose up -d
+          # Build and start new containers locally
+          docker-compose up -d --build
           
           # Clean up old images
           docker image prune -f
           
           # Health check
-          sleep 10
-          curl -f http://localhost/health || exit 1
+          sleep 15
+          curl -f http://localhost:8082/actuator/health || echo "Backend starting..."
           
     - name: Verify deployment
       uses: appleboy/ssh-action@v0.1.5

@@ -5,7 +5,7 @@ services:
   backend:
     build: 
       context: ./backend
-    container_name: backend
+    container_name: nammaooru-backend
     environment:
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-production}
       - DB_URL=${DB_URL:-jdbc:postgresql://host.docker.internal:5432/shop_management_db}
@@ -23,7 +23,8 @@ services:
       - uploads_data:/app/uploads
     networks:
       - shop-network
-    # PostgreSQL is external - no depends_on needed
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
       interval: 30s
@@ -37,10 +38,9 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: shop-frontend
-    image: shop-frontend:${BUILD_ID:-latest}
+    container_name: nammaooru-frontend
     ports:
-      - "0.0.0.0:8080:80"
+      - "80:80"
     networks:
       - shop-network
     depends_on:
