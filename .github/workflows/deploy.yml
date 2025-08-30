@@ -130,6 +130,12 @@ jobs:
           echo "Frontend version: $(cat shop-management-system/frontend/package.json | grep version | head -1 | cut -d '"' -f 4)"
           echo "Backend version: $(cat shop-management-system/backend/pom.xml | grep -m1 '<version>' | sed 's/.*<version>\(.*\)<\/version>.*/\1/')"
           
+          # Start nginx for API subdomain HTTPS
+          echo "Starting nginx for API subdomain..."
+          systemctl start nginx
+          sleep 5
+          systemctl status nginx
+          
           echo "=== DEPLOYMENT COMPLETE - Check logs above for issues ==="
           
     - name: Verify deployment
