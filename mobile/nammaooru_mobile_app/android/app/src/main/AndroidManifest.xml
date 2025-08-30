@@ -78,7 +78,8 @@
         <meta-data android:name="com.google.android.geo.API_KEY"
                    android:value="YOUR_GOOGLE_MAPS_API_KEY"/>
         
-        <!-- Firebase Cloud Messaging -->
+        <!-- Firebase Cloud Messaging - Disabled for now -->
+        <!-- TODO: Create MessagingService class when Firebase is properly configured
         <service
             android:name=".firebase.MessagingService"
             android:exported="false">
@@ -86,6 +87,7 @@
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
+        -->
         
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

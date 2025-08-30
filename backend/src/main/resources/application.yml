@@ -43,7 +43,7 @@ spring:
     host: smtp.gmail.com
     port: 587
     username: noreplaynammaoorudelivery@gmail.com
-    password: zjvvmelvrfgwvrpl
+    password: YOUR_NEW_APP_PASSWORD_HERE
     properties:
       mail:
         smtp:

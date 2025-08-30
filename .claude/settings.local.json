@@ -237,7 +237,11 @@
       "Bash(\"C:\\Program Files\\PostgreSQL\\15\\bin\\psql.exe\" -U postgres -h localhost -p 5432 -d shop_management_db -c \"SELECT created_by, COUNT(*) FROM shops WHERE is_active = true GROUP BY created_by HAVING COUNT(*) > 1;\")",
       "Bash(del:*)",
       "Bash(\"C:\\Program Files\\PostgreSQL\\15\\bin\\psql.exe\" -U postgres -h localhost -p 5432 -d shop_management_db -c \"SELECT username, email, role, status, is_active FROM users WHERE role IN (''SUPER_ADMIN'', ''SHOP_OWNER'', ''CUSTOMER'') AND is_active = true LIMIT 10;\")",
-      "Bash(\"C:\\Program Files\\PostgreSQL\\15\\bin\\psql.exe\" -U postgres -h localhost -p 5432 -d shop_management_db -f \"D:\\AAWS\\nammaooru\\shop-management-system\\fix-passwords.sql\")"
+      "Bash(\"C:\\Program Files\\PostgreSQL\\15\\bin\\psql.exe\" -U postgres -h localhost -p 5432 -d shop_management_db -f \"D:\\AAWS\\nammaooru\\shop-management-system\\fix-passwords.sql\")",
+      "Bash(flutter build:*)",
+      "Bash(adb:*)",
+      "Bash(flutter:*)",
+      "Bash(./gradlew:*)"
     ],
     "deny": [],
     "ask": [],

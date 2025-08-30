@@ -1,8 +1,15 @@
 class EnvConfig {
   // Base API Configuration
-  static const String baseUrl = 'https://api.nammaooru.com';
-  static const String apiVersion = 'v1';
-  static const String fullApiUrl = '$baseUrl/api/$apiVersion';
+  // PRODUCTION: Use your deployed server
+  static const String baseUrl = 'https://api.nammaoorudelivary.in';
+  
+  // DEVELOPMENT: Uncomment for local development  
+  // static const String baseUrl = 'http://10.0.2.2:8082'; // Android Emulator
+  // static const String baseUrl = 'http://localhost:8082'; // iOS Simulator
+  // static const String baseUrl = 'http://192.168.1.100:8082'; // Local Network IP
+  
+  static const String apiVersion = '';
+  static const String fullApiUrl = '$baseUrl/api';
   
   // Google Services
   static const String googleMapsApiKey = 'YOUR_GOOGLE_MAPS_API_KEY';
