@@ -6,6 +6,8 @@ server:
     enabled: true
     mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json
     min-response-size: 1024
+  # Forward headers configuration for proxy
+  forward-headers-strategy: framework
 
 spring:
   datasource:
@@ -51,6 +53,28 @@ spring:
           connectiontimeout: 5000
           timeout: 5000
           writetimeout: 5000
+  
+  # Spring Web CORS Configuration
+  web:
+    cors:
+      allowed-origins: 
+        - https://nammaoorudelivary.in
+        - https://www.nammaoorudelivary.in
+        - https://api.nammaoorudelivary.in
+        - http://localhost:4200
+        - http://localhost:80
+      allowed-methods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+        - PATCH
+        - HEAD
+      allowed-headers:
+        - "*"
+      allow-credentials: true
+      max-age: 3600
 
 # File Storage Configuration - IMPORTANT FOR HETZNER
 file:
