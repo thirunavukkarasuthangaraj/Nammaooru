@@ -9,8 +9,8 @@ env:
   REGISTRY: docker.io
   BACKEND_IMAGE: nammaooru/backend
   FRONTEND_IMAGE: nammaooru/frontend
-  SERVER_HOST: 65.21.4.236
-  SERVER_USER: root
+  SERVER_HOST: ${{ secrets.HETZNER_HOST }}
+  SERVER_USER: ${{ secrets.HETZNER_USER }}
 
 jobs:
   build-and-push:
@@ -64,12 +64,12 @@ jobs:
     - name: Deploy to server
       uses: appleboy/ssh-action@v0.1.5
       with:
-        host: ${{ env.SERVER_HOST }}
-        username: ${{ env.SERVER_USER }}
-        key: ${{ secrets.SERVER_SSH_KEY }}
+        host: ${{ secrets.HETZNER_HOST }}
+        username: ${{ secrets.HETZNER_USER }}
+        password: ${{ secrets.HETZNER_PASSWORD }}
         script: |
           # Navigate to deployment directory
-          cd /root/nammaooru || mkdir -p /root/nammaooru && cd /root/nammaooru
+          cd /opt/shop-management
           
           # Pull latest images
           docker pull ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:latest
@@ -91,9 +91,9 @@ jobs:
     - name: Verify deployment
       uses: appleboy/ssh-action@v0.1.5
       with:
-        host: ${{ env.SERVER_HOST }}
-        username: ${{ env.SERVER_USER }}
-        key: ${{ secrets.SERVER_SSH_KEY }}
+        host: ${{ secrets.HETZNER_HOST }}
+        username: ${{ secrets.HETZNER_USER }}
+        password: ${{ secrets.HETZNER_PASSWORD }}
         script: |
           docker ps
           echo "Deployment completed successfully!"
