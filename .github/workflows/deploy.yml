@@ -42,16 +42,22 @@ jobs:
           cp -r shop-management-system/frontend ./
           cp shop-management-system/docker-compose.yml ./
           
-          # Stop existing containers
+          # Stop existing containers (check both locations)
           docker-compose down || true
+          cd /root && docker-compose down 2>/dev/null || true
+          cd /opt/shop-management
           
           # Remove existing images to force rebuild (fixes cache issues)
           echo "Removing cached Docker images..."
           docker rmi nammaooru-frontend nammaooru-backend 2>/dev/null || true
           docker rmi $(docker images -f "dangling=true" -q) 2>/dev/null || true
           
+          # Ensure we're in the correct directory for deployment
+          cd /opt/shop-management
+          pwd
+          
           # Build and start new containers with no cache
-          echo "Building containers with latest code..."
+          echo "Building containers with latest code from $(pwd)..."
           docker-compose build --no-cache --pull
           docker-compose up -d
           
@@ -80,3 +86,4 @@ jobs:
           docker ps
           echo "Deployment completed successfully!"
           echo "Application URL: http://${{ env.SERVER_HOST }}"
+          echo "Containers running from: $(pwd)"
