@@ -1,0 +1,35 @@
+# Use locally built Angular app - no build stage needed
+FROM nginx:alpine
+
+# Install curl for health checks
+RUN apk add --no-cache curl
+
+# Copy custom nginx configuration
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# Copy locally built application from dist folder
+COPY dist/shop-management-frontend /usr/share/nginx/html
+
+# Create nginx user and set permissions
+RUN chown -R nginx:nginx /usr/share/nginx/html && \
+    chown -R nginx:nginx /var/cache/nginx && \
+    chown -R nginx:nginx /var/log/nginx && \
+    chown -R nginx:nginx /etc/nginx/conf.d && \
+    mkdir -p /run/nginx && \
+    chown -R nginx:nginx /run/nginx && \
+    touch /run/nginx.pid && \
+    chown nginx:nginx /run/nginx.pid && \
+    chmod 755 /run/nginx
+
+# Switch to nginx user for security
+USER nginx
+
+# Expose port
+EXPOSE 80
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost/ || exit 1
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]

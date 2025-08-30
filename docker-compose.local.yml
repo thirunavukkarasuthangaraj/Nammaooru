@@ -1,10 +1,9 @@
-version: '3.8'
-
 services:
-  # Spring Boot Backend (PostgreSQL is external - not in Docker)
+  # Spring Boot Backend (using locally built JAR)
   backend:
     build: 
       context: ./backend
+      dockerfile: Dockerfile.local
     container_name: nammaooru-backend
     environment:
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-production}
@@ -33,11 +32,11 @@ services:
       start_period: 40s
     restart: unless-stopped
 
-  # Angular Frontend 
+  # Angular Frontend (using locally built dist)
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.local
     container_name: nammaooru-frontend
     ports:
       - "80:80"

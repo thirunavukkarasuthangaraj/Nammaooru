@@ -111,7 +111,8 @@ jobs:
           docker logs nammaooru-frontend --tail 10 2>&1 || echo "No frontend logs available"
           
           echo "Checking backend health..."
-          curl -f http://localhost:8082/actuator/health 2>&1 || echo "Backend health check failed"
+          curl -f http://localhost:8082/actuator/health 2>&1 || echo "Backend health check failed (checking internal port 8080...)"
+          docker exec nammaooru-backend curl -f http://localhost:8080/actuator/health 2>&1 || echo "Internal health check also failed"
           
           echo "Checking version endpoints..."
           curl -f http://localhost:8082/api/version 2>&1 || echo "Version endpoint failed"

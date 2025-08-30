@@ -15,7 +15,7 @@ yarn-error.log*
 Thumbs.db
 
 # Build outputs
-# dist/ - commented out for local Docker builds
+dist/
 tmp/
 out-tsc/
 

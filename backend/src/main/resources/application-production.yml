@@ -36,6 +36,21 @@ spring:
     multipart:
       max-file-size: 10MB
       max-request-size: 10MB
+  
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
 
 # File Storage Configuration - IMPORTANT FOR HETZNER
 file:
@@ -89,24 +104,6 @@ app:
 jwt:
   secret: ${JWT_SECRET}  # MUST be set as environment variable
   expiration: 86400000  # 24 hours
-
-# Email Configuration
-spring:
-  mail:
-    host: ${MAIL_HOST:smtp.gmail.com}
-    port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-            required: true
-          connectiontimeout: 5000
-          timeout: 3000
-          writetimeout: 5000
 
 # Logging
 logging:
