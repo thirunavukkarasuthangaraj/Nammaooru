@@ -97,14 +97,14 @@ app:
   frontend:
     base-url: ${FRONTEND_BASE_URL:http://localhost:4200}
     auth:
-      login-url: ${FRONTEND_LOGIN_URL:${app.frontend.base-url}/auth/login}
-      reset-password-url: ${FRONTEND_RESET_PASSWORD_URL:${app.frontend.base-url}/auth/reset-password}
+      login-url: ${FRONTEND_LOGIN_URL:http://localhost:4200/auth/login}
+      reset-password-url: ${FRONTEND_RESET_PASSWORD_URL:http://localhost:4200/auth/reset-password}
     shop-owner:
-      dashboard-url: ${SHOP_OWNER_DASHBOARD_URL:${app.frontend.base-url}/shop-owner}
+      dashboard-url: ${SHOP_OWNER_DASHBOARD_URL:http://localhost:4200/shop-owner}
     urls:
-      shops: ${SHOPS_URL:${app.frontend.base-url}/shops}
-      contact: ${CONTACT_URL:${app.frontend.base-url}/contact}
-      unsubscribe: ${UNSUBSCRIBE_URL:${app.frontend.base-url}/unsubscribe}
+      shops: ${SHOPS_URL:http://localhost:4200/shops}
+      contact: ${CONTACT_URL:http://localhost:4200/contact}
+      unsubscribe: ${UNSUBSCRIBE_URL:http://localhost:4200/unsubscribe}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:https://nammaoorudelivary.in,https://www.nammaoorudelivary.in,http://localhost:4200}
     allowed-methods: ${CORS_ALLOWED_METHODS:GET,POST,PUT,DELETE,OPTIONS}
