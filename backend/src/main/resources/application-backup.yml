@@ -33,6 +33,12 @@ spring:
       max-file-size: 10MB
       max-request-size: 10MB
       
+  # security:
+    # user:
+      # name: admin
+      # password: admin123
+      
+  # Email Configuration
   mail:
     host: smtp.gmail.com
     port: 587
@@ -66,16 +72,19 @@ logging:
   pattern:
     console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
 
+# JWT Configuration
 jwt:
   secret: ${JWT_SECRET:mySecretKey123456789012345678901234567890}
-  expiration: 86400000
+  expiration: 86400000 # 24 hours
 
+# File Upload Configuration
 file:
   upload:
     path: ${FILE_UPLOAD_PATH:./uploads}
     max-size: 10485760
     allowed-extensions: jpg,jpeg,png,gif,webp
 
+# Application specific upload configuration
 app:
   version: 0.0.0
   upload:
@@ -102,6 +111,7 @@ app:
     allowed-headers: ${CORS_ALLOWED_HEADERS:*}
     allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
 
+# Shop Module Configuration
 shop:
   default:
     page-size: 20
@@ -113,6 +123,7 @@ shop:
     description:
       max-length: 2000
 
+# Email Configuration
 email:
   from: ${EMAIL_FROM_ADDRESS:nammaooru.shopmanagement@gmail.com}
   from-name: ${EMAIL_FROM_NAME:NammaOoru Shop Management}
