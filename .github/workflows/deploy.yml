@@ -89,24 +89,17 @@ jobs:
           docker-compose build --no-cache --pull frontend 2>&1 | tail -20
           
           echo "=== STEP 7: Start containers ==="
-          # Fix any existing container issues
+          # Stop nginx to avoid port 80 conflicts
+          systemctl stop nginx 2>/dev/null || true
+          
+          # Clean up containers
           docker rm -f nammaooru-frontend 2>/dev/null || true
           docker-compose rm -f frontend 2>/dev/null || true
           
-          # Ensure ports are correct
-          sed -i 's/"80:80"/"3000:80"/g' docker-compose.yml
-          
-          # Start fresh
+          # Start fresh - frontend will use port 80 directly
           docker-compose down
           docker-compose up -d
           sleep 15
-          
-          echo "=== Configure Nginx ==="
-          # Run fix script if exists
-          if [ -f "shop-management-system/scripts/fix-production.sh" ]; then
-            chmod +x shop-management-system/scripts/fix-production.sh
-            bash shop-management-system/scripts/fix-production.sh
-          fi
           echo "Container status after start:"
           docker ps -a
           
