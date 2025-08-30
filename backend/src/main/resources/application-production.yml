@@ -118,6 +118,9 @@ logging:
 
 # Management/Monitoring
 management:
+  health:
+    mail:
+      enabled: false  # Disable mail health check that causes DOWN status
   endpoints:
     web:
       exposure:
