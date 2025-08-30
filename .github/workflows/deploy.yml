@@ -45,15 +45,30 @@ jobs:
           # Stop existing containers
           docker-compose down || true
           
-          # Build and start new containers locally
-          docker-compose up -d --build
+          # Remove existing images to force rebuild (fixes cache issues)
+          echo "Removing cached Docker images..."
+          docker rmi nammaooru-frontend nammaooru-backend 2>/dev/null || true
+          docker rmi $(docker images -f "dangling=true" -q) 2>/dev/null || true
           
-          # Clean up old images
-          docker image prune -f
+          # Build and start new containers with no cache
+          echo "Building containers with latest code..."
+          docker-compose build --no-cache --pull
+          docker-compose up -d
           
-          # Health check
-          sleep 15
+          # Clean up old/unused images
+          docker image prune -af
+          
+          # Health check and version verification
+          sleep 20
+          echo "Checking backend health..."
           curl -f http://localhost:8082/actuator/health || echo "Backend starting..."
+          
+          echo "Checking version endpoints..."
+          curl -f http://localhost:8082/api/version || echo "Version endpoint check..."
+          
+          echo "Deployment summary:"
+          echo "Frontend version: $(cat shop-management-system/frontend/package.json | grep version | head -1 | cut -d '"' -f 4)"
+          echo "Backend version: $(cat shop-management-system/backend/pom.xml | grep -m1 '<version>' | sed 's/.*<version>\(.*\)<\/version>.*/\1/')"
           
     - name: Verify deployment
       uses: appleboy/ssh-action@v0.1.5

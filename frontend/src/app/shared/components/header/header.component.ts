@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable } from 'rxjs';
 import { AuthService } from '@core/services/auth.service';
+import { VersionService } from '@core/services/version.service';
 import { User, UserRole } from '@core/models/auth.model';
 
 @Component({
@@ -59,6 +60,11 @@ import { User, UserRole } from '@core/models/auth.model';
               <button mat-menu-item routerLink="/settings">
                 <mat-icon>settings</mat-icon>
                 Settings
+              </button>
+              
+              <button mat-menu-item (click)="showVersionInfo()">
+                <mat-icon>info</mat-icon>
+                Version Info
               </button>
               
               <mat-divider></mat-divider>
@@ -222,15 +228,22 @@ import { User, UserRole } from '@core/models/auth.model';
 })
 export class HeaderComponent implements OnInit {
   currentUser$: Observable<User | null>;
+  versionInfo: any = null;
 
   constructor(
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private versionService: VersionService
   ) {
     this.currentUser$ = this.authService.currentUser$;
   }
 
-  ngOnInit(): void {}
+  ngOnInit(): void {
+    // Load version info
+    this.versionService.getVersionInfo().subscribe(info => {
+      this.versionInfo = info;
+    });
+  }
 
   isAdmin(): boolean {
     return this.authService.isAdmin();
@@ -247,5 +260,19 @@ export class HeaderComponent implements OnInit {
   toggleSidenav(): void {
     // Implement sidenav toggle for mobile
     // This will be connected to a sidenav service when implemented
+  }
+
+  showVersionInfo(): void {
+    if (this.versionInfo) {
+      const message = `
+        Frontend: ${this.versionInfo.client}
+        Backend: v${this.versionInfo.server.version}
+        
+        Build Date: ${this.versionService.getBuildDate()}
+      `;
+      alert(message);
+    } else {
+      alert(`Frontend: ${this.versionService.getVersion()}\nBackend: Loading...`);
+    }
   }
 }
