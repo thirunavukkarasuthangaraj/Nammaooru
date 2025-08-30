@@ -10,7 +10,8 @@
       "Bash(yamllint:*)",
       "Bash(python:*)",
       "Bash(mvn:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": [],
