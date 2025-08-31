@@ -10,7 +10,7 @@ import org.springframework.web.filter.CorsFilter;
 import java.util.Arrays;
 import java.util.List;
 
-@Configuration
+// @Configuration - Disabled: Let nginx handle CORS in production
 public class CorsConfig {
 
     @Bean
