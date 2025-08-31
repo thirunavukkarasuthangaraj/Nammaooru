@@ -175,6 +175,48 @@ CONTAINER ID   IMAGE                      PORTS                                 
 
 ---
 
+### Issue 7: Database Schema Mismatch - Missing Columns
+
+**Problem**: Backend container crashes with "Schema-validation: missing column [email_otp] in table [customers]"
+**Root Cause**: Database schema doesn't match Entity classes after code changes
+
+**Error Log**:
+```
+Caused by: org.hibernate.tool.schema.spi.SchemaManagementException: 
+Schema-validation: missing column [email_otp] in table [customers]
+```
+
+**Solution**:
+```bash
+# Access PostgreSQL as postgres user
+sudo -u postgres psql -d shop_management_db
+
+# Add missing columns
+ALTER TABLE customers 
+ADD COLUMN IF NOT EXISTS email_otp VARCHAR(6),
+ADD COLUMN IF NOT EXISTS email_otp_expiry TIMESTAMP,
+ADD COLUMN IF NOT EXISTS is_email_otp_verified BOOLEAN DEFAULT FALSE;
+
+\q
+
+# Restart backend
+docker restart nammaooru-backend
+```
+
+**Alternative Solution** (if database changes not needed):
+```bash
+# Rebuild with latest code that removed the fields
+cd /opt/shop-management
+git pull
+docker-compose down
+docker-compose build --no-cache backend  # --no-cache is CRUCIAL
+docker-compose up -d
+```
+
+**Key Lesson**: Always check `docker logs` when backend fails - CORS errors often mask the real issue (backend not running)
+
+---
+
 ## CI/CD Deployment Checklist
 
 Before running CI/CD pipeline, ensure:
@@ -220,5 +262,7 @@ nslookup api.nammaoorudelivary.in
 
 ---
 
-*Last updated: 2025-08-30*
-*Working deployment confirmed with superadmin/password login successful*
+*Last updated: 2025-08-31*
+*Working deployment confirmed - Database schema issue resolved*
+*Total debugging time wasted on fake CORS issues: 24+ hours*
+*Actual problem: Backend wasn't running due to database schema mismatch*
