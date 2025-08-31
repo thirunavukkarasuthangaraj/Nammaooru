@@ -20,6 +20,8 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import com.shopmanagement.config.JwtAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
 
@@ -55,11 +57,38 @@ public class SimpleSecurityConfig {
     }
 
     @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        // Use specific origins instead of "*" when allowCredentials is true
+        configuration.setAllowedOrigins(Arrays.asList(
+            "http://localhost",
+            "http://localhost:80", 
+            "http://localhost:4200",
+            "https://nammaoorudelivary.in",
+            "https://www.nammaoorudelivary.in"
+        ));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(Arrays.asList(
+            "Authorization", 
+            "Content-Type", 
+            "Accept", 
+            "Origin", 
+            "X-Requested-With"
+        ));
+        configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L);
+        
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+
+    @Bean
     @Primary
     public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
-                .cors(cors -> {})
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()  // Allow all OPTIONS requests
                         .requestMatchers("/api/auth/**", "/api/public/**", "/api/customer/**", "/api/test/**", "/api/admin/fix/**", "/api/delivery/partners/register", "/api/delivery/assignments/**", "/api/invoices/**", "/api/customers", "/api/shops", "/actuator/**", "/uploads/**", "/api/version", "/api/health/**").permitAll()
