@@ -59,34 +59,11 @@ public class SimpleSecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        
-        // Specific origins - required for credentials
-        configuration.setAllowedOriginPatterns(Arrays.asList(
-            "https://nammaoorudelivary.in",
-            "https://*.nammaoorudelivary.in",
-            "http://localhost:4200",
-            "http://localhost:*"
-        ));
-        
-        // All HTTP methods
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        
-        // All headers - comprehensive browser support
+        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
+        configuration.setAllowedMethods(Arrays.asList("*"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
-        
-        // Expose headers that browsers might need
-        configuration.setExposedHeaders(Arrays.asList(
-            "Authorization", 
-            "Content-Type", 
-            "X-Total-Count",
-            "Access-Control-Allow-Origin",
-            "Access-Control-Allow-Credentials"
-        ));
-        
-        // Enable credentials for authentication
-        configuration.setAllowCredentials(true);
-        
-        // Cache preflight for 1 hour
+        configuration.setExposedHeaders(Arrays.asList("*"));
+        configuration.setAllowCredentials(false); // CRITICAL: Set to false for wildcard origins
         configuration.setMaxAge(3600L);
         
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
