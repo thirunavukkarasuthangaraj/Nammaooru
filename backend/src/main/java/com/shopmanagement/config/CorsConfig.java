@@ -10,7 +10,7 @@ import org.springframework.web.filter.CorsFilter;
 import java.util.Arrays;
 import java.util.List;
 
-// @Configuration - Disabled: Let nginx handle CORS in production
+@Configuration
 public class CorsConfig {
 
     @Bean
@@ -18,9 +18,13 @@ public class CorsConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration config = new CorsConfiguration();
         
-        // Allow all origins for now - we'll restrict later if needed
+        // Production configuration for Cloudflare + Docker
         config.setAllowCredentials(true);
-        config.setAllowedOriginPatterns(Arrays.asList("*"));
+        config.setAllowedOriginPatterns(Arrays.asList(
+            "https://*.nammaoorudelivary.in",
+            "https://nammaoorudelivary.in",
+            "http://localhost:*"
+        ));
         
         // Specific origins (uncomment if you want to restrict)
         // config.setAllowedOrigins(Arrays.asList(
