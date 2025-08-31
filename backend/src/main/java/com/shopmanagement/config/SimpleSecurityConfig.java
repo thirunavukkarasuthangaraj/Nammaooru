@@ -60,11 +60,16 @@ public class SimpleSecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         
-        // Allow all origins with credentials - browser compatible
-        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
+        // Specific origins - required for credentials
+        configuration.setAllowedOriginPatterns(Arrays.asList(
+            "https://nammaoorudelivary.in",
+            "https://*.nammaoorudelivary.in",
+            "http://localhost:4200",
+            "http://localhost:*"
+        ));
         
         // All HTTP methods
-        configuration.setAllowedMethods(Arrays.asList("*"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         
         // All headers - comprehensive browser support
         configuration.setAllowedHeaders(Arrays.asList("*"));
@@ -73,9 +78,7 @@ public class SimpleSecurityConfig {
         configuration.setExposedHeaders(Arrays.asList(
             "Authorization", 
             "Content-Type", 
-            "X-Total-Count",
-            "Access-Control-Allow-Origin",
-            "Access-Control-Allow-Credentials"
+            "X-Total-Count"
         ));
         
         // Enable credentials for authentication
