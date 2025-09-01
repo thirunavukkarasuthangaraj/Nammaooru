@@ -64,7 +64,10 @@ import { User, UserRole } from '@core/models/auth.model';
               
               <button mat-menu-item (click)="showVersionInfo()">
                 <mat-icon>info</mat-icon>
-                Version Info
+                <span>Version Info</span>
+                <span class="version-badge" *ngIf="versionInfo?.server?.version">
+                  v{{versionInfo.server.version}}
+                </span>
               </button>
               
               <mat-divider></mat-divider>
@@ -188,6 +191,16 @@ import { User, UserRole } from '@core/models/auth.model';
       color: #f44336 !important;
     }
 
+    .version-badge {
+      background: #4caf50;
+      color: white;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 8px;
+      margin-left: auto;
+      font-weight: 500;
+    }
+
     /* Mobile Styles */
     @media (max-width: 768px) {
       .header-toolbar {
@@ -264,15 +277,22 @@ export class HeaderComponent implements OnInit {
 
   showVersionInfo(): void {
     if (this.versionInfo) {
-      const message = `
-        Frontend: ${this.versionInfo.client}
-        Backend: v${this.versionInfo.server.version}
-        
-        Build Date: ${this.versionService.getBuildDate()}
-      `;
+      const buildDate = this.versionInfo.server.buildDate 
+        ? new Date(this.versionInfo.server.buildDate).toLocaleString()
+        : 'Unknown';
+      
+      const message = `🏪 Shop Management System
+
+📱 Frontend Version: ${this.versionInfo.client}
+🖥️ Backend Version: v${this.versionInfo.server.version}
+📦 Application: ${this.versionInfo.server.name || 'Shop Management Backend'}
+
+🕐 Build Date: ${buildDate}
+⚡ Server Status: Online`;
+      
       alert(message);
     } else {
-      alert(`Frontend: ${this.versionService.getVersion()}\nBackend: Loading...`);
+      alert(`📱 Frontend: ${this.versionService.getVersion()}\n🖥️ Backend: Loading...`);
     }
   }
 }

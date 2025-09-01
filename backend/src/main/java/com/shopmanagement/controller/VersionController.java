@@ -12,15 +12,19 @@ import java.util.Map;
 @RequestMapping("/api/version")
 public class VersionController {
 
-    @Value("${app.version:0.0.0}")
+    @Value("${app.version:@project.version@}")
     private String appVersion;
+
+    @Value("${app.name:@project.name@}")
+    private String appName;
 
     @GetMapping
     public ResponseEntity<Map<String, Object>> getVersion() {
         Map<String, Object> response = new HashMap<>();
         response.put("version", appVersion);
-        response.put("name", "Shop Management Backend");
-        response.put("timestamp", System.currentTimeMillis());
+        response.put("name", appName);
+        response.put("buildTimestamp", System.currentTimeMillis());
+        response.put("buildDate", new java.util.Date().toString());
         return ResponseEntity.ok(response);
     }
 }

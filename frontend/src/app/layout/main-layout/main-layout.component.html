@@ -292,4 +292,11 @@
     *ngIf="isMobile && isMobileSidebarOpen"
     (click)="closeMobileSidebar()">
   </div>
+
+  <!-- Version Display -->
+  <div class="version-display">
+    <div class="version-info" *ngIf="versionInfo">
+      <span class="version-text">v{{versionInfo.server?.version || '1.0.0'}}</span>
+    </div>
+  </div>
 </div>

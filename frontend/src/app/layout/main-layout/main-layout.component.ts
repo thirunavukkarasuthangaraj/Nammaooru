@@ -2,6 +2,7 @@ import { Component, OnInit, ViewChild, OnDestroy, HostListener } from '@angular/
 import { Router, NavigationEnd } from '@angular/router';
 import { MatSidenav } from '@angular/material/sidenav';
 import { AuthService } from '../../core/services/auth.service';
+import { VersionService } from '../../core/services/version.service';
 import { User, UserRole } from '../../core/models/auth.model';
 import { Observable, Subject, debounceTime, distinctUntilChanged, filter } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -28,6 +29,9 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   
   // Notifications
   notificationCount = 3; // Mock data
+  
+  // Version info
+  versionInfo: any = null;
   notifications = [
     {
       id: 1,
@@ -403,7 +407,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
 
   constructor(
     private authService: AuthService,
-    public router: Router
+    public router: Router,
+    private versionService: VersionService
   ) {
     this.currentUser$ = this.authService.currentUser$;
   }
@@ -412,6 +417,13 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     this.checkScreenSize();
     this.setupSearchSubscription();
     this.setupRouterSubscription();
+    this.loadVersionInfo();
+  }
+  
+  private loadVersionInfo(): void {
+    this.versionService.getVersionInfo().subscribe(info => {
+      this.versionInfo = info;
+    });
   }
 
   ngOnDestroy(): void {
