@@ -40,21 +40,26 @@ jobs:
             git clone https://github.com/thirunavukkarasuthangaraj/Nammaooru.git shop-management-system
           else
             echo "Updating existing repository..."
-            cd shop-management-system && git pull origin main && cd ..
+            cd shop-management-system && git fetch origin && git reset --hard origin/main && git pull origin main && cd ..
           fi
           
           echo "Repository status:"
           cd shop-management-system && git log --oneline -3 && cd ..
           
-          # Copy source files
-          echo "=== STEP 3: Copy source files ==="
+          # Copy source files (remove old ones first)
+          echo "=== STEP 3: Copy fresh source files ==="
+          rm -rf backend frontend docker-compose.yml 2>/dev/null || true
           cp -r shop-management-system/backend ./
           cp -r shop-management-system/frontend ./
           cp shop-management-system/docker-compose.yml ./
           
-          echo "Files copied. Checking versions:"
+          echo "Files copied. Verifying latest code versions:"
+          echo "Backend version from copied files:"
+          grep '<version>' backend/pom.xml | head -2 | tail -1 || echo "No backend version found"
+          echo "Frontend version from copied files:"
           grep '"version"' frontend/package.json || echo "No frontend version found"
-          grep '<version>' backend/pom.xml | head -1 || echo "No backend version found"
+          echo "Checking for test update text in login component:"
+          grep -i "TEST UPDATE" frontend/src/app/features/auth/login/login.component.html || echo "Test update text not found"
           
           # Stop existing containers (check both locations)
           echo "=== STEP 4: Stop existing containers ==="
