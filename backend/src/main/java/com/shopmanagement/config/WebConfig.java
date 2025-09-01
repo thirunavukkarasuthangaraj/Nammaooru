@@ -34,17 +34,18 @@ public class WebConfig implements WebMvcConfigurer {
         return new RestTemplate();
     }
 
-    @Override
-    public void addCorsMappings(CorsRegistry registry) {
-        String[] originsArray = allowedOrigins.split(",");
-        String[] methodsArray = allowedMethods.split(",");
-        
-        registry.addMapping("/**")
-                .allowedOriginPatterns(originsArray)
-                .allowedMethods(methodsArray)
-                .allowedHeaders("*")
-                .allowCredentials(allowCredentials);
-    }
+    // DISABLED - Using Security-level CORS configuration instead to avoid duplicate headers
+    // @Override
+    // public void addCorsMappings(CorsRegistry registry) {
+    //     String[] originsArray = allowedOrigins.split(",");
+    //     String[] methodsArray = allowedMethods.split(",");
+    //     
+    //     registry.addMapping("/**")
+    //             .allowedOriginPatterns(originsArray)
+    //             .allowedMethods(methodsArray)
+    //             .allowedHeaders("*")
+    //             .allowCredentials(allowCredentials);
+    // }
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
