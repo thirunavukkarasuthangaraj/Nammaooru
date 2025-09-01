@@ -25,8 +25,10 @@ export class RegisterComponent implements OnInit {
     public versionService: VersionService
   ) {
     this.registerForm = this.fb.group({
-      username: ['', [Validators.required, Validators.minLength(3)]],
+      firstName: ['', [Validators.required, Validators.minLength(2)]],
+      lastName: ['', [Validators.required, Validators.minLength(2)]],
       email: ['', [Validators.required, Validators.email]],
+      mobile: ['', [Validators.required, Validators.pattern(/^[+]?[\d\s\-()]{10,}$/)]],
       password: ['', [Validators.required, Validators.minLength(6)]]
     });
   }
@@ -54,9 +56,15 @@ export class RegisterComponent implements OnInit {
   onSubmit(): void {
     if (this.registerForm.valid) {
       this.isLoading = true;
+      const formData = this.registerForm.value;
       const registerData: RegisterRequest = {
-        ...this.registerForm.value,
-        role: 'USER'
+        username: `${formData.firstName} ${formData.lastName}`, // Combine first + last name for username
+        email: formData.email,
+        password: formData.password,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        mobile: formData.mobile,
+        role: 'CUSTOMER'
       };
 
       this.authService.register(registerData).subscribe({

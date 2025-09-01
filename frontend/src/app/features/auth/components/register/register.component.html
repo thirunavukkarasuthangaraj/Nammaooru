@@ -1,118 +1,138 @@
 <div class="register-container">
-  <!-- Header -->
-  <div class="register-header">
-    <mat-icon class="register-icon">person_add</mat-icon>
-    <h1>Create Account</h1>
-    <p>Join NammaOoru Shop Management System<br>Sign up to get started</p>
+  <!-- Animated Background -->
+  <div class="animated-bg">
+    <div class="shape shape-1"></div>
+    <div class="shape shape-2"></div>
+    <div class="shape shape-3"></div>
   </div>
 
-  <!-- Form -->
-  <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="register-form">
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Username</mat-label>
-      <mat-icon matPrefix>person</mat-icon>
-      <input matInput 
-             formControlName="username" 
-             placeholder="Enter your username">
-      <mat-error *ngIf="registerForm.get('username')?.hasError('required')">
-        Username is required
-      </mat-error>
-      <mat-error *ngIf="registerForm.get('username')?.hasError('minlength')">
-        Username must be at least 3 characters
-      </mat-error>
-    </mat-form-field>
-
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Email</mat-label>
-      <mat-icon matPrefix>email</mat-icon>
-      <input matInput 
-             type="email"
-             formControlName="email" 
-             placeholder="Enter your email address">
-      <mat-error *ngIf="registerForm.get('email')?.hasError('required')">
-        Email is required
-      </mat-error>
-      <mat-error *ngIf="registerForm.get('email')?.hasError('email')">
-        Please enter a valid email address
-      </mat-error>
-    </mat-form-field>
-
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Password</mat-label>
-      <mat-icon matPrefix>lock</mat-icon>
-      <input matInput 
-             [type]="hidePassword ? 'password' : 'text'"
-             formControlName="password" 
-             placeholder="Enter your password">
-      <button matSuffix
-              mat-icon-button
-              type="button"
-              (click)="hidePassword = !hidePassword">
-        <mat-icon>{{ hidePassword ? 'visibility' : 'visibility_off' }}</mat-icon>
-      </button>
-      <mat-error *ngIf="registerForm.get('password')?.hasError('required')">
-        Password is required
-      </mat-error>
-      <mat-error *ngIf="registerForm.get('password')?.hasError('minlength')">
-        Password must be at least 6 characters
-      </mat-error>
-    </mat-form-field>
-
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Role</mat-label>
-      <mat-icon matPrefix>badge</mat-icon>
-      <mat-select formControlName="role" placeholder="Select your role">
-        <mat-option value="USER">User</mat-option>
-        <mat-option value="SHOP_OWNER">Shop Owner</mat-option>
-      </mat-select>
-      <mat-error *ngIf="registerForm.get('role')?.hasError('required')">
-        Please select a role
-      </mat-error>
-    </mat-form-field>
-
-    <button 
-      mat-raised-button 
-      color="primary" 
-      type="submit" 
-      class="full-width register-button"
-      [disabled]="registerForm.invalid || isLoading">
-      <mat-spinner *ngIf="isLoading" diameter="20" style="margin-right: 8px;"></mat-spinner>
-      <mat-icon *ngIf="!isLoading" style="margin-right: 8px;">person_add</mat-icon>
-      {{ isLoading ? 'Creating Account...' : 'Sign Up' }}
-    </button>
-
-    <!-- Auth Links -->
-    <div class="auth-links">
-      <p>Already have an account? 
-        <a routerLink="/auth/login" mat-button color="primary">Sign In</a>
-      </p>
+  <!-- Logo and Brand -->
+  <div class="brand-section">
+    <div class="logo-wrapper">
+      <mat-icon class="logo-icon">storefront</mat-icon>
+      <span class="logo-text">NammaOoru</span>
     </div>
-  </form>
-
-  <!-- Help Section -->
-  <div class="help-section">
-    <h3>Account Types</h3>
-    <div class="help-content">
-      <div class="help-item">
-        <mat-icon>person</mat-icon>
-        <div>
-          <strong>User Account</strong>
-          <p>Browse and purchase from shops</p>
-        </div>
-      </div>
-      <div class="help-item">
-        <mat-icon>store</mat-icon>
-        <div>
-          <strong>Shop Owner</strong>
-          <p>Manage your shop and products</p>
-        </div>
-      </div>
-    </div>
+    <p class="tagline">Your Local Shopping Companion</p>
   </div>
 
-  <!-- Version Footer -->
-  <div class="version-footer">
-    <span class="version-text">{{ versionService.getVersion() }}</span>
-    <span class="build-info">Build: {{ versionService.getBuildDate() }}</span>
+  <!-- Registration Form Card -->
+  <div class="form-container">
+    <div class="form-card">
+      <div class="form-header">
+        <h2>Create Your Account</h2>
+        <p>Join thousands of happy customers shopping locally</p>
+      </div>
+
+      <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="register-form">
+        <!-- Name Row -->
+        <div class="form-row">
+          <div class="input-group half-width">
+            <label class="input-label">First Name *</label>
+            <div class="input-wrapper">
+              <mat-icon class="input-icon">badge</mat-icon>
+              <input 
+                class="modern-input"
+                type="text"
+                formControlName="firstName" 
+                placeholder="John">
+              <mat-icon class="success-icon" *ngIf="registerForm.get('firstName')?.valid && registerForm.get('firstName')?.touched">check_circle</mat-icon>
+            </div>
+            <span class="error-text" *ngIf="registerForm.get('firstName')?.invalid && registerForm.get('firstName')?.touched">
+              <mat-icon>error</mat-icon>
+              {{ registerForm.get('firstName')?.hasError('required') ? 'First name is required' : 'Minimum 2 characters' }}
+            </span>
+          </div>
+
+          <div class="input-group half-width">
+            <label class="input-label">Last Name *</label>
+            <div class="input-wrapper">
+              <mat-icon class="input-icon">badge</mat-icon>
+              <input 
+                class="modern-input"
+                type="text"
+                formControlName="lastName" 
+                placeholder="Doe">
+              <mat-icon class="success-icon" *ngIf="registerForm.get('lastName')?.valid && registerForm.get('lastName')?.touched">check_circle</mat-icon>
+            </div>
+            <span class="error-text" *ngIf="registerForm.get('lastName')?.invalid && registerForm.get('lastName')?.touched">
+              <mat-icon>error</mat-icon>
+              {{ registerForm.get('lastName')?.hasError('required') ? 'Last name is required' : 'Minimum 2 characters' }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Email Field -->
+        <div class="input-group">
+          <label class="input-label">Email Address *</label>
+          <div class="input-wrapper">
+            <mat-icon class="input-icon">email</mat-icon>
+            <input 
+              class="modern-input"
+              type="email"
+              formControlName="email" 
+              placeholder="john.doe@example.com">
+            <mat-icon class="success-icon" *ngIf="registerForm.get('email')?.valid && registerForm.get('email')?.touched">check_circle</mat-icon>
+          </div>
+          <span class="error-text" *ngIf="registerForm.get('email')?.invalid && registerForm.get('email')?.touched">
+            <mat-icon>error</mat-icon>
+            {{ registerForm.get('email')?.hasError('required') ? 'Email is required' : 'Enter a valid email address' }}
+          </span>
+        </div>
+
+        <!-- Mobile Number Field -->
+        <div class="input-group">
+          <label class="input-label">Mobile Number *</label>
+          <div class="input-wrapper">
+            <mat-icon class="input-icon">smartphone</mat-icon>
+            <input 
+              class="modern-input"
+              type="tel"
+              formControlName="mobile" 
+              placeholder="+91 98765 43210">
+            <mat-icon class="success-icon" *ngIf="registerForm.get('mobile')?.valid && registerForm.get('mobile')?.touched">check_circle</mat-icon>
+          </div>
+          <span class="error-text" *ngIf="registerForm.get('mobile')?.invalid && registerForm.get('mobile')?.touched">
+            <mat-icon>error</mat-icon>
+            {{ registerForm.get('mobile')?.hasError('required') ? 'Mobile number is required' : 'Enter a valid mobile number' }}
+          </span>
+        </div>
+
+        <!-- Password Field -->
+        <div class="input-group">
+          <label class="input-label">Password *</label>
+          <div class="input-wrapper">
+            <mat-icon class="input-icon">lock</mat-icon>
+            <input 
+              class="modern-input"
+              [type]="hidePassword ? 'password' : 'text'"
+              formControlName="password" 
+              placeholder="Create a strong password">
+            <button type="button" class="toggle-password" (click)="hidePassword = !hidePassword">
+              <mat-icon>{{ hidePassword ? 'visibility' : 'visibility_off' }}</mat-icon>
+            </button>
+          </div>
+          <span class="error-text" *ngIf="registerForm.get('password')?.invalid && registerForm.get('password')?.touched">
+            <mat-icon>error</mat-icon>
+            {{ registerForm.get('password')?.hasError('required') ? 'Password is required' : 'Password must be at least 6 characters' }}
+          </span>
+        </div>
+
+        <!-- Submit Button -->
+        <button type="submit" class="submit-button" [disabled]="registerForm.invalid || isLoading">
+          <div class="button-content">
+            <mat-spinner *ngIf="isLoading" diameter="20"></mat-spinner>
+            <mat-icon *ngIf="!isLoading">person_add</mat-icon>
+            <span>{{ isLoading ? 'Creating Account...' : 'Create Account' }}</span>
+          </div>
+        </button>
+
+        <!-- Auth Links -->
+        <div class="auth-links">
+          <p>Already have an account? 
+            <a routerLink="/auth/login" class="link-primary">Sign In</a>
+          </p>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
