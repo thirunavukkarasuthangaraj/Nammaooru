@@ -293,28 +293,9 @@
     (click)="closeMobileSidebar()">
   </div>
 
-  <!-- Version Display -->
-  <div class="version-display">
-    <div class="version-info">
-      <div class="version-line">
-        <span class="version-label">UI:</span>
-        <span class="version-text">v{{getClientVersion()}}</span>
-      </div>
-      <div class="version-line" *ngIf="versionInfo?.server?.version">
-        <span class="version-label">API:</span>
-        <span class="version-text">v{{versionInfo.server.version}}</span>
-      </div>
-      <div class="version-line" *ngIf="!versionInfo?.server?.version">
-        <span class="version-label">API:</span>
-        <span class="version-text loading">...</span>
-      </div>
-    </div>
+  <!-- Simple Version Display -->
+  <div class="simple-version">
+    v{{ getClientVersion() }}
   </div>
 
-  <!-- Version Footer -->
-  <div class="version-footer">
-    <span class="version-text">UI version: {{ getClientVersion() }}</span>
-    <span class="version-separator"> | </span>
-    <span class="version-text">Server: {{ versionInfo?.server?.version || 'Loading...' }}</span>
-  </div>
 </div>

@@ -769,11 +769,25 @@
 }
 
 /* Version Display */
-.version-display {
+.simple-version {
   position: fixed;
   bottom: 16px;
   right: 16px;
   z-index: 1000;
+  background: var(--primary-500);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  backdrop-filter: blur(10px);
+  opacity: 0.9;
+  transition: opacity 0.3s ease;
+  
+  &:hover {
+    opacity: 1;
+  }
 }
 
 .version-info {
