@@ -39,6 +39,7 @@ export class LoginComponent implements OnInit, OnDestroy {
   isLoading = false;
   error: string | null = null;
   returnUrl: string = '/dashboard';
+  versionInfo: any = null;
   
   private destroy$ = new Subject<void>();
 
@@ -55,10 +56,23 @@ export class LoginComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/dashboard';
     
+    // Load version info
+    this.loadVersionInfo();
+    
     // Check if already authenticated
     if (this.authService.isAuthenticated()) {
       this.redirectAfterLogin();
     }
+  }
+
+  private loadVersionInfo(): void {
+    this.versionService.getVersionInfo().subscribe(info => {
+      this.versionInfo = info;
+    });
+  }
+
+  getClientVersion(): string {
+    return this.versionService.getVersion().replace('v', '');
   }
 
   ngOnDestroy(): void {

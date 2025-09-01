@@ -91,8 +91,10 @@
   </div>
 
   <!-- Version Footer -->
-  <div class="version-footer" style="background: #f0f0f0; padding: 10px; text-align: center; font-weight: bold;">
-    <span class="version-text" style="color: #2563eb; font-size: 16px;">UI version: {{ versionService.getVersion() }}</span>
-      <span class="version-text" style="color: #2563eb; font-size: 16px;">Server: {{ versionService.getVersion() }}</span>
-   </div>
+  <!-- Version Footer -->
+  <div class="version-footer">
+    <span class="version-text">UI version: {{ getClientVersion() }}</span>
+    <span class="version-separator"> | </span>
+    <span class="version-text">Server: {{ versionInfo?.server?.version || 'Loading...' }}</span>
+  </div>
 </div>

@@ -15,6 +15,7 @@ export class RegisterComponent implements OnInit {
   registerForm: FormGroup;
   isLoading = false;
   hidePassword = true;
+  versionInfo: any = null;
 
   constructor(
     private fb: FormBuilder,
@@ -31,10 +32,23 @@ export class RegisterComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // Load version info
+    this.loadVersionInfo();
+    
     // If already authenticated, redirect
     if (this.authService.isAuthenticated()) {
       this.redirectBasedOnRole();
     }
+  }
+
+  private loadVersionInfo(): void {
+    this.versionService.getVersionInfo().subscribe(info => {
+      this.versionInfo = info;
+    });
+  }
+
+  getClientVersion(): string {
+    return this.versionService.getVersion().replace('v', '');
   }
 
   onSubmit(): void {

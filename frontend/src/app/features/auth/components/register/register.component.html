@@ -92,7 +92,8 @@
 
   <!-- Version Footer -->
   <div class="version-footer">
-    <span class="version-text">{{ versionService.getVersion() }}</span>
-    <span class="build-info">Build: {{ versionService.getBuildDate() }}</span>
+    <span class="version-text">UI version: {{ getClientVersion() }}</span>
+    <span class="version-separator"> | </span>
+    <span class="version-text">Server: {{ versionInfo?.server?.version || 'Loading...' }}</span>
   </div>
 </div>
