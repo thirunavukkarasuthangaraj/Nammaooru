@@ -9,8 +9,8 @@ env:
   REGISTRY: docker.io
   BACKEND_IMAGE: nammaooru/backend
   FRONTEND_IMAGE: nammaooru/frontend
-  SERVER_HOST: ${{ secrets.HETZNER_HOST }}
-  SERVER_USER: ${{ secrets.HETZNER_USER }}
+  SERVER_HOST: 52.66.247.209
+  SERVER_USER: ubuntu
 
 jobs:
   deploy:
@@ -23,13 +23,13 @@ jobs:
     - name: Deploy to server
       uses: appleboy/ssh-action@v0.1.5
       with:
-        host: ${{ secrets.HETZNER_HOST }}
-        username: ${{ secrets.HETZNER_USER }}
-        password: ${{ secrets.HETZNER_PASSWORD }}
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SERVER_SSH_KEY }}
         script: |
           # Navigate to deployment directory
           echo "=== STEP 1: Navigate to deployment directory ==="
-          cd /opt/shop-management
+          cd /home/ubuntu
           pwd
           ls -la
           
@@ -61,7 +61,7 @@ jobs:
           docker ps -a
           docker-compose down || true
           cd /root && docker-compose down 2>/dev/null || true
-          cd /opt/shop-management
+          cd /home/ubuntu
           echo "Containers stopped. Current status:"
           docker ps -a
           
@@ -70,13 +70,15 @@ jobs:
           echo "Current images:"
           docker images | grep -E "(nammaooru|shop-management)" || echo "No matching images"
           docker rmi nammaooru-frontend nammaooru-backend 2>/dev/null || true
+          docker rmi shop-management-system-frontend shop-management-system-backend 2>/dev/null || true
           docker rmi $(docker images -f "dangling=true" -q) 2>/dev/null || true
+          docker builder prune -af
           echo "Images after cleanup:"
           docker images | grep -E "(nammaooru|shop-management)" || echo "No matching images"
           
           # Ensure we're in the correct directory for deployment
           echo "=== STEP 6: Build new containers ==="
-          cd /opt/shop-management
+          cd /home/ubuntu
           pwd
           echo "Docker-compose file check:"
           ls -la docker-compose.yml
@@ -141,9 +143,9 @@ jobs:
     - name: Verify deployment
       uses: appleboy/ssh-action@v0.1.5
       with:
-        host: ${{ secrets.HETZNER_HOST }}
-        username: ${{ secrets.HETZNER_USER }}
-        password: ${{ secrets.HETZNER_PASSWORD }}
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SERVER_SSH_KEY }}
         script: |
           docker ps
           echo "Deployment completed successfully!"
