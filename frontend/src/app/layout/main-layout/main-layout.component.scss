@@ -827,3 +827,34 @@
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
 }
+
+/* Version Footer */
+.version-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #f0f0f0;
+  padding: 10px;
+  text-align: center;
+  font-weight: bold;
+  z-index: 999;
+  border-top: 1px solid #e0e0e0;
+}
+
+.version-footer .version-text {
+  color: #2563eb;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.version-separator {
+  color: #666;
+  margin: 0 8px;
+  font-weight: normal;
+}
+
+/* Adjust content to account for footer */
+.content-wrapper {
+  padding-bottom: 60px; /* Add space for footer */
+}
