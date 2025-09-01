@@ -520,4 +520,24 @@ public class EmailService {
         }
     }
 
+    // OTP Verification Email
+    public void sendOtpVerificationEmail(String to, String userName, String otpCode) {
+        try {
+            Map<String, Object> variables = Map.of(
+                "userName", userName != null ? userName : "User",
+                "otpCode", otpCode,
+                "expirationMinutes", "5",
+                "supportEmail", emailProperties.getFrom(),
+                "companyName", "NammaOoru"
+            );
+            
+            String subject = "NammaOoru - Verify Your Account";
+            sendHtmlEmail(to, subject, "otp-verification", variables);
+            log.info("OTP verification email sent to: {} with code: {}", to, otpCode);
+        } catch (Exception e) {
+            log.error("Failed to send OTP verification email to: {}", to, e);
+            throw new RuntimeException("Failed to send OTP verification email", e);
+        }
+    }
+
 }

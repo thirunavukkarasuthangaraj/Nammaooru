@@ -122,15 +122,25 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   Future<void> _handleResendOtp() async {
     if (!_canResend) return;
 
-    // TODO: Implement resend OTP API call
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final success = await authProvider.resendOtp(widget.email);
     
-    Helpers.showSnackBar(
-      context,
-      'OTP sent successfully!',
-    );
-    
-    _clearOtp();
-    _startTimer();
+    if (mounted) {
+      if (success) {
+        Helpers.showSnackBar(
+          context,
+          'OTP sent successfully!',
+        );
+        _clearOtp();
+        _startTimer();
+      } else if (authProvider.errorMessage != null) {
+        Helpers.showSnackBar(
+          context,
+          authProvider.errorMessage!,
+          isError: true,
+        );
+      }
+    }
   }
 
   void _clearOtp() {

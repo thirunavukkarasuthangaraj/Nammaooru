@@ -85,9 +85,11 @@ class AuthService {
       final token = data['accessToken'];
       final refreshToken = data['refreshToken'];
       
-      if (token != null && refreshToken != null) {
+      if (token != null) {
         await SecureStorage.saveAuthToken(token);
-        await SecureStorage.saveRefreshToken(refreshToken);
+        if (refreshToken != null) {
+          await SecureStorage.saveRefreshToken(refreshToken);
+        }
         
         final userRole = JwtHelper.getUserRole(token);
         final userId = JwtHelper.getUserId(token);
@@ -105,6 +107,21 @@ class AuthService {
       }
       
       return AuthResult.failure('Invalid response from server');
+    } catch (e) {
+      return AuthResult.failure(e.toString());
+    }
+  }
+  
+  static Future<AuthResult> resendOtp(String email) async {
+    try {
+      await ApiClient.post(
+        ApiEndpoints.sendOtp,
+        data: {
+          'email': email,
+        },
+      );
+      
+      return AuthResult.success(message: 'OTP sent successfully');
     } catch (e) {
       return AuthResult.failure(e.toString());
     }

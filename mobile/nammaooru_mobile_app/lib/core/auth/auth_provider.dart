@@ -115,6 +115,24 @@ class AuthProvider with ChangeNotifier {
     }
   }
   
+  Future<bool> resendOtp(String email) async {
+    _setLoading();
+    
+    final result = await AuthService.resendOtp(email);
+    
+    if (result.isSuccess) {
+      _authState = AuthState.unauthenticated;
+      _errorMessage = null;
+      notifyListeners();
+      return true;
+    } else {
+      _authState = AuthState.unauthenticated;
+      _errorMessage = result.message;
+      notifyListeners();
+      return false;
+    }
+  }
+  
   Future<void> logout() async {
     await AuthService.logout();
     _authState = AuthState.unauthenticated;

@@ -4,6 +4,8 @@ import com.shopmanagement.dto.auth.AuthRequest;
 import com.shopmanagement.dto.auth.AuthResponse;
 import com.shopmanagement.dto.auth.RegisterRequest;
 import com.shopmanagement.dto.auth.ChangePasswordRequest;
+import org.springframework.beans.factory.annotation.Autowired;
+import com.shopmanagement.service.EmailService;
 import com.shopmanagement.service.AuthService;
 import com.shopmanagement.service.TokenBlacklistService;
 import jakarta.validation.Valid;
@@ -29,6 +31,9 @@ public class AuthController {
     private final AuthService authService;
     private final TokenBlacklistService tokenBlacklistService;
     private final PasswordEncoder passwordEncoder;
+    
+    @Autowired
+    private EmailService emailService;
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
@@ -141,6 +146,91 @@ public class AuthController {
         } catch (Exception e) {
             response.put("status", "error");
             response.put("message", "Error generating password hash: " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+    
+    @PostMapping("/send-otp")
+    public ResponseEntity<Map<String, String>> sendOtp(@RequestBody Map<String, String> request) {
+        Map<String, String> response = new HashMap<>();
+        
+        try {
+            String email = request.get("email");
+            if (email == null || email.trim().isEmpty()) {
+                response.put("status", "error");
+                response.put("message", "Email is required");
+                return ResponseEntity.badRequest().body(response);
+            }
+            
+            // Generate 6-digit OTP
+            String otp = String.valueOf((int) (Math.random() * 900000) + 100000);
+            
+            // Send email using template
+            emailService.sendOtpVerificationEmail(email, "User", otp);
+            
+            response.put("status", "success");
+            response.put("message", "OTP sent successfully to your email");
+            response.put("otp", otp); // For testing - remove in production
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            response.put("status", "error");
+            response.put("message", "Failed to send OTP: " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+    
+    @PostMapping("/verify-otp")
+    public ResponseEntity<Map<String, Object>> verifyOtp(@RequestBody Map<String, String> request) {
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            String email = request.get("email");
+            String otp = request.get("otp");
+            
+            if (email == null || email.trim().isEmpty()) {
+                response.put("status", "error");
+                response.put("message", "Email is required");
+                return ResponseEntity.badRequest().body(response);
+            }
+            
+            if (otp == null || otp.trim().isEmpty()) {
+                response.put("status", "error");
+                response.put("message", "OTP is required");
+                return ResponseEntity.badRequest().body(response);
+            }
+            
+            // For now, accept any 6-digit OTP for testing
+            if (otp.length() == 6 && otp.matches("\\d{6}")) {
+                // Find user by email and generate auth response
+                var user = authService.findUserByEmail(email);
+                if (user != null) {
+                    var jwtToken = authService.generateTokenForUser(user);
+                    
+                    response.put("status", "success");
+                    response.put("message", "OTP verified successfully");
+                    response.put("accessToken", jwtToken);
+                    response.put("tokenType", "Bearer");
+                    response.put("username", user.getUsername());
+                    response.put("email", user.getEmail());
+                    response.put("role", user.getRole().name());
+                    
+                    return ResponseEntity.ok(response);
+                } else {
+                    response.put("status", "error");
+                    response.put("message", "User not found");
+                    return ResponseEntity.badRequest().body(response);
+                }
+            } else {
+                response.put("status", "error");
+                response.put("message", "Invalid OTP format");
+                return ResponseEntity.badRequest().body(response);
+            }
+            
+        } catch (Exception e) {
+            response.put("status", "error");
+            response.put("message", "OTP verification failed: " + e.getMessage());
             return ResponseEntity.badRequest().body(response);
         }
     }

@@ -6,6 +6,7 @@ import com.shopmanagement.dto.auth.RegisterRequest;
 import com.shopmanagement.dto.auth.ChangePasswordRequest;
 import com.shopmanagement.entity.User;
 import com.shopmanagement.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -24,6 +25,9 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    
+    @Autowired
+    private EmailService emailService;
 
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
@@ -43,6 +47,22 @@ public class AuthService {
                 .build();
         
         userRepository.save(user);
+        
+        // Send OTP email after successful registration using template
+        try {
+            String otp = String.valueOf((int) (Math.random() * 900000) + 100000);
+            
+            // Use username as the display name since fullName is not available
+            String userName = request.getUsername();
+            
+            emailService.sendOtpVerificationEmail(user.getEmail(), userName, otp);
+            
+            System.out.println("OTP sent to " + user.getEmail() + ": " + otp); // For testing
+            
+        } catch (Exception e) {
+            System.err.println("Failed to send OTP email: " + e.getMessage());
+        }
+        
         var jwtToken = jwtService.generateToken(user);
         
         return AuthResponse.builder()
@@ -141,5 +161,13 @@ public class AuthService {
                 .build();
         
         return userRepository.save(user);
+    }
+    
+    public User findUserByEmail(String email) {
+        return userRepository.findByEmail(email).orElse(null);
+    }
+    
+    public String generateTokenForUser(User user) {
+        return jwtService.generateToken(user);
     }
 }

@@ -1,15 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:go_router/go_router.dart';
-import '../../../core/auth/auth_provider.dart';
-import '../../../core/constants/colors.dart';
-import '../../../core/constants/strings.dart';
-import '../../../core/constants/app_constants.dart';
-import '../../../core/utils/validators.dart';
-import '../../../core/utils/helpers.dart';
-import '../../../shared/widgets/loading_widget.dart';
-import '../../../shared/widgets/common_buttons.dart';
-import '../../../shared/widgets/custom_app_bar.dart';
+import 'package:email_validator/email_validator.dart';
+import '../../../core/providers/auth_provider.dart';
+import '../../../core/models/auth_models.dart';
+import 'otp_verification_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -21,6 +15,7 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -33,6 +28,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _usernameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
@@ -44,36 +40,43 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     if (!_acceptTerms) {
-      Helpers.showSnackBar(
-        context,
-        'Please accept the terms and conditions',
-        isError: true,
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please accept the terms and conditions'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     
-    final success = await authProvider.register(
+    final request = RegisterRequest(
       name: _nameController.text.trim(),
+      username: _usernameController.text.trim(),
       email: _emailController.text.trim(),
-      password: _passwordController.text,
       phoneNumber: _phoneController.text.trim(),
-      role: 'USER',
+      password: _passwordController.text,
+      confirmPassword: _confirmPasswordController.text,
     );
+
+    final success = await authProvider.register(request);
 
     if (mounted) {
       if (success) {
-        context.go('/otp-verification?email=${_emailController.text.trim()}');
-        Helpers.showSnackBar(
-          context,
-          'Registration successful! Please verify your email.',
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => OtpVerificationScreen(
+              email: _emailController.text.trim(),
+            ),
+          ),
         );
       } else if (authProvider.errorMessage != null) {
-        Helpers.showSnackBar(
-          context,
-          authProvider.errorMessage!,
-          isError: true,
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(authProvider.errorMessage!),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -82,28 +85,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomAppBar(
-        title: 'Create Account',
-        backgroundColor: Colors.transparent,
-        foregroundColor: AppColors.textPrimary,
-        elevation: 0,
-      ),
       backgroundColor: Colors.white,
-      body: Consumer<AuthProvider>(
-        builder: (context, authProvider, child) {
-          return LoadingOverlay(
-            isLoading: authProvider.authState == AuthState.loading,
-            loadingMessage: 'Creating account...',
-            child: SingleChildScrollView(
+      body: SafeArea(
+        child: Consumer<AuthProvider>(
+          builder: (context, authProvider, child) {
+            if (authProvider.isLoading) {
+              return const Center(
+                child: CircularProgressIndicator(),
+              );
+            }
+            
+            return SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),
               child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    const SizedBox(height: 40),
                     _buildHeader(),
                     const SizedBox(height: 30),
                     _buildNameField(),
+                    const SizedBox(height: 16),
+                    _buildUsernameField(),
                     const SizedBox(height: 16),
                     _buildEmailField(),
                     const SizedBox(height: 16),
@@ -121,9 +125,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ],
                 ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
@@ -132,20 +136,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Column(
       children: [
         const Text(
-          'Join NammaOoru',
+          'Create Account',
           style: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
+            color: Color(0xFF1C1C1E),
           ),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 8),
         const Text(
-          'Create your customer account to order products and track deliveries from local stores',
+          'Join NammaOoru and start ordering from your favorite local shops',
           style: TextStyle(
             fontSize: 16,
-            color: AppColors.textSecondary,
+            color: Color(0xFF8E8E93),
           ),
           textAlign: TextAlign.center,
         ),
@@ -157,15 +161,61 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return TextFormField(
       controller: _nameController,
       textInputAction: TextInputAction.next,
-      validator: Validators.validateName,
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please enter your full name';
+        }
+        if (value.length < 2) {
+          return 'Name must be at least 2 characters';
+        }
+        return null;
+      },
       decoration: InputDecoration(
-        labelText: AppStrings.fullName,
+        labelText: 'Full Name',
         prefixIcon: const Icon(Icons.person_outlined),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
         ),
         filled: true,
-        fillColor: Colors.grey[50],
+        fillColor: const Color(0xFFF8F8F8),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFE23744), width: 2),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUsernameField() {
+    return TextFormField(
+      controller: _usernameController,
+      textInputAction: TextInputAction.next,
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please enter a username';
+        }
+        if (value.length < 3) {
+          return 'Username must be at least 3 characters';
+        }
+        if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value)) {
+          return 'Username can only contain letters, numbers, and underscores';
+        }
+        return null;
+      },
+      decoration: InputDecoration(
+        labelText: 'Username',
+        prefixIcon: const Icon(Icons.account_circle_outlined),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        filled: true,
+        fillColor: const Color(0xFFF8F8F8),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFE23744), width: 2),
+        ),
       ),
     );
   }
@@ -175,15 +225,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
       controller: _emailController,
       keyboardType: TextInputType.emailAddress,
       textInputAction: TextInputAction.next,
-      validator: Validators.validateEmail,
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please enter your email';
+        }
+        if (!EmailValidator.validate(value)) {
+          return 'Please enter a valid email address';
+        }
+        return null;
+      },
       decoration: InputDecoration(
-        labelText: AppStrings.email,
+        labelText: 'Email Address',
         prefixIcon: const Icon(Icons.email_outlined),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
         ),
         filled: true,
-        fillColor: Colors.grey[50],
+        fillColor: const Color(0xFFF8F8F8),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFE23744), width: 2),
+        ),
       ),
     );
   }
@@ -193,16 +256,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
       controller: _phoneController,
       keyboardType: TextInputType.phone,
       textInputAction: TextInputAction.next,
-      validator: Validators.validatePhoneNumber,
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please enter your phone number';
+        }
+        if (value.length < 10) {
+          return 'Please enter a valid phone number';
+        }
+        return null;
+      },
       decoration: InputDecoration(
-        labelText: AppStrings.phoneNumber,
+        labelText: 'Phone Number',
         prefixIcon: const Icon(Icons.phone_outlined),
         prefixText: '+91 ',
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
         ),
         filled: true,
-        fillColor: Colors.grey[50],
+        fillColor: const Color(0xFFF8F8F8),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFE23744), width: 2),
+        ),
       ),
     );
   }
@@ -212,9 +288,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
       controller: _passwordController,
       obscureText: _obscurePassword,
       textInputAction: TextInputAction.next,
-      validator: Validators.validatePassword,
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please enter a password';
+        }
+        if (value.length < 6) {
+          return 'Password must be at least 6 characters';
+        }
+        return null;
+      },
       decoration: InputDecoration(
-        labelText: AppStrings.password,
+        labelText: 'Password',
         prefixIcon: const Icon(Icons.lock_outlined),
         suffixIcon: IconButton(
           icon: Icon(
@@ -228,9 +312,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
         ),
         filled: true,
-        fillColor: Colors.grey[50],
+        fillColor: const Color(0xFFF8F8F8),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFE23744), width: 2),
+        ),
       ),
     );
   }
@@ -240,13 +329,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
       controller: _confirmPasswordController,
       obscureText: _obscureConfirmPassword,
       textInputAction: TextInputAction.done,
-      validator: (value) => Validators.validateConfirmPassword(
-        value,
-        _passwordController.text,
-      ),
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please confirm your password';
+        }
+        if (value != _passwordController.text) {
+          return 'Passwords do not match';
+        }
+        return null;
+      },
       onFieldSubmitted: (_) => _handleRegister(),
       decoration: InputDecoration(
-        labelText: AppStrings.confirmPassword,
+        labelText: 'Confirm Password',
         prefixIcon: const Icon(Icons.lock_outlined),
         suffixIcon: IconButton(
           icon: Icon(
@@ -260,9 +354,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
         ),
         filled: true,
-        fillColor: Colors.grey[50],
+        fillColor: const Color(0xFFF8F8F8),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFE23744), width: 2),
+        ),
       ),
     );
   }
@@ -278,13 +377,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
               _acceptTerms = value ?? false;
             });
           },
+          activeColor: const Color(0xFFE23744),
         ),
         Expanded(
           child: Wrap(
             children: [
               const Text(
                 'I agree to the ',
-                style: TextStyle(color: AppColors.textSecondary),
+                style: TextStyle(color: Color(0xFF8E8E93)),
               ),
               GestureDetector(
                 onTap: () {
@@ -293,7 +393,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: const Text(
                   'Terms and Conditions',
                   style: TextStyle(
-                    color: AppColors.primary,
+                    color: Color(0xFFE23744),
                     fontWeight: FontWeight.w600,
                     decoration: TextDecoration.underline,
                   ),
@@ -301,7 +401,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const Text(
                 ' and ',
-                style: TextStyle(color: AppColors.textSecondary),
+                style: TextStyle(color: Color(0xFF8E8E93)),
               ),
               GestureDetector(
                 onTap: () {
@@ -310,7 +410,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: const Text(
                   'Privacy Policy',
                   style: TextStyle(
-                    color: AppColors.primary,
+                    color: Color(0xFFE23744),
                     fontWeight: FontWeight.w600,
                     decoration: TextDecoration.underline,
                   ),
@@ -324,11 +424,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _buildRegisterButton() {
-    return PrimaryButton(
-      text: AppStrings.register,
+    return ElevatedButton(
       onPressed: _handleRegister,
-      height: 56,
-      backgroundColor: AppColors.primary,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFFE23744),
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        elevation: 0,
+      ),
+      child: const Text(
+        'Create Account',
+        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+      ),
     );
   }
 
@@ -339,17 +449,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
         const Text(
           'Already have an account? ',
           style: TextStyle(
-            color: AppColors.textSecondary,
+            color: Color(0xFF8E8E93),
           ),
         ),
         TextButton(
           onPressed: () {
-            context.go('/login');
+            Navigator.of(context).pop(); // Go back to login
           },
           child: const Text(
             'Sign In',
             style: TextStyle(
-              color: AppColors.primary,
+              color: Color(0xFFE23744),
               fontWeight: FontWeight.w600,
             ),
           ),
