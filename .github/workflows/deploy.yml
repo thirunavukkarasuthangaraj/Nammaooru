@@ -9,7 +9,7 @@ env:
   REGISTRY: docker.io
   BACKEND_IMAGE: nammaooru/backend
   FRONTEND_IMAGE: nammaooru/frontend
-  SERVER_HOST: 52.66.247.209
+  SERVER_HOST: 65.21.4.236
   SERVER_USER: ubuntu
 
 jobs:

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Production deployment script with full rebuild
-# Run this on your production server at 52.66.247.209
+# Run this on your production server at 65.21.4.236
 
 echo "🚀 Starting production deployment with fresh build..."
 
