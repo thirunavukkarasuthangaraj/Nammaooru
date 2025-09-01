@@ -61,10 +61,7 @@ export class RegisterComponent implements OnInit {
         username: `${formData.firstName} ${formData.lastName}`, // Combine first + last name for username
         email: formData.email,
         password: formData.password,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        mobile: formData.mobile,
-        role: 'CUSTOMER'
+        role: UserRole.CUSTOMER
       };
 
       this.authService.register(registerData).subscribe({
