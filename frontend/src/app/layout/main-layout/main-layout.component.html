@@ -295,8 +295,19 @@
 
   <!-- Version Display -->
   <div class="version-display">
-    <div class="version-info" *ngIf="versionInfo">
-      <span class="version-text">v{{versionInfo.server?.version || '1.0.0'}}</span>
+    <div class="version-info">
+      <div class="version-line">
+        <span class="version-label">UI:</span>
+        <span class="version-text">v{{getClientVersion()}}</span>
+      </div>
+      <div class="version-line" *ngIf="versionInfo?.server?.version">
+        <span class="version-label">API:</span>
+        <span class="version-text">v{{versionInfo.server.version}}</span>
+      </div>
+      <div class="version-line" *ngIf="!versionInfo?.server?.version">
+        <span class="version-label">API:</span>
+        <span class="version-text loading">...</span>
+      </div>
     </div>
   </div>
 </div>

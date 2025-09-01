@@ -779,13 +779,14 @@
 .version-info {
   background: var(--primary-500);
   color: white;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 11px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 10px;
   font-weight: 500;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   cursor: pointer;
   transition: all 0.2s ease;
+  min-width: 80px;
 }
 
 .version-info:hover {
@@ -794,6 +795,35 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
+.version-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  line-height: 1.2;
+}
+
+.version-line + .version-line {
+  margin-top: 2px;
+}
+
+.version-label {
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 400;
+  font-size: 9px;
+}
+
 .version-text {
   user-select: none;
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+.version-text.loading {
+  opacity: 0.6;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }

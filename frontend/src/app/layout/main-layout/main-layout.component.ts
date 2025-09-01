@@ -426,6 +426,10 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     });
   }
 
+  getClientVersion(): string {
+    return this.versionService.getVersion().replace('v', '');
+  }
+
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
