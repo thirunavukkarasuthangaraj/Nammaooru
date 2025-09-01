@@ -16,7 +16,9 @@
       "Bash(git push:*)",
       "Bash(psql:*)",
       "Bash(set PGPASSWORD=admin)",
-      "Bash(ssh:*)"
+      "Bash(ssh:*)",
+      "Bash(chmod:*)",
+      "Bash(./deploy-prod.sh)"
     ],
     "deny": [],
     "ask": [],

@@ -77,7 +77,8 @@ file:
     allowed-extensions: jpg,jpeg,png,gif,webp
 
 app:
-  version: 0.0.0
+  version: @project.version@
+  name: @project.name@
   upload:
     dir: ${APP_UPLOAD_DIR:./uploads}
     documents:
