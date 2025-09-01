@@ -29,7 +29,7 @@ jobs:
         script: |
           # Navigate to deployment directory
           echo "=== STEP 1: Navigate to deployment directory ==="
-          cd /home/ubuntu
+          cd /opt/shop-management
           pwd
           ls -la
           
@@ -61,7 +61,7 @@ jobs:
           docker ps -a
           docker-compose down || true
           cd /root && docker-compose down 2>/dev/null || true
-          cd /home/ubuntu
+          cd /opt/shop-management
           echo "Containers stopped. Current status:"
           docker ps -a
           
@@ -78,7 +78,7 @@ jobs:
           
           # Ensure we're in the correct directory for deployment
           echo "=== STEP 6: Build new containers ==="
-          cd /home/ubuntu
+          cd /opt/shop-management
           pwd
           echo "Docker-compose file check:"
           ls -la docker-compose.yml

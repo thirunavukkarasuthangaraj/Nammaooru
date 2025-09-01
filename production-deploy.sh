@@ -6,7 +6,7 @@
 echo "🚀 Starting production deployment with fresh build..."
 
 # Navigate to project directory
-cd /home/ubuntu/shop-management-system || exit 1
+cd /opt/shop-management/shop-management-system || exit 1
 
 # Pull latest code from main branch
 echo "📥 Pulling latest code from main branch..."
