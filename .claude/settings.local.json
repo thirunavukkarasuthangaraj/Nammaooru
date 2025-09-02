@@ -35,7 +35,8 @@
       "Bash(\"C:\\Users\\MVNLA\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe\" devices)",
       "Bash(\"C:\\Users\\MVNLA\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe\" install -r mobile/nammaooru_mobile_app/build/app/outputs/flutter-apk/app-release.apk)",
       "Bash(./gradlew:*)",
-      "Read(c:\\Users\\MVNLA\\Downloads/**)"
+      "Read(c:\\Users\\MVNLA\\Downloads/**)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": [],
