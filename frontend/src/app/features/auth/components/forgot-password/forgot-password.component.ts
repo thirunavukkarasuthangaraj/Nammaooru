@@ -313,7 +313,7 @@ export class ForgotPasswordComponent implements OnInit {
       this.isLoading = true;
       const formData = this.forgotPasswordForm.value;
 
-      this.http.post('http://localhost:8082/api/auth/password/forgot', formData)
+      this.http.post('/api/auth/password/forgot', formData)
         .subscribe({
           next: (response: any) => {
             this.isLoading = false;
