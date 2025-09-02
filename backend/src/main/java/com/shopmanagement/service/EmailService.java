@@ -59,7 +59,7 @@ public class EmailService {
             log.info("Simple email sent successfully to: {}", to);
         } catch (Exception e) {
             log.error("Failed to send simple email to: {}", to, e);
-            throw new RuntimeException("Failed to send email", e);
+            // Don't throw exception - just log the error
         }
     }
 
@@ -87,10 +87,10 @@ public class EmailService {
             log.info("HTML email sent successfully to: {} using template: {}", to, templateName);
         } catch (MessagingException e) {
             log.error("Failed to send HTML email to: {} using template: {}", to, templateName, e);
-            throw new RuntimeException("Failed to send HTML email", e);
+            // Don't throw exception - just log the error
         } catch (Exception e) {
             log.error("Unexpected error sending email to: {}", to, e);
-            throw new RuntimeException("Failed to send email", e);
+            // Don't throw exception - just log the error
         }
     }
 
