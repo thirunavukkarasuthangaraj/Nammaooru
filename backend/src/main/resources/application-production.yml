@@ -39,42 +39,23 @@ spring:
       max-file-size: 10MB
       max-request-size: 10MB
   
+  # Email Configuration - Hostinger SMTP
   mail:
-    host: ${MAIL_HOST:smtp.gmail.com}
+    host: ${MAIL_HOST:smtp.hostinger.com} 
     port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
+    username: ${MAIL_USERNAME:noreplay@nammaoorudelivary.in}
+    password: ${MAIL_PASSWORD:noreplaynammaooruDelivary@2025}
     properties:
       mail:
         smtp:
           auth: true
           starttls:
             enable: true
+            required: true
           connectiontimeout: 5000
-          timeout: 5000
+          timeout: 3000
           writetimeout: 5000
   
-  # Spring Web CORS Configuration
-  web:
-    cors:
-      allowed-origins: 
-        - https://nammaoorudelivary.in
-        - https://www.nammaoorudelivary.in
-        - https://api.nammaoorudelivary.in
-        - http://localhost:4200
-        - http://localhost:80
-      allowed-methods:
-        - GET
-        - POST
-        - PUT
-        - DELETE
-        - OPTIONS
-        - PATCH
-        - HEAD
-      allowed-headers:
-        - "*"
-      allow-credentials: true
-      max-age: 3600
 
 # File Storage Configuration - IMPORTANT FOR HETZNER
 file:
