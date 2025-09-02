@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
-import 'package:permission_handler/permission_handler.dart';
+// import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../core/constants/app_constants.dart';
 
@@ -11,13 +11,13 @@ class ImageService {
   static final ImagePicker _picker = ImagePicker();
   
   static Future<bool> requestCameraPermission() async {
-    final status = await Permission.camera.request();
-    return status.isGranted;
+    // Permissions are handled by image_picker automatically
+    return true;
   }
   
   static Future<bool> requestGalleryPermission() async {
-    final status = await Permission.photos.request();
-    return status.isGranted;
+    // Permissions are handled by image_picker automatically
+    return true;
   }
   
   static Future<File?> pickImageFromCamera({
@@ -26,8 +26,9 @@ class ImageService {
     int? imageQuality,
   }) async {
     try {
-      final hasPermission = await requestCameraPermission();
-      if (!hasPermission) return null;
+      // Permissions are handled by image_picker
+      // final hasPermission = await requestCameraPermission();
+      // if (!hasPermission) return null;
       
       final XFile? image = await _picker.pickImage(
         source: ImageSource.camera,

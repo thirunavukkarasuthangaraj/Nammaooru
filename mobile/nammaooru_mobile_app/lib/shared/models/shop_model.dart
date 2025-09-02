@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 class ShopModel {
   final String id;
   final String name;
@@ -226,5 +228,3 @@ class OpeningHours {
     return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
   }
 }
-
-import 'package:flutter/material.dart';

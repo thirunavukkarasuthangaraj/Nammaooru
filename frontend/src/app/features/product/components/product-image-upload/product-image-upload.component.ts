@@ -410,7 +410,8 @@ export class ProductImageUploadComponent implements OnInit {
     if (validFiles.length === 0) return;
 
     const formData = new FormData();
-    validFiles.forEach(file => {
+    validFiles.forEach((file, index) => {
+      console.log(`Adding file ${index + 1}:`, file.name, file.size, file.type);
       formData.append('images', file);
     });
 
@@ -421,12 +422,23 @@ export class ProductImageUploadComponent implements OnInit {
     console.log(`Uploading ${validFiles.length} files to:`, url);
     console.log(`Product Type: ${this.productType}, Product ID: ${this.productId}, Shop ID: ${this.shopId}`);
 
+    // Check authentication
+    const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+    console.log('Auth token present:', !!token);
+
     this.uploadProgress = 0;
 
-    this.http.post<any>(url, formData, {
+    // Add explicit headers for file upload
+    const uploadOptions = {
       reportProgress: true,
-      observe: 'events'
-    }).subscribe({
+      observe: 'events' as 'events',
+      headers: {
+        // Don't set Content-Type - let browser set it with boundary for FormData
+        'Accept': 'application/json'
+      }
+    };
+
+    this.http.post<any>(url, formData, uploadOptions).subscribe({
       next: (event) => {
         if (event.type === HttpEventType.UploadProgress) {
           this.uploadProgress = Math.round(100 * event.loaded / (event.total || 1));
@@ -448,8 +460,30 @@ export class ProductImageUploadComponent implements OnInit {
       },
       error: (error) => {
         console.error('Upload failed:', error);
+        console.error('Error status:', error.status);
+        console.error('Error message:', error.message);
+        console.error('Error body:', error.error);
+        
         this.uploadProgress = 0;
-        this.snackBar.open('Upload failed. Please try again.', 'Close', { duration: 3000 });
+        
+        let errorMessage = 'Upload failed. Please try again.';
+        
+        if (error.status === 500) {
+          errorMessage = 'Server error during upload. Please contact support or try again later.';
+        } else if (error.status === 413) {
+          errorMessage = 'File too large. Please reduce file size and try again.';
+        } else if (error.status === 401) {
+          errorMessage = 'Authentication required. Please login again.';
+        } else if (error.status === 403) {
+          errorMessage = 'Permission denied. You may not have access to upload images.';
+        } else if (error.error?.message) {
+          errorMessage = `Upload failed: ${error.error.message}`;
+        }
+        
+        this.snackBar.open(errorMessage, 'Close', { 
+          duration: 5000,
+          panelClass: ['error-snackbar']
+        });
       }
     });
   }

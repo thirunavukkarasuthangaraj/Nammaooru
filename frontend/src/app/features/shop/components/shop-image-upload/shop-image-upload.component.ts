@@ -1,4 +1,6 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { HttpClient, HttpEventType } from '@angular/common/http';
+import { environment } from '@environments/environment';
 
 @Component({
   selector: 'app-shop-image-upload',
@@ -251,6 +253,8 @@ export class ShopImageUploadComponent {
   uploading = false;
   uploadProgress = 0;
 
+  constructor(private http: HttpClient) {}
+
   onFileSelected(event: any) {
     const files = Array.from(event.target.files) as File[];
     this.addFiles(files);
@@ -322,14 +326,46 @@ export class ShopImageUploadComponent {
     this.uploading = true;
     this.uploadProgress = 0;
 
-    // Simulate upload progress
-    const interval = setInterval(() => {
-      this.uploadProgress += 10;
-      if (this.uploadProgress >= 100) {
-        clearInterval(interval);
-        this.completeUpload();
-      }
-    }, 200);
+    // Upload each file
+    const uploadPromises = this.selectedFiles.map(file => {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('imageType', this.selectedImageType);
+      formData.append('isPrimary', this.isPrimary.toString());
+
+      return this.http.post<any>(
+        `${environment.apiUrl}/shops/${this.shopId}/images`,
+        formData,
+        {
+          reportProgress: true,
+          observe: 'events'
+        }
+      );
+    });
+
+    // Handle all uploads
+    let completedCount = 0;
+    uploadPromises.forEach(upload => {
+      upload.subscribe({
+        next: (event: any) => {
+          if (event.type === HttpEventType.UploadProgress) {
+            const percentDone = Math.round(100 * event.loaded / (event.total || 1));
+            this.uploadProgress = Math.round((completedCount + percentDone / this.selectedFiles.length) * 100 / this.selectedFiles.length);
+          } else if (event.type === HttpEventType.Response) {
+            completedCount++;
+            if (completedCount === this.selectedFiles.length) {
+              this.completeUpload();
+            }
+          }
+        },
+        error: (error) => {
+          console.error('Upload failed:', error);
+          this.uploading = false;
+          this.uploadProgress = 0;
+          alert('Upload failed. Please try again.');
+        }
+      });
+    });
   }
 
   private completeUpload() {

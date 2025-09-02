@@ -289,8 +289,8 @@ class _ShopsScreenState extends State<ShopsScreen> {
                   top: Radius.circular(12),
                 ),
                 child: CachedNetworkImage(
-                  imageUrl: shop.images.isNotEmpty 
-                      ? shop.images.first 
+                  imageUrl: shop['images'] != null && (shop['images'] as List).isNotEmpty 
+                      ? shop['images'][0] 
                       : 'https://via.placeholder.com/300x150',
                   fit: BoxFit.cover,
                   placeholder: (context, url) => Container(

@@ -1,27 +1,28 @@
 import 'package:dio/dio.dart';
-import '../constants/app_constants.dart';
-import '../storage/secure_storage.dart';
-import 'api_interceptors.dart';
+import 'package:flutter/foundation.dart';
 
 class ApiClient {
   static late Dio _dio;
   
   static void initialize() {
     _dio = Dio(BaseOptions(
-      baseUrl: AppConstants.baseUrl,
-      connectTimeout: AppConstants.requestTimeout,
-      receiveTimeout: AppConstants.requestTimeout,
+      baseUrl: 'https://api.nammaoorudelivary.in/api',
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 30),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
     ));
     
-    _dio.interceptors.addAll([
-      AuthInterceptor(),
-      LoggingInterceptor(),
-      ErrorInterceptor(),
-    ]);
+    if (kDebugMode) {
+      _dio.interceptors.add(LogInterceptor(
+        requestBody: true,
+        responseBody: true,
+        error: true,
+        logPrint: (obj) => debugPrint(obj.toString()),
+      ));
+    }
   }
   
   static Dio get dio => _dio;

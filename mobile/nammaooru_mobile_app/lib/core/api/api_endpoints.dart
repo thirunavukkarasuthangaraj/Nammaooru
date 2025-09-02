@@ -1,7 +1,5 @@
-import '../constants/app_constants.dart';
-
 class ApiEndpoints {
-  static const String baseUrl = AppConstants.baseUrl;
+  static const String baseUrl = 'https://api.nammaoorudelivary.in/api';
   
   static const String auth = '/auth';
   static const String login = '$auth/login';

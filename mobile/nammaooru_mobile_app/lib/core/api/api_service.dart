@@ -26,13 +26,13 @@ class ApiService {
   // Set auth token
   Future<void> setAuthToken(String token) async {
     _authToken = token;
-    await SecureStorage.setAuthToken(token);
+    await SecureStorage.saveAuthToken(token);
   }
 
   // Clear auth token
   Future<void> clearAuthToken() async {
     _authToken = null;
-    await SecureStorage.clearAuthToken();
+    await SecureStorage.clearAuthData();
   }
 
   // Get headers
