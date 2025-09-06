@@ -17,6 +17,9 @@ class NammaOoruApp extends StatelessWidget {
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,
       routerConfig: AppRouter.router,
+      builder: (context, child) {
+        return child ?? const SizedBox.shrink();
+      },
       localizationsDelegates: const [
         // AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,

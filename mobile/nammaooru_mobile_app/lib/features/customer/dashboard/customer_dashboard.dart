@@ -130,7 +130,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'નમસ્તે! 🙏', // 'Namaste!' in Gujarati
+                  'Welcome! 🙏',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 20,
@@ -138,7 +138,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                   ),
                 ),
                 Text(
-                  'આપ શું મંગાવવા માંગો છો?', // 'What would you like to order?' in Gujarati  
+                  'What would you like to order?',
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: 14,
@@ -255,14 +255,13 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       {'name': 'Grocery', 'icon': Icons.local_grocery_store, 'color': Colors.green},
       {'name': 'Food', 'icon': Icons.restaurant, 'color': Colors.orange},
       {'name': 'Parcel', 'icon': Icons.local_shipping, 'color': Colors.blue},
-      {'name': 'Medicine', 'icon': Icons.local_pharmacy, 'color': Colors.red},
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'આપણને શું જોઈએ છે?', // 'What do you need?' in Gujarati
+          'What do you need?',
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,

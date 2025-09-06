@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'app/app.dart';
 import 'core/auth/auth_provider.dart';
-import 'core/providers/cart_provider.dart';
+import 'shared/providers/cart_provider.dart';
 import 'core/api/api_client.dart';
 import 'core/api/api_service.dart';
 import 'core/storage/local_storage.dart';

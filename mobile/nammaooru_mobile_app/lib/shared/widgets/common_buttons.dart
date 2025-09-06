@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/colors.dart';
+import '../../core/theme/village_theme.dart';
 
 class PrimaryButton extends StatelessWidget {
   final String text;
@@ -30,7 +31,7 @@ class PrimaryButton extends StatelessWidget {
     Widget button = ElevatedButton(
       onPressed: isLoading ? null : onPressed,
       style: ElevatedButton.styleFrom(
-        backgroundColor: backgroundColor ?? AppColors.primary,
+        backgroundColor: backgroundColor ?? VillageTheme.primaryGreen,
         foregroundColor: textColor ?? Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(borderRadius),
@@ -96,9 +97,9 @@ class SecondaryButton extends StatelessWidget {
     Widget button = OutlinedButton(
       onPressed: onPressed,
       style: OutlinedButton.styleFrom(
-        foregroundColor: textColor ?? AppColors.primary,
+        foregroundColor: textColor ?? VillageTheme.primaryGreen,
         side: BorderSide(
-          color: borderColor ?? AppColors.primary,
+          color: borderColor ?? VillageTheme.primaryGreen,
           width: 1.5,
         ),
         shape: RoundedRectangleBorder(

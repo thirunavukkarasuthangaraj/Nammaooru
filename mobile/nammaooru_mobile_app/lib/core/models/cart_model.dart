@@ -122,21 +122,18 @@ class Cart {
 }
 
 class AddToCartRequest {
-  final String productId;
+  final String shopProductId;  // Changed to match backend DTO
   final int quantity;
-  final String shopId;
 
   AddToCartRequest({
-    required this.productId,
+    required this.shopProductId,
     required this.quantity,
-    required this.shopId,
   });
 
   Map<String, dynamic> toJson() {
     return {
-      'productId': productId,
+      'shopProductId': int.parse(shopProductId),  // Backend expects Long
       'quantity': quantity,
-      'shopId': shopId,
     };
   }
 }

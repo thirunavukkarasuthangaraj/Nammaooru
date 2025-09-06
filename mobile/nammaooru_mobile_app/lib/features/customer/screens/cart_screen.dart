@@ -1,487 +1,623 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../core/providers/cart_provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../../shared/widgets/custom_app_bar.dart';
+import '../../../shared/widgets/common_buttons.dart';
+import '../../../shared/widgets/error_widget.dart';
+import '../../../shared/providers/cart_provider.dart';
+import '../../../shared/models/cart_model.dart';
+import '../../../core/constants/colors.dart';
 import '../../../core/theme/village_theme.dart';
-import '../../../core/localization/app_localizations.dart';
-import 'checkout_screen.dart';
+import '../../../core/utils/helpers.dart';
+import '../orders/checkout_screen.dart';
 
-class CartScreen extends StatelessWidget {
+class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
 
   @override
+  State<CartScreen> createState() => _CartScreenState();
+}
+
+class _CartScreenState extends State<CartScreen> {
+  final TextEditingController _promoController = TextEditingController();
+  bool _isApplyingPromo = false;
+
+  @override
+  void dispose() {
+    _promoController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final loc = AppLocalizations.of(context);
     return Scaffold(
-      backgroundColor: VillageTheme.lightBackground,
-      appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '🛒 ',
-              style: TextStyle(fontSize: 28),
-            ),
-            Text(
-              loc?.cart ?? 'வண்டி / Cart',
-              style: VillageTheme.headingMedium.copyWith(color: Colors.white),
-            ),
-          ],
-        ),
+      appBar: const CustomAppBar(
+        title: 'Shopping Cart',
         backgroundColor: VillageTheme.primaryGreen,
-        elevation: 0,
-        centerTitle: true,
-        iconTheme: IconThemeData(color: Colors.white, size: VillageTheme.iconLarge),
+        foregroundColor: Colors.white,
+        showBackButton: true,
       ),
       body: Consumer<CartProvider>(
-        builder: (context, cart, child) {
-          if (cart.itemCount == 0) {
-            return _buildEmptyCart(context);
+        builder: (context, cartProvider, child) {
+          if (cartProvider.isEmpty) {
+            return _buildEmptyCart();
           }
-          return _buildCartWithItems(context, cart);
+
+          return Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildItemsList(cartProvider),
+                      const SizedBox(height: 20),
+                      _buildPromoCodeSection(cartProvider),
+                      const SizedBox(height: 20),
+                      _buildOrderSummary(cartProvider),
+                    ],
+                  ),
+                ),
+              ),
+              _buildBottomBar(cartProvider),
+            ],
+          );
         },
       ),
     );
   }
 
-  Widget _buildEmptyCart(BuildContext context) {
-    final loc = AppLocalizations.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(VillageTheme.spacingL),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 160,
-              height: 160,
-              decoration: BoxDecoration(
-                color: VillageTheme.primaryGreen.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(VillageTheme.cardRadius * 2),
-              ),
-              child: Center(
-                child: Text(
-                  '🛒',
-                  style: TextStyle(fontSize: 80),
-                ),
-              ),
-            ),
-            SizedBox(height: VillageTheme.spacingL),
-            Text(
-              'வண்டி காலி உள்ளது\nCart is Empty',
-              style: VillageTheme.headingMedium.copyWith(
-                color: VillageTheme.secondaryText,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: VillageTheme.spacingM),
-            Text(
-              'பொருட்களை சேர்க்கவும்\nAdd some items to get started',
-              style: VillageTheme.bodyMedium.copyWith(
-                color: VillageTheme.secondaryText,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: VillageTheme.spacingXL),
-            VillageWidgets.bigButton(
-              text: 'கடைகளுக்கு செல்லுங்கள் / Go Shopping',
-              icon: Icons.store,
-              onPressed: () => Navigator.pop(context),
-            ),
-          ],
-        ),
+  Widget _buildEmptyCart() {
+    return const Center(
+      child: EmptyStateWidget(
+        title: 'Your cart is empty',
+        message: 'Add some products to get started',
+        icon: Icons.shopping_cart_outlined,
+        action: null,
       ),
     );
   }
 
-  Widget _buildCartWithItems(BuildContext context, CartProvider cart) {
+  Widget _buildItemsList(CartProvider cartProvider) {
+    final itemsByShop = cartProvider.getItemsByShop();
+
     return Column(
-      children: [
-        Expanded(
-          child: ListView.builder(
-            padding: EdgeInsets.all(16),
-            itemCount: cart.cartItems.length,
-            itemBuilder: (context, index) {
-              final item = cart.cartItems[index];
-              return _buildCartItem(context, item, cart);
-            },
-          ),
-        ),
-        _buildCartSummary(context, cart),
-      ],
-    );
-  }
+      children: itemsByShop.entries.map((entry) {
+        final shopId = entry.key;
+        final items = entry.value;
+        final shopName = items.first.product.shopName;
 
-  Widget _buildCartItem(BuildContext context, CartItem item, CartProvider cart) {
-    return Container(
-      margin: EdgeInsets.only(bottom: VillageTheme.spacingM),
-      decoration: VillageTheme.elevatedCardDecoration,
-      child: Padding(
-        padding: EdgeInsets.all(VillageTheme.spacingM),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                // Large Product Image
-                Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(VillageTheme.cardRadius),
-                    color: VillageTheme.surfaceColor,
-                    boxShadow: VillageTheme.cardShadow,
-                  ),
-                  child: item.image.isNotEmpty
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(VillageTheme.cardRadius),
-                          child: Image.network(
-                            item.image,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Center(
-                                child: Text('📦', style: TextStyle(fontSize: 40)),
-                              );
-                            },
-                          ),
-                        )
-                      : Center(
-                          child: Text('📦', style: TextStyle(fontSize: 40)),
-                        ),
-                ),
-                SizedBox(width: VillageTheme.spacingM),
-                // Product Details
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.name,
-                        style: VillageTheme.headingSmall,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      SizedBox(height: VillageTheme.spacingXS),
-                      Row(
-                        children: [
-                          Text('🏪 ', style: TextStyle(fontSize: 16)),
-                          Expanded(
-                            child: Text(
-                              item.shopName,
-                              style: VillageTheme.bodySmall.copyWith(
-                                color: VillageTheme.secondaryText,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: VillageTheme.spacingS),
-                      Row(
-                        children: [
-                          Text('💰 ', style: TextStyle(fontSize: 18)),
-                          Text(
-                            '₹${item.price.toStringAsFixed(2)}',
-                            style: VillageTheme.headingSmall.copyWith(
-                              color: VillageTheme.primaryGreen,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: VillageTheme.spacingM),
-            // Quantity Controls Row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Quantity Controls
-                Container(
-                  decoration: BoxDecoration(
-                    color: VillageTheme.surfaceColor,
-                    borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
-                    border: Border.all(color: VillageTheme.primaryGreen.withOpacity(0.3)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildQuantityButton(
-                        icon: Icons.remove,
-                        onPressed: () => cart.removeSingleItem(item.id),
-                      ),
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        child: Text(
-                          '${item.quantity}',
-                          style: VillageTheme.headingSmall.copyWith(
-                            color: VillageTheme.primaryGreen,
-                          ),
-                        ),
-                      ),
-                      _buildQuantityButton(
-                        icon: Icons.add,
-                        onPressed: () => cart.addItem(
-                          item.id,
-                          item.name,
-                          item.price,
-                          item.image,
-                          item.shopId,
-                          item.shopName,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Remove Button
-                Container(
-                  height: 48,
-                  child: ElevatedButton.icon(
-                    onPressed: () => _showRemoveDialog(context, cart, item),
-                    icon: Icon(Icons.delete_outline, size: VillageTheme.iconMedium),
-                    label: Text(
-                      'நீக்கு / Remove',
-                      style: VillageTheme.bodyMedium.copyWith(color: Colors.white),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: VillageTheme.errorRed,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(horizontal: VillageTheme.spacingM),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuantityButton({required IconData icon, required VoidCallback onPressed}) {
-    return Container(
-      width: 48,
-      height: 48,
-      decoration: BoxDecoration(
-        color: VillageTheme.primaryGreen,
-        borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
-        boxShadow: VillageTheme.buttonShadow,
-      ),
-      child: IconButton(
-        onPressed: onPressed,
-        icon: Icon(icon, color: Colors.white, size: VillageTheme.iconMedium),
-        padding: EdgeInsets.zero,
-      ),
-    );
-  }
-
-  Widget _buildCartSummary(BuildContext context, CartProvider cart) {
-    final loc = AppLocalizations.of(context);
-    return Container(
-      padding: EdgeInsets.all(VillageTheme.spacingL),
-      decoration: BoxDecoration(
-        color: VillageTheme.cardBackground,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(VillageTheme.cardRadius * 2),
-          topRight: Radius.circular(VillageTheme.cardRadius * 2),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            spreadRadius: 2,
-            blurRadius: 12,
-            offset: Offset(0, -4),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Column(
-          children: [
-            // Summary Header with Emoji
-            Container(
-              padding: EdgeInsets.all(VillageTheme.spacingM),
-              decoration: BoxDecoration(
-                gradient: VillageTheme.primaryGradient,
-                borderRadius: BorderRadius.circular(VillageTheme.cardRadius),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text('📝 ', style: TextStyle(fontSize: 20)),
-                          Text(
-                            'மொத்த பொருட்கள் / Total Items',
-                            style: VillageTheme.bodyMedium.copyWith(color: Colors.white),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: VillageTheme.spacingXS),
-                      Text(
-                        '${cart.totalQuantity} பொருட்கள் / Items',
-                        style: VillageTheme.headingSmall.copyWith(color: Colors.white),
-                      ),
-                    ],
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Row(
-                        children: [
-                          Text('💰 ', style: TextStyle(fontSize: 20)),
-                          Text(
-                            'மொத்த தொகை / Total',
-                            style: VillageTheme.bodyMedium.copyWith(color: Colors.white),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: VillageTheme.spacingXS),
-                      Text(
-                        '₹${cart.totalAmount.toStringAsFixed(2)}',
-                        style: VillageTheme.headingLarge.copyWith(
-                          color: Colors.white,
-                          fontSize: 28,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: VillageTheme.spacingM),
-            // Checkout Button
-            VillageWidgets.bigButton(
-              text: 'பணம் செலுத்த / Proceed to Checkout',
-              icon: Icons.payment,
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => CheckoutScreen()),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showRemoveDialog(BuildContext context, CartProvider cart, CartItem item) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(VillageTheme.cardRadius),
-          ),
-          title: Row(
-            children: [
-              Text('🗑️ ', style: TextStyle(fontSize: 24)),
-              Text(
-                'பொருளை நீக்கு / Remove Item',
-                style: VillageTheme.headingSmall,
+        return Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: EdgeInsets.all(VillageTheme.spacingM),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: VillageTheme.surfaceColor,
-                  borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
+                  color: AppColors.primary.withOpacity(0.1),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(12),
+                  ),
                 ),
                 child: Row(
                   children: [
-                    Text('📦 ', style: TextStyle(fontSize: 20)),
+                    const Icon(
+                      Icons.store,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        item.name,
-                        style: VillageTheme.bodyLarge,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                        shopName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: VillageTheme.primaryGreen,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      Helpers.formatCurrency(cartProvider.getShopSubtotal(shopId)),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: VillageTheme.primaryGreen,
                       ),
                     ),
                   ],
                 ),
               ),
-              SizedBox(height: VillageTheme.spacingM),
-              Text(
-                'இந்த பொருளை வண்டியிலிருந்து நீக்க வேண்டுமா?\nRemove this item from cart?',
-                style: VillageTheme.bodyMedium,
-                textAlign: TextAlign.center,
-              ),
+              ...items.map((item) => _buildCartItem(item, cartProvider)).toList(),
             ],
           ),
-          actions: [
-            Container(
-              width: double.infinity,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: VillageTheme.secondaryButtonStyle,
-                      child: Text(
-                        'रद्द / Cancel',
-                        style: VillageTheme.buttonText.copyWith(
-                          color: VillageTheme.primaryGreen,
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildCartItem(CartItem item, CartProvider cartProvider) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: CachedNetworkImage(
+              imageUrl: item.product.images.isNotEmpty
+                  ? item.product.images.first
+                  : 'https://via.placeholder.com/80x80',
+              width: 80,
+              height: 80,
+              fit: BoxFit.cover,
+              placeholder: (context, url) => Container(
+                width: 80,
+                height: 80,
+                color: Colors.grey[200],
+                child: const Icon(Icons.image),
+              ),
+              errorWidget: (context, url, error) => Container(
+                width: 80,
+                height: 80,
+                color: Colors.grey[200],
+                child: const Icon(Icons.image_not_supported),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.product.name,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                    color: Colors.black,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Text(
+                      Helpers.formatCurrency(item.product.effectivePrice),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: VillageTheme.primaryGreen,
+                        fontSize: 16,
+                      ),
+                    ),
+                    if (item.product.hasDiscount) ...[
+                      const SizedBox(width: 8),
+                      Text(
+                        Helpers.formatCurrency(item.product.price),
+                        style: const TextStyle(
+                          decoration: TextDecoration.lineThrough,
+                          color: Colors.grey,
+                          fontSize: 14,
                         ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            onPressed: () {
+                              cartProvider.decreaseQuantity(item.product.id);
+                            },
+                            icon: const Icon(Icons.remove, size: 18),
+                            constraints: const BoxConstraints(
+                              minWidth: 32,
+                              minHeight: 32,
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: Text(
+                              item.quantity.toString(),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: item.quantity < item.product.stockQuantity
+                                ? () {
+                                    cartProvider.increaseQuantity(item.product.id);
+                                  }
+                                : null,
+                            icon: const Icon(Icons.add, size: 18),
+                            constraints: const BoxConstraints(
+                              minWidth: 32,
+                              minHeight: 32,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: () {
+                        _showRemoveDialog(item, cartProvider);
+                      },
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        color: Colors.red,
+                      ),
+                    ),
+                  ],
+                ),
+                if (item.quantity > item.product.stockQuantity)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      'Only ${item.product.stockQuantity} available',
+                      style: const TextStyle(
+                        color: Colors.red,
+                        fontSize: 12,
                       ),
                     ),
                   ),
-                  SizedBox(width: VillageTheme.spacingS),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPromoCodeSection(CartProvider cartProvider) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Promo Code',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          
+          if (cartProvider.appliedPromoCode != null) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.green.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                  const SizedBox(width: 8),
                   Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        cart.removeItem(item.id);
-                        Navigator.of(context).pop();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Row(
-                              children: [
-                                Text('✅ ', style: TextStyle(fontSize: 16)),
-                                Expanded(
-                                  child: Text(
-                                    '${item.name} वण्डियिलिरुन्दु नीक्कप्पट्टदु / removed from cart',
-                                    style: TextStyle(color: Colors.white),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            backgroundColor: VillageTheme.successGreen,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
-                            ),
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: VillageTheme.errorRed,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
-                        ),
-                      ),
-                      child: Text(
-                        'नीक्कु / Remove',
-                        style: VillageTheme.buttonText,
-                      ),
+                    child: Text(
+                      'Promo code "${cartProvider.appliedPromoCode}" applied',
+                      style: const TextStyle(color: Colors.green),
                     ),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      cartProvider.removePromoCode();
+                      _promoController.clear();
+                    },
+                    child: const Text('Remove'),
                   ),
                 ],
               ),
             ),
+          ] else ...[
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _promoController,
+                    decoration: const InputDecoration(
+                      hintText: 'Enter promo code',
+                      border: OutlineInputBorder(),
+                    ),
+                    textCapitalization: TextCapitalization.characters,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton(
+                  onPressed: _isApplyingPromo ? null : _applyPromoCode,
+                  child: _isApplyingPromo
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Apply'),
+                ),
+              ],
+            ),
           ],
-        );
-      },
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOrderSummary(CartProvider cartProvider) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Order Summary',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          
+          _buildSummaryRow(
+            'Subtotal (${cartProvider.itemCount} items)',
+            Helpers.formatCurrency(cartProvider.subtotal),
+          ),
+          
+          _buildSummaryRow(
+            'Delivery Fee',
+            cartProvider.deliveryFee > 0 
+                ? Helpers.formatCurrency(cartProvider.deliveryFee)
+                : 'FREE',
+            valueColor: cartProvider.deliveryFee > 0 ? null : Colors.green,
+          ),
+          
+          _buildSummaryRow(
+            'Tax',
+            Helpers.formatCurrency(cartProvider.taxAmount),
+          ),
+          
+          if (cartProvider.promoDiscount > 0)
+            _buildSummaryRow(
+              'Promo Discount',
+              '-${Helpers.formatCurrency(cartProvider.promoDiscount)}',
+              valueColor: Colors.green,
+            ),
+          
+          const Divider(thickness: 1),
+          
+          _buildSummaryRow(
+            'Total',
+            Helpers.formatCurrency(cartProvider.total),
+            isTotal: true,
+          ),
+          
+          if (cartProvider.deliveryFee > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                'Add ₹${(500 - cartProvider.subtotal).toStringAsFixed(0)} more for free delivery',
+                style: const TextStyle(
+                  color: Colors.blue,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryRow(
+    String label,
+    String value, {
+    Color? valueColor,
+    bool isTotal = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: isTotal ? 16 : 14,
+              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+              color: Colors.black,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: isTotal ? 18 : 14,
+              fontWeight: isTotal ? FontWeight.bold : FontWeight.w600,
+              color: valueColor ?? (isTotal ? AppColors.primary : Colors.black),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomBar(CartProvider cartProvider) {
+    final canCheckout = cartProvider.canCheckout();
+    final issues = cartProvider.getCheckoutIssues();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!canCheckout && issues.isNotEmpty)
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.withOpacity(0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Unable to checkout:',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    ...issues.map((issue) => Text(
+                          '• $issue',
+                          style: const TextStyle(color: Colors.red),
+                        )).toList(),
+                  ],
+                ),
+              ),
+            
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Total Amount',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      Text(
+                        Helpers.formatCurrency(cartProvider.total),
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: VillageTheme.primaryGreen,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  flex: 2,
+                  child: PrimaryButton(
+                    text: 'Proceed to Checkout',
+                    onPressed: canCheckout ? _proceedToCheckout : null,
+                    icon: Icons.shopping_cart_checkout,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showRemoveDialog(CartItem item, CartProvider cartProvider) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove Item'),
+        content: Text('Remove ${item.product.name} from cart?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              cartProvider.removeFromCart(item.product.id);
+              Navigator.pop(context);
+            },
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _applyPromoCode() async {
+    if (_promoController.text.trim().isEmpty) return;
+
+    setState(() => _isApplyingPromo = true);
+
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+    final success = await cartProvider.applyPromoCode(_promoController.text.trim());
+
+    setState(() => _isApplyingPromo = false);
+
+    if (success) {
+      Helpers.showSnackBar(context, 'Promo code applied successfully!');
+    } else {
+      Helpers.showSnackBar(context, 'Invalid promo code', isError: true);
+    }
+  }
+
+  void _proceedToCheckout() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const CheckoutScreen(),
+      ),
     );
   }
 }

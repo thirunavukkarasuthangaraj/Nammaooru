@@ -637,15 +637,27 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               child: Consumer<CartProvider>(
                 builder: (context, cartProvider, child) {
                   return PrimaryButton(
-                    text: 'Add to Cart',
-                    onPressed: widget.product.isInStock ? () {
-                      cartProvider.addToCart(widget.product, quantity: _quantity);
-                      Helpers.showSnackBar(
-                        context,
-                        'Added ${widget.product.name} to cart',
-                      );
+                    text: cartProvider.isLoading ? 'Adding...' : 'Add to Cart',
+                    onPressed: widget.product.isInStock && !cartProvider.isLoading ? () async {
+                      try {
+                        await cartProvider.addToCart(widget.product, quantity: _quantity);
+                        if (mounted) {
+                          Helpers.showSnackBar(
+                            context,
+                            'Added ${widget.product.name} to cart',
+                          );
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          Helpers.showSnackBar(
+                            context,
+                            'Failed to add item to cart',
+                            isError: true,
+                          );
+                        }
+                      }
                     } : null,
-                    icon: Icons.shopping_cart,
+                    icon: cartProvider.isLoading ? Icons.hourglass_empty : Icons.shopping_cart,
                   );
                 },
               ),

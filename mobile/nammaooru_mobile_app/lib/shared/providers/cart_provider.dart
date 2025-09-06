@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import '../models/product_model.dart';
 import '../models/cart_model.dart';
 import '../../core/storage/local_storage.dart';
+import '../../core/services/cart_service.dart';
+import '../../core/models/cart_model.dart' as CoreCart;
 import 'dart:convert';
 
 class CartProvider with ChangeNotifier {
@@ -10,11 +12,14 @@ class CartProvider with ChangeNotifier {
   double _taxRate = 0.05; // 5% tax
   String? _promoCode;
   double _promoDiscount = 0.0;
+  final CartService _cartService = CartService();
+  bool _isLoading = false;
 
   List<CartItem> get items => List.unmodifiable(_items);
   int get itemCount => _items.fold(0, (sum, item) => sum + item.quantity);
   bool get isEmpty => _items.isEmpty;
   bool get isNotEmpty => _items.isNotEmpty;
+  bool get isLoading => _isLoading;
 
   double get subtotal => _items.fold(0.0, (sum, item) => 
       sum + (item.product.effectivePrice * item.quantity));
@@ -27,26 +32,73 @@ class CartProvider with ChangeNotifier {
 
   CartProvider() {
     _loadCartFromStorage();
+    loadCartFromBackend();
   }
 
-  void addToCart(ProductModel product, {int quantity = 1}) {
-    final existingIndex = _items.indexWhere((item) => item.product.id == product.id);
-    
-    if (existingIndex >= 0) {
-      _items[existingIndex] = _items[existingIndex].copyWith(
-        quantity: _items[existingIndex].quantity + quantity,
-      );
-    } else {
-      _items.add(CartItem(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        product: product,
-        quantity: quantity,
-        addedAt: DateTime.now(),
-      ));
+  Future<void> addToCart(ProductModel product, {int quantity = 1}) async {
+    if (kDebugMode) {
+      print('🛒 CartProvider: Adding ${product.name} (qty: $quantity) to cart');
     }
     
-    _saveCartToStorage();
+    _isLoading = true;
     notifyListeners();
+    
+    try {
+      // ALWAYS add to local storage first for immediate UI feedback
+      final existingIndex = _items.indexWhere((item) => item.product.id == product.id);
+      
+      if (existingIndex >= 0) {
+        _items[existingIndex] = _items[existingIndex].copyWith(
+          quantity: _items[existingIndex].quantity + quantity,
+        );
+        if (kDebugMode) {
+          print('🛒 Updated existing item, new qty: ${_items[existingIndex].quantity}');
+        }
+      } else {
+        _items.add(CartItem(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          product: product,
+          quantity: quantity,
+          addedAt: DateTime.now(),
+        ));
+        if (kDebugMode) {
+          print('🛒 Added new item to cart, total items: ${_items.length}');
+        }
+      }
+      
+      _saveCartToStorage();
+      
+      // Try to sync with backend (but don't fail if it doesn't work)
+      try {
+        final request = CoreCart.AddToCartRequest(
+          shopProductId: product.id,
+          quantity: quantity,
+        );
+        
+        final response = await _cartService.addToCart(request);
+        
+        if (kDebugMode) {
+          print('🛒 Backend sync result: ${response['success']}');
+        }
+      } catch (backendError) {
+        if (kDebugMode) {
+          print('🛒 Backend sync failed (item still in local cart): $backendError');
+        }
+      }
+      
+    } catch (e) {
+      if (kDebugMode) {
+        print('🛒 Error in addToCart: $e');
+      }
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+      
+      if (kDebugMode) {
+        print('🛒 Cart now has ${_items.length} items, isEmpty: $isEmpty');
+      }
+    }
   }
 
   void removeFromCart(String productId) {
@@ -156,6 +208,24 @@ class CartProvider with ChangeNotifier {
       'promoDiscount': _promoDiscount,
     };
     LocalStorage.setString('cart_data', jsonEncode(cartData));
+  }
+
+  Future<void> loadCartFromBackend() async {
+    try {
+      final response = await _cartService.getCart();
+      if (response['success'] == true) {
+        final backendCart = response['data'] as CoreCart.Cart;
+        // TODO: Convert backend cart items to local cart items
+        // This requires mapping backend cart structure to local ProductModel structure
+        if (kDebugMode) {
+          print('Loaded cart from backend: ${backendCart.items.length} items');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error loading cart from backend: $e');
+      }
+    }
   }
 
   void _loadCartFromStorage() {

@@ -58,7 +58,10 @@
       "Bash(\"taskkill\" \"/F\" \"/IM\" \"dart.exe\")",
       "Bash(start chrome:*)",
       "Bash(./mvnw:*)",
-      "Bash(set PGPASSWORD=postgres)"
+      "Bash(set PGPASSWORD=postgres)",
+      "Bash(cmd /c:*)",
+      "Bash(dir D:AAWSnammaoorushop-management-systemmobilenammaooru_mobile_applibcoreproviders)",
+      "Read(//c/Users/MVNLA/Downloads/claude-code/**)"
     ],
     "deny": [],
     "ask": [],

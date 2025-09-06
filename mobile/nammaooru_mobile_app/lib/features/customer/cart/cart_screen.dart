@@ -7,6 +7,7 @@ import '../../../shared/widgets/error_widget.dart';
 import '../../../shared/providers/cart_provider.dart';
 import '../../../shared/models/cart_model.dart';
 import '../../../core/constants/colors.dart';
+import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/helpers.dart';
 import '../orders/checkout_screen.dart';
 
@@ -32,6 +33,9 @@ class _CartScreenState extends State<CartScreen> {
     return Scaffold(
       appBar: const CustomAppBar(
         title: 'Shopping Cart',
+        backgroundColor: VillageTheme.primaryGreen,
+        foregroundColor: Colors.white,
+        showBackButton: true,
       ),
       body: Consumer<CartProvider>(
         builder: (context, cartProvider, child) {
@@ -121,7 +125,7 @@ class _CartScreenState extends State<CartScreen> {
                         shopName,
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
+                          color: VillageTheme.primaryGreen,
                         ),
                       ),
                     ),
@@ -129,7 +133,7 @@ class _CartScreenState extends State<CartScreen> {
                       Helpers.formatCurrency(cartProvider.getShopSubtotal(shopId)),
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
+                        color: VillageTheme.primaryGreen,
                       ),
                     ),
                   ],
@@ -192,7 +196,7 @@ class _CartScreenState extends State<CartScreen> {
                       Helpers.formatCurrency(item.product.effectivePrice),
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
+                        color: VillageTheme.primaryGreen,
                         fontSize: 16,
                       ),
                     ),
@@ -543,7 +547,7 @@ class _CartScreenState extends State<CartScreen> {
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
+                          color: VillageTheme.primaryGreen,
                         ),
                       ),
                     ],

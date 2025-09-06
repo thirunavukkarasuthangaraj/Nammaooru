@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../services/shop_api_service.dart';
 import '../../../shared/widgets/loading_widget.dart';
-import '../../../core/providers/cart_provider.dart';
+import '../../../shared/providers/cart_provider.dart';
+import '../../../shared/models/product_model.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/utils/helpers.dart';
+import 'cart_screen.dart';
 
 class ShopDetailsScreen extends StatefulWidget {
   final int shopId;
@@ -33,7 +35,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
   final List<Map<String, dynamic>> _categoryData = [
     {'name': 'All Items', 'tamil': 'அனைத்து பொருட்கள்', 'emoji': '🛒', 'key': 'all'},
     {'name': 'Grocery', 'tamil': 'மளிகை', 'emoji': '🥬', 'key': 'grocery'},
-    {'name': 'Medicine', 'tamil': 'மருந்து', 'emoji': '💊', 'key': 'medicine'},
+    {'name': 'Milk', 'tamil': 'பால்', 'emoji': '🥛', 'key': 'milk'},
     {'name': 'Snacks', 'tamil': 'சிற்றுண்டி', 'emoji': '🍿', 'key': 'snacks'},
   ];
   String _selectedCategory = 'all';
@@ -145,6 +147,60 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
           : _hasError
               ? _buildErrorState()
               : _buildShopDetails(),
+      floatingActionButton: Consumer<CartProvider>(
+        builder: (context, cartProvider, child) {
+          // Only show floating button when cart has items
+          if (cartProvider.isEmpty) {
+            return const SizedBox.shrink();
+          }
+          
+          return FloatingActionButton.extended(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const CartScreen()),
+              );
+            },
+            backgroundColor: VillageTheme.primaryGreen,
+            foregroundColor: Colors.white,
+            elevation: 6,
+            icon: Stack(
+              children: [
+                const Icon(Icons.shopping_cart, size: 24),
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 20,
+                      minHeight: 20,
+                    ),
+                    child: Text(
+                      '${cartProvider.itemCount}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            label: Text(
+              'Cart (${cartProvider.itemCount})',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          );
+        },
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 
@@ -258,54 +314,11 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
       backgroundColor: const Color(0xFF2E7D32),
       automaticallyImplyLeading: true,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
+        icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 24),
         onPressed: () => Navigator.of(context).pop(),
         tooltip: 'Back',
       ),
-      actions: [
-        Consumer<CartProvider>(
-          builder: (context, cartProvider, child) {
-            final totalItems = cartProvider.itemCount;
-            
-            return Stack(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.shopping_cart, color: Colors.white, size: 28),
-                  onPressed: () {
-                    // TODO: Navigate to cart screen
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Cart screen not implemented yet')),
-                    );
-                  },
-                ),
-                if (totalItems > 0)
-                  Positioned(
-                    right: 8,
-                    top: 8,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                      ),
-                      constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
-                      child: Text(
-                        totalItems > 99 ? '99+' : totalItems.toString(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
-              ],
-            );
-          },
-        ),
-        const SizedBox(width: 8),
-      ],
+      // Cart actions removed - using floating action button instead
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
           decoration: BoxDecoration(
@@ -748,14 +761,19 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
                         return ElevatedButton(
                           onPressed: isInStock
                               ? () {
-                                  cartProvider.addToCart({
-                                    'id': product['id'],
-                                    'name': productName,
-                                    'price': price,
-                                    'image': '',
-                                    'shopId': widget.shopId.toString(),
-                                    'shopName': _shop?['name']?.toString() ?? 'Shop',
-                                  });
+                                  cartProvider.addToCart(ProductModel(
+                                    id: product['id'].toString(),
+                                    name: productName,
+                                    description: product['description']?.toString() ?? '',
+                                    price: price,
+                                    category: product['category']?.toString() ?? '',
+                                    shopId: widget.shopId.toString(),
+                                    shopName: _shop?['name']?.toString() ?? 'Shop',
+                                    images: List<String>.from(product['images'] ?? ['']),
+                                    stockQuantity: product['stockQuantity'] ?? 0,
+                                    createdAt: DateTime.now(),
+                                    updatedAt: DateTime.now(),
+                                  ));
                                   Helpers.showSnackBar(context, 'Added to cart');
                                 }
                               : null,

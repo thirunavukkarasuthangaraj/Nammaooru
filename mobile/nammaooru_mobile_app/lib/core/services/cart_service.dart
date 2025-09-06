@@ -7,14 +7,12 @@ class CartService {
   factory CartService() => _instance;
   CartService._internal();
 
-  final ApiClient _apiClient = ApiClient();
-
   Future<Map<String, dynamic>> getCart() async {
     try {
-      final response = await _apiClient.get('/customer/cart');
+      final response = await ApiClient.get('/customers/cart');
       
-      if (response['statusCode'] == '0000') {
-        final cart = Cart.fromJson(response['data'] ?? {});
+      if (response.statusCode == 200) {
+        final cart = Cart.fromJson(response.data ?? {});
         await _cacheCart(cart);
         
         return {
@@ -25,7 +23,7 @@ class CartService {
       } else {
         return {
           'success': false,
-          'message': response['message'] ?? 'Failed to load cart',
+          'message': response.data?['message'] ?? 'Failed to load cart',
           'data': Cart.empty()
         };
       }
@@ -44,13 +42,13 @@ class CartService {
 
   Future<Map<String, dynamic>> addToCart(AddToCartRequest request) async {
     try {
-      final response = await _apiClient.post(
-        '/customer/cart/add',
+      final response = await ApiClient.post(
+        '/customers/cart/add',
         data: request.toJson(),
       );
       
-      if (response['statusCode'] == '0000') {
-        final cart = Cart.fromJson(response['data'] ?? {});
+      if (response.statusCode == 200) {
+        final cart = Cart.fromJson(response.data ?? {});
         await _cacheCart(cart);
         
         return {
@@ -61,7 +59,7 @@ class CartService {
       } else {
         return {
           'success': false,
-          'message': response['message'] ?? 'Failed to add item to cart'
+          'message': response.data?['message'] ?? 'Failed to add item to cart'
         };
       }
     } catch (e) {
@@ -78,13 +76,13 @@ class CartService {
 
   Future<Map<String, dynamic>> updateCartItem(String itemId, int quantity) async {
     try {
-      final response = await _apiClient.put(
-        '/customer/cart/update/$itemId',
+      final response = await ApiClient.put(
+        '/customers/cart/update/$itemId',
         data: {'quantity': quantity},
       );
       
-      if (response['statusCode'] == '0000') {
-        final cart = Cart.fromJson(response['data'] ?? {});
+      if (response.statusCode == 200) {
+        final cart = Cart.fromJson(response.data ?? {});
         await _cacheCart(cart);
         
         return {
@@ -95,7 +93,7 @@ class CartService {
       } else {
         return {
           'success': false,
-          'message': response['message'] ?? 'Failed to update cart'
+          'message': response.data?['message'] ?? 'Failed to update cart'
         };
       }
     } catch (e) {
@@ -110,10 +108,10 @@ class CartService {
 
   Future<Map<String, dynamic>> removeFromCart(String itemId) async {
     try {
-      final response = await _apiClient.delete('/customer/cart/remove/$itemId');
+      final response = await ApiClient.delete('/customers/cart/remove/$itemId');
       
-      if (response['statusCode'] == '0000') {
-        final cart = Cart.fromJson(response['data'] ?? {});
+      if (response.statusCode == 200) {
+        final cart = Cart.fromJson(response.data ?? {});
         await _cacheCart(cart);
         
         return {
@@ -124,7 +122,7 @@ class CartService {
       } else {
         return {
           'success': false,
-          'message': response['message'] ?? 'Failed to remove item'
+          'message': response.data?['message'] ?? 'Failed to remove item'
         };
       }
     } catch (e) {
@@ -139,9 +137,9 @@ class CartService {
 
   Future<Map<String, dynamic>> clearCart() async {
     try {
-      final response = await _apiClient.delete('/customer/cart/clear');
+      final response = await ApiClient.delete('/customers/cart/clear');
       
-      if (response['statusCode'] == '0000') {
+      if (response.statusCode == 200) {
         await _clearCachedCart();
         
         return {
@@ -152,7 +150,7 @@ class CartService {
       } else {
         return {
           'success': false,
-          'message': response['message'] ?? 'Failed to clear cart'
+          'message': response.data?['message'] ?? 'Failed to clear cart'
         };
       }
     } catch (e) {
@@ -246,9 +244,8 @@ class CartService {
       
       for (final item in offlineItems) {
         final request = AddToCartRequest(
-          productId: item['productId'],
+          shopProductId: item['shopProductId'],
           quantity: item['quantity'],
-          shopId: item['shopId'],
         );
         
         await addToCart(request);

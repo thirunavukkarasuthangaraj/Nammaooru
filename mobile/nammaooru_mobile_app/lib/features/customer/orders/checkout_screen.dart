@@ -6,6 +6,7 @@ import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/providers/cart_provider.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/utils/helpers.dart';
+import '../../../core/theme/village_theme.dart';
 // import 'order_confirmation_screen.dart'; // Temporarily commented
 
 class CheckoutScreen extends StatefulWidget {
@@ -84,6 +85,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: const CustomAppBar(
         title: 'Checkout',
       ),
@@ -129,7 +131,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   height: 32,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: isActive ? AppColors.primary : Colors.grey.shade300,
+                    color: isActive ? VillageTheme.primaryGreen : Colors.grey.shade300,
                   ),
                   child: Center(
                     child: isCompleted
@@ -149,7 +151,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     steps[index],
                     style: TextStyle(
                       fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                      color: isActive ? AppColors.primary : Colors.grey.shade600,
+                      color: isActive ? VillageTheme.primaryGreen : Colors.grey.shade600,
                     ),
                   ),
                 ),
@@ -158,7 +160,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   Expanded(
                     child: Container(
                       height: 2,
-                      color: isCompleted ? AppColors.primary : Colors.grey.shade300,
+                      color: isCompleted ? VillageTheme.primaryGreen : Colors.grey.shade300,
                     ),
                   ),
                 ],
@@ -218,7 +220,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     controller: _nameController,
                     decoration: const InputDecoration(
                       labelText: 'Full Name *',
-                      border: OutlineInputBorder(),
                     ),
                     validator: (value) => value?.isEmpty == true ? 'Name is required' : null,
                   ),
@@ -229,7 +230,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     controller: _phoneController,
                     decoration: const InputDecoration(
                       labelText: 'Phone Number *',
-                      border: OutlineInputBorder(),
                     ),
                     keyboardType: TextInputType.phone,
                     validator: (value) => value?.isEmpty == true ? 'Phone is required' : null,
@@ -242,10 +242,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             // Address Lines
             TextFormField(
               controller: _addressLine1Controller,
+              style: VillageTheme.inputTextStyle,
               decoration: const InputDecoration(
                 labelText: 'Address Line 1 *',
                 hintText: 'House/Flat/Office No, Building Name',
-                border: OutlineInputBorder(),
               ),
               validator: (value) => value?.isEmpty == true ? 'Address is required' : null,
             ),
@@ -253,10 +253,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             
             TextFormField(
               controller: _addressLine2Controller,
+              style: VillageTheme.inputTextStyle,
               decoration: const InputDecoration(
                 labelText: 'Address Line 2',
                 hintText: 'Area, Colony, Street Name',
-                border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 12),
@@ -266,7 +266,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               decoration: const InputDecoration(
                 labelText: 'Landmark',
                 hintText: 'Near famous place',
-                border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 16),
@@ -279,7 +278,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     value: _selectedCity,
                     decoration: const InputDecoration(
                       labelText: 'City *',
-                      border: OutlineInputBorder(),
                     ),
                     items: _cities.map((city) {
                       return DropdownMenuItem(value: city, child: Text(city));
@@ -297,7 +295,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     value: _selectedState,
                     decoration: const InputDecoration(
                       labelText: 'State *',
-                      border: OutlineInputBorder(),
                     ),
                     items: _states.map((state) {
                       return DropdownMenuItem(value: state, child: Text(state));
@@ -320,7 +317,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     controller: _pincodeController,
                     decoration: const InputDecoration(
                       labelText: 'Pincode *',
-                      border: OutlineInputBorder(),
                     ),
                     keyboardType: TextInputType.number,
                     maxLength: 6,
@@ -372,7 +368,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               decoration: const InputDecoration(
                 labelText: 'Delivery Instructions (Optional)',
                 hintText: 'Any specific instructions for delivery partner',
-                border: OutlineInputBorder(),
               ),
               maxLines: 2,
               onChanged: (value) {
@@ -439,7 +434,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               decoration: const InputDecoration(
                 labelText: 'Card Number',
                 hintText: '1234 5678 9012 3456',
-                border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.credit_card),
               ),
               keyboardType: TextInputType.number,
@@ -452,7 +446,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     decoration: const InputDecoration(
                       labelText: 'Expiry',
                       hintText: 'MM/YY',
-                      border: OutlineInputBorder(),
                     ),
                     keyboardType: TextInputType.number,
                   ),
@@ -463,7 +456,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     decoration: const InputDecoration(
                       labelText: 'CVV',
                       hintText: '123',
-                      border: OutlineInputBorder(),
                     ),
                     keyboardType: TextInputType.number,
                     obscureText: true,
@@ -475,7 +467,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             TextFormField(
               decoration: const InputDecoration(
                 labelText: 'Cardholder Name',
-                border: OutlineInputBorder(),
               ),
               textCapitalization: TextCapitalization.words,
             ),
@@ -495,7 +486,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               decoration: const InputDecoration(
                 labelText: 'UPI ID',
                 hintText: 'yourname@upi',
-                border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.account_balance_wallet),
               ),
               keyboardType: TextInputType.emailAddress,
@@ -518,7 +508,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         },
         title: Row(
           children: [
-            Icon(icon, color: AppColors.primary),
+            Icon(icon, color: VillageTheme.primaryGreen),
             const SizedBox(width: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -532,7 +522,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 Text(
                   subtitle,
                   style: const TextStyle(
-                    color: AppColors.textSecondary,
+                    color: VillageTheme.secondaryText,
                     fontSize: 12,
                   ),
                 ),
@@ -720,7 +710,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             style: TextStyle(
               fontSize: isTotal ? 16 : 14,
               fontWeight: FontWeight.w600,
-              color: valueColor ?? (isTotal ? AppColors.primary : Colors.black),
+              color: valueColor ?? (isTotal ? VillageTheme.primaryGreen : Colors.black),
             ),
           ),
         ],
@@ -833,9 +823,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       if (mounted) {
         // Show success message instead of navigating to confirmation screen
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Order placed successfully!'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Text(
+              'Order placed successfully!',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+            ),
+            backgroundColor: VillageTheme.primaryGreen,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            margin: const EdgeInsets.all(16),
+            behavior: SnackBarBehavior.floating,
           ),
         );
         Navigator.of(context).popUntil((route) => route.isFirst);
@@ -850,4 +848,5 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       }
     }
   }
+
 }

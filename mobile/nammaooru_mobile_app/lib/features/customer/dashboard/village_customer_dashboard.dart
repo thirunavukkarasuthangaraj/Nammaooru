@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/theme/village_theme.dart';
+import '../../../shared/providers/cart_provider.dart';
 import '../screens/orders_screen.dart';
 import '../screens/cart_screen.dart';
 import '../screens/help_support_screen.dart';
@@ -39,6 +41,60 @@ class _VillageCustomerDashboardState extends State<VillageCustomerDashboard> {
           ),
         ),
       ),
+      floatingActionButton: Consumer<CartProvider>(
+        builder: (context, cartProvider, child) {
+          // Only show floating button when cart has items
+          if (cartProvider.isEmpty) {
+            return const SizedBox.shrink();
+          }
+          
+          return FloatingActionButton.extended(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const CartScreen()),
+              );
+            },
+            backgroundColor: VillageTheme.primaryGreen,
+            foregroundColor: Colors.white,
+            elevation: 6,
+            icon: Stack(
+              children: [
+                const Icon(Icons.shopping_cart, size: 24),
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 20,
+                      minHeight: 20,
+                    ),
+                    child: Text(
+                      '${cartProvider.itemCount}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            label: Text(
+              'Cart (${cartProvider.itemCount})',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          );
+        },
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 
@@ -91,42 +147,7 @@ class _VillageCustomerDashboardState extends State<VillageCustomerDashboard> {
                   ],
                 ),
               ),
-              IconButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const CartScreen()),
-                  );
-                },
-                icon: Stack(
-                  children: [
-                    const Icon(
-                      Icons.shopping_cart,
-                      size: VillageTheme.iconLarge,
-                      color: Colors.white,
-                    ),
-                    Positioned(
-                      right: 0,
-                      top: 0,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: VillageTheme.accentOrange,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Text(
-                          '2',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              // Cart icon removed - using floating action button instead
             ],
           ),
           const SizedBox(height: VillageTheme.spacingM),

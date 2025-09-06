@@ -194,6 +194,13 @@ class VillageTheme {
     hintStyle: bodyMedium.copyWith(color: hintText),
   );
 
+  // Input text style for black text
+  static TextStyle get inputTextStyle => const TextStyle(
+    color: Colors.black,
+    fontSize: 16,
+    fontWeight: FontWeight.normal,
+  );
+
   // Card decoration
   static BoxDecoration get cardDecoration => BoxDecoration(
     color: cardBackground,
