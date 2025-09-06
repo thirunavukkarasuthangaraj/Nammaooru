@@ -1,12 +1,14 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import '../storage/local_storage.dart';
+import '../storage/secure_storage.dart';
 
 class ApiClient {
   static late Dio _dio;
-  
+
   static void initialize() {
     _dio = Dio(BaseOptions(
-      baseUrl: 'https://api.nammaoorudelivary.in/api',
+      baseUrl: 'http://localhost:8082/api', // Local environment
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
       headers: {
@@ -14,7 +16,7 @@ class ApiClient {
         'Accept': 'application/json',
       },
     ));
-    
+
     if (kDebugMode) {
       _dio.interceptors.add(LogInterceptor(
         requestBody: true,
@@ -24,27 +26,35 @@ class ApiClient {
       ));
     }
   }
-  
+
   static Dio get dio => _dio;
-  
+
   static Future<Response> get(
     String path, {
     Map<String, dynamic>? queryParameters,
     Options? options,
+    bool includeAuth = true,
   }) async {
+    if (includeAuth) {
+      await _addAuthToken();
+    }
     return await _dio.get(
       path,
       queryParameters: queryParameters,
       options: options,
     );
   }
-  
+
   static Future<Response> post(
     String path, {
     dynamic data,
     Map<String, dynamic>? queryParameters,
     Options? options,
+    bool includeAuth = true,
   }) async {
+    if (includeAuth) {
+      await _addAuthToken();
+    }
     return await _dio.post(
       path,
       data: data,
@@ -52,7 +62,7 @@ class ApiClient {
       options: options,
     );
   }
-  
+
   static Future<Response> put(
     String path, {
     dynamic data,
@@ -66,7 +76,7 @@ class ApiClient {
       options: options,
     );
   }
-  
+
   static Future<Response> delete(
     String path, {
     dynamic data,
@@ -80,7 +90,7 @@ class ApiClient {
       options: options,
     );
   }
-  
+
   static Future<Response> uploadFile(
     String path,
     String filePath, {
@@ -91,11 +101,32 @@ class ApiClient {
       'file': await MultipartFile.fromFile(filePath),
       ...?data,
     });
-    
+
     return await _dio.post(
       path,
       data: formData,
       onSendProgress: onSendProgress,
     );
+  }
+
+  static Future<void> _addAuthToken() async {
+    try {
+      await LocalStorage.init();
+      final token = await SecureStorage.getAuthToken();
+      if (token != null && token.isNotEmpty) {
+        _dio.options.headers['Authorization'] = 'Bearer $token';
+        if (kDebugMode) {
+          print('ApiClient: Adding auth token');
+        }
+      } else {
+        if (kDebugMode) {
+          print('ApiClient: No auth token found');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('ApiClient: Error getting auth token: $e');
+      }
+    }
   }
 }

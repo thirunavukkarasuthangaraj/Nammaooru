@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:email_validator/email_validator.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/models/auth_models.dart';
+import '../../../core/theme/village_theme.dart';
 import 'otp_verification_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -15,7 +17,6 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -28,7 +29,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   void dispose() {
     _nameController.dispose();
-    _usernameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
@@ -36,20 +36,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
+  String _generateUsername(String fullName) {
+    final name = fullName.trim().toLowerCase();
+    final parts = name.split(' ');
+    
+    if (parts.length >= 2) {
+      return '${parts[0]}.${parts[parts.length - 1]}';
+    } else {
+      return parts[0];
+    }
+  }
+
   Future<void> _handleRegister() async {
     if (!_formKey.currentState!.validate()) return;
 
     if (!_acceptTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please accept the terms and conditions'),
-          backgroundColor: Colors.red,
+        SnackBar(
+          content: Text('कृपया नियम और शर्तों को स्वीकार करें / Please accept the terms and conditions'),
+          backgroundColor: VillageTheme.errorRed,
         ),
       );
       return;
     }
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final generatedUsername = _generateUsername(_nameController.text);
     
     final success = await authProvider.register(
       name: _nameController.text.trim(),
@@ -57,6 +69,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       password: _passwordController.text,
       phoneNumber: _phoneController.text.trim(),
       role: 'CUSTOMER',
+      username: generatedUsername,
     );
 
     if (mounted) {
@@ -72,7 +85,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(authProvider.errorMessage!),
-            backgroundColor: Colors.red,
+            backgroundColor: VillageTheme.errorRed,
           ),
         );
       }
@@ -82,42 +95,55 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: VillageTheme.lightBackground,
       body: SafeArea(
         child: Consumer<AuthProvider>(
           builder: (context, authProvider, child) {
             if (authProvider.authState == AuthState.loading) {
-              return const Center(
-                child: CircularProgressIndicator(),
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      color: VillageTheme.primaryGreen,
+                      strokeWidth: 3,
+                    ),
+                    const SizedBox(height: VillageTheme.spacingM),
+                    Text(
+                      '🔄 பதிவு செய்யப்படுகிறது... / Creating Account...',
+                      style: VillageTheme.bodyLarge.copyWith(
+                        color: VillageTheme.primaryGreen,
+                      ),
+                    ),
+                  ],
+                ),
               );
             }
             
             return SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
+              padding: const EdgeInsets.all(VillageTheme.spacingL),
               child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const SizedBox(height: 40),
+                    const SizedBox(height: VillageTheme.spacingXL),
                     _buildHeader(),
-                    const SizedBox(height: 30),
+                    const SizedBox(height: VillageTheme.spacingXL),
                     _buildNameField(),
-                    const SizedBox(height: 16),
-                    _buildUsernameField(),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: VillageTheme.spacingM),
                     _buildEmailField(),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: VillageTheme.spacingM),
                     _buildPhoneField(),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: VillageTheme.spacingM),
                     _buildPasswordField(),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: VillageTheme.spacingM),
                     _buildConfirmPasswordField(),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: VillageTheme.spacingM),
                     _buildTermsAndConditions(),
-                    const SizedBox(height: 30),
+                    const SizedBox(height: VillageTheme.spacingXL),
                     _buildRegisterButton(),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: VillageTheme.spacingL),
                     _buildLoginLink(),
                   ],
                 ),
@@ -132,21 +158,50 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _buildHeader() {
     return Column(
       children: [
-        const Text(
-          'Create Account',
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF1C1C1E),
+        Container(
+          width: 100,
+          height: 100,
+          decoration: BoxDecoration(
+            gradient: VillageTheme.primaryGradient,
+            borderRadius: BorderRadius.circular(VillageTheme.cardRadius * 2),
+            boxShadow: VillageTheme.buttonShadow,
           ),
-          textAlign: TextAlign.center,
+          child: const Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('📝', style: TextStyle(fontSize: 40)),
+              Text('பதிவு', style: TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
+            ],
+          ),
         ),
-        const SizedBox(height: 8),
-        const Text(
-          'Join NammaOoru and start ordering from your favorite local shops',
-          style: TextStyle(
-            fontSize: 16,
-            color: Color(0xFF8E8E93),
+        const SizedBox(height: VillageTheme.spacingL),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('✨ ', style: TextStyle(fontSize: 24)),
+            Column(
+              children: [
+                Text(
+                  'புதிய கணக்கு!',
+                  style: VillageTheme.headingLarge.copyWith(
+                    color: VillageTheme.primaryGreen,
+                  ),
+                ),
+                Text(
+                  'Create Account!',
+                  style: VillageTheme.headingMedium.copyWith(
+                    color: VillageTheme.secondaryText,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: VillageTheme.spacingM),
+        Text(
+          'உள்ளூர் கடைகளில் இருந்து வாங்க சேருங்கள் / Join to order from local shops',
+          style: VillageTheme.bodyLarge.copyWith(
+            color: VillageTheme.secondaryText,
           ),
           textAlign: TextAlign.center,
         ),
@@ -155,544 +210,488 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _buildNameField() {
-    return TextFormField(
-      controller: _nameController,
-      textInputAction: TextInputAction.next,
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w500,
-        color: Color(0xFF1C1C1E),
-      ),
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Please enter your full name';
-        }
-        if (value.length < 2) {
-          return 'Name must be at least 2 characters';
-        }
-        return null;
-      },
-      decoration: InputDecoration(
-        labelText: 'Full Name',
-        labelStyle: const TextStyle(
-          color: Color(0xFF666666),
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
+    return Container(
+      decoration: VillageTheme.cardDecoration,
+      child: TextFormField(
+        controller: _nameController,
+        textInputAction: TextInputAction.next,
+        style: VillageTheme.bodyLarge,
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return 'कृपया अपना पूरा नाम दर्ज करें / Please enter your full name';
+          }
+          if (value.trim().length < 2) {
+            return 'Name must be at least 2 characters';
+          }
+          if (!RegExp(r'^[a-zA-Z\s]+\$').hasMatch(value.trim())) {
+            return 'Name can only contain letters and spaces';
+          }
+          if (value.trim().split(' ').length < 2) {
+            return 'Please enter both first and last name';
+          }
+          return null;
+        },
+        decoration: InputDecoration(
+          labelText: '👤 முழு பெயர் / Full Name',
+          labelStyle: VillageTheme.labelText.copyWith(
+            color: VillageTheme.primaryGreen,
+          ),
+          hintText: 'e.g., राम कुमार / Ram Kumar',
+          hintStyle: VillageTheme.bodyMedium.copyWith(
+            color: VillageTheme.hintText,
+          ),
+          prefixIcon: Icon(
+            Icons.person_outlined,
+            color: VillageTheme.primaryGreen,
+            size: VillageTheme.iconMedium,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
+            borderSide: BorderSide(color: VillageTheme.primaryGreen.withOpacity(0.3)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
+            borderSide: BorderSide(color: VillageTheme.primaryGreen.withOpacity(0.3)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
+            borderSide: BorderSide(color: VillageTheme.primaryGreen, width: 2),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
+            borderSide: BorderSide(color: VillageTheme.errorRed, width: 2),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
+            borderSide: BorderSide(color: VillageTheme.errorRed, width: 2),
+          ),
+          filled: true,
+          fillColor: VillageTheme.cardBackground,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: VillageTheme.spacingM,
+            vertical: VillageTheme.spacingM,
+          ),
         ),
-        hintText: 'Enter your full name',
-        hintStyle: const TextStyle(
-          color: Color(0xFF999999),
-          fontSize: 16,
-        ),
-        prefixIcon: const Icon(Icons.person_outlined, 
-          color: Color(0xFF2196F3), 
-          size: 22,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFD0D0D0), width: 1.5),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFD0D0D0), width: 1.5),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF2196F3), width: 2.5),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE53E3E), width: 1.5),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE53E3E), width: 2.5),
-        ),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-        isDense: false,
-      ),
-    );
-  }
-
-  Widget _buildUsernameField() {
-    return TextFormField(
-      controller: _usernameController,
-      textInputAction: TextInputAction.next,
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w500,
-        color: Color(0xFF1C1C1E),
-      ),
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Please enter a username';
-        }
-        if (value.length < 3) {
-          return 'Username must be at least 3 characters';
-        }
-        if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value)) {
-          return 'Username can only contain letters, numbers, and underscores';
-        }
-        return null;
-      },
-      decoration: InputDecoration(
-        labelText: 'Username',
-        labelStyle: const TextStyle(
-          color: Color(0xFF666666),
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-        ),
-        hintText: 'Choose a unique username',
-        hintStyle: const TextStyle(
-          color: Color(0xFF999999),
-          fontSize: 16,
-        ),
-        prefixIcon: const Icon(Icons.account_circle_outlined, 
-          color: Color(0xFF2196F3), 
-          size: 22,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFD0D0D0), width: 1.5),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFD0D0D0), width: 1.5),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF2196F3), width: 2.5),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE53E3E), width: 1.5),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE53E3E), width: 2.5),
-        ),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-        isDense: false,
       ),
     );
   }
 
   Widget _buildEmailField() {
-    return TextFormField(
-      controller: _emailController,
-      keyboardType: TextInputType.emailAddress,
-      textInputAction: TextInputAction.next,
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w500,
-        color: Color(0xFF1C1C1E),
-      ),
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Please enter your email';
-        }
-        if (!EmailValidator.validate(value)) {
-          return 'Please enter a valid email address';
-        }
-        return null;
-      },
-      decoration: InputDecoration(
-        labelText: 'Email Address',
-        labelStyle: const TextStyle(
-          color: Color(0xFF666666),
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
+    return Container(
+      decoration: VillageTheme.cardDecoration,
+      child: TextFormField(
+        controller: _emailController,
+        keyboardType: TextInputType.emailAddress,
+        textInputAction: TextInputAction.next,
+        style: VillageTheme.bodyLarge,
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return 'कृपया अपना ईमेल दर्ज करें / Please enter your email';
+          }
+          if (!EmailValidator.validate(value)) {
+            return 'Please enter a valid email address';
+          }
+          return null;
+        },
+        decoration: InputDecoration(
+          labelText: '📧 மின்னஞ்சல் / Email',
+          labelStyle: VillageTheme.labelText.copyWith(
+            color: VillageTheme.primaryGreen,
+          ),
+          hintText: 'example@email.com',
+          hintStyle: VillageTheme.bodyMedium.copyWith(
+            color: VillageTheme.hintText,
+          ),
+          prefixIcon: Icon(
+            Icons.email_outlined,
+            color: VillageTheme.primaryGreen,
+            size: VillageTheme.iconMedium,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
+            borderSide: BorderSide(color: VillageTheme.primaryGreen.withOpacity(0.3)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
+            borderSide: BorderSide(color: VillageTheme.primaryGreen.withOpacity(0.3)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
+            borderSide: BorderSide(color: VillageTheme.primaryGreen, width: 2),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
+            borderSide: BorderSide(color: VillageTheme.errorRed, width: 2),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
+            borderSide: BorderSide(color: VillageTheme.errorRed, width: 2),
+          ),
+          filled: true,
+          fillColor: VillageTheme.cardBackground,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: VillageTheme.spacingM,
+            vertical: VillageTheme.spacingM,
+          ),
         ),
-        hintText: 'example@email.com',
-        hintStyle: const TextStyle(
-          color: Color(0xFF999999),
-          fontSize: 16,
-        ),
-        prefixIcon: const Icon(Icons.email_outlined, 
-          color: Color(0xFF2196F3), 
-          size: 22,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFD0D0D0), width: 1.5),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFD0D0D0), width: 1.5),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF2196F3), width: 2.5),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE53E3E), width: 1.5),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE53E3E), width: 2.5),
-        ),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-        isDense: false,
       ),
     );
   }
 
   Widget _buildPhoneField() {
-    return TextFormField(
-      controller: _phoneController,
-      keyboardType: TextInputType.phone,
-      textInputAction: TextInputAction.next,
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w500,
-        color: Color(0xFF1C1C1E),
-      ),
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Please enter your phone number';
-        }
-        if (value.length < 10) {
-          return 'Please enter a valid phone number';
-        }
-        return null;
-      },
-      decoration: InputDecoration(
-        labelText: 'Phone Number',
-        labelStyle: const TextStyle(
-          color: Color(0xFF666666),
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
+    return Container(
+      decoration: VillageTheme.cardDecoration,
+      child: TextFormField(
+        controller: _phoneController,
+        keyboardType: TextInputType.phone,
+        textInputAction: TextInputAction.next,
+        style: VillageTheme.bodyLarge,
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return 'कृपया अपना फोन नंबर दर्ज करें / Please enter your phone number';
+          }
+          if (value.length < 10) {
+            return 'Please enter a valid phone number';
+          }
+          return null;
+        },
+        decoration: InputDecoration(
+          labelText: '📱 தொலைபேசி / Phone Number',
+          labelStyle: VillageTheme.labelText.copyWith(
+            color: VillageTheme.primaryGreen,
+          ),
+          hintText: '10 digit mobile number',
+          hintStyle: VillageTheme.bodyMedium.copyWith(
+            color: VillageTheme.hintText,
+          ),
+          prefixIcon: Icon(
+            Icons.phone_outlined,
+            color: VillageTheme.primaryGreen,
+            size: VillageTheme.iconMedium,
+          ),
+          prefixText: '+91 ',
+          prefixStyle: VillageTheme.bodyLarge.copyWith(
+            color: VillageTheme.primaryGreen,
+            fontWeight: FontWeight.w600,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
+            borderSide: BorderSide(color: VillageTheme.primaryGreen.withOpacity(0.3)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
+            borderSide: BorderSide(color: VillageTheme.primaryGreen.withOpacity(0.3)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
+            borderSide: BorderSide(color: VillageTheme.primaryGreen, width: 2),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
+            borderSide: BorderSide(color: VillageTheme.errorRed, width: 2),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
+            borderSide: BorderSide(color: VillageTheme.errorRed, width: 2),
+          ),
+          filled: true,
+          fillColor: VillageTheme.cardBackground,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: VillageTheme.spacingM,
+            vertical: VillageTheme.spacingM,
+          ),
         ),
-        hintText: '10 digit mobile number',
-        hintStyle: const TextStyle(
-          color: Color(0xFF999999),
-          fontSize: 16,
-        ),
-        prefixIcon: const Icon(Icons.phone_outlined, 
-          color: Color(0xFF2196F3), 
-          size: 22,
-        ),
-        prefixText: '+91 ',
-        prefixStyle: const TextStyle(
-          color: Color(0xFF1C1C1E), 
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFD0D0D0), width: 1.5),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFD0D0D0), width: 1.5),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF2196F3), width: 2.5),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE53E3E), width: 1.5),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE53E3E), width: 2.5),
-        ),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-        isDense: false,
       ),
     );
   }
 
   Widget _buildPasswordField() {
-    return TextFormField(
-      controller: _passwordController,
-      obscureText: _obscurePassword,
-      textInputAction: TextInputAction.next,
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w500,
-        color: Color(0xFF1C1C1E),
-      ),
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Please enter a password';
-        }
-        if (value.length < 6) {
-          return 'Password must be at least 6 characters';
-        }
-        return null;
-      },
-      decoration: InputDecoration(
-        labelText: 'Password',
-        labelStyle: const TextStyle(
-          color: Color(0xFF666666),
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-        ),
-        hintText: 'Minimum 6 characters',
-        hintStyle: const TextStyle(
-          color: Color(0xFF999999),
-          fontSize: 16,
-        ),
-        prefixIcon: const Icon(Icons.lock_outlined, 
-          color: Color(0xFF2196F3), 
-          size: 22,
-        ),
-        suffixIcon: IconButton(
-          icon: Icon(
-            _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-            color: const Color(0xFF666666),
-            size: 22,
+    return Container(
+      decoration: VillageTheme.cardDecoration,
+      child: TextFormField(
+        controller: _passwordController,
+        obscureText: _obscurePassword,
+        textInputAction: TextInputAction.next,
+        style: VillageTheme.bodyLarge,
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return 'कृपया एक पासवर्ड दर्ज करें / Please enter a password';
+          }
+          if (value.length < 6) {
+            return 'Password must be at least 6 characters';
+          }
+          return null;
+        },
+        decoration: InputDecoration(
+          labelText: '🔐 கடவுச்சொல் / Password',
+          labelStyle: VillageTheme.labelText.copyWith(
+            color: VillageTheme.primaryGreen,
           ),
-          onPressed: () {
-            setState(() {
-              _obscurePassword = !_obscurePassword;
-            });
-          },
+          hintText: 'Minimum 6 characters',
+          hintStyle: VillageTheme.bodyMedium.copyWith(
+            color: VillageTheme.hintText,
+          ),
+          prefixIcon: Icon(
+            Icons.lock_outlined,
+            color: VillageTheme.primaryGreen,
+            size: VillageTheme.iconMedium,
+          ),
+          suffixIcon: IconButton(
+            icon: Icon(
+              _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+              color: VillageTheme.secondaryText,
+              size: VillageTheme.iconMedium,
+            ),
+            onPressed: () {
+              setState(() {
+                _obscurePassword = !_obscurePassword;
+              });
+            },
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
+            borderSide: BorderSide(color: VillageTheme.primaryGreen.withOpacity(0.3)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
+            borderSide: BorderSide(color: VillageTheme.primaryGreen.withOpacity(0.3)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
+            borderSide: BorderSide(color: VillageTheme.primaryGreen, width: 2),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
+            borderSide: BorderSide(color: VillageTheme.errorRed, width: 2),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
+            borderSide: BorderSide(color: VillageTheme.errorRed, width: 2),
+          ),
+          filled: true,
+          fillColor: VillageTheme.cardBackground,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: VillageTheme.spacingM,
+            vertical: VillageTheme.spacingM,
+          ),
         ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFD0D0D0), width: 1.5),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFD0D0D0), width: 1.5),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF2196F3), width: 2.5),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE53E3E), width: 1.5),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE53E3E), width: 2.5),
-        ),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-        isDense: false,
       ),
     );
   }
 
   Widget _buildConfirmPasswordField() {
-    return TextFormField(
-      controller: _confirmPasswordController,
-      obscureText: _obscureConfirmPassword,
-      textInputAction: TextInputAction.done,
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w500,
-        color: Color(0xFF1C1C1E),
-      ),
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Please confirm your password';
-        }
-        if (value != _passwordController.text) {
-          return 'Passwords do not match';
-        }
-        return null;
-      },
-      onFieldSubmitted: (_) => _handleRegister(),
-      decoration: InputDecoration(
-        labelText: 'Confirm Password',
-        labelStyle: const TextStyle(
-          color: Color(0xFF666666),
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-        ),
-        hintText: 'Re-enter your password',
-        hintStyle: const TextStyle(
-          color: Color(0xFF999999),
-          fontSize: 16,
-        ),
-        prefixIcon: const Icon(Icons.lock_outlined, 
-          color: Color(0xFF2196F3), 
-          size: 22,
-        ),
-        suffixIcon: IconButton(
-          icon: Icon(
-            _obscureConfirmPassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-            color: const Color(0xFF666666),
-            size: 22,
+    return Container(
+      decoration: VillageTheme.cardDecoration,
+      child: TextFormField(
+        controller: _confirmPasswordController,
+        obscureText: _obscureConfirmPassword,
+        textInputAction: TextInputAction.done,
+        style: VillageTheme.bodyLarge,
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return 'कृपया अपना पासवर्ड कन्फर्म करें / Please confirm your password';
+          }
+          if (value != _passwordController.text) {
+            return 'Passwords do not match';
+          }
+          return null;
+        },
+        onFieldSubmitted: (_) => _handleRegister(),
+        decoration: InputDecoration(
+          labelText: '🔒 கடவுச்சொல் உறுதிப்படுத்தல் / Confirm Password',
+          labelStyle: VillageTheme.labelText.copyWith(
+            color: VillageTheme.primaryGreen,
           ),
-          onPressed: () {
-            setState(() {
-              _obscureConfirmPassword = !_obscureConfirmPassword;
-            });
-          },
+          hintText: 'Re-enter your password',
+          hintStyle: VillageTheme.bodyMedium.copyWith(
+            color: VillageTheme.hintText,
+          ),
+          prefixIcon: Icon(
+            Icons.lock_outlined,
+            color: VillageTheme.primaryGreen,
+            size: VillageTheme.iconMedium,
+          ),
+          suffixIcon: IconButton(
+            icon: Icon(
+              _obscureConfirmPassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+              color: VillageTheme.secondaryText,
+              size: VillageTheme.iconMedium,
+            ),
+            onPressed: () {
+              setState(() {
+                _obscureConfirmPassword = !_obscureConfirmPassword;
+              });
+            },
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
+            borderSide: BorderSide(color: VillageTheme.primaryGreen.withOpacity(0.3)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
+            borderSide: BorderSide(color: VillageTheme.primaryGreen.withOpacity(0.3)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
+            borderSide: BorderSide(color: VillageTheme.primaryGreen, width: 2),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
+            borderSide: BorderSide(color: VillageTheme.errorRed, width: 2),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
+            borderSide: BorderSide(color: VillageTheme.errorRed, width: 2),
+          ),
+          filled: true,
+          fillColor: VillageTheme.cardBackground,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: VillageTheme.spacingM,
+            vertical: VillageTheme.spacingM,
+          ),
         ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFD0D0D0), width: 1.5),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFD0D0D0), width: 1.5),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF2196F3), width: 2.5),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE53E3E), width: 1.5),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE53E3E), width: 2.5),
-        ),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-        isDense: false,
       ),
     );
   }
 
   Widget _buildTermsAndConditions() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Transform.scale(
-          scale: 1.2,
-          child: Checkbox(
-            value: _acceptTerms,
-            onChanged: (value) {
-              setState(() {
-                _acceptTerms = value ?? false;
-              });
-            },
-            activeColor: const Color(0xFF2196F3),
-            checkColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(5),
+    return Container(
+      decoration: VillageTheme.cardDecoration,
+      padding: const EdgeInsets.all(VillageTheme.spacingM),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Transform.scale(
+            scale: 1.3,
+            child: Checkbox(
+              value: _acceptTerms,
+              onChanged: (value) {
+                setState(() {
+                  _acceptTerms = value ?? false;
+                });
+              },
+              activeColor: VillageTheme.primaryGreen,
+              checkColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
           ),
-        ),
-        Expanded(
-          child: Wrap(
-            children: [
-              const Text(
-                'I agree to the ',
-                style: TextStyle(color: Color(0xFF8E8E93)),
-              ),
-              GestureDetector(
-                onTap: () {
-                  // TODO: Show terms and conditions
-                },
-                child: const Text(
-                  'Terms and Conditions',
-                  style: TextStyle(
-                    color: Color(0xFF2196F3),
+          const SizedBox(width: VillageTheme.spacingS),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '📋 मैं निम्नलिखित से सहमत हूं:',
+                  style: VillageTheme.bodyMedium.copyWith(
                     fontWeight: FontWeight.w600,
-                    decoration: TextDecoration.underline,
+                    color: VillageTheme.primaryGreen,
                   ),
                 ),
-              ),
-              const Text(
-                ' and ',
-                style: TextStyle(color: Color(0xFF8E8E93)),
-              ),
-              GestureDetector(
-                onTap: () {
-                  // TODO: Show privacy policy
-                },
-                child: const Text(
-                  'Privacy Policy',
-                  style: TextStyle(
-                    color: Color(0xFF2196F3),
-                    fontWeight: FontWeight.w600,
-                    decoration: TextDecoration.underline,
-                  ),
+                const SizedBox(height: VillageTheme.spacingXS),
+                Wrap(
+                  children: [
+                    Text(
+                      'நான் ஒப்புக்கொள்கிறேன் / I agree to the ',
+                      style: VillageTheme.bodyMedium.copyWith(
+                        color: VillageTheme.secondaryText,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        // TODO: Show terms and conditions
+                      },
+                      child: Text(
+                        'Terms & Conditions',
+                        style: VillageTheme.bodyMedium.copyWith(
+                          color: VillageTheme.accentOrange,
+                          fontWeight: FontWeight.bold,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      ' மற்றும் / and ',
+                      style: VillageTheme.bodyMedium.copyWith(
+                        color: VillageTheme.secondaryText,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        // TODO: Show privacy policy
+                      },
+                      child: Text(
+                        'Privacy Policy',
+                        style: VillageTheme.bodyMedium.copyWith(
+                          color: VillageTheme.accentOrange,
+                          fontWeight: FontWeight.bold,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
   Widget _buildRegisterButton() {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF2196F3), Color(0xFF1976D2)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF2196F3).withOpacity(0.3),
-            spreadRadius: 0,
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ElevatedButton(
-        onPressed: _handleRegister,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          foregroundColor: Colors.white,
-          shadowColor: Colors.transparent,
-          padding: const EdgeInsets.symmetric(vertical: 18),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          elevation: 0,
-        ),
-        child: const Text(
-          'Create Account',
-          style: TextStyle(
-            fontSize: 18, 
-            fontWeight: FontWeight.bold,
-            letterSpacing: 0.5,
-          ),
-        ),
-      ),
+    return VillageWidgets.bigButton(
+      text: 'கணக்கு உருவாக்கு / Create Account',
+      icon: Icons.person_add,
+      onPressed: _handleRegister,
+      backgroundColor: VillageTheme.primaryGreen,
     );
   }
 
   Widget _buildLoginLink() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const Text(
-          'Already have an account? ',
-          style: TextStyle(
-            color: Color(0xFF8E8E93),
+    return Container(
+      decoration: VillageTheme.cardDecoration,
+      padding: const EdgeInsets.all(VillageTheme.spacingM),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                '🤔 ஏற்கனவே கணக்கு வைத்துள்ளீர்களா? / Already have an account?',
+                style: VillageTheme.bodyMedium.copyWith(
+                  color: VillageTheme.secondaryText,
+                ),
+              ),
+            ],
           ),
-        ),
-        TextButton(
-          onPressed: () {
-            Navigator.of(context).pop(); // Go back to login
-          },
-          child: const Text(
-            'Sign In',
-            style: TextStyle(
-              color: Color(0xFFE23744),
-              fontWeight: FontWeight.w600,
+          const SizedBox(height: VillageTheme.spacingS),
+          TextButton.icon(
+            onPressed: () {
+              context.go('/login');
+            },
+            icon: Text('🚪', style: TextStyle(fontSize: 18)),
+            label: Text(
+              'உள்நுழைய / Sign In',
+              style: VillageTheme.bodyLarge.copyWith(
+                color: VillageTheme.accentOrange,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            style: TextButton.styleFrom(
+              backgroundColor: VillageTheme.accentOrange.withOpacity(0.1),
+              padding: const EdgeInsets.symmetric(
+                horizontal: VillageTheme.spacingL,
+                vertical: VillageTheme.spacingS,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

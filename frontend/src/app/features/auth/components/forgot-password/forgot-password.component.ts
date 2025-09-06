@@ -1,8 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { HttpClient } from '@angular/common/http';
+import { AuthService } from '../../../../core/services/auth.service';
 
 @Component({
   selector: 'app-forgot-password',
@@ -15,16 +15,20 @@ import { HttpClient } from '@angular/common/http';
         <p>No worries! Enter your username or email and we'll send you a reset link.</p>
       </div>
 
-      <!-- Form -->
-      <form [formGroup]="forgotPasswordForm" (ngSubmit)="onSubmit()" class="forgot-form">
+      <!-- Step 1: Email Form -->
+      <form [formGroup]="emailForm" (ngSubmit)="onEmailSubmit()" class="forgot-form" *ngIf="currentStep === 'email'">
         <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Username or Email</mat-label>
-          <mat-icon matPrefix>person</mat-icon>
+          <mat-label>Email Address</mat-label>
+          <mat-icon matPrefix>email</mat-icon>
           <input matInput 
-                 formControlName="usernameOrEmail" 
-                 placeholder="Enter your username or email address">
-          <mat-error *ngIf="forgotPasswordForm.get('usernameOrEmail')?.hasError('required')">
-            Username or email is required
+                 formControlName="email" 
+                 type="email"
+                 placeholder="Enter your email address">
+          <mat-error *ngIf="emailForm.get('email')?.hasError('required')">
+            Email is required
+          </mat-error>
+          <mat-error *ngIf="emailForm.get('email')?.hasError('email')">
+            Please enter a valid email address
           </mat-error>
         </mat-form-field>
 
@@ -33,19 +37,11 @@ import { HttpClient } from '@angular/common/http';
           color="primary" 
           type="submit" 
           class="full-width reset-button"
-          [disabled]="forgotPasswordForm.invalid || isLoading">
+          [disabled]="emailForm.invalid || isLoading">
           <mat-spinner *ngIf="isLoading" diameter="20" style="margin-right: 8px;"></mat-spinner>
           <mat-icon *ngIf="!isLoading" style="margin-right: 8px;">send</mat-icon>
-          Send Reset Link
+          Send OTP
         </button>
-
-        <!-- Success Message -->
-        <div class="success-message" *ngIf="emailSent">
-          <mat-icon>check_circle</mat-icon>
-          <h3>Reset Link Sent!</h3>
-          <p>If an account exists with that username or email, we've sent a password reset link. Please check your email and follow the instructions.</p>
-          <p><small>Don't see the email? Check your spam folder.</small></p>
-        </div>
 
         <!-- Back to Login -->
         <div class="auth-links">
@@ -55,8 +51,120 @@ import { HttpClient } from '@angular/common/http';
         </div>
       </form>
 
+      <!-- Step 2: OTP Form -->
+      <form [formGroup]="otpForm" (ngSubmit)="onOtpSubmit()" class="forgot-form" *ngIf="currentStep === 'otp'">
+        <div class="step-info">
+          <p>We've sent a 6-digit OTP to <strong>{{email}}</strong></p>
+        </div>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Enter OTP</mat-label>
+          <mat-icon matPrefix>security</mat-icon>
+          <input matInput 
+                 formControlName="otp" 
+                 placeholder="Enter 6-digit OTP"
+                 maxlength="6"
+                 type="text"
+                 style="text-align: center; font-size: 18px; letter-spacing: 2px;">
+          <mat-error *ngIf="otpForm.get('otp')?.hasError('required')">
+            OTP is required
+          </mat-error>
+          <mat-error *ngIf="otpForm.get('otp')?.hasError('pattern')">
+            Please enter a valid 6-digit OTP
+          </mat-error>
+        </mat-form-field>
+
+        <button 
+          mat-raised-button 
+          color="primary" 
+          type="submit" 
+          class="full-width reset-button"
+          [disabled]="otpForm.invalid || isLoading">
+          <mat-spinner *ngIf="isLoading" diameter="20" style="margin-right: 8px;"></mat-spinner>
+          <mat-icon *ngIf="!isLoading" style="margin-right: 8px;">verified_user</mat-icon>
+          Verify OTP
+        </button>
+
+        <!-- Resend OTP -->
+        <div class="resend-section">
+          <button 
+            mat-button 
+            type="button"
+            [disabled]="resendTimer > 0 || isLoading"
+            (click)="resendOtp()">
+            <mat-icon style="margin-right: 4px;">refresh</mat-icon>
+            <span *ngIf="resendTimer > 0">Resend in {{resendTimer}}s</span>
+            <span *ngIf="resendTimer <= 0">Resend OTP</span>
+          </button>
+        </div>
+
+        <!-- Back Button -->
+        <div class="auth-links">
+          <button mat-button type="button" (click)="goBack()">
+            <mat-icon style="margin-right: 4px;">arrow_back</mat-icon>
+            Change Email
+          </button>
+        </div>
+      </form>
+
+      <!-- Step 3: New Password Form -->
+      <form [formGroup]="passwordForm" (ngSubmit)="onPasswordSubmit()" class="forgot-form" *ngIf="currentStep === 'password'">
+        <div class="step-info">
+          <p>Create your new password</p>
+        </div>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>New Password</mat-label>
+          <mat-icon matPrefix>lock</mat-icon>
+          <input matInput 
+                 formControlName="newPassword" 
+                 type="password"
+                 placeholder="Enter new password">
+          <mat-error *ngIf="passwordForm.get('newPassword')?.hasError('required')">
+            New password is required
+          </mat-error>
+          <mat-error *ngIf="passwordForm.get('newPassword')?.hasError('minlength')">
+            Password must be at least 8 characters long
+          </mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Confirm Password</mat-label>
+          <mat-icon matPrefix>lock_outline</mat-icon>
+          <input matInput 
+                 formControlName="confirmPassword" 
+                 type="password"
+                 placeholder="Confirm new password">
+          <mat-error *ngIf="passwordForm.get('confirmPassword')?.hasError('required')">
+            Please confirm your password
+          </mat-error>
+          <mat-error *ngIf="passwordForm.hasError('passwordMismatch') && !passwordForm.get('confirmPassword')?.hasError('required')">
+            Passwords do not match
+          </mat-error>
+        </mat-form-field>
+
+        <button 
+          mat-raised-button 
+          color="primary" 
+          type="submit" 
+          class="full-width reset-button"
+          [disabled]="passwordForm.invalid || isLoading">
+          <mat-spinner *ngIf="isLoading" diameter="20" style="margin-right: 8px;"></mat-spinner>
+          <mat-icon *ngIf="!isLoading" style="margin-right: 8px;">save</mat-icon>
+          Reset Password
+        </button>
+
+        <!-- Back Button -->
+        <div class="auth-links">
+          <button mat-button type="button" (click)="goBack()">
+            <mat-icon style="margin-right: 4px;">arrow_back</mat-icon>
+            Back to OTP
+          </button>
+        </div>
+      </form>
+
       <!-- Help Section -->
-      <div class="help-section" *ngIf="!emailSent">
+      <div class="help-section" *ngIf="currentStep === 'email'">
         <h3>Need Help?</h3>
         <div class="help-content">
           <div class="help-item">
@@ -202,6 +310,33 @@ import { HttpClient } from '@angular/common/http';
       font-weight: 500;
     }
 
+    .step-info {
+      text-align: center;
+      margin-bottom: 20px;
+      padding: 12px;
+      background: #f5f5f5;
+      border-radius: 8px;
+    }
+
+    .step-info p {
+      margin: 0;
+      color: #666;
+      font-size: 14px;
+    }
+
+    .resend-section {
+      text-align: center;
+      margin: 16px 0;
+    }
+
+    .resend-section button {
+      color: #667eea;
+    }
+
+    .resend-section button:disabled {
+      color: #ccc;
+    }
+
     .help-section {
       background: rgba(255, 255, 255, 0.1);
       border-radius: 12px;
@@ -290,50 +425,190 @@ import { HttpClient } from '@angular/common/http';
     }
   `]
 })
-export class ForgotPasswordComponent implements OnInit {
-  forgotPasswordForm: FormGroup;
+export class ForgotPasswordComponent implements OnInit, OnDestroy {
+  // Step 1: Email input, Step 2: OTP input, Step 3: New password
+  currentStep: 'email' | 'otp' | 'password' = 'email';
+  
+  emailForm: FormGroup;
+  otpForm: FormGroup;
+  passwordForm: FormGroup;
+  
   isLoading = false;
-  emailSent = false;
+  email = '';
+  
+  // Timer for resend OTP
+  resendTimer = 0;
+  resendInterval: any;
 
   constructor(
     private fb: FormBuilder,
     private router: Router,
     private snackBar: MatSnackBar,
-    private http: HttpClient
+    private authService: AuthService
   ) {
-    this.forgotPasswordForm = this.fb.group({
-      usernameOrEmail: ['', [Validators.required]]
+    this.emailForm = this.fb.group({
+      email: ['', [Validators.required, Validators.email]]
     });
+    
+    this.otpForm = this.fb.group({
+      otp: ['', [Validators.required, Validators.pattern(/^\d{6}$/)]]
+    });
+    
+    this.passwordForm = this.fb.group({
+      newPassword: ['', [Validators.required, Validators.minLength(8)]],
+      confirmPassword: ['', [Validators.required]]
+    }, { validators: this.passwordMatchValidator });
   }
 
   ngOnInit(): void {}
 
-  onSubmit(): void {
-    if (this.forgotPasswordForm.valid) {
-      this.isLoading = true;
-      const formData = this.forgotPasswordForm.value;
+  ngOnDestroy(): void {
+    if (this.resendInterval) {
+      clearInterval(this.resendInterval);
+    }
+  }
 
-      this.http.post('/api/auth/password/forgot', formData)
+  passwordMatchValidator(form: any) {
+    const newPassword = form.get('newPassword');
+    const confirmPassword = form.get('confirmPassword');
+    return newPassword && confirmPassword && newPassword.value !== confirmPassword.value 
+      ? { passwordMismatch: true } : null;
+  }
+
+  onEmailSubmit(): void {
+    if (this.emailForm.valid) {
+      this.isLoading = true;
+      this.email = this.emailForm.value.email;
+
+      this.authService.sendPasswordResetOtp(this.email)
         .subscribe({
           next: (response: any) => {
             this.isLoading = false;
-            this.emailSent = true;
+            this.currentStep = 'otp';
+            this.startResendTimer();
             
-            this.snackBar.open('Password reset instructions sent!', 'Close', {
+            this.snackBar.open('OTP sent to your email!', 'Close', {
               duration: 5000,
-              horizontalPosition: 'end',
-              verticalPosition: 'top',
               panelClass: ['success-snackbar']
             });
           },
-          error: (error) => {
+          error: (error: any) => {
             this.isLoading = false;
-            this.emailSent = true; // Show success even on error for security
-            
-            // Log error but show success message to prevent user enumeration
-            console.error('Forgot password error:', error);
+            this.showErrorMessage(error.message || 'Failed to send OTP');
           }
         });
     }
+  }
+
+  onOtpSubmit(): void {
+    if (this.otpForm.valid) {
+      this.isLoading = true;
+      const otp = this.otpForm.value.otp;
+
+      this.authService.verifyPasswordResetOtp(this.email, otp)
+        .subscribe({
+          next: (response: any) => {
+            this.isLoading = false;
+            this.currentStep = 'password';
+            
+            this.snackBar.open('OTP verified successfully!', 'Close', {
+              duration: 3000,
+              panelClass: ['success-snackbar']
+            });
+          },
+          error: (error: any) => {
+            this.isLoading = false;
+            this.showErrorMessage(error.message || 'Invalid OTP');
+          }
+        });
+    }
+  }
+
+  onPasswordSubmit(): void {
+    if (this.passwordForm.valid) {
+      this.isLoading = true;
+      const otp = this.otpForm.value.otp;
+      const newPassword = this.passwordForm.value.newPassword;
+
+      this.authService.resetPasswordWithOtp(this.email, otp, newPassword)
+        .subscribe({
+          next: (response: any) => {
+            this.isLoading = false;
+            
+            this.snackBar.open('Password updated successfully! Redirecting to login...', 'Close', {
+              duration: 3000,
+              panelClass: ['success-snackbar']
+            });
+            
+            // Redirect to login after a delay
+            setTimeout(() => {
+              this.router.navigate(['/auth/login']);
+            }, 3000);
+          },
+          error: (error: any) => {
+            this.isLoading = false;
+            this.showErrorMessage(error.message || 'Failed to reset password');
+          }
+        });
+    }
+  }
+
+  resendOtp(): void {
+    if (this.resendTimer > 0) return;
+    
+    this.isLoading = true;
+    
+    this.authService.resendPasswordResetOtp(this.email)
+      .subscribe({
+        next: (response: any) => {
+          this.isLoading = false;
+          this.startResendTimer();
+          
+          this.snackBar.open('OTP resent successfully!', 'Close', {
+            duration: 3000,
+            panelClass: ['success-snackbar']
+          });
+        },
+        error: (error: any) => {
+          this.isLoading = false;
+          this.showErrorMessage(error.message || 'Failed to resend OTP');
+        }
+      });
+  }
+
+  goBack(): void {
+    switch (this.currentStep) {
+      case 'otp':
+        this.currentStep = 'email';
+        this.clearResendTimer();
+        break;
+      case 'password':
+        this.currentStep = 'otp';
+        break;
+    }
+  }
+
+  private startResendTimer(): void {
+    this.resendTimer = 60; // 60 seconds
+    this.resendInterval = setInterval(() => {
+      this.resendTimer--;
+      if (this.resendTimer <= 0) {
+        clearInterval(this.resendInterval);
+      }
+    }, 1000);
+  }
+
+  private clearResendTimer(): void {
+    if (this.resendInterval) {
+      clearInterval(this.resendInterval);
+    }
+    this.resendTimer = 0;
+  }
+
+  private showErrorMessage(message: string): void {
+    this.snackBar.open(message, 'Close', {
+      duration: 5000,
+      panelClass: ['error-snackbar']
+    });
   }
 }

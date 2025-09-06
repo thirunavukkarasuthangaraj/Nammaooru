@@ -27,22 +27,22 @@
       </div>
 
       <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
-        <!-- Username Field -->
+        <!-- Email Field -->
         <div class="input-group">
-          <label class="input-label">Username</label>
+          <label class="input-label">Email</label>
           <div class="input-wrapper">
-            <mat-icon class="input-icon">person</mat-icon>
+            <mat-icon class="input-icon">email</mat-icon>
             <input 
               class="modern-input"
-              type="text"
-              formControlName="username" 
-              placeholder="Enter your username"
-              autocomplete="username">
-            <mat-icon class="success-icon" *ngIf="loginForm.get('username')?.valid && loginForm.get('username')?.touched">check_circle</mat-icon>
+              type="email"
+              formControlName="email" 
+              placeholder="Enter your email address"
+              autocomplete="email">
+            <mat-icon class="success-icon" *ngIf="loginForm.get('email')?.valid && loginForm.get('email')?.touched">check_circle</mat-icon>
           </div>
-          <span class="error-text" *ngIf="hasFieldError('username')">
+          <span class="error-text" *ngIf="hasFieldError('email')">
             <mat-icon>error</mat-icon>
-            {{ getFieldError('username') }}
+            {{ getFieldError('email') }}
           </span>
         </div>
 

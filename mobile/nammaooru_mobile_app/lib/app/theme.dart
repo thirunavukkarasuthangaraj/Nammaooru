@@ -1,336 +1,233 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../core/constants/colors.dart';
+import '../core/theme/village_theme.dart';
 
 class AppTheme {
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
-      primaryColor: AppColors.primary,
-      scaffoldBackgroundColor: AppColors.background,
+      primaryColor: VillageTheme.primaryGreen,
+      scaffoldBackgroundColor: VillageTheme.lightBackground,
       fontFamily: 'Inter',
       
-      // Color scheme for Material 3
-      colorScheme: const ColorScheme.light(
-        primary: AppColors.primary,
-        primaryContainer: AppColors.primaryLight,
-        secondary: AppColors.secondary,
-        surface: AppColors.surface,
-        surfaceVariant: AppColors.surfaceVariant,
-        background: AppColors.background,
-        error: AppColors.error,
+      // Color scheme for Material 3 with Village colors
+      colorScheme: ColorScheme.light(
+        primary: VillageTheme.primaryGreen,
+        primaryContainer: VillageTheme.lightGreen,
+        secondary: VillageTheme.accentOrange,
+        surface: VillageTheme.cardBackground,
+        surfaceVariant: VillageTheme.surfaceColor,
+        background: VillageTheme.lightBackground,
+        error: VillageTheme.errorRed,
         onPrimary: Colors.white,
         onSecondary: Colors.white,
-        onSurface: AppColors.textPrimary,
-        onBackground: AppColors.textPrimary,
+        onSurface: VillageTheme.primaryText,
+        onBackground: VillageTheme.primaryText,
         onError: Colors.white,
-        outline: AppColors.border,
+        outline: VillageTheme.primaryGreen.withOpacity(0.3),
       ),
 
-      // App Bar Theme
-      appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.surface,
-        foregroundColor: AppColors.textPrimary,
+      // App Bar Theme with Village colors
+      appBarTheme: AppBarTheme(
+        backgroundColor: VillageTheme.primaryGreen,
+        foregroundColor: Colors.white,
         elevation: 0,
-        scrolledUnderElevation: 1,
-        surfaceTintColor: AppColors.surface,
-        systemOverlayStyle: SystemUiOverlayStyle(
+        scrolledUnderElevation: 2,
+        surfaceTintColor: VillageTheme.primaryGreen,
+        systemOverlayStyle: const SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
-          statusBarIconBrightness: Brightness.dark,
+          statusBarIconBrightness: Brightness.light,
         ),
-        titleTextStyle: TextStyle(
-          color: AppColors.textPrimary,
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-          fontFamily: 'Inter',
+        titleTextStyle: VillageTheme.headingMedium.copyWith(
+          color: Colors.white,
+        ),
+        iconTheme: const IconThemeData(
+          color: Colors.white,
+          size: VillageTheme.iconMedium,
         ),
       ),
 
-      // Card Theme
+      // Card Theme with Village styling
       cardTheme: CardTheme(
-        color: AppColors.cardBackground,
+        color: VillageTheme.cardBackground,
         elevation: 2,
-        shadowColor: AppColors.shadow,
-        surfaceTintColor: AppColors.surface,
+        shadowColor: Colors.black.withOpacity(0.1),
+        surfaceTintColor: VillageTheme.cardBackground,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(VillageTheme.cardRadius),
         ),
         margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       ),
 
-      // Elevated Button Theme
+      // Elevated Button Theme with Village colors
       elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          shadowColor: Colors.transparent,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            fontFamily: 'Inter',
-          ),
-        ),
+        style: VillageTheme.primaryButtonStyle,
       ),
 
       // Outlined Button Theme
       outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.primary,
-          side: const BorderSide(color: AppColors.primary),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            fontFamily: 'Inter',
-          ),
-        ),
+        style: VillageTheme.secondaryButtonStyle,
       ),
 
       // Text Button Theme
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: AppColors.primary,
+          foregroundColor: VillageTheme.accentOrange,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
           ),
-          textStyle: const TextStyle(
-            fontSize: 14,
+          textStyle: VillageTheme.bodyMedium.copyWith(
             fontWeight: FontWeight.w600,
-            fontFamily: 'Inter',
           ),
         ),
       ),
 
-      // Input Decoration Theme
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: AppColors.surfaceVariant,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.primary, width: 2),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.error, width: 1),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.error, width: 2),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        hintStyle: const TextStyle(
-          color: AppColors.textHint,
-          fontSize: 16,
-          fontFamily: 'Inter',
-        ),
-        labelStyle: const TextStyle(
-          color: AppColors.textSecondary,
-          fontSize: 16,
-          fontFamily: 'Inter',
-        ),
-      ),
+      // Input Decoration Theme with Village styling
+      inputDecorationTheme: VillageTheme.inputDecorationTheme,
 
       // Bottom Navigation Bar Theme
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: AppColors.surface,
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: AppColors.textTertiary,
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: VillageTheme.cardBackground,
+        selectedItemColor: VillageTheme.primaryGreen,
+        unselectedItemColor: VillageTheme.secondaryText,
         type: BottomNavigationBarType.fixed,
         elevation: 8,
-        selectedLabelStyle: TextStyle(
-          fontSize: 12,
+        selectedLabelStyle: VillageTheme.bodySmall.copyWith(
           fontWeight: FontWeight.w600,
-          fontFamily: 'Inter',
         ),
-        unselectedLabelStyle: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w400,
-          fontFamily: 'Inter',
-        ),
+        unselectedLabelStyle: VillageTheme.bodySmall,
       ),
 
-      // Chip Theme
+      // Chip Theme with Village colors
       chipTheme: ChipThemeData(
-        backgroundColor: AppColors.surfaceVariant,
-        selectedColor: AppColors.primary,
-        secondarySelectedColor: AppColors.primaryLight,
-        labelStyle: const TextStyle(
-          color: AppColors.textPrimary,
-          fontFamily: 'Inter',
-        ),
-        secondaryLabelStyle: const TextStyle(
+        backgroundColor: VillageTheme.surfaceColor,
+        selectedColor: VillageTheme.primaryGreen,
+        secondarySelectedColor: VillageTheme.lightGreen,
+        labelStyle: VillageTheme.bodyMedium,
+        secondaryLabelStyle: VillageTheme.bodyMedium.copyWith(
           color: Colors.white,
-          fontFamily: 'Inter',
         ),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(VillageTheme.chipRadius),
         ),
       ),
 
       // Tab Bar Theme
-      tabBarTheme: const TabBarTheme(
-        labelColor: AppColors.primary,
-        unselectedLabelColor: AppColors.textSecondary,
+      tabBarTheme: TabBarTheme(
+        labelColor: VillageTheme.primaryGreen,
+        unselectedLabelColor: VillageTheme.secondaryText,
         indicator: UnderlineTabIndicator(
-          borderSide: BorderSide(color: AppColors.primary, width: 3),
+          borderSide: BorderSide(color: VillageTheme.primaryGreen, width: 3),
         ),
-        labelStyle: TextStyle(
-          fontSize: 14,
+        labelStyle: VillageTheme.bodyMedium.copyWith(
           fontWeight: FontWeight.w600,
-          fontFamily: 'Inter',
         ),
-        unselectedLabelStyle: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w400,
-          fontFamily: 'Inter',
-        ),
+        unselectedLabelStyle: VillageTheme.bodyMedium,
       ),
 
-      // Text Theme
-      textTheme: const TextTheme(
-        displayLarge: TextStyle(
-          fontSize: 32,
-          fontWeight: FontWeight.bold,
-          color: AppColors.textPrimary,
-          fontFamily: 'Inter',
-        ),
-        displayMedium: TextStyle(
-          fontSize: 28,
-          fontWeight: FontWeight.bold,
-          color: AppColors.textPrimary,
-          fontFamily: 'Inter',
-        ),
-        displaySmall: TextStyle(
-          fontSize: 24,
+      // Text Theme with Village styles
+      textTheme: TextTheme(
+        displayLarge: VillageTheme.headingLarge,
+        displayMedium: VillageTheme.headingMedium,
+        displaySmall: VillageTheme.headingSmall,
+        headlineLarge: VillageTheme.headingMedium,
+        headlineMedium: VillageTheme.headingSmall,
+        headlineSmall: VillageTheme.bodyLarge.copyWith(
           fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
-          fontFamily: 'Inter',
         ),
-        headlineLarge: TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
-          fontFamily: 'Inter',
-        ),
-        headlineMedium: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
-          fontFamily: 'Inter',
-        ),
-        headlineSmall: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
-          fontFamily: 'Inter',
-        ),
-        titleLarge: TextStyle(
-          fontSize: 16,
+        titleLarge: VillageTheme.bodyLarge.copyWith(
           fontWeight: FontWeight.w500,
-          color: AppColors.textPrimary,
-          fontFamily: 'Inter',
         ),
-        titleMedium: TextStyle(
-          fontSize: 14,
+        titleMedium: VillageTheme.bodyMedium.copyWith(
           fontWeight: FontWeight.w500,
-          color: AppColors.textPrimary,
-          fontFamily: 'Inter',
         ),
-        titleSmall: TextStyle(
-          fontSize: 12,
+        titleSmall: VillageTheme.bodySmall.copyWith(
           fontWeight: FontWeight.w500,
-          color: AppColors.textSecondary,
-          fontFamily: 'Inter',
         ),
-        bodyLarge: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w400,
-          color: AppColors.textPrimary,
-          fontFamily: 'Inter',
-        ),
-        bodyMedium: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w400,
-          color: AppColors.textPrimary,
-          fontFamily: 'Inter',
-        ),
-        bodySmall: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w400,
-          color: AppColors.textSecondary,
-          fontFamily: 'Inter',
-        ),
-        labelLarge: TextStyle(
-          fontSize: 14,
+        bodyLarge: VillageTheme.bodyLarge,
+        bodyMedium: VillageTheme.bodyMedium,
+        bodySmall: VillageTheme.bodySmall,
+        labelLarge: VillageTheme.labelText,
+        labelMedium: VillageTheme.bodySmall.copyWith(
           fontWeight: FontWeight.w500,
-          color: AppColors.textPrimary,
-          fontFamily: 'Inter',
         ),
-        labelMedium: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: AppColors.textPrimary,
-          fontFamily: 'Inter',
-        ),
-        labelSmall: TextStyle(
+        labelSmall: VillageTheme.bodySmall.copyWith(
           fontSize: 10,
-          fontWeight: FontWeight.w400,
-          color: AppColors.textSecondary,
-          fontFamily: 'Inter',
         ),
       ),
 
       // Divider Theme
-      dividerTheme: const DividerThemeData(
-        color: AppColors.divider,
+      dividerTheme: DividerThemeData(
+        color: VillageTheme.primaryGreen.withOpacity(0.2),
         thickness: 1,
         space: 1,
       ),
 
-      // Dialog Theme
+      // Dialog Theme with Village styling
       dialogTheme: DialogTheme(
-        backgroundColor: AppColors.surface,
-        surfaceTintColor: AppColors.surface,
+        backgroundColor: VillageTheme.cardBackground,
+        surfaceTintColor: VillageTheme.cardBackground,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(VillageTheme.cardRadius * 2),
         ),
-        titleTextStyle: const TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
-          fontFamily: 'Inter',
-        ),
-        contentTextStyle: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w400,
-          color: AppColors.textSecondary,
-          fontFamily: 'Inter',
+        titleTextStyle: VillageTheme.headingMedium,
+        contentTextStyle: VillageTheme.bodyMedium.copyWith(
+          color: VillageTheme.secondaryText,
         ),
       ),
 
       // Floating Action Button Theme
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: AppColors.primary,
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: VillageTheme.accentOrange,
         foregroundColor: Colors.white,
         elevation: 4,
-        shape: CircleBorder(),
+        shape: const CircleBorder(),
+      ),
+
+      // Progress Indicator Theme
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: VillageTheme.primaryGreen,
+      ),
+
+      // Switch Theme
+      switchTheme: SwitchThemeData(
+        thumbColor: MaterialStateProperty.resolveWith<Color>((states) {
+          if (states.contains(MaterialState.selected)) {
+            return VillageTheme.primaryGreen;
+          }
+          return VillageTheme.secondaryText;
+        }),
+        trackColor: MaterialStateProperty.resolveWith<Color>((states) {
+          if (states.contains(MaterialState.selected)) {
+            return VillageTheme.primaryGreen.withOpacity(0.5);
+          }
+          return VillageTheme.hintText;
+        }),
+      ),
+
+      // Checkbox Theme
+      checkboxTheme: CheckboxThemeData(
+        fillColor: MaterialStateProperty.resolveWith<Color>((states) {
+          if (states.contains(MaterialState.selected)) {
+            return VillageTheme.primaryGreen;
+          }
+          return Colors.transparent;
+        }),
+        checkColor: MaterialStateProperty.all(Colors.white),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4),
+        ),
+      ),
+
+      // Radio Theme
+      radioTheme: RadioThemeData(
+        fillColor: MaterialStateProperty.resolveWith<Color>((states) {
+          if (states.contains(MaterialState.selected)) {
+            return VillageTheme.primaryGreen;
+          }
+          return VillageTheme.secondaryText;
+        }),
       ),
     );
   }
@@ -339,41 +236,38 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      primaryColor: AppColors.primary,
+      primaryColor: VillageTheme.primaryGreen,
       scaffoldBackgroundColor: const Color(0xFF121212),
       fontFamily: 'Inter',
       
-      colorScheme: const ColorScheme.dark(
-        primary: AppColors.primary,
-        primaryContainer: AppColors.primaryDark,
-        secondary: AppColors.secondary,
-        surface: Color(0xFF1E1E1E),
-        surfaceVariant: Color(0xFF2A2A2A),
-        background: Color(0xFF121212),
-        error: AppColors.error,
+      colorScheme: ColorScheme.dark(
+        primary: VillageTheme.primaryGreen,
+        primaryContainer: VillageTheme.primaryGreen.withOpacity(0.3),
+        secondary: VillageTheme.accentOrange,
+        surface: const Color(0xFF1E1E1E),
+        surfaceVariant: const Color(0xFF2A2A2A),
+        background: const Color(0xFF121212),
+        error: VillageTheme.errorRed,
         onPrimary: Colors.white,
         onSecondary: Colors.white,
-        onSurface: Color(0xFFE1E1E1),
-        onBackground: Color(0xFFE1E1E1),
+        onSurface: const Color(0xFFE1E1E1),
+        onBackground: const Color(0xFFE1E1E1),
         onError: Colors.white,
-        outline: Color(0xFF3A3A3A),
+        outline: const Color(0xFF3A3A3A),
       ),
 
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFF1E1E1E),
-        foregroundColor: Color(0xFFE1E1E1),
+      appBarTheme: AppBarTheme(
+        backgroundColor: VillageTheme.primaryGreen,
+        foregroundColor: Colors.white,
         elevation: 0,
-        scrolledUnderElevation: 1,
-        surfaceTintColor: Color(0xFF1E1E1E),
-        systemOverlayStyle: SystemUiOverlayStyle(
+        scrolledUnderElevation: 2,
+        surfaceTintColor: VillageTheme.primaryGreen,
+        systemOverlayStyle: const SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
           statusBarIconBrightness: Brightness.light,
         ),
-        titleTextStyle: TextStyle(
-          color: Color(0xFFE1E1E1),
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-          fontFamily: 'Inter',
+        titleTextStyle: VillageTheme.headingMedium.copyWith(
+          color: Colors.white,
         ),
       ),
 
@@ -383,62 +277,44 @@ class AppTheme {
         shadowColor: Colors.black26,
         surfaceTintColor: const Color(0xFF1E1E1E),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(VillageTheme.cardRadius),
         ),
         margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       ),
 
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
+          backgroundColor: VillageTheme.primaryGreen,
           foregroundColor: Colors.white,
-          elevation: 0,
-          shadowColor: Colors.transparent,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          elevation: 2,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
           ),
-          textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            fontFamily: 'Inter',
-          ),
+          textStyle: VillageTheme.buttonText,
         ),
       ),
 
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: Color(0xFF1E1E1E),
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: Color(0xFF888888),
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: const Color(0xFF1E1E1E),
+        selectedItemColor: VillageTheme.primaryGreen,
+        unselectedItemColor: const Color(0xFF888888),
         type: BottomNavigationBarType.fixed,
         elevation: 8,
-        selectedLabelStyle: TextStyle(
-          fontSize: 12,
+        selectedLabelStyle: VillageTheme.bodySmall.copyWith(
           fontWeight: FontWeight.w600,
-          fontFamily: 'Inter',
         ),
-        unselectedLabelStyle: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w400,
-          fontFamily: 'Inter',
-        ),
+        unselectedLabelStyle: VillageTheme.bodySmall,
       ),
 
-      // Apply similar styling for all other theme components in dark mode
-      textTheme: const TextTheme(
-        displayLarge: TextStyle(
-          fontSize: 32,
-          fontWeight: FontWeight.bold,
-          color: Color(0xFFE1E1E1),
-          fontFamily: 'Inter',
+      textTheme: TextTheme(
+        displayLarge: VillageTheme.headingLarge.copyWith(
+          color: const Color(0xFFE1E1E1),
         ),
-        bodyMedium: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w400,
-          color: Color(0xFFE1E1E1),
-          fontFamily: 'Inter',
+        bodyMedium: VillageTheme.bodyMedium.copyWith(
+          color: const Color(0xFFE1E1E1),
         ),
-        // Add more text styles as needed
+        // Add more text styles as needed for dark theme
       ),
     );
   }

@@ -1,62 +1,46 @@
-import 'package:firebase_messaging/firebase_messaging.dart';
+// import 'package:firebase_messaging/firebase_messaging.dart';  // Disabled for web
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../models/notification_model.dart';
 
 class NotificationService {
-  static final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  // static final FirebaseMessaging _messaging = FirebaseMessaging.instance;  // Disabled for web
   static final List<NotificationModel> _notifications = [];
   static final List<Function(NotificationModel)> _listeners = [];
   
   static Future<void> initialize() async {
-    await _requestPermission();
-    await _configureFirebase();
-    _setupMessageHandlers();
-  }
-  
-  static Future<void> _requestPermission() async {
-    final settings = await _messaging.requestPermission(
-      alert: true,
-      announcement: false,
-      badge: true,
-      carPlay: false,
-      criticalAlert: false,
-      provisional: false,
-      sound: true,
-    );
-    
-    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      print('User granted permission');
-    } else if (settings.authorizationStatus == AuthorizationStatus.provisional) {
-      print('User granted provisional permission');
-    } else {
-      print('User declined or has not accepted permission');
+    if (!kIsWeb) {
+      // Only initialize Firebase messaging on mobile platforms
+      // await _requestPermission();
+      // await _configureFirebase(); 
+      // _setupMessageHandlers();
+      debugPrint('NotificationService: Firebase messaging disabled for web');
     }
   }
   
+  // Disabled for web compatibility
+  static Future<void> _requestPermission() async {
+    debugPrint('Permission request disabled for web');
+  }
+  
+  // Disabled for web compatibility
   static Future<void> _configureFirebase() async {
-    await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+    debugPrint('Firebase configuration disabled for web');
   }
   
+  // Disabled for web compatibility
   static void _setupMessageHandlers() {
-    FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
-    FirebaseMessaging.onMessageOpenedApp.listen(_handleBackgroundMessage);
-    FirebaseMessaging.onBackgroundMessage(_handleBackgroundMessage);
+    debugPrint('Message handlers disabled for web');
   }
   
-  static Future<void> _handleForegroundMessage(RemoteMessage message) async {
-    final notification = NotificationModel.fromRemoteMessage(message);
-    _addNotification(notification);
-    
-    _showInAppNotification(notification);
+  // Disabled for web compatibility
+  static Future<void> _handleForegroundMessage(dynamic message) async {
+    debugPrint('Foreground message handling disabled for web');
   }
   
-  static Future<void> _handleBackgroundMessage(RemoteMessage message) async {
-    final notification = NotificationModel.fromRemoteMessage(message);
-    _addNotification(notification);
+  // Disabled for web compatibility
+  static Future<void> _handleBackgroundMessage(dynamic message) async {
+    debugPrint('Background message handling disabled for web');
   }
   
   static void _addNotification(NotificationModel notification) {
@@ -71,16 +55,20 @@ class NotificationService {
     
   }
   
+  // Disabled for web compatibility
   static Future<String?> getToken() async {
-    return await _messaging.getToken();
+    debugPrint('Token request disabled for web');
+    return null;
   }
   
+  // Disabled for web compatibility
   static Future<void> subscribeToTopic(String topic) async {
-    await _messaging.subscribeToTopic(topic);
+    debugPrint('Topic subscription disabled for web: $topic');
   }
   
+  // Disabled for web compatibility
   static Future<void> unsubscribeFromTopic(String topic) async {
-    await _messaging.unsubscribeFromTopic(topic);
+    debugPrint('Topic unsubscription disabled for web: $topic');
   }
   
   static void addListener(Function(NotificationModel) listener) {
@@ -142,15 +130,14 @@ class NotificationModel {
     this.type = 'general',
   });
   
-  factory NotificationModel.fromRemoteMessage(RemoteMessage message) {
+  // Disabled for web compatibility
+  factory NotificationModel.fromRemoteMessage(dynamic message) {
     return NotificationModel(
-      id: message.messageId ?? DateTime.now().millisecondsSinceEpoch.toString(),
-      title: message.notification?.title ?? '',
-      body: message.notification?.body ?? '',
-      imageUrl: message.notification?.android?.imageUrl ?? message.notification?.apple?.imageUrl,
-      data: message.data,
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      title: 'Web notification',
+      body: 'Firebase messaging disabled for web',
       timestamp: DateTime.now(),
-      type: message.data['type'] ?? 'general',
+      type: 'general',
     );
   }
   

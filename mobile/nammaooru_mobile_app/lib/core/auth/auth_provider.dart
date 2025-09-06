@@ -20,7 +20,7 @@ class AuthProvider with ChangeNotifier {
   String? get errorMessage => _errorMessage;
   
   bool get isAuthenticated => _authState == AuthState.authenticated;
-  bool get isCustomer => _userRole == 'CUSTOMER';
+  bool get isCustomer => _userRole == 'CUSTOMER' || _userRole == 'USER';  // USER is customer role from backend
   bool get isShopOwner => _userRole == 'SHOP_OWNER';
   bool get isDeliveryPartner => _userRole == 'DELIVERY_PARTNER';
   
@@ -71,6 +71,7 @@ class AuthProvider with ChangeNotifier {
     required String password,
     required String phoneNumber,
     required String role,
+    required String username,
   }) async {
     _setLoading();
     
@@ -80,6 +81,7 @@ class AuthProvider with ChangeNotifier {
       password: password,
       phoneNumber: phoneNumber,
       role: role,
+      username: username,
     );
     
     if (result.isSuccess) {
@@ -147,6 +149,28 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
   
+  Future<void> refreshAuthState() async {
+    try {
+      final isLoggedIn = await AuthService.isLoggedIn();
+      if (isLoggedIn) {
+        _userRole = await AuthService.getCurrentUserRole();
+        _userId = await AuthService.getCurrentUserId();
+        _authState = AuthState.authenticated;
+        _errorMessage = null;
+      } else {
+        _authState = AuthState.unauthenticated;
+        _userRole = null;
+        _userId = null;
+      }
+    } catch (e) {
+      _authState = AuthState.unauthenticated;
+      _userRole = null;
+      _userId = null;
+      _errorMessage = e.toString();
+    }
+    notifyListeners();
+  }
+  
   void _setLoading() {
     _authState = AuthState.loading;
     _errorMessage = null;
@@ -156,6 +180,7 @@ class AuthProvider with ChangeNotifier {
   String getHomeRoute() {
     switch (_userRole) {
       case 'CUSTOMER':
+      case 'USER':  // Backend returns USER for customers
         return '/customer/dashboard';
       case 'SHOP_OWNER':
         return '/shop-owner/dashboard';

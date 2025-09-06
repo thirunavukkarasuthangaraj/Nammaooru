@@ -1,4 +1,4 @@
-import '../core/api/api_service.dart';
+import '../core/services/api_service.dart';
 import '../core/utils/logger.dart';
 
 class OrderApiService {
@@ -21,8 +21,8 @@ class OrderApiService {
       Logger.order('Placing order - items: ${items.length}, total: $total');
       
       final response = await _apiService.post(
-        '/customers/orders',
-        body: {
+        '/customer/orders',
+        data: {
           'items': items,
           'deliveryAddress': deliveryAddress,
           'paymentMethod': paymentMethod,
@@ -60,7 +60,7 @@ class OrderApiService {
       if (status != null) queryParams['status'] = status;
       
       final response = await _apiService.get(
-        '/customers/orders',
+        '/customer/orders',
         queryParams: queryParams,
       );
 
@@ -107,7 +107,7 @@ class OrderApiService {
       
       final response = await _apiService.post(
         '/orders/$orderId/cancel',
-        body: {
+        data: {
           'reason': reason,
         },
       );
@@ -171,7 +171,7 @@ class OrderApiService {
       
       final response = await _apiService.post(
         '/orders/$orderId/rate',
-        body: {
+        data: {
           'rating': rating,
           'review': review,
           'deliveryRating': deliveryRating,

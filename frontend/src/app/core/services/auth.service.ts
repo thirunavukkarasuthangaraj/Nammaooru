@@ -28,9 +28,13 @@ export class AuthService {
   login(credentials: LoginRequest): Observable<AuthResponse> {
     // Clear any existing auth data first to avoid role conflicts
     this.clearStoredAuth();
-    return this.http.post<AuthResponse>(`${this.API_URL}/login`, credentials)
+    return this.http.post<any>(`${this.API_URL}/login`, credentials)
       .pipe(
         tap(response => {
+          // Check if response has an error statusCode (9999 or other error codes)
+          if (response.statusCode && response.statusCode !== '0000' && response.statusCode !== '200') {
+            throw new Error(response.message || 'Authentication failed');
+          }
           this.setSession(response);
           this.showSnackBar('Welcome back! Login successful.', 'success');
         }),
@@ -45,6 +49,80 @@ export class AuthService {
     return this.http.post<AuthResponse>(`${this.API_URL}/register`, userData)
       .pipe(
         tap(response => this.setSession(response)),
+        catchError(error => {
+          this.handleAuthError(error);
+          return throwError(() => error);
+        })
+      );
+  }
+
+  // OTP-based forgot password methods
+  sendPasswordResetOtp(email: string): Observable<any> {
+    return this.http.post<any>(`${this.API_URL}/forgot-password/send-otp`, { email })
+      .pipe(
+        tap(response => {
+          if (response.statusCode && response.statusCode !== '0000' && response.statusCode !== '200') {
+            throw new Error(response.message || 'Failed to send OTP');
+          }
+        }),
+        catchError(error => {
+          this.handleAuthError(error);
+          return throwError(() => error);
+        })
+      );
+  }
+
+  verifyPasswordResetOtp(email: string, otp: string): Observable<any> {
+    return this.http.post<any>(`${this.API_URL}/forgot-password/verify-otp`, { email, otp })
+      .pipe(
+        tap(response => {
+          if (response.statusCode && response.statusCode !== '0000' && response.statusCode !== '200') {
+            throw new Error(response.message || 'Invalid OTP');
+          }
+        }),
+        catchError(error => {
+          this.handleAuthError(error);
+          return throwError(() => error);
+        })
+      );
+  }
+
+  resetPasswordWithOtp(email: string, otp: string, newPassword: string): Observable<any> {
+    return this.http.post<any>(`${this.API_URL}/forgot-password/reset-password`, { 
+      email, otp, newPassword 
+    })
+      .pipe(
+        tap(response => {
+          if (response.statusCode && response.statusCode !== '0000' && response.statusCode !== '200') {
+            throw new Error(response.message || 'Failed to reset password');
+          }
+        }),
+        catchError(error => {
+          this.handleAuthError(error);
+          return throwError(() => error);
+        })
+      );
+  }
+
+  resendPasswordResetOtp(email: string): Observable<any> {
+    return this.http.post<any>(`${this.API_URL}/forgot-password/resend-otp`, { email })
+      .pipe(
+        tap(response => {
+          if (response.statusCode && response.statusCode !== '0000' && response.statusCode !== '200') {
+            throw new Error(response.message || 'Failed to resend OTP');
+          }
+        }),
+        catchError(error => {
+          this.handleAuthError(error);
+          return throwError(() => error);
+        })
+      );
+  }
+
+  // Legacy method (keep for backward compatibility)
+  forgotPassword(usernameOrEmail: string): Observable<any> {
+    return this.http.post(`${this.API_URL}/password/forgot`, { usernameOrEmail })
+      .pipe(
         catchError(error => {
           this.handleAuthError(error);
           return throwError(() => error);

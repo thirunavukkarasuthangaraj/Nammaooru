@@ -27,7 +27,19 @@ public class RegisterRequest {
     @Size(min = 6, message = "Password must be at least 6 characters")
     private String password;
 
+    @NotBlank(message = "First name is required")
+    @Size(max = 100, message = "First name cannot exceed 100 characters")
+    private String firstName;
+
+    @NotBlank(message = "Last name is required")
+    @Size(max = 100, message = "Last name cannot exceed 100 characters")
+    private String lastName;
+
+    @NotBlank(message = "Mobile number is required")
+    @Pattern(regexp = "^[0-9]{10}$", message = "Mobile number must be 10 digits")
+    private String mobileNumber;
+
     // Role field is optional since registration is customer-only
-    // Backend will automatically set role to CUSTOMER
+    // Backend will automatically set role to USER (customer)
     private String role;
 }

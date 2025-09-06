@@ -1,5 +1,5 @@
 class ApiEndpoints {
-  static const String baseUrl = 'https://api.nammaoorudelivary.in/api';
+  static const String baseUrl = 'http://localhost:8080/api';
   
   static const String auth = '/auth';
   static const String login = '$auth/login';

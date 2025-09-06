@@ -1,4 +1,4 @@
-import '../core/api/api_service.dart';
+import '../core/services/api_service.dart';
 import '../core/utils/logger.dart';
 
 class ShopApiService {
@@ -26,14 +26,14 @@ class ShopApiService {
       };
       
       if (city != null) queryParams['city'] = city;
-      if (category != null) queryParams['businessType'] = category;
+      if (category != null) queryParams['category'] = category;
       if (latitude != null) queryParams['lat'] = latitude.toString();
       if (longitude != null) queryParams['lng'] = longitude.toString();
       
       final response = await _apiService.get(
-        '/shops/active',
+        '/customer/shops',
         queryParams: queryParams,
-        includeAuth: false,
+        includeAuth: true,
       );
 
       return response;
@@ -63,7 +63,7 @@ class ShopApiService {
           'sortBy': sortBy,
           'sortDir': sortDir,
         },
-        includeAuth: false,
+        includeAuth: true,
       );
 
       return response;
@@ -89,7 +89,7 @@ class ShopApiService {
           'lng': longitude.toString(),
           'radius': radius.toString(),
         },
-        includeAuth: false,
+        includeAuth: true,
       );
 
       return response;
@@ -106,7 +106,7 @@ class ShopApiService {
       
       final response = await _apiService.get(
         '/shops/featured',
-        includeAuth: false,
+        includeAuth: true,
       );
 
       return response;
@@ -123,7 +123,7 @@ class ShopApiService {
       
       final response = await _apiService.get(
         '/shops/$shopId',
-        includeAuth: false,
+        includeAuth: true,
       );
 
       return response;
@@ -185,8 +185,6 @@ class ShopApiService {
       final queryParams = <String, String>{
         'page': page.toString(),
         'size': size.toString(),
-        'sortBy': sortBy,
-        'sortDir': sortDir,
       };
       
       if (category != null) queryParams['category'] = category;
@@ -195,12 +193,9 @@ class ShopApiService {
       if (inStock != null) queryParams['inStock'] = inStock.toString();
       
       final response = await _apiService.get(
-        '/shop-products',
-        queryParams: {
-          'shopId': shopId,
-          ...queryParams,
-        },
-        includeAuth: false,
+        '/shops/$shopId/products',
+        queryParams: queryParams,
+        includeAuth: true,
       );
 
       return response;
@@ -221,14 +216,13 @@ class ShopApiService {
       Logger.api('Searching shop products: $shopId - $query');
       
       final response = await _apiService.get(
-        '/shop-products/search',
+        '/shops/$shopId/products/search',
         queryParams: {
-          'shopId': shopId,
           'q': query,
           'page': page.toString(),
           'size': size.toString(),
         },
-        includeAuth: false,
+        includeAuth: true,
       );
 
       return response;

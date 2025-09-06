@@ -5,6 +5,7 @@ import com.shopmanagement.dto.auth.AuthResponse;
 import com.shopmanagement.dto.auth.RegisterRequest;
 import com.shopmanagement.dto.auth.ChangePasswordRequest;
 import com.shopmanagement.entity.User;
+import com.shopmanagement.exception.AuthenticationFailedException;
 import com.shopmanagement.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import lombok.RequiredArgsConstructor;
@@ -43,7 +44,12 @@ public class AuthService {
                 .username(request.getUsername())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .mobileNumber(request.getMobileNumber())
                 .role(User.UserRole.USER)  // Force USER role for customers
+                .emailVerified(false)
+                .mobileVerified(false)
                 .build();
         
         userRepository.save(user);
@@ -52,8 +58,8 @@ public class AuthService {
         try {
             String otp = String.valueOf((int) (Math.random() * 900000) + 100000);
             
-            // Use username as the display name since fullName is not available
-            String userName = request.getUsername();
+            // Use full name for display in email
+            String userName = request.getFirstName() + " " + request.getLastName();
             
             emailService.sendOtpVerificationEmail(user.getEmail(), userName, otp);
             
@@ -75,15 +81,17 @@ public class AuthService {
     }
 
     public AuthResponse authenticate(AuthRequest request) {
+        // Find user by email (now the primary login method)
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new AuthenticationFailedException("Invalid email or password"));
+        
+        // Authenticate with the found user's username
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        request.getUsername(),
+                        user.getUsername(),
                         request.getPassword()
                 )
         );
-        
-        var user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow();
         
         var jwtToken = jwtService.generateToken(user);
         

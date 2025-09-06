@@ -82,7 +82,7 @@ export class LoginComponent implements OnInit, OnDestroy {
 
   private initializeForm(): void {
     this.loginForm = this.formBuilder.group({
-      username: ['admin', [Validators.required]], // Default admin username
+      email: ['admin@example.com', [Validators.required, Validators.email]], // Default admin email
       password: ['admin123', [Validators.required, Validators.minLength(6)]]
     });
   }
@@ -150,6 +150,9 @@ export class LoginComponent implements OnInit, OnDestroy {
       if (field.errors['minlength']) {
         return `${this.getFieldLabel(fieldName)} must be at least ${field.errors['minlength'].requiredLength} characters`;
       }
+      if (field.errors['email']) {
+        return `Please enter a valid email address`;
+      }
     }
     
     return null;
@@ -157,7 +160,7 @@ export class LoginComponent implements OnInit, OnDestroy {
 
   private getFieldLabel(fieldName: string): string {
     const labels: { [key: string]: string } = {
-      username: 'Username',
+      email: 'Email',
       password: 'Password'
     };
     return labels[fieldName] || fieldName;

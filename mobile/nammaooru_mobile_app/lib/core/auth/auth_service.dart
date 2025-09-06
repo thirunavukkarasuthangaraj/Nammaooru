@@ -1,30 +1,42 @@
 import 'dart:convert';
+import 'package:dio/dio.dart';
 import '../api/api_client.dart';
 import '../api/api_endpoints.dart';
 import '../storage/secure_storage.dart';
 import 'jwt_helper.dart';
 
 class AuthService {
-  static Future<AuthResult> login(String username, String password) async {
+  static Future<AuthResult> login(String email, String password) async {
     try {
       final response = await ApiClient.post(
         ApiEndpoints.login,
         data: {
-          'username': username,
+          'email': email,
           'password': password,
         },
       );
       
       final data = response.data;
+      
+      // Check for error statusCode (9999 indicates failure)
+      final statusCode = data['statusCode']?.toString();
+      if (statusCode != null && statusCode != '0000' && statusCode != '200') {
+        return AuthResult.failure(data['message'] ?? 'Login failed');
+      }
+      
       final token = data['accessToken'];
       final refreshToken = data['refreshToken'];
       
-      if (token != null && refreshToken != null) {
+      if (token != null) {
         await SecureStorage.saveAuthToken(token);
-        await SecureStorage.saveRefreshToken(refreshToken);
+        if (refreshToken != null) {
+          await SecureStorage.saveRefreshToken(refreshToken);
+        }
         
-        final userRole = JwtHelper.getUserRole(token);
-        final userId = JwtHelper.getUserId(token);
+        // Try to get role from response first, fallback to JWT
+        final userRole = data['role'] ?? JwtHelper.getUserRole(token);
+        // Try to get userId from JWT using 'sub' field or from response as username
+        final userId = JwtHelper.getUserId(token) ?? data['username'];
         
         if (userRole != null && userId != null) {
           await SecureStorage.saveUserRole(userRole);
@@ -34,13 +46,16 @@ class AuthService {
             token: token,
             userRole: userRole,
             userId: userId,
+            message: data['message'] ?? 'Login successful!',
           );
         }
       }
       
       return AuthResult.failure('Invalid response from server');
+    } on DioException catch (e) {
+      return AuthResult.failure(_extractErrorMessage(e));
     } catch (e) {
-      return AuthResult.failure(e.toString());
+      return AuthResult.failure('Login failed. Please try again.');
     }
   }
   
@@ -50,10 +65,13 @@ class AuthService {
     required String password,
     required String phoneNumber,
     required String role,
+    required String username,
   }) async {
     try {
-      // Split name into username (using email prefix or name)
-      final username = email.split('@')[0];
+      // Split the full name into first and last name
+      final nameParts = name.trim().split(' ');
+      final firstName = nameParts.first;
+      final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
       
       final response = await ApiClient.post(
         ApiEndpoints.register,
@@ -61,13 +79,18 @@ class AuthService {
           'username': username,
           'email': email,
           'password': password,
+          'firstName': firstName,
+          'lastName': lastName,
+          'mobileNumber': phoneNumber,
           'role': 'USER', // Force USER role for customer registration
         },
       );
       
       return AuthResult.success(message: 'Registration successful');
+    } on DioException catch (e) {
+      return AuthResult.failure(_extractErrorMessage(e));
     } catch (e) {
-      return AuthResult.failure(e.toString());
+      return AuthResult.failure('Registration failed. Please try again.');
     }
   }
   
@@ -91,8 +114,10 @@ class AuthService {
           await SecureStorage.saveRefreshToken(refreshToken);
         }
         
-        final userRole = JwtHelper.getUserRole(token);
-        final userId = JwtHelper.getUserId(token);
+        // Try to get role from response first, fallback to JWT
+        final userRole = data['role'] ?? JwtHelper.getUserRole(token);
+        // Try to get userId from JWT using 'sub' field or from response as username
+        final userId = JwtHelper.getUserId(token) ?? data['username'];
         
         if (userRole != null && userId != null) {
           await SecureStorage.saveUserRole(userRole);
@@ -102,28 +127,34 @@ class AuthService {
             token: token,
             userRole: userRole,
             userId: userId,
+            message: data['message'] ?? 'Email verified successfully!',
           );
         }
       }
       
       return AuthResult.failure('Invalid response from server');
+    } on DioException catch (e) {
+      return AuthResult.failure(_extractErrorMessage(e));
     } catch (e) {
-      return AuthResult.failure(e.toString());
+      return AuthResult.failure('OTP verification failed. Please try again.');
     }
   }
   
   static Future<AuthResult> resendOtp(String email) async {
     try {
-      await ApiClient.post(
+      final response = await ApiClient.post(
         ApiEndpoints.sendOtp,
         data: {
           'email': email,
         },
       );
       
-      return AuthResult.success(message: 'OTP sent successfully');
+      final message = response.data?['message'] ?? 'OTP sent successfully';
+      return AuthResult.success(message: message);
+    } on DioException catch (e) {
+      return AuthResult.failure(_extractErrorMessage(e));
     } catch (e) {
-      return AuthResult.failure(e.toString());
+      return AuthResult.failure('Failed to send OTP. Please try again.');
     }
   }
   
@@ -139,10 +170,8 @@ class AuthService {
   }
   
   static Future<String?> getCurrentUserRole() async {
-    final token = await SecureStorage.getAuthToken();
-    if (token == null) return null;
-    
-    return JwtHelper.getUserRole(token);
+    // Get role from SecureStorage, not from JWT (JWT doesn't contain role)
+    return await SecureStorage.getUserRole();
   }
   
   static Future<String?> getCurrentUserId() async {
@@ -171,6 +200,71 @@ class AuthService {
     } catch (e) {
       await SecureStorage.clearAuthData();
       return AuthResult.failure(e.toString());
+    }
+  }
+
+  // Helper function to extract user-friendly error messages from server responses
+  static String _extractErrorMessage(DioException e) {
+    if (e.response?.data != null) {
+      final responseData = e.response!.data;
+      
+      // Handle different response formats
+      if (responseData is Map<String, dynamic>) {
+        // Check for message field first (most common)
+        if (responseData.containsKey('message') && 
+            responseData['message'] != null && 
+            responseData['message'].toString().trim().isNotEmpty) {
+          return responseData['message'].toString();
+        }
+        
+        // Check for error field
+        if (responseData.containsKey('error') && 
+            responseData['error'] != null && 
+            responseData['error'].toString().trim().isNotEmpty) {
+          return responseData['error'].toString();
+        }
+        
+        // Check for errors array (validation errors)
+        if (responseData.containsKey('errors') && responseData['errors'] is List) {
+          final errors = responseData['errors'] as List;
+          if (errors.isNotEmpty) {
+            return errors.first.toString();
+          }
+        }
+      }
+    }
+    
+    // Fallback to status code based messages
+    final statusCode = e.response?.statusCode ?? 0;
+    switch (statusCode) {
+      case 400:
+        return 'Invalid request. Please check your input.';
+      case 401:
+        return 'Invalid credentials. Please try again.';
+      case 403:
+        return 'Access denied. Please contact support.';
+      case 404:
+        return 'Service not found. Please try again later.';
+      case 409:
+        return 'Conflict occurred. Please try again.';
+      case 422:
+        return 'Invalid data provided. Please check your input.';
+      case 500:
+        return 'Server error. Please try again later.';
+      case 502:
+      case 503:
+      case 504:
+        return 'Service temporarily unavailable. Please try again.';
+      default:
+        // Handle network errors
+        if (e.type == DioExceptionType.connectionTimeout ||
+            e.type == DioExceptionType.receiveTimeout) {
+          return 'Connection timeout. Please check your internet connection.';
+        } else if (e.type == DioExceptionType.connectionError) {
+          return 'Unable to connect. Please check your internet connection.';
+        } else {
+          return 'Something went wrong. Please try again.';
+        }
     }
   }
 }

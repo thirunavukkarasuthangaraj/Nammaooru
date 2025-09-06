@@ -1,4 +1,4 @@
-import '../core/api/api_service.dart';
+import '../core/services/api_service.dart';
 import '../core/utils/logger.dart';
 
 class AuthApiService {

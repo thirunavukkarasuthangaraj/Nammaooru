@@ -6,7 +6,7 @@ import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/providers/cart_provider.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/utils/helpers.dart';
-import 'order_confirmation_screen.dart';
+// import 'order_confirmation_screen.dart'; // Temporarily commented
 
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({super.key});
@@ -831,14 +831,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       cartProvider.clearCart();
       
       if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => OrderConfirmationScreen(
-              orderNumber: 'ORD-${DateTime.now().millisecondsSinceEpoch}',
-              orderData: orderData,
-            ),
+        // Show success message instead of navigating to confirmation screen
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Order placed successfully!'),
+            backgroundColor: Colors.green,
           ),
         );
+        Navigator.of(context).popUntil((route) => route.isFirst);
       }
     } catch (e) {
       if (mounted) {

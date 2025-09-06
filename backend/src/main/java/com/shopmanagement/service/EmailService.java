@@ -47,6 +47,28 @@ public class EmailService {
     private String frontendBaseUrl;
 
     @Async
+    public void sendPasswordResetOtpEmail(String to, String username, String otp) {
+        try {
+            Map<String, Object> variables = Map.of(
+                "userName", username != null ? username : "User",
+                "otpCode", otp,
+                "expirationMinutes", "10",
+                "resetUrl", frontendBaseUrl + "/auth/forgot-password",
+                "supportEmail", emailProperties.getFrom(),
+                "companyName", "NammaOoru"
+            );
+            
+            String subject = "Password Reset OTP - NammaOoru";
+            sendHtmlEmail(to, subject, "forgot-password-otp", variables);
+            log.info("Password reset OTP email sent to: {}", to);
+            
+        } catch (Exception e) {
+            log.error("Failed to send password reset OTP email to: {}", to, e);
+            throw new RuntimeException("Failed to send OTP email", e);
+        }
+    }
+
+    @Async
     public void sendSimpleEmail(String to, String subject, String text) {
         try {
             SimpleMailMessage message = new SimpleMailMessage();

@@ -34,7 +34,7 @@ public class GlobalExceptionHandler {
                 .path(request.getDescription(false).replace("uri=", ""))
                 .build();
         
-        return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+        return new ResponseEntity<>(response, HttpStatus.OK);  // Always return 200
     }
 
     @ExceptionHandler(ShopValidationException.class)
@@ -47,7 +47,7 @@ public class GlobalExceptionHandler {
                 .path(request.getDescription(false).replace("uri=", ""))
                 .build();
         
-        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(response, HttpStatus.OK);  // Always return 200
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -70,7 +70,7 @@ public class GlobalExceptionHandler {
                 .path(request.getDescription(false).replace("uri=", ""))
                 .build();
 
-        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(response, HttpStatus.OK);  // Always return 200
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
@@ -83,20 +83,22 @@ public class GlobalExceptionHandler {
                 .path(request.getDescription(false).replace("uri=", ""))
                 .build();
         
-        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(response, HttpStatus.OK);  // Always return 200
     }
 
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ApiResponse<Void>> handleAuthenticationException(AuthenticationException ex, WebRequest request) {
         log.error("Authentication failed: {}", ex.getMessage());
         
+        String message = ex.getMessage() != null ? ex.getMessage() : ResponseConstants.INVALID_CREDENTIALS_MESSAGE;
+        
         ApiResponse<Void> response = ApiResponse.<Void>builder()
-                .statusCode(ResponseConstants.INVALID_CREDENTIALS)
-                .message(ResponseConstants.INVALID_CREDENTIALS_MESSAGE)
+                .statusCode(ResponseConstants.GENERAL_ERROR)  // Use 9999 for auth failures
+                .message(message)
                 .path(request.getDescription(false).replace("uri=", ""))
                 .build();
         
-        return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
+        return new ResponseEntity<>(response, HttpStatus.OK);  // Always return 200
     }
 
     @ExceptionHandler(AccessDeniedException.class)
@@ -109,7 +111,7 @@ public class GlobalExceptionHandler {
                 .path(request.getDescription(false).replace("uri=", ""))
                 .build();
         
-        return new ResponseEntity<>(response, HttpStatus.FORBIDDEN);
+        return new ResponseEntity<>(response, HttpStatus.OK);  // Always return 200
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
@@ -122,7 +124,7 @@ public class GlobalExceptionHandler {
                 .path(request.getDescription(false).replace("uri=", ""))
                 .build();
         
-        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(response, HttpStatus.OK);  // Always return 200
     }
 
     @ExceptionHandler(RuntimeException.class)
@@ -151,7 +153,7 @@ public class GlobalExceptionHandler {
                 .path(request.getDescription(false).replace("uri=", ""))
                 .build();
         
-        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        return new ResponseEntity<>(response, HttpStatus.OK);  // Always return 200
     }
 
     @ExceptionHandler(Exception.class)
@@ -159,11 +161,11 @@ public class GlobalExceptionHandler {
         log.error("Unexpected error occurred", ex);
         
         ApiResponse<Void> response = ApiResponse.<Void>builder()
-                .statusCode(ResponseConstants.INTERNAL_SERVER_ERROR)
+                .statusCode(ResponseConstants.GENERAL_ERROR)  // Use 9999 for general errors
                 .message(ResponseConstants.INTERNAL_SERVER_ERROR_MESSAGE)
                 .path(request.getDescription(false).replace("uri=", ""))
                 .build();
         
-        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        return new ResponseEntity<>(response, HttpStatus.OK);  // Always return 200
     }
 }

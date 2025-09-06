@@ -1,5 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter/foundation.dart';
+import 'dart:convert';
 
 class LocalStorage {
   static late SharedPreferences _prefs;
@@ -49,18 +51,88 @@ class LocalStorage {
   }
   
   static Future<void> setSecureString(String key, String value) async {
-    await _secureStorage.write(key: key, value: value);
+    if (kIsWeb) {
+      // On web, use SharedPreferences as FlutterSecureStorage has issues
+      await _prefs.setString('secure_$key', value);
+    } else {
+      await _secureStorage.write(key: key, value: value);
+    }
   }
   
   static Future<String?> getSecureString(String key) async {
-    return await _secureStorage.read(key: key);
+    if (kIsWeb) {
+      // On web, use SharedPreferences as FlutterSecureStorage has issues
+      return _prefs.getString('secure_$key');
+    } else {
+      return await _secureStorage.read(key: key);
+    }
   }
   
   static Future<void> removeSecureString(String key) async {
-    await _secureStorage.delete(key: key);
+    if (kIsWeb) {
+      await _prefs.remove('secure_$key');
+    } else {
+      await _secureStorage.delete(key: key);
+    }
   }
   
   static Future<void> clearSecureStorage() async {
-    await _secureStorage.deleteAll();
+    if (kIsWeb) {
+      final keys = _prefs.getKeys();
+      for (String key in keys) {
+        if (key.startsWith('secure_')) {
+          await _prefs.remove(key);
+        }
+      }
+    } else {
+      await _secureStorage.deleteAll();
+    }
+  }
+
+  // Additional methods for map and list operations
+  static Future<void> setMap(String key, Map<String, dynamic> value) async {
+    await _prefs.setString(key, jsonEncode(value));
+  }
+  
+  static Map<String, dynamic> getMap(String key) {
+    final jsonString = _prefs.getString(key);
+    if (jsonString == null) return {};
+    try {
+      return Map<String, dynamic>.from(jsonDecode(jsonString));
+    } catch (e) {
+      return {};
+    }
+  }
+  
+  static Future<void> setList(String key, List<dynamic> value) async {
+    await _prefs.setString(key, jsonEncode(value));
+  }
+  
+  static List<dynamic> getList(String key) {
+    final jsonString = _prefs.getString(key);
+    if (jsonString == null) return [];
+    try {
+      return List<dynamic>.from(jsonDecode(jsonString));
+    } catch (e) {
+      return [];
+    }
+  }
+  
+  // User preferences methods
+  static Future<Map<String, dynamic>> getUserPreferences() async {
+    return getMap('user_preferences');
+  }
+  
+  static Future<void> setUserPreference(String key, dynamic value) async {
+    final prefs = getUserPreferences();
+    final currentPrefs = await prefs;
+    currentPrefs[key] = value;
+    await setMap('user_preferences', currentPrefs);
+  }
+  
+  // Clear all data
+  static Future<void> clearAll() async {
+    await clear();
+    await clearSecureStorage();
   }
 }

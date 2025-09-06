@@ -10,24 +10,40 @@ class RoleGuard {
     final isLoggedIn = await AuthService.isLoggedIn();
     final currentPath = state.uri.path;
     
+    // debugPrint('RoleGuard - Path: $currentPath, LoggedIn: $isLoggedIn');
+    
+    // Don't interfere with auth routes when not logged in
     if (!isLoggedIn) {
       if (_isAuthRoute(currentPath)) {
-        return null;
+        debugPrint('RoleGuard - Allowing auth route: $currentPath');
+        return null; // Allow auth routes
       }
-      return '/login';
+      debugPrint('RoleGuard - Redirecting to login from: $currentPath');
+      return '/login'; // Redirect to login for protected routes
     }
     
     final userRole = await AuthService.getCurrentUserRole();
+    debugPrint('RoleGuard - User role: $userRole');
     
+    // Only redirect from auth routes ONCE after login, not on manual navigation
     if (_isAuthRoute(currentPath)) {
+      debugPrint('RoleGuard - Auth route detected: $currentPath');
       return _getHomeRouteForRole(userRole);
     }
     
-    if (!_hasPermissionForRoute(currentPath, userRole)) {
-      return _getHomeRouteForRole(userRole);
+    // If user is trying to access customer dashboard, allow it for USER/CUSTOMER roles
+    if (currentPath == '/customer/dashboard' && (userRole == 'USER' || userRole == 'CUSTOMER')) {
+      debugPrint('RoleGuard - Allowing customer dashboard access');
+      return null;
     }
     
-    return null;
+    // Allow navigation to any route the user has permission for
+    if (_hasPermissionForRoute(currentPath, userRole)) {
+      return null; // Allow navigation
+    }
+    
+    // If user doesn't have permission, redirect to their dashboard
+    return _getHomeRouteForRole(userRole);
   }
   
   static bool _isAuthRoute(String path) {
@@ -39,7 +55,7 @@ class RoleGuard {
     if (userRole == null) return false;
     
     if (path.startsWith('/customer/')) {
-      return userRole == 'CUSTOMER';
+      return userRole == 'CUSTOMER' || userRole == 'USER';
     }
     
     if (path.startsWith('/shop-owner/')) {
@@ -56,6 +72,7 @@ class RoleGuard {
   static String _getHomeRouteForRole(String? userRole) {
     switch (userRole) {
       case 'CUSTOMER':
+      case 'USER':  // USER role from backend maps to customer dashboard
         return '/customer/dashboard';
       case 'SHOP_OWNER':
         return '/shop-owner/dashboard';
@@ -75,6 +92,7 @@ class RoleGuard {
   }) {
     switch (userRole) {
       case 'CUSTOMER':
+      case 'USER':  // USER role from backend maps to customer widgets
         return customerWidget ?? defaultWidget ?? const SizedBox.shrink();
       case 'SHOP_OWNER':
         return shopOwnerWidget ?? defaultWidget ?? const SizedBox.shrink();
@@ -88,14 +106,11 @@ class RoleGuard {
   static List<BottomNavigationBarItem> getRoleBasedNavItems(String? userRole) {
     switch (userRole) {
       case 'CUSTOMER':
+      case 'USER':  // USER role from backend gets customer navigation
         return [
           const BottomNavigationBarItem(
             icon: Icon(Icons.home),
             label: 'Home',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.category),
-            label: 'Categories',
           ),
           const BottomNavigationBarItem(
             icon: Icon(Icons.shopping_cart),

@@ -56,7 +56,8 @@ class JwtHelper {
       
       if (isTokenExpired(token)) return false;
       
-      final requiredFields = ['sub', 'role', 'exp'];
+      // Only require 'sub' and 'exp' fields - role comes from API response, not JWT
+      final requiredFields = ['sub', 'exp'];
       for (final field in requiredFields) {
         if (!payload.containsKey(field)) return false;
       }

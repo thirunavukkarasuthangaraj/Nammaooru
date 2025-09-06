@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/auth/auth_provider.dart';
-import '../../../core/constants/colors.dart';
+import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../shared/widgets/custom_app_bar.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../services/shop_api_service.dart';
 import '../../../services/order_api_service.dart';
-import '../shops/shops_screen.dart';
-import '../products/products_screen.dart';
+import '../screens/shop_listing_screen.dart';
+import '../screens/shop_details_screen.dart';
 
 class CustomerDashboard extends StatefulWidget {
   const CustomerDashboard({super.key});
@@ -121,7 +121,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       expandedHeight: 120.0,
       floating: false,
       pinned: true,
-      backgroundColor: AppColors.primary,
+      backgroundColor: VillageTheme.primaryGreen,
       flexibleSpace: FlexibleSpaceBar(
         title: Consumer<AuthProvider>(
           builder: (context, authProvider, child) {
@@ -130,18 +130,19 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Good Morning! 👋',
+                  'નમસ્તે! 🙏', // 'Namaste!' in Gujarati
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text(
-                  'What would you like to order?',
+                  'આપ શું મંગાવવા માંગો છો?', // 'What would you like to order?' in Gujarati  
                   style: TextStyle(
                     color: Colors.white70,
-                    fontSize: 12,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
@@ -212,7 +213,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         children: [
           Icon(
             Icons.location_on,
-            color: AppColors.primary,
+            color: VillageTheme.primaryGreen,
             size: 24,
           ),
           const SizedBox(width: 12),
@@ -224,7 +225,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                   'Deliver to',
                   style: TextStyle(
                     fontSize: 12,
-                    color: AppColors.textSecondary,
+                    color: VillageTheme.secondaryText,
                   ),
                 ),
                 Text(
@@ -232,7 +233,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: VillageTheme.primaryText,
                   ),
                 ),
               ],
@@ -261,11 +262,20 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
+          'આપણને શું જોઈએ છે?', // 'What do you need?' in Gujarati
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: VillageTheme.primaryText,
+          ),
+        ),
+        const SizedBox(height: 4),
+        const Text(
           'What do you need?',
           style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
+            fontSize: 18,
+            fontWeight: FontWeight.w500,
+            color: VillageTheme.secondaryText,
           ),
         ),
         const SizedBox(height: 16),
@@ -274,9 +284,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
-            childAspectRatio: 1.5,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
+            childAspectRatio: 1.2,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
           ),
           itemCount: categories.length,
           itemBuilder: (context, index) {
@@ -295,9 +305,16 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   Widget _buildCategoryCard(String name, IconData icon, Color color) {
     return Container(
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.2)),
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.3), width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Material(
         color: Colors.transparent,
@@ -307,28 +324,32 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => ShopsScreen(category: name),
+                builder: (context) => ShopListingScreen(
+                  category: name.toLowerCase(),
+                  categoryTitle: name,
+                ),
               ),
             );
           },
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
                   icon,
-                  size: 32,
+                  size: 48,
                   color: color,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 Text(
                   name,
                   style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                     color: color,
                   ),
+                  textAlign: TextAlign.center,
                 ),
               ],
             ),
@@ -358,7 +379,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           _buildQuickAction(
             'Track Order',
             Icons.delivery_dining,
-            AppColors.primary,
+            VillageTheme.primaryGreen,
             () {
               // TODO: Navigate to order tracking
             },
@@ -366,7 +387,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           _buildQuickAction(
             'Reorder',
             Icons.refresh,
-            AppColors.secondary,
+            VillageTheme.accentOrange,
             () {
               // TODO: Show reorder options
             },
@@ -417,7 +438,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               label,
               style: TextStyle(
                 fontSize: 12,
-                color: AppColors.textSecondary,
+                color: VillageTheme.secondaryText,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -439,7 +460,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+                color: VillageTheme.primaryText,
               ),
             ),
             TextButton(
@@ -449,7 +470,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               child: const Text(
                 'See All',
                 style: TextStyle(
-                  color: AppColors.primary,
+                  color: VillageTheme.primaryGreen,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -465,7 +486,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                   ? const Center(
                       child: Text(
                         'No shops available',
-                        style: TextStyle(color: AppColors.textSecondary),
+                        style: TextStyle(color: VillageTheme.secondaryText),
                       ),
                     )
                   : ListView.builder(
@@ -512,7 +533,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => ProductsScreen(shopId: shop?['id']?.toString() ?? '1'),
+                builder: (context) => ShopDetailsScreen(
+                  shopId: shop?['id'] ?? 1,
+                ),
               ),
             );
           },
@@ -531,7 +554,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                   child: Icon(
                     Icons.store,
                     size: 40,
-                    color: AppColors.textHint,
+                    color: VillageTheme.hintText,
                   ),
                 ),
               ),
@@ -545,7 +568,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
+                        color: VillageTheme.primaryText,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -563,7 +586,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                           rating,
                           style: const TextStyle(
                             fontSize: 12,
-                            color: AppColors.textSecondary,
+                            color: VillageTheme.secondaryText,
                           ),
                         ),
                         const Spacer(),
@@ -571,7 +594,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                           '$deliveryTime min',
                           style: const TextStyle(
                             fontSize: 12,
-                            color: AppColors.textSecondary,
+                            color: VillageTheme.secondaryText,
                           ),
                         ),
                       ],
@@ -581,7 +604,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                       businessType,
                       style: const TextStyle(
                         fontSize: 10,
-                        color: AppColors.textHint,
+                        color: VillageTheme.hintText,
                       ),
                     ),
                   ],
@@ -606,7 +629,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+                color: VillageTheme.primaryText,
               ),
             ),
             TextButton(
@@ -616,7 +639,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               child: const Text(
                 'View All',
                 style: TextStyle(
-                  color: AppColors.primary,
+                  color: VillageTheme.primaryGreen,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -652,7 +675,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                           'No recent orders',
                           style: TextStyle(
                             fontSize: 16,
-                            color: AppColors.textSecondary,
+                            color: VillageTheme.secondaryText,
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -660,7 +683,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                           'Start shopping to see your orders here',
                           style: TextStyle(
                             fontSize: 12,
-                            color: AppColors.textHint,
+                            color: VillageTheme.hintText,
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -685,7 +708,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
+            color: VillageTheme.primaryText,
           ),
         ),
         const SizedBox(height: 12),
@@ -701,8 +724,8 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      AppColors.primary,
-                      AppColors.primary.withOpacity(0.8),
+                      VillageTheme.primaryGreen,
+                      VillageTheme.primaryGreen.withOpacity(0.8),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(12),
@@ -734,7 +757,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
-                          foregroundColor: AppColors.primary,
+                          foregroundColor: VillageTheme.primaryGreen,
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         ),
                         child: const Text(
@@ -763,12 +786,12 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     final itemCount = order['items']?.length ?? 0;
     final createdAt = order['createdAt'] ?? '';
     
-    Color statusColor = AppColors.primary;
+    Color statusColor = VillageTheme.primaryGreen;
     String statusText = status;
     
     switch (status.toUpperCase()) {
       case 'DELIVERED':
-        statusColor = AppColors.success;
+        statusColor = VillageTheme.successGreen;
         statusText = 'Delivered';
         break;
       case 'CANCELLED':
@@ -780,7 +803,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         statusText = 'Pending';
         break;
       case 'CONFIRMED':
-        statusColor = AppColors.primary;
+        statusColor = VillageTheme.primaryGreen;
         statusText = 'Confirmed';
         break;
       default:
@@ -825,14 +848,14 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: VillageTheme.primaryText,
                   ),
                 ),
                 Text(
                   '$itemCount items • ₹$totalAmount',
                   style: const TextStyle(
                     fontSize: 14,
-                    color: AppColors.textSecondary,
+                    color: VillageTheme.secondaryText,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -869,7 +892,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                   child: const Text(
                     'Reorder',
                     style: TextStyle(
-                      color: AppColors.primary,
+                      color: VillageTheme.primaryGreen,
                       fontSize: 12,
                     ),
                   ),
@@ -881,7 +904,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                 child: const Text(
                   'View Details',
                   style: TextStyle(
-                    color: AppColors.textSecondary,
+                    color: VillageTheme.secondaryText,
                     fontSize: 12,
                   ),
                 ),

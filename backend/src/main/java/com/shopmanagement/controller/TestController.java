@@ -86,4 +86,44 @@ public class TestController {
                ", Active: " + user.getIsActive() +
                ", Status: " + user.getStatus();
     }
+    
+    @PostMapping("/create-superadmin")
+    public String createSuperAdmin() {
+        // Check if superadmin already exists
+        if (userRepository.existsByUsername("superadmin") || userRepository.existsByEmail("superadmin@shopmanagement.com")) {
+            // If exists, update the email and password
+            User existingSuperadmin = userRepository.findByUsername("superadmin").orElse(null);
+            if (existingSuperadmin != null) {
+                existingSuperadmin.setEmail("superadmin@shopmanagement.com");
+                existingSuperadmin.setPassword(passwordEncoder.encode("password"));
+                existingSuperadmin.setRole(User.UserRole.SUPER_ADMIN);
+                existingSuperadmin.setIsActive(true);
+                existingSuperadmin.setEmailVerified(true);
+                userRepository.save(existingSuperadmin);
+                return "Superadmin user updated successfully - Email: superadmin@shopmanagement.com, Password: password";
+            }
+        }
+        
+        // Create new superadmin user
+        User superadmin = User.builder()
+                .username("superadmin")
+                .email("superadmin@shopmanagement.com")
+                .password(passwordEncoder.encode("password"))
+                .firstName("Super")
+                .lastName("Admin")
+                .role(User.UserRole.SUPER_ADMIN)
+                .status(User.UserStatus.ACTIVE)
+                .isActive(true)
+                .emailVerified(true)
+                .mobileVerified(false)
+                .twoFactorEnabled(false)
+                .isTemporaryPassword(false)
+                .passwordChangeRequired(false)
+                .failedLoginAttempts(0)
+                .createdBy("system")
+                .build();
+        
+        userRepository.save(superadmin);
+        return "Superadmin user created successfully - Email: superadmin@shopmanagement.com, Password: password";
+    }
 }

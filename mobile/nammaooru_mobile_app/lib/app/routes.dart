@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../core/auth/role_guard.dart';
+import '../core/auth/auth_service.dart';
 import '../features/auth/screens/splash_screen.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/register_screen.dart';
 import '../features/auth/screens/otp_verification_screen.dart';
 import '../features/customer/dashboard/customer_dashboard.dart';
+import '../features/customer/screens/shop_listing_screen.dart';
+import '../features/customer/screens/shop_details_screen.dart';
+import '../features/customer/screens/profile_screen.dart';
+import '../features/customer/screens/address_management_screen.dart';
+import '../features/customer/cart/cart_screen.dart';
 import '../features/shop_owner/dashboard/shop_owner_dashboard.dart';
 import '../features/shop_owner/products/product_management_screen.dart';
 import '../features/shop_owner/orders/order_processing_screen.dart';
@@ -46,6 +52,53 @@ class AppRouter {
           GoRoute(
             path: '/customer/dashboard',
             builder: (context, state) => const CustomerDashboard(),
+          ),
+          GoRoute(
+            path: '/customer/shops',
+            builder: (context, state) {
+              final category = state.uri.queryParameters['category'];
+              final categoryTitle = state.uri.queryParameters['categoryTitle'];
+              return ShopListingScreen(
+                category: category,
+                categoryTitle: categoryTitle,
+              );
+            },
+          ),
+          GoRoute(
+            path: '/customer/shop/:shopId',
+            builder: (context, state) {
+              final shopIdStr = state.pathParameters['shopId']!;
+              final shopId = int.parse(shopIdStr);
+              final shop = state.extra as Map<String, dynamic>?;
+              return ShopDetailsScreen(
+                shopId: shopId,
+                shop: shop,
+              );
+            },
+          ),
+          GoRoute(
+            path: '/customer/categories',
+            builder: (context, state) => const ShopListingScreen(
+              categoryTitle: 'All Categories',
+            ),
+          ),
+          GoRoute(
+            path: '/customer/cart',
+            builder: (context, state) => const CartScreen(),
+          ),
+          GoRoute(
+            path: '/customer/orders',
+            builder: (context, state) => const Center(
+              child: Text('Orders Screen - Coming Soon'),
+            ),
+          ),
+          GoRoute(
+            path: '/customer/profile',
+            builder: (context, state) => const ProfileScreen(),
+          ),
+          GoRoute(
+            path: '/customer/addresses',
+            builder: (context, state) => const AddressManagementScreen(),
           ),
         ],
       ),
@@ -104,9 +157,29 @@ class CustomerShell extends StatefulWidget {
 
 class _CustomerShellState extends State<CustomerShell> {
   int _currentIndex = 0;
+  String? _userRole;
+  
+  @override
+  void initState() {
+    super.initState();
+    _loadUserRole();
+  }
+  
+  Future<void> _loadUserRole() async {
+    final userRole = await AuthService.getCurrentUserRole();
+    setState(() {
+      _userRole = userRole;
+    });
+  }
   
   @override
   Widget build(BuildContext context) {
+    if (_userRole == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    
     return Scaffold(
       body: widget.child,
       bottomNavigationBar: BottomNavigationBar(
@@ -117,7 +190,7 @@ class _CustomerShellState extends State<CustomerShell> {
           });
           _navigateToCustomerRoute(index, context);
         },
-        items: RoleGuard.getRoleBasedNavItems('CUSTOMER'),
+        items: RoleGuard.getRoleBasedNavItems(_userRole),
         type: BottomNavigationBarType.fixed,
       ),
     );
@@ -129,15 +202,12 @@ class _CustomerShellState extends State<CustomerShell> {
         context.go('/customer/dashboard');
         break;
       case 1:
-        context.go('/customer/categories');
-        break;
-      case 2:
         context.go('/customer/cart');
         break;
-      case 3:
+      case 2:
         context.go('/customer/orders');
         break;
-      case 4:
+      case 3:
         context.go('/customer/profile');
         break;
     }
@@ -155,9 +225,29 @@ class ShopOwnerShell extends StatefulWidget {
 
 class _ShopOwnerShellState extends State<ShopOwnerShell> {
   int _currentIndex = 0;
+  String? _userRole;
+  
+  @override
+  void initState() {
+    super.initState();
+    _loadUserRole();
+  }
+  
+  Future<void> _loadUserRole() async {
+    final userRole = await AuthService.getCurrentUserRole();
+    setState(() {
+      _userRole = userRole;
+    });
+  }
   
   @override
   Widget build(BuildContext context) {
+    if (_userRole == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    
     return Scaffold(
       body: widget.child,
       bottomNavigationBar: BottomNavigationBar(
@@ -168,7 +258,7 @@ class _ShopOwnerShellState extends State<ShopOwnerShell> {
           });
           _navigateToShopOwnerRoute(index, context);
         },
-        items: RoleGuard.getRoleBasedNavItems('SHOP_OWNER'),
+        items: RoleGuard.getRoleBasedNavItems(_userRole),
         type: BottomNavigationBarType.fixed,
       ),
     );
@@ -206,9 +296,29 @@ class DeliveryPartnerShell extends StatefulWidget {
 
 class _DeliveryPartnerShellState extends State<DeliveryPartnerShell> {
   int _currentIndex = 0;
+  String? _userRole;
+  
+  @override
+  void initState() {
+    super.initState();
+    _loadUserRole();
+  }
+  
+  Future<void> _loadUserRole() async {
+    final userRole = await AuthService.getCurrentUserRole();
+    setState(() {
+      _userRole = userRole;
+    });
+  }
   
   @override
   Widget build(BuildContext context) {
+    if (_userRole == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    
     return Scaffold(
       body: widget.child,
       bottomNavigationBar: BottomNavigationBar(
@@ -219,7 +329,7 @@ class _DeliveryPartnerShellState extends State<DeliveryPartnerShell> {
           });
           _navigateToDeliveryPartnerRoute(index, context);
         },
-        items: RoleGuard.getRoleBasedNavItems('DELIVERY_PARTNER'),
+        items: RoleGuard.getRoleBasedNavItems(_userRole),
         type: BottomNavigationBarType.fixed,
       ),
     );

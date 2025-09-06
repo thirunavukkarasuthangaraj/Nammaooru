@@ -103,11 +103,21 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
     if (mounted) {
       if (success) {
-        context.go(authProvider.getHomeRoute());
         Helpers.showSnackBar(
           context,
-          'Account verified successfully!',
+          'Account verified successfully! Welcome to NammaOoru!',
         );
+        await Future.delayed(const Duration(seconds: 1));
+        // User is now authenticated, redirect to appropriate dashboard based on role
+        if (authProvider.isCustomer) {
+          context.pushReplacement('/customer/dashboard');
+        } else if (authProvider.isShopOwner) {
+          context.pushReplacement('/shop-owner/dashboard');
+        } else if (authProvider.isDeliveryPartner) {
+          context.pushReplacement('/delivery-partner/dashboard');
+        } else {
+          context.pushReplacement('/customer/dashboard'); // Default to customer dashboard
+        }
       } else if (authProvider.errorMessage != null) {
         Helpers.showSnackBar(
           context,
@@ -129,7 +139,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       if (success) {
         Helpers.showSnackBar(
           context,
-          'OTP sent successfully!',
+          'New OTP sent successfully! Check your email.',
         );
         _clearOtp();
         _startTimer();
@@ -151,12 +161,36 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   }
 
   void _onOtpChanged(String value, int index) {
+    setState(() {}); // Trigger rebuild for visual updates
+    
     if (value.isNotEmpty) {
+      // Move to next field smoothly
       if (index < 5) {
-        _focusNodes[index + 1].requestFocus();
+        Future.delayed(const Duration(milliseconds: 50), () {
+          if (mounted) {
+            _focusNodes[index + 1].requestFocus();
+          }
+        });
       } else {
+        // All fields filled, wait a moment before auto-verification
         _focusNodes[index].unfocus();
-        _handleVerifyOtp();
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted && _otpValue.length == 6) {
+            _handleVerifyOtp();
+          }
+        });
+      }
+    } else {
+      // Handle backspace - move to previous field
+      if (index > 0 && _otpControllers[index].text.isEmpty) {
+        Future.delayed(const Duration(milliseconds: 50), () {
+          if (mounted) {
+            _focusNodes[index - 1].requestFocus();
+            _otpControllers[index - 1].selection = TextSelection.fromPosition(
+              TextPosition(offset: _otpControllers[index - 1].text.length),
+            );
+          }
+        });
       }
     }
   }
@@ -164,6 +198,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   void _onOtpBackspace(int index) {
     if (index > 0) {
       _otpControllers[index - 1].clear();
+      setState(() {}); // Trigger rebuild for visual updates
       _focusNodes[index - 1].requestFocus();
     }
   }
@@ -193,6 +228,16 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     const SizedBox(height: 20),
                     _buildHeader(),
                     const SizedBox(height: 40),
+                    const Text(
+                      'Enter 6-digit code',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
                     _buildOtpFields(),
                     const SizedBox(height: 30),
                     _buildTimer(),
@@ -216,49 +261,65 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     return Column(
       children: [
         Container(
-          width: 80,
-          height: 80,
+          width: 90,
+          height: 90,
           decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              colors: [
+                AppColors.primary.withOpacity(0.1),
+                AppColors.primary.withOpacity(0.05),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: AppColors.primary.withOpacity(0.2),
+              width: 1,
+            ),
           ),
           child: const Icon(
-            Icons.mark_email_read_outlined,
-            size: 40,
+            Icons.mark_email_read_rounded,
+            size: 44,
             color: AppColors.primary,
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 24),
         const Text(
           'Verify Your Email',
           style: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.bold,
             color: AppColors.textPrimary,
+            letterSpacing: -0.5,
           ),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 12),
-        RichText(
+        const SizedBox(height: 8),
+        const Text(
+          'Enter the verification code we sent to',
+          style: TextStyle(
+            fontSize: 16,
+            color: AppColors.textSecondary,
+            height: 1.4,
+          ),
           textAlign: TextAlign.center,
-          text: TextSpan(
+        ),
+        const SizedBox(height: 4),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            widget.email,
             style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              color: AppColors.primary,
               fontSize: 16,
-              color: AppColors.textSecondary,
-              height: 1.5,
             ),
-            children: [
-              const TextSpan(
-                text: 'We\'ve sent a 6-digit verification code to\n',
-              ),
-              TextSpan(
-                text: widget.email,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.primary,
-                ),
-              ),
-            ],
+            textAlign: TextAlign.center,
           ),
         ),
       ],
@@ -266,59 +327,72 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   }
 
   Widget _buildOtpFields() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: List.generate(6, (index) {
-        return SizedBox(
-          width: 45,
-          height: 60,
-          child: TextFormField(
-            controller: _otpControllers[index],
-            focusNode: _focusNodes[index],
-            keyboardType: TextInputType.number,
-            textAlign: TextAlign.center,
-            maxLength: 1,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-            decoration: InputDecoration(
-              counterText: '',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: AppColors.divider,
-                  width: 2,
-                ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: List.generate(6, (index) {
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            width: 48,
+            height: 64,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: _focusNodes[index].hasFocus 
+                    ? AppColors.primary 
+                    : _otpControllers[index].text.isNotEmpty 
+                        ? AppColors.primary.withOpacity(0.5)
+                        : AppColors.divider,
+                width: _focusNodes[index].hasFocus ? 2.5 : 1.5,
               ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: AppColors.primary,
-                  width: 2,
-                ),
-              ),
-              filled: true,
-              fillColor: Colors.grey[50],
+              color: _focusNodes[index].hasFocus 
+                  ? AppColors.primary.withOpacity(0.05)
+                  : Colors.grey[50],
+              boxShadow: _focusNodes[index].hasFocus 
+                  ? [
+                      BoxShadow(
+                        color: AppColors.primary.withOpacity(0.15),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      )
+                    ]
+                  : null,
             ),
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly,
-            ],
-            onChanged: (value) => _onOtpChanged(value, index),
-            onTap: () {
-              _otpControllers[index].selection = TextSelection.fromPosition(
-                TextPosition(offset: _otpControllers[index].text.length),
-              );
-            },
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return '';
-              }
-              return null;
-            },
-          ),
-        );
-      }),
+            child: TextFormField(
+              controller: _otpControllers[index],
+              focusNode: _focusNodes[index],
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.center,
+              maxLength: 1,
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w600,
+                color: _otpControllers[index].text.isNotEmpty 
+                    ? AppColors.primary 
+                    : AppColors.textSecondary,
+              ),
+              decoration: const InputDecoration(
+                counterText: '',
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.zero,
+              ),
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+              ],
+              onChanged: (value) => _onOtpChanged(value, index),
+              onTap: () {
+                // Clear and focus for smooth experience
+                if (_otpControllers[index].text.isNotEmpty) {
+                  _otpControllers[index].clear();
+                }
+              },
+              validator: (value) => null, // Remove validation errors
+            ),
+          );
+        }),
+      ),
     );
   }
 

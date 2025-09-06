@@ -1,12 +1,12 @@
 class EnvConfig {
   // Base API Configuration
-  // PRODUCTION: Use your deployed server
-  static const String baseUrl = 'https://api.nammaoorudelivary.in';
+  // DEVELOPMENT: Local development  
+  static const String baseUrl = 'http://localhost:8082';
   
-  // DEVELOPMENT: Uncomment for local development  
-  // static const String baseUrl = 'http://10.0.2.2:8082'; // Android Emulator
-  // static const String baseUrl = 'http://localhost:8082'; // iOS Simulator
-  // static const String baseUrl = 'http://192.168.1.100:8082'; // Local Network IP
+  // PRODUCTION: Use your deployed server
+  // static const String baseUrl = 'https://api.nammaoorudelivary.in';
+  // static const String baseUrl = 'http://10.0.2.2:8080'; // Android Emulator
+  // static const String baseUrl = 'http://192.168.1.100:8080'; // Local Network IP
   
   static const String apiVersion = '';
   static const String fullApiUrl = '$baseUrl/api';
