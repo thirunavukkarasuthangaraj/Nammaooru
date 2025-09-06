@@ -5,8 +5,11 @@ import 'package:firebase_core/firebase_core.dart';
 import 'app/app.dart';
 import 'core/auth/auth_provider.dart';
 import 'shared/providers/cart_provider.dart';
+import 'core/localization/language_provider.dart';
+import 'features/auth/providers/forgot_password_provider.dart';
 import 'core/api/api_client.dart';
 import 'core/api/api_service.dart';
+import 'core/services/api_service.dart' as services;
 import 'core/storage/local_storage.dart';
 
 void main() async {
@@ -38,6 +41,8 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => CartProvider()),
+        ChangeNotifierProvider(create: (_) => LanguageProvider()),
+        ChangeNotifierProvider(create: (_) => ForgotPasswordProvider(services.ApiService())),
       ],
       child: const NammaOoruApp(),
     ),

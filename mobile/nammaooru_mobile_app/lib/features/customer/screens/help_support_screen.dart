@@ -44,7 +44,7 @@ class HelpSupportScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'தளம் சார்ப்ंप्त ट्रज / Quick Support',
+              'விரைவு உதவி / Quick Support',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -52,7 +52,7 @@ class HelpSupportScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             const Text(
-              'உடম्या ध्या সাধারণ प्रশ्न वर त्वर सাय्या জानি टरन आগे',
+              'உங்கள் பொதுவான கேள்விகளுக்கு விரைவான உதவி / Quick help for your common questions',
               style: TextStyle(
                 color: Colors.grey,
                 fontSize: 14,
@@ -65,7 +65,7 @@ class HelpSupportScreen extends StatelessWidget {
                   child: _buildQuickActionButton(
                     context,
                     icon: Icons.phone,
-                    label: 'कॉल करें\nCall Now',
+                    label: 'Call Now',
                     color: Colors.green,
                     onPressed: () => _makePhoneCall(context),
                   ),
@@ -75,7 +75,7 @@ class HelpSupportScreen extends StatelessWidget {
                   child: _buildQuickActionButton(
                     context,
                     icon: Icons.chat,
-                    label: 'व्हॅाऑ्सাप্‍\nWhatsApp',
+                    label: 'WhatsApp',
                     color: Colors.green.shade600,
                     onPressed: () => _openWhatsApp(context),
                   ),
@@ -89,7 +89,7 @@ class HelpSupportScreen extends StatelessWidget {
                   child: _buildQuickActionButton(
                     context,
                     icon: Icons.email,
-                    label: 'ई-मेल\nEmail',
+                    label: 'Email',
                     color: Colors.blue,
                     onPressed: () => _sendEmail(context),
                   ),
@@ -99,7 +99,7 @@ class HelpSupportScreen extends StatelessWidget {
                   child: _buildQuickActionButton(
                     context,
                     icon: Icons.web,
-                    label: 'वेबसाइट\nWebsite',
+                    label: 'Website',
                     color: Colors.orange,
                     onPressed: () => _openWebsite(context),
                   ),
@@ -146,28 +146,28 @@ class HelpSupportScreen extends StatelessWidget {
   Widget _buildFAQSection(BuildContext context) {
     final faqs = [
       {
-        'question': 'How to place an order? / ऑर्डर कैसे करें?',
-        'answer': '1. Browse shops near you\n2. Select products and add to cart\n3. Choose delivery address\n4. Select Cash on Delivery\n5. Confirm your order\n\n1. अपने नजदीकी दुकान देखें\n2. प्रोडक्ट चुनें और कार्ट में डालें\n3. डिलीवरी पता चुनें\n4. कैश ऑन डिलीवरी चुनें\n5. अपना ऑर्डर कन्फर्म करें'
+        'question': 'How to place an order?',
+        'answer': '1. Browse shops near you\n2. Select products and add to cart\n3. Choose delivery address\n4. Select Cash on Delivery\n5. Confirm your order'
       },
       {
-        'question': 'Cash on Delivery available? / कैश ऑन डिलीवरी उपलब्ध है?',
-        'answer': 'Yes! Cash on Delivery is available for all orders. Pay when your order arrives at your doorstep.\n\nहाँ! सभी ऑर्डर्स के लिए कैश ऑन डिलीवरी उपलब्ध है। आपका ऑर्डर आने पर पेमेंट करें।'
+        'question': 'Cash on Delivery available?',
+        'answer': 'Yes! Cash on Delivery is available for all orders. Pay when your order arrives at your doorstep.'
       },
       {
-        'question': 'Delivery time? / डिलीवरी का समय?',
-        'answer': 'Standard delivery: 30-45 minutes for nearby shops\nScheduled delivery: Choose your preferred time slot\n\nसामान्य डिलीवरी: नजदीकी दुकानों के लिए 30-45 मिनट\nसमय निर्धारित डिलीवरी: अपना पसंदीदा समय चुनें'
+        'question': 'Delivery time?',
+        'answer': 'Standard delivery: 30-45 minutes for nearby shops\nScheduled delivery: Choose your preferred time slot'
       },
       {
-        'question': 'How to cancel order? / ऑर्डर कैसे रद्द करें?',
-        'answer': 'Go to "My Orders" → Select your order → Click "Cancel Order". You can cancel before the shop starts preparing.\n\n"My Orders" में जाएं → अपना ऑर्डर चुनें → "Cancel Order" पर क्लिक करें। दुकान तैयारी शुरू करने से पहले रद्द कर सकते हैं।'
+        'question': 'How to cancel order?',
+        'answer': 'Go to "My Orders" → Select your order → Click "Cancel Order". You can cancel before the shop starts preparing.'
       },
       {
-        'question': 'App language? / ऐप की भाषा?',
-        'answer': 'Currently available in English and Hindi. Tamil language support coming soon!\n\nफिलहाल अंग्रेजी और हिंदी में उपलब्ध है। तमिल भाषा जल्द आएगी!'
+        'question': 'App language?',
+        'answer': 'Currently available in English and Tamil language support!'
       },
       {
-        'question': 'Support hours? / सहायता का समय?',
-        'answer': 'Our support team is available:\nMonday to Sunday: 8:00 AM to 10:00 PM\nFor urgent issues, call us anytime!\n\nहमारी सहायता टीम उपलब्ध है:\nसोमवार से रविवार: सुबह 8:00 से रात 10:00 तक\nजरूरी मामलों के लिए कभी भी कॉल करें!'
+        'question': 'Support hours?',
+        'answer': 'Our support team is available:\nMonday to Sunday: 8:00 AM to 10:00 PM\nFor urgent issues, call us anytime!'
       },
     ];
 
@@ -178,7 +178,7 @@ class HelpSupportScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Frequently Asked Questions\nअक्सर पूछे जाने वाले प्रश्न',
+              'Frequently Asked Questions',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -227,7 +227,7 @@ class HelpSupportScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Contact Information\nसंपर्क जानकारी',
+              'Contact Information',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -236,25 +236,25 @@ class HelpSupportScreen extends StatelessWidget {
             const SizedBox(height: 16),
             _buildContactItem(
               icon: Icons.phone,
-              title: 'Customer Support\nग्राहक सहायता',
+              title: 'Customer Support',
               value: supportPhoneNumber,
               onTap: () => _makePhoneCall(context),
             ),
             _buildContactItem(
               icon: Icons.chat,
-              title: 'WhatsApp Support\nव्हाट्सएप सहायता',
+              title: 'WhatsApp Support',
               value: whatsappNumber,
               onTap: () => _openWhatsApp(context),
             ),
             _buildContactItem(
               icon: Icons.email,
-              title: 'Email Support\nई-मेल सहायता',
+              title: 'Email Support',
               value: supportEmail,
               onTap: () => _sendEmail(context),
             ),
             _buildContactItem(
               icon: Icons.web,
-              title: 'Website\nवेबसाइट',
+              title: 'Website',
               value: officialWebsite,
               onTap: () => _openWebsite(context),
             ),
@@ -315,7 +315,7 @@ class HelpSupportScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'App Information\nऐप की जानकारी',
+              'App Information',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -325,7 +325,7 @@ class HelpSupportScreen extends StatelessWidget {
             const Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('App Version\nऐप वर्शन'),
+                Text('App Version'),
                 Text('1.0.0'),
               ],
             ),
@@ -333,13 +333,13 @@ class HelpSupportScreen extends StatelessWidget {
             const Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Last Updated\nअंतिम अपडेट'),
+                Text('Last Updated'),
                 Text('Dec 2024'),
               ],
             ),
             const SizedBox(height: 20),
             const Text(
-              'About NammaOoru\nनम्माओरू के बारे में',
+              'About NammaOoru',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
@@ -347,7 +347,7 @@ class HelpSupportScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             const Text(
-              'NammaOoru connects you with local shops in your village and city. Order groceries, medicines, and daily essentials from nearby stores with fast delivery and Cash on Delivery option.\n\nनम्माओरू आपको आपके गांव और शहर की स्थानीय दुकानों से जोड़ता है। नजदीकी स्टोर्स से किराना, दवाइयां और दैनिक जरूरत की चीजें ऑर्डर करें तेज डिलीवरी और कैश ऑन डिलीवरी के साथ।',
+              'NammaOoru connects you with local shops in your village and city. Order groceries, medicines, and daily essentials from nearby stores with fast delivery and Cash on Delivery option.',
               style: TextStyle(
                 fontSize: 14,
                 height: 1.4,
@@ -364,18 +364,18 @@ class HelpSupportScreen extends StatelessWidget {
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
     } else {
-      _showErrorSnackBar(context, 'Could not make phone call\nफोन कॉल नहीं कर सकते');
+      _showErrorSnackBar(context, 'Could not make phone call');
     }
   }
 
   Future<void> _openWhatsApp(BuildContext context) async {
-    final message = 'Hi! I need help with NammaOoru app.\nनम्माओरू ऐप में मदद चाहिए।';
+    final message = 'Hi! I need help with NammaOoru app.';
     final whatsappUrl = Uri.parse('https://wa.me/$whatsappNumber?text=${Uri.encodeComponent(message)}');
     
     if (await canLaunchUrl(whatsappUrl)) {
       await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
     } else {
-      _showErrorSnackBar(context, 'WhatsApp not installed\nव्हाट्सएप इंस्टॉल नहीं है');
+      _showErrorSnackBar(context, 'WhatsApp not installed');
     }
   }
 
@@ -383,13 +383,13 @@ class HelpSupportScreen extends StatelessWidget {
     final emailUri = Uri(
       scheme: 'mailto',
       path: supportEmail,
-      query: 'subject=NammaOoru App Support&body=Hi, I need help with...\nहाय, मुझे मदद चाहिए...',
+      query: 'subject=NammaOoru App Support&body=Hi, I need help with...',
     );
     
     if (await canLaunchUrl(emailUri)) {
       await launchUrl(emailUri);
     } else {
-      _showErrorSnackBar(context, 'Could not open email app\nई-मेल ऐप खुल नहीं सकता');
+      _showErrorSnackBar(context, 'Could not open email app');
     }
   }
 
@@ -399,7 +399,7 @@ class HelpSupportScreen extends StatelessWidget {
     if (await canLaunchUrl(websiteUrl)) {
       await launchUrl(websiteUrl, mode: LaunchMode.externalApplication);
     } else {
-      _showErrorSnackBar(context, 'Could not open website\nवेबसाइट खुल नहीं सकती');
+      _showErrorSnackBar(context, 'Could not open website');
     }
   }
 

@@ -61,7 +61,13 @@
       "Bash(set PGPASSWORD=postgres)",
       "Bash(cmd /c:*)",
       "Bash(dir D:AAWSnammaoorushop-management-systemmobilenammaooru_mobile_applibcoreproviders)",
-      "Read(//c/Users/MVNLA/Downloads/claude-code/**)"
+      "Read(//c/Users/MVNLA/Downloads/claude-code/**)",
+      "Bash(TASKKILL /F /PID 23264)",
+      "Bash(sed:*)",
+      "Bash(TASKKILL /F /PID 27996)",
+      "Bash(TASKKILL /F /IM java.exe)",
+      "Bash(\"taskkill\" \"/F\" \"/IM\" \"java.exe\")",
+      "Bash(TASKKILL /F /PID 14908)"
     ],
     "deny": [],
     "ask": [],

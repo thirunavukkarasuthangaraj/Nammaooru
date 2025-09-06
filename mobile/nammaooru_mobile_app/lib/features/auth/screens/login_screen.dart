@@ -6,6 +6,8 @@ import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../shared/widgets/language_selector.dart';
+import '../../../core/localization/language_provider.dart';
 import '../../../core/services/post_login_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -90,9 +92,19 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: VillageTheme.lightBackground,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          const Padding(
+            padding: EdgeInsets.only(right: 16),
+            child: LanguageSelector(),
+          ),
+        ],
+      ),
       body: SafeArea(
-        child: Consumer<AuthProvider>(
-          builder: (context, authProvider, child) {
+        child: Consumer2<AuthProvider, LanguageProvider>(
+          builder: (context, authProvider, languageProvider, child) {
             return LoadingOverlay(
               isLoading: authProvider.authState == AuthState.loading,
               loadingMessage: 'Logging in...',
@@ -146,27 +158,31 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
         const SizedBox(height: VillageTheme.spacingL),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('🙏 ', style: TextStyle(fontSize: 24)),
-            Column(
+        Consumer<LanguageProvider>(
+          builder: (context, languageProvider, child) {
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  'வணக்கம்!',
-                  style: VillageTheme.headingLarge.copyWith(
-                    color: VillageTheme.primaryGreen,
-                  ),
-                ),
-                Text(
-                  'Welcome Back!',
-                  style: VillageTheme.headingMedium.copyWith(
-                    color: VillageTheme.secondaryText,
-                  ),
+                Text('🙏 ', style: TextStyle(fontSize: 24)),
+                Column(
+                  children: [
+                    Text(
+                      languageProvider.welcome,
+                      style: VillageTheme.headingLarge.copyWith(
+                        color: VillageTheme.primaryGreen,
+                      ),
+                    ),
+                    Text(
+                      languageProvider.getText('Welcome Back!', 'மீண்டும் வரவேற்கிறோம்!'),
+                      style: VillageTheme.headingMedium.copyWith(
+                        color: VillageTheme.secondaryText,
+                      ),
+                    ),
+                  ],
                 ),
               ],
-            ),
-          ],
+            );
+          },
         ),
         const SizedBox(height: VillageTheme.spacingM),
         Text(
@@ -183,17 +199,19 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildEmailField() {
     return Container(
       decoration: VillageTheme.cardDecoration,
-      child: TextFormField(
-        controller: _emailController,
-        keyboardType: TextInputType.emailAddress,
-        textInputAction: TextInputAction.next,
-        validator: Validators.validateEmail,
-        style: VillageTheme.bodyLarge,
-        decoration: InputDecoration(
-          labelText: '📧 மின்னஞ்சல் / Email',
-          labelStyle: VillageTheme.labelText.copyWith(
-            color: VillageTheme.primaryGreen,
-          ),
+      child: Consumer<LanguageProvider>(
+        builder: (context, languageProvider, child) {
+          return TextFormField(
+            controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.next,
+            validator: Validators.validateEmail,
+            style: VillageTheme.bodyLarge,
+            decoration: InputDecoration(
+              labelText: languageProvider.getText('📧 Email', '📧 மின்னஞ்சல்'),
+              labelStyle: VillageTheme.labelText.copyWith(
+                color: VillageTheme.primaryGreen,
+              ),
           hintText: 'example@email.com',
           hintStyle: VillageTheme.bodyMedium.copyWith(
             color: VillageTheme.hintText,
@@ -219,17 +237,19 @@ class _LoginScreenState extends State<LoginScreen> {
             borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
             borderSide: BorderSide(color: VillageTheme.errorRed, width: 2),
           ),
-          focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
-            borderSide: BorderSide(color: VillageTheme.errorRed, width: 2),
-          ),
-          filled: true,
-          fillColor: VillageTheme.cardBackground,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: VillageTheme.spacingM,
-            vertical: VillageTheme.spacingM,
-          ),
-        ),
+              focusedErrorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
+                borderSide: BorderSide(color: VillageTheme.errorRed, width: 2),
+              ),
+              filled: true,
+              fillColor: VillageTheme.cardBackground,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: VillageTheme.spacingM,
+                vertical: VillageTheme.spacingM,
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -237,18 +257,20 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildPasswordField() {
     return Container(
       decoration: VillageTheme.cardDecoration,
-      child: TextFormField(
-        controller: _passwordController,
-        obscureText: _obscurePassword,
-        textInputAction: TextInputAction.done,
-        validator: Validators.validatePassword,
-        onFieldSubmitted: (_) => _handleLogin(),
-        style: VillageTheme.bodyLarge,
-        decoration: InputDecoration(
-          labelText: '🔒 கடவுச்சொல் / Password',
-          labelStyle: VillageTheme.labelText.copyWith(
-            color: VillageTheme.primaryGreen,
-          ),
+      child: Consumer<LanguageProvider>(
+        builder: (context, languageProvider, child) {
+          return TextFormField(
+            controller: _passwordController,
+            obscureText: _obscurePassword,
+            textInputAction: TextInputAction.done,
+            validator: Validators.validatePassword,
+            onFieldSubmitted: (_) => _handleLogin(),
+            style: VillageTheme.bodyLarge,
+            decoration: InputDecoration(
+              labelText: languageProvider.getText('🔒 Password', '🔒 கடவுச்சொல்'),
+              labelStyle: VillageTheme.labelText.copyWith(
+                color: VillageTheme.primaryGreen,
+              ),
           hintText: 'Enter your password',
           hintStyle: VillageTheme.bodyMedium.copyWith(
             color: VillageTheme.hintText,
@@ -290,13 +312,15 @@ class _LoginScreenState extends State<LoginScreen> {
             borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
             borderSide: BorderSide(color: VillageTheme.errorRed, width: 2),
           ),
-          filled: true,
-          fillColor: VillageTheme.cardBackground,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: VillageTheme.spacingM,
-            vertical: VillageTheme.spacingM,
-          ),
-        ),
+              filled: true,
+              fillColor: VillageTheme.cardBackground,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: VillageTheme.spacingM,
+                vertical: VillageTheme.spacingM,
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -366,12 +390,18 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildLoginButton() {
-    return VillageWidgets.bigButton(
-      text: _isLoggingIn ? 'உள்நுழைகிறோம் / Signing In...' : 'உள்நுழைய / Sign In',
-      icon: Icons.login,
-      onPressed: _handleLogin,
-      isLoading: _isLoggingIn,
-      backgroundColor: VillageTheme.primaryGreen,
+    return Consumer<LanguageProvider>(
+      builder: (context, languageProvider, child) {
+        return VillageWidgets.bigButton(
+          text: _isLoggingIn 
+            ? languageProvider.getText('Signing In...', 'உள்நுழைகிறோம்...') 
+            : languageProvider.login,
+          icon: Icons.login,
+          onPressed: _handleLogin,
+          isLoading: _isLoggingIn,
+          backgroundColor: VillageTheme.primaryGreen,
+        );
+      },
     );
   }
 

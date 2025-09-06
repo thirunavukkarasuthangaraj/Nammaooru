@@ -7,6 +7,7 @@ import '../../../core/constants/colors.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../core/services/cache_service.dart';
 import '../../../core/storage/local_storage.dart';
+import '../../../shared/widgets/language_selector.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -178,6 +179,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         backgroundColor: AppColors.primary,
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
+        actions: [
+          const Padding(
+            padding: EdgeInsets.only(right: 16),
+            child: LanguageSelector(),
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

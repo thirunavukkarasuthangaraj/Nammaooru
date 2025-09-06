@@ -410,12 +410,14 @@ public class CustomerService {
         return customerRepository.existsByMobileNumber(mobileNumber);
     }
     
+    @Transactional
     public Map<String, Object> registerMobileCustomer(com.shopmanagement.dto.mobile.MobileCustomerRegistrationRequest request) {
         log.info("Registering mobile customer with mobile: {}", request.getMobileNumber());
         
         try {
             // Check if customer already exists
             if (customerRepository.existsByMobileNumber(request.getMobileNumber())) {
+                log.warn("Registration attempt with existing mobile number: {}", request.getMobileNumber());
                 return Map.of(
                     "success", false,
                     "message", "Account with this mobile number already exists",
@@ -426,6 +428,7 @@ public class CustomerService {
             // Check email uniqueness only if email is provided
             if (request.getEmail() != null && !request.getEmail().isEmpty() && 
                 customerRepository.existsByEmail(request.getEmail())) {
+                log.warn("Registration attempt with existing email: {}", request.getEmail());
                 return Map.of(
                     "success", false,
                     "message", "Account with this email already exists",
@@ -458,16 +461,28 @@ public class CustomerService {
                     .updatedBy("mobile-app")
                     .build();
             
+            // Save customer and ensure ID is generated
             Customer savedCustomer = customerRepository.save(customer);
+            
+            // Validate that ID was generated
+            if (savedCustomer.getId() == null) {
+                log.error("Customer ID was not generated after save for mobile: {}", request.getMobileNumber());
+                throw new RuntimeException("Customer registration failed - ID not generated");
+            }
+            
+            log.info("Customer saved successfully with ID: {}", savedCustomer.getId());
             
             // Generate authentication tokens
             Map<String, Object> tokens = generateMobileAuthTokens(savedCustomer);
             
-            // Send welcome email
+            // Send welcome email (non-blocking)
             try {
-                sendWelcomeEmail(savedCustomer);
+                if (savedCustomer.getEmail() != null && !savedCustomer.getEmail().isEmpty()) {
+                    sendWelcomeEmail(savedCustomer);
+                }
             } catch (Exception e) {
                 log.error("Failed to send welcome email to mobile customer: {}", savedCustomer.getEmail(), e);
+                // Don't fail registration if email sending fails
             }
             
             // Create response
@@ -491,11 +506,13 @@ public class CustomerService {
             return Map.of(
                 "success", false,
                 "message", "Registration failed. Please try again.",
-                "errorCode", "REGISTRATION_ERROR"
+                "errorCode", "REGISTRATION_ERROR",
+                "details", e.getMessage()
             );
         }
     }
     
+    @Transactional
     public Map<String, Object> authenticateMobileCustomer(com.shopmanagement.dto.mobile.MobileLoginRequest request) {
         log.info("Authenticating mobile customer: {}", request.getMobileNumber());
         
@@ -503,6 +520,7 @@ public class CustomerService {
             // Find customer by mobile number
             Optional<Customer> customerOpt = customerRepository.findByMobileNumber(request.getMobileNumber());
             if (customerOpt.isEmpty()) {
+                log.warn("Login attempt for non-existent mobile: {}", request.getMobileNumber());
                 return Map.of(
                     "success", false,
                     "message", "Account not found",
@@ -512,8 +530,19 @@ public class CustomerService {
             
             Customer customer = customerOpt.get();
             
+            // Validate customer ID exists
+            if (customer.getId() == null) {
+                log.error("Customer found but ID is null for mobile: {}", request.getMobileNumber());
+                return Map.of(
+                    "success", false,
+                    "message", "Account data error. Please contact support.",
+                    "errorCode", "DATA_ERROR"
+                );
+            }
+            
             // Check if customer is active
             if (!customer.getIsActive() || customer.getStatus() == Customer.CustomerStatus.BLOCKED) {
+                log.warn("Login attempt for inactive/blocked account: {}", request.getMobileNumber());
                 return Map.of(
                     "success", false,
                     "message", "Account is inactive or blocked",
@@ -526,17 +555,19 @@ public class CustomerService {
             
             // Update last login
             customer.setLastLoginDate(LocalDateTime.now());
-            // Device ID is not stored in Customer entity
-            customerRepository.save(customer);
+            Customer updatedCustomer = customerRepository.save(customer);
             
             // Generate authentication tokens
-            Map<String, Object> tokens = generateMobileAuthTokens(customer);
+            Map<String, Object> tokens = generateMobileAuthTokens(updatedCustomer);
             
             // Create response
-            com.shopmanagement.dto.mobile.MobileCustomerResponse customerResponse = mapToMobileResponse(customer);
+            com.shopmanagement.dto.mobile.MobileCustomerResponse customerResponse = mapToMobileResponse(updatedCustomer);
             customerResponse.setAccessToken((String) tokens.get("accessToken"));
             customerResponse.setRefreshToken((String) tokens.get("refreshToken"));
             customerResponse.setTokenExpiresIn((Long) tokens.get("expiresIn"));
+            customerResponse.setIsFirstLogin(false);
+            
+            log.info("Successfully authenticated mobile customer with ID: {}", updatedCustomer.getId());
             
             return Map.of(
                 "success", true,
@@ -549,7 +580,8 @@ public class CustomerService {
             return Map.of(
                 "success", false,
                 "message", "Authentication failed",
-                "errorCode", "AUTH_ERROR"
+                "errorCode", "AUTH_ERROR",
+                "details", e.getMessage()
             );
         }
     }
@@ -607,6 +639,15 @@ public class CustomerService {
     }
     
     private com.shopmanagement.dto.mobile.MobileCustomerResponse mapToMobileResponse(Customer customer) {
+        // Ensure customer ID is not null - if null, the customer wasn't saved properly
+        if (customer.getId() == null) {
+            log.error("Customer ID is null for customer: {}", customer.getEmail());
+            throw new RuntimeException("Customer registration failed - ID not generated");
+        }
+        
+        // Calculate referral count
+        Long referralCount = customerRepository.countByReferredBy(customer.getReferralCode());
+        
         return com.shopmanagement.dto.mobile.MobileCustomerResponse.builder()
                 .customerId(customer.getId())
                 .firstName(customer.getFirstName())
@@ -631,7 +672,7 @@ public class CustomerService {
                 .totalOrders(customer.getTotalOrders())
                 .totalSpent(customer.getTotalSpent())
                 .referralCode(customer.getReferralCode())
-                .referralCount(0) // Count needs to be calculated from repository
+                .referralCount(referralCount != null ? referralCount.intValue() : 0)
                 .memberSince(customer.getCreatedAt())
                 .lastLoginDate(customer.getLastLoginDate())
                 .profileCompletionStatus(getProfileCompletionStatus(customer))

@@ -5,6 +5,7 @@ import 'package:email_validator/email_validator.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/models/auth_models.dart';
 import '../../../core/theme/village_theme.dart';
+import '../../../core/utils/validators.dart';
 import 'otp_verification_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -36,15 +37,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  String _generateUsername(String fullName) {
-    final name = fullName.trim().toLowerCase();
-    final parts = name.split(' ');
-    
-    if (parts.length >= 2) {
-      return '${parts[0]}.${parts[parts.length - 1]}';
-    } else {
-      return parts[0];
-    }
+  String _generateUsername(String name) {
+    final cleanName = name.trim().toLowerCase().replaceAll(' ', '');
+    final timestamp = DateTime.now().millisecondsSinceEpoch.toString().substring(8);
+    return '${cleanName}_$timestamp';
   }
 
   Future<void> _handleRegister() async {
@@ -53,7 +49,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!_acceptTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('कृपया नियम और शर्तों को स्वीकार करें / Please accept the terms and conditions'),
+          content: Text('நியம மற்றும் நிபந்தனைகளை ஏற்கவும் / Please accept the terms and conditions'),
           backgroundColor: VillageTheme.errorRed,
         ),
       );
@@ -110,7 +106,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: VillageTheme.spacingM),
                     Text(
-                      '🔄 பதிவு செய்யப்படுகிறது... / Creating Account...',
+                      '🔄 கணக்கு உருவாக்கப்படுகிறது... / Creating Account...',
                       style: VillageTheme.bodyLarge.copyWith(
                         color: VillageTheme.primaryGreen,
                       ),
@@ -170,7 +166,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text('📝', style: TextStyle(fontSize: 40)),
-              Text('பதிவு', style: TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
+              Text('பதிவு / Register', style: TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
             ],
           ),
         ),
@@ -182,13 +178,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
             Column(
               children: [
                 Text(
-                  'புதிய கணக்கு!',
+                  'Create Account!',
                   style: VillageTheme.headingLarge.copyWith(
                     color: VillageTheme.primaryGreen,
                   ),
                 ),
                 Text(
-                  'Create Account!',
+                  'Join NammaOoru',
                   style: VillageTheme.headingMedium.copyWith(
                     color: VillageTheme.secondaryText,
                   ),
@@ -199,7 +195,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         const SizedBox(height: VillageTheme.spacingM),
         Text(
-          'உள்ளூர் கடைகளில் இருந்து வாங்க சேருங்கள் / Join to order from local shops',
+          'Join to order from local shops',
           style: VillageTheme.bodyLarge.copyWith(
             color: VillageTheme.secondaryText,
           ),
@@ -216,27 +212,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         controller: _nameController,
         textInputAction: TextInputAction.next,
         style: VillageTheme.bodyLarge,
-        validator: (value) {
-          if (value == null || value.isEmpty) {
-            return 'कृपया अपना पूरा नाम दर्ज करें / Please enter your full name';
-          }
-          if (value.trim().length < 2) {
-            return 'Name must be at least 2 characters';
-          }
-          if (!RegExp(r'^[a-zA-Z\s]+\$').hasMatch(value.trim())) {
-            return 'Name can only contain letters and spaces';
-          }
-          if (value.trim().split(' ').length < 2) {
-            return 'Please enter both first and last name';
-          }
-          return null;
-        },
+        validator: Validators.validateName,
         decoration: InputDecoration(
-          labelText: '👤 முழு பெயர் / Full Name',
+          labelText: '👤 Name',
           labelStyle: VillageTheme.labelText.copyWith(
             color: VillageTheme.primaryGreen,
           ),
-          hintText: 'e.g., राम कुमार / Ram Kumar',
+          hintText: 'e.g., Ram',
           hintStyle: VillageTheme.bodyMedium.copyWith(
             color: VillageTheme.hintText,
           ),
@@ -286,7 +268,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         style: VillageTheme.bodyLarge,
         validator: (value) {
           if (value == null || value.isEmpty) {
-            return 'कृपया अपना ईमेल दर्ज करें / Please enter your email';
+            return 'Please enter your email';
           }
           if (!EmailValidator.validate(value)) {
             return 'Please enter a valid email address';
@@ -294,7 +276,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           return null;
         },
         decoration: InputDecoration(
-          labelText: '📧 மின்னஞ்சல் / Email',
+          labelText: '📧 Email',
           labelStyle: VillageTheme.labelText.copyWith(
             color: VillageTheme.primaryGreen,
           ),
@@ -348,7 +330,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         style: VillageTheme.bodyLarge,
         validator: (value) {
           if (value == null || value.isEmpty) {
-            return 'कृपया अपना फोन नंबर दर्ज करें / Please enter your phone number';
+            return 'Please enter your phone number';
           }
           if (value.length < 10) {
             return 'Please enter a valid phone number';
@@ -356,7 +338,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           return null;
         },
         decoration: InputDecoration(
-          labelText: '📱 தொலைபேசி / Phone Number',
+          labelText: '📱 Phone Number',
           labelStyle: VillageTheme.labelText.copyWith(
             color: VillageTheme.primaryGreen,
           ),
@@ -415,7 +397,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         style: VillageTheme.bodyLarge,
         validator: (value) {
           if (value == null || value.isEmpty) {
-            return 'कृपया एक पासवर्ड दर्ज करें / Please enter a password';
+            return 'Please enter a password';
           }
           if (value.length < 6) {
             return 'Password must be at least 6 characters';
@@ -423,7 +405,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           return null;
         },
         decoration: InputDecoration(
-          labelText: '🔐 கடவுச்சொல் / Password',
+          labelText: '🔐 Password',
           labelStyle: VillageTheme.labelText.copyWith(
             color: VillageTheme.primaryGreen,
           ),
@@ -489,7 +471,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         style: VillageTheme.bodyLarge,
         validator: (value) {
           if (value == null || value.isEmpty) {
-            return 'कृपया अपना पासवर्ड कन्फर्म करें / Please confirm your password';
+            return 'Please confirm your password';
           }
           if (value != _passwordController.text) {
             return 'Passwords do not match';
@@ -498,7 +480,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         },
         onFieldSubmitted: (_) => _handleRegister(),
         decoration: InputDecoration(
-          labelText: '🔒 கடவுச்சொல் உறுதிப்படுத்தல் / Confirm Password',
+          labelText: '🔒 Confirm Password',
           labelStyle: VillageTheme.labelText.copyWith(
             color: VillageTheme.primaryGreen,
           ),
@@ -583,7 +565,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '📋 मैं निम्नलिखित से सहमत हूं:',
+                  '📋 I agree to the following:',
                   style: VillageTheme.bodyMedium.copyWith(
                     fontWeight: FontWeight.w600,
                     color: VillageTheme.primaryGreen,
@@ -593,7 +575,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 Wrap(
                   children: [
                     Text(
-                      'நான் ஒப்புக்கொள்கிறேன் / I agree to the ',
+                      'I agree to the ',
                       style: VillageTheme.bodyMedium.copyWith(
                         color: VillageTheme.secondaryText,
                       ),
@@ -612,7 +594,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ),
                     Text(
-                      ' மற்றும் / and ',
+                      ' and ',
                       style: VillageTheme.bodyMedium.copyWith(
                         color: VillageTheme.secondaryText,
                       ),
@@ -642,7 +624,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Widget _buildRegisterButton() {
     return VillageWidgets.bigButton(
-      text: 'கணக்கு உருவாக்கு / Create Account',
+      text: 'Create Account',
       icon: Icons.person_add,
       onPressed: _handleRegister,
       backgroundColor: VillageTheme.primaryGreen,
@@ -659,7 +641,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                '🤔 ஏற்கனவே கணக்கு வைத்துள்ளீர்களா? / Already have an account?',
+                '🤔 Already have an account?',
                 style: VillageTheme.bodyMedium.copyWith(
                   color: VillageTheme.secondaryText,
                 ),
@@ -673,7 +655,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             },
             icon: Text('🚪', style: TextStyle(fontSize: 18)),
             label: Text(
-              'உள்நுழைய / Sign In',
+              'Sign In',
               style: VillageTheme.bodyLarge.copyWith(
                 color: VillageTheme.accentOrange,
                 fontWeight: FontWeight.bold,

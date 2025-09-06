@@ -6,6 +6,7 @@ import '../features/auth/screens/splash_screen.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/register_screen.dart';
 import '../features/auth/screens/otp_verification_screen.dart';
+import '../features/auth/screens/forgot_password_screen.dart';
 import '../features/customer/dashboard/customer_dashboard.dart';
 import '../features/customer/screens/shop_listing_screen.dart';
 import '../features/customer/screens/shop_details_screen.dart';
@@ -42,6 +43,10 @@ class AppRouter {
           final email = state.uri.queryParameters['email'] ?? '';
           return OtpVerificationScreen(email: email);
         },
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        builder: (context, state) => const ForgotPasswordScreen(),
       ),
       
       ShellRoute(

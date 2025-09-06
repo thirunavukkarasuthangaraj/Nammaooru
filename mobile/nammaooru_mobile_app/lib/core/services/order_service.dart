@@ -7,8 +7,6 @@ class OrderService {
   factory OrderService() => _instance;
   OrderService._internal();
 
-  final ApiClient _apiClient = ApiClient();
-
   Future<Map<String, dynamic>> getOrders({
     int page = 0,
     int size = 20,
@@ -21,13 +19,13 @@ class OrderService {
         if (status != null) 'status': status,
       };
 
-      final response = await _apiClient.get(
+      final response = await ApiClient.get(
         '/customer/orders',
         queryParameters: queryParams,
       );
       
-      if (response['statusCode'] == '0000') {
-        final ordersResponse = OrdersResponse.fromJson(response['data'] ?? {});
+      if (response.statusCode == 200 && response.data['statusCode'] == '0000') {
+        final ordersResponse = OrdersResponse.fromJson(response.data['data'] ?? {});
         await _cacheOrders(ordersResponse.orders, page);
         
         return {
@@ -38,7 +36,7 @@ class OrderService {
       } else {
         return {
           'success': false,
-          'message': response['message'] ?? 'Failed to load orders',
+          'message': response.data['message'] ?? 'Failed to load orders',
           'data': OrdersResponse.empty()
         };
       }
@@ -64,10 +62,10 @@ class OrderService {
 
   Future<Map<String, dynamic>> getOrderById(String orderId) async {
     try {
-      final response = await _apiClient.get('/customer/orders/$orderId');
+      final response = await ApiClient.get('/customer/orders/$orderId');
       
-      if (response['statusCode'] == '0000') {
-        final order = Order.fromJson(response['data'] ?? {});
+      if (response.statusCode == 200 && response.data['statusCode'] == '0000') {
+        final order = Order.fromJson(response.data['data'] ?? {});
         
         return {
           'success': true,
@@ -77,7 +75,7 @@ class OrderService {
       } else {
         return {
           'success': false,
-          'message': response['message'] ?? 'Failed to load order details'
+          'message': response.data['message'] ?? 'Failed to load order details'
         };
       }
     } catch (e) {
@@ -92,21 +90,21 @@ class OrderService {
 
   Future<Map<String, dynamic>> placeOrder(Map<String, dynamic> orderData) async {
     try {
-      final response = await _apiClient.post('/customer/orders', data: orderData);
+      final response = await ApiClient.post('/customer/orders', data: orderData);
       
-      if (response['statusCode'] == '0000') {
-        final order = Order.fromJson(response['data'] ?? {});
+      if (response.statusCode == 200 && response.data['statusCode'] == '0000') {
+        final order = Order.fromJson(response.data['data'] ?? {});
         await _addToOrdersCache(order);
         
         return {
           'success': true,
           'data': order,
-          'message': 'Order placed successfully'
+          'message': response.data['message'] ?? 'Order placed successfully'
         };
       } else {
         return {
           'success': false,
-          'message': response['message'] ?? 'Failed to place order'
+          'message': response.data['message'] ?? 'Failed to place order'
         };
       }
     } catch (e) {
@@ -121,13 +119,13 @@ class OrderService {
 
   Future<Map<String, dynamic>> cancelOrder(String orderId, String reason) async {
     try {
-      final response = await _apiClient.post(
+      final response = await ApiClient.post(
         '/customer/orders/$orderId/cancel',
         data: {'reason': reason},
       );
       
-      if (response['statusCode'] == '0000') {
-        final order = Order.fromJson(response['data'] ?? {});
+      if (response.statusCode == 200 && response.data['statusCode'] == '0000') {
+        final order = Order.fromJson(response.data['data'] ?? {});
         await _updateOrderInCache(order);
         
         return {
@@ -138,7 +136,7 @@ class OrderService {
       } else {
         return {
           'success': false,
-          'message': response['message'] ?? 'Failed to cancel order'
+          'message': response.data['message'] ?? 'Failed to cancel order'
         };
       }
     } catch (e) {
@@ -153,10 +151,10 @@ class OrderService {
 
   Future<Map<String, dynamic>> trackOrder(String orderId) async {
     try {
-      final response = await _apiClient.get('/customer/orders/$orderId/track');
+      final response = await ApiClient.get('/customer/orders/$orderId/track');
       
-      if (response['statusCode'] == '0000') {
-        final trackingData = response['data'] ?? {};
+      if (response.statusCode == 200 && response.data['statusCode'] == '0000') {
+        final trackingData = response.data['data'] ?? {};
         
         return {
           'success': true,
@@ -166,7 +164,7 @@ class OrderService {
       } else {
         return {
           'success': false,
-          'message': response['message'] ?? 'Failed to load tracking information'
+          'message': response.data['message'] ?? 'Failed to load tracking information'
         };
       }
     } catch (e) {
@@ -181,9 +179,9 @@ class OrderService {
 
   Future<Map<String, dynamic>> reorderItems(String orderId) async {
     try {
-      final response = await _apiClient.post('/customer/orders/$orderId/reorder');
+      final response = await ApiClient.post('/customer/orders/$orderId/reorder');
       
-      if (response['statusCode'] == '0000') {
+      if (response.statusCode == 200 && response.data['statusCode'] == '0000') {
         return {
           'success': true,
           'message': 'Items added to cart successfully'
@@ -191,7 +189,7 @@ class OrderService {
       } else {
         return {
           'success': false,
-          'message': response['message'] ?? 'Failed to add items to cart'
+          'message': response.data['message'] ?? 'Failed to add items to cart'
         };
       }
     } catch (e) {

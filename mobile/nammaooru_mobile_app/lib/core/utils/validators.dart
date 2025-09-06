@@ -66,6 +66,62 @@ class Validators {
       return 'Name must be less than 50 characters';
     }
     
+    // Allow only Tamil letters, English letters, and spaces
+    const pattern = r'^[\u0B80-\u0BFFa-zA-Z\s]+$';
+    final regExp = RegExp(pattern);
+    
+    if (!regExp.hasMatch(value)) {
+      return 'Name can only contain letters and spaces';
+    }
+    
+    return null;
+  }
+  
+  static String? validateFirstName(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'First name is required';
+    }
+    
+    if (value.length < 2) {
+      return 'First name must be at least 2 characters';
+    }
+    
+    if (value.length > 30) {
+      return 'First name must be less than 30 characters';
+    }
+    
+    // Allow only Tamil letters, English letters, and spaces
+    const pattern = r'^[\u0B80-\u0BFFa-zA-Z\s]+$';
+    final regExp = RegExp(pattern);
+    
+    if (!regExp.hasMatch(value)) {
+      return 'First name can only contain letters and spaces';
+    }
+    
+    return null;
+  }
+  
+  static String? validateLastName(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Last name is required';
+    }
+    
+    if (value.length < 2) {
+      return 'Last name must be at least 2 characters';
+    }
+    
+    if (value.length > 30) {
+      return 'Last name must be less than 30 characters';
+    }
+    
+    // Allow only Tamil letters, English letters, and spaces
+    const pattern = r'^[\u0B80-\u0BFFa-zA-Z\s]+$';
+    final regExp = RegExp(pattern);
+    
+    if (!regExp.hasMatch(value)) {
+      return 'Last name can only contain letters and spaces';
+    }
+    
     return null;
   }
   

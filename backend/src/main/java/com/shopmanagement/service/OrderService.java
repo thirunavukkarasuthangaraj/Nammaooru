@@ -12,7 +12,9 @@ import com.shopmanagement.product.entity.ShopProduct;
 import com.shopmanagement.product.repository.ShopProductRepository;
 import com.shopmanagement.repository.CustomerRepository;
 import com.shopmanagement.repository.OrderRepository;
+import com.shopmanagement.repository.UserRepository;
 import com.shopmanagement.shop.repository.ShopRepository;
+import com.shopmanagement.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -40,6 +42,7 @@ public class OrderService {
     
     private final OrderRepository orderRepository;
     private final CustomerRepository customerRepository;
+    private final UserRepository userRepository;
     private final ShopRepository shopRepository;
     private final ShopProductRepository shopProductRepository;
     private final EmailService emailService;
@@ -50,9 +53,8 @@ public class OrderService {
     public OrderResponse createOrder(OrderRequest request) {
         log.info("Creating order for customer: {} at shop: {}", request.getCustomerId(), request.getShopId());
         
-        // Validate customer
-        Customer customer = customerRepository.findById(request.getCustomerId())
-                .orElseThrow(() -> new RuntimeException("Customer not found"));
+        // Find or create customer based on userId (customerId is actually userId from login)
+        Customer customer = findOrCreateCustomerByUserId(request.getCustomerId());
         
         // Validate shop
         Shop shop = shopRepository.findById(request.getShopId())
@@ -504,9 +506,11 @@ public class OrderService {
             case PENDING -> 15;
             case CONFIRMED -> 30;
             case PREPARING -> 50;
+            case READY -> 65;
             case READY_FOR_PICKUP -> 70;
             case OUT_FOR_DELIVERY -> 85;
             case DELIVERED -> 100;
+            case COMPLETED -> 100;
             case CANCELLED -> 0;
             case REFUNDED -> 0;
             default -> 0;
@@ -518,9 +522,11 @@ public class OrderService {
             case PENDING -> "Order Placed";
             case CONFIRMED -> "Order Confirmed";
             case PREPARING -> "Being Prepared";
-            case READY_FOR_PICKUP -> "Ready for Delivery";
+            case READY -> "Ready";
+            case READY_FOR_PICKUP -> "Ready for Pickup";
             case OUT_FOR_DELIVERY -> "Out for Delivery";
             case DELIVERED -> "Delivered";
+            case COMPLETED -> "Completed";
             case CANCELLED -> "Cancelled";
             case REFUNDED -> "Refunded";
             default -> "Unknown";
@@ -760,5 +766,36 @@ public class OrderService {
         // Add rating logic here (would need OrderRating entity)
         // For now, just log the rating
         log.info("Order {} rated with {} stars. Review: {}", orderId, rating, review);
+    }
+    
+    private Customer findOrCreateCustomerByUserId(Long userId) {
+        log.info("Finding or creating customer for userId: {}", userId);
+        
+        // First, find the user
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
+        
+        // Check if customer already exists with the same email
+        Customer customer = customerRepository.findByEmail(user.getEmail()).orElse(null);
+        
+        if (customer == null) {
+            // Create new customer from user data
+            log.info("Creating new customer for user: {}", user.getEmail());
+            customer = Customer.builder()
+                    .firstName(user.getFirstName())
+                    .lastName(user.getLastName())
+                    .email(user.getEmail())
+                    .mobileNumber(user.getMobileNumber())
+                    .isActive(true)
+                    .isVerified(user.getEmailVerified() != null ? user.getEmailVerified() : false)
+                    .build();
+            
+            customer = customerRepository.save(customer);
+            log.info("Customer created with ID: {} for user: {}", customer.getId(), user.getEmail());
+        } else {
+            log.info("Found existing customer with ID: {} for user: {}", customer.getId(), user.getEmail());
+        }
+        
+        return customer;
     }
 }

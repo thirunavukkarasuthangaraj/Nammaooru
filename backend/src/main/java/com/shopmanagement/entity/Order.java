@@ -110,8 +110,7 @@ public class Order {
     
     // Enums
     public enum OrderStatus {
-        PENDING, CONFIRMED, PREPARING, READY_FOR_PICKUP, OUT_FOR_DELIVERY, 
-        DELIVERED, CANCELLED, REFUNDED
+        PENDING, CONFIRMED, PREPARING, READY, READY_FOR_PICKUP, OUT_FOR_DELIVERY, DELIVERED, COMPLETED, CANCELLED, REFUNDED
     }
     
     public enum PaymentStatus {
@@ -132,6 +131,10 @@ public class Order {
     
     public boolean canBeCancelled() {
         return status == OrderStatus.PENDING || status == OrderStatus.CONFIRMED;
+    }
+    
+    public boolean isCompleted() {
+        return status == OrderStatus.COMPLETED;
     }
     
     public boolean isDelivered() {

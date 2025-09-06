@@ -8,7 +8,7 @@ class ApiClient {
 
   static void initialize() {
     _dio = Dio(BaseOptions(
-      baseUrl: 'http://localhost:8082/api', // Local environment
+      baseUrl: 'http://localhost:8086/api', // Local environment
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
       headers: {

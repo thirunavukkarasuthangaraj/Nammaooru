@@ -5,6 +5,7 @@ import '../../../core/constants/colors.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../shared/widgets/language_selector.dart';
 import '../../../services/auth_api_service.dart';
 
 class CustomerRegisterScreen extends StatefulWidget {
@@ -126,6 +127,12 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
             fontWeight: FontWeight.w600,
           ),
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: const LanguageSelector(),
+          ),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -202,7 +209,7 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
                       borderSide: BorderSide(color: AppColors.primary),
                     ),
                   ),
-                  validator: (value) => Validators.required(value, 'First name'),
+                  validator: Validators.validateFirstName,
                 ),
               ),
               const SizedBox(width: 16),
@@ -226,7 +233,7 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
                       borderSide: BorderSide(color: AppColors.primary),
                     ),
                   ),
-                  validator: (value) => Validators.required(value, 'Last name'),
+                  validator: Validators.validateLastName,
                 ),
               ),
             ],
@@ -254,7 +261,7 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
                 borderSide: BorderSide(color: AppColors.primary),
               ),
             ),
-            validator: Validators.email,
+            validator: Validators.validateEmail,
           ),
           const SizedBox(height: 16),
 
@@ -279,7 +286,7 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
                 borderSide: BorderSide(color: AppColors.primary),
               ),
             ),
-            validator: Validators.phone,
+            validator: Validators.validatePhoneNumber,
           ),
           const SizedBox(height: 16),
 
@@ -314,7 +321,7 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
                 borderSide: BorderSide(color: AppColors.primary),
               ),
             ),
-            validator: Validators.password,
+            validator: Validators.validatePassword,
           ),
           const SizedBox(height: 16),
 

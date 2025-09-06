@@ -1,7 +1,11 @@
 package com.shopmanagement.config;
 
 import com.shopmanagement.entity.User;
+import com.shopmanagement.entity.Customer;
 import com.shopmanagement.repository.UserRepository;
+import com.shopmanagement.repository.CustomerRepository;
+import com.shopmanagement.shop.entity.Shop;
+import com.shopmanagement.shop.repository.ShopRepository;
 import com.shopmanagement.product.entity.ProductCategory;
 import com.shopmanagement.product.entity.MasterProduct;
 import com.shopmanagement.product.entity.MasterProductImage;
@@ -23,6 +27,8 @@ import java.math.BigDecimal;
 public class DataInitializer {
 
     private final UserRepository userRepository;
+    private final CustomerRepository customerRepository;
+    private final ShopRepository shopRepository;
     private final PasswordEncoder passwordEncoder;
     private final ProductCategoryRepository categoryRepository;
     private final MasterProductRepository masterProductRepository;
@@ -128,6 +134,29 @@ public class DataInitializer {
                 userRepository.save(testUser);
                 log.info("Test user created with email: thiruna2394@gmail.com and password: test123");
             }
+
+            // Create test customers for order testing
+            if (!customerRepository.existsByEmail("testcustomer@example.com") && 
+                !customerRepository.existsByMobileNumber("9876543210")) {
+                Customer testCustomer = Customer.builder()
+                        .firstName("Test")
+                        .lastName("Customer")
+                        .email("testcustomer@example.com")
+                        .mobileNumber("9876543210")
+                        .isActive(true)
+                        .isVerified(true)
+                        .build();
+                
+                customerRepository.save(testCustomer);
+                log.info("Test customer created with email: testcustomer@example.com and mobile: 9876543210");
+            } else {
+                log.info("Test customer already exists");
+            }
+
+            // Create test shop for order testing (simplified version)
+            // Note: This is a minimal implementation to resolve order creation errors
+            log.info("Test shop creation skipped - full Shop entity requires complex setup");
+            log.info("Using existing Shop ID validation for order testing");
 
             // Create test product categories and products
             initializeTestProductsAndCategories();

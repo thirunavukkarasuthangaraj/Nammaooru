@@ -7,7 +7,7 @@ import '../storage/secure_storage.dart';
 import '../storage/local_storage.dart';
 
 class ApiService {
-  static const String _baseUrl = 'http://localhost:8082/api';  // Local environment
+  static const String _baseUrl = 'http://localhost:8086/api';  // Local environment
   late Dio _dio;
   
   static final ApiService _instance = ApiService._internal();

@@ -7,6 +7,8 @@ import '../../../shared/providers/cart_provider.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../core/theme/village_theme.dart';
+import '../../../core/auth/auth_provider.dart';
+import '../../../core/services/order_service.dart';
 // import 'order_confirmation_screen.dart'; // Temporarily commented
 
 class CheckoutScreen extends StatefulWidget {
@@ -781,66 +783,109 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Future<void> _placeOrder() async {
+    if (!mounted) return;
+    
+    // Get providers before async operations to avoid context issues
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    // Using userId and userRole from the AuthProvider interface
+    final customerId = authProvider.userId;
+    final customerEmail = ''; // Will be fetched from user profile or API
+    
     setState(() => _isPlacingOrder = true);
     
     try {
-      final cartProvider = Provider.of<CartProvider>(context, listen: false);
+      print('🔍 Debug - Customer ID: $customerId');
+      print('🔍 Debug - Customer Email: $customerEmail');
+      print('🔍 Debug - Cart items count: ${cartProvider.items.length}');
+      if (cartProvider.items.isNotEmpty) {
+        print('🔍 Debug - First product shopId: ${cartProvider.items.first.product.shopId}');
+      }
       
-      // Create order data
-      final orderData = {
+      if (cartProvider.items.isEmpty) {
+        throw Exception('Cart is empty');
+      }
+      
+      // Use customer ID from auth provider
+      final orderRequest = {
+        'customerId': customerId != null ? int.tryParse(customerId) ?? 1 : 1,
+        'shopId': cartProvider.items.first.product.shopId,
         'items': cartProvider.items.map((item) => {
           'productId': item.product.id,
-          'quantity': item.quantity,
+          'productName': item.product.name,
           'price': item.product.effectivePrice,
+          'quantity': item.quantity,
+          'unit': item.product.unit ?? 'piece',
         }).toList(),
         'deliveryAddress': {
-          'name': _nameController.text,
-          'phone': _phoneController.text,
-          'addressLine1': _addressLine1Controller.text,
-          'addressLine2': _addressLine2Controller.text,
-          'landmark': _landmarkController.text,
+          'streetAddress': _addressLine1Controller.text + (_addressLine2Controller.text.isNotEmpty ? ', ${_addressLine2Controller.text}' : ''),
+          'landmark': _landmarkController.text.isNotEmpty ? _landmarkController.text : null,
           'city': _selectedCity,
           'state': _selectedState,
           'pincode': _pincodeController.text,
-          'type': _selectedAddressType,
         },
         'paymentMethod': _selectedPaymentMethod,
-        'deliverySlot': _selectedDeliverySlot,
-        'deliveryInstructions': _deliveryInstructions,
         'subtotal': cartProvider.subtotal,
         'deliveryFee': cartProvider.deliveryFee,
-        'taxAmount': cartProvider.taxAmount,
-        'promoDiscount': cartProvider.promoDiscount,
+        'discount': cartProvider.promoDiscount,
         'total': cartProvider.total,
+        'notes': _deliveryInstructions.isNotEmpty ? _deliveryInstructions : null,
+        'customerInfo': {
+          'firstName': _nameController.text.split(' ').first,
+          'lastName': _nameController.text.split(' ').length > 1 ? _nameController.text.split(' ').skip(1).join(' ') : '',
+          'phone': _phoneController.text,
+          'email': customerEmail,
+        },
       };
       
-      // TODO: API call to place order
-      await Future.delayed(const Duration(seconds: 2)); // Simulate API call
+      print('🚀 Placing order with request: ${orderRequest.toString()}');
+      final result = await OrderService().placeOrder(orderRequest);
+      print('📦 Order result: ${result.toString()}');
       
-      // Clear cart
-      cartProvider.clearCart();
-      
-      if (mounted) {
-        // Show success message instead of navigating to confirmation screen
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text(
-              'Order placed successfully!',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+      if (result['success']) {
+        // Clear cart on success
+        cartProvider.clearCart();
+        
+        if (mounted) {
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                result['message'] ?? 'Order placed successfully!',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              ),
+              backgroundColor: VillageTheme.primaryGreen,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              margin: const EdgeInsets.all(16),
+              behavior: SnackBarBehavior.floating,
             ),
-            backgroundColor: VillageTheme.primaryGreen,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+          );
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                result['message'] ?? 'Failed to place order',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              ),
+              backgroundColor: Colors.red,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              margin: const EdgeInsets.all(16),
+              behavior: SnackBarBehavior.floating,
             ),
-            margin: const EdgeInsets.all(16),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        Navigator.of(context).popUntil((route) => route.isFirst);
+          );
+        }
       }
     } catch (e) {
+      print('❌ Order placement error: $e');
       if (mounted) {
-        Helpers.showSnackBar(context, 'Failed to place order', isError: true);
+        Helpers.showSnackBar(context, 'Failed to place order: ${e.toString()}', isError: true);
       }
     } finally {
       if (mounted) {

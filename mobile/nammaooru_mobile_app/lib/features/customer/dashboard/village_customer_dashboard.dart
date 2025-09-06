@@ -468,7 +468,7 @@ class _VillageCustomerDashboardState extends State<VillageCustomerDashboard> {
               ),
               _buildFeatureItem(
                 emoji: '💰',
-                title: 'கை पर भुगतान\nCash on Delivery',
+                title: 'வீட்டில் பணம் செலுத்த\nCash on Delivery',
                 subtitle: 'Pay at home',
               ),
               Container(

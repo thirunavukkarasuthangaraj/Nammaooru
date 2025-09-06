@@ -29,9 +29,8 @@ class AppConstants {
     'PENDING': 'Pending',
     'CONFIRMED': 'Confirmed',
     'PREPARING': 'Preparing',
-    'READY_FOR_PICKUP': 'Ready for Pickup',
-    'OUT_FOR_DELIVERY': 'Out for Delivery',
-    'DELIVERED': 'Delivered',
+    'READY': 'Ready',
+    'COMPLETED': 'Completed',
     'CANCELLED': 'Cancelled',
   };
   
