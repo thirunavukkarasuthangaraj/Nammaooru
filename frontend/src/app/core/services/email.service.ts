@@ -1,9 +1,10 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { catchError, switchMap, tap } from 'rxjs/operators';
+import { catchError, switchMap, tap, map, throwError } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import Swal from 'sweetalert2';
+import { ApiResponse, ApiResponseHelper } from '../models/api-response.model';
 
 export interface EmailInvoiceRequest {
   orderNumber: string;
@@ -76,7 +77,13 @@ export class EmailService {
   sendOTP(email: string, purpose: OTPRequest['purpose'], orderId?: number): Observable<{success: boolean, message: string}> {
     const request: OTPRequest = { email, purpose, orderId };
     
-    return this.http.post<{success: boolean, message: string}>(`${this.apiUrl}/send-otp`, request).pipe(
+    return this.http.post<ApiResponse<{success: boolean, message: string}>>(`${this.apiUrl}/send-otp`, request).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
       tap(response => {
         if (response.success) {
           let message = 'A 6-digit OTP has been sent to your email';
@@ -102,7 +109,13 @@ export class EmailService {
 
   // Verify OTP
   verifyOTP(email: string, otp: string, purpose: string): Observable<{valid: boolean, token?: string}> {
-    return this.http.post<{valid: boolean, token?: string}>(`${this.apiUrl}/verify-otp`, { email, otp, purpose }).pipe(
+    return this.http.post<ApiResponse<{valid: boolean, token?: string}>>(`${this.apiUrl}/verify-otp`, { email, otp, purpose }).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
       catchError(error => {
         console.error('Error verifying OTP:', error);
         return of({ valid: false });
@@ -117,7 +130,13 @@ export class EmailService {
     formData.append('customerEmail', invoiceRequest.customerEmail);
     formData.append('invoiceHtml', this.generateInvoiceHtml(invoiceRequest));
     
-    return this.http.post<{success: boolean}>(`${this.apiUrl}/send-invoice`, formData).pipe(
+    return this.http.post<ApiResponse<{success: boolean}>>(`${this.apiUrl}/send-invoice`, formData).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
       switchMap(response => of(response.success)),
       tap(success => {
         if (success) {
@@ -145,7 +164,13 @@ export class EmailService {
       }
     };
     
-    return this.http.post<{success: boolean}>(`${this.apiUrl}/send`, emailData).pipe(
+    return this.http.post<ApiResponse<{success: boolean}>>(`${this.apiUrl}/send`, emailData).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
       switchMap(response => of(response.success)),
       catchError(() => of(false))
     );
@@ -162,7 +187,13 @@ export class EmailService {
       template: 'daily-summary'
     };
     
-    return this.http.post<{success: boolean}>(`${this.apiUrl}/send`, emailData).pipe(
+    return this.http.post<ApiResponse<{success: boolean}>>(`${this.apiUrl}/send`, emailData).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
       tap(response => {
         if (response.success) {
           console.log(`Daily summary sent to ${summaryData.shopOwnerEmail}`);
@@ -191,7 +222,13 @@ export class EmailService {
       }
     };
     
-    return this.http.post<{success: boolean}>(`${this.apiUrl}/send`, emailData).pipe(
+    return this.http.post<ApiResponse<{success: boolean}>>(`${this.apiUrl}/send`, emailData).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
       switchMap(response => of(response.success)),
       catchError(() => of(false))
     );
@@ -211,7 +248,13 @@ export class EmailService {
       }
     };
     
-    return this.http.post<{success: boolean}>(`${this.apiUrl}/send`, emailData).pipe(
+    return this.http.post<ApiResponse<{success: boolean}>>(`${this.apiUrl}/send`, emailData).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
       switchMap(response => of(response.success)),
       catchError(() => of(false))
     );

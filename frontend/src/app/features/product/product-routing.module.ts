@@ -35,7 +35,7 @@ const routes: Routes = [
         canActivate: [RoleGuard],
         data: { 
           title: 'Master Products',
-          roles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER']
+          roles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'SHOP_OWNER']
         }
       },
       {
@@ -53,7 +53,7 @@ const routes: Routes = [
         canActivate: [RoleGuard],
         data: { 
           title: 'Edit Master Product',
-          roles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER']
+          roles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'SHOP_OWNER']
         }
       },
       {

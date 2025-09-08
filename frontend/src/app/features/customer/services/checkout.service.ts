@@ -1,11 +1,12 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { catchError, switchMap, tap } from 'rxjs/operators';
+import { catchError, switchMap, tap, map } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
 import { CartService } from './cart.service';
 import { Router } from '@angular/router';
 import Swal from 'sweetalert2';
+import { ApiResponse, ApiResponseHelper } from '../../../core/models/api-response.model';
 
 export interface DeliveryAddress {
   contactName: string;
@@ -100,7 +101,14 @@ export class CheckoutService {
 
     console.log('Placing order with request:', orderRequest);
 
-    return this.http.post<OrderResponse>(`${this.apiUrl}`, orderRequest).pipe(
+    return this.http.post<ApiResponse<OrderResponse>>(`${this.apiUrl}`, orderRequest).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          const errorMessage = ApiResponseHelper.getErrorMessage(response);
+          throw new Error(errorMessage);
+        }
+        return response.data;
+      }),
       tap(response => {
         if (response && response.id) {
           // Clear cart after successful order
@@ -158,7 +166,14 @@ export class CheckoutService {
       return of([]);
     }
 
-    return this.http.get<DeliveryAddress[]>(`${environment.apiUrl}/customers/${customerId}/addresses`).pipe(
+    return this.http.get<ApiResponse<DeliveryAddress[]>>(`${environment.apiUrl}/customers/${customerId}/addresses`).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          const errorMessage = ApiResponseHelper.getErrorMessage(response);
+          throw new Error(errorMessage);
+        }
+        return response.data;
+      }),
       catchError(() => of([]))
     );
   }
@@ -169,7 +184,14 @@ export class CheckoutService {
       return of(null as any);
     }
 
-    return this.http.post<DeliveryAddress>(`${environment.apiUrl}/customers/${customerId}/addresses`, address).pipe(
+    return this.http.post<ApiResponse<DeliveryAddress>>(`${environment.apiUrl}/customers/${customerId}/addresses`, address).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          const errorMessage = ApiResponseHelper.getErrorMessage(response);
+          throw new Error(errorMessage);
+        }
+        return response.data;
+      }),
       catchError(() => of(address))
     );
   }

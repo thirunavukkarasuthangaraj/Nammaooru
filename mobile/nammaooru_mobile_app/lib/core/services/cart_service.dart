@@ -1,6 +1,7 @@
 import '../api/api_client.dart';
 import '../models/cart_model.dart';
 import '../storage/local_storage.dart';
+import '../constants/app_constants.dart';
 
 class CartService {
   static final CartService _instance = CartService._internal();
@@ -12,14 +13,25 @@ class CartService {
       final response = await ApiClient.get('/customers/cart');
       
       if (response.statusCode == 200) {
-        final cart = Cart.fromJson(response.data ?? {});
-        await _cacheCart(cart);
+        final responseData = response.data ?? {};
+        final statusCode = responseData['statusCode']?.toString();
         
-        return {
-          'success': true,
-          'data': cart,
-          'message': 'Cart loaded successfully'
-        };
+        if (statusCode == AppConstants.successCode) {
+          final cart = Cart.fromJson(responseData['data'] ?? {});
+          await _cacheCart(cart);
+          
+          return {
+            'success': true,
+            'data': cart,
+            'message': responseData['message'] ?? 'Cart loaded successfully'
+          };
+        } else {
+          return {
+            'success': false,
+            'message': AppConstants.errorCodes[statusCode] ?? responseData['message'] ?? 'Failed to load cart',
+            'data': Cart.empty()
+          };
+        }
       } else {
         return {
           'success': false,
@@ -48,14 +60,24 @@ class CartService {
       );
       
       if (response.statusCode == 200) {
-        final cart = Cart.fromJson(response.data ?? {});
-        await _cacheCart(cart);
+        final responseData = response.data ?? {};
+        final statusCode = responseData['statusCode']?.toString();
         
-        return {
-          'success': true,
-          'data': cart,
-          'message': 'Item added to cart successfully'
-        };
+        if (statusCode == AppConstants.successCode) {
+          final cart = Cart.fromJson(responseData['data'] ?? {});
+          await _cacheCart(cart);
+          
+          return {
+            'success': true,
+            'data': cart,
+            'message': responseData['message'] ?? 'Item added to cart successfully'
+          };
+        } else {
+          return {
+            'success': false,
+            'message': AppConstants.errorCodes[statusCode] ?? responseData['message'] ?? 'Failed to add item to cart'
+          };
+        }
       } else {
         return {
           'success': false,
@@ -82,14 +104,24 @@ class CartService {
       );
       
       if (response.statusCode == 200) {
-        final cart = Cart.fromJson(response.data ?? {});
-        await _cacheCart(cart);
+        final responseData = response.data ?? {};
+        final statusCode = responseData['statusCode']?.toString();
         
-        return {
-          'success': true,
-          'data': cart,
-          'message': 'Cart updated successfully'
-        };
+        if (statusCode == AppConstants.successCode) {
+          final cart = Cart.fromJson(responseData['data'] ?? {});
+          await _cacheCart(cart);
+          
+          return {
+            'success': true,
+            'data': cart,
+            'message': responseData['message'] ?? 'Cart updated successfully'
+          };
+        } else {
+          return {
+            'success': false,
+            'message': AppConstants.errorCodes[statusCode] ?? responseData['message'] ?? 'Failed to update cart'
+          };
+        }
       } else {
         return {
           'success': false,
@@ -111,14 +143,24 @@ class CartService {
       final response = await ApiClient.delete('/customers/cart/remove/$itemId');
       
       if (response.statusCode == 200) {
-        final cart = Cart.fromJson(response.data ?? {});
-        await _cacheCart(cart);
+        final responseData = response.data ?? {};
+        final statusCode = responseData['statusCode']?.toString();
         
-        return {
-          'success': true,
-          'data': cart,
-          'message': 'Item removed from cart'
-        };
+        if (statusCode == AppConstants.successCode) {
+          final cart = Cart.fromJson(responseData['data'] ?? {});
+          await _cacheCart(cart);
+          
+          return {
+            'success': true,
+            'data': cart,
+            'message': responseData['message'] ?? 'Item removed from cart'
+          };
+        } else {
+          return {
+            'success': false,
+            'message': AppConstants.errorCodes[statusCode] ?? responseData['message'] ?? 'Failed to remove item'
+          };
+        }
       } else {
         return {
           'success': false,
@@ -140,13 +182,23 @@ class CartService {
       final response = await ApiClient.delete('/customers/cart/clear');
       
       if (response.statusCode == 200) {
-        await _clearCachedCart();
+        final responseData = response.data ?? {};
+        final statusCode = responseData['statusCode']?.toString();
         
-        return {
-          'success': true,
-          'data': Cart.empty(),
-          'message': 'Cart cleared successfully'
-        };
+        if (statusCode == AppConstants.successCode) {
+          await _clearCachedCart();
+          
+          return {
+            'success': true,
+            'data': Cart.empty(),
+            'message': responseData['message'] ?? 'Cart cleared successfully'
+          };
+        } else {
+          return {
+            'success': false,
+            'message': AppConstants.errorCodes[statusCode] ?? responseData['message'] ?? 'Failed to clear cart'
+          };
+        }
       } else {
         return {
           'success': false,

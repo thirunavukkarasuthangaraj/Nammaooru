@@ -31,7 +31,7 @@ interface UploadError {
           <p class="page-subtitle">Upload multiple products using CSV/Excel files</p>
         </div>
         <div class="header-actions">
-          <button mat-stroked-button routerLink="/shop-owner/products">
+          <button mat-stroked-button routerLink="/shop-owner/my-products">
             <mat-icon>arrow_back</mat-icon>
             Back to Products
           </button>
@@ -1127,7 +1127,7 @@ export class BulkUploadComponent implements OnInit {
       );
 
       // Navigate back to products
-      this.router.navigate(['/shop-owner/products']);
+      this.router.navigate(['/shop-owner/my-products']);
     }, 3000);
   }
 }

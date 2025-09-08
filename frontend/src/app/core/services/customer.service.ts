@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map, catchError, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { ApiResponse, ApiResponseHelper } from '../models/api-response.model';
 
 export interface Customer {
   id?: number;
@@ -124,27 +125,82 @@ export class CustomerService {
 
   // Create Customer
   createCustomer(customer: Customer): Observable<Customer> {
-    return this.http.post<Customer>(this.apiUrl, customer);
+    return this.http.post<ApiResponse<Customer>>(this.apiUrl, customer).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
+      catchError(error => {
+        console.error('Create customer error:', error);
+        return throwError(() => error);
+      })
+    );
   }
 
   // Get Customer by ID
   getCustomerById(id: number): Observable<Customer> {
-    return this.http.get<Customer>(`${this.apiUrl}/${id}`);
+    return this.http.get<ApiResponse<Customer>>(`${this.apiUrl}/${id}`).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
+      catchError(error => {
+        console.error('Get customer error:', error);
+        return throwError(() => error);
+      })
+    );
   }
 
   // Get Customer by Email
   getCustomerByEmail(email: string): Observable<Customer> {
-    return this.http.get<Customer>(`${this.apiUrl}/email/${email}`);
+    return this.http.get<ApiResponse<Customer>>(`${this.apiUrl}/email/${email}`).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
+      catchError(error => {
+        console.error('Get customer by email error:', error);
+        return throwError(() => error);
+      })
+    );
   }
 
   // Get Customer by Mobile Number
   getCustomerByMobileNumber(mobileNumber: string): Observable<Customer> {
-    return this.http.get<Customer>(`${this.apiUrl}/mobile/${mobileNumber}`);
+    return this.http.get<ApiResponse<Customer>>(`${this.apiUrl}/mobile/${mobileNumber}`).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
+      catchError(error => {
+        console.error('Get customer by mobile error:', error);
+        return throwError(() => error);
+      })
+    );
   }
 
   // Update Customer
   updateCustomer(id: number, customer: Customer): Observable<Customer> {
-    return this.http.put<Customer>(`${this.apiUrl}/${id}`, customer);
+    return this.http.put<ApiResponse<Customer>>(`${this.apiUrl}/${id}`, customer).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
+      catchError(error => {
+        console.error('Update customer error:', error);
+        return throwError(() => error);
+      })
+    );
   }
 
   // Delete Customer
@@ -161,7 +217,18 @@ export class CustomerService {
     if (params.sortBy) httpParams = httpParams.set('sortBy', params.sortBy);
     if (params.sortDirection) httpParams = httpParams.set('sortDirection', params.sortDirection);
 
-    return this.http.get<PageResponse<Customer>>(this.apiUrl, { params: httpParams });
+    return this.http.get<ApiResponse<PageResponse<Customer>>>(this.apiUrl, { params: httpParams }).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
+      catchError(error => {
+        console.error('Get customers error:', error);
+        return throwError(() => error);
+      })
+    );
   }
 
   // Search Customers
@@ -171,7 +238,18 @@ export class CustomerService {
       .set('page', page.toString())
       .set('size', size.toString());
 
-    return this.http.get<PageResponse<Customer>>(`${this.apiUrl}/search`, { params });
+    return this.http.get<ApiResponse<PageResponse<Customer>>>(`${this.apiUrl}/search`, { params }).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
+      catchError(error => {
+        console.error('Search customers error:', error);
+        return throwError(() => error);
+      })
+    );
   }
 
   // Get Customers by Status
@@ -180,7 +258,18 @@ export class CustomerService {
       .set('page', page.toString())
       .set('size', size.toString());
 
-    return this.http.get<PageResponse<Customer>>(`${this.apiUrl}/status/${status}`, { params });
+    return this.http.get<ApiResponse<PageResponse<Customer>>>(`${this.apiUrl}/status/${status}`, { params }).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
+      catchError(error => {
+        console.error('Get customers by status error:', error);
+        return throwError(() => error);
+      })
+    );
   }
 
   // Verify Email

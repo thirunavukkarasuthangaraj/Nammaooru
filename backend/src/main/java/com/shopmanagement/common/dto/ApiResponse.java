@@ -1,6 +1,7 @@
 package com.shopmanagement.common.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.shopmanagement.common.constants.ResponseConstants;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -55,8 +56,8 @@ public class ApiResponse<T> {
      */
     public static <T> ApiResponse<T> success(T data) {
         return ApiResponse.<T>builder()
-                .statusCode("0000")
-                .message("Success")
+                .statusCode(ResponseConstants.SUCCESS)
+                .message(ResponseConstants.SUCCESS_MESSAGE)
                 .data(data)
                 .build();
     }
@@ -66,7 +67,7 @@ public class ApiResponse<T> {
      */
     public static <T> ApiResponse<T> success(T data, String message) {
         return ApiResponse.<T>builder()
-                .statusCode("0000")
+                .statusCode(ResponseConstants.SUCCESS)
                 .message(message)
                 .data(data)
                 .build();

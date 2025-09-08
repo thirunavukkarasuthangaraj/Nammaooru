@@ -17,7 +17,7 @@ export interface ErrorDetails {
   stackTrace?: string;
 }
 
-import { API_STATUS_CODES } from '../constants/app.constants';
+import { API_STATUS_CODES, API_ERROR_MESSAGES } from '../constants/app.constants';
 
 /**
  * Response constants matching backend (imported from centralized constants)
@@ -46,7 +46,8 @@ export class ApiResponseHelper {
     if (this.isSuccess(response)) {
       return '';
     }
-    return response.message || 'An unknown error occurred';
+    // Use specific error message from API_ERROR_MESSAGES if available, otherwise use response message or default
+    return API_ERROR_MESSAGES[response.statusCode] || response.message || 'An unknown error occurred';
   }
   
   static isAuthError<T>(response: ApiResponse<T>): boolean {

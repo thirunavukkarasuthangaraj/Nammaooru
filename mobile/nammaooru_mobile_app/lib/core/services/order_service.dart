@@ -24,22 +24,38 @@ class OrderService {
         queryParameters: queryParams,
       );
       
-      if (response.statusCode == 200 && response.data['statusCode'] == '0000') {
-        final ordersResponse = OrdersResponse.fromJson(response.data['data'] ?? {});
-        await _cacheOrders(ordersResponse.orders, page);
-        
-        return {
-          'success': true,
-          'data': ordersResponse,
-          'message': 'Orders loaded successfully'
-        };
-      } else {
-        return {
-          'success': false,
-          'message': response.data['message'] ?? 'Failed to load orders',
-          'data': OrdersResponse.empty()
-        };
+      if (response.statusCode == 200) {
+        final responseData = response.data;
+        if (responseData is Map<String, dynamic>) {
+          final statusCode = responseData['statusCode']?.toString();
+          final data = responseData['data'];
+          final message = responseData['message'] ?? 'Orders loaded';
+          
+          if (statusCode == '0000' && data != null) {
+            final ordersResponse = OrdersResponse.fromJson(data);
+            await _cacheOrders(ordersResponse.orders, page);
+            
+            return {
+              'success': true,
+              'data': ordersResponse,
+              'message': message
+            };
+          } else {
+            return {
+              'success': false,
+              'message': message ?? 'Failed to load orders',
+              'data': OrdersResponse.empty()
+            };
+          }
+        }
       }
+      
+      // Fallback for unexpected response
+      return {
+        'success': false,
+        'message': 'Failed to load orders',
+        'data': OrdersResponse.empty()
+      };
     } catch (e) {
       print('Error loading orders: $e');
       
@@ -64,20 +80,34 @@ class OrderService {
     try {
       final response = await ApiClient.get('/customer/orders/$orderId');
       
-      if (response.statusCode == 200 && response.data['statusCode'] == '0000') {
-        final order = Order.fromJson(response.data['data'] ?? {});
-        
-        return {
-          'success': true,
-          'data': order,
-          'message': 'Order details loaded successfully'
-        };
-      } else {
-        return {
-          'success': false,
-          'message': response.data['message'] ?? 'Failed to load order details'
-        };
+      if (response.statusCode == 200) {
+        final responseData = response.data;
+        if (responseData is Map<String, dynamic>) {
+          final statusCode = responseData['statusCode']?.toString();
+          final data = responseData['data'];
+          final message = responseData['message'] ?? 'Order details loaded';
+          
+          if (statusCode == '0000' && data != null) {
+            final order = Order.fromJson(data);
+            
+            return {
+              'success': true,
+              'data': order,
+              'message': message
+            };
+          } else {
+            return {
+              'success': false,
+              'message': message ?? 'Failed to load order details'
+            };
+          }
+        }
       }
+      
+      return {
+        'success': false,
+        'message': 'Failed to load order details'
+      };
     } catch (e) {
       print('Error loading order details: $e');
       return {
@@ -90,28 +120,67 @@ class OrderService {
 
   Future<Map<String, dynamic>> placeOrder(Map<String, dynamic> orderData) async {
     try {
+      print('🚀 Placing order with data: ${orderData.toString()}');
+      
       final response = await ApiClient.post('/customer/orders', data: orderData);
       
-      if (response.statusCode == 200 && response.data['statusCode'] == '0000') {
-        final order = Order.fromJson(response.data['data'] ?? {});
-        await _addToOrdersCache(order);
+      print('📦 Order response: ${response.data.toString()}');
+      
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final responseData = response.data;
         
+        // Handle ApiResponse format from backend (uses 'statusCode' field)
+        if (responseData is Map<String, dynamic>) {
+          final statusCode = responseData['statusCode']?.toString();
+          final data = responseData['data'];
+          final message = responseData['message'] ?? 'Order processed';
+          
+          if (statusCode == '0000' && data != null) {
+            // Try to parse order data - backend might return different format
+            try {
+              final order = Order.fromJson(data is Map<String, dynamic> 
+                  ? data 
+                  : data is Map 
+                      ? Map<String, dynamic>.from(data)
+                      : <String, dynamic>{});
+              await _addToOrdersCache(order);
+            } catch (e) {
+              print('⚠️ Warning: Could not cache order data: $e');
+            }
+            
+            return {
+              'success': true,
+              'data': data,
+              'message': message
+            };
+          } else {
+            return {
+              'success': false,
+              'message': message ?? 'Failed to place order'
+            };
+          }
+        }
+        
+        // Fallback for unexpected response format
         return {
           'success': true,
-          'data': order,
-          'message': response.data['message'] ?? 'Order placed successfully'
+          'data': responseData,
+          'message': 'Order placed successfully'
         };
       } else {
+        final errorMessage = response.data?['message'] ?? 
+                           response.data?['error'] ?? 
+                           'Failed to place order';
         return {
           'success': false,
-          'message': response.data['message'] ?? 'Failed to place order'
+          'message': errorMessage
         };
       }
     } catch (e) {
-      print('Error placing order: $e');
+      print('❌ Error placing order: $e');
       return {
         'success': false,
-        'message': 'Failed to place order. Please try again.',
+        'message': 'Failed to place order. Please check your connection and try again.',
         'error': e.toString()
       };
     }
@@ -124,21 +193,35 @@ class OrderService {
         data: {'reason': reason},
       );
       
-      if (response.statusCode == 200 && response.data['statusCode'] == '0000') {
-        final order = Order.fromJson(response.data['data'] ?? {});
-        await _updateOrderInCache(order);
-        
-        return {
-          'success': true,
-          'data': order,
-          'message': 'Order cancelled successfully'
-        };
-      } else {
-        return {
-          'success': false,
-          'message': response.data['message'] ?? 'Failed to cancel order'
-        };
+      if (response.statusCode == 200) {
+        final responseData = response.data;
+        if (responseData is Map<String, dynamic>) {
+          final statusCode = responseData['statusCode']?.toString();
+          final data = responseData['data'];
+          final message = responseData['message'] ?? 'Order cancelled';
+          
+          if (statusCode == '0000' && data != null) {
+            final order = Order.fromJson(data);
+            await _updateOrderInCache(order);
+            
+            return {
+              'success': true,
+              'data': order,
+              'message': message
+            };
+          } else {
+            return {
+              'success': false,
+              'message': message ?? 'Failed to cancel order'
+            };
+          }
+        }
       }
+      
+      return {
+        'success': false,
+        'message': 'Failed to cancel order'
+      };
     } catch (e) {
       print('Error cancelling order: $e');
       return {
@@ -153,20 +236,32 @@ class OrderService {
     try {
       final response = await ApiClient.get('/customer/orders/$orderId/track');
       
-      if (response.statusCode == 200 && response.data['statusCode'] == '0000') {
-        final trackingData = response.data['data'] ?? {};
-        
-        return {
-          'success': true,
-          'data': trackingData,
-          'message': 'Order tracking loaded successfully'
-        };
-      } else {
-        return {
-          'success': false,
-          'message': response.data['message'] ?? 'Failed to load tracking information'
-        };
+      if (response.statusCode == 200) {
+        final responseData = response.data;
+        if (responseData is Map<String, dynamic>) {
+          final statusCode = responseData['statusCode']?.toString();
+          final data = responseData['data'];
+          final message = responseData['message'] ?? 'Order tracking loaded';
+          
+          if (statusCode == '0000' && data != null) {
+            return {
+              'success': true,
+              'data': data,
+              'message': message
+            };
+          } else {
+            return {
+              'success': false,
+              'message': message ?? 'Failed to load tracking information'
+            };
+          }
+        }
       }
+      
+      return {
+        'success': false,
+        'message': 'Failed to load tracking information'
+      };
     } catch (e) {
       print('Error tracking order: $e');
       return {
@@ -181,17 +276,30 @@ class OrderService {
     try {
       final response = await ApiClient.post('/customer/orders/$orderId/reorder');
       
-      if (response.statusCode == 200 && response.data['statusCode'] == '0000') {
-        return {
-          'success': true,
-          'message': 'Items added to cart successfully'
-        };
-      } else {
-        return {
-          'success': false,
-          'message': response.data['message'] ?? 'Failed to add items to cart'
-        };
+      if (response.statusCode == 200) {
+        final responseData = response.data;
+        if (responseData is Map<String, dynamic>) {
+          final statusCode = responseData['statusCode']?.toString();
+          final message = responseData['message'] ?? 'Items added to cart';
+          
+          if (statusCode == '0000') {
+            return {
+              'success': true,
+              'message': message
+            };
+          } else {
+            return {
+              'success': false,
+              'message': message ?? 'Failed to add items to cart'
+            };
+          }
+        }
       }
+      
+      return {
+        'success': false,
+        'message': 'Failed to add items to cart'
+      };
     } catch (e) {
       print('Error reordering: $e');
       return {

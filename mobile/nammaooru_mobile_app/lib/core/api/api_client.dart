@@ -2,13 +2,14 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../storage/local_storage.dart';
 import '../storage/secure_storage.dart';
+import '../config/env_config.dart';
 
 class ApiClient {
   static late Dio _dio;
 
   static void initialize() {
     _dio = Dio(BaseOptions(
-      baseUrl: 'http://localhost:8086/api', // Local environment
+      baseUrl: EnvConfig.baseUrl + '/api',
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
       headers: {

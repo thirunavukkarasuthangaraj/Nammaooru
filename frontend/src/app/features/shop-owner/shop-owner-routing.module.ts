@@ -15,11 +15,12 @@ import { NotificationsComponent } from './components/notifications/notifications
 import { ProductsPricingComponent } from './components/products-pricing/products-pricing.component';
 import { BusinessSummaryComponent } from './components/business-summary/business-summary.component';
 import { BusinessHoursComponent } from './components/business-hours/business-hours.component';
+import { BrowseProductsComponent } from './components/browse-products/browse-products.component';
 
 const routes: Routes = [
   {
     path: '',
-    redirectTo: 'summary',
+    redirectTo: 'dashboard',
     pathMatch: 'full'
   },
   {
@@ -47,24 +48,28 @@ const routes: Routes = [
     component: ShopOverviewComponent
   },
   {
-    path: 'products',
+    path: 'my-products',
     component: MyProductsComponent
   },
   {
-    path: 'products/add',
+    path: 'my-products/add',
     component: AddProductComponent
   },
   {
-    path: 'products/edit/:id',
+    path: 'my-products/edit/:id',
     component: AddProductComponent
   },
   {
-    path: 'products/bulk-upload',
+    path: 'my-products/bulk-upload',
     component: BulkUploadComponent
   },
   {
-    path: 'products/categories',
+    path: 'my-products/categories',
     component: CategoriesComponent
+  },
+  {
+    path: 'browse-products',
+    component: BrowseProductsComponent
   },
   {
     path: 'inventory',

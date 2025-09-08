@@ -19,7 +19,7 @@ import { switchMap, catchError, map } from 'rxjs/operators';
       <!-- Header -->
       <div class="page-header">
         <div class="header-left">
-          <button mat-stroked-button routerLink="/shop-owner/products" class="back-button">
+          <button mat-stroked-button routerLink="/shop-owner/my-products" class="back-button">
             <mat-icon>arrow_back</mat-icon>
             Back to Products
           </button>
@@ -545,7 +545,7 @@ export class AddProductComponent implements OnInit {
         } else {
           console.error('Invalid product ID:', params['id']);
           this.snackBar.open('Invalid product ID provided', 'Close', { duration: 3000 });
-          this.router.navigate(['/shop-owner/products']);
+          this.router.navigate(['/shop-owner/my-products']);
         }
       }
     });
@@ -896,7 +896,7 @@ export class AddProductComponent implements OnInit {
             });
 
             // Navigate back to products list
-            this.router.navigate(['/shop-owner/products']);
+            this.router.navigate(['/shop-owner/my-products']);
           },
           error: () => {
             // Error already handled in catchError

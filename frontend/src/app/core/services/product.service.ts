@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { ApiResponse } from '../models/api-response.model';
+import { ApiResponseService } from './api-response.service';
 import { 
   MasterProduct, 
   MasterProductRequest, 
@@ -30,13 +31,15 @@ export class ProductService {
       }
     });
 
-    return this.http.get<ApiResponse<ProductPage<MasterProduct>>>(this.API_URL, { params })
-      .pipe(map(response => response.data));
+    return ApiResponseService.extractData(
+      this.http.get<ApiResponse<ProductPage<MasterProduct>>>(this.API_URL, { params })
+    );
   }
 
   getMasterProduct(id: number): Observable<MasterProduct> {
-    return this.http.get<ApiResponse<MasterProduct>>(`${this.API_URL}/${id}`)
-      .pipe(map(response => response.data));
+    return ApiResponseService.extractData(
+      this.http.get<ApiResponse<MasterProduct>>(`${this.API_URL}/${id}`)
+    );
   }
 
   getMasterProductBySku(sku: string): Observable<MasterProduct> {

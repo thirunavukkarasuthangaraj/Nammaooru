@@ -1,10 +1,11 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { catchError, switchMap } from 'rxjs/operators';
+import { catchError, switchMap, map } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
 import { Cart } from './cart.service';
 import { FirebaseService } from '../../../core/services/firebase.service';
+import { ApiResponse, ApiResponseHelper } from '../../../core/models/api-response.model';
 
 export interface OrderRequest {
   customerId?: number;
@@ -100,16 +101,24 @@ export class OrderService {
   createOrder(orderRequest: OrderRequest): Observable<OrderResponse> {
     // Get Firebase token and include it in the request
     return this.firebaseService.getToken().pipe(
-      switchMap(token => {
+      switchMap((token): Observable<OrderResponse> => {
         const requestWithToken = {
           ...orderRequest,
           customerToken: token
         };
         
         // API call to backend
-        return this.http.post<OrderResponse>(`${this.apiUrl}/customer/orders`, requestWithToken)
+        return this.http.post<ApiResponse<OrderResponse>>(`${this.apiUrl}/customer/orders`, requestWithToken)
           .pipe(
-            catchError(() => {
+            map(response => {
+              if (ApiResponseHelper.isError(response)) {
+                const errorMessage = ApiResponseHelper.getErrorMessage(response);
+                throw new Error(errorMessage);
+              }
+              return response.data;
+            }),
+            catchError(error => {
+              console.error('Order creation error:', error);
               // Fallback to mock response if API fails
               const mockResponse: OrderResponse = {
                 id: Math.floor(Math.random() * 10000) + 1000,
@@ -131,11 +140,18 @@ export class OrderService {
             })
           );
       }),
-      catchError(() => {
+      catchError((): Observable<OrderResponse> => {
         // Fallback if Firebase token fails
-        return this.http.post<OrderResponse>(`${this.apiUrl}/customer/orders`, orderRequest)
+        return this.http.post<ApiResponse<OrderResponse>>(`${this.apiUrl}/customer/orders`, orderRequest)
           .pipe(
-            catchError(() => {
+            map(response => {
+              if (ApiResponseHelper.isError(response)) {
+                const errorMessage = ApiResponseHelper.getErrorMessage(response);
+                throw new Error(errorMessage);
+              }
+              return response.data;
+            }),
+            catchError((): Observable<OrderResponse> => {
               const mockResponse: OrderResponse = {
                 id: Math.floor(Math.random() * 10000) + 1000,
                 orderNumber: 'ORD' + Date.now().toString().slice(-8),
@@ -153,9 +169,17 @@ export class OrderService {
 
   getOrderTracking(orderNumber: string): Observable<OrderTrackingInfo> {
     // API call to backend
-    return this.http.get<OrderTrackingInfo>(`${this.apiUrl}/customer/orders/${orderNumber}/tracking`)
+    return this.http.get<ApiResponse<OrderTrackingInfo>>(`${this.apiUrl}/customer/orders/${orderNumber}/tracking`)
       .pipe(
-        catchError(() => {
+        map(response => {
+          if (ApiResponseHelper.isError(response)) {
+            const errorMessage = ApiResponseHelper.getErrorMessage(response);
+            throw new Error(errorMessage);
+          }
+          return response.data;
+        }),
+        catchError(error => {
+          console.error('Order tracking error:', error);
           // Fallback to mock tracking info if API fails
           const mockTrackingInfo: OrderTrackingInfo = {
       orderId: 1234,
@@ -201,10 +225,18 @@ export class OrderService {
 
   getMyOrders(customerId?: number): Observable<OrderResponse[]> {
     // API call to backend
-    return this.http.get<OrderResponse[]>(`${this.apiUrl}/customer/orders`, {
+    return this.http.get<ApiResponse<OrderResponse[]>>(`${this.apiUrl}/customer/orders`, {
       params: customerId ? { customerId: customerId.toString() } : {}
     }).pipe(
-      catchError(() => {
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          const errorMessage = ApiResponseHelper.getErrorMessage(response);
+          throw new Error(errorMessage);
+        }
+        return response.data;
+      }),
+      catchError(error => {
+        console.error('Get orders error:', error);
         // Fallback to mock orders list
         const mockOrders: OrderResponse[] = [
           {
@@ -231,15 +263,23 @@ export class OrderService {
   cancelOrder(orderId: number, reason: string): Observable<OrderResponse> {
     // Get Firebase token for cancellation notification
     return this.firebaseService.getToken().pipe(
-      switchMap(token => {
+      switchMap((token): Observable<OrderResponse> => {
         // API call to backend
-        return this.http.put<OrderResponse>(`${this.apiUrl}/customer/orders/${orderId}/cancel`, null, {
+        return this.http.put<ApiResponse<OrderResponse>>(`${this.apiUrl}/customer/orders/${orderId}/cancel`, null, {
           params: { 
             reason: reason,
             customerToken: token || ''
           }
         }).pipe(
-          catchError(() => {
+          map(response => {
+            if (ApiResponseHelper.isError(response)) {
+              const errorMessage = ApiResponseHelper.getErrorMessage(response);
+              throw new Error(errorMessage);
+            }
+            return response.data;
+          }),
+          catchError(error => {
+            console.error('Cancel order error:', error);
             // Fallback to mock response
             const mockResponse: OrderResponse = {
               id: orderId,
@@ -260,12 +300,19 @@ export class OrderService {
           })
         );
       }),
-      catchError(() => {
+      catchError((): Observable<OrderResponse> => {
         // Fallback if Firebase token fails
-        return this.http.put<OrderResponse>(`${this.apiUrl}/customer/orders/${orderId}/cancel`, null, {
+        return this.http.put<ApiResponse<OrderResponse>>(`${this.apiUrl}/customer/orders/${orderId}/cancel`, null, {
           params: { reason: reason }
         }).pipe(
-          catchError(() => {
+          map(response => {
+            if (ApiResponseHelper.isError(response)) {
+              const errorMessage = ApiResponseHelper.getErrorMessage(response);
+              throw new Error(errorMessage);
+            }
+            return response.data;
+          }),
+          catchError((): Observable<OrderResponse> => {
             const mockResponse: OrderResponse = {
               id: orderId,
               orderNumber: 'ORD' + orderId,

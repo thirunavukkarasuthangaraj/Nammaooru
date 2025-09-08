@@ -29,6 +29,9 @@ public class AuthService {
     
     @Autowired
     private EmailService emailService;
+    
+    @Autowired
+    private EmailOtpService emailOtpService;
 
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
@@ -47,24 +50,17 @@ public class AuthService {
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
                 .mobileNumber(request.getMobileNumber())
-                .role(User.UserRole.USER)  // Force USER role for customers
+                .role(User.UserRole.USER)  // Mobile users get USER role for customer functionality
                 .emailVerified(false)
                 .mobileVerified(false)
                 .build();
         
         userRepository.save(user);
         
-        // Send OTP email after successful registration using template
+        // Send OTP email after successful registration using new secure OTP service
         try {
-            String otp = String.valueOf((int) (Math.random() * 900000) + 100000);
-            
-            // Use full name for display in email
             String userName = request.getFirstName() + " " + request.getLastName();
-            
-            emailService.sendOtpVerificationEmail(user.getEmail(), userName, otp);
-            
-            System.out.println("OTP sent to " + user.getEmail() + ": " + otp); // For testing
-            
+            emailOtpService.generateAndSendOtp(user.getEmail(), "REGISTRATION", userName);
         } catch (Exception e) {
             System.err.println("Failed to send OTP email: " + e.getMessage());
         }

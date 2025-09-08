@@ -5,9 +5,11 @@ import 'package:flutter/foundation.dart';
 import '../models/auth_models.dart';
 import '../storage/secure_storage.dart';
 import '../storage/local_storage.dart';
+import '../config/env_config.dart';
+import '../constants/app_constants.dart';
 
 class ApiService {
-  static const String _baseUrl = 'http://localhost:8086/api';  // Local environment
+  static const String _baseUrl = EnvConfig.baseUrl + '/api';
   late Dio _dio;
   
   static final ApiService _instance = ApiService._internal();
@@ -82,22 +84,35 @@ class ApiService {
       );
       
       if (response.statusCode == 200) {
-        return response.data ?? {};
+        final responseData = response.data ?? {};
+        // Check API response status code
+        if (responseData['statusCode'] == AppConstants.successCode) {
+          return responseData;
+        } else {
+          return {
+            'statusCode': responseData['statusCode'] ?? AppConstants.failureCode,
+            'message': responseData['message'] ?? AppConstants.errorCodes[responseData['statusCode']] ?? AppConstants.failureMessage,
+            'success': false,
+          };
+        }
       } else {
         return {
-          'statusCode': '9999',
+          'statusCode': AppConstants.failureCode,
           'message': response.data?['message'] ?? 'Request failed',
+          'success': false,
         };
       }
     } on DioException catch (e) {
       return {
-        'statusCode': '9999',
+        'statusCode': AppConstants.failureCode,
         'message': _handleDioError(e)['message'],
+        'success': false,
       };
     } catch (e) {
       return {
-        'statusCode': '9999',
+        'statusCode': AppConstants.failureCode,
         'message': 'An unexpected error occurred: ${e.toString()}',
+        'success': false,
       };
     }
   }
@@ -142,22 +157,35 @@ class ApiService {
       );
       
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return response.data ?? {};
+        final responseData = response.data ?? {};
+        // Check API response status code
+        if (responseData['statusCode'] == AppConstants.successCode) {
+          return responseData;
+        } else {
+          return {
+            'statusCode': responseData['statusCode'] ?? AppConstants.failureCode,
+            'message': responseData['message'] ?? AppConstants.errorCodes[responseData['statusCode']] ?? AppConstants.failureMessage,
+            'success': false,
+          };
+        }
       } else {
         return {
-          'statusCode': '9999',
+          'statusCode': AppConstants.failureCode,
           'message': response.data?['message'] ?? 'Request failed',
+          'success': false,
         };
       }
     } on DioException catch (e) {
       return {
-        'statusCode': '9999',
+        'statusCode': AppConstants.failureCode,
         'message': _handleDioError(e)['message'],
+        'success': false,
       };
     } catch (e) {
       return {
-        'statusCode': '9999',
+        'statusCode': AppConstants.failureCode,
         'message': 'An unexpected error occurred: ${e.toString()}',
+        'success': false,
       };
     }
   }
@@ -168,14 +196,25 @@ class ApiService {
       final response = await _dio.post('/auth/register', data: request.toJson());
       
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return {
-          'success': true,
-          'message': 'Registration successful! Please check your email for OTP verification.',
-          'data': response.data,
-        };
+        final responseData = response.data ?? {};
+        if (responseData['statusCode'] == AppConstants.successCode) {
+          return {
+            'success': true,
+            'statusCode': AppConstants.successCode,
+            'message': responseData['message'] ?? 'Registration successful! Please check your email for OTP verification.',
+            'data': responseData['data'],
+          };
+        } else {
+          return {
+            'success': false,
+            'statusCode': responseData['statusCode'] ?? AppConstants.failureCode,
+            'message': responseData['message'] ?? AppConstants.errorCodes[responseData['statusCode']] ?? 'Registration failed',
+          };
+        }
       } else {
         return {
           'success': false,
+          'statusCode': AppConstants.failureCode,
           'message': response.data?['message'] ?? 'Registration failed',
         };
       }
@@ -273,16 +312,27 @@ class ApiService {
       final response = await _dio.post('/auth/login', data: request.toJson());
       
       if (response.statusCode == 200) {
-        final authResponse = AuthResponse.fromJson(response.data['data']);
-        
-        return {
-          'success': true,
-          'message': 'Login successful!',
-          'data': authResponse,
-        };
+        final responseData = response.data ?? {};
+        if (responseData['statusCode'] == AppConstants.successCode) {
+          final authResponse = AuthResponse.fromJson(responseData['data']);
+          
+          return {
+            'success': true,
+            'statusCode': AppConstants.successCode,
+            'message': responseData['message'] ?? 'Login successful!',
+            'data': authResponse,
+          };
+        } else {
+          return {
+            'success': false,
+            'statusCode': responseData['statusCode'] ?? AppConstants.failureCode,
+            'message': responseData['message'] ?? AppConstants.errorCodes[responseData['statusCode']] ?? 'Login failed',
+          };
+        }
       } else {
         return {
           'success': false,
+          'statusCode': AppConstants.failureCode,
           'message': response.data?['message'] ?? 'Login failed',
         };
       }
@@ -335,19 +385,21 @@ class ApiService {
         return response.data;
       } else {
         return {
-          'statusCode': '9999',
+          'statusCode': AppConstants.failureCode,
           'message': response.data?['message'] ?? 'Failed to send OTP',
         };
       }
     } on DioException catch (e) {
       return {
-        'statusCode': '9999',
+        'statusCode': AppConstants.failureCode,
         'message': _handleDioError(e)['message'],
+        'success': false,
       };
     } catch (e) {
       return {
-        'statusCode': '9999',
+        'statusCode': AppConstants.failureCode,
         'message': 'An unexpected error occurred: ${e.toString()}',
+        'success': false,
       };
     }
   }
@@ -364,19 +416,21 @@ class ApiService {
         return response.data;
       } else {
         return {
-          'statusCode': '9999',
+          'statusCode': AppConstants.failureCode,
           'message': response.data?['message'] ?? 'Invalid or expired OTP',
         };
       }
     } on DioException catch (e) {
       return {
-        'statusCode': '9999',
+        'statusCode': AppConstants.failureCode,
         'message': _handleDioError(e)['message'],
+        'success': false,
       };
     } catch (e) {
       return {
-        'statusCode': '9999',
+        'statusCode': AppConstants.failureCode,
         'message': 'An unexpected error occurred: ${e.toString()}',
+        'success': false,
       };
     }
   }
@@ -394,19 +448,21 @@ class ApiService {
         return response.data;
       } else {
         return {
-          'statusCode': '9999',
+          'statusCode': AppConstants.failureCode,
           'message': response.data?['message'] ?? 'Failed to reset password',
         };
       }
     } on DioException catch (e) {
       return {
-        'statusCode': '9999',
+        'statusCode': AppConstants.failureCode,
         'message': _handleDioError(e)['message'],
+        'success': false,
       };
     } catch (e) {
       return {
-        'statusCode': '9999',
+        'statusCode': AppConstants.failureCode,
         'message': 'An unexpected error occurred: ${e.toString()}',
+        'success': false,
       };
     }
   }
@@ -422,19 +478,21 @@ class ApiService {
         return response.data;
       } else {
         return {
-          'statusCode': '9999',
+          'statusCode': AppConstants.failureCode,
           'message': response.data?['message'] ?? 'Failed to resend OTP',
         };
       }
     } on DioException catch (e) {
       return {
-        'statusCode': '9999',
+        'statusCode': AppConstants.failureCode,
         'message': _handleDioError(e)['message'],
+        'success': false,
       };
     } catch (e) {
       return {
-        'statusCode': '9999',
+        'statusCode': AppConstants.failureCode,
         'message': 'An unexpected error occurred: ${e.toString()}',
+        'success': false,
       };
     }
   }

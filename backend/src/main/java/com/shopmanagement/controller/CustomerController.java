@@ -1,5 +1,6 @@
 package com.shopmanagement.controller;
 
+import com.shopmanagement.common.dto.ApiResponse;
 import com.shopmanagement.dto.customer.*;
 import com.shopmanagement.service.CustomerService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -30,7 +31,7 @@ public class CustomerController {
 
     @GetMapping
     @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN')")
-    public ResponseEntity<Page<CustomerResponse>> getAllCustomers(
+    public ResponseEntity<ApiResponse<Page<CustomerResponse>>> getAllCustomers(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
@@ -38,19 +39,19 @@ public class CustomerController {
         
         log.info("Fetching all customers - page: {}, size: {}", page, size);
         Page<CustomerResponse> customers = customerService.getAllCustomers(page, size, sortBy, sortDirection);
-        return ResponseEntity.ok(customers);
+        return ResponseEntity.ok(ApiResponse.success(customers, "Customers fetched successfully"));
     }
     
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN')")
-    public ResponseEntity<CustomerResponse> getCustomerById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<CustomerResponse>> getCustomerById(@PathVariable Long id) {
         log.info("Fetching customer with ID: {}", id);
         CustomerResponse customer = customerService.getCustomerById(id);
-        return ResponseEntity.ok(customer);
+        return ResponseEntity.ok(ApiResponse.success(customer, "Customer fetched successfully"));
     }
 
     @PostMapping("/register")
-    public ResponseEntity<Map<String, Object>> registerCustomer(
+    public ResponseEntity<ApiResponse<Map<String, Object>>> registerCustomer(
             @Valid @RequestBody CustomerRegistrationRequest request,
             HttpServletRequest httpRequest) {
         
@@ -63,24 +64,22 @@ public class CustomerController {
             Map<String, Object> response = customerService.registerCustomer(request, ipAddress);
             
             if ((Boolean) response.get("success")) {
-                return ResponseEntity.status(HttpStatus.CREATED).body(response);
+                return ResponseEntity.status(HttpStatus.CREATED)
+                        .body(ApiResponse.success(response, "Registration successful"));
             } else {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(ApiResponse.error(response.get("message").toString(), "REGISTRATION_FAILED"));
             }
             
         } catch (Exception e) {
             log.error("Error registering customer for email: {}", request.getEmail(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of(
-                        "success", false,
-                        "message", "Registration failed. Please try again.",
-                        "errorCode", "REGISTRATION_ERROR"
-                    ));
+                    .body(ApiResponse.error("Registration failed. Please try again.", "REGISTRATION_ERROR"));
         }
     }
 
     @PostMapping("/login")
-    public ResponseEntity<Map<String, Object>> loginCustomer(
+    public ResponseEntity<ApiResponse<Map<String, Object>>> loginCustomer(
             @Valid @RequestBody CustomerLoginRequest request,
             HttpServletRequest httpRequest) {
         
@@ -93,33 +92,30 @@ public class CustomerController {
             Map<String, Object> response = customerService.loginCustomer(request);
             
             if ((Boolean) response.get("success")) {
-                return ResponseEntity.ok(response);
+                return ResponseEntity.ok(ApiResponse.success(response, "Login successful"));
             } else {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(ApiResponse.error(response.get("message").toString(), "LOGIN_FAILED"));
             }
             
         } catch (Exception e) {
             log.error("Error during customer login for: {}", request.getEmailOrMobile(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of(
-                        "success", false,
-                        "message", "Login failed. Please try again.",
-                        "errorCode", "LOGIN_ERROR"
-                    ));
+                    .body(ApiResponse.error("Login failed. Please try again.", "LOGIN_ERROR"));
         }
     }
 
     @GetMapping("/profile")
     @PreAuthorize("hasRole('CUSTOMER') or hasRole('USER')")
-    public ResponseEntity<CustomerResponse> getCustomerProfile() {
+    public ResponseEntity<ApiResponse<CustomerResponse>> getCustomerProfile() {
         log.info("Fetching customer profile");
         CustomerResponse response = customerService.getCurrentCustomerProfile();
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(response, "Profile fetched successfully"));
     }
 
     @GetMapping("/shops")
     @PreAuthorize("hasRole('CUSTOMER') or hasRole('USER')")
-    public ResponseEntity<Map<String, Object>> getAvailableShops(
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getAvailableShops(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String city,
@@ -133,12 +129,12 @@ public class CustomerController {
         Map<String, Object> response = customerService.getAvailableShops(
             page, size, city, category, latitude, longitude, radiusKm);
         
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(response, "Shops fetched successfully"));
     }
 
     @PostMapping("/orders")
     @PreAuthorize("hasRole('CUSTOMER') or hasRole('USER')")
-    public ResponseEntity<Map<String, Object>> placeOrder(
+    public ResponseEntity<ApiResponse<Map<String, Object>>> placeOrder(
             @Valid @RequestBody CustomerOrderRequest request) {
         
         try {
@@ -147,33 +143,31 @@ public class CustomerController {
             Map<String, Object> response = customerService.placeOrder(request);
             
             if ((Boolean) response.get("success")) {
-                return ResponseEntity.status(HttpStatus.CREATED).body(response);
+                return ResponseEntity.status(HttpStatus.CREATED)
+                        .body(ApiResponse.success(response, "Order placed successfully"));
             } else {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(ApiResponse.error(response.get("message").toString(), "ORDER_CREATION_FAILED"));
             }
             
         } catch (Exception e) {
             log.error("Error placing customer order", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of(
-                        "success", false,
-                        "message", "Failed to place order. Please try again.",
-                        "errorCode", "ORDER_CREATION_ERROR"
-                    ));
+                    .body(ApiResponse.error("Failed to place order. Please try again.", "ORDER_CREATION_ERROR"));
         }
     }
 
     @GetMapping("/cart")
     @PreAuthorize("hasRole('CUSTOMER') or hasRole('USER')")
-    public ResponseEntity<Map<String, Object>> getCart() {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getCart() {
         log.info("Fetching customer cart");
         Map<String, Object> response = customerService.getCustomerCart();
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(response, "Cart fetched successfully"));
     }
 
     @PostMapping("/cart/add")
     @PreAuthorize("hasRole('CUSTOMER') or hasRole('USER')")
-    public ResponseEntity<Map<String, Object>> addToCart(
+    public ResponseEntity<ApiResponse<Map<String, Object>>> addToCart(
             @Valid @RequestBody CartItemRequest request) {
         
         try {
@@ -181,16 +175,12 @@ public class CustomerController {
                 request.getShopProductId(), request.getQuantity());
             
             Map<String, Object> response = customerService.addToCart(request);
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.success(response, "Item added to cart successfully"));
             
         } catch (Exception e) {
             log.error("Error adding item to cart", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of(
-                        "success", false,
-                        "message", "Failed to add item to cart",
-                        "errorCode", "CART_ERROR"
-                    ));
+                    .body(ApiResponse.error("Failed to add item to cart", "CART_ERROR"));
         }
     }
 

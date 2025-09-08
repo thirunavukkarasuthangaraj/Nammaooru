@@ -1,5 +1,7 @@
 package com.shopmanagement.controller;
 
+import com.shopmanagement.common.dto.ApiResponse;
+import com.shopmanagement.common.util.ResponseUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
@@ -19,12 +21,13 @@ public class VersionController {
     private String appName;
 
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getVersion() {
-        Map<String, Object> response = new HashMap<>();
-        response.put("version", appVersion);
-        response.put("name", appName);
-        response.put("buildTimestamp", System.currentTimeMillis());
-        response.put("buildDate", new java.util.Date().toString());
-        return ResponseEntity.ok(response);
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getVersion() {
+        Map<String, Object> versionData = new HashMap<>();
+        versionData.put("version", appVersion);
+        versionData.put("name", appName);
+        versionData.put("buildTimestamp", System.currentTimeMillis());
+        versionData.put("buildDate", new java.util.Date().toString());
+        
+        return ResponseUtil.success(versionData, "Version information retrieved successfully");
     }
 }

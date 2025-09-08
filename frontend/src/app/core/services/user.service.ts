@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map, catchError, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { ApiResponse, ApiResponseHelper } from '../models/api-response.model';
 
 export interface UserResponse {
   id: number;
@@ -93,11 +94,27 @@ export class UserService {
       .set('sortBy', sortBy)
       .set('sortDirection', sortDirection);
 
-    return this.http.get<PageResponse<UserResponse>>(this.apiUrl, { params });
+    return this.http.get<ApiResponse<PageResponse<UserResponse>>>(this.apiUrl, { params }).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
+      catchError(error => throwError(() => error))
+    );
   }
 
   getUserById(id: number): Observable<UserResponse> {
-    return this.http.get<UserResponse>(`${this.apiUrl}/${id}`);
+    return this.http.get<ApiResponse<UserResponse>>(`${this.apiUrl}/${id}`).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
+      catchError(error => throwError(() => error))
+    );
   }
 
   getUserByUsername(username: string): Observable<UserResponse> {
@@ -109,11 +126,27 @@ export class UserService {
   }
 
   createUser(user: UserRequest): Observable<UserResponse> {
-    return this.http.post<UserResponse>(this.apiUrl, user);
+    return this.http.post<ApiResponse<UserResponse>>(this.apiUrl, user).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
+      catchError(error => throwError(() => error))
+    );
   }
 
   updateUser(id: number, user: UserRequest): Observable<UserResponse> {
-    return this.http.put<UserResponse>(`${this.apiUrl}/${id}`, user);
+    return this.http.put<ApiResponse<UserResponse>>(`${this.apiUrl}/${id}`, user).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
+      catchError(error => throwError(() => error))
+    );
   }
 
   deleteUser(id: number): Observable<void> {

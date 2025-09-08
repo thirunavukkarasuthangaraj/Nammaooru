@@ -1,11 +1,16 @@
 package com.shopmanagement.auth.controller;
 
+import com.shopmanagement.common.constants.ResponseConstants;
+import com.shopmanagement.common.dto.ApiResponse;
 import com.shopmanagement.dto.auth.AuthRequest;
 import com.shopmanagement.dto.auth.AuthResponse;
 import com.shopmanagement.dto.auth.RegisterRequest;
 import com.shopmanagement.dto.auth.ChangePasswordRequest;
+import com.shopmanagement.entity.User;
+import com.shopmanagement.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.shopmanagement.service.EmailService;
+import com.shopmanagement.service.EmailOtpService;
 import com.shopmanagement.service.AuthService;
 import com.shopmanagement.service.TokenBlacklistService;
 import jakarta.validation.Valid;
@@ -34,204 +39,179 @@ public class AuthController {
     
     @Autowired
     private EmailService emailService;
+    
+    @Autowired
+    private EmailOtpService emailOtpService;
+    
+    @Autowired
+    private UserService userService;
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
-        return ResponseEntity.ok(authService.register(request));
+    public ResponseEntity<ApiResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest request) {
+        AuthResponse authResponse = authService.register(request);
+        return ResponseEntity.ok(ApiResponse.success(authResponse, "Registration successful"));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> authenticate(@Valid @RequestBody AuthRequest request) {
-        return ResponseEntity.ok(authService.authenticate(request));
+    public ResponseEntity<ApiResponse<AuthResponse>> authenticate(@Valid @RequestBody AuthRequest request) {
+        AuthResponse authResponse = authService.authenticate(request);
+        return ResponseEntity.ok(ApiResponse.success(authResponse, "Login successful"));
     }
     
     @PostMapping("/logout")
-    public ResponseEntity<Map<String, String>> logout(@RequestHeader(value = "Authorization", required = false) String authHeader) {
-        Map<String, String> response = new HashMap<>();
-        
+    public ResponseEntity<ApiResponse<Void>> logout(@RequestHeader(value = "Authorization", required = false) String authHeader) {
         // Extract and blacklist token
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
             tokenBlacklistService.blacklistToken(token);
-            response.put("message", "Logged out successfully and token invalidated");
+            return ResponseEntity.ok(ApiResponse.success(null, "Logged out successfully and token invalidated"));
         } else {
-            response.put("message", "Logged out successfully");
+            return ResponseEntity.ok(ApiResponse.success(null, "Logged out successfully"));
         }
-        
-        response.put("status", "success");
-        return ResponseEntity.ok(response);
     }
     
     @GetMapping("/validate")
-    public ResponseEntity<Map<String, Object>> validateToken(Authentication authentication) {
-        Map<String, Object> response = new HashMap<>();
-        
+    public ResponseEntity<ApiResponse<Map<String, Object>>> validateToken(Authentication authentication) {
         if (authentication != null && authentication.isAuthenticated()) {
-            response.put("valid", true);
-            response.put("username", authentication.getName());
-            response.put("authorities", authentication.getAuthorities());
+            Map<String, Object> data = new HashMap<>();
+            data.put("valid", true);
+            data.put("username", authentication.getName());
+            data.put("authorities", authentication.getAuthorities());
+            return ResponseEntity.ok(ApiResponse.success(data, "Token is valid"));
         } else {
-            response.put("valid", false);
+            return ResponseEntity.badRequest().body(
+                ApiResponse.error(ResponseConstants.UNAUTHORIZED, ResponseConstants.UNAUTHORIZED_MESSAGE));
         }
-        
-        return ResponseEntity.ok(response);
     }
     
     @PostMapping("/change-password")
-    public ResponseEntity<Map<String, String>> changePassword(
+    public ResponseEntity<ApiResponse<Void>> changePassword(
             @Valid @RequestBody ChangePasswordRequest request,
             Authentication authentication) {
-        Map<String, String> response = new HashMap<>();
         
         if (authentication == null || !authentication.isAuthenticated()) {
-            response.put("status", "error");
-            response.put("message", "User not authenticated");
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest().body(
+                ApiResponse.error(ResponseConstants.UNAUTHORIZED, "User not authenticated"));
         }
         
         try {
             authService.changePassword(request, authentication.getName());
-            response.put("status", "success");
-            response.put("message", "Password changed successfully");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.success(null, "Password changed successfully"));
         } catch (Exception e) {
-            response.put("status", "error");
-            response.put("message", e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest().body(
+                ApiResponse.error(ResponseConstants.VALIDATION_ERROR, e.getMessage()));
         }
     }
     
     @GetMapping("/password-status")
-    public ResponseEntity<Map<String, Object>> getPasswordStatus(Authentication authentication) {
-        Map<String, Object> response = new HashMap<>();
-        
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getPasswordStatus(Authentication authentication) {
         if (authentication != null && authentication.isAuthenticated()) {
-            response = authService.getPasswordStatus(authentication.getName());
+            Map<String, Object> data = authService.getPasswordStatus(authentication.getName());
+            return ResponseEntity.ok(ApiResponse.success(data, "Password status retrieved successfully"));
         } else {
-            response.put("status", "error");
-            response.put("message", "User not authenticated");
+            return ResponseEntity.badRequest().body(
+                ApiResponse.error(ResponseConstants.UNAUTHORIZED, "User not authenticated"));
         }
-        
-        return ResponseEntity.ok(response);
     }
     
     @PostMapping("/generate-password-hash")
-    public ResponseEntity<Map<String, String>> generatePasswordHash(@RequestBody Map<String, String> request) {
-        Map<String, String> response = new HashMap<>();
-        
+    public ResponseEntity<ApiResponse<Map<String, String>>> generatePasswordHash(@RequestBody Map<String, String> request) {
         try {
             String rawPassword = request.get("password");
             if (rawPassword == null || rawPassword.trim().isEmpty()) {
-                response.put("status", "error");
-                response.put("message", "Password is required");
-                return ResponseEntity.badRequest().body(response);
+                return ResponseEntity.badRequest().body(
+                    ApiResponse.error(ResponseConstants.REQUIRED_FIELD_MISSING, "Password is required"));
             }
             
             // Validate password strength
             if (rawPassword.length() < 8) {
-                response.put("status", "error");
-                response.put("message", "Password must be at least 8 characters long");
-                return ResponseEntity.badRequest().body(response);
+                return ResponseEntity.badRequest().body(
+                    ApiResponse.error(ResponseConstants.VALIDATION_ERROR, "Password must be at least 8 characters long"));
             }
             
             String hashedPassword = passwordEncoder.encode(rawPassword);
             
-            response.put("status", "success");
-            response.put("rawPassword", rawPassword);
-            response.put("hashedPassword", hashedPassword);
-            response.put("sqlCommand", "UPDATE users SET password = '" + hashedPassword + "' WHERE username = 'your_username';");
-            response.put("message", "Password hash generated successfully. Use this hash in your database.");
+            Map<String, String> data = new HashMap<>();
+            data.put("rawPassword", rawPassword);
+            data.put("hashedPassword", hashedPassword);
+            data.put("sqlCommand", "UPDATE users SET password = '" + hashedPassword + "' WHERE username = 'your_username';");
             
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.success(data, "Password hash generated successfully. Use this hash in your database."));
         } catch (Exception e) {
-            response.put("status", "error");
-            response.put("message", "Error generating password hash: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest().body(
+                ApiResponse.error(ResponseConstants.GENERAL_ERROR, "Error generating password hash: " + e.getMessage()));
         }
     }
     
     @PostMapping("/send-otp")
-    public ResponseEntity<Map<String, String>> sendOtp(@RequestBody Map<String, String> request) {
-        Map<String, String> response = new HashMap<>();
-        
+    public ResponseEntity<ApiResponse<String>> sendOtp(@RequestBody Map<String, String> request) {
         try {
             String email = request.get("email");
+            String purpose = request.getOrDefault("purpose", "REGISTRATION");
+            
             if (email == null || email.trim().isEmpty()) {
-                response.put("status", "error");
-                response.put("message", "Email is required");
-                return ResponseEntity.badRequest().body(response);
+                return ResponseEntity.badRequest().body(
+                    ApiResponse.error(ResponseConstants.REQUIRED_FIELD_MISSING, "Email is required"));
             }
             
-            // Generate 6-digit OTP
-            String otp = String.valueOf((int) (Math.random() * 900000) + 100000);
+            // Use secure OTP service
+            String result = emailOtpService.generateAndSendOtp(email, purpose, "User");
             
-            // Send email using template
-            emailService.sendOtpVerificationEmail(email, "User", otp);
-            
-            response.put("status", "success");
-            response.put("message", "OTP sent successfully to your email");
-            response.put("otp", otp); // For testing - remove in production
-            
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.success(result, "OTP sent successfully"));
             
         } catch (Exception e) {
-            response.put("status", "error");
-            response.put("message", "Failed to send OTP: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest().body(
+                ApiResponse.error(ResponseConstants.GENERAL_ERROR, e.getMessage()));
         }
     }
     
     @PostMapping("/verify-otp")
-    public ResponseEntity<Map<String, Object>> verifyOtp(@RequestBody Map<String, String> request) {
-        Map<String, Object> response = new HashMap<>();
-        
+    public ResponseEntity<ApiResponse<AuthResponse>> verifyOtp(@RequestBody Map<String, String> request) {
         try {
             String email = request.get("email");
             String otp = request.get("otp");
+            String purpose = request.getOrDefault("purpose", "REGISTRATION");
             
             if (email == null || email.trim().isEmpty()) {
-                response.put("status", "error");
-                response.put("message", "Email is required");
-                return ResponseEntity.badRequest().body(response);
+                return ResponseEntity.badRequest().body(
+                    ApiResponse.error(ResponseConstants.REQUIRED_FIELD_MISSING, "Email is required"));
             }
             
             if (otp == null || otp.trim().isEmpty()) {
-                response.put("status", "error");
-                response.put("message", "OTP is required");
-                return ResponseEntity.badRequest().body(response);
+                return ResponseEntity.badRequest().body(
+                    ApiResponse.error(ResponseConstants.REQUIRED_FIELD_MISSING, "OTP is required"));
             }
             
-            // For now, accept any 6-digit OTP for testing
-            if (otp.length() == 6 && otp.matches("\\d{6}")) {
+            // Use secure OTP verification
+            boolean isOtpValid = emailOtpService.verifyOtp(email, otp, purpose);
+            
+            if (isOtpValid) {
                 // Find user by email and generate auth response
                 var user = authService.findUserByEmail(email);
                 if (user != null) {
                     var jwtToken = authService.generateTokenForUser(user);
                     
-                    response.put("status", "success");
-                    response.put("message", "OTP verified successfully");
-                    response.put("accessToken", jwtToken);
-                    response.put("tokenType", "Bearer");
-                    response.put("username", user.getUsername());
-                    response.put("email", user.getEmail());
-                    response.put("role", user.getRole().name());
+                    AuthResponse authResponse = AuthResponse.builder()
+                        .accessToken(jwtToken)
+                        .tokenType("Bearer")
+                        .username(user.getUsername())
+                        .email(user.getEmail())
+                        .role(user.getRole().name())
+                        .build();
                     
-                    return ResponseEntity.ok(response);
+                    return ResponseEntity.ok(ApiResponse.success(authResponse, "OTP verified successfully"));
                 } else {
-                    response.put("status", "error");
-                    response.put("message", "User not found");
-                    return ResponseEntity.badRequest().body(response);
+                    return ResponseEntity.badRequest().body(
+                        ApiResponse.error(ResponseConstants.USER_NOT_FOUND, "User not found"));
                 }
             } else {
-                response.put("status", "error");
-                response.put("message", "Invalid OTP format");
-                return ResponseEntity.badRequest().body(response);
+                return ResponseEntity.badRequest().body(
+                    ApiResponse.error(ResponseConstants.VALIDATION_ERROR, "Invalid or expired OTP"));
             }
             
         } catch (Exception e) {
-            response.put("status", "error");
-            response.put("message", "OTP verification failed: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest().body(
+                ApiResponse.error(ResponseConstants.GENERAL_ERROR, "OTP verification failed: " + e.getMessage()));
         }
     }
 }

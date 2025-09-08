@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map, tap, catchError, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { ApiResponse, ApiResponseHelper } from '../models/api-response.model';
 
 export interface DashboardMetrics {
   totalRevenue: number;
@@ -93,7 +94,20 @@ export class AnalyticsService {
       startDate,
       endDate
     };
-    return this.http.post<DashboardMetrics>(`${this.apiUrl}/dashboard`, request);
+    return this.http.post<ApiResponse<DashboardMetrics>>(`${this.apiUrl}/dashboard`, request)
+      .pipe(
+        map(response => {
+          if (ApiResponseHelper.isError(response)) {
+            const errorMessage = ApiResponseHelper.getErrorMessage(response);
+            throw new Error(errorMessage);
+          }
+          return response.data;
+        }),
+        catchError(error => {
+          console.error('Dashboard metrics error:', error);
+          return throwError(() => error);
+        })
+      );
   }
 
   getShopDashboardMetrics(shopId: number, startDate: Date, endDate: Date): Observable<DashboardMetrics> {
@@ -103,7 +117,20 @@ export class AnalyticsService {
       endDate,
       shopId
     };
-    return this.http.post<DashboardMetrics>(`${this.apiUrl}/dashboard/shop/${shopId}`, request);
+    return this.http.post<ApiResponse<DashboardMetrics>>(`${this.apiUrl}/dashboard/shop/${shopId}`, request)
+      .pipe(
+        map(response => {
+          if (ApiResponseHelper.isError(response)) {
+            const errorMessage = ApiResponseHelper.getErrorMessage(response);
+            throw new Error(errorMessage);
+          }
+          return response.data;
+        }),
+        catchError(error => {
+          console.error('Shop dashboard metrics error:', error);
+          return throwError(() => error);
+        })
+      );
   }
 
   getCustomerAnalytics(startDate: Date, endDate: Date): Observable<any> {
@@ -112,7 +139,20 @@ export class AnalyticsService {
       startDate,
       endDate
     };
-    return this.http.post(`${this.apiUrl}/customers`, request);
+    return this.http.post<ApiResponse<any>>(`${this.apiUrl}/customers`, request)
+      .pipe(
+        map(response => {
+          if (ApiResponseHelper.isError(response)) {
+            const errorMessage = ApiResponseHelper.getErrorMessage(response);
+            throw new Error(errorMessage);
+          }
+          return response.data;
+        }),
+        catchError(error => {
+          console.error('Customer analytics error:', error);
+          return throwError(() => error);
+        })
+      );
   }
 
   generateAnalytics(startDate: Date, endDate: Date, periodType: string): Observable<void> {
@@ -126,18 +166,70 @@ export class AnalyticsService {
   }
 
   getAvailableCategories(): Observable<string[]> {
-    return this.http.get<string[]>(`${this.apiUrl}/categories`);
+    return this.http.get<ApiResponse<string[]>>(`${this.apiUrl}/categories`)
+      .pipe(
+        map(response => {
+          if (ApiResponseHelper.isError(response)) {
+            const errorMessage = ApiResponseHelper.getErrorMessage(response);
+            throw new Error(errorMessage);
+          }
+          return response.data;
+        }),
+        catchError(error => {
+          console.error('Categories error:', error);
+          return throwError(() => error);
+        })
+      );
   }
 
   getAvailableMetricTypes(): Observable<string[]> {
-    return this.http.get<string[]>(`${this.apiUrl}/metric-types`);
+    return this.http.get<ApiResponse<string[]>>(`${this.apiUrl}/metric-types`)
+      .pipe(
+        map(response => {
+          if (ApiResponseHelper.isError(response)) {
+            const errorMessage = ApiResponseHelper.getErrorMessage(response);
+            throw new Error(errorMessage);
+          }
+          return response.data;
+        }),
+        catchError(error => {
+          console.error('Metric types error:', error);
+          return throwError(() => error);
+        })
+      );
   }
 
   getAvailablePeriodTypes(): Observable<string[]> {
-    return this.http.get<string[]>(`${this.apiUrl}/period-types`);
+    return this.http.get<ApiResponse<string[]>>(`${this.apiUrl}/period-types`)
+      .pipe(
+        map(response => {
+          if (ApiResponseHelper.isError(response)) {
+            const errorMessage = ApiResponseHelper.getErrorMessage(response);
+            throw new Error(errorMessage);
+          }
+          return response.data;
+        }),
+        catchError(error => {
+          console.error('Period types error:', error);
+          return throwError(() => error);
+        })
+      );
   }
 
   getAnalyticsEnums(): Observable<any> {
-    return this.http.get(`${this.apiUrl}/enums`);
+    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/enums`)
+      .pipe(
+        map(response => {
+          if (ApiResponseHelper.isError(response)) {
+            const errorMessage = ApiResponseHelper.getErrorMessage(response);
+            throw new Error(errorMessage);
+          }
+          return response.data;
+        }),
+        catchError(error => {
+          console.error('Analytics enums error:', error);
+          return throwError(() => error);
+        })
+      );
   }
 }

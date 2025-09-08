@@ -16,25 +16,51 @@ class AuthApiService {
       Logger.auth('Registering customer: $email');
       
       final response = await _apiService.post(
-        '/customers/register',
+        '/auth/register',
         body: {
           'firstName': firstName,
           'lastName': lastName,
           'email': email,
           'mobileNumber': phone,
           'password': password,
+          'username': email, // Use email as username
+          'role': 'USER', // Default role for customers
         },
         includeAuth: false,
       );
 
-      if (response['success'] == true) {
-        // If registration includes auto-login
-        if (response['token'] != null) {
-          await _apiService.setAuthToken(response['token']);
+      // Handle new API response structure
+      if (response['statusCode'] == '0000' && response['data'] != null) {
+        final authData = response['data'];
+        final token = authData['accessToken'];
+        
+        if (token != null) {
+          await _apiService.setAuthToken(token);
+          Logger.auth('Registration successful, token saved');
         }
+        
+        // Return formatted response for UI compatibility
+        return {
+          'success': true,
+          'statusCode': response['statusCode'],
+          'message': response['message'] ?? 'Registration successful',
+          'token': token,
+          'user': {
+            'id': authData['userId'],
+            'username': authData['username'],
+            'email': authData['email'],
+            'role': authData['role'],
+            'passwordChangeRequired': authData['passwordChangeRequired'] ?? false,
+          },
+          'data': authData
+        };
+      } else {
+        return {
+          'success': false,
+          'statusCode': response['statusCode'] ?? '9999',
+          'message': response['message'] ?? 'Registration failed',
+        };
       }
-
-      return response;
     } catch (e) {
       Logger.e('Registration failed', 'AUTH', e);
       rethrow;
@@ -58,12 +84,38 @@ class AuthApiService {
         includeAuth: false,
       );
 
-      if (response['token'] != null) {
-        await _apiService.setAuthToken(response['token']);
-        Logger.auth('Login successful, token saved');
+      // Handle new API response structure
+      if (response['statusCode'] == '0000' && response['data'] != null) {
+        final authData = response['data'];
+        final token = authData['accessToken'];
+        
+        if (token != null) {
+          await _apiService.setAuthToken(token);
+          Logger.auth('Login successful, token saved');
+        }
+        
+        // Return formatted response for UI compatibility
+        return {
+          'success': true,
+          'statusCode': response['statusCode'],
+          'message': response['message'],
+          'token': token,
+          'user': {
+            'id': authData['userId'],
+            'username': authData['username'],
+            'email': authData['email'],
+            'role': authData['role'],
+            'passwordChangeRequired': authData['passwordChangeRequired'] ?? false,
+          },
+          'data': authData
+        };
+      } else {
+        return {
+          'success': false,
+          'statusCode': response['statusCode'] ?? '9999',
+          'message': response['message'] ?? 'Login failed',
+        };
       }
-
-      return response;
     } catch (e) {
       Logger.e('Login failed', 'AUTH', e);
       rethrow;

@@ -248,53 +248,30 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
 
   shopOwnerMenuItems = [
     {
-      category: 'Dashboard',
+      category: 'Main',
       items: [
-        { title: 'Business Summary', icon: 'dashboard', route: '/shop-owner/summary', badge: null },
-        { title: 'Analytics', icon: 'analytics', route: '/shop-owner/analytics', badge: null }
+        { title: 'Dashboard', icon: 'dashboard', route: '/shop-owner/dashboard', badge: null }
       ]
     },
     {
       category: 'Shop Management',
       items: [
-        { title: 'Shop Profile', icon: 'store', route: '/shop-owner/profile', badge: null },
-        { title: 'Shop Settings', icon: 'settings', route: '/shop-owner/settings', badge: null },
-        { title: 'Business Hours', icon: 'schedule', route: '/shop-owner/business-hours', badge: null }
+        { title: 'Shop Profile', icon: 'store', route: '/shop-owner/profile', badge: null }
       ]
     },
     {
       category: 'Products',
       items: [
-        { title: 'Products & Pricing', icon: 'inventory_2', route: '/shop-owner/products-pricing', badge: null },
-        { title: 'My Products', icon: 'category', route: '/shop-owner/products', badge: null },
-        { title: 'Add Product', icon: 'add_box', route: '/shop-owner/products/add', badge: null },
-        { title: 'Stock Management', icon: 'warehouse', route: '/shop-owner/inventory', badge: null },
-        { title: 'Product Categories', icon: 'label', route: '/shop-owner/categories', badge: null }
+        { title: 'My Products', icon: 'inventory_2', route: '/shop-owner/my-products', badge: null },
+        { title: 'Product Master', icon: 'inventory', route: '/products/master', badge: null },
+        { title: 'Add Products to Shop', icon: 'add_shopping_cart', route: '/products/shop-owner', badge: null }
       ]
     },
     {
       category: 'Orders',
       items: [
-        { title: 'Order Management', icon: 'receipt_long', route: '/shop-owner/orders', badge: '3' },
-        { title: 'Today\'s Orders', icon: 'today', route: '/shop-owner/orders/today', badge: '2' },
-        { title: 'Order History', icon: 'history', route: '/shop-owner/orders/history', badge: null },
-        { title: 'Order Notifications', icon: 'notifications_active', route: '/shop-owner/notifications', badge: '5' }
-      ]
-    },
-    {
-      category: 'Customers',
-      items: [
-        { title: 'Customer Management', icon: 'people', route: '/shop-owner/customers', badge: null },
-        { title: 'Customer Reviews', icon: 'rate_review', route: '/shop-owner/reviews', badge: '4' },
-        { title: 'Loyalty Program', icon: 'card_giftcard', route: '/shop-owner/loyalty', badge: null }
-      ]
-    },
-    {
-      category: 'Finance',
-      items: [
-        { title: 'Revenue', icon: 'attach_money', route: '/shop-owner/revenue', badge: null },
-        { title: 'Payouts', icon: 'payments', route: '/shop-owner/payouts', badge: null },
-        { title: 'Reports', icon: 'assessment', route: '/shop-owner/reports', badge: null }
+        { title: 'Orders', icon: 'receipt_long', route: '/shop-owner/orders', badge: '3' },
+        { title: 'Notifications', icon: 'notifications', route: '/shop-owner/notifications', badge: '5' }
       ]
     }
   ];
@@ -551,6 +528,26 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   // Notification methods
   getNotificationCount(): number {
     return this.notifications.filter(n => !n.read).length;
+  }
+
+  markAllNotificationsAsRead(): void {
+    this.notifications.forEach(notification => {
+      notification.read = true;
+    });
+    this.notificationCount = 0;
+  }
+
+  markNotificationAsRead(notificationId: number): void {
+    const notification = this.notifications.find(n => n.id === notificationId);
+    if (notification && !notification.read) {
+      notification.read = true;
+      this.notificationCount = this.getNotificationCount();
+    }
+  }
+
+  onNotificationClick(event: MouseEvent): void {
+    // Prevent menu from closing when clicking on notification items
+    event.stopPropagation();
   }
 
   // Page title methods

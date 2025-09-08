@@ -122,6 +122,7 @@ export class LoginComponent implements OnInit, OnDestroy {
 
     // Redirect based on user role
     switch (user?.role) {
+      case UserRole.SUPER_ADMIN:
       case UserRole.ADMIN:
         this.router.navigate(['/dashboard']);
         break;

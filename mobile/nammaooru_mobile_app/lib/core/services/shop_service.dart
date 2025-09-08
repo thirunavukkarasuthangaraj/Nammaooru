@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import '../api/api_client.dart';
 import '../models/shop_model.dart';
 import '../models/product_model.dart';
+import '../constants/app_constants.dart';
 
 class ShopService {
 
@@ -33,11 +34,11 @@ class ShopService {
 
       if (response.statusCode == 200) {
         final data = response.data;
-        // Backend returns statusCode "0000" for success
-        if (data['statusCode'] == '0000' && data['data'] != null) {
+        // Backend returns ApiResponse with statusCode "0000" for success
+        if (data['statusCode'] == AppConstants.successCode && data['data'] != null) {
           return ShopListResponse.fromJson(data['data']);
         } else {
-          throw Exception(data['message'] ?? 'Failed to fetch shops');
+          throw Exception(AppConstants.errorCodes[data['statusCode']] ?? data['message'] ?? 'Failed to fetch shops');
         }
       } else {
         throw Exception('HTTP ${response.statusCode}: Failed to fetch shops');
@@ -53,10 +54,10 @@ class ShopService {
 
       if (response.statusCode == 200) {
         final data = response.data;
-        if (data['statusCode'] == '0000' && data['data'] != null) {
+        if (data['statusCode'] == AppConstants.successCode && data['data'] != null) {
           return ShopModel.fromJson(data['data']);
         } else {
-          throw Exception(data['message'] ?? 'Failed to fetch shop details');
+          throw Exception(AppConstants.errorCodes[data['statusCode']] ?? data['message'] ?? 'Failed to fetch shop details');
         }
       } else {
         throw Exception('HTTP ${response.statusCode}: Failed to fetch shop details');
@@ -72,7 +73,7 @@ class ShopService {
 
       if (response.statusCode == 200) {
         final data = response.data;
-        if (data['success'] == true && data['data'] != null) {
+        if (data['statusCode'] == AppConstants.successCode && data['data'] != null) {
           final shops = data['data']['shops'] as List<dynamic>?;
           if (shops != null) {
             return shops.map((shop) => ShopModel.fromJson(shop)).toList();
@@ -101,7 +102,7 @@ class ShopService {
 
       if (response.statusCode == 200) {
         final data = response.data;
-        if (data['success'] == true && data['data'] != null) {
+        if (data['statusCode'] == AppConstants.successCode && data['data'] != null) {
           final shops = data['data']['shops'] as List<dynamic>?;
           if (shops != null) {
             return shops.map((shop) => ShopModel.fromJson(shop)).toList();
@@ -122,7 +123,7 @@ class ShopService {
 
       if (response.statusCode == 200) {
         final data = response.data;
-        if (data['statusCode'] == '0000' && data['data'] != null) {
+        if (data['statusCode'] == AppConstants.successCode && data['data'] != null) {
           return List<String>.from(data['data']);
         }
       }
@@ -160,10 +161,10 @@ class ShopService {
 
       if (response.statusCode == 200) {
         final data = response.data;
-        if (data['statusCode'] == '0000' && data['data'] != null) {
+        if (data['statusCode'] == AppConstants.successCode && data['data'] != null) {
           return ProductListResponse.fromJson(data['data']);
         } else {
-          throw Exception(data['message'] ?? 'Failed to fetch products');
+          throw Exception(AppConstants.errorCodes[data['statusCode']] ?? data['message'] ?? 'Failed to fetch products');
         }
       } else {
         throw Exception('HTTP ${response.statusCode}: Failed to fetch products');
@@ -182,10 +183,10 @@ class ShopService {
 
       if (response.statusCode == 200) {
         final data = response.data;
-        if (data['statusCode'] == '0000' && data['data'] != null) {
+        if (data['statusCode'] == AppConstants.successCode && data['data'] != null) {
           return ProductModel.fromJson(data['data']);
         } else {
-          throw Exception(data['message'] ?? 'Failed to fetch product details');
+          throw Exception(AppConstants.errorCodes[data['statusCode']] ?? data['message'] ?? 'Failed to fetch product details');
         }
       } else {
         throw Exception('HTTP ${response.statusCode}: Failed to fetch product details');

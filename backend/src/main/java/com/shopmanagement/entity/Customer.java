@@ -37,9 +37,9 @@ public class Customer {
     @Email(message = "Please provide a valid email address")
     private String email;
     
-    @Column(unique = true, nullable = false, length = 15)
+    @Column(unique = true, nullable = false, length = 20)
     @NotBlank(message = "Mobile number is required")
-    @Pattern(regexp = "^[+]?[0-9]{10,15}$", message = "Please provide a valid mobile number")
+    @Pattern(regexp = "^[+]?[0-9\\s\\-\\(\\)]{10,20}$", message = "Please provide a valid mobile number")
     private String mobileNumber;
     
     @Column(length = 15)

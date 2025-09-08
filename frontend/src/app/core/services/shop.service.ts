@@ -77,7 +77,29 @@ export class ShopService {
       .set('page', page.toString())
       .set('size', size.toString());
 
-    return this.http.get<ShopResponse>(`${this.API_URL}/search`, { params });
+    return this.http.get<ApiResponse<any>>(`${this.API_URL}/search`, { params }).pipe(
+      map(apiResponse => {
+        if (ApiResponseHelper.isError(apiResponse)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(apiResponse));
+        }
+        const shopPageResponse = apiResponse.data;
+        return {
+          content: shopPageResponse.content.map((shop: any) => this.transformShop(shop)),
+          totalElements: shopPageResponse.totalElements,
+          totalPages: shopPageResponse.totalPages,
+          size: shopPageResponse.size,
+          number: shopPageResponse.page,
+          first: shopPageResponse.first,
+          last: shopPageResponse.last,
+          hasNext: shopPageResponse.hasNext,
+          hasPrevious: shopPageResponse.hasPrevious
+        };
+      }),
+      catchError(error => {
+        console.error('Error searching shops:', error);
+        return throwError(() => error);
+      })
+    );
   }
 
   // Get shop by ID

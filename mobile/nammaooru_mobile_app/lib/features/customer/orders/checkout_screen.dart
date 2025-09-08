@@ -27,6 +27,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   // Delivery Address
   final _nameController = TextEditingController();
+  final _lastNameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _addressLine1Controller = TextEditingController();
   final _addressLine2Controller = TextEditingController();
@@ -65,6 +66,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _lastNameController.dispose();
     _phoneController.dispose();
     _addressLine1Controller.dispose();
     _addressLine2Controller.dispose();
@@ -75,8 +77,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   void _loadSavedAddress() {
-    // TODO: Load saved addresses from API/Local storage
-    _nameController.text = 'John Doe';
+    // TODO: Load user data from API when available
+    // For now, use default values - backend will get actual user data from JWT token
+    _nameController.text = 'John';
+    _lastNameController.text = 'Doe';
     _phoneController.text = '+91 9876543210';
     _addressLine1Controller.text = '123, Main Street';
     _addressLine2Controller.text = 'Near City Mall';
@@ -221,20 +225,27 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   child: TextFormField(
                     controller: _nameController,
                     decoration: const InputDecoration(
-                      labelText: 'Full Name *',
+                      labelText: 'First Name *',
                     ),
-                    validator: (value) => value?.isEmpty == true ? 'Name is required' : null,
+                    validator: (value) => value?.isEmpty == true ? 'First name is required' : null,
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: TextFormField(
-                    controller: _phoneController,
+                    controller: _lastNameController,
                     decoration: const InputDecoration(
-                      labelText: 'Phone Number *',
+                      labelText: 'Last Name *',
                     ),
-                    keyboardType: TextInputType.phone,
-                    validator: (value) => value?.isEmpty == true ? 'Phone is required' : null,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Last name is required';
+                      }
+                      if (value.trim().length < 2) {
+                        return 'Last name must be at least 2 characters';
+                      }
+                      return null;
+                    },
                   ),
                 ),
               ],
@@ -613,7 +624,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text('${_nameController.text} - ${_phoneController.text}'),
+                    Text('${_nameController.text} ${_lastNameController.text} - ${_phoneController.text}'),
                     Text(
                       '${_addressLine1Controller.text}, ${_addressLine2Controller.text}',
                       style: const TextStyle(fontSize: 14),
@@ -788,30 +799,31 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     // Get providers before async operations to avoid context issues
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    // Using userId and userRole from the AuthProvider interface
-    final customerId = authProvider.userId;
-    final customerEmail = ''; // Will be fetched from user profile or API
     
     setState(() => _isPlacingOrder = true);
     
     try {
-      print('🔍 Debug - Customer ID: $customerId');
-      print('🔍 Debug - Customer Email: $customerEmail');
+      if (cartProvider.items.isEmpty) {
+        throw Exception('Cart is empty');
+      }
+      
+      // Ensure user is authenticated before placing order
+      if (!authProvider.isAuthenticated) {
+        throw Exception('Please log in to place an order');
+      }
+      
+      print('🔍 Debug - User authenticated with userId: ${authProvider.userId}'); 
       print('🔍 Debug - Cart items count: ${cartProvider.items.length}');
       if (cartProvider.items.isNotEmpty) {
         print('🔍 Debug - First product shopId: ${cartProvider.items.first.product.shopId}');
       }
       
-      if (cartProvider.items.isEmpty) {
-        throw Exception('Cart is empty');
-      }
-      
-      // Use customer ID from auth provider
+      // Create order request - backend will get customer from JWT token but we send info for validation
       final orderRequest = {
-        'customerId': customerId != null ? int.tryParse(customerId) ?? 1 : 1,
-        'shopId': cartProvider.items.first.product.shopId,
+        // Don't send customerId - let backend extract from JWT token
+        'shopId': int.tryParse(cartProvider.items.first.product.shopId.toString()) ?? cartProvider.items.first.product.shopId,
         'items': cartProvider.items.map((item) => {
-          'productId': item.product.id,
+          'productId': int.tryParse(item.product.id.toString()) ?? item.product.id,
           'productName': item.product.name,
           'price': item.product.effectivePrice,
           'quantity': item.quantity,
@@ -831,11 +843,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         'total': cartProvider.total,
         'notes': _deliveryInstructions.isNotEmpty ? _deliveryInstructions : null,
         'customerInfo': {
-          'firstName': _nameController.text.split(' ').first,
-          'lastName': _nameController.text.split(' ').length > 1 ? _nameController.text.split(' ').skip(1).join(' ') : '',
+          // Backend will get actual user data from JWT token and use it
+          // These form values are just for validation, backend overrides with JWT data
+          'firstName': _nameController.text.trim(),
+          'lastName': _lastNameController.text.trim().isNotEmpty ? _lastNameController.text.trim() : 'User',
           'phone': _phoneController.text,
-          'email': customerEmail,
+          'email': '', // Backend fills from JWT token
         },
+        'customerToken': null, // Firebase token for notifications (optional)
       };
       
       print('🚀 Placing order with request: ${orderRequest.toString()}');

@@ -17,8 +17,10 @@ import java.util.List;
 @Builder
 public class OrderRequest {
     
-    @NotNull(message = "Customer ID is required")
+    // @NotNull removed to allow userId or auth context - OrderService handles customer lookup
     private Long customerId;
+    
+    private Long userId;
     
     @NotNull(message = "Shop ID is required")
     private Long shopId;

@@ -1,8 +1,9 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpEvent, HttpEventType } from '@angular/common/http';
-import { Observable, map } from 'rxjs';
+import { Observable, map, catchError, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ShopDocument, DocumentType, DocumentVerificationRequest, DocumentVerificationStatus } from '../models/shop.model';
+import { ApiResponse, ApiResponseHelper } from '../models/api-response.model';
 
 @Injectable({
   providedIn: 'root'
@@ -13,7 +14,15 @@ export class DocumentService {
   constructor(private http: HttpClient) { }
 
   getShopDocuments(shopId: number): Observable<ShopDocument[]> {
-    return this.http.get<ShopDocument[]>(`${this.apiUrl}/shop/${shopId}`);
+    return this.http.get<ApiResponse<ShopDocument[]>>(`${this.apiUrl}/shop/${shopId}`).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
+      catchError(error => throwError(() => error))
+    );
   }
 
   uploadDocument(
@@ -44,7 +53,15 @@ export class DocumentService {
   }
 
   verifyDocument(documentId: number, request: DocumentVerificationRequest): Observable<ShopDocument> {
-    return this.http.put<ShopDocument>(`${this.apiUrl}/${documentId}/verify`, request);
+    return this.http.put<ApiResponse<ShopDocument>>(`${this.apiUrl}/${documentId}/verify`, request).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
+      catchError(error => throwError(() => error))
+    );
   }
 
   downloadDocument(documentId: number): Observable<Blob> {
@@ -54,11 +71,27 @@ export class DocumentService {
   }
 
   deleteDocument(documentId: number): Observable<any> {
-    return this.http.delete(`${this.apiUrl}/${documentId}`);
+    return this.http.delete<ApiResponse<any>>(`${this.apiUrl}/${documentId}`).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
+      catchError(error => throwError(() => error))
+    );
   }
 
   getDocumentTypes(): Observable<any> {
-    return this.http.get(`${this.apiUrl}/types`);
+    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/types`).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
+      catchError(error => throwError(() => error))
+    );
   }
 
   getRequiredDocuments(businessType: string): DocumentType[] {

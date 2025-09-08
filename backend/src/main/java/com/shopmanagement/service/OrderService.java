@@ -53,8 +53,25 @@ public class OrderService {
     public OrderResponse createOrder(OrderRequest request) {
         log.info("Creating order for customer: {} at shop: {}", request.getCustomerId(), request.getShopId());
         
-        // Find or create customer based on userId (customerId is actually userId from login)
-        Customer customer = findOrCreateCustomerByUserId(request.getCustomerId());
+        Customer customer;
+        if (request.getCustomerId() != null) {
+            // Use provided customer ID
+            customer = customerRepository.findById(request.getCustomerId())
+                    .orElseThrow(() -> new RuntimeException("Customer not found"));
+        } else if (request.getUserId() != null) {
+            // Find or create customer based on userId
+            customer = findOrCreateCustomerByUserId(request.getUserId());
+        } else {
+            // Get user ID from current authentication context
+            String currentUsername = getCurrentUsername();
+            if (currentUsername != null && !currentUsername.equals("system")) {
+                User currentUser = userRepository.findByUsername(currentUsername)
+                        .orElseThrow(() -> new RuntimeException("Current user not found"));
+                customer = findOrCreateCustomerByUserId(currentUser.getId());
+            } else {
+                throw new RuntimeException("No customer or user information provided");
+            }
+        }
         
         // Validate shop
         Shop shop = shopRepository.findById(request.getShopId())
@@ -614,21 +631,87 @@ public class OrderService {
     public OrderResponse createCustomerOrder(CustomerOrderRequest request) {
         log.info("Creating customer order for shop: {}", request.getShopId());
         
+        // Validate request
+        if (request.getShopId() == null) {
+            throw new IllegalArgumentException("Shop ID is required");
+        }
+        
+        if (request.getItems() == null || request.getItems().isEmpty()) {
+            throw new IllegalArgumentException("Order items are required");
+        }
+        
+        if (request.getDeliveryAddress() == null) {
+            throw new IllegalArgumentException("Delivery address is required");
+        }
+        
+        if (request.getCustomerInfo() == null) {
+            throw new IllegalArgumentException("Customer information is required");
+        }
+        
         // Create a customer if not exists (guest checkout)
         Customer customer = null;
         if (request.getCustomerId() != null) {
             customer = customerRepository.findById(request.getCustomerId())
                     .orElseThrow(() -> new RuntimeException("Customer not found"));
         } else {
-            // Create guest customer
-            customer = Customer.builder()
-                    .firstName(request.getCustomerInfo().getFirstName())
-                    .lastName(request.getCustomerInfo().getLastName())
-                    .email(request.getCustomerInfo().getEmail())
-                    .mobileNumber(request.getCustomerInfo().getPhone())
-                    .isActive(true)
-                    .build();
-            customer = customerRepository.save(customer);
+            // Try to find/create customer from auth context first
+            String currentUsername = getCurrentUsername();
+            if (currentUsername != null && !currentUsername.equals("system")) {
+                try {
+                    User currentUser = userRepository.findByUsername(currentUsername).orElse(null);
+                    if (currentUser != null) {
+                        customer = findOrCreateCustomerByUserId(currentUser.getId());
+                        log.info("Found/created customer from auth context for user: {}", currentUsername);
+                    }
+                } catch (Exception e) {
+                    log.warn("Could not create customer from auth context: {}", e.getMessage());
+                }
+            }
+            
+            // If no customer from auth, create guest customer with validation
+            if (customer == null) {
+                String firstName = request.getCustomerInfo().getFirstName();
+                String lastName = request.getCustomerInfo().getLastName();
+                String email = request.getCustomerInfo().getEmail();
+                String phone = request.getCustomerInfo().getPhone();
+            
+            if (firstName == null || firstName.trim().isEmpty()) {
+                throw new IllegalArgumentException("Customer first name is required");
+            }
+            
+            if (phone == null || phone.trim().isEmpty()) {
+                throw new IllegalArgumentException("Customer phone is required");
+            }
+            
+            // Check if customer already exists by email or phone
+            if (email != null && !email.trim().isEmpty()) {
+                Customer existingCustomer = customerRepository.findByEmail(email).orElse(null);
+                if (existingCustomer != null) {
+                    customer = existingCustomer;
+                    log.info("Using existing customer by email: {}", email);
+                }
+            }
+            
+            if (customer == null) {
+                // Try to find by phone
+                // Note: You may need to add findByMobileNumber to your repository
+                customer = Customer.builder()
+                        .firstName(firstName.trim())
+                        .lastName(lastName != null ? lastName.trim() : "")
+                        .email(email != null ? email.trim() : "")
+                        .mobileNumber(phone.trim())
+                        .isActive(true)
+                        .build();
+                
+                try {
+                    customer = customerRepository.save(customer);
+                    log.info("Created new guest customer with phone: {}", phone);
+                } catch (Exception e) {
+                    log.error("Error creating guest customer: {}", e.getMessage());
+                    throw new RuntimeException("Failed to create customer: " + e.getMessage());
+                }
+            }
+            }
         }
         
         // Validate shop
@@ -771,6 +854,10 @@ public class OrderService {
     private Customer findOrCreateCustomerByUserId(Long userId) {
         log.info("Finding or creating customer for userId: {}", userId);
         
+        if (userId == null) {
+            throw new RuntimeException("User ID cannot be null");
+        }
+        
         // First, find the user
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
@@ -781,17 +868,31 @@ public class OrderService {
         if (customer == null) {
             // Create new customer from user data
             log.info("Creating new customer for user: {}", user.getEmail());
+            
+            // Generate a proper mobile number if user doesn't have one
+            String mobileNumber = user.getMobileNumber();
+            if (mobileNumber == null || mobileNumber.trim().isEmpty()) {
+                // Use email username + random digits for mobile number if not available
+                String emailPrefix = user.getEmail().split("@")[0];
+                mobileNumber = "9" + String.format("%09d", Math.abs(emailPrefix.hashCode() % 1000000000));
+            }
+            
             customer = Customer.builder()
-                    .firstName(user.getFirstName())
-                    .lastName(user.getLastName())
+                    .firstName(user.getFirstName() != null && !user.getFirstName().trim().isEmpty() ? user.getFirstName() : "Customer")
+                    .lastName(user.getLastName() != null && !user.getLastName().trim().isEmpty() ? user.getLastName() : "User")
                     .email(user.getEmail())
-                    .mobileNumber(user.getMobileNumber())
+                    .mobileNumber(mobileNumber)
                     .isActive(true)
                     .isVerified(user.getEmailVerified() != null ? user.getEmailVerified() : false)
                     .build();
             
-            customer = customerRepository.save(customer);
-            log.info("Customer created with ID: {} for user: {}", customer.getId(), user.getEmail());
+            try {
+                customer = customerRepository.save(customer);
+                log.info("Customer created with ID: {} for user: {}", customer.getId(), user.getEmail());
+            } catch (Exception e) {
+                log.error("Error creating customer for user: {}", user.getEmail(), e);
+                throw new RuntimeException("Failed to create customer: " + e.getMessage());
+            }
         } else {
             log.info("Found existing customer with ID: {} for user: {}", customer.getId(), user.getEmail());
         }

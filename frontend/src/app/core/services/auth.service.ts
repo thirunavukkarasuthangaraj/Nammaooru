@@ -1,11 +1,12 @@
 import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { BehaviorSubject, Observable, tap, catchError, throwError } from 'rxjs';
+import { BehaviorSubject, Observable, tap, catchError, throwError, map } from 'rxjs';
 import { Router } from '@angular/router';
 import { isPlatformBrowser } from '@angular/common';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { environment } from '@environments/environment';
 import { AuthResponse, LoginRequest, RegisterRequest, User, UserRole } from '../models/auth.model';
+import { ApiResponse, ApiResponseHelper } from '../models/api-response.model';
 
 @Injectable({
   providedIn: 'root'
@@ -28,14 +29,20 @@ export class AuthService {
   login(credentials: LoginRequest): Observable<AuthResponse> {
     // Clear any existing auth data first to avoid role conflicts
     this.clearStoredAuth();
-    return this.http.post<any>(`${this.API_URL}/login`, credentials)
+    return this.http.post<ApiResponse<AuthResponse>>(`${this.API_URL}/login`, credentials)
       .pipe(
-        tap(response => {
-          // Check if response has an error statusCode (9999 or other error codes)
-          if (response.statusCode && response.statusCode !== '0000' && response.statusCode !== '200') {
-            throw new Error(response.message || 'Authentication failed');
+        map(response => {
+          // Use ApiResponseHelper to check if response is successful
+          if (ApiResponseHelper.isError(response)) {
+            const errorMessage = ApiResponseHelper.getErrorMessage(response);
+            throw new Error(errorMessage);
           }
-          this.setSession(response);
+          
+          // Extract the actual auth data from the ApiResponse format
+          return response.data;
+        }),
+        tap(authData => {
+          this.setSession(authData);
           this.showSnackBar('Welcome back! Login successful.', 'success');
         }),
         catchError(error => {
@@ -58,11 +65,12 @@ export class AuthService {
 
   // OTP-based forgot password methods
   sendPasswordResetOtp(email: string): Observable<any> {
-    return this.http.post<any>(`${this.API_URL}/forgot-password/send-otp`, { email })
+    return this.http.post<ApiResponse<any>>(`${this.API_URL}/forgot-password/send-otp`, { email })
       .pipe(
         tap(response => {
-          if (response.statusCode && response.statusCode !== '0000' && response.statusCode !== '200') {
-            throw new Error(response.message || 'Failed to send OTP');
+          if (ApiResponseHelper.isError(response)) {
+            const errorMessage = ApiResponseHelper.getErrorMessage(response);
+            throw new Error(errorMessage);
           }
         }),
         catchError(error => {
@@ -73,11 +81,12 @@ export class AuthService {
   }
 
   verifyPasswordResetOtp(email: string, otp: string): Observable<any> {
-    return this.http.post<any>(`${this.API_URL}/forgot-password/verify-otp`, { email, otp })
+    return this.http.post<ApiResponse<any>>(`${this.API_URL}/forgot-password/verify-otp`, { email, otp })
       .pipe(
         tap(response => {
-          if (response.statusCode && response.statusCode !== '0000' && response.statusCode !== '200') {
-            throw new Error(response.message || 'Invalid OTP');
+          if (ApiResponseHelper.isError(response)) {
+            const errorMessage = ApiResponseHelper.getErrorMessage(response);
+            throw new Error(errorMessage);
           }
         }),
         catchError(error => {
@@ -88,13 +97,14 @@ export class AuthService {
   }
 
   resetPasswordWithOtp(email: string, otp: string, newPassword: string): Observable<any> {
-    return this.http.post<any>(`${this.API_URL}/forgot-password/reset-password`, { 
+    return this.http.post<ApiResponse<any>>(`${this.API_URL}/forgot-password/reset-password`, { 
       email, otp, newPassword 
     })
       .pipe(
         tap(response => {
-          if (response.statusCode && response.statusCode !== '0000' && response.statusCode !== '200') {
-            throw new Error(response.message || 'Failed to reset password');
+          if (ApiResponseHelper.isError(response)) {
+            const errorMessage = ApiResponseHelper.getErrorMessage(response);
+            throw new Error(errorMessage);
           }
         }),
         catchError(error => {
@@ -105,11 +115,12 @@ export class AuthService {
   }
 
   resendPasswordResetOtp(email: string): Observable<any> {
-    return this.http.post<any>(`${this.API_URL}/forgot-password/resend-otp`, { email })
+    return this.http.post<ApiResponse<any>>(`${this.API_URL}/forgot-password/resend-otp`, { email })
       .pipe(
         tap(response => {
-          if (response.statusCode && response.statusCode !== '0000' && response.statusCode !== '200') {
-            throw new Error(response.message || 'Failed to resend OTP');
+          if (ApiResponseHelper.isError(response)) {
+            const errorMessage = ApiResponseHelper.getErrorMessage(response);
+            throw new Error(errorMessage);
           }
         }),
         catchError(error => {

@@ -101,9 +101,9 @@
           <button 
             mat-icon-button 
             class="notification-btn"
-            [matBadge]="notificationCount"
+            [matBadge]="getNotificationCount()"
             matBadgeColor="warn"
-            [matBadgeHidden]="notificationCount === 0"
+            [matBadgeHidden]="getNotificationCount() === 0"
             [matMenuTriggerFor]="notificationMenu"
             matTooltip="Notifications">
             <mat-icon>notifications</mat-icon>
@@ -193,22 +193,31 @@
 
   <!-- Notification Menu -->
   <mat-menu #notificationMenu="matMenu" class="notification-menu">
-    <div class="notification-header">
+    <div class="notification-header" (click)="onNotificationClick($event)">
       <h3>Notifications</h3>
-      <button mat-button color="primary">Mark all as read</button>
+      <button mat-button color="primary" (click)="markAllNotificationsAsRead()">
+        Mark all as read
+      </button>
     </div>
     
     <mat-divider></mat-divider>
     
     <div class="notification-list">
-      <div class="notification-item" *ngFor="let notification of notifications">
+      <div 
+        class="notification-item" 
+        *ngFor="let notification of notifications"
+        [class.unread]="!notification.read"
+        (click)="markNotificationAsRead(notification.id)">
         <div class="notification-icon">
           <mat-icon [class]="notification.type">{{ notification.icon }}</mat-icon>
         </div>
         <div class="notification-content">
           <p class="notification-title">{{ notification.title }}</p>
           <p class="notification-message">{{ notification.message }}</p>
-          <span class="notification-time">{{ notification.time | timeAgo }}</span>
+          <span class="notification-time">{{ notification.time | date:'short' }}</span>
+        </div>
+        <div class="notification-status" *ngIf="!notification.read">
+          <div class="unread-indicator"></div>
         </div>
       </div>
       
@@ -221,7 +230,7 @@
     <mat-divider></mat-divider>
     
     <div class="notification-footer">
-      <button mat-button routerLink="/notifications">View all notifications</button>
+      <button mat-button routerLink="/shop-owner/notifications">View all notifications</button>
     </div>
   </mat-menu>
 

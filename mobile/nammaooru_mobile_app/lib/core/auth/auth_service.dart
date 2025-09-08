@@ -24,8 +24,10 @@ class AuthService {
         return AuthResult.failure(data['message'] ?? 'Login failed');
       }
       
-      final token = data['accessToken'];
-      final refreshToken = data['refreshToken'];
+      // For successful responses, auth data is now wrapped in ApiResponse.data
+      final authData = statusCode == '0000' ? data['data'] : data;
+      final token = authData['accessToken'];
+      final refreshToken = authData['refreshToken'];
       
       if (token != null) {
         await SecureStorage.saveAuthToken(token);
@@ -34,9 +36,9 @@ class AuthService {
         }
         
         // Try to get role from response first, fallback to JWT
-        final userRole = data['role'] ?? JwtHelper.getUserRole(token);
+        final userRole = authData['role'] ?? JwtHelper.getUserRole(token);
         // Try to get userId from JWT using 'sub' field or from response as username
-        final userId = JwtHelper.getUserId(token) ?? data['username'];
+        final userId = JwtHelper.getUserId(token) ?? authData['username'];
         
         if (userRole != null && userId != null) {
           await SecureStorage.saveUserRole(userRole);
@@ -86,7 +88,16 @@ class AuthService {
         },
       );
       
-      return AuthResult.success(message: 'Registration successful');
+      final data = response.data;
+      
+      // Check statusCode: "0000" = success, "9999" = failure
+      final statusCode = data['statusCode']?.toString();
+      if (statusCode == '0000' || statusCode == '200') {
+        return AuthResult.success(message: data['message'] ?? 'Registration successful');
+      } else {
+        // Status code 9999 or any other error code
+        return AuthResult.failure(data['message'] ?? 'Registration failed');
+      }
     } on DioException catch (e) {
       return AuthResult.failure(_extractErrorMessage(e));
     } catch (e) {
@@ -105,8 +116,17 @@ class AuthService {
       );
       
       final data = response.data;
-      final token = data['accessToken'];
-      final refreshToken = data['refreshToken'];
+      
+      // Check statusCode first: "0000" = success, "9999" = failure
+      final statusCode = data['statusCode']?.toString();
+      if (statusCode != null && statusCode != '0000' && statusCode != '200') {
+        return AuthResult.failure(data['message'] ?? 'OTP verification failed');
+      }
+      
+      // For successful responses, auth data is now wrapped in ApiResponse.data
+      final authData = statusCode == '0000' ? data['data'] : data;
+      final token = authData['accessToken'];
+      final refreshToken = authData['refreshToken'];
       
       if (token != null) {
         await SecureStorage.saveAuthToken(token);
@@ -115,9 +135,9 @@ class AuthService {
         }
         
         // Try to get role from response first, fallback to JWT
-        final userRole = data['role'] ?? JwtHelper.getUserRole(token);
+        final userRole = authData['role'] ?? JwtHelper.getUserRole(token);
         // Try to get userId from JWT using 'sub' field or from response as username
-        final userId = JwtHelper.getUserId(token) ?? data['username'];
+        final userId = JwtHelper.getUserId(token) ?? authData['username'];
         
         if (userRole != null && userId != null) {
           await SecureStorage.saveUserRole(userRole);
@@ -149,8 +169,16 @@ class AuthService {
         },
       );
       
-      final message = response.data?['message'] ?? 'OTP sent successfully';
-      return AuthResult.success(message: message);
+      final data = response.data;
+      
+      // Check statusCode: "0000" = success, "9999" = failure  
+      final statusCode = data?['statusCode']?.toString();
+      if (statusCode == '0000' || statusCode == '200') {
+        final message = data?['message'] ?? 'OTP sent successfully';
+        return AuthResult.success(message: message);
+      } else {
+        return AuthResult.failure(data?['message'] ?? 'Failed to send OTP');
+      }
     } on DioException catch (e) {
       return AuthResult.failure(_extractErrorMessage(e));
     } catch (e) {

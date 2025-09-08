@@ -118,8 +118,12 @@ import { AuthService } from '../../../../core/services/auth.service';
           <mat-icon matPrefix>lock</mat-icon>
           <input matInput 
                  formControlName="newPassword" 
-                 type="password"
+                 [type]="hideNewPassword ? 'password' : 'text'"
                  placeholder="Enter new password">
+          <button mat-icon-button matSuffix (click)="hideNewPassword = !hideNewPassword" 
+                  type="button" [attr.aria-label]="'Hide password'" [attr.aria-pressed]="hideNewPassword">
+            <mat-icon>{{hideNewPassword ? 'visibility_off' : 'visibility'}}</mat-icon>
+          </button>
           <mat-error *ngIf="passwordForm.get('newPassword')?.hasError('required')">
             New password is required
           </mat-error>
@@ -133,8 +137,12 @@ import { AuthService } from '../../../../core/services/auth.service';
           <mat-icon matPrefix>lock_outline</mat-icon>
           <input matInput 
                  formControlName="confirmPassword" 
-                 type="password"
+                 [type]="hideConfirmPassword ? 'password' : 'text'"
                  placeholder="Confirm new password">
+          <button mat-icon-button matSuffix (click)="hideConfirmPassword = !hideConfirmPassword" 
+                  type="button" [attr.aria-label]="'Hide password'" [attr.aria-pressed]="hideConfirmPassword">
+            <mat-icon>{{hideConfirmPassword ? 'visibility_off' : 'visibility'}}</mat-icon>
+          </button>
           <mat-error *ngIf="passwordForm.get('confirmPassword')?.hasError('required')">
             Please confirm your password
           </mat-error>
@@ -435,6 +443,10 @@ export class ForgotPasswordComponent implements OnInit, OnDestroy {
   
   isLoading = false;
   email = '';
+  
+  // Password visibility toggles
+  hideNewPassword = true;
+  hideConfirmPassword = true;
   
   // Timer for resend OTP
   resendTimer = 0;

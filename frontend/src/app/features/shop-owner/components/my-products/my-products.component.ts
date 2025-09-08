@@ -10,6 +10,8 @@ import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { environment } from '../../../../../environments/environment';
 import { ShopContextService } from '../../services/shop-context.service';
+import { PriceUpdateDialogComponent, PriceUpdateData } from '../price-update-dialog/price-update-dialog.component';
+import { StockUpdateDialogComponent, StockUpdateData } from '../stock-update-dialog/stock-update-dialog.component';
 
 interface ShopProduct {
   id: number;
@@ -26,6 +28,19 @@ interface ShopProduct {
   sku?: string;
   masterProductId?: number;
   masterProductName?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface MasterProduct {
+  id: number;
+  name: string;
+  description?: string;
+  category: string;
+  unit: string;
+  sku: string;
+  imageUrl?: string;
+  isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -48,6 +63,15 @@ export class MyProductsComponent implements OnInit, OnDestroy {
   categories: string[] = [];
   loading = false;
   usingFallbackData = false;
+
+  // Master Product data
+  masterProducts: MasterProduct[] = [];
+  filteredMasterProducts: MasterProduct[] = [];
+  masterCategories: string[] = [];
+  selectedMasterProducts: MasterProduct[] = [];
+  
+  // Tab management
+  selectedTabIndex = 0;
   
   shopId: number | null = null;
   
@@ -55,6 +79,10 @@ export class MyProductsComponent implements OnInit, OnDestroy {
   searchTerm = '';
   selectedCategory = '';
   selectedStatus = '';
+  
+  // Master product filter controls
+  masterSearchTerm = '';
+  masterSelectedCategory = '';
   
   // Pagination
   totalProducts = 0;
@@ -229,14 +257,20 @@ export class MyProductsComponent implements OnInit, OnDestroy {
     this.categories = [...new Set(this.products.map(p => p.category).filter(Boolean) as string[])];
   }
 
+  applyFilter(): void {
+    this.applyFilters();
+  }
+
   applyFilters(): void {
     this.filteredProducts = this.products.filter(product => {
       const matchesSearch = !this.searchTerm || 
         product.customName.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        product.description?.toLowerCase().includes(this.searchTerm.toLowerCase());
+        product.description?.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
+        product.sku?.toLowerCase().includes(this.searchTerm.toLowerCase());
       
       const matchesCategory = !this.selectedCategory || product.category === this.selectedCategory;
       const matchesStatus = !this.selectedStatus || 
+        product.status === this.selectedStatus ||
         (this.selectedStatus === 'available' && product.isAvailable) ||
         (this.selectedStatus === 'unavailable' && !product.isAvailable);
       
@@ -245,6 +279,93 @@ export class MyProductsComponent implements OnInit, OnDestroy {
     
     this.totalProducts = this.filteredProducts.length;
     this.loadCategories(); // Update categories based on filtered products
+  }
+
+  getStatusClass(status: string): string {
+    switch (status?.toUpperCase()) {
+      case 'ACTIVE': return 'status-active';
+      case 'INACTIVE': return 'status-inactive';
+      case 'OUT_OF_STOCK': return 'status-out-of-stock';
+      default: return 'status-unknown';
+    }
+  }
+
+  getStockClass(quantity: number): string {
+    if (quantity === 0) return 'stock-out';
+    if (quantity < 10) return 'stock-low';
+    return 'stock-good';
+  }
+
+  toggleAvailability(product: ShopProduct): void {
+    product.isAvailable = !product.isAvailable;
+    product.status = product.isAvailable ? 'ACTIVE' : 'INACTIVE';
+    
+    if (this.usingFallbackData) {
+      this.snackBar.open(`Product ${product.isAvailable ? 'activated' : 'deactivated'} (demo mode)`, 'Close', { duration: 2000 });
+      return;
+    }
+
+    // Make API call to update product availability
+    this.http.patch(`${this.apiUrl}/shop-products/${product.id}/availability`, {
+      isAvailable: product.isAvailable
+    }).pipe(takeUntil(this.destroy$))
+    .subscribe({
+      next: () => {
+        this.snackBar.open(`Product ${product.isAvailable ? 'activated' : 'deactivated'} successfully`, 'Close', { duration: 2000 });
+      },
+      error: (error) => {
+        console.error('Error updating product availability:', error);
+        // Revert the change
+        product.isAvailable = !product.isAvailable;
+        product.status = product.isAvailable ? 'ACTIVE' : 'INACTIVE';
+        this.snackBar.open('Failed to update product availability', 'Close', { duration: 3000 });
+      }
+    });
+  }
+
+  updateStockDialog(product: ShopProduct): void {
+    const dialogData: StockUpdateData = {
+      productName: product.customName,
+      currentStock: product.stockQuantity,
+      unit: product.unit
+    };
+
+    const dialogRef = this.dialog.open(StockUpdateDialogComponent, {
+      width: '500px',
+      data: dialogData
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.updateProductStock(product, result.stockQuantity, result.reason);
+      }
+    });
+  }
+
+  updatePrice(product: ShopProduct): void {
+    const dialogData: PriceUpdateData = {
+      productName: product.customName,
+      currentPrice: product.price,
+      costPrice: product.costPrice
+    };
+
+    const dialogRef = this.dialog.open(PriceUpdateDialogComponent, {
+      width: '500px',
+      data: dialogData
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.updateProductPrice(product, result.price, result.costPrice);
+      }
+    });
+  }
+
+  clearFilters(): void {
+    this.searchTerm = '';
+    this.selectedCategory = '';
+    this.selectedStatus = '';
+    this.applyFilters();
   }
 
   onSearchChange(event: any): void {
@@ -295,17 +416,23 @@ export class MyProductsComponent implements OnInit, OnDestroy {
       });
   }
 
-  updateProductPrice(product: ShopProduct, newPrice: number): void {
+  updateProductPrice(product: ShopProduct, newPrice: number, newCostPrice?: number): void {
     if (this.usingFallbackData) {
       // Update locally for demo
       product.price = newPrice;
+      if (newCostPrice !== undefined) {
+        product.costPrice = newCostPrice;
+      }
       this.snackBar.open('Price updated (demo mode)', 'Close', { duration: 2000 });
       return;
     }
 
-    console.log('Updating product price:', product.id, newPrice);
+    console.log('Updating product price:', product.id, newPrice, newCostPrice);
     
-    const updateData = { price: newPrice };
+    const updateData: any = { price: newPrice };
+    if (newCostPrice !== undefined) {
+      updateData.costPrice = newCostPrice;
+    }
     
     this.http.put(`${this.apiUrl}/shop-products/${product.id}`, updateData)
       .pipe(takeUntil(this.destroy$))
@@ -314,7 +441,12 @@ export class MyProductsComponent implements OnInit, OnDestroy {
           // Update the product in our local array
           const index = this.products.findIndex(p => p.id === product.id);
           if (index !== -1) {
-            this.products[index] = { ...this.products[index], price: newPrice };
+            this.products[index] = { 
+              ...this.products[index], 
+              price: newPrice,
+              ...(newCostPrice !== undefined && { costPrice: newCostPrice })
+            };
+            this.applyFilters();
           }
           this.snackBar.open('Price updated successfully', 'Close', { duration: 2000 });
         },
@@ -325,8 +457,45 @@ export class MyProductsComponent implements OnInit, OnDestroy {
       });
   }
 
+  updateProductStock(product: ShopProduct, newStock: number, reason?: string): void {
+    if (this.usingFallbackData) {
+      // Update locally for demo
+      product.stockQuantity = newStock;
+      this.snackBar.open('Stock updated (demo mode)', 'Close', { duration: 2000 });
+      return;
+    }
+
+    console.log('Updating product stock:', product.id, newStock, reason);
+    
+    const updateData: any = { stockQuantity: newStock };
+    if (reason) {
+      updateData.stockUpdateReason = reason;
+    }
+    
+    this.http.put(`${this.apiUrl}/shop-products/${product.id}`, updateData)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          // Update the product in our local array
+          const index = this.products.findIndex(p => p.id === product.id);
+          if (index !== -1) {
+            this.products[index] = { 
+              ...this.products[index], 
+              stockQuantity: newStock
+            };
+            this.applyFilters();
+          }
+          this.snackBar.open('Stock updated successfully', 'Close', { duration: 2000 });
+        },
+        error: (error) => {
+          console.error('Error updating product stock:', error);
+          this.handleError('Failed to update product stock');
+        }
+      });
+  }
+
   editProduct(product: ShopProduct): void {
-    this.router.navigate(['/shop-owner/products/edit', product.id]);
+    this.router.navigate(['/shop-owner/my-products/edit', product.id]);
   }
 
   deleteProduct(product: ShopProduct): void {
@@ -359,7 +528,7 @@ export class MyProductsComponent implements OnInit, OnDestroy {
   }
 
   addNewProduct(): void {
-    this.router.navigate(['/shop-owner/products/add']);
+    this.router.navigate(['/shop-owner/my-products/add']);
   }
 
   refreshProducts(): void {
@@ -397,10 +566,6 @@ export class MyProductsComponent implements OnInit, OnDestroy {
     this.snackBar.open('Bulk upload feature coming soon', 'Close', { duration: 2000 });
   }
 
-  applyFilter(): void {
-    this.applyFilters();
-  }
-
   duplicateProduct(productId: number): void {
     this.snackBar.open('Duplicate product feature coming soon', 'Close', { duration: 2000 });
   }
@@ -423,5 +588,134 @@ export class MyProductsComponent implements OnInit, OnDestroy {
   onPageChange(event: any): void {
     // Pagination logic would go here
     console.log('Page changed:', event);
+  }
+
+  // Master Product Methods
+  onTabChange(event: any): void {
+    this.selectedTabIndex = event.index;
+    if (this.selectedTabIndex === 1) {
+      this.loadMasterProducts();
+    }
+  }
+
+  openProductMaster(): void {
+    this.selectedTabIndex = 1;
+    this.loadMasterProducts();
+  }
+
+  loadMasterProducts(): void {
+    this.loading = true;
+    
+    // Mock master products data - replace with actual API call
+    setTimeout(() => {
+      this.masterProducts = [
+        {
+          id: 1,
+          name: 'Apple - Red Delicious',
+          description: 'Fresh red apples',
+          category: 'Fruits',
+          unit: 'kg',
+          sku: 'APPLE-RED-001',
+          imageUrl: 'https://images.unsplash.com/photo-1568702846914-96b305d2aaeb?w=200&h=200&fit=crop',
+          isActive: true,
+          createdAt: '2025-01-01',
+          updatedAt: '2025-01-01'
+        },
+        {
+          id: 2,
+          name: 'Banana - Robusta',
+          description: 'Fresh yellow bananas',
+          category: 'Fruits',
+          unit: 'dozen',
+          sku: 'BANANA-ROB-001',
+          imageUrl: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=200&h=200&fit=crop',
+          isActive: true,
+          createdAt: '2025-01-01',
+          updatedAt: '2025-01-01'
+        },
+        {
+          id: 3,
+          name: 'Rice - Basmati',
+          description: 'Premium basmati rice',
+          category: 'Grains',
+          unit: 'kg',
+          sku: 'RICE-BAS-001',
+          imageUrl: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=200&h=200&fit=crop',
+          isActive: true,
+          createdAt: '2025-01-01',
+          updatedAt: '2025-01-01'
+        }
+      ];
+      
+      this.masterCategories = [...new Set(this.masterProducts.map(p => p.category))];
+      this.filteredMasterProducts = [...this.masterProducts];
+      this.loading = false;
+    }, 1000);
+  }
+
+  filterMasterProducts(): void {
+    let filtered = [...this.masterProducts];
+
+    if (this.masterSearchTerm) {
+      const search = this.masterSearchTerm.toLowerCase();
+      filtered = filtered.filter(p => 
+        p.name.toLowerCase().includes(search) ||
+        p.description?.toLowerCase().includes(search) ||
+        p.sku.toLowerCase().includes(search)
+      );
+    }
+
+    if (this.masterSelectedCategory) {
+      filtered = filtered.filter(p => p.category === this.masterSelectedCategory);
+    }
+
+    this.filteredMasterProducts = filtered;
+  }
+
+  isProductSelected(productId: number): boolean {
+    return this.selectedMasterProducts.some(p => p.id === productId);
+  }
+
+  toggleProductSelection(product: MasterProduct, selected: boolean): void {
+    if (selected) {
+      this.selectedMasterProducts.push(product);
+    } else {
+      this.selectedMasterProducts = this.selectedMasterProducts.filter(p => p.id !== product.id);
+    }
+  }
+
+  selectAllMasterProducts(): void {
+    this.selectedMasterProducts = [...this.filteredMasterProducts];
+  }
+
+  clearSelection(): void {
+    this.selectedMasterProducts = [];
+  }
+
+  addSelectedToShop(): void {
+    if (this.selectedMasterProducts.length === 0) {
+      this.snackBar.open('Please select products to add', 'Close', { duration: 2000 });
+      return;
+    }
+
+    // Mock adding products to shop
+    this.snackBar.open(
+      `Adding ${this.selectedMasterProducts.length} products to your shop...`, 
+      'Close', 
+      { duration: 2000 }
+    );
+    
+    // Clear selection after adding
+    this.clearSelection();
+    
+    // Refresh products list
+    this.loadProducts();
+  }
+
+  addSingleProductToShop(product: MasterProduct): void {
+    this.snackBar.open(`Adding ${product.name} to your shop...`, 'Close', { duration: 2000 });
+    
+    // Refresh products list
+    this.loadProducts();
   }
 }

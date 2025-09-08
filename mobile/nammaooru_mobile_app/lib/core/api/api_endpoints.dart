@@ -1,5 +1,7 @@
+import '../config/env_config.dart';
+
 class ApiEndpoints {
-  static const String baseUrl = 'http://localhost:8080/api';
+  static String get baseUrl => EnvConfig.baseUrl + '/api';
   
   static const String auth = '/auth';
   static const String login = '$auth/login';

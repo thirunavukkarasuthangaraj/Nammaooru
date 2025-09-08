@@ -48,6 +48,7 @@ import { AppComponent } from './app.component';
 // Core
 import { AuthInterceptor } from './core/interceptors/auth.interceptor';
 import { ErrorInterceptor } from './core/interceptors/error.interceptor';
+import { ResponseInterceptor } from './core/interceptors/response.interceptor';
 
 // Shared
 import { SharedModule } from './shared/shared.module';
@@ -144,6 +145,11 @@ import { ShopModule } from './features/shop/shop.module';
     {
       provide: HTTP_INTERCEPTORS,
       useClass: ErrorInterceptor,
+      multi: true
+    },
+    {
+      provide: HTTP_INTERCEPTORS,
+      useClass: ResponseInterceptor,
       multi: true
     }
   ],

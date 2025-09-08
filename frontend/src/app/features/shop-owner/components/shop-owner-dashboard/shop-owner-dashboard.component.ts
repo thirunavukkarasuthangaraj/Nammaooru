@@ -14,217 +14,74 @@ import { Observable, interval, Subscription } from 'rxjs';
       <div class="dashboard-header">
         <div class="welcome-section">
           <h1 class="welcome-title">Welcome back, {{ (currentUser$ | async)?.username }}!</h1>
-          <p class="welcome-subtitle">Here's what's happening with your shop today</p>
-        </div>
-        <div class="header-actions">
-          <button mat-raised-button color="primary" routerLink="/products">
-            <mat-icon>add_shopping_cart</mat-icon>
-            Add Products
-          </button>
-          <button mat-raised-button color="accent" routerLink="/products">
-            <mat-icon>inventory</mat-icon>
-            View Inventory
-          </button>
+          <p class="welcome-subtitle">Manage your shop with these essential tools</p>
         </div>
       </div>
 
-      <!-- Quick Stats Cards -->
-      <div class="stats-grid">
-        <mat-card class="stat-card revenue">
+      <!-- Main Menu Cards -->
+      <div class="main-menu-grid">
+        <!-- Shop Profile -->
+        <mat-card class="menu-card profile-card" routerLink="/shop-owner/shop-profile">
           <mat-card-content>
-            <div class="stat-content">
-              <div class="stat-icon">
-                <mat-icon>attach_money</mat-icon>
+            <div class="card-content">
+              <div class="card-icon">
+                <mat-icon>store</mat-icon>
               </div>
-              <div class="stat-details">
-                <h3 class="stat-value">₹{{ todaysRevenue | number:'1.0-0' }}</h3>
-                <p class="stat-label">Today's Revenue</p>
-                <span class="stat-change positive">+12.5%</span>
+              <div class="card-info">
+                <h3 class="card-title">Shop Profile</h3>
+                <p class="card-description">Manage your shop information, business hours, and settings</p>
               </div>
+              <mat-icon class="arrow-icon">arrow_forward_ios</mat-icon>
             </div>
           </mat-card-content>
         </mat-card>
 
-        <mat-card class="stat-card orders">
+        <!-- Shop Products -->
+        <mat-card class="menu-card products-card" routerLink="/shop-owner/my-products">
           <mat-card-content>
-            <div class="stat-content">
-              <div class="stat-icon">
-                <mat-icon>shopping_cart</mat-icon>
-              </div>
-              <div class="stat-details">
-                <h3 class="stat-value">{{ todaysOrders }}</h3>
-                <p class="stat-label">Today's Orders</p>
-                <span class="stat-change positive">+8 new</span>
-              </div>
-            </div>
-          </mat-card-content>
-        </mat-card>
-
-        <mat-card class="stat-card products">
-          <mat-card-content>
-            <div class="stat-content">
-              <div class="stat-icon">
+            <div class="card-content">
+              <div class="card-icon">
                 <mat-icon>inventory_2</mat-icon>
               </div>
-              <div class="stat-details">
-                <h3 class="stat-value">{{ totalProducts }}</h3>
-                <p class="stat-label">Active Products</p>
-                <span class="stat-change warning">{{ lowStockCount }} low stock</span>
+              <div class="card-info">
+                <h3 class="card-title">Shop Products</h3>
+                <p class="card-description">Add, edit, and manage your product inventory</p>
               </div>
+              <mat-icon class="arrow-icon">arrow_forward_ios</mat-icon>
             </div>
           </mat-card-content>
         </mat-card>
 
-        <mat-card class="stat-card customers">
+        <!-- Orders -->
+        <mat-card class="menu-card orders-card" routerLink="/shop-owner/orders">
           <mat-card-content>
-            <div class="stat-content">
-              <div class="stat-icon">
-                <mat-icon>people</mat-icon>
+            <div class="card-content">
+              <div class="card-icon">
+                <mat-icon>receipt_long</mat-icon>
               </div>
-              <div class="stat-details">
-                <h3 class="stat-value">{{ totalCustomers }}</h3>
-                <p class="stat-label">Total Customers</p>
-                <span class="stat-change positive">+{{ newCustomers }} this week</span>
+              <div class="card-info">
+                <h3 class="card-title">Orders</h3>
+                <p class="card-description">View and manage customer orders and order history</p>
               </div>
+              <mat-icon class="arrow-icon">arrow_forward_ios</mat-icon>
             </div>
           </mat-card-content>
         </mat-card>
       </div>
 
-      <!-- Main Content Grid -->
-      <div class="content-grid">
-        <!-- Recent Orders -->
-        <mat-card class="content-card orders-card">
-          <mat-card-header>
-            <mat-card-title>
-              <mat-icon>receipt_long</mat-icon>
-              Recent Orders
-            </mat-card-title>
-            <div class="card-actions">
-              <button mat-button routerLink="/shop-owner/orders">View All</button>
-            </div>
-          </mat-card-header>
-          <mat-card-content>
-            <div class="orders-list" *ngIf="recentOrders.length > 0; else noOrders">
-              <div class="order-item" *ngFor="let order of recentOrders">
-                <div class="order-info">
-                  <h4 class="order-id">#{{ order.id }}</h4>
-                  <p class="order-customer">{{ order.customerName }}</p>
-                  <span class="order-time">{{ order.createdAt | date:'short' }}</span>
-                </div>
-                <div class="order-details">
-                  <p class="order-amount">₹{{ order.total | number:'1.0-0' }}</p>
-                  <span class="order-status" [class]="'status-' + order.status.toLowerCase()">
-                    {{ order.status }}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <ng-template #noOrders>
-              <div class="empty-state">
-                <mat-icon>inbox</mat-icon>
-                <p>No recent orders</p>
-              </div>
-            </ng-template>
-          </mat-card-content>
-        </mat-card>
-
-        <!-- Low Stock Alert -->
-        <mat-card class="content-card inventory-card">
-          <mat-card-header>
-            <mat-card-title>
-              <mat-icon>warning</mat-icon>
-              Low Stock Alert
-            </mat-card-title>
-            <div class="card-actions">
-              <button mat-button routerLink="/products">Manage Inventory</button>
-            </div>
-          </mat-card-header>
-          <mat-card-content>
-            <div class="inventory-list" *ngIf="lowStockProducts.length > 0; else noLowStock">
-              <div class="inventory-item" *ngFor="let product of lowStockProducts">
-                <div class="product-info">
-                  <img [src]="product.imageUrl" [alt]="product.name" class="product-image">
-                  <div class="product-details">
-                    <h4 class="product-name">{{ product.name }}</h4>
-                    <p class="product-category">{{ product.category }}</p>
-                  </div>
-                </div>
-                <div class="stock-info">
-                  <span class="stock-count critical">{{ product.stock }} left</span>
-                  <button mat-button color="primary" (click)="updateStock(product)">
-                    <mat-icon>add</mat-icon>
-                    Update
-                  </button>
-                </div>
-              </div>
-            </div>
-            <ng-template #noLowStock>
-              <div class="empty-state">
-                <mat-icon>check_circle</mat-icon>
-                <p>All products are well stocked!</p>
-              </div>
-            </ng-template>
-          </mat-card-content>
-        </mat-card>
-
-        <!-- Sales Chart -->
-        <mat-card class="content-card chart-card">
-          <mat-card-header>
-            <mat-card-title>
-              <mat-icon>trending_up</mat-icon>
-              Sales Overview
-            </mat-card-title>
-            <div class="card-actions">
-              <button mat-button routerLink="/analytics">View Reports</button>
-            </div>
-          </mat-card-header>
-          <mat-card-content>
-            <div class="chart-placeholder">
-              <mat-icon>analytics</mat-icon>
-              <p>Sales chart will be displayed here</p>
-              <small>Integration with charting library needed</small>
-            </div>
-          </mat-card-content>
-        </mat-card>
-
-        <!-- Quick Actions -->
-        <mat-card class="content-card actions-card">
-          <mat-card-header>
-            <mat-card-title>
-              <mat-icon>flash_on</mat-icon>
-              Quick Actions
-            </mat-card-title>
-          </mat-card-header>
-          <mat-card-content>
-            <div class="quick-actions-grid">
-              <button mat-stroked-button class="action-button" routerLink="/products">
-                <mat-icon>add_box</mat-icon>
-                <span>Add Products</span>
-              </button>
-              <button mat-stroked-button class="action-button" routerLink="/orders">
-                <mat-icon>receipt</mat-icon>
-                <span>New Order</span>
-              </button>
-              <button mat-stroked-button class="action-button" routerLink="/shops">
-                <mat-icon>store</mat-icon>
-                <span>Shop Profile</span>
-              </button>
-              <button mat-stroked-button class="action-button" routerLink="/analytics">
-                <mat-icon>assessment</mat-icon>
-                <span>Reports</span>
-              </button>
-              <button mat-stroked-button class="action-button" routerLink="/settings">
-                <mat-icon>settings</mat-icon>
-                <span>Settings</span>
-              </button>
-              <button mat-stroked-button class="action-button" routerLink="/settings">
-                <mat-icon>help</mat-icon>
-                <span>Settings</span>
-              </button>
-            </div>
-          </mat-card-content>
-        </mat-card>
+      <!-- Quick Actions -->
+      <div class="quick-actions-section">
+        <h2 class="section-title">Quick Actions</h2>
+        <div class="quick-actions-grid">
+          <button mat-raised-button color="primary" class="quick-action-btn" routerLink="/shop-owner/add-product-modern">
+            <mat-icon>add_box</mat-icon>
+            <span>Create Product</span>
+          </button>
+          <button mat-raised-button color="accent" class="quick-action-btn" routerLink="/shop-owner/bulk-upload">
+            <mat-icon>upload_file</mat-icon>
+            <span>Bulk Product Upload</span>
+          </button>
+        </div>
       </div>
     </div>
   `,
@@ -236,12 +93,10 @@ import { Observable, interval, Subscription } from 'rxjs';
     }
 
     .dashboard-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 24px;
+      text-align: center;
+      margin-bottom: 32px;
       background: white;
-      padding: 24px;
+      padding: 32px 24px;
       border-radius: 12px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
@@ -259,251 +114,122 @@ import { Observable, interval, Subscription } from 'rxjs';
       margin: 0;
     }
 
-    .header-actions {
-      display: flex;
-      gap: 12px;
-    }
-
-    .header-actions button {
-      height: 48px;
-    }
-
-    .stats-grid {
+    .main-menu-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 16px;
-      margin-bottom: 24px;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-bottom: 32px;
     }
 
-    .stat-card {
-      padding: 0;
-      border-radius: 12px;
+    .menu-card {
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      cursor: pointer;
+      transition: all 0.3s ease;
       overflow: hidden;
     }
 
-    .stat-card.revenue { border-left: 4px solid #4caf50; }
-    .stat-card.orders { border-left: 4px solid #2196f3; }
-    .stat-card.products { border-left: 4px solid #ff9800; }
-    .stat-card.customers { border-left: 4px solid #9c27b0; }
-
-    .stat-content {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      padding: 16px;
+    .menu-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
     }
 
-    .stat-icon {
+    .menu-card.profile-card { border-left: 6px solid #4caf50; }
+    .menu-card.products-card { border-left: 6px solid #2196f3; }
+    .menu-card.orders-card { border-left: 6px solid #ff9800; }
+
+    .card-content {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 24px;
+    }
+
+    .card-icon {
       background: linear-gradient(135deg, #667eea, #764ba2);
       color: white;
-      width: 56px;
-      height: 56px;
+      width: 64px;
+      height: 64px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
+      flex-shrink: 0;
     }
 
-    .stat-icon mat-icon {
-      font-size: 24px;
-      width: 24px;
-      height: 24px;
+    .card-icon mat-icon {
+      font-size: 32px;
+      width: 32px;
+      height: 32px;
     }
 
-    .stat-details {
+    .card-info {
       flex: 1;
     }
 
-    .stat-value {
-      font-size: 1.8rem;
+    .card-title {
+      font-size: 1.3rem;
       font-weight: 600;
-      margin: 0 0 4px 0;
+      margin: 0 0 8px 0;
       color: #333;
     }
 
-    .stat-label {
+    .card-description {
       font-size: 0.9rem;
       color: #666;
-      margin: 0 0 4px 0;
+      margin: 0;
+      line-height: 1.4;
     }
 
-    .stat-change {
-      font-size: 0.8rem;
-      font-weight: 500;
-      padding: 2px 8px;
-      border-radius: 12px;
+    .arrow-icon {
+      color: #ccc;
+      font-size: 20px;
     }
 
-    .stat-change.positive {
-      background: #e8f5e8;
-      color: #4caf50;
-    }
-
-    .stat-change.warning {
-      background: #fff3e0;
-      color: #ff9800;
-    }
-
-    .content-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-    }
-
-    .content-card {
+    .quick-actions-section {
+      background: white;
+      padding: 24px;
       border-radius: 12px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
 
-    .content-card mat-card-header {
-      background: #f8f9fa;
-      margin: -16px -16px 16px -16px;
-      padding: 16px;
-      border-radius: 12px 12px 0 0;
-    }
-
-    .content-card mat-card-title {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 1.1rem;
+    .section-title {
+      font-size: 1.2rem;
       font-weight: 500;
-    }
-
-    .card-actions {
-      margin-left: auto;
-    }
-
-    .orders-list, .inventory-list {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .order-item, .inventory-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px;
-      background: #f8f9fa;
-      border-radius: 8px;
-    }
-
-    .order-info h4, .product-details h4 {
-      margin: 0 0 4px 0;
-      font-size: 0.9rem;
-      font-weight: 600;
-    }
-
-    .order-info p, .product-details p {
-      margin: 0 0 2px 0;
-      font-size: 0.8rem;
-      color: #666;
-    }
-
-    .order-time {
-      font-size: 0.7rem !important;
-      color: #999 !important;
-    }
-
-    .order-amount {
-      font-weight: 600;
+      margin: 0 0 20px 0;
       color: #333;
-      margin-bottom: 4px !important;
-    }
-
-    .order-status {
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 0.7rem;
-      font-weight: 500;
-      text-transform: uppercase;
-    }
-
-    .status-pending { background: #fff3e0; color: #ff9800; }
-    .status-processing { background: #e3f2fd; color: #2196f3; }
-    .status-completed { background: #e8f5e8; color: #4caf50; }
-    .status-cancelled { background: #ffebee; color: #f44336; }
-
-    .product-info {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .product-image {
-      width: 40px;
-      height: 40px;
-      border-radius: 8px;
-      object-fit: cover;
-    }
-
-    .stock-info {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .stock-count.critical {
-      background: #ffebee;
-      color: #f44336;
-      padding: 4px 8px;
-      border-radius: 12px;
-      font-size: 0.8rem;
-      font-weight: 500;
-    }
-
-    .chart-placeholder {
       text-align: center;
-      padding: 40px;
-      color: #999;
-    }
-
-    .chart-placeholder mat-icon {
-      font-size: 48px;
-      width: 48px;
-      height: 48px;
-      margin-bottom: 16px;
     }
 
     .quick-actions-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px;
+      gap: 16px;
+      max-width: 500px;
+      margin: 0 auto;
     }
 
-    .action-button {
+    .quick-action-btn {
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 8px;
-      padding: 16px;
+      padding: 20px;
       height: auto;
-      min-height: 80px;
+      min-height: 100px;
+      border-radius: 12px;
+      font-weight: 500;
     }
 
-    .action-button mat-icon {
-      font-size: 24px;
-      width: 24px;
-      height: 24px;
+    .quick-action-btn mat-icon {
+      font-size: 28px;
+      width: 28px;
+      height: 28px;
     }
 
-    .action-button span {
-      font-size: 0.8rem;
+    .quick-action-btn span {
+      font-size: 0.9rem;
       text-align: center;
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 24px;
-      color: #999;
-    }
-
-    .empty-state mat-icon {
-      font-size: 48px;
-      width: 48px;
-      height: 48px;
-      margin-bottom: 12px;
     }
 
     /* Mobile Responsive */
@@ -513,51 +239,78 @@ import { Observable, interval, Subscription } from 'rxjs';
       }
 
       .dashboard-header {
-        flex-direction: column;
-        gap: 16px;
-        text-align: center;
-      }
-
-      .stats-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .content-grid {
-        grid-template-columns: 1fr;
+        padding: 24px 16px;
       }
 
       .welcome-title {
-        font-size: 1.5rem;
+        font-size: 1.6rem;
       }
 
-      .header-actions {
-        width: 100%;
-        justify-content: center;
+      .main-menu-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+
+      .card-content {
+        padding: 20px;
+        gap: 16px;
+      }
+
+      .card-icon {
+        width: 56px;
+        height: 56px;
+      }
+
+      .card-icon mat-icon {
+        font-size: 28px;
+        width: 28px;
+        height: 28px;
+      }
+
+      .card-title {
+        font-size: 1.2rem;
       }
 
       .quick-actions-grid {
         grid-template-columns: 1fr;
+        gap: 12px;
       }
     }
 
     @media (max-width: 480px) {
-      .header-actions {
-        flex-direction: column;
-        width: 100%;
-      }
-
-      .stat-content {
-        padding: 12px;
+      .card-content {
+        padding: 16px;
         gap: 12px;
       }
 
-      .stat-icon {
+      .card-icon {
         width: 48px;
         height: 48px;
       }
 
-      .stat-value {
-        font-size: 1.4rem;
+      .card-icon mat-icon {
+        font-size: 24px;
+        width: 24px;
+        height: 24px;
+      }
+
+      .card-title {
+        font-size: 1.1rem;
+      }
+
+      .card-description {
+        font-size: 0.8rem;
+      }
+
+      .quick-action-btn {
+        min-height: 80px;
+        padding: 16px;
+      }
+
+      .quick-action-btn mat-icon {
+        font-size: 24px;
+        width: 24px;
+        height: 24px;
       }
     }
   `]

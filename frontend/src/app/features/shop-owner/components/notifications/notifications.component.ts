@@ -6,7 +6,10 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { NotificationService } from '@core/services/notification.service';
 import { AuthService } from '@core/services/auth.service';
-import { finalize } from 'rxjs/operators';
+import { OrderService, OrderResponse } from '@core/services/order.service';
+import { ShopOwnerOrderService } from '../../services/shop-owner-order.service';
+import { finalize, switchMap, catchError } from 'rxjs/operators';
+import { of } from 'rxjs';
 
 interface ShopNotification {
   id: number;
@@ -14,7 +17,7 @@ interface ShopNotification {
   message: string;
   type: 'info' | 'success' | 'warning' | 'error' | 'order' | 'customer' | 'inventory' | 'system';
   priority: 'low' | 'medium' | 'high' | 'urgent';
-  status: 'unread' | 'read' | 'archived';
+  status: 'unread' | 'read' | 'archived' | 'processing';
   createdAt: Date;
   readAt?: Date;
   actionRequired: boolean;
@@ -24,6 +27,7 @@ interface ShopNotification {
     id: number;
     name: string;
   };
+  orderData?: OrderResponse; // Add order details
 }
 
 @Component({
@@ -205,6 +209,26 @@ interface ShopNotification {
                 <h3 class="notification-title">{{ notification.title }}</h3>
                 <p class="notification-message">{{ notification.message }}</p>
                 
+                <!-- Order Items Display -->
+                <div class="order-items" *ngIf="notification.orderData && notification.orderData.orderItems && notification.orderData.orderItems.length > 0">
+                  <h4 class="items-title">Order Items:</h4>
+                  <div class="items-list">
+                    <div class="order-item" *ngFor="let item of notification.orderData.orderItems">
+                      <div class="item-image" *ngIf="item.productImageUrl">
+                        <img [src]="item.productImageUrl" [alt]="item.productName" />
+                      </div>
+                      <div class="item-details">
+                        <div class="item-name">{{ item.productName }}</div>
+                        <div class="item-quantity">Qty: {{ item.quantity }}</div>
+                        <div class="item-price">₹{{ item.totalPrice }}</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="order-total">
+                    <strong>Total: ₹{{ notification.orderData.totalAmount }}</strong>
+                  </div>
+                </div>
+                
                 <div class="notification-footer">
                   <div class="notification-time">
                     <mat-icon>schedule</mat-icon>
@@ -219,9 +243,18 @@ interface ShopNotification {
 
                 <div class="notification-action" *ngIf="notification.actionRequired">
                   <button mat-raised-button color="primary" 
-                          (click)="handleAction(notification); $event.stopPropagation()">
-                    <mat-icon>launch</mat-icon>
-                    Take Action
+                          (click)="handleAction(notification); $event.stopPropagation()"
+                          [disabled]="notification.status === 'processing'">
+                    <mat-icon *ngIf="notification.status !== 'processing'">check</mat-icon>
+                    <mat-spinner *ngIf="notification.status === 'processing'" diameter="20"></mat-spinner>
+                    {{ notification.status === 'processing' ? 'Processing...' : 'Accept Order' }}
+                  </button>
+                  <button mat-stroked-button color="warn" 
+                          (click)="rejectOrder(notification); $event.stopPropagation()"
+                          [disabled]="notification.status === 'processing'"
+                          style="margin-left: 8px;">
+                    <mat-icon>close</mat-icon>
+                    Reject
                   </button>
                 </div>
               </div>
@@ -568,6 +601,81 @@ interface ShopNotification {
       color: #dc2626 !important;
     }
 
+    /* Order Items Styles */
+    .order-items {
+      margin: 16px 0;
+      padding: 16px;
+      background: #f8fafc;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .items-title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 0 0 12px 0;
+      color: #1f2937;
+    }
+
+    .items-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .order-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px;
+      background: white;
+      border-radius: 6px;
+      border: 1px solid #e5e7eb;
+    }
+
+    .item-image {
+      width: 40px;
+      height: 40px;
+      flex-shrink: 0;
+    }
+
+    .item-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 4px;
+    }
+
+    .item-details {
+      flex: 1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .item-name {
+      font-weight: 500;
+      color: #1f2937;
+    }
+
+    .item-quantity {
+      font-size: 0.9rem;
+      color: #6b7280;
+    }
+
+    .item-price {
+      font-weight: 600;
+      color: #059669;
+    }
+
+    .order-total {
+      text-align: right;
+      padding-top: 8px;
+      border-top: 1px solid #e5e7eb;
+      color: #1f2937;
+    }
+
     /* Mobile Responsive */
     @media (max-width: 768px) {
       .notifications-container {
@@ -686,7 +794,9 @@ export class NotificationsComponent implements OnInit {
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
     private notificationService: NotificationService,
-    private authService: AuthService
+    private authService: AuthService,
+    private orderService: OrderService,
+    private shopOwnerOrderService: ShopOwnerOrderService
   ) {}
 
   ngOnInit(): void {
@@ -703,20 +813,72 @@ export class NotificationsComponent implements OnInit {
       return;
     }
 
-    // Try to load from API, fallback to mock data
-    this.notificationService.getShopNotifications(0, 50)
+    // Load pending orders for the shop owner and convert to notifications
+    this.loadOrderNotifications()
       .pipe(finalize(() => this.loading = false))
       .subscribe({
-        next: (response) => {
-          // Map API response if available
-          console.log('Loaded notifications from API:', response);
+        next: (notifications) => {
+          console.log('Loaded order notifications:', notifications);
+          // Replace hardcoded notifications with order-based ones
+          this.notifications = [...notifications, ...this.notifications.filter(n => n.type !== 'order')];
         },
         error: (error) => {
-          console.error('Error loading notifications:', error);
+          console.error('Error loading order notifications:', error);
           this.snackBar.open('Using sample notifications', 'Close', { duration: 3000 });
-          // Keep mock data on error
+          // Keep existing mock data on error
         }
       });
+  }
+
+  private loadOrderNotifications() {
+    const currentUser = this.authService.getCurrentUser();
+    const shopId = currentUser?.shopId || 1; // fallback to shop ID 1
+    
+    return this.orderService.getOrdersByShop(shopId, 0, 20)
+      .pipe(
+        switchMap(orderPage => {
+          const pendingOrders = orderPage.content.filter(order => order.status === 'PENDING');
+          const notifications: ShopNotification[] = pendingOrders.map(order => ({
+            id: order.id,
+            title: 'New Order Received',
+            message: `You have received a new order ${order.orderNumber} from ${order.customerName} worth ₹${order.totalAmount}`,
+            type: 'order',
+            priority: 'high',
+            status: 'unread',
+            createdAt: new Date(order.createdAt),
+            actionRequired: true,
+            actionUrl: `/orders/${order.id}`,
+            relatedEntity: { type: 'order', id: order.id, name: order.orderNumber },
+            orderData: order
+          }));
+          return of(notifications);
+        }),
+        catchError(() => {
+          // Fallback: enhance mock data with actual order data if available
+          return this.orderService.getOrderById(101).pipe(
+            switchMap(order => {
+              if (order) {
+                const notification: ShopNotification = {
+                  id: 1,
+                  title: 'New Order Received',
+                  message: `You have received a new order ${order.orderNumber} from ${order.customerName} worth ₹${order.totalAmount}`,
+                  type: 'order',
+                  priority: 'high',
+                  status: 'unread',
+                  createdAt: new Date(order.createdAt),
+                  actionRequired: true,
+                  actionUrl: `/orders/${order.id}`,
+                  relatedEntity: { type: 'order', id: order.id, name: order.orderNumber },
+                  orderData: order
+                };
+                return of([notification]);
+              }
+              return of([]);
+            }),
+            catchError(() => of([])) // If all fails, return empty array
+          );
+        })
+      );
   }
 
   refreshNotifications(): void {
@@ -831,7 +993,10 @@ export class NotificationsComponent implements OnInit {
   }
 
   handleAction(notification: ShopNotification): void {
-    if (notification.actionUrl) {
+    if (notification.type === 'order' && notification.relatedEntity) {
+      // Handle order acceptance
+      this.acceptOrder(notification);
+    } else if (notification.actionUrl) {
       this.snackBar.open(`Navigating to ${notification.actionUrl}`, 'Close', { duration: 2000 });
       // Here you would typically navigate using Router
       // this.router.navigate([notification.actionUrl]);
@@ -841,5 +1006,86 @@ export class NotificationsComponent implements OnInit {
     
     // Mark as read when action is taken
     this.markAsRead(notification);
+  }
+
+  acceptOrder(notification: ShopNotification): void {
+    if (!notification.relatedEntity || notification.status === 'processing') {
+      return;
+    }
+
+    const orderId = notification.relatedEntity.id;
+    notification.status = 'processing';
+
+    this.shopOwnerOrderService.acceptOrder(orderId, '30 minutes', 'Order accepted and will be prepared shortly')
+      .pipe(finalize(() => {
+        // Reset processing status after completion
+        setTimeout(() => {
+          if (notification.status === 'processing') {
+            notification.status = 'read';
+          }
+        }, 1000);
+      }))
+      .subscribe({
+        next: (acceptedOrder) => {
+          console.log('Order accepted successfully:', acceptedOrder);
+          this.snackBar.open(`Order ${notification.relatedEntity!.name} accepted successfully!`, 'Close', { duration: 5000 });
+          
+          // Update notification
+          notification.actionRequired = false;
+          notification.status = 'read';
+          notification.title = 'Order Accepted';
+          notification.message = `Order ${notification.relatedEntity!.name} has been accepted and is being prepared.`;
+          notification.type = 'success';
+          
+          // Refresh notifications to get latest data
+          setTimeout(() => this.loadNotifications(), 2000);
+        },
+        error: (error) => {
+          console.error('Error accepting order:', error);
+          notification.status = 'unread';
+          this.snackBar.open('Failed to accept order. Please try again.', 'Close', { duration: 5000 });
+        }
+      });
+  }
+
+  rejectOrder(notification: ShopNotification): void {
+    if (!notification.relatedEntity || notification.status === 'processing') {
+      return;
+    }
+
+    const orderId = notification.relatedEntity.id;
+    const reason = 'Order rejected by shop owner'; // Could open a dialog for custom reason
+
+    notification.status = 'processing';
+
+    this.shopOwnerOrderService.rejectOrder(orderId, reason)
+      .pipe(finalize(() => {
+        setTimeout(() => {
+          if (notification.status === 'processing') {
+            notification.status = 'read';
+          }
+        }, 1000);
+      }))
+      .subscribe({
+        next: (rejectedOrder) => {
+          console.log('Order rejected successfully:', rejectedOrder);
+          this.snackBar.open(`Order ${notification.relatedEntity!.name} rejected.`, 'Close', { duration: 5000 });
+          
+          // Update notification
+          notification.actionRequired = false;
+          notification.status = 'read';
+          notification.title = 'Order Rejected';
+          notification.message = `Order ${notification.relatedEntity!.name} has been rejected.`;
+          notification.type = 'warning';
+          
+          // Refresh notifications to get latest data
+          setTimeout(() => this.loadNotifications(), 2000);
+        },
+        error: (error) => {
+          console.error('Error rejecting order:', error);
+          notification.status = 'unread';
+          this.snackBar.open('Failed to reject order. Please try again.', 'Close', { duration: 5000 });
+        }
+      });
   }
 }

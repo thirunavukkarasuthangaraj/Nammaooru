@@ -148,6 +148,50 @@ export const API_ENDPOINTS = {
   }
 } as const;
 
+// Error Messages for Status Codes
+export const API_ERROR_MESSAGES: Record<string, string> = {
+  // Authentication & Authorization errors (1xxx)
+  '1001': 'Unauthorized access',
+  '1002': 'Access forbidden',
+  '1003': 'Invalid username or password',
+  '1004': 'Token has expired',
+  '1005': 'Invalid token',
+  
+  // Validation errors (2xxx)
+  '2001': 'Validation error',
+  '2002': 'Required field is missing',
+  '2003': 'Invalid data format',
+  '2004': 'Duplicate entry exists',
+  
+  // Business logic errors (3xxx)
+  '3001': 'Shop not found',
+  '3002': 'User not found',
+  '3003': 'Document not found',
+  '3004': 'Shop is already approved',
+  '3005': 'Shop is already rejected',
+  
+  // File upload errors (4xxx)
+  '4001': 'File upload failed',
+  '4002': 'File size exceeds limit',
+  '4003': 'File type not allowed',
+  '4004': 'File not found',
+  
+  // Database errors (5xxx)
+  '5001': 'Database operation failed',
+  '5002': 'Database connection error',
+  
+  // External service errors (6xxx)
+  '6001': 'External service error',
+  '6002': 'Request timeout',
+  
+  // Server errors (7xxx)
+  '7001': 'Internal server error',
+  '7002': 'Service temporarily unavailable',
+  
+  // General error
+  '9999': 'General error occurred',
+};
+
 // UI Messages
 export const UI_MESSAGES = {
   // Success Messages
@@ -330,6 +374,7 @@ export const ANIMATIONS = {
 // Export all constants as a single object for easy importing
 export const APP_CONSTANTS = {
   API_STATUS_CODES,
+  API_ERROR_MESSAGES,
   SHOP_STATUS,
   BUSINESS_TYPES,
   DOCUMENT_TYPES,

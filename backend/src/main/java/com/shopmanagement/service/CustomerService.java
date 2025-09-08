@@ -1082,7 +1082,7 @@ public class CustomerService {
     
     // Helper methods
     
-    private Optional<Customer> findCustomerByEmailOrMobile(String emailOrMobile) {
+    public Optional<Customer> findCustomerByEmailOrMobile(String emailOrMobile) {
         // Check if it's an email (contains @)
         if (emailOrMobile.contains("@")) {
             return customerRepository.findByEmail(emailOrMobile);

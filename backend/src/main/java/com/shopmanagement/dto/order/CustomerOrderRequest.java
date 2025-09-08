@@ -39,6 +39,7 @@ public class CustomerOrderRequest {
     
     @Data
     public static class CustomerInfoRequest {
+        private Long customerId;
         private String firstName;
         private String lastName;
         private String phone;

@@ -44,6 +44,9 @@ import { NotificationsComponent } from './components/notifications/notifications
 import { ProductsPricingComponent } from './components/products-pricing/products-pricing.component';
 import { BusinessSummaryComponent } from './components/business-summary/business-summary.component';
 import { BusinessHoursComponent } from './components/business-hours/business-hours.component';
+import { BrowseProductsComponent } from './components/browse-products/browse-products.component';
+import { PriceUpdateDialogComponent } from './components/price-update-dialog/price-update-dialog.component';
+import { StockUpdateDialogComponent } from './components/stock-update-dialog/stock-update-dialog.component';
 
 @NgModule({
   declarations: [
@@ -61,7 +64,10 @@ import { BusinessHoursComponent } from './components/business-hours/business-hou
     NotificationsComponent,
     ProductsPricingComponent,
     BusinessSummaryComponent,
-    BusinessHoursComponent
+    BusinessHoursComponent,
+    BrowseProductsComponent,
+    PriceUpdateDialogComponent,
+    StockUpdateDialogComponent
   ],
   imports: [
     CommonModule,
