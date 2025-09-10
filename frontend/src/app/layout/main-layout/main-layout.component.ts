@@ -69,6 +69,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     {
       category: 'System Overview',
       items: [
+        { title: 'Analytics', icon: 'analytics', route: '/analytics', badge: null },
         { title: 'System Health', icon: 'monitor_heart', route: '/system/health', badge: null }
       ]
     },
