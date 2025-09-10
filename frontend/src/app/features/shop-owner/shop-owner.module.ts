@@ -47,6 +47,9 @@ import { BusinessHoursComponent } from './components/business-hours/business-hou
 import { BrowseProductsComponent } from './components/browse-products/browse-products.component';
 import { PriceUpdateDialogComponent } from './components/price-update-dialog/price-update-dialog.component';
 import { StockUpdateDialogComponent } from './components/stock-update-dialog/stock-update-dialog.component';
+import { BulkPriceUpdateDialogComponent } from './components/bulk-price-update-dialog/bulk-price-update-dialog.component';
+import { BrowseMasterProductsDialogComponent } from './components/browse-master-products-dialog/browse-master-products-dialog.component';
+import { ProductEditDialogComponent } from './components/product-edit-dialog/product-edit-dialog.component';
 
 @NgModule({
   declarations: [
@@ -67,7 +70,10 @@ import { StockUpdateDialogComponent } from './components/stock-update-dialog/sto
     BusinessHoursComponent,
     BrowseProductsComponent,
     PriceUpdateDialogComponent,
-    StockUpdateDialogComponent
+    StockUpdateDialogComponent,
+    BulkPriceUpdateDialogComponent,
+    BrowseMasterProductsDialogComponent,
+    ProductEditDialogComponent
   ],
   imports: [
     CommonModule,

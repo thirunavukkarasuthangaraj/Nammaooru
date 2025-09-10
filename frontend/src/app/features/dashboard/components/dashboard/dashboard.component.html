@@ -95,11 +95,11 @@
           <div class="chart-stats" *ngIf="metrics?.dailyOrdersData">
             <div class="chart-stat">
               <span class="label">Average Orders:</span>
-              <span class="value">{{ (metrics.dailyOrdersData.reduce((sum, d) => sum + d.orders, 0) / metrics.dailyOrdersData.length) | number:'1.0-0' }}</span>
+              <span class="value">{{ getAverageOrders() | number:'1.0-0' }}</span>
             </div>
             <div class="chart-stat">
               <span class="label">Average Value:</span>
-              <span class="value">{{ formatCurrency(metrics.dailyOrdersData.reduce((sum, d) => sum + d.avgValue, 0) / metrics.dailyOrdersData.length) }}</span>
+              <span class="value">{{ formatCurrency(getAverageOrderValue()) }}</span>
             </div>
           </div>
         </mat-card-content>

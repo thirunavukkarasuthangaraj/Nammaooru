@@ -3,65 +3,57 @@
   <div class="products-header">
     <div class="header-left">
       <h1>My Products</h1>
-      <p>{{ currentTab === 'my-products' ? (products.length + ' products in your shop • ' + filteredProducts.length + ' showing') : (masterProducts.length + ' master products • ' + filteredMasterProducts.length + ' showing') }}</p>
+      <p>{{ products.length }} products in your shop • {{ filteredProducts.length }} showing</p>
     </div>
     <div class="header-actions">
-      <button mat-raised-button color="primary" (click)="addNewProduct()" *ngIf="currentTab === 'my-products'">
-        <mat-icon>add</mat-icon>
-        Add Product
+      <button mat-raised-button color="primary" (click)="browseMasterProducts()">
+        <mat-icon>shopping_basket</mat-icon>
+        Browse Products
       </button>
-      <button mat-stroked-button (click)="bulkUpload()" *ngIf="currentTab === 'my-products'">
+      <button mat-raised-button color="primary" (click)="addNewProduct()">
+        <mat-icon>add</mat-icon>
+        Add Custom Product
+      </button>
+      <button mat-stroked-button (click)="bulkUpload()">
         <mat-icon>upload</mat-icon>
         Bulk Upload
-      </button>
-      <button mat-raised-button 
-              color="accent" 
-              (click)="addSelectedToShop()" 
-              [disabled]="selectedMasterProducts.length === 0"
-              *ngIf="currentTab === 'master-products'">
-        <mat-icon>add_shopping_cart</mat-icon>
-        Add {{ selectedMasterProducts.length }} to Shop
       </button>
     </div>
   </div>
 
-  <!-- Tabs -->
-  <mat-tab-group [(selectedIndex)]="selectedTabIndex" (selectedTabChange)="onTabChange($event)">
-    <mat-tab label="My Products">
-      <ng-template matTabContent>
-        <!-- My Products Content -->
-        <div class="tab-content">
-
-        <!-- Filters Bar -->
-        <div class="filters-bar">
-          <mat-form-field appearance="outline" class="search-field">
-            <mat-label>Search products...</mat-label>
-            <input matInput [(ngModel)]="searchTerm" (ngModelChange)="applyFilter()" placeholder="Search by name, category, or SKU">
-            <mat-icon matSuffix>search</mat-icon>
-          </mat-form-field>
-          
-          <div class="filter-controls">
-            <mat-form-field appearance="outline">
-              <mat-label>Category</mat-label>
-              <mat-select [(ngModel)]="selectedCategory" (selectionChange)="applyFilter()">
-                <mat-option value="">All Categories</mat-option>
-                <mat-option *ngFor="let category of categories" [value]="category">
-                  {{ category }}
-                </mat-option>
-              </mat-select>
-            </mat-form-field>
-            
-            <mat-form-field appearance="outline">
-              <mat-label>Status</mat-label>
-              <mat-select [(ngModel)]="selectedStatus" (selectionChange)="applyFilter()">
-                <mat-option value="">All Status</mat-option>
-                <mat-option value="ACTIVE">Active</mat-option>
-                <mat-option value="INACTIVE">Inactive</mat-option>
-                <mat-option value="OUT_OF_STOCK">Out of Stock</mat-option>
-              </mat-select>
-            </mat-form-field>
-          </div>
-        </div>
+  <!-- Filters Bar -->
+  <div class="filters-bar">
+    <div class="filters-row-1">
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>Search products...</mat-label>
+        <input matInput [(ngModel)]="searchTerm" (ngModelChange)="applyFilter()" placeholder="Search by name, category, or SKU">
+        <mat-icon matSuffix>search</mat-icon>
+      </mat-form-field>
+      
+      <div class="filter-controls">
+        <mat-form-field appearance="outline">
+          <mat-label>Category</mat-label>
+          <mat-select [(ngModel)]="selectedCategory" (selectionChange)="applyFilter()">
+            <mat-option value="">All Categories</mat-option>
+            <mat-option *ngFor="let category of categories" [value]="category">
+              {{ category }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+        
+        <mat-form-field appearance="outline">
+          <mat-label>Status</mat-label>
+          <mat-select [(ngModel)]="selectedStatus" (selectionChange)="applyFilter()">
+            <mat-option value="">All Status</mat-option>
+            <mat-option value="ACTIVE">Active</mat-option>
+            <mat-option value="INACTIVE">Inactive</mat-option>
+            <mat-option value="OUT_OF_STOCK">Out of Stock</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+    </div>
+    
+  </div>
 
         <!-- Loading State -->
         <div class="loading-container" *ngIf="loading">
@@ -69,224 +61,155 @@
           <p>Loading your products...</p>
         </div>
 
-        <!-- Products List -->
-        <div class="products-list" *ngIf="!loading">
-          <div class="product-item" *ngFor="let product of filteredProducts">
+  <!-- Products List -->
+  <div class="products-list" *ngIf="!loading">
+    <mat-card class="list-container">
+      <table mat-table [dataSource]="filteredProducts" class="products-table">
+        
+        <!-- Image Column -->
+        <ng-container matColumnDef="image">
+          <th mat-header-cell *matHeaderCellDef> </th>
+          <td mat-cell *matCellDef="let product">
             <div class="product-image">
-              <img [src]="product.imageUrl || '/assets/images/no-image.png'" [alt]="product.customName">
-              <div class="status-badge" [ngClass]="getStatusClass(product.status)">
-                {{ product.status }}
-              </div>
+              <img [src]="getProductImageUrl(product)" 
+                   [alt]="product.customName">
             </div>
-            
+          </td>
+        </ng-container>
+
+        <!-- Name Column -->
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef> Product </th>
+          <td mat-cell *matCellDef="let product">
             <div class="product-details">
-              <div class="product-main">
-                <h3 class="product-name">{{ product.customName }}</h3>
-                <p class="product-description">{{ product.description || 'No description' }}</p>
-                <div class="product-meta">
-                  <span class="category-tag">{{ product.category || 'Uncategorized' }}</span>
-                  <span class="sku-text" *ngIf="product.sku">SKU: {{ product.sku }}</span>
-                </div>
-              </div>
-              
-              <div class="product-stats">
-                <div class="stat-item">
-                  <span class="stat-label">Price</span>
-                  <span class="stat-value price">₹{{ product.price | number:'1.0-0' }}</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">Stock</span>
-                  <span class="stat-value stock" [ngClass]="getStockClass(product.stockQuantity)">
-                    {{ product.stockQuantity }}
-                  </span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">Unit</span>
-                  <span class="stat-value">{{ product.unit || 'piece' }}</span>
-                </div>
+              <h3>{{ product.customName }}</h3>
+              <p class="description">{{ product.description || 'No description' }}</p>
+              <div class="meta-tags">
+                <span class="category-tag" *ngIf="product.category">
+                  {{ product.category }}
+                </span>
+                <span class="sku" *ngIf="product.sku">
+                  SKU: {{ product.sku }}
+                </span>
               </div>
             </div>
-            
-            <div class="product-actions">
-              <button mat-icon-button color="primary" (click)="editProduct(product)" matTooltip="Edit Product">
+          </td>
+        </ng-container>
+
+        <!-- Price Column -->
+        <ng-container matColumnDef="price">
+          <th mat-header-cell *matHeaderCellDef> Price </th>
+          <td mat-cell *matCellDef="let product">
+            <div class="price-info">
+              <span class="price">₹{{ product.price | number:'1.0-0' }}</span>
+              <span class="unit">{{ product.unit || 'piece' }}</span>
+            </div>
+          </td>
+        </ng-container>
+
+        <!-- Stock Column -->
+        <ng-container matColumnDef="stock">
+          <th mat-header-cell *matHeaderCellDef> Stock </th>
+          <td mat-cell *matCellDef="let product">
+            <div class="stock-info">
+              <span class="stock-value" [ngClass]="getStockClass(product.stockQuantity)">
+                {{ product.stockQuantity }}
+              </span>
+            </div>
+          </td>
+        </ng-container>
+
+        <!-- Status Column -->
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef> Status </th>
+          <td mat-cell *matCellDef="let product">
+            <span class="status-badge" [ngClass]="getStatusClass(product.status)">
+              {{ product.status }}
+            </span>
+          </td>
+        </ng-container>
+
+        <!-- Actions Column -->
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef> Actions </th>
+          <td mat-cell *matCellDef="let product">
+            <div class="action-buttons">
+              <button mat-icon-button color="primary" (click)="editProduct(product)" 
+                      matTooltip="Edit Product">
                 <mat-icon>edit</mat-icon>
               </button>
-              <button mat-icon-button (click)="duplicateProduct(product.id)" matTooltip="Duplicate Product">
-                <mat-icon>content_copy</mat-icon>
+              <button mat-icon-button (click)="updatePrice(product)" 
+                      matTooltip="Update Price">
+                <mat-icon>attach_money</mat-icon>
               </button>
-              <button mat-icon-button 
-                      [color]="product.isAvailable ? 'warn' : 'primary'" 
-                      (click)="toggleAvailability(product)"
-                      [matTooltip]="product.isAvailable ? 'Make Unavailable' : 'Make Available'">
-                <mat-icon>{{ product.isAvailable ? 'visibility_off' : 'visibility' }}</mat-icon>
+              <button mat-icon-button (click)="updateStockDialog(product)" 
+                      matTooltip="Update Stock">
+                <mat-icon>inventory</mat-icon>
               </button>
-              <button mat-icon-button [matMenuTriggerFor]="actionMenu" matTooltip="More Actions">
+              <button mat-icon-button [matMenuTriggerFor]="actionMenu" 
+                      matTooltip="More Options">
                 <mat-icon>more_vert</mat-icon>
               </button>
               
               <mat-menu #actionMenu="matMenu">
+                <button mat-menu-item (click)="duplicateProduct(product.id)">
+                  <mat-icon>content_copy</mat-icon>
+                  <span>Duplicate</span>
+                </button>
+                <button mat-menu-item (click)="toggleAvailability(product)">
+                  <mat-icon>{{ product.isAvailable ? 'visibility_off' : 'visibility' }}</mat-icon>
+                  <span>{{ product.isAvailable ? 'Hide' : 'Show' }}</span>
+                </button>
                 <button mat-menu-item (click)="viewAnalytics(product.id)">
                   <mat-icon>analytics</mat-icon>
-                  <span>View Analytics</span>
-                </button>
-                <button mat-menu-item (click)="updateStockDialog(product)">
-                  <mat-icon>inventory</mat-icon>
-                  <span>Update Stock</span>
-                </button>
-                <button mat-menu-item (click)="updatePrice(product)">
-                  <mat-icon>attach_money</mat-icon>
-                  <span>Update Price</span>
+                  <span>Analytics</span>
                 </button>
                 <mat-divider></mat-divider>
                 <button mat-menu-item (click)="deleteProduct(product)" class="delete-action">
                   <mat-icon>delete</mat-icon>
-                  <span>Delete Product</span>
+                  <span>Delete</span>
                 </button>
               </mat-menu>
             </div>
-          </div>
-        </div>
+          </td>
+        </ng-container>
 
-        <!-- Empty State -->
-        <div class="empty-state" *ngIf="!loading && filteredProducts.length === 0">
-          <div class="empty-icon">
-            <mat-icon>inventory_2</mat-icon>
-          </div>
-          <h3>No products found</h3>
-          <p *ngIf="products.length === 0">Your product list is empty. Add your first product to get started!</p>
-          <p *ngIf="products.length > 0">Try adjusting your search or filter criteria.</p>
-          <div class="empty-actions">
-            <button mat-raised-button color="primary" (click)="addNewProduct()" *ngIf="products.length === 0">
-              <mat-icon>add</mat-icon>
-              Add Your First Product
-            </button>
-            <button mat-button (click)="clearFilters()" *ngIf="products.length > 0">
-              Clear Filters
-            </button>
-          </div>
-        </div>
+        <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="product-row"></tr>
+      </table>
+    </mat-card>
+  </div>
 
-        <!-- Pagination -->
-        <mat-paginator 
-          [length]="totalProducts" 
-          [pageSize]="pageSize" 
-          [pageSizeOptions]="[12, 24, 48, 96]"
-          [showFirstLastButtons]="true"
-          (page)="onPageChange($event)"
-          *ngIf="filteredProducts.length > 0">
-        </mat-paginator>
-        
-        </div>
-      </ng-template>
-    </mat-tab>
+  <!-- Empty State -->
+  <div class="empty-state" *ngIf="!loading && filteredProducts.length === 0">
+    <div class="empty-icon">
+      <mat-icon>inventory_2</mat-icon>
+    </div>
+    <h3>No products found</h3>
+    <p *ngIf="products.length === 0">Your product list is empty. Add your first product to get started!</p>
+    <p *ngIf="products.length > 0">Try adjusting your search or filter criteria.</p>
+    <div class="empty-actions">
+      <button mat-raised-button color="primary" (click)="browseMasterProducts()" *ngIf="products.length === 0">
+        <mat-icon>shopping_basket</mat-icon>
+        Browse Products to Add
+      </button>
+      <button mat-stroked-button (click)="addNewProduct()" *ngIf="products.length === 0">
+        <mat-icon>add</mat-icon>
+        Create Custom Product
+      </button>
+      <button mat-button (click)="clearFilters()" *ngIf="products.length > 0">
+        Clear Filters
+      </button>
+    </div>
+  </div>
 
-    <!-- Master Products Tab -->
-    <mat-tab label="Browse Master Products">
-      <ng-template matTabContent>
-        <!-- Master Products Content -->
-        <div class="tab-content">
-          
-          <!-- Master Products Filters -->
-          <div class="filters-bar">
-            <mat-form-field appearance="outline" class="search-field">
-              <mat-label>Search master products...</mat-label>
-              <input matInput [(ngModel)]="masterSearchTerm" (ngModelChange)="applyMasterFilter()" placeholder="Search by name, SKU, or brand">
-              <mat-icon matSuffix>search</mat-icon>
-            </mat-form-field>
-            
-            <div class="filter-controls">
-              <mat-form-field appearance="outline">
-                <mat-label>Category</mat-label>
-                <mat-select [(ngModel)]="selectedMasterCategory" (selectionChange)="applyMasterFilter()">
-                  <mat-option value="">All Categories</mat-option>
-                  <mat-option *ngFor="let category of masterCategories" [value]="category">
-                    {{ category }}
-                  </mat-option>
-                </mat-select>
-              </mat-form-field>
-              
-              <button mat-button color="primary" (click)="clearMasterSelection()" *ngIf="selectedMasterProducts.length > 0">
-                Clear Selection ({{ selectedMasterProducts.length }})
-              </button>
-            </div>
-          </div>
-
-          <!-- Master Products Loading State -->
-          <div class="loading-container" *ngIf="loading">
-            <mat-spinner diameter="40"></mat-spinner>
-            <p>Loading master products...</p>
-          </div>
-
-          <!-- Master Products List -->
-          <div class="products-list" *ngIf="!loading">
-            <div class="product-item master-product" 
-                 *ngFor="let product of filteredMasterProducts"
-                 [ngClass]="{'selected': isMasterProductSelected(product)}">
-              
-              <div class="selection-checkbox">
-                <mat-checkbox 
-                  [checked]="isMasterProductSelected(product)"
-                  (change)="toggleMasterProductSelection(product)">
-                </mat-checkbox>
-              </div>
-              
-              <div class="product-image">
-                <img [src]="product.imageUrl || '/assets/images/no-image.png'" [alt]="product.name">
-                <div class="status-badge active" *ngIf="product.isActive">
-                  ACTIVE
-                </div>
-              </div>
-              
-              <div class="product-details">
-                <div class="product-main">
-                  <h3 class="product-name">{{ product.name }}</h3>
-                  <p class="product-description">{{ product.description || 'No description' }}</p>
-                  <div class="product-meta">
-                    <span class="category-tag">{{ product.category || 'Uncategorized' }}</span>
-                    <span class="sku-text" *ngIf="product.sku">SKU: {{ product.sku }}</span>
-                  </div>
-                </div>
-                
-                <div class="product-stats">
-                  <div class="stat-item">
-                    <span class="stat-label">Unit</span>
-                    <span class="stat-value">{{ product.unit || 'piece' }}</span>
-                  </div>
-                  <div class="stat-item" *ngIf="product.createdAt">
-                    <span class="stat-label">Added</span>
-                    <span class="stat-value">{{ product.createdAt | date:'shortDate' }}</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div class="product-actions">
-                <button mat-icon-button 
-                        color="accent" 
-                        (click)="toggleMasterProductSelection(product)" 
-                        [matTooltip]="isMasterProductSelected(product) ? 'Remove from selection' : 'Add to selection'">
-                  <mat-icon>{{ isMasterProductSelected(product) ? 'remove_shopping_cart' : 'add_shopping_cart' }}</mat-icon>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Master Products Empty State -->
-          <div class="empty-state" *ngIf="!loading && filteredMasterProducts.length === 0">
-            <div class="empty-icon">
-              <mat-icon>inventory</mat-icon>
-            </div>
-            <h3>No master products found</h3>
-            <p *ngIf="masterProducts.length === 0">No master products available at the moment.</p>
-            <p *ngIf="masterProducts.length > 0">Try adjusting your search or filter criteria.</p>
-            <div class="empty-actions">
-              <button mat-button (click)="clearMasterFilters()" *ngIf="masterProducts.length > 0">
-                Clear Filters
-              </button>
-            </div>
-          </div>
-          
-        </div>
-      </ng-template>
-    </mat-tab>
-  </mat-tab-group>
+  <!-- Pagination -->
+  <mat-paginator 
+    [length]="totalProducts" 
+    [pageSize]="pageSize" 
+    [pageSizeOptions]="[12, 24, 48, 96]"
+    [showFirstLastButtons]="true"
+    (page)="onPageChange($event)"
+    *ngIf="filteredProducts.length > 0">
+  </mat-paginator>
 </div>

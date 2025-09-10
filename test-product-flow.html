@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Product Creation Flow</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        .step { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        button { padding: 10px 20px; margin: 5px; }
+        .result { background: #f0f0f0; padding: 10px; margin: 10px 0; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>Complete Product Creation Flow</h1>
+    
+    <div class="step">
+        <h2>Step 1: Create Master Product</h2>
+        <button onclick="createMasterProduct()">Create Master Product</button>
+        <div id="masterResult" class="result"></div>
+    </div>
+    
+    <div class="step">
+        <h2>Step 2: Assign to Shop 57</h2>
+        <label>Master Product ID: <input type="number" id="masterProductId" placeholder="Enter ID from step 1"></label><br>
+        <button onclick="assignToShop()">Assign to Shop 57</button>
+        <div id="shopResult" class="result"></div>
+    </div>
+    
+    <div class="step">
+        <h2>Step 3: Upload Image</h2>
+        <label>Shop Product ID: <input type="number" id="shopProductId" placeholder="Enter ID from step 2"></label><br>
+        <input type="file" id="imageFile" accept="image/*"><br>
+        <button onclick="uploadImage()">Upload Image</button>
+        <div id="imageResult" class="result"></div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('auth_token') || 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZWtlc28yNDI0QGNoYXVibG9nLmNvbSIsInJvbGUiOiJTSE9QX09XTkVSIiwic2hvcElkIjo1NywidXNlcklkIjozLCJpYXQiOjE3MzYzNzE0NDQsImV4cCI6MTczNjQ1Nzg0NH0.nUIbmCHJqd3h54TrgtBKkFhg9h9-x4xC0gkWCZa-1pc';
+        const baseUrl = 'http://localhost:8082/api';
+        
+        function createMasterProduct() {
+            const data = {
+                name: "Test Product " + Date.now(),
+                description: "Test product for image upload",
+                sku: "SKU-" + Date.now(),
+                categoryId: 1,
+                brand: "Test Brand",
+                baseUnit: "piece",
+                status: "ACTIVE",
+                isFeatured: false,
+                isGlobal: false
+            };
+            
+            fetch(`${baseUrl}/products/master`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                console.log('Master product result:', result);
+                if (result.data && result.data.id) {
+                    document.getElementById('masterResult').innerHTML = 
+                        `<span class="success">✓ Master Product Created! ID: ${result.data.id}</span><br>
+                         <pre>${JSON.stringify(result.data, null, 2)}</pre>`;
+                    document.getElementById('masterProductId').value = result.data.id;
+                } else {
+                    document.getElementById('masterResult').innerHTML = 
+                        `<span class="error">Error: ${result.message || 'Failed to create'}</span>`;
+                }
+            })
+            .catch(error => {
+                document.getElementById('masterResult').innerHTML = 
+                    `<span class="error">Error: ${error.message}</span>`;
+            });
+        }
+        
+        function assignToShop() {
+            const masterProductId = document.getElementById('masterProductId').value;
+            if (!masterProductId) {
+                alert('Please enter Master Product ID');
+                return;
+            }
+            
+            const data = {
+                masterProductId: parseInt(masterProductId),
+                customName: "Shop Product " + Date.now(),
+                price: 299.99,
+                costPrice: 200,
+                stockQuantity: 100,
+                minStockLevel: 10,
+                maxStockLevel: 1000,
+                trackInventory: true,
+                status: "ACTIVE",
+                isAvailable: true,
+                isFeatured: false
+            };
+            
+            // IMPORTANT: Use shop ID 57, not 1!
+            fetch(`${baseUrl}/shops/57/products`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                console.log('Shop product result:', result);
+                if (result.data && result.data.id) {
+                    document.getElementById('shopResult').innerHTML = 
+                        `<span class="success">✓ Shop Product Created! ID: ${result.data.id}</span><br>
+                         <pre>${JSON.stringify(result.data, null, 2)}</pre>`;
+                    document.getElementById('shopProductId').value = result.data.id;
+                } else {
+                    document.getElementById('shopResult').innerHTML = 
+                        `<span class="error">Error: ${result.message || 'Failed to assign'}</span><br>
+                         <pre>${JSON.stringify(result, null, 2)}</pre>`;
+                }
+            })
+            .catch(error => {
+                document.getElementById('shopResult').innerHTML = 
+                    `<span class="error">Error: ${error.message}</span>`;
+            });
+        }
+        
+        function uploadImage() {
+            const shopProductId = document.getElementById('shopProductId').value;
+            const fileInput = document.getElementById('imageFile');
+            const file = fileInput.files[0];
+            
+            if (!shopProductId) {
+                alert('Please enter Shop Product ID');
+                return;
+            }
+            if (!file) {
+                alert('Please select an image');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('images', file);
+            
+            // Use shop ID 57 and the correct product ID
+            fetch(`${baseUrl}/products/images/shop/57/${shopProductId}`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(result => {
+                console.log('Image upload result:', result);
+                if (result.data) {
+                    document.getElementById('imageResult').innerHTML = 
+                        `<span class="success">✓ Image Uploaded!</span><br>
+                         <pre>${JSON.stringify(result.data, null, 2)}</pre>`;
+                } else {
+                    document.getElementById('imageResult').innerHTML = 
+                        `<span class="error">Error: ${result.message || 'Failed to upload'}</span><br>
+                         <pre>${JSON.stringify(result, null, 2)}</pre>`;
+                }
+            })
+            .catch(error => {
+                document.getElementById('imageResult').innerHTML = 
+                    `<span class="error">Error: ${error.message}</span>`;
+            });
+        }
+    </script>
+</body>
+</html>

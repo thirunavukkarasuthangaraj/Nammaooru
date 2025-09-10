@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Image Upload</title>
+</head>
+<body>
+    <h2>Test Product Image Upload</h2>
+    
+    <div>
+        <label>Shop ID: <input type="number" id="shopId" value="57"></label><br><br>
+        <label>Product ID: <input type="number" id="productId" value="1"></label><br><br>
+        <label>Select Image: <input type="file" id="imageFile" accept="image/*"></label><br><br>
+        <button onclick="uploadImage()">Upload Image</button>
+    </div>
+    
+    <div id="result" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc;"></div>
+
+    <script>
+        const token = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZWtlc28yNDI0QGNoYXVibG9nLmNvbSIsInJvbGUiOiJTSE9QX09XTkVSIiwic2hvcElkIjo1NywidXNlcklkIjozLCJpYXQiOjE3MzYzNzE0NDQsImV4cCI6MTczNjQ1Nzg0NH0.nUIbmCHJqd3h54TrgtBKkFhg9h9-x4xC0gkWCZa-1pc';
+        
+        function uploadImage() {
+            const shopId = document.getElementById('shopId').value;
+            const productId = document.getElementById('productId').value;
+            const fileInput = document.getElementById('imageFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Please select an image file');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('images', file);
+            
+            const url = `http://localhost:8082/api/products/images/shop/${shopId}/${productId}`;
+            
+            document.getElementById('result').innerHTML = 'Uploading...';
+            
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('result').innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                console.log('Upload response:', data);
+            })
+            .catch(error => {
+                document.getElementById('result').innerHTML = 'Error: ' + error.message;
+                console.error('Upload error:', error);
+            });
+        }
+    </script>
+</body>
+</html>

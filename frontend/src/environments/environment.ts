@@ -3,7 +3,7 @@ import packageInfo from '../../package.json';
 export const environment = {
   production: false,
   apiUrl: 'http://localhost:8082/api',
-  appUrl: 'http://localhost:4202',
+  appUrl: 'http://localhost:4200',
   googleMapsApiKey: 'AIzaSyAr_uGbaOnhebjRyz7ohU6N-hWZJVV_R3U',
   websocketUrl: 'ws://localhost:8082/ws',
   version: packageInfo.version,

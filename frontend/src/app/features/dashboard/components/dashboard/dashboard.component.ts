@@ -1,8 +1,8 @@
 import { Component, OnInit } from '@angular/core';
-import { AnalyticsService } from '../../../../core/services/analytics.service';
+import { AnalyticsService, DashboardMetrics } from '../../../../core/services/analytics.service';
 import * as Highcharts from 'highcharts';
 
-export interface DashboardMetrics {
+export interface LocalDashboardMetrics {
   totalUsers: number;
   totalOrders: number;
   totalCustomers: number;
@@ -21,7 +21,7 @@ export interface DashboardMetrics {
   styleUrls: ['./dashboard.component.scss']
 })
 export class DashboardComponent implements OnInit {
-  metrics: DashboardMetrics | null = null;
+  metrics: LocalDashboardMetrics | null = null;
   loading = false;
   selectedPeriod = '30'; // days
 
@@ -39,6 +39,7 @@ export class DashboardComponent implements OnInit {
   constructor(private analyticsService: AnalyticsService) {}
 
   ngOnInit(): void {
+    // Initialize dashboard metrics
     this.loadDashboardMetrics();
   }
 
@@ -63,7 +64,7 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-  private getMockMetrics(): DashboardMetrics {
+  private getMockMetrics(): LocalDashboardMetrics {
     return {
       totalUsers: 324,
       totalOrders: 1234,
@@ -115,6 +116,34 @@ export class DashboardComponent implements OnInit {
 
   formatPercentage(value: number): string {
     return `${value.toFixed(1)}%`;
+  }
+
+  getAverageOrders(): number {
+    if (!this.metrics?.dailyOrdersData || this.metrics.dailyOrdersData.length === 0) {
+      return 0;
+    }
+    const total = this.metrics.dailyOrdersData.reduce((sum, d) => sum + d.orders, 0);
+    return Math.round(total / this.metrics.dailyOrdersData.length);
+  }
+
+  getAverageOrderValue(): number {
+    if (!this.metrics?.dailyOrdersData || this.metrics.dailyOrdersData.length === 0) {
+      return 0;
+    }
+    const total = this.metrics.dailyOrdersData.reduce((sum, d) => sum + d.avgValue, 0);
+    return total / this.metrics.dailyOrdersData.length;
+  }
+
+  getMaxOrders(): number {
+    if (!this.metrics?.dailyOrdersData || this.metrics.dailyOrdersData.length === 0) {
+      return 1;
+    }
+    return Math.max(...this.metrics.dailyOrdersData.map(d => d.orders));
+  }
+
+  formatDate(dateString: string): string {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
 
   setupHighchartsConfiguration(): void {
@@ -208,14 +237,14 @@ export class DashboardComponent implements OnInit {
     };
   }
 
-  private transformMetrics(oldMetrics: any): DashboardMetrics {
+  private transformMetrics(apiMetrics: DashboardMetrics): LocalDashboardMetrics {
     return {
       totalUsers: 324,
-      totalOrders: oldMetrics.totalOrders || 1234,
-      totalCustomers: oldMetrics.totalCustomers || 567,
-      totalShops: oldMetrics.totalShops || 45,
+      totalOrders: apiMetrics.totalOrders || 1234,
+      totalCustomers: apiMetrics.totalCustomers || 567,
+      totalShops: apiMetrics.totalShops || 45,
       totalDeliveryPartners: 28,
-      totalOrderAmount: oldMetrics.totalRevenue || 2847650,
+      totalOrderAmount: apiMetrics.totalRevenue || 2847650,
       totalRefundAmount: 45230,
       dailyOrdersData: [
         { date: '2024-09-04', orders: 45, avgValue: 2100 },

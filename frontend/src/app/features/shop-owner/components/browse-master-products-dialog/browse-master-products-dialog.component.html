@@ -1,0 +1,108 @@
+<div class="browse-master-products-dialog">
+  <div mat-dialog-title>
+    <h2>Browse Master Products</h2>
+    <p>Select products from our master catalog to add to your shop</p>
+  </div>
+
+  <div mat-dialog-content class="dialog-content">
+    <!-- Search bar -->
+    <div class="search-section">
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>Search products...</mat-label>
+        <input matInput [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange()" placeholder="Search by name, brand, or SKU">
+        <mat-icon matSuffix>search</mat-icon>
+      </mat-form-field>
+    </div>
+
+    <!-- Loading state -->
+    <div class="loading-container" *ngIf="loading">
+      <mat-spinner diameter="40"></mat-spinner>
+      <p>Loading master products...</p>
+    </div>
+
+    <!-- Master products list -->
+    <div class="master-products-list" *ngIf="!loading">
+      <div class="product-card" *ngFor="let product of masterProducts" [class.selected]="selectedProduct?.id === product.id">
+        <div class="product-image">
+          <img [src]="product.primaryImageUrl || '/assets/images/no-image.png'" [alt]="product.name">
+          <div class="featured-badge" *ngIf="product.isFeatured">
+            <mat-icon>star</mat-icon>
+          </div>
+        </div>
+        
+        <div class="product-info">
+          <h3 class="product-name">{{ product.name }}</h3>
+          <p class="product-description">{{ product.description }}</p>
+          
+          <div class="product-meta">
+            <span class="category-tag">{{ product.category.name || 'No Category' }}</span>
+            <span class="brand-tag">{{ product.brand }}</span>
+            <span class="sku-text">SKU: {{ product.sku }}</span>
+          </div>
+          
+          <div class="product-unit">
+            <mat-icon>straighten</mat-icon>
+            <span>{{ product.baseWeight }} {{ product.baseUnit }}</span>
+          </div>
+        </div>
+        
+        <div class="product-actions">
+          <button mat-raised-button 
+                  color="primary" 
+                  (click)="selectProduct(product)"
+                  [disabled]="selectedProduct?.id === product.id">
+            {{ selectedProduct?.id === product.id ? 'Selected' : 'Select' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty state -->
+    <div class="empty-state" *ngIf="!loading && masterProducts.length === 0">
+      <mat-icon>search_off</mat-icon>
+      <h3>No products found</h3>
+      <p>Try adjusting your search criteria</p>
+    </div>
+
+    <!-- Assignment form -->
+    <div class="assignment-form" *ngIf="selectedProduct">
+      <mat-divider></mat-divider>
+      <h3>Assign "{{ selectedProduct.name }}" to Your Shop</h3>
+      
+      <div class="form-row">
+        <mat-form-field appearance="outline">
+          <mat-label>Custom Name (optional)</mat-label>
+          <input matInput [(ngModel)]="customName" placeholder="Leave blank to use master product name">
+        </mat-form-field>
+        
+        <mat-form-field appearance="outline" class="price-field">
+          <mat-label>Selling Price *</mat-label>
+          <input matInput type="number" [(ngModel)]="sellingPrice" placeholder="0.00" required>
+          <span matPrefix>₹&nbsp;</span>
+        </mat-form-field>
+      </div>
+      
+      <div class="form-row">
+        <mat-form-field appearance="outline">
+          <mat-label>Custom Description (optional)</mat-label>
+          <textarea matInput [(ngModel)]="customDescription" placeholder="Leave blank to use master product description" rows="2"></textarea>
+        </mat-form-field>
+        
+        <mat-form-field appearance="outline" class="stock-field">
+          <mat-label>Initial Stock</mat-label>
+          <input matInput type="number" [(ngModel)]="initialStock" placeholder="0">
+        </mat-form-field>
+      </div>
+    </div>
+  </div>
+
+  <div mat-dialog-actions class="dialog-actions">
+    <button mat-button (click)="cancel()">Cancel</button>
+    <button mat-raised-button 
+            color="primary" 
+            (click)="assignProduct()" 
+            [disabled]="!selectedProduct || !sellingPrice || sellingPrice <= 0">
+      Assign Product to Shop
+    </button>
+  </div>
+</div>

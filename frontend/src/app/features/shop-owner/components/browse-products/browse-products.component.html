@@ -2,168 +2,146 @@
   <!-- Header -->
   <div class="page-header">
     <div class="header-left">
-      <button mat-icon-button (click)="goBack()" *ngIf="selectedShop">
-        <mat-icon>arrow_back</mat-icon>
-      </button>
       <div>
-        <h1>{{ selectedShop ? selectedShop.name + ' Products' : 'Browse Products from Other Shops' }}</h1>
-        <p *ngIf="!selectedShop">Discover and import products from other shops in the network</p>
-        <p *ngIf="selectedShop">Select products to import into your shop</p>
+        <h1>Browse Master Product Catalog</h1>
+        <p>Discover products from the master catalog and assign them to your shop</p>
       </div>
     </div>
-    <div class="header-actions" *ngIf="selectedShop && selectedProducts.length > 0">
+    <div class="header-actions" *ngIf="selectedProducts.length > 0">
       <span class="selected-count">{{ selectedProducts.length }} selected</span>
       <button mat-button (click)="clearSelection()">Clear</button>
-      <button mat-raised-button color="primary" (click)="importSelectedProducts()" [disabled]="loading">
-        <mat-icon>add_shopping_cart</mat-icon>
-        Import Selected
+      <button mat-raised-button color="primary" (click)="assignSelectedProducts()" [disabled]="loading">
+        <mat-icon>add_business</mat-icon>
+        Assign Selected
       </button>
     </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-bar">
+    <mat-form-field appearance="outline" class="search-field">
+      <mat-label>Search products...</mat-label>
+      <input matInput 
+             [(ngModel)]="searchTerm" 
+             (ngModelChange)="onSearchChange()" 
+             placeholder="Search by name, brand, or description">
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
+    
+    <mat-form-field appearance="outline">
+      <mat-label>Category</mat-label>
+      <mat-select [(ngModel)]="selectedCategory" (selectionChange)="onCategoryChange()">
+        <mat-option value="">All Categories</mat-option>
+        <mat-option *ngFor="let category of categories" [value]="category">
+          {{ category }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <button mat-stroked-button (click)="clearFilters()">
+      <mat-icon>clear</mat-icon>
+      Clear Filters
+    </button>
   </div>
 
   <!-- Loading State -->
   <div class="loading-container" *ngIf="loading">
     <mat-spinner diameter="40"></mat-spinner>
-    <p>{{ selectedShop ? 'Loading shop products...' : 'Loading shops...' }}</p>
+    <p>Loading master products...</p>
   </div>
 
-  <!-- Shop Selection View -->
-  <div class="shops-grid" *ngIf="!selectedShop && !loading">
-    <div class="shop-card" 
-         *ngFor="let shop of filteredShops" 
-         (click)="selectShop(shop)">
+  <!-- Products Grid -->
+  <div class="products-grid" *ngIf="!loading && filteredProducts.length > 0">
+    <div class="product-card" 
+         *ngFor="let product of filteredProducts"
+         [class.selected]="isProductSelected(product)">
       <mat-card>
+        <div class="product-image">
+          <img [src]="product.primaryImageUrl || '/assets/images/no-image.png'" 
+               [alt]="product.name">
+          <mat-checkbox 
+            [checked]="isProductSelected(product)"
+            (change)="toggleProductSelection(product)"
+            class="selection-checkbox">
+          </mat-checkbox>
+          <div class="product-badges">
+            <span class="badge featured" *ngIf="product.isFeatured">Featured</span>
+            <span class="badge global" *ngIf="product.isGlobal">Global</span>
+          </div>
+        </div>
+        
         <mat-card-content>
-          <div class="shop-header">
-            <div class="shop-info">
-              <h3>{{ shop.name }}</h3>
-              <p class="shop-category">{{ shop.category || 'General' }}</p>
+          <h3>{{ product.name }}</h3>
+          <p class="product-description">{{ product.description || 'No description' }}</p>
+          
+          <div class="product-info">
+            <div class="price-range" *ngIf="product.minPrice && product.maxPrice">
+              <span class="price-label">Price Range:</span>
+              <span class="price-value">₹{{ product.minPrice }} - ₹{{ product.maxPrice }}</span>
             </div>
-            <div class="shop-rating" *ngIf="shop.rating">
-              <mat-icon>star</mat-icon>
-              <span>{{ shop.rating }}</span>
+            
+            <div class="shop-count" *ngIf="product.shopCount">
+              <mat-icon>store</mat-icon>
+              <span>{{ product.shopCount }} shops selling</span>
             </div>
           </div>
-          <p class="shop-description">{{ shop.description || 'No description available' }}</p>
-          <div class="shop-meta">
-            <span class="location" *ngIf="shop.location">
-              <mat-icon>location_on</mat-icon>
-              {{ shop.location }}
+          
+          <div class="product-meta">
+            <span class="category-tag" *ngIf="product.category?.name">
+              {{ product.category?.name }}
             </span>
-            <span class="status active">
-              <mat-icon>check_circle</mat-icon>
-              Active
+            <span class="brand-tag" *ngIf="product.brand">
+              {{ product.brand }}
+            </span>
+            <span class="unit-tag" *ngIf="product.baseUnit">
+              {{ product.baseUnit }}
+            </span>
+            <span class="sku" *ngIf="product.sku">
+              SKU: {{ product.sku }}
             </span>
           </div>
         </mat-card-content>
+        
         <mat-card-actions>
-          <button mat-button>
-            <mat-icon>visibility</mat-icon>
-            View Products
+          <button mat-button (click)="toggleProductSelection(product)">
+            <mat-icon>{{ isProductSelected(product) ? 'remove_shopping_cart' : 'add_shopping_cart' }}</mat-icon>
+            {{ isProductSelected(product) ? 'Remove' : 'Select' }}
+          </button>
+          <button mat-button (click)="openAssignmentDialog(product)" color="primary">
+            <mat-icon>settings</mat-icon>
+            Assign & Price
           </button>
         </mat-card-actions>
       </mat-card>
     </div>
   </div>
 
-  <!-- Empty Shops State -->
-  <div class="empty-state" *ngIf="!selectedShop && !loading && filteredShops.length === 0">
-    <div class="empty-icon">
-      <mat-icon>store</mat-icon>
-    </div>
-    <h3>No shops available</h3>
-    <p>There are currently no other shops available to browse products from.</p>
+  <!-- Pagination -->
+  <div class="pagination-container" *ngIf="!loading && filteredProducts.length > 0">
+    <mat-paginator 
+      [length]="totalProducts" 
+      [pageSize]="pageSize" 
+      [pageSizeOptions]="[12, 24, 36, 48]"
+      [pageIndex]="currentPage"
+      [showFirstLastButtons]="true"
+      (page)="onPageChange($event.pageIndex)">
+    </mat-paginator>
   </div>
 
-  <!-- Products View -->
-  <div class="products-section" *ngIf="selectedShop && !loading">
-    <!-- Filters -->
-    <div class="filters-bar">
-      <mat-form-field appearance="outline" class="search-field">
-        <mat-label>Search products...</mat-label>
-        <input matInput 
-               [(ngModel)]="searchTerm" 
-               (ngModelChange)="onSearchChange()" 
-               placeholder="Search by name or description">
-        <mat-icon matSuffix>search</mat-icon>
-      </mat-form-field>
-      
-      <mat-form-field appearance="outline">
-        <mat-label>Category</mat-label>
-        <mat-select [(ngModel)]="selectedCategory" (selectionChange)="onCategoryChange()">
-          <mat-option value="">All Categories</mat-option>
-          <mat-option *ngFor="let category of categories" [value]="category">
-            {{ category }}
-          </mat-option>
-        </mat-select>
-      </mat-form-field>
+  <!-- Empty State -->
+  <div class="empty-state" *ngIf="!loading && filteredProducts.length === 0">
+    <div class="empty-icon">
+      <mat-icon>inventory_2</mat-icon>
     </div>
-
-    <!-- Products Grid -->
-    <div class="products-grid" *ngIf="filteredProducts.length > 0">
-      <div class="product-card" 
-           *ngFor="let product of filteredProducts"
-           [class.selected]="isProductSelected(product)">
-        <mat-card>
-          <div class="product-image">
-            <img [src]="product.imageUrl || '/assets/images/no-image.png'" 
-                 [alt]="product.customName">
-            <mat-checkbox 
-              [checked]="isProductSelected(product)"
-              (change)="toggleProductSelection(product)"
-              class="selection-checkbox">
-            </mat-checkbox>
-          </div>
-          
-          <mat-card-content>
-            <h3>{{ product.customName }}</h3>
-            <p class="product-description">{{ product.description || 'No description' }}</p>
-            
-            <div class="product-info">
-              <div class="price-info">
-                <span class="price">{{ formatCurrency(product.price) }}</span>
-                <span class="unit">per {{ product.unit || 'piece' }}</span>
-              </div>
-              
-              <div class="stock-info">
-                <span class="stock" [class.low-stock]="product.stockQuantity < 10">
-                  {{ product.stockQuantity }} in stock
-                </span>
-              </div>
-            </div>
-            
-            <div class="product-meta">
-              <span class="category-tag" *ngIf="product.category">
-                {{ product.category }}
-              </span>
-              <span class="sku" *ngIf="product.sku">
-                SKU: {{ product.sku }}
-              </span>
-            </div>
-          </mat-card-content>
-          
-          <mat-card-actions>
-            <button mat-button (click)="toggleProductSelection(product)">
-              <mat-icon>{{ isProductSelected(product) ? 'remove_shopping_cart' : 'add_shopping_cart' }}</mat-icon>
-              {{ isProductSelected(product) ? 'Remove' : 'Add to Import' }}
-            </button>
-          </mat-card-actions>
-        </mat-card>
-      </div>
-    </div>
-
-    <!-- Empty Products State -->
-    <div class="empty-state" *ngIf="filteredProducts.length === 0">
-      <div class="empty-icon">
-        <mat-icon>inventory_2</mat-icon>
-      </div>
-      <h3>No products found</h3>
-      <p *ngIf="products.length === 0">This shop has no available products.</p>
-      <p *ngIf="products.length > 0">Try adjusting your search or filter criteria.</p>
-      <button mat-button (click)="searchTerm = ''; selectedCategory = ''; applyFilters()" 
-              *ngIf="products.length > 0">
-        Clear Filters
-      </button>
-    </div>
+    <h3>No products found</h3>
+    <p *ngIf="searchTerm || selectedCategory">
+      No products match your search criteria. Try adjusting your filters.
+    </p>
+    <p *ngIf="!searchTerm && !selectedCategory">
+      The master product catalog appears to be empty.
+    </p>
+    <button mat-button (click)="clearFilters()" *ngIf="searchTerm || selectedCategory">
+      Clear Filters
+    </button>
   </div>
 </div>

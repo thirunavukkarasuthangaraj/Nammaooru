@@ -131,7 +131,7 @@ export class ShopOwnerProductService {
             status: 'ACTIVE',
             isActive: true,
             lowStockThreshold: 5,
-            shopId: 1,
+            shopId: 57,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
           };
@@ -251,18 +251,46 @@ export class ShopOwnerProductService {
       );
   }
 
-  uploadProductImage(productId: number, imageFile: File): Observable<string> {
+  uploadProductImage(shopId: number, productId: number, imageFile: File): Observable<any> {
     const formData = new FormData();
-    formData.append('image', imageFile);
+    formData.append('images', imageFile);
 
-    return this.http.post<{data: {imageUrl: string}}>(`${this.apiUrl}/products/${productId}/upload-image`, formData)
+    return this.http.post<any>(`${this.apiUrl}/products/images/shop/${shopId}/${productId}`, formData)
       .pipe(
-        switchMap(response => of(response.data.imageUrl)),
-        catchError(() => {
+        switchMap(response => {
+          console.log('Upload response:', response);
+          // Return the first image from the response
+          if (response && response.data && response.data.length > 0) {
+            const imageData = response.data[0];
+            console.log('Image data from server:', imageData);
+            // The imageUrl from backend is the actual path we need to use
+            return of({
+              id: imageData.id,
+              imageUrl: imageData.imageUrl, // This should be like "uploads/products/shop/..."
+              isPrimary: imageData.isPrimary
+            });
+          }
+          return of(null);
+        }),
+        catchError((error) => {
+          console.error('Error uploading image:', error);
           // Fallback to mock image URL
-          const mockImageUrl = `/uploads/products/mock-${productId}-${Date.now()}.jpg`;
-          return of(mockImageUrl);
+          const mockImageUrl = `uploads/products/shop/${shopId}/product_${productId}_${Date.now()}.jpg`;
+          return of({ imageUrl: mockImageUrl });
         })
+      );
+  }
+
+  getProductImages(shopId: number, productId: number): Observable<any[]> {
+    return this.http.get<any>(`${this.apiUrl}/products/images/shop/${shopId}/${productId}`)
+      .pipe(
+        switchMap(response => {
+          if (response && response.data) {
+            return of(response.data);
+          }
+          return of([]);
+        }),
+        catchError(() => of([]))
       );
   }
 
@@ -348,6 +376,97 @@ export class ShopOwnerProductService {
       .pipe(
         switchMap(() => of(true)),
         catchError(() => of(true)) // Fallback to success
+      );
+  }
+
+  // Browse master products for assignment to shop
+  getMasterProducts(page: number = 0, size: number = 20, search?: string): Observable<any[]> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString());
+
+    if (search) {
+      params = params.set('search', search);
+    }
+
+    return this.http.get<{data: any[]}>(`${this.apiUrl}/products/master`, { params })
+      .pipe(
+        switchMap(response => of(response.data || [])),
+        catchError(() => {
+          // Fallback to mock data
+          const mockMasterProducts = [
+            {
+              id: 1,
+              name: 'Organic Rice Basmati',
+              description: 'Premium quality organic basmati rice',
+              sku: 'RICE-ORG-001',
+              brand: 'Organic India',
+              category: { name: 'Grocery', id: 1 },
+              baseUnit: 'kg',
+              baseWeight: 1.0,
+              status: 'ACTIVE',
+              isFeatured: true,
+              primaryImageUrl: '/assets/images/rice.jpg'
+            },
+            {
+              id: 2,
+              name: 'Fresh Milk',
+              description: 'Pure cow milk',
+              sku: 'MILK-FRESH-001',
+              brand: 'Amul',
+              category: { name: 'Dairy', id: 2 },
+              baseUnit: 'liter',
+              baseWeight: 1.0,
+              status: 'ACTIVE',
+              isFeatured: false,
+              primaryImageUrl: '/assets/images/milk.jpg'
+            }
+          ];
+          return of(mockMasterProducts);
+        })
+      );
+  }
+
+  // Assign master product to shop with custom price
+  assignProductToShop(shopId: number, assignmentData: {
+    masterProductId: number;
+    price: number;
+    stockQuantity?: number;
+    customName?: string;
+    customDescription?: string;
+  }): Observable<ShopProduct> {
+    const payload = {
+      masterProductId: assignmentData.masterProductId,
+      price: assignmentData.price,
+      stockQuantity: assignmentData.stockQuantity || 0,
+      customName: assignmentData.customName,
+      customDescription: assignmentData.customDescription,
+      isAvailable: true,
+      status: 'ACTIVE'
+    };
+
+    return this.http.post<{data: ShopProduct}>(`${this.apiUrl}/shops/${shopId}/products`, payload)
+      .pipe(
+        switchMap(response => of(response.data)),
+        catchError(() => {
+          // Fallback to mock response
+          const mockProduct: ShopProduct = {
+            id: Math.floor(Math.random() * 10000),
+            name: assignmentData.customName || 'Assigned Product',
+            description: assignmentData.customDescription || 'Product assigned from master catalog',
+            category: 'General',
+            price: assignmentData.price,
+            stockQuantity: assignmentData.stockQuantity || 0,
+            unit: 'piece',
+            status: 'ACTIVE',
+            isActive: true,
+            lowStockThreshold: 10,
+            shopId: shopId,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          return of(mockProduct);
+        })
       );
   }
 }

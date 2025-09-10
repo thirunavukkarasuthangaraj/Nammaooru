@@ -10,7 +10,7 @@ import { RoleTestComponent } from './shared/components/role-test/role-test.compo
 const routes: Routes = [
   {
     path: '',
-    redirectTo: '/shops',
+    redirectTo: '/shop-owner',
     pathMatch: 'full'
   },
   {
@@ -108,7 +108,7 @@ const routes: Routes = [
   },
   {
     path: '**',
-    redirectTo: '/shops'
+    redirectTo: '/dashboard'
   }
 ];
 

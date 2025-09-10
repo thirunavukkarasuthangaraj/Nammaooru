@@ -1,0 +1,161 @@
+<h2 mat-dialog-title>Edit Product</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="editForm" class="edit-form">
+    
+    <!-- Image Upload Section -->
+    <div class="image-upload-section">
+      <div class="current-image">
+        <img [src]="imagePreview || getProductImageUrl()" 
+             alt="Product image" 
+             class="product-image-preview">
+      </div>
+      
+      <div class="upload-controls">
+        <input type="file" 
+               #fileInput 
+               (change)="onFileSelected($event)" 
+               accept="image/*" 
+               style="display: none">
+        
+        <button mat-stroked-button 
+                type="button"
+                (click)="fileInput.click()">
+          <mat-icon>cloud_upload</mat-icon>
+          {{ selectedFile ? 'Change Image' : (data.imageUrl ? 'Change Image' : 'Upload Image') }}
+        </button>
+        
+        <span class="file-name" *ngIf="selectedFile">
+          {{ selectedFile.name }}
+        </span>
+        
+        <button mat-icon-button 
+                type="button"
+                *ngIf="selectedFile || imagePreview"
+                (click)="clearImage()"
+                matTooltip="Remove image">
+          <mat-icon>clear</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Product Name -->
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Product Name</mat-label>
+      <input matInput formControlName="customName" placeholder="Enter product name">
+      <mat-error *ngIf="editForm.get('customName')?.hasError('required')">
+        Product name is required
+      </mat-error>
+      <mat-error *ngIf="editForm.get('customName')?.hasError('minlength')">
+        Name must be at least 3 characters
+      </mat-error>
+    </mat-form-field>
+
+    <!-- Description -->
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Description</mat-label>
+      <textarea matInput formControlName="description" 
+                placeholder="Enter product description" 
+                rows="3"></textarea>
+    </mat-form-field>
+
+    <!-- Price and Cost Price Row -->
+    <div class="form-row">
+      <mat-form-field appearance="outline">
+        <mat-label>Selling Price (₹)</mat-label>
+        <input matInput type="number" formControlName="price" placeholder="0.00">
+        <mat-icon matPrefix>currency_rupee</mat-icon>
+        <mat-error *ngIf="editForm.get('price')?.hasError('required')">
+          Price is required
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Cost Price (₹)</mat-label>
+        <input matInput type="number" formControlName="costPrice" placeholder="0.00">
+        <mat-icon matPrefix>currency_rupee</mat-icon>
+      </mat-form-field>
+    </div>
+
+    <!-- Profit Information -->
+    <div class="profit-info" *ngIf="editForm.get('price')?.value && editForm.get('costPrice')?.value">
+      <div class="profit-item">
+        <span class="label">Profit:</span>
+        <span class="value profit">₹{{ calculateProfit() | number:'1.2-2' }}</span>
+      </div>
+      <div class="profit-item">
+        <span class="label">Margin:</span>
+        <span class="value margin">{{ calculateProfitMargin() | number:'1.1-1' }}%</span>
+      </div>
+    </div>
+
+    <!-- Stock and Unit Row -->
+    <div class="form-row">
+      <mat-form-field appearance="outline">
+        <mat-label>Stock Quantity</mat-label>
+        <input matInput type="number" formControlName="stockQuantity" placeholder="0">
+        <mat-icon matPrefix>inventory_2</mat-icon>
+        <mat-error *ngIf="editForm.get('stockQuantity')?.hasError('required')">
+          Stock quantity is required
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Unit</mat-label>
+        <mat-select formControlName="unit">
+          <mat-option *ngFor="let unit of units" [value]="unit">
+            {{ unit }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <!-- Category and SKU Row -->
+    <div class="form-row">
+      <mat-form-field appearance="outline">
+        <mat-label>Category</mat-label>
+        <mat-select formControlName="category">
+          <mat-option value="">None</mat-option>
+          <mat-option *ngFor="let cat of categories" [value]="cat">
+            {{ cat }}
+          </mat-option>
+        </mat-select>
+        <mat-icon matPrefix>category</mat-icon>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>SKU</mat-label>
+        <input matInput formControlName="sku" placeholder="Product SKU">
+        <mat-icon matPrefix>qr_code</mat-icon>
+      </mat-form-field>
+    </div>
+
+    <!-- Status and Availability Row -->
+    <div class="form-row">
+      <mat-form-field appearance="outline">
+        <mat-label>Status</mat-label>
+        <mat-select formControlName="status">
+          <mat-option *ngFor="let status of statuses" [value]="status">
+            {{ status }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <div class="availability-toggle">
+        <mat-slide-toggle formControlName="isAvailable" color="primary">
+          Product Available for Sale
+        </mat-slide-toggle>
+      </div>
+    </div>
+
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()">Cancel</button>
+  <button mat-raised-button color="primary" 
+          (click)="onSubmit()" 
+          [disabled]="!editForm.valid">
+    Save Changes
+  </button>
+</mat-dialog-actions>

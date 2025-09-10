@@ -87,7 +87,15 @@
       "Bash(TASKKILL /F /PID 5032)",
       "Bash(TASKKILL /F /PID 25572)",
       "Bash(TASKKILL /F /PID 19924)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(/bashes)",
+      "Bash(TASKKILL /F /PID 27208)",
+      "Bash(\"taskkill\" \"/F\" \"/PID\" \"27208\")",
+      "Bash(tasklist:*)",
+      "Bash(TASKKILL /F /PID 16988)",
+      "Bash(\"taskkill\" \"/F\" \"/PID\" \"16988\")",
+      "Bash(TASKKILL /F /PID 23392)",
+      "Bash(\"taskkill\" \"/F\" \"/PID\" \"23392\")"
     ],
     "deny": [],
     "ask": [],

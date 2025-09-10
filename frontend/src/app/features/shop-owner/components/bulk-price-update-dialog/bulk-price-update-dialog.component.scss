@@ -1,0 +1,112 @@
+.bulk-price-dialog {
+  .dialog-content {
+    padding: 20px;
+    max-width: 600px;
+  }
+
+  .selected-count {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+    padding: 12px;
+    background-color: #e3f2fd;
+    border-radius: 8px;
+    font-weight: 500;
+    color: #1976d2;
+
+    mat-icon {
+      color: #1976d2;
+    }
+  }
+
+  .update-form {
+    .full-width {
+      width: 100%;
+      margin-bottom: 16px;
+    }
+  }
+
+  .preview-section {
+    margin-top: 24px;
+    padding: 16px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background-color: #fafafa;
+
+    h3 {
+      margin-bottom: 16px;
+      color: #333;
+      font-size: 16px;
+    }
+
+    .preview-list {
+      .preview-item {
+        padding: 8px 0;
+        border-bottom: 1px solid #eee;
+
+        &:last-child {
+          border-bottom: none;
+        }
+
+        .product-info {
+          .product-name {
+            font-weight: 500;
+            display: block;
+            margin-bottom: 4px;
+          }
+
+          .price-comparison {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+
+            .current-price {
+              color: #666;
+              text-decoration: line-through;
+            }
+
+            .new-price {
+              color: #1976d2;
+              font-weight: 500;
+            }
+
+            mat-icon {
+              font-size: 16px;
+              width: 16px;
+              height: 16px;
+              color: #999;
+            }
+          }
+        }
+      }
+
+      .more-indicator {
+        text-align: center;
+        padding: 12px;
+        color: #666;
+        font-style: italic;
+        font-size: 14px;
+      }
+    }
+  }
+
+  .warning-message {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+    padding: 8px 12px;
+    background-color: #fff3e0;
+    color: #ef6c00;
+    border-radius: 4px;
+    font-size: 14px;
+
+    mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+    }
+  }
+}

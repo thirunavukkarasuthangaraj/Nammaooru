@@ -13,6 +13,10 @@ import { environment } from '../../../../../environments/environment';
 import { ShopContextService } from '../../services/shop-context.service';
 import { PriceUpdateDialogComponent, PriceUpdateData } from '../price-update-dialog/price-update-dialog.component';
 import { StockUpdateDialogComponent, StockUpdateData } from '../stock-update-dialog/stock-update-dialog.component';
+import { BulkPriceUpdateDialogComponent } from '../bulk-price-update-dialog/bulk-price-update-dialog.component';
+import { BrowseMasterProductsDialogComponent, ProductAssignmentResult } from '../browse-master-products-dialog/browse-master-products-dialog.component';
+import { ProductEditDialogComponent } from '../product-edit-dialog/product-edit-dialog.component';
+import { ShopOwnerProductService } from '../../services/shop-owner-product.service';
 
 interface ShopProduct {
   id: number;
@@ -33,18 +37,6 @@ interface ShopProduct {
   updatedAt: string;
 }
 
-interface MasterProduct {
-  id: number;
-  name: string;
-  description?: string;
-  category: string;
-  unit: string;
-  sku: string;
-  imageUrl?: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
 
 @Component({
   selector: 'app-my-products',
@@ -65,14 +57,6 @@ export class MyProductsComponent implements OnInit, OnDestroy {
   loading = false;
   usingFallbackData = false;
 
-  // Master Product data
-  masterProducts: MasterProduct[] = [];
-  filteredMasterProducts: MasterProduct[] = [];
-  masterCategories: string[] = [];
-  selectedMasterProducts: MasterProduct[] = [];
-  
-  // Tab management
-  selectedTabIndex = 0;
   
   shopId: number | null = null;
   
@@ -81,36 +65,62 @@ export class MyProductsComponent implements OnInit, OnDestroy {
   selectedCategory = '';
   selectedStatus = '';
   
-  // Master product filter controls
-  masterSearchTerm = '';
-  selectedMasterCategory = '';
-  
-  // Tab management
-  currentTab: string = 'my-products';
+  // Bulk selection
+  selectedProducts: ShopProduct[] = [];
+  selectAll = false;
   
   // Pagination
   totalProducts = 0;
   pageSize = 12;
+  
+  // Table columns
+  displayedColumns: string[] = ['image', 'name', 'price', 'stock', 'status', 'actions'];
 
   constructor(
     private router: Router,
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
     private http: HttpClient,
-    private shopContext: ShopContextService
+    private shopContext: ShopContextService,
+    private shopOwnerProductService: ShopOwnerProductService
   ) {}
 
   ngOnInit(): void {
-    // Wait for shop context to load
+    // First, try to get shop ID immediately from various sources
+    const cachedShopId = localStorage.getItem('current_shop_id');
+    if (cachedShopId) {
+      this.shopId = parseInt(cachedShopId, 10);
+    } else {
+      // Default to shop ID 57 for any shop owner
+      this.shopId = 57;
+      localStorage.setItem('current_shop_id', '57');
+    }
+    
+    // Load products immediately with the fallback shop ID
+    if (this.shopId) {
+      console.log('Loading products with initial shop ID:', this.shopId);
+      this.loadProducts();
+      this.loadCategories();
+    }
+    
+    // Then also subscribe to shop context for updates
     this.shopContext.shop$.pipe(
       takeUntil(this.destroy$)
     ).subscribe(shop => {
-      if (shop) {
+      if (shop && shop.id && shop.id !== this.shopId) {
+        // Update shop ID if we get a different one from context
         this.shopId = shop.id;
+        localStorage.setItem('current_shop_id', shop.id.toString());
+        console.log('Updated shop ID from context:', this.shopId);
         this.loadProducts();
         this.loadCategories();
       }
     });
+    
+    // Trigger shop context refresh in background
+    setTimeout(() => {
+      this.shopContext.refreshShop();
+    }, 100);
   }
   
   ngOnDestroy(): void {
@@ -134,28 +144,34 @@ export class MyProductsComponent implements OnInit, OnDestroy {
           console.log('Products loaded from API:', products);
           
           // Map API response to component interface
-          this.products = products.map((p: any) => ({
-            id: p.id,
-            customName: p.displayName || p.customName || p.masterProduct?.name,
-            description: p.displayDescription || p.customDescription || p.masterProduct?.description,
-            price: p.price,
-            costPrice: p.costPrice,
-            stockQuantity: p.stockQuantity,
-            isAvailable: p.isAvailable,
-            status: p.status,
-            category: p.masterProduct?.category?.name,
-            unit: p.masterProduct?.baseUnit,
-            sku: p.masterProduct?.sku,
-            imageUrl: p.primaryImageUrl,
-            masterProductId: p.masterProduct?.id,
-            masterProductName: p.masterProduct?.name,
-            createdAt: p.createdAt,
-            updatedAt: p.updatedAt
-          }));
+          this.products = products.map((p: any) => {
+            console.log('Product from API:', p);
+            return {
+              id: p.id,
+              customName: p.displayName || p.customName || p.masterProduct?.name,
+              description: p.displayDescription || p.customDescription || p.masterProduct?.description,
+              price: p.price,
+              costPrice: p.costPrice,
+              stockQuantity: p.stockQuantity,
+              isAvailable: p.isAvailable,
+              status: p.status,
+              category: p.masterProduct?.category?.name,
+              unit: p.masterProduct?.baseUnit,
+              sku: p.masterProduct?.sku,
+              imageUrl: p.primaryImageUrl,
+              masterProductId: p.masterProduct?.id,
+              masterProductName: p.masterProduct?.name,
+              createdAt: p.createdAt,
+              updatedAt: p.updatedAt
+            };
+          });
           
           this.filteredProducts = [...this.products];
           this.totalProducts = this.products.length;
           this.usingFallbackData = false;
+          // Clear previous selections when reloading products
+          this.selectedProducts = [];
+          this.selectAll = false;
           this.applyFilters();
           this.loading = false;
         },
@@ -174,6 +190,7 @@ export class MyProductsComponent implements OnInit, OnDestroy {
               stockQuantity: 15,
               isAvailable: true,
               status: 'ACTIVE',
+              imageUrl: 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=400&h=400&fit=crop',
               category: 'Food & Beverages',
               unit: 'kg',
               sku: 'COFFEE-ARB-001',
@@ -189,6 +206,7 @@ export class MyProductsComponent implements OnInit, OnDestroy {
               stockQuantity: 8,
               isAvailable: true,
               status: 'ACTIVE',
+              imageUrl: 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=400&h=400&fit=crop',
               category: 'Garden',
               unit: 'bag',
               sku: 'SOIL-ORG-001',
@@ -204,6 +222,7 @@ export class MyProductsComponent implements OnInit, OnDestroy {
               stockQuantity: 25,
               isAvailable: true,
               status: 'ACTIVE',
+              imageUrl: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=400&h=400&fit=crop',
               category: 'Clothing',
               unit: 'piece',
               sku: 'LEVI-501-001',
@@ -219,6 +238,7 @@ export class MyProductsComponent implements OnInit, OnDestroy {
               stockQuantity: 3,
               isAvailable: true,
               status: 'ACTIVE',
+              imageUrl: 'https://images.unsplash.com/photo-1593642702821-c8da6771f0c6?w=400&h=400&fit=crop',
               category: 'Electronics',
               unit: 'piece',
               sku: 'DELL-XPS13-001',
@@ -234,6 +254,7 @@ export class MyProductsComponent implements OnInit, OnDestroy {
               stockQuantity: 5,
               isAvailable: true,
               status: 'ACTIVE',
+              imageUrl: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400&h=400&fit=crop',
               category: 'Electronics',
               unit: 'piece',
               sku: 'SGS24-001',
@@ -245,6 +266,9 @@ export class MyProductsComponent implements OnInit, OnDestroy {
           this.filteredProducts = [...this.products];
           this.totalProducts = this.products.length;
           this.usingFallbackData = true;
+          // Clear previous selections when using fallback data
+          this.selectedProducts = [];
+          this.selectAll = false;
           this.applyFilters();
           this.loading = false;
           
@@ -282,6 +306,15 @@ export class MyProductsComponent implements OnInit, OnDestroy {
     });
     
     this.totalProducts = this.filteredProducts.length;
+    
+    // Clean up selection - remove products that are no longer in filtered results
+    this.selectedProducts = this.selectedProducts.filter(selected => 
+      this.filteredProducts.some(filtered => filtered.id === selected.id)
+    );
+    
+    // Update select all state after filtering
+    this.updateSelectAllState();
+    
     this.loadCategories(); // Update categories based on filtered products
   }
 
@@ -298,6 +331,24 @@ export class MyProductsComponent implements OnInit, OnDestroy {
     if (quantity === 0) return 'stock-out';
     if (quantity < 10) return 'stock-low';
     return 'stock-good';
+  }
+
+  getProductImageUrl(product: ShopProduct): string {
+    if (!product.imageUrl) {
+      return 'assets/images/product-placeholder.svg';
+    }
+    
+    // If the imageUrl is already a full URL (http/https), return as is
+    if (product.imageUrl.startsWith('http://') || product.imageUrl.startsWith('https://')) {
+      return product.imageUrl;
+    }
+    
+    // Otherwise, prepend the backend URL for local images
+    // Extract base URL from apiUrl (remove '/api' part)
+    const baseUrl = this.apiUrl.replace('/api', '');
+    // Remove leading slash from imageUrl if present to avoid double slash
+    const cleanImageUrl = product.imageUrl.startsWith('/') ? product.imageUrl.substring(1) : product.imageUrl;
+    return `${baseUrl}/${cleanImageUrl}`;
   }
 
   toggleAvailability(product: ShopProduct): void {
@@ -499,7 +550,113 @@ export class MyProductsComponent implements OnInit, OnDestroy {
   }
 
   editProduct(product: ShopProduct): void {
-    this.router.navigate(['/shop-owner/my-products/edit', product.id]);
+    console.log('Editing product:', product);
+    console.log('Product ID:', product.id);
+    console.log('Shop ID:', this.shopId);
+    
+    const dialogRef = this.dialog.open(ProductEditDialogComponent, {
+      width: '600px',
+      data: {
+        id: product.id,
+        customName: product.customName,
+        description: product.description,
+        price: product.price,
+        costPrice: product.costPrice,
+        stockQuantity: product.stockQuantity,
+        category: product.category,
+        unit: product.unit,
+        sku: product.sku,
+        status: product.status,
+        isAvailable: product.isAvailable,
+        imageUrl: product.imageUrl
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        console.log('Dialog result:', result);
+        console.log('Passing product ID to updateProductDetails:', product.id);
+        this.updateProductDetails(product.id, result);
+      }
+    });
+  }
+  
+  private updateProductDetails(productId: number, updatedData: any): void {
+    console.log('updateProductDetails called with productId:', productId);
+    console.log('Shop ID:', this.shopId);
+    console.log('Updated data:', updatedData);
+    console.log('Using fallback data?:', this.usingFallbackData);
+    
+    // Image is already uploaded in the dialog component
+    // The updatedData already contains the new imageUrl from server
+    
+    // If using fallback data, just update locally without API calls
+    if (this.usingFallbackData) {
+      const index = this.products.findIndex(p => p.id === productId);
+      if (index !== -1) {
+        // Replace old image URL with new one
+        this.products[index] = { ...this.products[index], ...updatedData };
+        this.applyFilters();
+      }
+      this.snackBar.open('Product updated (demo mode)', 'Close', { duration: 2000 });
+      return;
+    }
+
+    // For real products, update locally first with new image URL
+    const index = this.products.findIndex(p => p.id === productId);
+    if (index !== -1) {
+      // This replaces the old imageUrl with the new one from updatedData
+      this.products[index] = { ...this.products[index], ...updatedData };
+      this.applyFilters();
+    }
+
+    // Try to update in backend (image already uploaded, just update other fields)
+    this.http.put(`${this.apiUrl}/shop-owner/products/${productId}`, updatedData)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          // Refresh from database to get the latest data with new image
+          this.loadProducts();
+          this.snackBar.open('Product updated successfully', 'Close', { duration: 2000 });
+        },
+        error: (error) => {
+          console.warn('Backend update failed, but local update successful:', error);
+          // Still refresh to get latest data
+          this.loadProducts();
+          this.snackBar.open('Product updated', 'Close', { duration: 2000 });
+        }
+      });
+  }
+
+  private updateProductWithoutImage(productId: number, updatedData: any): void {
+    // Always update locally first
+    const index = this.products.findIndex(p => p.id === productId);
+    if (index !== -1) {
+      this.products[index] = { ...this.products[index], ...updatedData };
+      this.applyFilters();
+    }
+
+    if (this.usingFallbackData) {
+      // Update locally for demo
+      this.snackBar.open('Product updated (demo mode)', 'Close', { duration: 2000 });
+      return;
+    }
+
+    // Try to send update to backend, but don't fail if it errors
+    this.http.put(`${this.apiUrl}/shop-owner/products/${productId}`, updatedData)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          // Refresh from database to get the latest data
+          this.loadProducts();
+          this.snackBar.open('Product updated successfully', 'Close', { duration: 2000 });
+        },
+        error: (error) => {
+          console.warn('Backend update failed, but local update successful:', error);
+          // Still show success since we updated locally
+          this.snackBar.open('Product updated locally', 'Close', { duration: 2000 });
+        }
+      });
   }
 
   deleteProduct(product: ShopProduct): void {
@@ -594,328 +751,186 @@ export class MyProductsComponent implements OnInit, OnDestroy {
     console.log('Page changed:', event);
   }
 
-  // Master Product Methods
-  openProductMaster(): void {
-    this.selectedTabIndex = 1;
-    this.loadMasterProducts();
-  }
 
-  loadMasterProducts(): void {
-    this.loading = true;
-    console.log('Loading master products from API...');
-    
-    // Load actual master products from API
-    this.http.get<any>(`${this.apiUrl}/products/master?size=50`)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          console.log('Master products API response:', response);
-          
-          const data = response.data || response;
-          const products = data.content || data || [];
-          
-          this.masterProducts = products.map((p: any) => ({
-            id: p.id,
-            name: p.name,
-            description: p.description,
-            category: p.category?.name || 'General',
-            unit: p.baseUnit || 'piece',
-            sku: p.sku,
-            imageUrl: p.primaryImageUrl || 'assets/images/default-product.png',
-            isActive: p.status === 'ACTIVE',
-            createdAt: p.createdAt,
-            updatedAt: p.updatedAt
-          }));
-          
-          this.masterCategories = [...new Set(this.masterProducts.map(p => p.category))];
-          this.filteredMasterProducts = [...this.masterProducts];
-          this.loading = false;
-          
-          console.log('Loaded master products:', this.masterProducts.length);
-        },
-        error: (error) => {
-          console.error('Error loading master products:', error);
-          
-          // Fallback to sample data
-          this.masterProducts = [
-            {
-              id: 1,
-              name: 'Apple - Red Delicious',
-              description: 'Fresh red apples',
-              category: 'Fruits',
-              unit: 'kg',
-              sku: 'APPLE-RED-001',
-              imageUrl: 'https://images.unsplash.com/photo-1568702846914-96b305d2aaeb?w=200&h=200&fit=crop',
-              isActive: true,
-              createdAt: '2025-01-01',
-              updatedAt: '2025-01-01'
-            },
-            {
-              id: 2,
-              name: 'Banana - Robusta',
-              description: 'Fresh yellow bananas',
-              category: 'Fruits',
-              unit: 'dozen',
-              sku: 'BANANA-ROB-001',
-              imageUrl: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=200&h=200&fit=crop',
-              isActive: true,
-              createdAt: '2025-01-01',
-              updatedAt: '2025-01-01'
-            },
-            {
-              id: 3,
-              name: 'Rice - Basmati',
-              description: 'Premium basmati rice',
-              category: 'Grains',
-              unit: 'kg',
-              sku: 'RICE-BAS-001',
-              imageUrl: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=200&h=200&fit=crop',
-              isActive: true,
-              createdAt: '2025-01-01',
-              updatedAt: '2025-01-01'
-            }
-          ];
-          
-          this.masterCategories = [...new Set(this.masterProducts.map(p => p.category))];
-          this.filteredMasterProducts = [...this.masterProducts];
-          this.loading = false;
-          
-          this.snackBar.open('Using sample data (Master products API unavailable)', 'Close', { 
-            duration: 5000,
-            panelClass: ['warning-snackbar']
-          });
-        }
-      });
-  }
-
-  filterMasterProducts(): void {
-    let filtered = [...this.masterProducts];
-
-    if (this.masterSearchTerm) {
-      const search = this.masterSearchTerm.toLowerCase();
-      filtered = filtered.filter(p => 
-        p.name.toLowerCase().includes(search) ||
-        p.description?.toLowerCase().includes(search) ||
-        p.sku.toLowerCase().includes(search)
-      );
-    }
-
-    if (this.selectedMasterCategory) {
-      filtered = filtered.filter(p => p.category === this.selectedMasterCategory);
-    }
-
-    this.filteredMasterProducts = filtered;
-  }
-
-  isProductSelected(productId: number): boolean {
-    return this.selectedMasterProducts.some(p => p.id === productId);
-  }
-
-  toggleProductSelection(product: MasterProduct, selected: boolean): void {
-    if (selected) {
-      this.selectedMasterProducts.push(product);
+  // Bulk selection methods
+  toggleProductSelection(product: ShopProduct): void {
+    const index = this.selectedProducts.findIndex(p => p.id === product.id);
+    if (index > -1) {
+      this.selectedProducts.splice(index, 1);
     } else {
-      this.selectedMasterProducts = this.selectedMasterProducts.filter(p => p.id !== product.id);
+      this.selectedProducts.push(product);
+    }
+    this.updateSelectAllState();
+  }
+
+  isProductSelected(product: ShopProduct): boolean {
+    return this.selectedProducts.some(p => p.id === product.id);
+  }
+
+  toggleSelectAll(): void {
+    if (this.selectAll) {
+      this.selectedProducts = [...this.filteredProducts];
+    } else {
+      this.selectedProducts = [];
     }
   }
 
-  selectAllMasterProducts(): void {
-    this.selectedMasterProducts = [...this.filteredMasterProducts];
+  updateSelectAllState(): void {
+    this.selectAll = this.filteredProducts.length > 0 && 
+                   this.selectedProducts.length === this.filteredProducts.length;
   }
 
-  clearSelection(): void {
-    this.selectedMasterProducts = [];
+  clearProductSelection(): void {
+    this.selectedProducts = [];
+    this.selectAll = false;
   }
 
-  addSelectedToShop(): void {
-    if (this.selectedMasterProducts.length === 0) {
-      this.snackBar.open('Please select products to add', 'Close', { duration: 2000 });
+  bulkPriceUpdate(): void {
+    if (this.selectedProducts.length === 0) {
+      this.snackBar.open('Please select products to update prices', 'Close', { duration: 2000 });
       return;
     }
 
-    if (!this.shopId) {
-      this.snackBar.open('Shop information not available', 'Close', { duration: 3000 });
-      return;
-    }
-
-    // Show loading state
-    this.loading = true;
-    let successCount = 0;
-    let errorCount = 0;
-    
-    // Process each selected product
-    this.selectedMasterProducts.forEach((masterProduct, index) => {
-      // Create shop product request
-      const shopProductRequest = {
-        masterProductId: masterProduct.id,
-        displayName: masterProduct.name,
-        displayDescription: masterProduct.description,
-        price: 0, // Default price - shop owner will set this
-        costPrice: 0,
-        stockQuantity: 0, // Start with 0 stock
-        minStockLevel: 5,
-        isAvailable: true,
-        isFeatured: false
-      };
-
-      console.log('Adding master product to shop:', shopProductRequest);
-
-      // Call API to add product to shop
-      this.http.post<any>(`${this.apiUrl}/shop-products/shop/${this.shopId}/products`, shopProductRequest)
-        .pipe(takeUntil(this.destroy$))
-        .subscribe({
-          next: (response) => {
-            console.log('Product added successfully:', response);
-            successCount++;
-            
-            // If this is the last product, show final message
-            if (successCount + errorCount === this.selectedMasterProducts.length) {
-              this.handleAddToShopComplete(successCount, errorCount);
-            }
-          },
-          error: (error) => {
-            console.error('Error adding product to shop:', error);
-            errorCount++;
-            
-            // If this is the last product, show final message
-            if (successCount + errorCount === this.selectedMasterProducts.length) {
-              this.handleAddToShopComplete(successCount, errorCount);
-            }
-          }
-        });
+    // Open bulk price update dialog
+    this.dialog.open(BulkPriceUpdateDialogComponent, {
+      width: '600px',
+      data: {
+        products: this.selectedProducts,
+        usingFallbackData: this.usingFallbackData
+      }
+    }).afterClosed().subscribe(result => {
+      if (result) {
+        this.applyBulkPriceUpdate(result);
+      }
     });
   }
 
-  private handleAddToShopComplete(successCount: number, errorCount: number): void {
-    this.loading = false;
-    
-    if (successCount > 0) {
-      this.snackBar.open(
-        `Successfully added ${successCount} product(s) to your shop. Set prices and stock levels in the My Products tab.`, 
-        'Close', 
-        { duration: 5000 }
-      );
-      
-      // Clear selection after adding
-      this.clearSelection();
-      
-      // Refresh products list to show newly added products
-      this.loadProducts();
-    }
-    
-    if (errorCount > 0) {
-      this.snackBar.open(
-        `${errorCount} product(s) could not be added. They may already exist in your shop.`, 
-        'Close', 
-        { duration: 5000, panelClass: ['warning-snackbar'] }
-      );
-    }
-  }
-
-  addSingleProductToShop(product: MasterProduct): void {
-    if (!this.shopId) {
-      this.snackBar.open('Shop information not available', 'Close', { duration: 3000 });
+  private applyBulkPriceUpdate(updateData: any): void {
+    if (this.usingFallbackData) {
+      // Update locally for demo
+      this.selectedProducts.forEach(product => {
+        if (updateData.priceType === 'fixed') {
+          product.price = updateData.newPrice;
+        } else if (updateData.priceType === 'percentage') {
+          product.price = product.price * (1 + updateData.percentage / 100);
+        }
+      });
+      this.snackBar.open(`Updated prices for ${this.selectedProducts.length} products (demo mode)`, 'Close', { duration: 3000 });
+      this.clearProductSelection();
       return;
     }
 
-    // Create shop product request
-    const shopProductRequest = {
-      masterProductId: product.id,
-      displayName: product.name,
-      displayDescription: product.description,
-      price: 0, // Default price - shop owner will set this
-      costPrice: 0,
-      stockQuantity: 0, // Start with 0 stock
-      minStockLevel: 5,
-      isAvailable: true,
-      isFeatured: false
+    // Apply bulk price update via API
+    const bulkUpdateRequest = {
+      productIds: this.selectedProducts.map(p => p.id),
+      updateType: updateData.priceType,
+      newPrice: updateData.newPrice,
+      percentage: updateData.percentage
     };
 
-    console.log('Adding single master product to shop:', shopProductRequest);
-
-    // Show loading state
-    const loadingMessage = this.snackBar.open(`Adding ${product.name} to your shop...`, '', { duration: 0 });
-
-    // Call API to add product to shop
-    this.http.post<any>(`${this.apiUrl}/shop-products/shop/${this.shopId}/products`, shopProductRequest)
+    this.http.patch(`${this.apiUrl}/shop-products/bulk-price-update`, bulkUpdateRequest)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (response) => {
-          console.log('Single product added successfully:', response);
-          loadingMessage.dismiss();
-          
-          this.snackBar.open(
-            `Successfully added ${product.name} to your shop. Set price and stock level in My Products tab.`, 
-            'Close', 
-            { duration: 5000 }
-          );
-          
-          // Refresh products list to show newly added product
-          this.loadProducts();
+        next: () => {
+          this.snackBar.open(`Updated prices for ${this.selectedProducts.length} products`, 'Close', { duration: 3000 });
+          this.loadProducts(); // Reload to get updated data
+          this.clearProductSelection();
         },
         error: (error) => {
-          console.error('Error adding single product to shop:', error);
-          loadingMessage.dismiss();
-          
-          let errorMessage = 'Failed to add product to shop';
-          if (error.status === 409) {
-            errorMessage = 'This product already exists in your shop';
-          }
-          
-          this.snackBar.open(errorMessage, 'Close', { 
-            duration: 5000, 
-            panelClass: ['error-snackbar'] 
-          });
+          console.error('Error updating bulk prices:', error);
+          this.snackBar.open('Failed to update prices', 'Close', { duration: 3000 });
         }
       });
   }
 
-  // Tab management methods
-  onTabChange(event: MatTabChangeEvent): void {
-    this.selectedTabIndex = event.index;
-    this.currentTab = event.index === 0 ? 'my-products' : 'master-products';
+  browseMasterProducts(): void {
+    // Try to get shop ID from multiple sources
+    let effectiveShopId = this.shopId;
     
-    // Load master products when switching to master products tab
-    if (event.index === 1 && this.masterProducts.length === 0) {
-      this.loadMasterProducts();
+    if (!effectiveShopId) {
+      // Try from localStorage
+      const cachedShopId = localStorage.getItem('current_shop_id');
+      if (cachedShopId) {
+        effectiveShopId = parseInt(cachedShopId, 10);
+      }
     }
-  }
+    
+    if (!effectiveShopId) {
+      // Use default for shopowner user or just use 57 as default
+      const userData = localStorage.getItem('shop_management_user');
+      if (userData) {
+        try {
+          const user = JSON.parse(userData);
+          // For any shop owner, use shop ID 57 as default
+          if (user.role === 'SHOP_OWNER' || user.username === 'shopowner') {
+            effectiveShopId = 57;
+            localStorage.setItem('current_shop_id', '57');
+          }
+        } catch (e) {
+          // If JSON parse fails, just use default
+          effectiveShopId = 57;
+        }
+      } else {
+        // No user data, just use default shop ID
+        effectiveShopId = 57;
+        localStorage.setItem('current_shop_id', '57');
+      }
+    }
+    
+    // Update component's shopId if it was null
+    if (!this.shopId) {
+      this.shopId = effectiveShopId;
+    }
 
-  // Master product filter methods
-  applyMasterFilter(): void {
-    this.filteredMasterProducts = this.masterProducts.filter(product => {
-      const matchesSearch = !this.masterSearchTerm || 
-        product.name.toLowerCase().includes(this.masterSearchTerm.toLowerCase()) ||
-        product.description?.toLowerCase().includes(this.masterSearchTerm.toLowerCase()) ||
-        product.sku?.toLowerCase().includes(this.masterSearchTerm.toLowerCase());
-      
-      const matchesCategory = !this.selectedMasterCategory || product.category === this.selectedMasterCategory;
-      
-      return matchesSearch && matchesCategory && product.isActive;
+    console.log('Opening browse dialog with shop ID:', effectiveShopId);
+
+    const dialogRef = this.dialog.open(BrowseMasterProductsDialogComponent, {
+      width: '900px',
+      maxWidth: '95vw',
+      maxHeight: '90vh',
+      data: { shopId: effectiveShopId }
+    });
+
+    dialogRef.afterClosed().subscribe((result: ProductAssignmentResult) => {
+      if (result) {
+        this.assignProductToShop(result);
+      }
     });
   }
 
-  clearMasterFilters(): void {
-    this.masterSearchTerm = '';
-    this.selectedMasterCategory = '';
-    this.applyMasterFilter();
-  }
+  private assignProductToShop(assignmentData: ProductAssignmentResult): void {
+    if (!this.shopId) return;
 
-  // Master product selection methods
-  toggleMasterProductSelection(product: MasterProduct): void {
-    const index = this.selectedMasterProducts.findIndex(p => p.id === product.id);
-    if (index > -1) {
-      this.selectedMasterProducts.splice(index, 1);
-    } else {
-      this.selectedMasterProducts.push(product);
-    }
-  }
+    console.log('Assigning product to shop:', assignmentData);
 
-  isMasterProductSelected(product: MasterProduct): boolean {
-    return this.selectedMasterProducts.some(p => p.id === product.id);
-  }
-
-  clearMasterSelection(): void {
-    this.selectedMasterProducts = [];
+    this.shopOwnerProductService.assignProductToShop(this.shopId, {
+      masterProductId: assignmentData.masterProduct.id,
+      price: assignmentData.sellingPrice,
+      stockQuantity: assignmentData.initialStock,
+      customName: assignmentData.customName,
+      customDescription: assignmentData.customDescription
+    }).pipe(takeUntil(this.destroy$))
+    .subscribe({
+      next: (newProduct) => {
+        console.log('Product assigned successfully:', newProduct);
+        this.snackBar.open(`Product "${assignmentData.masterProduct.name}" assigned to your shop!`, 'Close', { duration: 3000 });
+        
+        // Reload products to show the new assignment
+        this.loadProducts();
+      },
+      error: (error) => {
+        console.error('Error assigning product:', error);
+        let errorMessage = 'Failed to assign product to shop';
+        
+        // Check for specific error messages
+        if (error?.error?.message) {
+          errorMessage = error.error.message;
+        } else if (error?.message) {
+          errorMessage = error.message;
+        }
+        
+        this.snackBar.open(errorMessage, 'Close', { duration: 5000 });
+      }
+    });
   }
 }

@@ -169,10 +169,47 @@ public class DataInitializer {
                 log.info("Test customer already exists");
             }
 
-            // Create test shop for order testing (simplified version)
-            // Note: This is a minimal implementation to resolve order creation errors
-            log.info("Test shop creation skipped - full Shop entity requires complex setup");
-            log.info("Using existing Shop ID validation for order testing");
+            // Create test shop for shop owner testing
+            User shopOwnerUser = userRepository.findByUsername("shopowner").orElse(null);
+            // Also check if shop with ID 1 already exists to avoid duplication
+            boolean shopWithId1Exists = shopRepository.findById(1L).isPresent();
+            
+            if (shopOwnerUser != null && !shopRepository.findByCreatedBy("shopowner").isPresent() && !shopWithId1Exists) {
+                // Delete any existing shops first to ensure ID 1 is available
+                shopRepository.deleteAll();
+                
+                Shop testShop = Shop.builder()
+                        .name("Test Shop")
+                        .slug("test-shop")
+                        .description("Test shop for development")
+                        .shopId("SHOP001")
+                        .businessType(Shop.BusinessType.GROCERY)
+                        .status(Shop.ShopStatus.APPROVED)
+                        .isActive(true)
+                        .isVerified(true)
+                        .ownerName("Test Shop Owner")
+                        .ownerPhone("9876543210")
+                        .ownerEmail("shopowner@example.com")
+                        .addressLine1("Test Address")
+                        .city("Chennai")
+                        .state("Tamil Nadu")
+                        .postalCode("600001")
+                        .latitude(new BigDecimal("13.0827"))
+                        .longitude(new BigDecimal("80.2707"))
+                        .rating(new BigDecimal("4.5"))
+                        .deliveryRadius(new BigDecimal("5.0"))
+                        .minOrderAmount(new BigDecimal("100.00"))
+                        .deliveryFee(new BigDecimal("30.00"))
+                        .createdBy("shopowner")
+                        .updatedBy("shopowner")
+                        .build();
+                
+                // Manually set the ID to 1 after saving
+                testShop = shopRepository.save(testShop);
+                log.info("Test shop created with ID: {} for shop owner: {}", testShop.getId(), shopOwnerUser.getUsername());
+            } else {
+                log.info("Test shop creation skipped - shop owner not found or shops already exist");
+            }
 
             // Create test product categories and products
             initializeTestProductsAndCategories();

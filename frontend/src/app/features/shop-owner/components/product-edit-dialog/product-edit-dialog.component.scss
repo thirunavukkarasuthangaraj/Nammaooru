@@ -1,0 +1,105 @@
+.edit-form {
+  min-width: 500px;
+  padding: 16px 0;
+
+  .full-width {
+    width: 100%;
+  }
+
+  .image-upload-section {
+    margin-bottom: 20px;
+    padding: 16px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background: #fafafa;
+
+    .current-image {
+      text-align: center;
+      margin-bottom: 16px;
+
+      .product-image-preview {
+        max-width: 200px;
+        max-height: 200px;
+        object-fit: contain;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      }
+    }
+
+    .upload-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      justify-content: center;
+
+      .file-name {
+        color: #666;
+        font-size: 0.875rem;
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+  }
+
+  .form-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 8px;
+
+    mat-form-field {
+      flex: 1;
+    }
+  }
+
+  .availability-toggle {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    padding: 16px 0;
+  }
+
+  .profit-info {
+    display: flex;
+    gap: 24px;
+    padding: 12px;
+    background: #f5f5f5;
+    border-radius: 8px;
+    margin-bottom: 16px;
+
+    .profit-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .label {
+        color: #666;
+        font-size: 0.875rem;
+      }
+
+      .value {
+        font-weight: 600;
+        font-size: 1rem;
+
+        &.profit {
+          color: #4CAF50;
+        }
+
+        &.margin {
+          color: #2196F3;
+        }
+      }
+    }
+  }
+}
+
+mat-dialog-content {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+mat-dialog-actions {
+  padding: 16px 24px;
+  border-top: 1px solid #e0e0e0;
+}
