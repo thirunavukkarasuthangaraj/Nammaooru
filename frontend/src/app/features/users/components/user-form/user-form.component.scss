@@ -1,48 +1,111 @@
 .user-form-container {
   padding: 24px;
-  max-width: 800px;
+  // max-width: 900px;
   margin: 0 auto;
+  min-height: calc(100vh - 200px);
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  border-radius: 20px;
 
   .form-header {
     display: flex;
     align-items: center;
-    gap: 16px;
-    margin-bottom: 24px;
+    gap: 20px;
+    margin-bottom: 32px;
+    padding: 24px 32px;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    border-left: 5px solid #667eea;
 
     .back-btn {
-      color: #1976d2;
+      color: #667eea;
+      background: rgba(102, 126, 234, 0.1);
+      border-radius: 50%;
+      transition: all 0.3s ease;
+      
+      &:hover {
+        background: rgba(102, 126, 234, 0.2);
+        transform: scale(1.1);
+      }
+      
+      mat-icon {
+        font-size: 22px;
+      }
     }
 
     h2 {
       margin: 0;
       color: #333;
-      font-weight: 500;
+      font-weight: 600;
+      font-size: 28px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
   }
 
   .form-card {
-    padding: 32px;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+    border-radius: 0;
 
     form {
       .form-grid {
         display: flex;
         flex-direction: column;
-        gap: 32px;
+        gap: 24px;
 
         .form-section {
+          background: white;
+          padding: 32px;
+          border-radius: 16px;
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          backdrop-filter: blur(10px);
+          transition: all 0.3s ease;
+          
+          &:hover {
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+            transform: translateY(-2px);
+          }
+          
           h3 {
-            margin: 0 0 24px 0;
+            margin: 0 0 28px 0;
             color: #333;
-            font-weight: 500;
-            font-size: 18px;
-            border-bottom: 2px solid #e0e0e0;
-            padding-bottom: 8px;
+            font-weight: 600;
+            font-size: 20px;
+            position: relative;
+            padding-left: 20px;
+            
+            &:before {
+              content: '';
+              position: absolute;
+              left: 0;
+              top: 50%;
+              transform: translateY(-50%);
+              width: 4px;
+              height: 24px;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              border-radius: 2px;
+            }
+            
+            &:after {
+              content: '';
+              position: absolute;
+              bottom: -8px;
+              left: 20px;
+              right: 0;
+              height: 2px;
+              background: linear-gradient(90deg, #667eea 0%, transparent 100%);
+            }
           }
 
           .form-row {
             display: flex;
-            gap: 16px;
-            margin-bottom: 16px;
+            gap: 20px;
+            margin-bottom: 20px;
             align-items: flex-start;
 
             &:last-child {
@@ -51,20 +114,85 @@
 
             .full-width {
               flex: 1;
+              
+              ::ng-deep .mat-mdc-form-field {
+                background: #f8f9ff;
+                border-radius: 12px;
+                
+                .mdc-notched-outline {
+                  border-color: #e0e7ff;
+                  border-width: 2px;
+                }
+                
+                &:hover .mdc-notched-outline {
+                  border-color: #667eea;
+                }
+                
+                &.mdc-text-field--focused .mdc-notched-outline {
+                  border-color: #667eea;
+                  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+                }
+              }
             }
 
             .half-width {
               flex: 1;
+              
+              ::ng-deep .mat-mdc-form-field {
+                background: #f8f9ff;
+                border-radius: 12px;
+                
+                .mdc-notched-outline {
+                  border-color: #e0e7ff;
+                  border-width: 2px;
+                }
+                
+                &:hover .mdc-notched-outline {
+                  border-color: #667eea;
+                }
+                
+                &.mdc-text-field--focused .mdc-notched-outline {
+                  border-color: #667eea;
+                  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+                }
+              }
             }
           }
 
           .form-checkboxes {
-            display: flex;
-            flex-direction: column;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 16px;
-
+            background: linear-gradient(135deg, #f8f9ff 0%, #e0e7ff 100%);
+            padding: 24px;
+            border-radius: 16px;
+            border: 2px solid #e0e7ff;
+            
             mat-checkbox {
-              margin-bottom: 8px;
+              margin: 0;
+              padding: 12px 16px;
+              background: white;
+              border-radius: 12px;
+              box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+              transition: all 0.3s ease;
+              
+              &:hover {
+                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+                transform: translateY(-1px);
+              }
+              
+              ::ng-deep {
+                .mat-mdc-checkbox {
+                  --mdc-checkbox-selected-checkmark-color: white;
+                  --mdc-checkbox-selected-icon-color: #667eea;
+                  --mdc-checkbox-unselected-icon-color: #c1c7cd;
+                }
+                
+                .mdc-form-field {
+                  font-weight: 500;
+                  color: #4a5568;
+                }
+              }
             }
           }
         }
@@ -75,12 +203,16 @@
         justify-content: flex-end;
         gap: 16px;
         margin-top: 32px;
-        padding-top: 24px;
-        border-top: 1px solid #e0e0e0;
+        padding: 28px 32px;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 
         button {
           min-width: 120px;
           height: 48px;
+          font-weight: 500;
+          transition: all 0.3s ease;
 
           mat-spinner {
             margin-right: 8px;
@@ -118,11 +250,18 @@ mat-form-field {
 
   mat-hint {
     font-size: 12px;
-    color: #666;
+    color: #667eea;
+    font-weight: 500;
   }
 
   mat-error {
     font-size: 12px;
+    font-weight: 500;
+  }
+  
+  mat-label {
+    font-weight: 600;
+    color: #4a5568;
   }
 }
 

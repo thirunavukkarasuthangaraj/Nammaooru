@@ -1,6 +1,7 @@
 package com.shopmanagement.service;
 
 import com.shopmanagement.dto.user.UserRequest;
+import com.shopmanagement.dto.user.UserUpdateRequest;
 import com.shopmanagement.dto.user.UserResponse;
 import com.shopmanagement.entity.Permission;
 import com.shopmanagement.entity.User;
@@ -165,6 +166,63 @@ public class UserService {
         user.setUpdatedBy(getCurrentUsername());
         
         // Update password if provided
+        if (request.getPassword() != null && !request.getPassword().trim().isEmpty()) {
+            user.setPassword(passwordEncoder.encode(request.getPassword()));
+            user.setIsTemporaryPassword(true);
+            user.setPasswordChangeRequired(true);
+            user.setLastPasswordChange(LocalDateTime.now());
+        }
+        
+        User updatedUser = userRepository.save(user);
+        log.info("User updated successfully: {}", updatedUser.getUsername());
+        return mapToResponse(updatedUser);
+    }
+    
+    @Transactional
+    public UserResponse updateUser(Long id, UserUpdateRequest request) {
+        log.info("Updating user with UserUpdateRequest: {}", id);
+        
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+        
+        // Only update fields that are provided (not null)
+        if (request.getUsername() != null && !user.getUsername().equals(request.getUsername()) && 
+            userRepository.existsByUsername(request.getUsername())) {
+            throw new RuntimeException("Username already exists: " + request.getUsername());
+        }
+        
+        if (request.getEmail() != null && !user.getEmail().equals(request.getEmail()) && 
+            userRepository.existsByEmail(request.getEmail())) {
+            throw new RuntimeException("Email already exists: " + request.getEmail());
+        }
+        
+        // Update permissions if specified
+        if (request.getPermissionIds() != null) {
+            Set<Permission> permissions = permissionRepository.findByIdIn(request.getPermissionIds())
+                    .stream().collect(Collectors.toSet());
+            user.setPermissions(permissions);
+        }
+        
+        // Update user fields only if provided
+        if (request.getUsername() != null) user.setUsername(request.getUsername());
+        if (request.getEmail() != null) user.setEmail(request.getEmail());
+        if (request.getFirstName() != null) user.setFirstName(request.getFirstName());
+        if (request.getLastName() != null) user.setLastName(request.getLastName());
+        if (request.getMobileNumber() != null) user.setMobileNumber(request.getMobileNumber());
+        if (request.getRole() != null) user.setRole(request.getRole());
+        if (request.getStatus() != null) user.setStatus(request.getStatus());
+        if (request.getProfileImageUrl() != null) user.setProfileImageUrl(request.getProfileImageUrl());
+        if (request.getDepartment() != null) user.setDepartment(request.getDepartment());
+        if (request.getDesignation() != null) user.setDesignation(request.getDesignation());
+        if (request.getReportsTo() != null) user.setReportsTo(request.getReportsTo());
+        if (request.getEmailVerified() != null) user.setEmailVerified(request.getEmailVerified());
+        if (request.getMobileVerified() != null) user.setMobileVerified(request.getMobileVerified());
+        if (request.getTwoFactorEnabled() != null) user.setTwoFactorEnabled(request.getTwoFactorEnabled());
+        if (request.getPasswordChangeRequired() != null) user.setPasswordChangeRequired(request.getPasswordChangeRequired());
+        
+        user.setUpdatedBy(getCurrentUsername());
+        
+        // Update password only if provided
         if (request.getPassword() != null && !request.getPassword().trim().isEmpty()) {
             user.setPassword(passwordEncoder.encode(request.getPassword()));
             user.setIsTemporaryPassword(true);

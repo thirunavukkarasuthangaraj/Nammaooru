@@ -197,24 +197,12 @@ export class AuthService {
     }
   }
   
+  // Remove mock user setup - users must login properly
   private setMockUserIfNeeded(): void {
-    if (!this.getCurrentUser()) {
-      // Set a mock super admin user for testing
-      const mockUser: User = {
-        id: 1,
-        username: 'admin',
-        email: 'admin@shop.com',
-        role: UserRole.SUPER_ADMIN,
-        isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      
-      if (isPlatformBrowser(this.platformId)) {
-        localStorage.setItem(this.USER_KEY, JSON.stringify(mockUser));
-        localStorage.setItem(this.TOKEN_KEY, 'mock-token-for-testing');
-      }
-      this.currentUserSubject.next(mockUser);
+    // Only set mock user in development mode and when explicitly needed
+    if (!environment.production && !this.getCurrentUser()) {
+      // Don't auto-set mock user - let users login properly
+      console.log('No authenticated user found. Please login.');
     }
   }
 

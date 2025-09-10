@@ -1,15 +1,21 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormBuilder, FormGroup } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ShopService } from '@core/services/shop.service';
-import { finalize } from 'rxjs/operators';
+import { BusinessHoursService, BusinessHour, ShopStatus } from '../../services/business-hours.service';
+import { finalize, takeUntil } from 'rxjs/operators';
+import { Subject } from 'rxjs';
 
-interface BusinessHour {
+interface LocalBusinessHour {
+  id?: number;
   day: string;
   displayName: string;
   open: string;
   close: string;
   closed: boolean;
+  breakStart?: string;
+  breakEnd?: string;
+  specialNote?: string;
 }
 
 @Component({
@@ -20,8 +26,49 @@ interface BusinessHour {
         <div class="header-content">
           <h1>Business Hours</h1>
           <p>Configure your shop's operating hours</p>
+          <!-- Real-time Status Badge -->
+          <div class="status-badge" *ngIf="shopStatus" [style.background-color]="getStatusBadge().color">
+            <mat-icon>{{ getStatusBadge().icon }}</mat-icon>
+            <span>{{ getStatusBadge().text }}</span>
+          </div>
         </div>
         <div class="header-actions">
+          <!-- Status Control Buttons -->
+          <div class="status-controls" *ngIf="shopStatus">
+            <button mat-stroked-button 
+                    (click)="forceUpdateStatus()" 
+                    matTooltip="Force update shop status">
+              <mat-icon>refresh</mat-icon>
+              Update Status
+            </button>
+            
+            <button mat-stroked-button 
+                    *ngIf="!shopStatus.isOpen" 
+                    (click)="overrideStatus(true)"
+                    color="primary"
+                    matTooltip="Manually open shop now">
+              <mat-icon>lock_open</mat-icon>
+              Open Now
+            </button>
+            
+            <button mat-stroked-button 
+                    *ngIf="shopStatus.isOpen" 
+                    (click)="overrideStatus(false)"
+                    color="warn"
+                    matTooltip="Manually close shop now">
+              <mat-icon>lock</mat-icon>
+              Close Now
+            </button>
+            
+            <button mat-stroked-button 
+                    *ngIf="shopStatus && shopStatus.overallStatus?.includes('MANUALLY')"
+                    (click)="clearOverride()"
+                    matTooltip="Return to automatic schedule">
+              <mat-icon>schedule</mat-icon>
+              Auto Mode
+            </button>
+          </div>
+          
           <button mat-stroked-button (click)="copyToAllDays()">
             <mat-icon>content_copy</mat-icon>
             Copy Monday to All
@@ -33,6 +80,43 @@ interface BusinessHour {
           </button>
         </div>
       </div>
+
+      <!-- Current Status Card -->
+      <mat-card class="status-card" *ngIf="shopStatus">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>info</mat-icon>
+            Current Status
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="status-info">
+            <div class="status-item">
+              <span class="label">Status:</span>
+              <span class="value" [style.color]="getStatusBadge().color">
+                <mat-icon>{{ getStatusBadge().icon }}</mat-icon>
+                {{ shopStatus.message }}
+              </span>
+            </div>
+            <div class="status-item" *ngIf="shopStatus.currentTime">
+              <span class="label">Current Time:</span>
+              <span class="value">{{ shopStatus.currentTime }} ({{ shopStatus.currentDay }})</span>
+            </div>
+            <div class="status-item" *ngIf="shopStatus.openTime && shopStatus.isOpen">
+              <span class="label">Today's Hours:</span>
+              <span class="value">{{ shopStatus.openTime }} - {{ shopStatus.closeTime }}</span>
+            </div>
+            <div class="status-item" *ngIf="shopStatus.nextOpenTime?.dateTime && !shopStatus.isOpen">
+              <span class="label">Next Open:</span>
+              <span class="value">{{ shopStatus.nextOpenTime.dayOfWeek }} at {{ shopStatus.nextOpenTime.time }}</span>
+            </div>
+            <div class="status-item" *ngIf="shopStatus.breakEndTime">
+              <span class="label">Break Ends:</span>
+              <span class="value">{{ shopStatus.breakEndTime }}</span>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
 
       <mat-card class="hours-card">
         <mat-card-content>
@@ -203,6 +287,78 @@ interface BusinessHour {
     .header-actions {
       display: flex;
       gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      color: white;
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin-top: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .status-badge mat-icon {
+      font-size: 16px;
+      height: 16px;
+      width: 16px;
+    }
+
+    .status-controls {
+      display: flex;
+      gap: 8px;
+      margin-right: 12px;
+      border-right: 1px solid #e5e7eb;
+      padding-right: 12px;
+    }
+
+    .status-card {
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 24px;
+      border-left: 4px solid #3b82f6;
+    }
+
+    .status-info {
+      display: grid;
+      gap: 12px;
+    }
+
+    .status-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    .status-item:last-child {
+      border-bottom: none;
+    }
+
+    .status-item .label {
+      font-weight: 500;
+      color: #374151;
+    }
+
+    .status-item .value {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+      color: #1f2937;
+    }
+
+    .status-item .value mat-icon {
+      font-size: 18px;
+      height: 18px;
+      width: 18px;
     }
 
     .hours-card {
@@ -423,11 +579,14 @@ interface BusinessHour {
     }
   `]
 })
-export class BusinessHoursComponent implements OnInit {
+export class BusinessHoursComponent implements OnInit, OnDestroy {
+  private destroy$ = new Subject<void>();
+  currentShopId: number | null = null;
+  shopStatus: ShopStatus | null = null;
   businessHoursForm: FormGroup;
   loading = false;
   
-  businessHours: BusinessHour[] = [
+  businessHours: LocalBusinessHour[] = [
     { day: 'monday', displayName: 'Monday', open: '09:00', close: '18:00', closed: false },
     { day: 'tuesday', displayName: 'Tuesday', open: '09:00', close: '18:00', closed: false },
     { day: 'wednesday', displayName: 'Wednesday', open: '09:00', close: '18:00', closed: false },
@@ -442,85 +601,147 @@ export class BusinessHoursComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private snackBar: MatSnackBar,
-    private shopService: ShopService
+    private shopService: ShopService,
+    private businessHoursService: BusinessHoursService
   ) {
     this.businessHoursForm = this.fb.group({});
   }
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
   ngOnInit(): void {
     this.loadBusinessHours();
+    this.subscribeToStatusUpdates();
+  }
+
+  private subscribeToStatusUpdates(): void {
+    this.businessHoursService.status$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(status => {
+        this.shopStatus = status;
+      });
   }
 
   loadBusinessHours(): void {
     this.loading = true;
     
-    // Load shop data including business hours
+    // First get shop info to get shop ID
     this.shopService.getMyShop()
       .pipe(finalize(() => this.loading = false))
       .subscribe({
         next: (shop: any) => {
           if (shop) {
-            // Check if shop has business hours data
-            if (shop.businessHours) {
-              const hours = shop.businessHours;
-              this.businessHours.forEach(hour => {
-                if (hours[hour.day]) {
-                  hour.open = hours[hour.day].open || '09:00';
-                  hour.close = hours[hour.day].close || '18:00';
-                  hour.closed = hours[hour.day].closed || false;
-                }
-              });
-            } else {
-              // Set default hours if no data exists
-              this.setDefaultHours();
-              this.snackBar.open('Using default business hours. Please configure your schedule.', 'Close', { 
-                duration: 3000 
-              });
-            }
+            this.currentShopId = shop.id;
+            this.loadBusinessHoursFromAPI(shop.id);
+            this.loadShopStatus(shop.id);
           }
         },
         error: (error) => {
-          console.error('Error loading business hours:', error);
-          this.loading = false;
-          
+          console.error('Error loading shop:', error);
           if (error.status === 404) {
             this.snackBar.open('No shop found. Please contact admin to assign a shop.', 'Close', { 
               duration: 5000 
             });
           } else {
-            this.snackBar.open('Failed to load business hours. Using defaults.', 'Close', { 
+            this.snackBar.open('Failed to load shop data.', 'Close', { 
               duration: 3000 
             });
-            this.setDefaultHours();
           }
         }
       });
   }
 
-  saveBusinessHours(): void {
-    this.loading = true;
-    
-    const businessHoursData: any = {};
-    this.businessHours.forEach(hour => {
-      businessHoursData[hour.day] = {
-        open: hour.open,
-        close: hour.close,
-        closed: hour.closed
-      };
-    });
-
-    // Simulate API call
-    setTimeout(() => {
-      this.loading = false;
-      this.snackBar.open('Business hours saved successfully!', 'Close', { 
-        duration: 3000,
-        horizontalPosition: 'end',
-        verticalPosition: 'top'
+  private loadBusinessHoursFromAPI(shopId: number): void {
+    this.businessHoursService.getBusinessHours(shopId)
+      .subscribe({
+        next: (hours: BusinessHour[]) => {
+          if (hours && hours.length > 0) {
+            this.businessHours = this.businessHoursService.convertFromBackendFormat(hours);
+          } else {
+            // Create default hours if none exist
+            this.createDefaultBusinessHours(shopId);
+          }
+        },
+        error: (error) => {
+          console.error('Error loading business hours:', error);
+          this.setDefaultHours();
+          this.snackBar.open('Failed to load business hours. Using defaults.', 'Close', { 
+            duration: 3000 
+          });
+        }
       });
-    }, 1000);
   }
 
-  onDayToggle(hour: BusinessHour): void {
+  private loadShopStatus(shopId: number): void {
+    this.businessHoursService.getShopStatus(shopId)
+      .subscribe({
+        next: (status) => {
+          this.shopStatus = status;
+        },
+        error: (error) => {
+          console.error('Error loading shop status:', error);
+        }
+      });
+  }
+
+  private createDefaultBusinessHours(shopId: number): void {
+    this.businessHoursService.createDefaultBusinessHours(shopId)
+      .subscribe({
+        next: (hours: BusinessHour[]) => {
+          this.businessHours = this.businessHoursService.convertFromBackendFormat(hours);
+          this.snackBar.open('Default business hours created. Please configure your schedule.', 'Close', { 
+            duration: 3000 
+          });
+        },
+        error: (error) => {
+          console.error('Error creating default hours:', error);
+          this.setDefaultHours();
+        }
+      });
+  }
+
+  saveBusinessHours(): void {
+    if (!this.currentShopId) {
+      this.snackBar.open('No shop found. Cannot save business hours.', 'Close', { duration: 3000 });
+      return;
+    }
+
+    this.loading = true;
+    
+    const businessHoursData = this.businessHoursService.convertToBackendFormat(
+      this.currentShopId, 
+      this.businessHours
+    );
+
+    this.businessHoursService.bulkUpdateBusinessHours(this.currentShopId, businessHoursData)
+      .pipe(finalize(() => this.loading = false))
+      .subscribe({
+        next: (updatedHours) => {
+          this.businessHours = this.businessHoursService.convertFromBackendFormat(updatedHours);
+          this.snackBar.open('Business hours saved successfully!', 'Close', { 
+            duration: 3000,
+            horizontalPosition: 'end',
+            verticalPosition: 'top'
+          });
+          
+          // Refresh shop status
+          if (this.currentShopId) {
+            this.loadShopStatus(this.currentShopId);
+          }
+        },
+        error: (error) => {
+          console.error('Error saving business hours:', error);
+          this.snackBar.open('Failed to save business hours. Please try again.', 'Close', { 
+            duration: 3000 
+          });
+        }
+      });
+  }
+
+  onDayToggle(hour: LocalBusinessHour): void {
     if (hour.closed) {
       // Day is now closed, clear times
       hour.open = '';
@@ -586,19 +807,76 @@ export class BusinessHoursComponent implements OnInit {
     this.snackBar.open('All days set to open', 'Close', { duration: 2000 });
   }
 
-  formatTimeRange(hour: BusinessHour): string {
+  formatTimeRange(hour: LocalBusinessHour): string {
     if (hour.closed) return 'Closed';
+    return this.businessHoursService.formatTimeRange(hour.open, hour.close);
+  }
+
+  getStatusBadge(): { text: string; color: string; icon: string } {
+    if (!this.shopStatus) {
+      return { text: 'Loading...', color: '#6b7280', icon: 'help' };
+    }
     
-    const formatTime = (time: string) => {
-      if (!time) return '';
-      const [hours, minutes] = time.split(':');
-      const h = parseInt(hours);
-      const suffix = h >= 12 ? 'PM' : 'AM';
-      const displayHour = h === 0 ? 12 : h > 12 ? h - 12 : h;
-      return `${displayHour}:${minutes} ${suffix}`;
+    return {
+      text: this.shopStatus.status.replace('_', ' '),
+      color: this.businessHoursService.getStatusColor(this.shopStatus.status),
+      icon: this.businessHoursService.getStatusIcon(this.shopStatus.status)
     };
+  }
+
+  forceUpdateStatus(): void {
+    if (!this.currentShopId) return;
     
-    return `${formatTime(hour.open)} - ${formatTime(hour.close)}`;
+    this.businessHoursService.forceUpdateAvailability(this.currentShopId)
+      .subscribe({
+        next: () => {
+          this.snackBar.open('Shop status updated!', 'Close', { duration: 2000 });
+          this.loadShopStatus(this.currentShopId!);
+        },
+        error: (error) => {
+          console.error('Error updating status:', error);
+          this.snackBar.open('Failed to update status', 'Close', { duration: 2000 });
+        }
+      });
+  }
+
+  overrideStatus(isOpen: boolean): void {
+    if (!this.currentShopId) return;
+    
+    const reason = isOpen ? 'Manual override: Opened by shop owner' : 'Manual override: Closed by shop owner';
+    
+    this.businessHoursService.overrideAvailability(this.currentShopId, isOpen, reason)
+      .subscribe({
+        next: () => {
+          this.snackBar.open(`Shop manually ${isOpen ? 'opened' : 'closed'}!`, 'Close', { duration: 2000 });
+          this.loadShopStatus(this.currentShopId!);
+        },
+        error: (error) => {
+          console.error('Error overriding status:', error);
+          this.snackBar.open('Failed to override status', 'Close', { duration: 2000 });
+        }
+      });
+  }
+
+  clearOverride(): void {
+    if (!this.currentShopId) return;
+    
+    this.businessHoursService.clearAvailabilityOverride(this.currentShopId)
+      .subscribe({
+        next: () => {
+          this.snackBar.open('Manual override cleared. Using automatic schedule.', 'Close', { duration: 3000 });
+          this.loadShopStatus(this.currentShopId!);
+        },
+        error: (error) => {
+          console.error('Error clearing override:', error);
+          this.snackBar.open('Failed to clear override', 'Close', { duration: 2000 });
+        }
+      });
+  }
+
+  formatTimeRangeLegacy(hour: LocalBusinessHour): string {
+    if (hour.closed) return 'Closed';
+    return this.businessHoursService.formatTimeRange(hour.open, hour.close);
   }
 
   removeHoliday(holiday: any): void {

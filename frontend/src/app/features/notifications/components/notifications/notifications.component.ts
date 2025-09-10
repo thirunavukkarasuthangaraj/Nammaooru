@@ -63,17 +63,6 @@ export class NotificationsComponent implements OnInit, OnDestroy {
         actionData: { partnerId: 456, partnerName: 'John Smith' }
       },
       {
-        id: 3,
-        title: 'Product Approval Request',
-        message: 'Organic Apples product needs approval for sale on your platform.',
-        type: 'INVENTORY',
-        priority: 'MEDIUM',
-        isRead: false,
-        createdAt: new Date('2025-01-22T08:45:00'),
-        action: 'PENDING_APPROVAL',
-        actionData: { productId: 789, productName: 'Organic Apples' }
-      },
-      {
         id: 4,
         title: 'Order Cancellation Request',
         message: 'Customer Sarah Wilson has requested to cancel order #ORD-2025-002 (₹1,200)',

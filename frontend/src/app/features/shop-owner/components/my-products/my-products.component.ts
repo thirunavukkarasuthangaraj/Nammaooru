@@ -4,6 +4,7 @@ import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTabChangeEvent } from '@angular/material/tabs';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
@@ -82,7 +83,10 @@ export class MyProductsComponent implements OnInit, OnDestroy {
   
   // Master product filter controls
   masterSearchTerm = '';
-  masterSelectedCategory = '';
+  selectedMasterCategory = '';
+  
+  // Tab management
+  currentTab: string = 'my-products';
   
   // Pagination
   totalProducts = 0;
@@ -591,13 +595,6 @@ export class MyProductsComponent implements OnInit, OnDestroy {
   }
 
   // Master Product Methods
-  onTabChange(event: any): void {
-    this.selectedTabIndex = event.index;
-    if (this.selectedTabIndex === 1) {
-      this.loadMasterProducts();
-    }
-  }
-
   openProductMaster(): void {
     this.selectedTabIndex = 1;
     this.loadMasterProducts();
@@ -605,52 +602,90 @@ export class MyProductsComponent implements OnInit, OnDestroy {
 
   loadMasterProducts(): void {
     this.loading = true;
+    console.log('Loading master products from API...');
     
-    // Mock master products data - replace with actual API call
-    setTimeout(() => {
-      this.masterProducts = [
-        {
-          id: 1,
-          name: 'Apple - Red Delicious',
-          description: 'Fresh red apples',
-          category: 'Fruits',
-          unit: 'kg',
-          sku: 'APPLE-RED-001',
-          imageUrl: 'https://images.unsplash.com/photo-1568702846914-96b305d2aaeb?w=200&h=200&fit=crop',
-          isActive: true,
-          createdAt: '2025-01-01',
-          updatedAt: '2025-01-01'
+    // Load actual master products from API
+    this.http.get<any>(`${this.apiUrl}/products/master?size=50`)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          console.log('Master products API response:', response);
+          
+          const data = response.data || response;
+          const products = data.content || data || [];
+          
+          this.masterProducts = products.map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            description: p.description,
+            category: p.category?.name || 'General',
+            unit: p.baseUnit || 'piece',
+            sku: p.sku,
+            imageUrl: p.primaryImageUrl || 'assets/images/default-product.png',
+            isActive: p.status === 'ACTIVE',
+            createdAt: p.createdAt,
+            updatedAt: p.updatedAt
+          }));
+          
+          this.masterCategories = [...new Set(this.masterProducts.map(p => p.category))];
+          this.filteredMasterProducts = [...this.masterProducts];
+          this.loading = false;
+          
+          console.log('Loaded master products:', this.masterProducts.length);
         },
-        {
-          id: 2,
-          name: 'Banana - Robusta',
-          description: 'Fresh yellow bananas',
-          category: 'Fruits',
-          unit: 'dozen',
-          sku: 'BANANA-ROB-001',
-          imageUrl: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=200&h=200&fit=crop',
-          isActive: true,
-          createdAt: '2025-01-01',
-          updatedAt: '2025-01-01'
-        },
-        {
-          id: 3,
-          name: 'Rice - Basmati',
-          description: 'Premium basmati rice',
-          category: 'Grains',
-          unit: 'kg',
-          sku: 'RICE-BAS-001',
-          imageUrl: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=200&h=200&fit=crop',
-          isActive: true,
-          createdAt: '2025-01-01',
-          updatedAt: '2025-01-01'
+        error: (error) => {
+          console.error('Error loading master products:', error);
+          
+          // Fallback to sample data
+          this.masterProducts = [
+            {
+              id: 1,
+              name: 'Apple - Red Delicious',
+              description: 'Fresh red apples',
+              category: 'Fruits',
+              unit: 'kg',
+              sku: 'APPLE-RED-001',
+              imageUrl: 'https://images.unsplash.com/photo-1568702846914-96b305d2aaeb?w=200&h=200&fit=crop',
+              isActive: true,
+              createdAt: '2025-01-01',
+              updatedAt: '2025-01-01'
+            },
+            {
+              id: 2,
+              name: 'Banana - Robusta',
+              description: 'Fresh yellow bananas',
+              category: 'Fruits',
+              unit: 'dozen',
+              sku: 'BANANA-ROB-001',
+              imageUrl: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=200&h=200&fit=crop',
+              isActive: true,
+              createdAt: '2025-01-01',
+              updatedAt: '2025-01-01'
+            },
+            {
+              id: 3,
+              name: 'Rice - Basmati',
+              description: 'Premium basmati rice',
+              category: 'Grains',
+              unit: 'kg',
+              sku: 'RICE-BAS-001',
+              imageUrl: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=200&h=200&fit=crop',
+              isActive: true,
+              createdAt: '2025-01-01',
+              updatedAt: '2025-01-01'
+            }
+          ];
+          
+          this.masterCategories = [...new Set(this.masterProducts.map(p => p.category))];
+          this.filteredMasterProducts = [...this.masterProducts];
+          this.loading = false;
+          
+          this.snackBar.open('Using sample data (Master products API unavailable)', 'Close', { 
+            duration: 5000,
+            panelClass: ['warning-snackbar']
+          });
         }
-      ];
-      
-      this.masterCategories = [...new Set(this.masterProducts.map(p => p.category))];
-      this.filteredMasterProducts = [...this.masterProducts];
-      this.loading = false;
-    }, 1000);
+      });
   }
 
   filterMasterProducts(): void {
@@ -665,8 +700,8 @@ export class MyProductsComponent implements OnInit, OnDestroy {
       );
     }
 
-    if (this.masterSelectedCategory) {
-      filtered = filtered.filter(p => p.category === this.masterSelectedCategory);
+    if (this.selectedMasterCategory) {
+      filtered = filtered.filter(p => p.category === this.selectedMasterCategory);
     }
 
     this.filteredMasterProducts = filtered;
@@ -698,24 +733,189 @@ export class MyProductsComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Mock adding products to shop
-    this.snackBar.open(
-      `Adding ${this.selectedMasterProducts.length} products to your shop...`, 
-      'Close', 
-      { duration: 2000 }
-    );
+    if (!this.shopId) {
+      this.snackBar.open('Shop information not available', 'Close', { duration: 3000 });
+      return;
+    }
+
+    // Show loading state
+    this.loading = true;
+    let successCount = 0;
+    let errorCount = 0;
     
-    // Clear selection after adding
-    this.clearSelection();
+    // Process each selected product
+    this.selectedMasterProducts.forEach((masterProduct, index) => {
+      // Create shop product request
+      const shopProductRequest = {
+        masterProductId: masterProduct.id,
+        displayName: masterProduct.name,
+        displayDescription: masterProduct.description,
+        price: 0, // Default price - shop owner will set this
+        costPrice: 0,
+        stockQuantity: 0, // Start with 0 stock
+        minStockLevel: 5,
+        isAvailable: true,
+        isFeatured: false
+      };
+
+      console.log('Adding master product to shop:', shopProductRequest);
+
+      // Call API to add product to shop
+      this.http.post<any>(`${this.apiUrl}/shop-products/shop/${this.shopId}/products`, shopProductRequest)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (response) => {
+            console.log('Product added successfully:', response);
+            successCount++;
+            
+            // If this is the last product, show final message
+            if (successCount + errorCount === this.selectedMasterProducts.length) {
+              this.handleAddToShopComplete(successCount, errorCount);
+            }
+          },
+          error: (error) => {
+            console.error('Error adding product to shop:', error);
+            errorCount++;
+            
+            // If this is the last product, show final message
+            if (successCount + errorCount === this.selectedMasterProducts.length) {
+              this.handleAddToShopComplete(successCount, errorCount);
+            }
+          }
+        });
+    });
+  }
+
+  private handleAddToShopComplete(successCount: number, errorCount: number): void {
+    this.loading = false;
     
-    // Refresh products list
-    this.loadProducts();
+    if (successCount > 0) {
+      this.snackBar.open(
+        `Successfully added ${successCount} product(s) to your shop. Set prices and stock levels in the My Products tab.`, 
+        'Close', 
+        { duration: 5000 }
+      );
+      
+      // Clear selection after adding
+      this.clearSelection();
+      
+      // Refresh products list to show newly added products
+      this.loadProducts();
+    }
+    
+    if (errorCount > 0) {
+      this.snackBar.open(
+        `${errorCount} product(s) could not be added. They may already exist in your shop.`, 
+        'Close', 
+        { duration: 5000, panelClass: ['warning-snackbar'] }
+      );
+    }
   }
 
   addSingleProductToShop(product: MasterProduct): void {
-    this.snackBar.open(`Adding ${product.name} to your shop...`, 'Close', { duration: 2000 });
+    if (!this.shopId) {
+      this.snackBar.open('Shop information not available', 'Close', { duration: 3000 });
+      return;
+    }
+
+    // Create shop product request
+    const shopProductRequest = {
+      masterProductId: product.id,
+      displayName: product.name,
+      displayDescription: product.description,
+      price: 0, // Default price - shop owner will set this
+      costPrice: 0,
+      stockQuantity: 0, // Start with 0 stock
+      minStockLevel: 5,
+      isAvailable: true,
+      isFeatured: false
+    };
+
+    console.log('Adding single master product to shop:', shopProductRequest);
+
+    // Show loading state
+    const loadingMessage = this.snackBar.open(`Adding ${product.name} to your shop...`, '', { duration: 0 });
+
+    // Call API to add product to shop
+    this.http.post<any>(`${this.apiUrl}/shop-products/shop/${this.shopId}/products`, shopProductRequest)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          console.log('Single product added successfully:', response);
+          loadingMessage.dismiss();
+          
+          this.snackBar.open(
+            `Successfully added ${product.name} to your shop. Set price and stock level in My Products tab.`, 
+            'Close', 
+            { duration: 5000 }
+          );
+          
+          // Refresh products list to show newly added product
+          this.loadProducts();
+        },
+        error: (error) => {
+          console.error('Error adding single product to shop:', error);
+          loadingMessage.dismiss();
+          
+          let errorMessage = 'Failed to add product to shop';
+          if (error.status === 409) {
+            errorMessage = 'This product already exists in your shop';
+          }
+          
+          this.snackBar.open(errorMessage, 'Close', { 
+            duration: 5000, 
+            panelClass: ['error-snackbar'] 
+          });
+        }
+      });
+  }
+
+  // Tab management methods
+  onTabChange(event: MatTabChangeEvent): void {
+    this.selectedTabIndex = event.index;
+    this.currentTab = event.index === 0 ? 'my-products' : 'master-products';
     
-    // Refresh products list
-    this.loadProducts();
+    // Load master products when switching to master products tab
+    if (event.index === 1 && this.masterProducts.length === 0) {
+      this.loadMasterProducts();
+    }
+  }
+
+  // Master product filter methods
+  applyMasterFilter(): void {
+    this.filteredMasterProducts = this.masterProducts.filter(product => {
+      const matchesSearch = !this.masterSearchTerm || 
+        product.name.toLowerCase().includes(this.masterSearchTerm.toLowerCase()) ||
+        product.description?.toLowerCase().includes(this.masterSearchTerm.toLowerCase()) ||
+        product.sku?.toLowerCase().includes(this.masterSearchTerm.toLowerCase());
+      
+      const matchesCategory = !this.selectedMasterCategory || product.category === this.selectedMasterCategory;
+      
+      return matchesSearch && matchesCategory && product.isActive;
+    });
+  }
+
+  clearMasterFilters(): void {
+    this.masterSearchTerm = '';
+    this.selectedMasterCategory = '';
+    this.applyMasterFilter();
+  }
+
+  // Master product selection methods
+  toggleMasterProductSelection(product: MasterProduct): void {
+    const index = this.selectedMasterProducts.findIndex(p => p.id === product.id);
+    if (index > -1) {
+      this.selectedMasterProducts.splice(index, 1);
+    } else {
+      this.selectedMasterProducts.push(product);
+    }
+  }
+
+  isMasterProductSelected(product: MasterProduct): boolean {
+    return this.selectedMasterProducts.some(p => p.id === product.id);
+  }
+
+  clearMasterSelection(): void {
+    this.selectedMasterProducts = [];
   }
 }

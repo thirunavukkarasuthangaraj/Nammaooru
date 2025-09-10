@@ -1,7 +1,7 @@
 <div class="users-container">
   <div class="header-section">
     <div class="title-section">
-      <h2>User Management</h2>
+      <h2>{{ getPageTitle() }}</h2>
       <button mat-raised-button color="primary" (click)="createUser()" class="create-btn">
         <mat-icon>add</mat-icon>
         Add New User
@@ -73,11 +73,11 @@
       <ng-container matColumnDef="role">
         <mat-header-cell *matHeaderCellDef mat-sort-header>Role</mat-header-cell>
         <mat-cell *matCellDef="let user">
-          <mat-chip-listbox>
-            <mat-chip-option [color]="getRoleColor(user.role)" selected>
-              {{ user.role | titlecase }}
-            </mat-chip-option>
-          </mat-chip-listbox>
+          <div class="role-container">
+            <span [class]="'role-badge role-' + user.role.toLowerCase().replace('_', '-')">
+              {{ getRoleDisplayName(user.role) }}
+            </span>
+          </div>
         </mat-cell>
       </ng-container>
 
@@ -96,17 +96,13 @@
       <ng-container matColumnDef="status">
         <mat-header-cell *matHeaderCellDef mat-sort-header>Status</mat-header-cell>
         <mat-cell *matCellDef="let user">
-          <div class="status-info">
-            <mat-chip-listbox>
-              <mat-chip-option [color]="getStatusColor(user.status)" selected>
-                {{ user.status | titlecase }}
-              </mat-chip-option>
-            </mat-chip-listbox>
-            <div class="active-indicator">
-              <mat-icon [color]="user.isActive ? 'primary' : 'warn'" [matTooltip]="user.isActive ? 'Active' : 'Inactive'">
-                {{ user.isActive ? 'check_circle' : 'cancel' }}
-              </mat-icon>
-            </div>
+          <div class="status-container">
+            <mat-chip 
+              [class]="'status-chip status-' + (user.isActive ? 'active' : 'inactive')"
+              [matTooltip]="getStatusTooltip(user)">
+              <mat-icon class="status-icon">{{ getStatusIcon(user) }}</mat-icon>
+              <span class="status-text">{{ getDisplayStatus(user) }}</span>
+            </mat-chip>
           </div>
         </mat-cell>
       </ng-container>
@@ -115,7 +111,14 @@
       <ng-container matColumnDef="lastLogin">
         <mat-header-cell *matHeaderCellDef mat-sort-header>Last Login</mat-header-cell>
         <mat-cell *matCellDef="let user">
-          <span class="last-login">{{ user.lastLogin | date:'dd/MM/yyyy HH:mm' || 'Never' }}</span>
+          <div class="last-login-container">
+            <span class="last-login" *ngIf="user.lastLogin; else noLoginTemplate">
+              {{ user.lastLogin | date:'dd/MM/yyyy HH:mm' }}
+            </span>
+            <ng-template #noLoginTemplate>
+              <span class="no-login">Never logged in</span>
+            </ng-template>
+          </div>
         </mat-cell>
       </ng-container>
 
@@ -123,32 +126,53 @@
       <ng-container matColumnDef="actions">
         <mat-header-cell *matHeaderCellDef>Actions</mat-header-cell>
         <mat-cell *matCellDef="let user">
-          <button mat-icon-button [matMenuTriggerFor]="menu" color="primary">
-            <mat-icon>more_vert</mat-icon>
-          </button>
-          <mat-menu #menu="matMenu">
-            <button mat-menu-item (click)="viewUser(user)">
-              <mat-icon>visibility</mat-icon>
-              <span>View Details</span>
-            </button>
-            <button mat-menu-item (click)="editUser(user)">
-              <mat-icon>edit</mat-icon>
-              <span>Edit User</span>
-            </button>
-            <button mat-menu-item (click)="toggleUserStatus(user)">
-              <mat-icon>{{ user.isActive ? 'block' : 'check_circle' }}</mat-icon>
-              <span>{{ user.isActive ? 'Deactivate' : 'Activate' }}</span>
-            </button>
-            <button mat-menu-item (click)="resetPassword(user)">
-              <mat-icon>lock_reset</mat-icon>
-              <span>Reset Password</span>
-            </button>
-            <mat-divider></mat-divider>
-            <button mat-menu-item (click)="deleteUser(user)" class="delete-action">
-              <mat-icon>delete</mat-icon>
-              <span>Delete User</span>
-            </button>
-          </mat-menu>
+          <div class="actions-container">
+            <!-- Status Toggle -->
+            <mat-slide-toggle 
+              [checked]="user.isActive" 
+              (change)="toggleUserStatus(user)"
+              [matTooltip]="user.isActive ? 'User is Active - Click to Deactivate' : 'User is Inactive - Click to Activate'"
+              [color]="user.isActive ? 'primary' : 'warn'"
+              class="status-toggle">
+            </mat-slide-toggle>
+            
+            <!-- Action buttons -->
+            <div class="action-buttons">
+              <button mat-icon-button 
+                      (click)="viewUser(user)"
+                      matTooltip="View Details"
+                      color="primary"
+                      class="action-btn view-btn">
+                <mat-icon>visibility</mat-icon>
+              </button>
+              
+              <button mat-icon-button 
+                      (click)="editUser(user)"
+                      matTooltip="Edit User"
+                      color="accent"
+                      class="action-btn edit-btn">
+                <mat-icon>edit</mat-icon>
+              </button>
+              
+              <button mat-icon-button [matMenuTriggerFor]="menu" 
+                      matTooltip="More Actions"
+                      class="action-btn more-btn">
+                <mat-icon>more_vert</mat-icon>
+              </button>
+            </div>
+            
+            <mat-menu #menu="matMenu" class="user-actions-menu">
+              <button mat-menu-item (click)="resetPassword(user)">
+                <mat-icon color="primary">lock_reset</mat-icon>
+                <span>Reset Password</span>
+              </button>
+              <mat-divider></mat-divider>
+              <button mat-menu-item (click)="deleteUser(user)" class="delete-action">
+                <mat-icon color="warn">delete</mat-icon>
+                <span>Delete User</span>
+              </button>
+            </mat-menu>
+          </div>
         </mat-cell>
       </ng-container>
 
@@ -165,11 +189,48 @@
   </div>
 
   <div *ngIf="!loading && dataSource.data.length === 0" class="no-data">
-    <mat-icon>people</mat-icon>
-    <p>No users found</p>
-    <button mat-raised-button color="primary" (click)="createUser()">
-      <mat-icon>add</mat-icon>
-      Add First User
-    </button>
+    <mat-icon>people_outline</mat-icon>
+    <div class="no-data-content">
+      <h3 *ngIf="originalData.length === 0; else filteredEmpty">No users in the system</h3>
+      <ng-template #filteredEmpty>
+        <h3>No users match your filters</h3>
+      </ng-template>
+      
+      <p *ngIf="originalData.length === 0; else filteredMessage">
+        Get started by adding your first user to the system.
+      </p>
+      <ng-template #filteredMessage>
+        <p>Try adjusting your search terms or clearing the filters to see more results.</p>
+      </ng-template>
+      
+      <div class="no-data-actions">
+        <button *ngIf="originalData.length === 0" 
+                mat-raised-button 
+                color="primary" 
+                (click)="createUser()"
+                class="add-first-btn">
+          <mat-icon>person_add</mat-icon>
+          Add First User
+        </button>
+        
+        <button *ngIf="originalData.length > 0" 
+                mat-stroked-button 
+                color="primary" 
+                (click)="clearFilters()"
+                class="clear-filters-btn">
+          <mat-icon>clear_all</mat-icon>
+          Clear Filters
+        </button>
+        
+        <button *ngIf="originalData.length > 0" 
+                mat-raised-button 
+                color="primary" 
+                (click)="createUser()"
+                class="add-user-btn">
+          <mat-icon>person_add</mat-icon>
+          Add New User
+        </button>
+      </div>
+    </div>
   </div>
 </div>

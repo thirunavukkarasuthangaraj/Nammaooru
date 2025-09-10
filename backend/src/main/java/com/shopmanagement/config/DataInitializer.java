@@ -103,6 +103,22 @@ public class DataInitializer {
                 log.info("Delivery partner created with email: delivery@example.com and password: delivery123");
             }
 
+            // Create a manager if needed
+            if (!userRepository.existsByEmail("manager@example.com") && !userRepository.existsByUsername("manager")) {
+                User manager = User.builder()
+                        .username("manager")
+                        .email("manager@example.com")
+                        .password(passwordEncoder.encode("manager123"))
+                        .role(User.UserRole.MANAGER)
+                        .isActive(true)
+                        .passwordChangeRequired(false)
+                        .isTemporaryPassword(false)
+                        .build();
+                
+                userRepository.save(manager);
+                log.info("Manager user created with email: manager@example.com and password: manager123");
+            }
+
             // Create superadmin user if it doesn't exist
             if (!userRepository.existsByEmail("superadmin@shopmanagement.com") && !userRepository.existsByUsername("superadmin")) {
                 User superadmin = User.builder()

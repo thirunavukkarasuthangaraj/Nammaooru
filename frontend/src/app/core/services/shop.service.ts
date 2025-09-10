@@ -257,6 +257,38 @@ export class ShopService {
     );
   }
 
+  // Get shop documents for approval (admin only)
+  getShopDocuments(shopId: number): Observable<any[]> {
+    return this.http.get<ApiResponse<any[]>>(`${this.API_URL}/approvals/${shopId}/documents`).pipe(
+      map(apiResponse => {
+        if (ApiResponseHelper.isError(apiResponse)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(apiResponse));
+        }
+        return apiResponse.data;
+      }),
+      catchError(error => {
+        console.error('Error fetching shop documents:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  // Get document verification status for a shop (admin only)
+  getDocumentVerificationStatus(shopId: number): Observable<any> {
+    return this.http.get<ApiResponse<any>>(`${this.API_URL}/approvals/${shopId}/documents/verification-status`).pipe(
+      map(apiResponse => {
+        if (ApiResponseHelper.isError(apiResponse)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(apiResponse));
+        }
+        return apiResponse.data;
+      }),
+      catchError(error => {
+        console.error('Error fetching document verification status:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
   // Get current user's shop (shop owner only)
   getMyShop(): Observable<Shop> {
     return this.http.get<ApiResponse<any>>(`${this.API_URL}/my-shop`).pipe(

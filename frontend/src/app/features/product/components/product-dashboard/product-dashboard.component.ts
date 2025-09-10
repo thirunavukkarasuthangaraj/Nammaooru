@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
 import { Observable, forkJoin } from 'rxjs';
 import { ProductService } from '../../../../core/services/product.service';
 import { ProductCategoryService } from '../../../../core/services/product-category.service';
@@ -52,172 +53,55 @@ import { MasterProduct, ProductCategory } from '../../../../core/models/product.
         </app-product-stats-card>
       </div>
 
-      <div class="content-grid">
-        <!-- Recent Products -->
-        <mat-card class="dashboard-card">
-          <mat-card-header>
-            <mat-card-title>
-              <mat-icon>schedule</mat-icon>
-              Recent Products
-            </mat-card-title>
-            <mat-card-subtitle>Latest master products added</mat-card-subtitle>
-          </mat-card-header>
-          <mat-card-content>
-            <div *ngIf="loading" class="loading-container">
-              <mat-spinner diameter="40"></mat-spinner>
-            </div>
-            <div *ngIf="!loading && recentProducts.length === 0" class="empty-state">
-              <mat-icon>inventory_2</mat-icon>
-              <p>No products found</p>
-              <button mat-button color="primary" routerLink="/products/master/new">
-                Add First Product
-              </button>
-            </div>
-            <div *ngIf="!loading && recentProducts.length > 0" class="products-list">
-              <div *ngFor="let product of recentProducts" class="product-item">
-                <div class="product-info">
-                  <div class="product-name">{{ product.name }}</div>
-                  <div class="product-meta">
-                    <span class="sku">{{ product.sku }}</span>
-                    <span class="brand" *ngIf="product.brand">{{ product.brand }}</span>
-                  </div>
+      <!-- Product Categories - Large List -->
+      <mat-card class="categories-main-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>category</mat-icon>
+            Product Categories
+          </mat-card-title>
+          <mat-card-subtitle>Click any category to view all products in that category</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <div *ngIf="loading" class="loading-container">
+            <mat-spinner diameter="50"></mat-spinner>
+            <p>Loading categories...</p>
+          </div>
+          <div *ngIf="!loading && categories.length === 0" class="empty-state">
+            <mat-icon>category</mat-icon>
+            <h3>No Categories Found</h3>
+            <p>Get started by creating your first product category</p>
+            <button mat-raised-button color="primary" routerLink="/products/categories/new">
+              <mat-icon>add</mat-icon>
+              Create First Category
+            </button>
+          </div>
+          <div *ngIf="!loading && categories.length > 0" class="categories-large-list">
+            <div *ngFor="let category of categories" 
+                 class="category-large-item"
+                 (click)="viewCategoryProducts(category)"
+                 matRipple>
+              <div class="category-main-info">
+                <div class="category-icon">
+                  <mat-icon>folder</mat-icon>
                 </div>
-                <div class="product-actions">
-                  <mat-chip-set>
-                    <mat-chip [color]="product.status === 'ACTIVE' ? 'primary' : 'warn'"
-                             [class.selected]="product.status === 'ACTIVE'">
-                      {{ product.status }}
-                    </mat-chip>
-                  </mat-chip-set>
-                  <button mat-icon-button 
-                          [routerLink]="['/products/master', product.id]"
-                          matTooltip="Edit Product">
-                    <mat-icon>edit</mat-icon>
-                  </button>
+                <div class="category-details">
+                  <h3 class="category-title">{{ category.name }}</h3>
+                  <p class="category-desc" *ngIf="category.description">{{ category.description }}</p>
+                  <p class="category-desc" *ngIf="!category.description">No description available</p>
                 </div>
               </div>
-            </div>
-          </mat-card-content>
-          <mat-card-actions *ngIf="recentProducts.length > 0">
-            <button mat-button routerLink="/products/master">
-              View All Products
-            </button>
-          </mat-card-actions>
-        </mat-card>
-
-        <!-- Category Tree -->
-        <mat-card class="dashboard-card">
-          <mat-card-header>
-            <mat-card-title>
-              <mat-icon>account_tree</mat-icon>
-              Product Categories
-            </mat-card-title>
-            <mat-card-subtitle>Category hierarchy overview</mat-card-subtitle>
-          </mat-card-header>
-          <mat-card-content>
-            <div *ngIf="loading" class="loading-container">
-              <mat-spinner diameter="40"></mat-spinner>
-            </div>
-            <div *ngIf="!loading && categories.length === 0" class="empty-state">
-              <mat-icon>category</mat-icon>
-              <p>No categories found</p>
-              <button mat-button color="primary" routerLink="/products/categories/new">
-                Add First Category
-              </button>
-            </div>
-            <app-category-tree 
-              *ngIf="!loading && categories.length > 0"
-              [categories]="categories"
-              [readonly]="true"
-              [showActions]="false">
-            </app-category-tree>
-          </mat-card-content>
-          <mat-card-actions *ngIf="categories.length > 0">
-            <button mat-button routerLink="/products/categories">
-              Manage Categories
-            </button>
-          </mat-card-actions>
-        </mat-card>
-
-        <!-- Featured Products -->
-        <mat-card class="dashboard-card featured-card">
-          <mat-card-header>
-            <mat-card-title>
-              <mat-icon>star</mat-icon>
-              Featured Products
-            </mat-card-title>
-            <mat-card-subtitle>Currently featured master products</mat-card-subtitle>
-          </mat-card-header>
-          <mat-card-content>
-            <div *ngIf="loading" class="loading-container">
-              <mat-spinner diameter="40"></mat-spinner>
-            </div>
-            <div *ngIf="!loading && featuredProducts.length === 0" class="empty-state">
-              <mat-icon>star_border</mat-icon>
-              <p>No featured products</p>
-            </div>
-            <div *ngIf="!loading && featuredProducts.length > 0" class="featured-grid">
-              <div *ngFor="let product of featuredProducts" class="featured-item">
-                <div class="featured-content">
-                  <div class="featured-name">{{ product.name }}</div>
-                  <div class="featured-brand" *ngIf="product.brand">{{ product.brand }}</div>
-                  <div class="featured-sku">{{ product.sku }}</div>
+              <div class="category-stats">
+                <div class="product-count-large">
+                  <span class="count-number">{{ getCategoryProductCount(category) }}</span>
+                  <span class="count-label">Products</span>
                 </div>
-                <button mat-icon-button 
-                        [routerLink]="['/products/master', product.id]"
-                        matTooltip="Edit Product">
-                  <mat-icon>edit</mat-icon>
-                </button>
+                <mat-icon class="arrow-icon">chevron_right</mat-icon>
               </div>
             </div>
-          </mat-card-content>
-        </mat-card>
-
-        <!-- Quick Actions -->
-        <mat-card class="dashboard-card actions-card">
-          <mat-card-header>
-            <mat-card-title>
-              <mat-icon>flash_on</mat-icon>
-              Quick Actions
-            </mat-card-title>
-          </mat-card-header>
-          <mat-card-content>
-            <div class="actions-grid">
-              <button mat-stroked-button 
-                      color="primary"
-                      routerLink="/products/master/new"
-                      class="action-button">
-                <mat-icon>add_box</mat-icon>
-                <span>Add Master Product</span>
-              </button>
-              
-              <button mat-stroked-button 
-                      color="accent"
-                      routerLink="/products/categories/new"
-                      class="action-button">
-                <mat-icon>create_new_folder</mat-icon>
-                <span>Create Category</span>
-              </button>
-              
-              <button mat-stroked-button 
-                      color="primary"
-                      routerLink="/products/master"
-                      class="action-button">
-                <mat-icon>search</mat-icon>
-                <span>Browse Products</span>
-              </button>
-              
-              <button mat-stroked-button 
-                      color="accent"
-                      routerLink="/products/categories"
-                      class="action-button">
-                <mat-icon>account_tree</mat-icon>
-                <span>Manage Categories</span>
-              </button>
-            </div>
-          </mat-card-content>
-        </mat-card>
-      </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
     </div>
   `,
   styles: [`
@@ -246,34 +130,51 @@ import { MasterProduct, ProductCategory } from '../../../../core/models/product.
       margin-bottom: 24px;
     }
 
-    .content-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-      gap: 24px;
-    }
-
-    .dashboard-card {
-      height: fit-content;
+    .categories-main-card {
+      margin: 24px;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      border: none;
     }
 
     .loading-container {
       display: flex;
+      flex-direction: column;
+      align-items: center;
       justify-content: center;
-      padding: 40px;
+      padding: 60px 40px;
+      text-align: center;
+    }
+
+    .loading-container p {
+      margin-top: 20px;
+      color: #666;
+      font-size: 16px;
     }
 
     .empty-state {
       text-align: center;
-      padding: 40px;
+      padding: 60px 40px;
       color: #666;
     }
 
     .empty-state mat-icon {
-      font-size: 48px;
-      height: 48px;
-      width: 48px;
-      color: #ccc;
-      margin-bottom: 16px;
+      font-size: 64px;
+      height: 64px;
+      width: 64px;
+      color: #ddd;
+      margin-bottom: 20px;
+    }
+
+    .empty-state h3 {
+      margin: 16px 0 8px 0;
+      font-size: 24px;
+      color: #333;
+    }
+
+    .empty-state p {
+      margin-bottom: 24px;
+      font-size: 16px;
     }
 
     .products-list {
@@ -317,62 +218,113 @@ import { MasterProduct, ProductCategory } from '../../../../core/models/product.
       gap: 8px;
     }
 
-    .featured-grid {
-      display: grid;
-      gap: 8px;
-      max-height: 300px;
-      overflow-y: auto;
-    }
-
-    .featured-item {
+    .categories-large-list {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 8px 12px;
-      background: #f5f5f5;
-      border-radius: 4px;
+      flex-direction: column;
+      gap: 0;
     }
 
-    .featured-content {
+    .category-large-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px;
+      border-bottom: 1px solid #f0f0f0;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: white;
+    }
+
+    .category-large-item:last-child {
+      border-bottom: none;
+    }
+
+    .category-large-item:hover {
+      background: #f8f9fa;
+      transform: translateX(8px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .category-main-info {
+      display: flex;
+      align-items: center;
+      gap: 20px;
       flex: 1;
     }
 
-    .featured-name {
-      font-weight: 500;
-      margin-bottom: 2px;
-    }
-
-    .featured-brand {
-      font-size: 12px;
-      color: #666;
-      margin-bottom: 2px;
-    }
-
-    .featured-sku {
-      font-size: 11px;
-      color: #999;
-    }
-
-    .actions-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 12px;
-    }
-
-    .action-button {
+    .category-icon {
+      width: 60px;
+      height: 60px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 12px;
       display: flex;
-      flex-direction: column;
       align-items: center;
-      gap: 8px;
-      padding: 20px 16px;
-      height: auto;
+      justify-content: center;
+      color: white;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
     }
 
-    .action-button mat-icon {
-      font-size: 24px;
-      height: 24px;
-      width: 24px;
+    .category-icon mat-icon {
+      font-size: 28px;
+      width: 28px;
+      height: 28px;
     }
+
+    .category-details {
+      flex: 1;
+    }
+
+    .category-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin: 0 0 8px 0;
+      color: #1a1a1a;
+    }
+
+    .category-desc {
+      font-size: 14px;
+      color: #666;
+      margin: 0;
+      line-height: 1.4;
+    }
+
+    .category-stats {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .product-count-large {
+      text-align: center;
+      padding: 8px 16px;
+      background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+      border-radius: 12px;
+      min-width: 80px;
+    }
+
+    .count-number {
+      display: block;
+      font-size: 18px;
+      font-weight: 700;
+      color: #1976d2;
+    }
+
+    .count-label {
+      display: block;
+      font-size: 12px;
+      color: #1976d2;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .arrow-icon {
+      color: #999;
+      font-size: 24px;
+      width: 24px;
+      height: 24px;
+    }
+
 
     @media (max-width: 768px) {
       .dashboard-container {
@@ -385,12 +337,29 @@ import { MasterProduct, ProductCategory } from '../../../../core/models/product.
         gap: 16px;
       }
 
-      .content-grid {
-        grid-template-columns: 1fr;
-      }
-
       .stats-grid {
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      }
+
+      .categories-main-card {
+        margin: 16px;
+      }
+
+      .category-large-item {
+        padding: 16px;
+        flex-direction: column;
+        gap: 16px;
+        text-align: center;
+      }
+
+      .category-main-info {
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+      }
+
+      .category-large-item:hover {
+        transform: none;
       }
     }
   `]
@@ -408,7 +377,8 @@ export class ProductDashboardComponent implements OnInit {
 
   constructor(
     private productService: ProductService,
-    private categoryService: ProductCategoryService
+    private categoryService: ProductCategoryService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
@@ -552,5 +522,26 @@ export class ProductDashboardComponent implements OnInit {
     this.totalProducts = 156;
     this.totalCategories = 12;
     this.totalBrands = 25;
+  }
+
+  viewCategoryProducts(category: ProductCategory): void {
+    // Navigate to products page with category filter
+    this.router.navigate(['/products/master'], { 
+      queryParams: { categoryId: category.id, categoryName: category.name } 
+    });
+  }
+
+  getCategoryProductCount(category: ProductCategory): number {
+    // This would normally come from the API
+    // For now, return a mock count
+    const mockCounts: {[key: number]: number} = {
+      1: 7,  // Grocery
+      2: 2,  // Electronics  
+      3: 3,  // Medicine
+      4: 4,  // Clothing
+      5: 2,  // Snacks
+      6: 2   // Food & Beverages
+    };
+    return mockCounts[category.id] || 0;
   }
 }

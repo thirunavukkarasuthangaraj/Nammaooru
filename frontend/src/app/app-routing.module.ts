@@ -5,16 +5,21 @@ import { RoleGuard } from './core/guards/role.guard';
 import { UserRole } from './core/models/auth.model';
 import { UnauthorizedComponent } from './shared/components/unauthorized/unauthorized.component';
 import { MainLayoutComponent } from './layout/main-layout/main-layout.component';
+import { RoleTestComponent } from './shared/components/role-test/role-test.component';
 
 const routes: Routes = [
   {
     path: '',
-    redirectTo: '/dashboard',
+    redirectTo: '/shops',
     pathMatch: 'full'
   },
   {
     path: 'auth',
     loadChildren: () => import('./features/auth/auth.module').then(m => m.AuthModule)
+  },
+  {
+    path: 'role-test',
+    component: RoleTestComponent
   },
   {
     path: 'test-delivery',
@@ -47,7 +52,7 @@ const routes: Routes = [
         path: 'analytics',
         loadChildren: () => import('./features/analytics/analytics.module').then(m => m.AnalyticsModule),
         canActivate: [RoleGuard],
-        data: { roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SHOP_OWNER] }
+        data: { roles: [UserRole.SUPER_ADMIN] }
       },
       {
         path: 'settings',
@@ -103,7 +108,7 @@ const routes: Routes = [
   },
   {
     path: '**',
-    redirectTo: '/dashboard'
+    redirectTo: '/shops'
   }
 ];
 

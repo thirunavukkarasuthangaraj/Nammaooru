@@ -69,8 +69,6 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     {
       category: 'System Overview',
       items: [
-        { title: 'Dashboard', icon: 'dashboard', route: '/dashboard', badge: null },
-        { title: 'System Analytics', icon: 'analytics', route: '/analytics', badge: null },
         { title: 'System Health', icon: 'monitor_heart', route: '/system/health', badge: null }
       ]
     },
@@ -90,8 +88,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       items: [
         { title: 'All Shops', icon: 'store', route: '/shops', badge: null },
         { title: 'Shop Master', icon: 'store', route: '/shops/master', badge: null },
-        { title: 'Shop Approvals', icon: 'check_circle', route: '/shops/approvals', badge: '3' },
-        { title: 'Shop Categories', icon: 'category', route: '/shops/categories', badge: null }
+        { title: 'Shop Approvals', icon: 'check_circle', route: '/shops/approvals', badge: '3' }
       ]
     },
     {
@@ -99,15 +96,13 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       items: [
         { title: 'All Products', icon: 'inventory', route: '/products', badge: null },
         { title: 'Product Master', icon: 'inventory_2', route: '/products/master', badge: null },
-        { title: 'Categories', icon: 'category', route: '/products/categories', badge: null },
-        { title: 'Product Approvals', icon: 'approval', route: '/products/approvals', badge: null }
+        { title: 'Categories', icon: 'category', route: '/products/categories', badge: null }
       ]
     },
     {
       category: 'Order Management',
       items: [
         { title: 'All Orders', icon: 'receipt_long', route: '/orders', badge: '45' },
-        { title: 'Order Analytics', icon: 'trending_up', route: '/orders/analytics', badge: null },
         { title: 'Order Issues', icon: 'report_problem', route: '/orders/issues', badge: '3' }
       ]
     },
@@ -117,7 +112,6 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
         { title: 'Delivery Partners', icon: 'delivery_dining', route: '/delivery/admin/partners', badge: '5' },
         { title: 'Order Assignments', icon: 'assignment', route: '/delivery/admin/assignments', badge: null },
         { title: 'Live Tracking', icon: 'gps_fixed', route: '/delivery/admin/tracking', badge: null },
-        { title: 'Delivery Analytics', icon: 'analytics', route: '/delivery/analytics', badge: null },
         { title: 'Delivery Zones', icon: 'map', route: '/delivery/zones', badge: null }
       ]
     },
@@ -144,13 +138,6 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
 
   // ADMIN - Standard admin access
   adminMenuItems = [
-    {
-      category: 'Overview',
-      items: [
-        { title: 'Dashboard', icon: 'dashboard', route: '/dashboard', badge: null },
-        { title: 'Analytics', icon: 'analytics', route: '/analytics', badge: null }
-      ]
-    },
     {
       category: 'Order Management',
       items: [
@@ -183,8 +170,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       items: [
         { title: 'Delivery Partners', icon: 'delivery_dining', route: '/delivery/admin/partners', badge: '5' },
         { title: 'Order Assignments', icon: 'assignment', route: '/delivery/admin/assignments', badge: null },
-        { title: 'Live Tracking', icon: 'gps_fixed', route: '/delivery/admin/tracking', badge: null },
-        { title: 'Delivery Analytics', icon: 'analytics', route: '/delivery/analytics', badge: null }
+        { title: 'Live Tracking', icon: 'gps_fixed', route: '/delivery/admin/tracking', badge: null }
       ]
     },
     {
@@ -198,13 +184,6 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
 
   // MANAGER - Operations management focus
   managerMenuItems = [
-    {
-      category: 'Operations Overview',
-      items: [
-        { title: 'Dashboard', icon: 'dashboard', route: '/manager/dashboard', badge: null },
-        { title: 'Operations Analytics', icon: 'analytics', route: '/manager/analytics', badge: null }
-      ]
-    },
     {
       category: 'Order Management',
       items: [
@@ -280,7 +259,6 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     {
       category: 'Main',
       items: [
-        { title: 'Dashboard', icon: 'dashboard', route: '/delivery/partner/dashboard', badge: null },
         { title: 'My Orders', icon: 'local_shipping', route: '/delivery/partner/orders', badge: '3' }
       ]
     },
@@ -315,7 +293,6 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     {
       category: 'Main',
       items: [
-        { title: 'Dashboard', icon: 'dashboard', route: '/customer/dashboard', badge: null },
         { title: 'Browse Shops', icon: 'store', route: '/customer/shops', badge: null },
         { title: 'All Products', icon: 'shopping_bag', route: '/products', badge: null }
       ]
@@ -356,28 +333,44 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
 
   get currentMenuItems() {
     const user = this.authService.getCurrentUser();
-    switch (user?.role) {
+    
+    // If no user is authenticated, return empty menu
+    if (!user || !this.authService.isAuthenticated()) {
+      return [];
+    }
+    
+    // Log for debugging
+    console.log('Current user role:', user.role, 'Type:', typeof user.role);
+    
+    switch (user.role) {
       case UserRole.SUPER_ADMIN:
       case 'SUPER_ADMIN':
+        console.log('Showing SUPER_ADMIN menus');
         return this.superAdminMenuItems;
       case UserRole.ADMIN:
       case 'ADMIN':
+        console.log('Showing ADMIN menus');
         return this.adminMenuItems;
       case UserRole.MANAGER:
       case 'MANAGER':
+        console.log('Showing MANAGER menus');
         return this.managerMenuItems;
       case UserRole.SHOP_OWNER:
       case 'SHOP_OWNER':
+        console.log('Showing SHOP_OWNER menus');
         return this.shopOwnerMenuItems;
       case UserRole.DELIVERY_PARTNER:
       case 'DELIVERY_PARTNER':
+        console.log('Showing DELIVERY_PARTNER menus');
         return this.deliveryPartnerMenuItems;
       case UserRole.USER:
       case UserRole.CUSTOMER:
       case 'USER':
       case 'CUSTOMER':
+        console.log('Showing CUSTOMER menus');
         return this.customerMenuItems;
       default:
+        console.log('Unknown role, showing empty menu:', user.role);
         return [];
     }
   }

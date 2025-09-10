@@ -2,7 +2,7 @@ import { Component, OnInit, ViewChild } from '@angular/core';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { ProductService } from '../../../../core/services/product.service';
 import { MasterProduct, ProductFilters } from '../../../../core/models/product.model';
 import Swal from 'sweetalert2';
@@ -24,13 +24,23 @@ import { environment } from '../../../../../environments/environment';
             <span class="breadcrumb-item">Products</span>
             <mat-icon class="breadcrumb-separator">chevron_right</mat-icon>
             <span class="breadcrumb-item active">Master Products</span>
+            <mat-icon class="breadcrumb-separator" *ngIf="selectedCategoryName">chevron_right</mat-icon>
+            <span class="breadcrumb-item active" *ngIf="selectedCategoryName">{{ selectedCategoryName }}</span>
           </div>
-          <h1 class="page-title">Master Products</h1>
+          <h1 class="page-title">
+            <span *ngIf="!selectedCategoryName">Master Products</span>
+            <span *ngIf="selectedCategoryName">{{ selectedCategoryName }} Products</span>
+          </h1>
           <p class="page-description">
-            Manage your complete product catalog
+            <span *ngIf="!selectedCategoryName">Manage your complete product catalog</span>
+            <span *ngIf="selectedCategoryName">Products in {{ selectedCategoryName }} category</span>
           </p>
         </div>
         <div class="header-actions">
+          <button mat-stroked-button color="accent" routerLink="/products/dashboard" *ngIf="selectedCategoryName" class="back-button">
+            <mat-icon>arrow_back</mat-icon>
+            Back to Categories
+          </button>
           <button mat-raised-button class="action-button" routerLink="/products/master/new">
             <mat-icon>add_circle</mat-icon>
             New Product
@@ -86,7 +96,8 @@ import { environment } from '../../../../../environments/environment';
         <div class="filter-header">
           <h3 class="filter-title">
             <mat-icon>filter_list</mat-icon>
-            Filters
+            <span *ngIf="!selectedCategoryName">Filters</span>
+            <span *ngIf="selectedCategoryName">Filters - {{ selectedCategoryName }} Category</span>
           </h3>
           <button mat-button class="clear-filters" (click)="clearFilters()" *ngIf="hasActiveFilters()">
             <mat-icon>clear</mat-icon>
@@ -339,6 +350,28 @@ import { environment } from '../../../../../environments/environment';
 
     .action-button mat-icon {
       margin-right: 8px;
+    }
+
+    .back-button {
+      margin-right: 12px;
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .back-button mat-icon {
+      margin-right: 8px;
+    }
+
+    .back-button:hover {
+      background: rgba(255, 255, 255, 0.2);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
 
     /* Statistics Row */
@@ -790,31 +823,67 @@ export class MasterProductListComponent implements OnInit {
   statusFilter = '';
   categories: string[] = [];
   brands: string[] = [];
+  selectedCategoryName = '';
+  selectedCategoryId: any = null;
   
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
   constructor(
     private productService: ProductService,
-    private router: Router
+    private router: Router,
+    private route: ActivatedRoute
   ) {}
 
   ngOnInit() {
-    this.loadProducts();
+    // Check for category filter from query parameters
+    this.route.queryParams.subscribe(params => {
+      if (params['categoryName']) {
+        this.categoryFilter = params['categoryName'];
+        this.selectedCategoryName = params['categoryName'];
+        this.selectedCategoryId = params['categoryId'];
+      } else {
+        this.selectedCategoryName = '';
+        this.selectedCategoryId = null;
+      }
+      this.loadProducts();
+    });
   }
 
   ngAfterViewInit() {
-    this.dataSource.paginator = this.paginator;
-    this.dataSource.sort = this.sort;
+    this.setupTableFeatures();
+  }
+
+  private setupTableFeatures() {
+    if (this.paginator && this.sort) {
+      this.dataSource.paginator = this.paginator;
+      this.dataSource.sort = this.sort;
+    }
   }
 
   loadProducts() {
     this.loading = true;
-    this.productService.getMasterProducts().subscribe({
+    
+    // Create filters object for API call
+    const filters: any = {};
+    if (this.selectedCategoryId) {
+      filters.categoryId = this.selectedCategoryId;
+    }
+    if (this.selectedCategoryName) {
+      filters.categoryName = this.selectedCategoryName;
+    }
+    
+    this.productService.getMasterProducts(filters).subscribe({
       next: (response) => {
         this.products = response.content || [];
         this.dataSource.data = this.products;
         this.extractFilters();
+        // Only apply local filters if no category is selected (API didn't filter)
+        if (!this.selectedCategoryId && !this.selectedCategoryName) {
+          this.applyFilters();
+        }
+        // Ensure paginator and sort are connected after data is set
+        this.setupTableFeatures();
         this.loading = false;
       },
       error: (error) => {
@@ -884,6 +953,10 @@ export class MasterProductListComponent implements OnInit {
     }
     
     this.dataSource.data = filteredData;
+    // Force table refresh
+    if (this.dataSource.paginator) {
+      this.dataSource.paginator.firstPage();
+    }
   }
 
   clearFilters() {

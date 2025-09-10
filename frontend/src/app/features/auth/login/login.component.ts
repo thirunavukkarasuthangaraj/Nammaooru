@@ -115,7 +115,7 @@ export class LoginComponent implements OnInit, OnDestroy {
   private redirectAfterLogin(): void {
     const user = this.authService.getCurrentUser();
     
-    if (this.returnUrl && this.returnUrl !== '/dashboard') {
+    if (this.returnUrl && this.returnUrl !== '/dashboard' && this.returnUrl !== '/shop-owner/dashboard') {
       this.router.navigate([this.returnUrl]);
       return;
     }
@@ -123,14 +123,16 @@ export class LoginComponent implements OnInit, OnDestroy {
     // Redirect based on user role
     switch (user?.role) {
       case UserRole.SUPER_ADMIN:
-      case UserRole.ADMIN:
-        this.router.navigate(['/dashboard']);
+        this.router.navigate(['/analytics']);
         break;
-      case UserRole.SHOP_OWNER:
+      case UserRole.ADMIN:
         this.router.navigate(['/shops']);
         break;
+      case UserRole.SHOP_OWNER:
+        this.router.navigate(['/shop-owner/profile']);
+        break;
       default:
-        this.router.navigate(['/dashboard']);
+        this.router.navigate(['/shops']);
     }
   }
 

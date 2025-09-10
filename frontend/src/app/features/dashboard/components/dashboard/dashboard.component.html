@@ -1,14 +1,6 @@
 <div class="dashboard-container">
   <div class="header-section">
-    <h2>Dashboard</h2>
-    <mat-form-field appearance="outline" class="period-selector">
-      <mat-label>Time Period</mat-label>
-      <mat-select [(ngModel)]="selectedPeriod" (selectionChange)="onPeriodChange()">
-        <mat-option *ngFor="let period of periodOptions" [value]="period.value">
-          {{ period.label }}
-        </mat-option>
-      </mat-select>
-    </mat-form-field>
+    <h2>Dashboard Overview</h2>
   </div>
 
   <div *ngIf="loading" class="loading-container">
@@ -17,111 +9,137 @@
   </div>
 
   <div *ngIf="!loading && metrics" class="dashboard-content">
-    <!-- Key Metrics Grid -->
-    <div class="metrics-grid">
-      <app-metric-card
-        title="Total Revenue"
-        [value]="formatCurrency(metrics.totalRevenue)"
-        icon="attach_money"
-        color="primary"
-        [growth]="metrics.monthlyGrowth">
-      </app-metric-card>
+    <!-- Key Statistics Cards -->
+    <div class="stats-grid">
+      <div class="stat-card users">
+        <div class="stat-icon">
+          <mat-icon>people</mat-icon>
+        </div>
+        <div class="stat-content">
+          <div class="stat-value">{{ formatNumber(metrics.totalUsers) }}</div>
+          <div class="stat-label">Total Users</div>
+        </div>
+      </div>
 
-      <app-metric-card
-        title="Total Orders"
-        [value]="formatNumber(metrics.totalOrders)"
-        icon="shopping_cart"
-        color="accent"
-        [growth]="5.2">
-      </app-metric-card>
+      <div class="stat-card orders">
+        <div class="stat-icon">
+          <mat-icon>shopping_cart</mat-icon>
+        </div>
+        <div class="stat-content">
+          <div class="stat-value">{{ formatNumber(metrics.totalOrders) }}</div>
+          <div class="stat-label">Total Orders</div>
+        </div>
+      </div>
 
-      <app-metric-card
-        title="Total Customers"
-        [value]="formatNumber(metrics.totalCustomers)"
-        icon="people"
-        color="warn"
-        [growth]="3.8">
-      </app-metric-card>
+      <div class="stat-card shops">
+        <div class="stat-icon">
+          <mat-icon>store</mat-icon>
+        </div>
+        <div class="stat-content">
+          <div class="stat-value">{{ formatNumber(metrics.totalShops) }}</div>
+          <div class="stat-label">Total Shops</div>
+        </div>
+      </div>
 
-      <app-metric-card
-        title="Active Shops"
-        [value]="formatNumber(metrics.totalShops)"
-        icon="store"
-        color="primary"
-        [growth]="2.1">
-      </app-metric-card>
+      <div class="stat-card customers">
+        <div class="stat-icon">
+          <mat-icon>person</mat-icon>
+        </div>
+        <div class="stat-content">
+          <div class="stat-value">{{ formatNumber(metrics.totalCustomers) }}</div>
+          <div class="stat-label">Customers</div>
+        </div>
+      </div>
 
-      <app-metric-card
-        title="Avg Order Value"
-        [value]="formatCurrency(metrics.averageOrderValue)"
-        icon="trending_up"
-        color="accent"
-        [growth]="1.5">
-      </app-metric-card>
+      <div class="stat-card delivery">
+        <div class="stat-icon">
+          <mat-icon>local_shipping</mat-icon>
+        </div>
+        <div class="stat-content">
+          <div class="stat-value">{{ formatNumber(metrics.totalDeliveryPartners) }}</div>
+          <div class="stat-label">Delivery Partners</div>
+        </div>
+      </div>
 
-      <app-metric-card
-        title="Conversion Rate"
-        [value]="formatPercentage(metrics.conversionRate)"
-        icon="percent"
-        color="warn"
-        [growth]="0.8">
-      </app-metric-card>
+      <div class="stat-card amount">
+        <div class="stat-icon">
+          <mat-icon>attach_money</mat-icon>
+        </div>
+        <div class="stat-content">
+          <div class="stat-value">{{ formatCurrency(metrics.totalOrderAmount) }}</div>
+          <div class="stat-label">Total Order Amount</div>
+        </div>
+      </div>
+
+      <div class="stat-card refund">
+        <div class="stat-icon">
+          <mat-icon>money_off</mat-icon>
+        </div>
+        <div class="stat-content">
+          <div class="stat-value">{{ formatCurrency(metrics.totalRefundAmount) }}</div>
+          <div class="stat-label">Total Refund Amount</div>
+        </div>
+      </div>
     </div>
 
-    <!-- Charts Section -->
-    <div class="charts-section">
-      <!-- Revenue Chart -->
+    <!-- Daily Orders Chart -->
+    <div class="chart-section">
       <mat-card class="chart-card">
-        <mat-card-header>
-          <mat-card-title>Revenue Trend</mat-card-title>
-        </mat-card-header>
         <mat-card-content>
-          <div class="chart-placeholder">
-            <mat-icon>show_chart</mat-icon>
-            <p>Revenue chart will be displayed here</p>
-            <small>Integration with Chart.js or similar library needed</small>
+          <highcharts-chart 
+            [Highcharts]="Highcharts"
+            [options]="chartOptions"
+            style="width: 100%; height: 350px; display: block;">
+          </highcharts-chart>
+          
+          <div class="chart-stats" *ngIf="metrics?.dailyOrdersData">
+            <div class="chart-stat">
+              <span class="label">Average Orders:</span>
+              <span class="value">{{ (metrics.dailyOrdersData.reduce((sum, d) => sum + d.orders, 0) / metrics.dailyOrdersData.length) | number:'1.0-0' }}</span>
+            </div>
+            <div class="chart-stat">
+              <span class="label">Average Value:</span>
+              <span class="value">{{ formatCurrency(metrics.dailyOrdersData.reduce((sum, d) => sum + d.avgValue, 0) / metrics.dailyOrdersData.length) }}</span>
+            </div>
           </div>
         </mat-card-content>
       </mat-card>
-
-      <!-- Orders Chart -->
-      <mat-card class="chart-card">
-        <mat-card-header>
-          <mat-card-title>Orders Overview</mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <div class="chart-placeholder">
-            <mat-icon>bar_chart</mat-icon>
-            <p>Orders chart will be displayed here</p>
-            <small>Integration with Chart.js or similar library needed</small>
-          </div>
-        </mat-card-content>
-      </mat-card>
     </div>
 
-    <!-- Additional Insights -->
-    <div class="insights-section">
+    <!-- Performance Sections -->
+    <div class="performance-section">
       <!-- Top Performing Shops -->
-      <mat-card class="insights-card">
+      <mat-card class="performance-card">
         <mat-card-header>
-          <mat-card-title>Top Performing Shops</mat-card-title>
+          <mat-card-title>
+            <mat-icon>store</mat-icon>
+            Top Performing Shops
+          </mat-card-title>
+          <mat-card-subtitle>Based on revenue and orders</mat-card-subtitle>
         </mat-card-header>
         <mat-card-content>
           <div class="shop-list" *ngIf="metrics.topShops && metrics.topShops.length > 0; else noShops">
             <div class="shop-item" *ngFor="let shop of metrics.topShops; let i = index">
               <div class="shop-rank">{{ i + 1 }}</div>
+              <div class="shop-avatar">
+                <mat-icon>storefront</mat-icon>
+              </div>
               <div class="shop-info">
-                <h4>{{ shop.shopName }}</h4>
-                <p>{{ shop.shopOwner }}</p>
+                <h4>{{ shop.name }}</h4>
+                <p>{{ shop.owner }}</p>
+                <div class="shop-rating">
+                  <mat-icon class="star">star</mat-icon>
+                  <span>{{ shop.rating }}</span>
+                </div>
               </div>
               <div class="shop-metrics">
                 <div class="metric">
-                  <span class="label">Revenue:</span>
                   <span class="value">{{ formatCurrency(shop.revenue) }}</span>
+                  <span class="label">Revenue</span>
                 </div>
                 <div class="metric">
-                  <span class="label">Orders:</span>
-                  <span class="value">{{ formatNumber(shop.orderCount) }}</span>
+                  <span class="value">{{ formatNumber(shop.orders) }}</span>
+                  <span class="label">Orders</span>
                 </div>
               </div>
             </div>
@@ -136,25 +154,35 @@
       </mat-card>
 
       <!-- Category Performance -->
-      <mat-card class="insights-card">
+      <mat-card class="performance-card">
         <mat-card-header>
-          <mat-card-title>Category Performance</mat-card-title>
+          <mat-card-title>
+            <mat-icon>category</mat-icon>
+            Category Performance
+          </mat-card-title>
+          <mat-card-subtitle>Market share and trends</mat-card-subtitle>
         </mat-card-header>
         <mat-card-content>
-          <div class="category-list" *ngIf="metrics.categoryData && metrics.categoryData.length > 0; else noCategories">
-            <div class="category-item" *ngFor="let category of metrics.categoryData">
+          <div class="category-list" *ngIf="metrics.categoryPerformance && metrics.categoryPerformance.length > 0; else noCategories">
+            <div class="category-item" *ngFor="let category of metrics.categoryPerformance">
               <div class="category-info">
-                <h4>{{ category.categoryName }}</h4>
-                <div class="category-metrics">
+                <h4>{{ category.name }}</h4>
+                <div class="category-stats">
                   <span class="revenue">{{ formatCurrency(category.revenue) }}</span>
-                  <span class="orders">{{ formatNumber(category.orderCount) }} orders</span>
+                  <span class="orders">{{ formatNumber(category.orders) }} orders</span>
                 </div>
               </div>
-              <div class="category-progress">
-                <div class="progress-bar">
-                  <div class="progress-fill" [style.width.%]="category.marketShare || 0"></div>
+              <div class="category-performance">
+                <div class="market-share">
+                  <div class="progress-bar">
+                    <div class="progress-fill" [style.width.%]="category.marketShare"></div>
+                  </div>
+                  <span class="percentage">{{ category.marketShare }}%</span>
                 </div>
-                <span class="market-share">{{ formatPercentage(category.marketShare || 0) }}</span>
+                <div class="trend" [class.positive]="category.trend.startsWith('+')">
+                  <mat-icon>{{ category.trend.startsWith('+') ? 'trending_up' : 'trending_down' }}</mat-icon>
+                  <span>{{ category.trend }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -164,35 +192,6 @@
               <p>No category data available</p>
             </div>
           </ng-template>
-        </mat-card-content>
-      </mat-card>
-    </div>
-
-    <!-- Quick Actions -->
-    <div class="actions-section">
-      <mat-card class="actions-card">
-        <mat-card-header>
-          <mat-card-title>Quick Actions</mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <div class="actions-grid">
-            <button mat-raised-button color="primary" routerLink="/orders">
-              <mat-icon>shopping_cart</mat-icon>
-              View All Orders
-            </button>
-            <button mat-raised-button color="accent" routerLink="/dashboard/analytics">
-              <mat-icon>analytics</mat-icon>
-              Detailed Analytics
-            </button>
-            <button mat-raised-button color="warn" routerLink="/users">
-              <mat-icon>people</mat-icon>
-              Manage Users
-            </button>
-            <button mat-raised-button routerLink="/settings">
-              <mat-icon>settings</mat-icon>
-              System Settings
-            </button>
-          </div>
         </mat-card-content>
       </mat-card>
     </div>

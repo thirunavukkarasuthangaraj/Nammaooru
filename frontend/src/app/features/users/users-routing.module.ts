@@ -12,6 +12,36 @@ const routes: Routes = [
     canActivate: [AuthGuard]
   },
   {
+    path: 'admins',
+    component: UserListComponent,
+    canActivate: [AuthGuard],
+    data: { role: 'ADMIN' }
+  },
+  {
+    path: 'managers', 
+    component: UserListComponent,
+    canActivate: [AuthGuard],
+    data: { role: 'MANAGER' }
+  },
+  {
+    path: 'shop-owners',
+    component: UserListComponent,
+    canActivate: [AuthGuard], 
+    data: { role: 'SHOP_OWNER' }
+  },
+  {
+    path: 'delivery-partners',
+    component: UserListComponent,
+    canActivate: [AuthGuard],
+    data: { role: 'DELIVERY_PARTNER' }
+  },
+  {
+    path: 'customers',
+    component: UserListComponent,
+    canActivate: [AuthGuard],
+    data: { role: 'USER' }
+  },
+  {
     path: 'new',
     component: UserFormComponent,
     canActivate: [AuthGuard]

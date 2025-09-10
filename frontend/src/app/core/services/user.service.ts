@@ -94,12 +94,20 @@ export class UserService {
       .set('sortBy', sortBy)
       .set('sortDirection', sortDirection);
 
-    return this.http.get<ApiResponse<PageResponse<UserResponse>>>(this.apiUrl, { params }).pipe(
+    return this.http.get<ApiResponse<any>>(this.apiUrl, { params }).pipe(
       map(response => {
         if (ApiResponseHelper.isError(response)) {
           throw new Error(ApiResponseHelper.getErrorMessage(response));
         }
-        return response.data;
+        // Backend now returns paginated data in response.data
+        const paginatedData = response.data;
+        return {
+          content: paginatedData.content || paginatedData.items || [],
+          totalElements: paginatedData.totalItems || paginatedData.totalElements || 0,
+          totalPages: paginatedData.totalPages || 0,
+          size: paginatedData.pageSize || paginatedData.size || size,
+          number: paginatedData.currentPage || paginatedData.number || page
+        };
       }),
       catchError(error => throwError(() => error))
     );
@@ -118,11 +126,27 @@ export class UserService {
   }
 
   getUserByUsername(username: string): Observable<UserResponse> {
-    return this.http.get<UserResponse>(`${this.apiUrl}/username/${username}`);
+    return this.http.get<ApiResponse<UserResponse>>(`${this.apiUrl}/username/${username}`).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
+      catchError(error => throwError(() => error))
+    );
   }
 
   getUserByEmail(email: string): Observable<UserResponse> {
-    return this.http.get<UserResponse>(`${this.apiUrl}/email/${email}`);
+    return this.http.get<ApiResponse<UserResponse>>(`${this.apiUrl}/email/${email}`).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
+      catchError(error => throwError(() => error))
+    );
   }
 
   createUser(user: UserRequest): Observable<UserResponse> {
@@ -150,24 +174,64 @@ export class UserService {
   }
 
   deleteUser(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+    return this.http.delete<ApiResponse<void>>(`${this.apiUrl}/${id}`).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
+      catchError(error => throwError(() => error))
+    );
   }
 
   toggleUserStatus(id: number): Observable<UserResponse> {
-    return this.http.put<UserResponse>(`${this.apiUrl}/${id}/toggle-status`, {});
+    return this.http.put<ApiResponse<UserResponse>>(`${this.apiUrl}/${id}/toggle-status`, {}).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
+      catchError(error => throwError(() => error))
+    );
   }
 
   lockUser(id: number, reason: string): Observable<UserResponse> {
     const params = new HttpParams().set('reason', reason);
-    return this.http.put<UserResponse>(`${this.apiUrl}/${id}/lock`, {}, { params });
+    return this.http.put<ApiResponse<UserResponse>>(`${this.apiUrl}/${id}/lock`, {}, { params }).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
+      catchError(error => throwError(() => error))
+    );
   }
 
   unlockUser(id: number): Observable<UserResponse> {
-    return this.http.put<UserResponse>(`${this.apiUrl}/${id}/unlock`, {});
+    return this.http.put<ApiResponse<UserResponse>>(`${this.apiUrl}/${id}/unlock`, {}).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
+      catchError(error => throwError(() => error))
+    );
   }
 
   resetPassword(id: number): Observable<void> {
-    return this.http.post<void>(`${this.apiUrl}/${id}/reset-password`, {});
+    return this.http.post<ApiResponse<void>>(`${this.apiUrl}/${id}/reset-password`, {}).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
+      catchError(error => throwError(() => error))
+    );
   }
 
   getUsersByRole(role: string, page: number = 0, size: number = 10): Observable<PageResponse<UserResponse>> {
@@ -175,7 +239,22 @@ export class UserService {
       .set('page', page.toString())
       .set('size', size.toString());
 
-    return this.http.get<PageResponse<UserResponse>>(`${this.apiUrl}/role/${role}`, { params });
+    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/role/${role}`, { params }).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        const paginatedData = response.data;
+        return {
+          content: paginatedData.content || paginatedData.items || [],
+          totalElements: paginatedData.totalItems || paginatedData.totalElements || 0,
+          totalPages: paginatedData.totalPages || 0,
+          size: paginatedData.pageSize || paginatedData.size || size,
+          number: paginatedData.currentPage || paginatedData.number || page
+        };
+      }),
+      catchError(error => throwError(() => error))
+    );
   }
 
   getUsersByStatus(status: string, page: number = 0, size: number = 10): Observable<PageResponse<UserResponse>> {
@@ -183,7 +262,22 @@ export class UserService {
       .set('page', page.toString())
       .set('size', size.toString());
 
-    return this.http.get<PageResponse<UserResponse>>(`${this.apiUrl}/status/${status}`, { params });
+    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/status/${status}`, { params }).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        const paginatedData = response.data;
+        return {
+          content: paginatedData.content || paginatedData.items || [],
+          totalElements: paginatedData.totalItems || paginatedData.totalElements || 0,
+          totalPages: paginatedData.totalPages || 0,
+          size: paginatedData.pageSize || paginatedData.size || size,
+          number: paginatedData.currentPage || paginatedData.number || page
+        };
+      }),
+      catchError(error => throwError(() => error))
+    );
   }
 
   getUsersByDepartment(department: string, page: number = 0, size: number = 10): Observable<PageResponse<UserResponse>> {
@@ -191,7 +285,22 @@ export class UserService {
       .set('page', page.toString())
       .set('size', size.toString());
 
-    return this.http.get<PageResponse<UserResponse>>(`${this.apiUrl}/department/${department}`, { params });
+    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/department/${department}`, { params }).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        const paginatedData = response.data;
+        return {
+          content: paginatedData.content || paginatedData.items || [],
+          totalElements: paginatedData.totalItems || paginatedData.totalElements || 0,
+          totalPages: paginatedData.totalPages || 0,
+          size: paginatedData.pageSize || paginatedData.size || size,
+          number: paginatedData.currentPage || paginatedData.number || page
+        };
+      }),
+      catchError(error => throwError(() => error))
+    );
   }
 
   searchUsers(searchTerm: string, page: number = 0, size: number = 10): Observable<PageResponse<UserResponse>> {
@@ -200,14 +309,45 @@ export class UserService {
       .set('page', page.toString())
       .set('size', size.toString());
 
-    return this.http.get<PageResponse<UserResponse>>(`${this.apiUrl}/search`, { params });
+    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/search`, { params }).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        const paginatedData = response.data;
+        return {
+          content: paginatedData.content || paginatedData.items || [],
+          totalElements: paginatedData.totalItems || paginatedData.totalElements || 0,
+          totalPages: paginatedData.totalPages || 0,
+          size: paginatedData.pageSize || paginatedData.size || size,
+          number: paginatedData.currentPage || paginatedData.number || page
+        };
+      }),
+      catchError(error => throwError(() => error))
+    );
   }
 
   getSubordinates(managerId: number): Observable<UserResponse[]> {
-    return this.http.get<UserResponse[]>(`${this.apiUrl}/${managerId}/subordinates`);
+    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/${managerId}/subordinates`).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data.items || response.data || [];
+      }),
+      catchError(error => throwError(() => error))
+    );
   }
 
   getUserRoles(): Observable<any> {
-    return this.http.get(`${this.apiUrl}/roles`);
+    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/roles`).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
+      catchError(error => throwError(() => error))
+    );
   }
 }

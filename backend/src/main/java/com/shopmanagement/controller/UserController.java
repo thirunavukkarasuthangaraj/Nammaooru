@@ -1,6 +1,9 @@
 package com.shopmanagement.controller;
 
+import com.shopmanagement.common.dto.ApiResponse;
+import com.shopmanagement.common.util.ResponseUtil;
 import com.shopmanagement.dto.user.UserRequest;
+import com.shopmanagement.dto.user.UserUpdateRequest;
 import com.shopmanagement.dto.user.UserResponse;
 import com.shopmanagement.entity.User;
 import com.shopmanagement.service.UserService;
@@ -34,155 +37,156 @@ public class UserController {
     
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
-    public ResponseEntity<UserResponse> createUser(@Valid @RequestBody UserRequest request) {
+    public ResponseEntity<ApiResponse<UserResponse>> createUser(@Valid @RequestBody UserRequest request) {
         log.info("Creating user: {}", request.getUsername());
         UserResponse response = userService.createUser(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseUtil.created(response, "User created successfully");
     }
     
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN') or #id == authentication.principal.id")
-    public ResponseEntity<UserResponse> getUserById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<UserResponse>> getUserById(@PathVariable Long id) {
         log.info("Fetching user with ID: {}", id);
         UserResponse response = userService.getUserById(id);
-        return ResponseEntity.ok(response);
+        return ResponseUtil.success(response);
     }
     
     @GetMapping("/username/{username}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN') or #username == authentication.name")
-    public ResponseEntity<UserResponse> getUserByUsername(@PathVariable String username) {
+    public ResponseEntity<ApiResponse<UserResponse>> getUserByUsername(@PathVariable String username) {
         log.info("Fetching user with username: {}", username);
         UserResponse response = userService.getUserByUsername(username);
-        return ResponseEntity.ok(response);
+        return ResponseUtil.success(response);
     }
     
     @GetMapping("/email/{email}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
-    public ResponseEntity<UserResponse> getUserByEmail(@PathVariable String email) {
+    public ResponseEntity<ApiResponse<UserResponse>> getUserByEmail(@PathVariable String email) {
         log.info("Fetching user with email: {}", email);
         UserResponse response = userService.getUserByEmail(email);
-        return ResponseEntity.ok(response);
+        return ResponseUtil.success(response);
     }
     
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN') or #id == authentication.principal.id")
-    public ResponseEntity<UserResponse> updateUser(@PathVariable Long id, @Valid @RequestBody UserRequest request) {
+    public ResponseEntity<ApiResponse<UserResponse>> updateUser(@PathVariable Long id, @Valid @RequestBody UserUpdateRequest request) {
         log.info("Updating user: {}", id);
         UserResponse response = userService.updateUser(id, request);
-        return ResponseEntity.ok(response);
+        return ResponseUtil.updated(response);
     }
     
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable Long id) {
         log.info("Deleting user: {}", id);
         userService.deleteUser(id);
-        return ResponseEntity.noContent().build();
+        return ResponseUtil.deleted();
     }
     
     @PutMapping("/{id}/toggle-status")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
-    public ResponseEntity<UserResponse> toggleUserStatus(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<UserResponse>> toggleUserStatus(@PathVariable Long id) {
         log.info("Toggling status for user: {}", id);
         UserResponse response = userService.toggleUserStatus(id);
-        return ResponseEntity.ok(response);
+        return ResponseUtil.updated(response);
     }
     
     @PutMapping("/{id}/lock")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
-    public ResponseEntity<UserResponse> lockUser(@PathVariable Long id, @RequestParam String reason) {
+    public ResponseEntity<ApiResponse<UserResponse>> lockUser(@PathVariable Long id, @RequestParam String reason) {
         log.info("Locking user: {} with reason: {}", id, reason);
         UserResponse response = userService.lockUser(id, reason);
-        return ResponseEntity.ok(response);
+        return ResponseUtil.success(response, "User locked successfully");
     }
     
     @PutMapping("/{id}/unlock")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
-    public ResponseEntity<UserResponse> unlockUser(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<UserResponse>> unlockUser(@PathVariable Long id) {
         log.info("Unlocking user: {}", id);
         UserResponse response = userService.unlockUser(id);
-        return ResponseEntity.ok(response);
+        return ResponseUtil.success(response, "User unlocked successfully");
     }
     
     @PostMapping("/{id}/reset-password")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
-    public ResponseEntity<Void> resetPassword(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> resetPassword(@PathVariable Long id) {
         log.info("Resetting password for user: {}", id);
         userService.resetPassword(id);
-        return ResponseEntity.ok().build();
+        return ResponseUtil.success(null, "Password reset successfully");
     }
     
     @GetMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
-    public ResponseEntity<Page<UserResponse>> getAllUsers(
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getAllUsers(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "firstName") String sortBy,
             @RequestParam(defaultValue = "asc") String sortDirection) {
         log.info("Fetching all users - page: {}, size: {}", page, size);
         Page<UserResponse> response = userService.getAllUsers(page, size, sortBy, sortDirection);
-        return ResponseEntity.ok(response);
+        return ResponseUtil.paginated(response);
     }
     
     @GetMapping("/role/{role}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
-    public ResponseEntity<Page<UserResponse>> getUsersByRole(
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getUsersByRole(
             @PathVariable String role,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         log.info("Fetching users with role: {}", role);
         User.UserRole userRole = User.UserRole.valueOf(role.toUpperCase());
         Page<UserResponse> response = userService.getUsersByRole(userRole, page, size);
-        return ResponseEntity.ok(response);
+        return ResponseUtil.paginated(response);
     }
     
     @GetMapping("/status/{status}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
-    public ResponseEntity<Page<UserResponse>> getUsersByStatus(
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getUsersByStatus(
             @PathVariable String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         log.info("Fetching users with status: {}", status);
         User.UserStatus userStatus = User.UserStatus.valueOf(status.toUpperCase());
         Page<UserResponse> response = userService.getUsersByStatus(userStatus, page, size);
-        return ResponseEntity.ok(response);
+        return ResponseUtil.paginated(response);
     }
     
     @GetMapping("/department/{department}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
-    public ResponseEntity<Page<UserResponse>> getUsersByDepartment(
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getUsersByDepartment(
             @PathVariable String department,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         log.info("Fetching users in department: {}", department);
         Page<UserResponse> response = userService.getUsersByDepartment(department, page, size);
-        return ResponseEntity.ok(response);
+        return ResponseUtil.paginated(response);
     }
     
     @GetMapping("/search")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
-    public ResponseEntity<Page<UserResponse>> searchUsers(
+    public ResponseEntity<ApiResponse<Map<String, Object>>> searchUsers(
             @RequestParam String searchTerm,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         log.info("Searching users with term: {}", searchTerm);
         Page<UserResponse> response = userService.searchUsers(searchTerm, page, size);
-        return ResponseEntity.ok(response);
+        return ResponseUtil.paginated(response);
     }
     
     @GetMapping("/{id}/subordinates")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN') or #id == authentication.principal.id")
-    public ResponseEntity<List<UserResponse>> getSubordinates(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getSubordinates(@PathVariable Long id) {
         log.info("Fetching subordinates for user: {}", id);
         List<UserResponse> response = userService.getSubordinates(id);
-        return ResponseEntity.ok(response);
+        return ResponseUtil.list(response);
     }
     
     @GetMapping("/roles")
-    public ResponseEntity<Map<String, Object>> getUserRoles() {
-        return ResponseEntity.ok(Map.of(
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getUserRoles() {
+        Map<String, Object> roles = Map.of(
                 "userRoles", User.UserRole.values(),
                 "userStatuses", User.UserStatus.values()
-        ));
+        );
+        return ResponseUtil.success(roles);
     }
 }

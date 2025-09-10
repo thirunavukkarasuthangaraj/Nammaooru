@@ -9,9 +9,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -88,11 +94,167 @@ public class BusinessHoursService {
     }
     
     public boolean isShopOpenNow(Long shopId) {
-        DayOfWeek currentDay = DayOfWeek.from(java.time.LocalDate.now());
+        return isShopOpenNow(shopId, ZoneId.systemDefault());
+    }
+    
+    public boolean isShopOpenNow(Long shopId, ZoneId timeZone) {
+        LocalDateTime now = LocalDateTime.now(timeZone);
+        DayOfWeek currentDay = now.getDayOfWeek();
+        
         Optional<BusinessHours> businessHours = businessHoursRepository
             .findOpenHoursByShopIdAndDay(shopId, currentDay);
         
-        return businessHours.map(BusinessHours::isOpenNow).orElse(false);
+        return businessHours.map(hours -> isCurrentlyOpen(hours, now.toLocalTime())).orElse(false);
+    }
+    
+    public Map<String, Object> getShopOpenStatus(Long shopId) {
+        LocalDateTime now = LocalDateTime.now();
+        DayOfWeek currentDay = now.getDayOfWeek();
+        LocalTime currentTime = now.toLocalTime();
+        
+        Optional<BusinessHours> businessHours = businessHoursRepository
+            .findOpenHoursByShopIdAndDay(shopId, currentDay);
+        
+        Map<String, Object> status = new HashMap<>();
+        
+        if (businessHours.isEmpty()) {
+            status.put("isOpen", false);
+            status.put("status", "CLOSED");
+            status.put("message", "Business hours not configured for today");
+            status.put("nextOpenTime", getNextOpenTime(shopId, now));
+            return status;
+        }
+        
+        BusinessHours hours = businessHours.get();
+        boolean isCurrentlyOpen = isCurrentlyOpen(hours, currentTime);
+        
+        status.put("isOpen", isCurrentlyOpen);
+        status.put("businessHours", hours);
+        status.put("currentTime", currentTime);
+        status.put("currentDay", currentDay.toString());
+        
+        if (!hours.getIsOpen()) {
+            status.put("status", "CLOSED");
+            status.put("message", "Closed today");
+            status.put("nextOpenTime", getNextOpenTime(shopId, now));
+        } else if (hours.getIs24Hours()) {
+            status.put("status", "OPEN_24H");
+            status.put("message", "Open 24 hours");
+        } else if (isCurrentlyOpen) {
+            if (isInBreakTime(hours, currentTime)) {
+                status.put("status", "ON_BREAK");
+                status.put("message", "On break");
+                status.put("breakEndTime", hours.getBreakEndTime());
+            } else {
+                status.put("status", "OPEN");
+                status.put("message", "Currently open");
+                status.put("closeTime", hours.getCloseTime());
+            }
+        } else {
+            if (currentTime.isBefore(hours.getOpenTime())) {
+                status.put("status", "OPENS_LATER");
+                status.put("message", "Opens later today");
+                status.put("openTime", hours.getOpenTime());
+            } else {
+                status.put("status", "CLOSED_FOR_DAY");
+                status.put("message", "Closed for the day");
+                status.put("nextOpenTime", getNextOpenTime(shopId, now));
+            }
+        }
+        
+        return status;
+    }
+    
+    private boolean isCurrentlyOpen(BusinessHours hours, LocalTime currentTime) {
+        if (!hours.getIsOpen()) return false;
+        if (hours.getIs24Hours()) return true;
+        
+        boolean withinBusinessHours = currentTime.isAfter(hours.getOpenTime()) && 
+                                     currentTime.isBefore(hours.getCloseTime());
+        
+        if (!withinBusinessHours) return false;
+        
+        // Check if in break time
+        return !isInBreakTime(hours, currentTime);
+    }
+    
+    private boolean isInBreakTime(BusinessHours hours, LocalTime currentTime) {
+        return hours.getBreakStartTime() != null && 
+               hours.getBreakEndTime() != null &&
+               currentTime.isAfter(hours.getBreakStartTime()) && 
+               currentTime.isBefore(hours.getBreakEndTime());
+    }
+    
+    private Map<String, Object> getNextOpenTime(Long shopId, LocalDateTime from) {
+        LocalDate searchDate = from.toLocalDate();
+        
+        // Search for next 7 days
+        for (int i = 0; i < 7; i++) {
+            if (i > 0) {
+                searchDate = searchDate.plusDays(1);
+            }
+            
+            DayOfWeek dayOfWeek = searchDate.getDayOfWeek();
+            Optional<BusinessHours> businessHours = businessHoursRepository
+                .findOpenHoursByShopIdAndDay(shopId, dayOfWeek);
+            
+            if (businessHours.isPresent() && businessHours.get().getIsOpen()) {
+                BusinessHours hours = businessHours.get();
+                LocalDateTime nextOpen;
+                
+                if (hours.getIs24Hours()) {
+                    nextOpen = searchDate.atStartOfDay();
+                } else {
+                    nextOpen = searchDate.atTime(hours.getOpenTime());
+                }
+                
+                // If it's today and the time hasn't passed yet
+                if (searchDate.equals(from.toLocalDate()) && nextOpen.isBefore(from)) {
+                    continue;
+                }
+                
+                return Map.of(
+                    "date", searchDate,
+                    "time", hours.getOpenTime(),
+                    "dayOfWeek", dayOfWeek.toString(),
+                    "dateTime", nextOpen
+                );
+            }
+        }
+        
+        return Map.of("message", "No upcoming open times found");
+    }
+    
+    public List<Map<String, Object>> getWeeklySchedule(Long shopId) {
+        List<BusinessHours> allHours = businessHoursRepository.findByShopIdOrderByDayOfWeek(shopId);
+        
+        return allHours.stream().map(hours -> {
+            Map<String, Object> dayInfo = new HashMap<>();
+            dayInfo.put("dayOfWeek", hours.getDayOfWeek().toString());
+            dayInfo.put("dayName", hours.getDayOfWeek().toString());
+            dayInfo.put("isOpen", hours.getIsOpen());
+            
+            if (hours.getIsOpen()) {
+                if (hours.getIs24Hours()) {
+                    dayInfo.put("schedule", "24 Hours");
+                    dayInfo.put("is24Hours", true);
+                } else {
+                    dayInfo.put("openTime", hours.getOpenTime());
+                    dayInfo.put("closeTime", hours.getCloseTime());
+                    dayInfo.put("schedule", hours.getOpenTime() + " - " + hours.getCloseTime());
+                    dayInfo.put("is24Hours", false);
+                    
+                    if (hours.getBreakStartTime() != null && hours.getBreakEndTime() != null) {
+                        dayInfo.put("breakTime", hours.getBreakStartTime() + " - " + hours.getBreakEndTime());
+                    }
+                }
+            } else {
+                dayInfo.put("schedule", "Closed");
+            }
+            
+            dayInfo.put("specialNote", hours.getSpecialNote());
+            return dayInfo;
+        }).collect(Collectors.toList());
     }
     
     public List<BusinessHours> createDefaultBusinessHours(Long shopId) {

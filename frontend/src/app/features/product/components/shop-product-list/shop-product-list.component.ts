@@ -284,7 +284,7 @@ import Swal from 'sweetalert2';
   styles: [`
     .list-container {
       padding: 16px;
-      max-width: 1200px;
+      // max-width: 1200px;
       margin: 0 auto;
       min-height: calc(100vh - 100px);
     }

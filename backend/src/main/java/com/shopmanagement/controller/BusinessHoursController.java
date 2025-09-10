@@ -62,11 +62,24 @@ public class BusinessHoursController {
     }
     
     @GetMapping("/shop/{shopId}/status")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN') or hasRole('SHOP_OWNER') or hasRole('CUSTOMER')")
-    public ResponseEntity<Map<String, Boolean>> getShopOpenStatus(@PathVariable Long shopId) {
+    public ResponseEntity<Map<String, Object>> getShopOpenStatus(@PathVariable Long shopId) {
         log.debug("Checking if shop is open now: {}", shopId);
+        Map<String, Object> status = businessHoursService.getShopOpenStatus(shopId);
+        return ResponseEntity.ok(status);
+    }
+    
+    @GetMapping("/shop/{shopId}/status/simple")
+    public ResponseEntity<Map<String, Boolean>> getSimpleShopOpenStatus(@PathVariable Long shopId) {
+        log.debug("Checking simple open status for shop: {}", shopId);
         boolean isOpen = businessHoursService.isShopOpenNow(shopId);
         return ResponseEntity.ok(Map.of("isOpen", isOpen));
+    }
+    
+    @GetMapping("/shop/{shopId}/schedule")
+    public ResponseEntity<List<Map<String, Object>>> getWeeklySchedule(@PathVariable Long shopId) {
+        log.debug("Getting weekly schedule for shop: {}", shopId);
+        List<Map<String, Object>> schedule = businessHoursService.getWeeklySchedule(shopId);
+        return ResponseEntity.ok(schedule);
     }
     
     @PostMapping
@@ -83,6 +96,24 @@ public class BusinessHoursController {
         log.debug("Creating default business hours for shop ID: {}", shopId);
         List<BusinessHours> defaultHours = businessHoursService.createDefaultBusinessHours(shopId);
         return ResponseEntity.status(HttpStatus.CREATED).body(defaultHours);
+    }
+    
+    @PutMapping("/shop/{shopId}/bulk")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN') or hasRole('SHOP_OWNER')")
+    public ResponseEntity<List<BusinessHours>> updateBulkBusinessHours(
+            @PathVariable Long shopId, 
+            @Valid @RequestBody List<BusinessHours> businessHoursList) {
+        log.debug("Bulk updating business hours for shop ID: {}", shopId);
+        
+        // Delete existing hours and create new ones
+        businessHoursService.deleteAllBusinessHoursByShop(shopId);
+        
+        List<BusinessHours> updatedHours = businessHoursList.stream()
+            .peek(hours -> hours.setShopId(shopId))
+            .map(businessHoursService::createBusinessHours)
+            .toList();
+        
+        return ResponseEntity.ok(updatedHours);
     }
     
     @PutMapping("/{id}")

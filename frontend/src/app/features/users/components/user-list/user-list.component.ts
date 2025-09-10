@@ -3,7 +3,7 @@ import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { UserService, UserResponse } from '../../../../core/services/user.service';
 
 export interface User {
@@ -34,6 +34,7 @@ export class UserListComponent implements OnInit {
 
   displayedColumns: string[] = ['fullName', 'email', 'role', 'department', 'status', 'lastLogin', 'actions'];
   dataSource = new MatTableDataSource<UserResponse>();
+  originalData: UserResponse[] = [];
   loading = false;
   searchText = '';
   roleFilter = '';
@@ -62,10 +63,16 @@ export class UserListComponent implements OnInit {
   constructor(
     private userService: UserService,
     private snackBar: MatSnackBar,
-    private router: Router
+    private router: Router,
+    private route: ActivatedRoute
   ) {}
 
   ngOnInit(): void {
+    // Check if there's a role filter from route data
+    const routeRole = this.route.snapshot.data['role'];
+    if (routeRole) {
+      this.roleFilter = routeRole;
+    }
     this.loadUsers();
   }
 
@@ -76,15 +83,26 @@ export class UserListComponent implements OnInit {
 
   loadUsers(): void {
     this.loading = true;
-    this.userService.getAllUsers(0, 100).subscribe({
+    
+    // Use role-specific API if role filter is set
+    const apiCall = this.roleFilter ? 
+      this.userService.getUsersByRole(this.roleFilter, 0, 100) : 
+      this.userService.getAllUsers(0, 100);
+    
+    apiCall.subscribe({
       next: (response) => {
-        console.log('Users API response:', response); // Debug log
-        console.log('Users data:', response.content); // Debug log
-        this.dataSource.data = response.content;
+        console.log('✅ Users API SUCCESS:', response); // Debug log
+        console.log('Real API Users data:', response.content); // Debug log
+        this.originalData = response.content;
+        this.dataSource.data = [...this.originalData];
         this.loading = false;
+        
+        const roleMessage = this.roleFilter ? `${this.roleFilter} users` : 'all users';
+        this.snackBar.open(`✅ Loaded ${roleMessage} successfully!`, 'Close', { duration: 3000 });
       },
       error: (error) => {
-        console.error('Error loading users:', error);
+        console.error('❌ Error loading users from API:', error);
+        console.log('🔄 Falling back to mock data...');
         this.loadMockData();
         this.loading = false;
       }
@@ -255,19 +273,22 @@ export class UserListComponent implements OnInit {
       }
     ];
 
-    this.dataSource.data = mockUsers as any;
+    this.originalData = mockUsers as any;
+    this.dataSource.data = [...this.originalData];
     this.snackBar.open('Loaded mock user data - API not available', 'Close', { duration: 3000 });
   }
 
   applyFilter(): void {
-    let filteredData = this.dataSource.data;
+    let filteredData = [...this.originalData];
 
-    if (this.searchText) {
+    if (this.searchText && this.searchText.trim()) {
+      const searchLower = this.searchText.toLowerCase().trim();
       filteredData = filteredData.filter(user =>
-        user.fullName.toLowerCase().includes(this.searchText.toLowerCase()) ||
-        user.email.toLowerCase().includes(this.searchText.toLowerCase()) ||
-        user.username.toLowerCase().includes(this.searchText.toLowerCase()) ||
-        (user.department && user.department.toLowerCase().includes(this.searchText.toLowerCase()))
+        (user.fullName && user.fullName.toLowerCase().includes(searchLower)) ||
+        (user.email && user.email.toLowerCase().includes(searchLower)) ||
+        (user.username && user.username.toLowerCase().includes(searchLower)) ||
+        (user.department && user.department.toLowerCase().includes(searchLower)) ||
+        (user.designation && user.designation.toLowerCase().includes(searchLower))
       );
     }
 
@@ -276,17 +297,33 @@ export class UserListComponent implements OnInit {
     }
 
     if (this.statusFilter) {
-      filteredData = filteredData.filter(user => user.status === this.statusFilter);
+      filteredData = filteredData.filter(user => {
+        const actualStatus = user.isActive ? user.status || 'ACTIVE' : 'INACTIVE';
+        return actualStatus === this.statusFilter;
+      });
     }
 
     this.dataSource.data = filteredData;
+    
+    // Reset pagination to first page
+    if (this.paginator) {
+      this.paginator.firstPage();
+    }
   }
 
   clearFilters(): void {
     this.searchText = '';
     this.roleFilter = '';
     this.statusFilter = '';
-    this.loadUsers();
+    // Reset to original data instead of reloading from API
+    this.dataSource.data = [...this.originalData];
+    
+    // Reset pagination to first page
+    if (this.paginator) {
+      this.paginator.firstPage();
+    }
+    
+    this.snackBar.open('Filters cleared', 'Close', { duration: 2000 });
   }
 
   createUser(): void {
@@ -309,16 +346,32 @@ export class UserListComponent implements OnInit {
   }
 
   toggleUserStatus(user: UserResponse): void {
-    this.userService.toggleUserStatus(user.id).subscribe({
-      next: () => {
-        this.snackBar.open(`User ${user.isActive ? 'deactivated' : 'activated'} successfully`, 'Close', { duration: 3000 });
-        this.loadUsers();
-      },
-      error: (error) => {
-        console.error('Error toggling user status:', error);
-        this.snackBar.open('Error updating user status', 'Close', { duration: 3000 });
-      }
-    });
+    const action = user.isActive ? 'deactivate' : 'activate';
+    const confirmMessage = `Are you sure you want to ${action} ${user.fullName}?`;
+    
+    if (confirm(confirmMessage)) {
+      this.userService.toggleUserStatus(user.id).subscribe({
+        next: (updatedUser) => {
+          // Update the user in both original data and current filtered data
+          const originalIndex = this.originalData.findIndex(u => u.id === user.id);
+          if (originalIndex !== -1) {
+            this.originalData[originalIndex] = updatedUser;
+          }
+          
+          const displayIndex = this.dataSource.data.findIndex(u => u.id === user.id);
+          if (displayIndex !== -1) {
+            this.dataSource.data[displayIndex] = updatedUser;
+            this.dataSource.data = [...this.dataSource.data]; // Trigger change detection
+          }
+          
+          this.snackBar.open(`User ${user.fullName} ${action}d successfully`, 'Close', { duration: 3000 });
+        },
+        error: (error) => {
+          console.error('Error toggling user status:', error);
+          this.snackBar.open(`Error ${action}ing user`, 'Close', { duration: 3000 });
+        }
+      });
+    }
   }
 
   resetPassword(user: UserResponse): void {
@@ -367,6 +420,83 @@ export class UserListComponent implements OnInit {
       case 'SUSPENDED': return 'warn';
       case 'PENDING_VERIFICATION': return 'accent';
       default: return '';
+    }
+  }
+
+  getPageTitle(): string {
+    if (!this.roleFilter) {
+      return 'User Management';
+    }
+    
+    switch (this.roleFilter) {
+      case 'ADMIN': return 'Admin Users';
+      case 'MANAGER': return 'Manager Users';
+      case 'SHOP_OWNER': return 'Shop Owner Users';
+      case 'DELIVERY_PARTNER': return 'Delivery Partners';
+      case 'USER': return 'Customer Users';
+      default: return 'User Management';
+    }
+  }
+
+  getActualStatus(user: UserResponse): string {
+    // If user is not active, always show as INACTIVE regardless of status field
+    if (!user.isActive) {
+      return 'INACTIVE';
+    }
+    // If user is active, show the actual status
+    return user.status || 'ACTIVE';
+  }
+
+  getActualStatusColor(user: UserResponse): string {
+    const actualStatus = this.getActualStatus(user);
+    switch (actualStatus) {
+      case 'ACTIVE': return 'primary';
+      case 'INACTIVE': return 'warn';
+      case 'SUSPENDED': return 'warn';
+      case 'PENDING_VERIFICATION': return 'accent';
+      default: return '';
+    }
+  }
+
+  getStatusIcon(user: UserResponse): string {
+    return user.isActive ? 'check_circle' : 'cancel';
+  }
+
+  getStatusIconColor(user: UserResponse): string {
+    return user.isActive ? 'primary' : 'warn';
+  }
+
+  getDisplayStatus(user: UserResponse): string {
+    if (!user.isActive) {
+      return 'Inactive';
+    }
+    return user.status === 'ACTIVE' ? 'Active' : (user.status || 'Active').replace('_', ' ');
+  }
+
+  getStatusTooltip(user: UserResponse): string {
+    if (!user.isActive) {
+      return 'User account is deactivated';
+    }
+    if (user.status === 'SUSPENDED') {
+      return 'User account is suspended';
+    }
+    if (user.status === 'PENDING_VERIFICATION') {
+      return 'User account is pending email verification';
+    }
+    return 'User account is active and operational';
+  }
+
+  getRoleDisplayName(role: string): string {
+    switch (role) {
+      case 'SUPER_ADMIN': return 'Super Admin';
+      case 'ADMIN': return 'Admin';
+      case 'SHOP_OWNER': return 'Shop Owner';
+      case 'MANAGER': return 'Manager';
+      case 'EMPLOYEE': return 'Employee';
+      case 'CUSTOMER_SERVICE': return 'Customer Service';
+      case 'DELIVERY_AGENT': return 'Delivery Agent';
+      case 'USER': return 'Customer';
+      default: return role.replace('_', ' ');
     }
   }
 }

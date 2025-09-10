@@ -164,6 +164,22 @@ public class Shop {
     @Column(name = "is_featured")
     private Boolean isFeatured = false;
 
+    // Availability Management
+    @Builder.Default
+    @Column(name = "is_available")
+    private Boolean isAvailable = true;
+    
+    @Column(name = "availability_updated_at")
+    private LocalDateTime availabilityUpdatedAt;
+    
+    @Builder.Default
+    @Column(name = "is_manual_override")
+    private Boolean isManualOverride = false;
+    
+    @Size(max = 500)
+    @Column(name = "availability_override_reason")
+    private String availabilityOverrideReason;
+
     // Performance Metrics
     @DecimalMin(value = "0.0")
     @DecimalMax(value = "5.0")

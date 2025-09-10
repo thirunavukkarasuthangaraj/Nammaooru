@@ -2,6 +2,7 @@ import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { NgChartsModule } from 'ng2-charts';
+import { HighchartsChartModule } from 'highcharts-angular';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -55,7 +56,8 @@ import { ShopOwnerDashboardComponent } from './components/shop-owner-dashboard/s
     MatProgressBarModule,
     MatTabsModule,
     MatExpansionModule,
-    NgChartsModule
+    NgChartsModule,
+    HighchartsChartModule
   ]
 })
 export class DashboardModule { }

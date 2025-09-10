@@ -277,7 +277,7 @@ import Swal from 'sweetalert2';
 
     .form-card {
       width: 100%;
-      max-width: 900px;
+      // max-width: 900px;
       margin: 20px auto;
       border-radius: 16px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
