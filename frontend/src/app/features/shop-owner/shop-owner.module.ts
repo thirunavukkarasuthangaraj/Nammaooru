@@ -50,6 +50,7 @@ import { StockUpdateDialogComponent } from './components/stock-update-dialog/sto
 import { BulkPriceUpdateDialogComponent } from './components/bulk-price-update-dialog/bulk-price-update-dialog.component';
 import { BrowseMasterProductsDialogComponent } from './components/browse-master-products-dialog/browse-master-products-dialog.component';
 import { ProductEditDialogComponent } from './components/product-edit-dialog/product-edit-dialog.component';
+import { ProductAssignmentDialogComponent } from './components/product-assignment-dialog/product-assignment-dialog.component';
 
 @NgModule({
   declarations: [
@@ -73,7 +74,8 @@ import { ProductEditDialogComponent } from './components/product-edit-dialog/pro
     StockUpdateDialogComponent,
     BulkPriceUpdateDialogComponent,
     BrowseMasterProductsDialogComponent,
-    ProductEditDialogComponent
+    ProductEditDialogComponent,
+    ProductAssignmentDialogComponent
   ],
   imports: [
     CommonModule,

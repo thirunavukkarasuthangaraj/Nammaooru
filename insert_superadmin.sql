@@ -1,0 +1,37 @@
+INSERT INTO users (
+    username, 
+    email, 
+    password, 
+    first_name, 
+    last_name, 
+    mobile_number,
+    role, 
+    status, 
+    is_active, 
+    email_verified, 
+    mobile_verified,
+    password_change_required,
+    created_at, 
+    created_by, 
+    updated_at, 
+    updated_by
+) VALUES (
+    'superadmin', 
+    'thiruna2394@gmail.com', 
+    '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 
+    'Super', 
+    'Admin',
+    '9876543210',
+    'SUPER_ADMIN', 
+    'ACTIVE', 
+    true, 
+    true, 
+    true,
+    false,
+    CURRENT_TIMESTAMP, 
+    'SYSTEM', 
+    CURRENT_TIMESTAMP, 
+    'SYSTEM'
+) ON CONFLICT (email) DO UPDATE SET 
+    password = EXCLUDED.password,
+    updated_at = CURRENT_TIMESTAMP;

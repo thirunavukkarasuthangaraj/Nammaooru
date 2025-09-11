@@ -95,8 +95,12 @@ public class ProductImageService {
         log.info("Uploading {} images for shop product: {} in shop: {}", files.length, productId, shopId);
         
         ShopProduct product = shopProductRepository.findById(productId)
-                .filter(p -> p.getShop().getId().equals(shopId))
-                .orElseThrow(() -> new RuntimeException("Shop product not found"));
+                .orElseThrow(() -> new RuntimeException(String.format("Product with ID %d not found", productId)));
+        
+        if (!product.getShop().getId().equals(shopId)) {
+            throw new RuntimeException(String.format("Product %d does not belong to shop %d (actual shop: %d)", 
+                productId, shopId, product.getShop().getId()));
+        }
 
         List<ShopProductImage> images = new ArrayList<>();
         
@@ -124,6 +128,35 @@ public class ProductImageService {
         shopProductRepository.save(product);
         log.info("Successfully uploaded {} images for shop product: {}", images.size(), productId);
         
+        // Copy the primary image to the associated master product if it doesn't have images
+        if (!images.isEmpty() && product.getMasterProduct() != null) {
+            MasterProduct masterProduct = product.getMasterProduct();
+            
+            // Only copy image if master product has no images yet
+            if (masterProduct.getImages().isEmpty()) {
+                ShopProductImage primaryShopImage = images.stream()
+                        .filter(ShopProductImage::getIsPrimary)
+                        .findFirst()
+                        .orElse(images.get(0)); // Fallback to first image if no primary set
+                
+                log.info("Copying primary image from shop product {} to master product {}", productId, masterProduct.getId());
+                
+                // Create master product image based on shop product image
+                MasterProductImage masterImage = MasterProductImage.builder()
+                        .masterProduct(masterProduct)
+                        .imageUrl(primaryShopImage.getImageUrl())
+                        .altText(primaryShopImage.getAltText())
+                        .isPrimary(true)
+                        .sortOrder(0)
+                        .createdBy(getCurrentUsername())
+                        .build();
+                
+                masterProduct.getImages().add(masterImage);
+                masterProductRepository.save(masterProduct);
+                log.info("Successfully copied image to master product: {}", masterProduct.getId());
+            }
+        }
+        
         return images.stream()
                 .map(productMapper::toResponse)
                 .toList();
@@ -143,9 +176,13 @@ public class ProductImageService {
     @Transactional(readOnly = true)
     public List<ProductImageResponse> getShopProductImages(Long shopId, Long productId) {
         // Verify product exists and belongs to shop
-        shopProductRepository.findById(productId)
-                .filter(p -> p.getShop().getId().equals(shopId))
-                .orElseThrow(() -> new RuntimeException("Shop product not found"));
+        ShopProduct shopProduct = shopProductRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException(String.format("Product with ID %d not found", productId)));
+        
+        if (!shopProduct.getShop().getId().equals(shopId)) {
+            throw new RuntimeException(String.format("Product %d does not belong to shop %d (actual shop: %d)", 
+                productId, shopId, shopProduct.getShop().getId()));
+        }
         
         return shopProductImageRepository.findByShopProductIdOrderBySortOrderAsc(productId).stream()
                 .map(productMapper::toResponse)

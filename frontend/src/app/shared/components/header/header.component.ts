@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { AuthService } from '@core/services/auth.service';
 import { VersionService } from '@core/services/version.service';
 import { User, UserRole } from '@core/models/auth.model';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-header',
@@ -290,9 +291,32 @@ export class HeaderComponent implements OnInit {
 🕐 Build Date: ${buildDate}
 ⚡ Server Status: Online`;
       
-      alert(message);
+      Swal.fire({
+        title: '🏪 Shop Management System',
+        html: `
+          <div style="text-align: left; font-family: monospace; white-space: pre-wrap;">
+📱 Frontend Version: ${this.versionInfo.client}<br>
+🖥️ Backend Version: v${this.versionInfo.server.version}<br>
+📦 Application: ${this.versionInfo.server.name || 'Shop Management Backend'}<br><br>
+🕐 Build Date: ${buildDate}<br>
+⚡ Server Status: Online
+          </div>
+        `,
+        icon: 'info',
+        confirmButtonText: 'OK'
+      });
     } else {
-      alert(`📱 Frontend: ${this.versionService.getVersion()}\n🖥️ Backend: Loading...`);
+      Swal.fire({
+        title: '🏪 Shop Management System',
+        html: `
+          <div style="text-align: left; font-family: monospace;">
+📱 Frontend: ${this.versionService.getVersion()}<br>
+🖥️ Backend: Loading...
+          </div>
+        `,
+        icon: 'info',
+        confirmButtonText: 'OK'
+      });
     }
   }
 }

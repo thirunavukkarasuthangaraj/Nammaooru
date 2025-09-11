@@ -223,8 +223,10 @@ class BadExampleComponent {
   }
   
   showMessage() {
-    // ❌ BAD: Hardcoded messages
-    alert('Shop created successfully');
+    // ✅ GOOD: Using SweetAlert for better UX
+    // Note: Import Swal from 'sweetalert2' if using this example
+    // Swal.fire('Success!', 'Shop created successfully', 'success');
+    console.log('Shop created successfully'); // Example without SweetAlert import
   }
   
   makeApiCall() {

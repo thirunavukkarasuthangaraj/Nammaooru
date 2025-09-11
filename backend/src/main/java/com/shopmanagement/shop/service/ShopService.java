@@ -11,6 +11,7 @@ import com.shopmanagement.shop.util.ShopSlugGenerator;
 import com.shopmanagement.service.EmailService;
 import com.shopmanagement.service.AuthService;
 import com.shopmanagement.entity.User;
+import com.shopmanagement.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -41,6 +42,7 @@ public class ShopService {
     private final ShopSlugGenerator slugGenerator;
     private final EmailService emailService;
     private final AuthService authService;
+    private final UserRepository userRepository;
 
     public ShopResponse createShop(ShopCreateRequest request) {
         log.info("Creating new shop: {}", request.getName());
@@ -301,7 +303,7 @@ public class ShopService {
                     emailService.sendShopOwnerWelcomeEmail(
                         shop.getOwnerEmail(),
                         shop.getOwnerName(),
-                        username,
+                        shop.getOwnerEmail(),
                         temporaryPassword,
                         shop.getName()
                     );
@@ -449,7 +451,21 @@ public class ShopService {
             return activeShopsPage.getContent().get(0);
         }
         
-        return shopRepository.findByCreatedBy(username).orElse(null);
+        // First try to find by createdBy (for shops created by the user directly)
+        Shop shop = shopRepository.findByCreatedBy(username).orElse(null);
+        if (shop != null) {
+            return shop;
+        }
+        
+        // If not found, try to find by owner email matching the user's email
+        // Get the user's email from the database
+        User user = userRepository.findByUsername(username).orElse(null);
+        if (user != null && user.getEmail() != null) {
+            log.info("Looking for shop by owner email: {}", user.getEmail());
+            return shopRepository.findByOwnerEmail(user.getEmail()).orElse(null);
+        }
+        
+        return null;
     }
 
     private void sendShopRegistrationConfirmationEmail(Shop shop) {

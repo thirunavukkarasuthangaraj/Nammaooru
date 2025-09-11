@@ -1,6 +1,7 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { HttpClient, HttpEventType } from '@angular/common/http';
 import { environment } from '@environments/environment';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-shop-image-upload',
@@ -362,7 +363,12 @@ export class ShopImageUploadComponent {
           console.error('Upload failed:', error);
           this.uploading = false;
           this.uploadProgress = 0;
-          alert('Upload failed. Please try again.');
+          Swal.fire({
+            title: 'Upload Failed',
+            text: 'Failed to upload images. Please try again.',
+            icon: 'error',
+            confirmButtonText: 'OK'
+          });
         }
       });
     });
@@ -386,8 +392,20 @@ export class ShopImageUploadComponent {
   }
 
   deleteExistingImage(image: any) {
-    if (confirm('Are you sure you want to delete this image?')) {
-      this.imageDeleted.emit(image);
-    }
+    Swal.fire({
+      title: 'Delete Image',
+      text: 'Are you sure you want to delete this image?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Yes, delete',
+      cancelButtonText: 'Cancel'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        this.imageDeleted.emit(image);
+        Swal.fire('Deleted!', 'Image has been deleted.', 'success');
+      }
+    });
   }
 }

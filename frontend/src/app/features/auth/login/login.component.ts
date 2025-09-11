@@ -129,7 +129,7 @@ export class LoginComponent implements OnInit, OnDestroy {
         this.router.navigate(['/shops']);
         break;
       case UserRole.SHOP_OWNER:
-        this.router.navigate(['/shop-owner/profile']);
+        this.router.navigate(['/shop-owner/dashboard']);
         break;
       default:
         this.router.navigate(['/shops']);

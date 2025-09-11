@@ -86,22 +86,10 @@ export class MyProductsComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    // First, try to get shop ID immediately from various sources
-    const cachedShopId = localStorage.getItem('current_shop_id');
-    if (cachedShopId) {
-      this.shopId = parseInt(cachedShopId, 10);
-    } else {
-      // Default to shop ID 57 for any shop owner
-      this.shopId = 57;
-      localStorage.setItem('current_shop_id', '57');
-    }
-    
-    // Load products immediately with the fallback shop ID
-    if (this.shopId) {
-      console.log('Loading products with initial shop ID:', this.shopId);
-      this.loadProducts();
-      this.loadCategories();
-    }
+    // Always load products immediately - /my-products uses JWT token to identify user's shop
+    console.log('Loading products for current authenticated user');
+    this.loadProducts();
+    this.loadCategories();
     
     // Then also subscribe to shop context for updates
     this.shopContext.shop$.pipe(
@@ -129,23 +117,43 @@ export class MyProductsComponent implements OnInit, OnDestroy {
   }
 
   loadProducts(): void {
-    if (!this.shopId) return;
-    
     this.loading = true;
-    console.log('Loading products for shop:', this.shopId);
+    console.log('Loading products for authenticated user');
     
     this.http.get<any>(`${this.apiUrl}/shop-products/my-products`)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
+          console.log('Full API response:', response);
+          
           // Handle paginated response from API
-          const data = response.data || response;
-          const products = data.content || data || [];
-          console.log('Products loaded from API:', products);
+          // Backend returns ApiResponse<Page<ShopProductResponse>>
+          // So structure is: response.data.content
+          let products = [];
+          
+          if (response && response.data) {
+            if (response.data.content) {
+              // Paginated response
+              products = response.data.content;
+              console.log('Found paginated products:', products.length);
+            } else if (Array.isArray(response.data)) {
+              // Array response
+              products = response.data;
+              console.log('Found array products:', products.length);
+            } else {
+              console.log('Unexpected response structure:', response.data);
+            }
+          } else if (Array.isArray(response)) {
+            // Direct array response
+            products = response;
+            console.log('Found direct array products:', products.length);
+          }
+          
+          console.log('Products to process:', products);
           
           // Map API response to component interface
           this.products = products.map((p: any) => {
-            console.log('Product from API:', p);
+            console.log('Processing product from API:', p);
             return {
               id: p.id,
               customName: p.displayName || p.customName || p.masterProduct?.name,
@@ -177,6 +185,12 @@ export class MyProductsComponent implements OnInit, OnDestroy {
         },
         error: (error) => {
           console.error('Product API error:', error);
+          console.error('Error details:', {
+            status: error.status,
+            statusText: error.statusText,
+            message: error.message,
+            url: error.url
+          });
           console.warn('Using fallback product data due to API issues');
           
           // Fallback to sample products that match the real order items
@@ -338,17 +352,35 @@ export class MyProductsComponent implements OnInit, OnDestroy {
       return 'assets/images/product-placeholder.svg';
     }
     
+    return this.fixImageUrl(product.imageUrl) || 'assets/images/product-placeholder.svg';
+  }
+  
+  private fixImageUrl(imageUrl: string): string {
     // If the imageUrl is already a full URL (http/https), return as is
-    if (product.imageUrl.startsWith('http://') || product.imageUrl.startsWith('https://')) {
-      return product.imageUrl;
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      return imageUrl;
     }
     
-    // Otherwise, prepend the backend URL for local images
-    // Extract base URL from apiUrl (remove '/api' part)
+    let fixedUrl = imageUrl;
+    
+    // Fix incomplete URLs by checking if they need extensions
+    if (!fixedUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+      // Try to guess extension based on the filename pattern
+      if (fixedUrl.includes('jpg') || fixedUrl.includes('jpeg')) {
+        fixedUrl += '.jpg';
+      } else {
+        // Default to png for most cases
+        fixedUrl += '.png';
+      }
+    }
+    
+    // For relative URLs, use the base server URL (without /api) for file serving
+    // Extract base URL from apiUrl (remove '/api' part) - e.g., http://localhost:8082/api -> http://localhost:8082
     const baseUrl = this.apiUrl.replace('/api', '');
-    // Remove leading slash from imageUrl if present to avoid double slash
-    const cleanImageUrl = product.imageUrl.startsWith('/') ? product.imageUrl.substring(1) : product.imageUrl;
-    return `${baseUrl}/${cleanImageUrl}`;
+    
+    // Ensure proper path format
+    const cleanImageUrl = fixedUrl.startsWith('/') ? fixedUrl : `/${fixedUrl}`;
+    return `${baseUrl}${cleanImageUrl}`;
   }
 
   toggleAvailability(product: ShopProduct): void {

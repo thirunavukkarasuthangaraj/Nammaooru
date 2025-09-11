@@ -237,6 +237,37 @@ import Swal from 'sweetalert2';
                   </div>
                 </div>
 
+                <!-- Document Image Preview -->
+                <div class="document-preview" *ngIf="getDocumentImageUrl(document.id)">
+                  <img [src]="getDocumentImageUrl(document.id)" 
+                       [alt]="document.documentName"
+                       class="document-image"
+                       (click)="viewDocument(document)">
+                  <div class="preview-overlay">
+                    <mat-icon>zoom_in</mat-icon>
+                    <span>Click to view full size</span>
+                  </div>
+                </div>
+
+                <!-- Verification Actions directly below image -->
+                <div class="document-verification-actions" 
+                     *ngIf="document.verificationStatus === 'PENDING' && shop?.status === 'PENDING'">
+                  <button mat-raised-button 
+                          (click)="verifyDocument(document)" 
+                          color="primary"
+                          class="verify-btn">
+                    <mat-icon>check_circle</mat-icon>
+                    Verify Document
+                  </button>
+                  <button mat-raised-button 
+                          (click)="rejectDocument(document)" 
+                          color="warn"
+                          class="reject-btn">
+                    <mat-icon>cancel</mat-icon>
+                    Reject Document
+                  </button>
+                </div>
+
                 <div class="document-notes" *ngIf="document.verificationNotes">
                   <mat-icon>note</mat-icon>
                   <span>{{ document.verificationNotes }}</span>
@@ -250,20 +281,6 @@ import Swal from 'sweetalert2';
                   <button mat-stroked-button (click)="downloadDocument(document)" color="accent">
                     <mat-icon>download</mat-icon>
                     Download
-                  </button>
-                  <button mat-stroked-button 
-                          *ngIf="document.verificationStatus === 'PENDING' && shop?.status === 'PENDING'"
-                          (click)="verifyDocument(document)" 
-                          color="primary">
-                    <mat-icon>check_circle</mat-icon>
-                    Verify
-                  </button>
-                  <button mat-stroked-button 
-                          *ngIf="document.verificationStatus === 'PENDING' && shop?.status === 'PENDING'"
-                          (click)="rejectDocument(document)" 
-                          color="warn">
-                    <mat-icon>cancel</mat-icon>
-                    Reject
                   </button>
                 </div>
               </div>
@@ -683,6 +700,102 @@ import Swal from 'sweetalert2';
       font-weight: 500;
     }
 
+    .document-verification-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin: 16px 0;
+      padding: 16px;
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      border-radius: 12px;
+      border: 2px solid #dee2e6;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .document-verification-actions .verify-btn {
+      background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+      color: white;
+      font-weight: 600;
+      padding: 12px 24px;
+      border-radius: 8px;
+      box-shadow: 0 3px 12px rgba(40, 167, 69, 0.3);
+      transition: all 0.3s ease;
+    }
+
+    .document-verification-actions .verify-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+    }
+
+    .document-verification-actions .reject-btn {
+      background: linear-gradient(135deg, #dc3545 0%, #e74c3c 100%);
+      color: white;
+      font-weight: 600;
+      padding: 12px 24px;
+      border-radius: 8px;
+      box-shadow: 0 3px 12px rgba(220, 53, 69, 0.3);
+      transition: all 0.3s ease;
+    }
+
+    .document-verification-actions .reject-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
+    }
+
+    .document-preview {
+      position: relative;
+      margin: 16px 0;
+      border: 2px dashed #e0e0e0;
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .document-preview:hover {
+      border-color: #2196f3;
+      transform: scale(1.02);
+    }
+
+    .document-image {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .preview-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .document-preview:hover .preview-overlay {
+      opacity: 1;
+    }
+
+    .preview-overlay mat-icon {
+      font-size: 32px;
+      width: 32px;
+      height: 32px;
+      margin-bottom: 8px;
+    }
+
+    .preview-overlay span {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
     .no-documents {
       text-align: center;
       padding: 60px 40px;
@@ -976,6 +1089,19 @@ import Swal from 'sweetalert2';
         justify-content: center;
       }
 
+      .document-verification-actions {
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px;
+      }
+
+      .document-verification-actions .verify-btn,
+      .document-verification-actions .reject-btn {
+        width: 100%;
+        padding: 12px 16px;
+        font-size: 16px;
+      }
+
       .document-meta {
         flex-direction: column;
         gap: 8px;
@@ -1055,6 +1181,7 @@ import Swal from 'sweetalert2';
 export class ShopApprovalComponent implements OnInit {
   shop: Shop | null = null;
   documents: any[] = [];
+  documentImageUrls: { [documentId: number]: string } = {};
   statusHistory: any[] = [];
   shopStats: any = {
     totalProducts: 0,
@@ -1103,43 +1230,46 @@ export class ShopApprovalComponent implements OnInit {
     this.documentService.getShopDocuments(this.shopId).subscribe({
       next: (documents) => {
         this.documents = documents;
+        console.log('Loaded real documents:', documents);
+        // Load image URLs for documents
+        this.loadDocumentImages();
       },
       error: (error) => {
         console.error('Error loading documents:', error);
-        // Mock documents for demo
-        this.documents = [
-          {
-            id: 1,
-            documentType: 'BUSINESS_LICENSE',
-            fileName: 'business_license.pdf',
-            fileSize: 2048576,
-            verificationStatus: 'VERIFIED',
-            uploadedAt: '2024-01-15T10:30:00Z',
-            verifiedAt: '2024-01-16T14:20:00Z',
-            downloadUrl: '/documents/business_license.pdf'
-          },
-          {
-            id: 2,
-            documentType: 'GST_CERTIFICATE',
-            fileName: 'gst_certificate.pdf',
-            fileSize: 1536000,
-            verificationStatus: 'PENDING',
-            uploadedAt: '2024-01-15T11:45:00Z',
-            downloadUrl: '/documents/gst_certificate.pdf'
-          },
-          {
-            id: 3,
-            documentType: 'PAN_CARD',
-            fileName: 'pan_card.jpg',
-            fileSize: 512000,
-            verificationStatus: 'REJECTED',
-            uploadedAt: '2024-01-14T16:20:00Z',
-            verificationNotes: 'Image quality is too low. Please upload a clearer image.',
-            downloadUrl: '/documents/pan_card.jpg'
-          }
-        ];
+        this.documents = [];
+        // Show error message instead of fake data
+        Swal.fire({
+          title: 'Authentication Error',
+          text: 'Unable to load documents. Please refresh and login again.',
+          icon: 'warning',
+          confirmButtonText: 'OK'
+        });
       }
     });
+  }
+
+  private loadDocumentImages() {
+    this.documents.forEach(document => {
+      if (document.fileType?.startsWith('image/')) {
+        this.loadDocumentImageUrl(document.id);
+      }
+    });
+  }
+
+  private loadDocumentImageUrl(documentId: number) {
+    this.documentService.downloadDocument(documentId).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        this.documentImageUrls[documentId] = url;
+      },
+      error: (error) => {
+        console.error('Error loading document image:', error);
+      }
+    });
+  }
+
+  getDocumentImageUrl(documentId: number): string | null {
+    return this.documentImageUrls[documentId] || null;
   }
 
   private loadStatusHistory() {
@@ -1284,14 +1414,73 @@ export class ShopApprovalComponent implements OnInit {
   }
 
   viewDocument(document: any) {
-    window.open(`http://localhost:8082${document.downloadUrl}`, '_blank');
+    this.documentService.downloadDocument(document.id).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        
+        // Create a new window/tab and write the content directly for better viewing
+        const newWindow = window.open('', '_blank');
+        if (newWindow) {
+          if (blob.type.startsWith('image/')) {
+            // For images, create an img element
+            newWindow.document.write(`
+              <html>
+                <head><title>${document.fileName || 'Document'}</title></head>
+                <body style="margin:0; padding:20px; text-align:center; background:#f5f5f5;">
+                  <img src="${url}" style="max-width:100%; max-height:100%; object-fit:contain;" 
+                       onload="document.title='${document.fileName || 'Image'}'" />
+                </body>
+              </html>
+            `);
+          } else {
+            // For other files (PDFs, etc.), try to display directly
+            newWindow.location.href = url;
+          }
+        } else {
+          // Fallback if popup is blocked
+          const link = document.createElement('a');
+          link.href = url;
+          link.target = '_blank';
+          link.click();
+        }
+        
+        // Clean up the URL after a delay to allow the browser to load it
+        setTimeout(() => window.URL.revokeObjectURL(url), 10000);
+      },
+      error: (error) => {
+        console.error('Error viewing document:', error);
+        Swal.fire({
+          title: 'Error',
+          text: 'Failed to load document. Please try again.',
+          icon: 'error',
+          confirmButtonText: 'OK'
+        });
+      }
+    });
   }
 
   downloadDocument(document: any) {
-    const link = document.createElement('a');
-    link.href = `http://localhost:8082${document.downloadUrl}`;
-    link.download = document.fileName || 'document';
-    link.click();
+    this.documentService.downloadDocument(document.id).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = document.fileName || `document_${document.id}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      },
+      error: (error) => {
+        console.error('Error downloading document:', error);
+        Swal.fire({
+          title: 'Download Failed',
+          text: 'Failed to download document. Please try again.',
+          icon: 'error',
+          confirmButtonText: 'OK'
+        });
+      }
+    });
   }
 
   getShopLogo(): string | null {

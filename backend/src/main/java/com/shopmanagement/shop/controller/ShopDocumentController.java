@@ -1,5 +1,7 @@
 package com.shopmanagement.shop.controller;
 
+import com.shopmanagement.common.dto.ApiResponse;
+import com.shopmanagement.common.util.ResponseUtil;
 import com.shopmanagement.shop.dto.DocumentVerificationRequest;
 import com.shopmanagement.shop.dto.ShopDocumentResponse;
 import com.shopmanagement.shop.entity.ShopDocument;
@@ -36,9 +38,9 @@ public class ShopDocumentController {
 
     @GetMapping("/shop/{shopId}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SHOP_OWNER')")
-    public ResponseEntity<List<ShopDocumentResponse>> getShopDocuments(@PathVariable Long shopId) {
+    public ResponseEntity<ApiResponse<List<ShopDocumentResponse>>> getShopDocuments(@PathVariable Long shopId) {
         List<ShopDocumentResponse> documents = documentService.getShopDocuments(shopId);
-        return ResponseEntity.ok(documents);
+        return ResponseUtil.success(documents, "Documents retrieved successfully");
     }
 
     @PostMapping("/shop/{shopId}/upload")
@@ -83,10 +85,18 @@ public class ShopDocumentController {
         try {
             Resource resource = documentService.downloadDocument(documentId);
             
+            // Get the document from database to determine content type
+            ShopDocument document = documentService.getDocumentById(documentId);
+            
+            String contentType = "application/octet-stream"; // default
+            if (document.getFileType() != null) {
+                contentType = document.getFileType();
+            }
+            
             return ResponseEntity.ok()
-                    .contentType(MediaType.parseMediaType("application/octet-stream"))
+                    .contentType(MediaType.parseMediaType(contentType))
                     .header(HttpHeaders.CONTENT_DISPOSITION, 
-                            "attachment; filename=\"" + resource.getFilename() + "\"")
+                            "inline; filename=\"" + resource.getFilename() + "\"")
                     .body(resource);
         } catch (Exception e) {
             return ResponseEntity.notFound().build();

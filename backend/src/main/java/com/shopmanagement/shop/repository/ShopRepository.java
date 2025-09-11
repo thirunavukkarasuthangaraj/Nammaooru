@@ -69,4 +69,6 @@ public interface ShopRepository extends JpaRepository<Shop, Long>, JpaSpecificat
     List<Shop> findAllWithDocumentsByIds(@Param("ids") List<Long> ids);
 
     Optional<Shop> findByCreatedBy(String createdBy);
+    
+    Optional<Shop> findByOwnerEmail(String ownerEmail);
 }

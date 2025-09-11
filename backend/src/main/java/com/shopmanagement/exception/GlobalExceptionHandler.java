@@ -93,7 +93,7 @@ public class GlobalExceptionHandler {
         String message = ex.getMessage() != null ? ex.getMessage() : ResponseConstants.INVALID_CREDENTIALS_MESSAGE;
         
         ApiResponse<Void> response = ApiResponse.<Void>builder()
-                .statusCode(ResponseConstants.GENERAL_ERROR)  // Use 9999 for auth failures
+                .statusCode(ResponseConstants.INVALID_CREDENTIALS)  // Use proper auth error code 1003
                 .message(message)
                 .path(request.getDescription(false).replace("uri=", ""))
                 .build();

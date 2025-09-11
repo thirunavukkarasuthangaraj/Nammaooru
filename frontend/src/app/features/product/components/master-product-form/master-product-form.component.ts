@@ -1,4 +1,4 @@
-import { Component, OnInit, Output, EventEmitter, Input } from '@angular/core';
+import { Component, OnInit, Output, EventEmitter, Input, ChangeDetectorRef } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
@@ -671,7 +671,8 @@ export class MasterProductFormComponent implements OnInit {
     private categoryService: ProductCategoryService,
     private route: ActivatedRoute,
     private router: Router,
-    private http: HttpClient
+    private http: HttpClient,
+    private cdr: ChangeDetectorRef
   ) {
     this.productForm = this.createForm();
   }
@@ -913,10 +914,15 @@ export class MasterProductFormComponent implements OnInit {
         // Force trigger change detection for the category dropdown
         setTimeout(() => {
           const categoryControl = this.productForm.get('categoryId');
-          if (categoryControl) {
+          if (categoryControl && product.categoryId) {
+            // Ensure the categoryId is set correctly
+            categoryControl.setValue(product.categoryId);
             categoryControl.updateValueAndValidity();
-            console.log('Category control value after patch:', categoryControl.value);
+            console.log('Category control value after force set:', categoryControl.value);
             console.log('Category control valid:', categoryControl.valid);
+            
+            // Also trigger change detection on the component
+            this.cdr.detectChanges();
           }
         }, 100);
         

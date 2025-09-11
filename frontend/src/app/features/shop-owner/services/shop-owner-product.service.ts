@@ -68,9 +68,9 @@ export class ShopOwnerProductService {
       .set('page', page.toString())
       .set('size', size.toString());
 
-    return this.http.get<{data: ShopProduct[]}>(`${this.apiUrl}/shops/${shopId}/products`, { params })
+    return this.http.get<{data: {content: any[]}}>(`${this.apiUrl}/shop-products/my-products`, { params })
       .pipe(
-        switchMap(response => of(response.data || [])),
+        switchMap(response => of(response.data?.content || [])),
         catchError(() => {
           // Fallback to mock data
           const mockProducts: ShopProduct[] = [
@@ -423,6 +423,62 @@ export class ShopOwnerProductService {
             }
           ];
           return of(mockMasterProducts);
+        })
+      );
+  }
+
+  // Get available master products (excluding already assigned products)
+  getAvailableMasterProducts(page: number = 0, size: number = 20, search?: string, categoryId?: number, brand?: string): Observable<{content: any[], totalElements: number}> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString());
+
+    if (search) {
+      params = params.set('search', search);
+    }
+    if (categoryId) {
+      params = params.set('categoryId', categoryId.toString());
+    }
+    if (brand) {
+      params = params.set('brand', brand);
+    }
+
+    return this.http.get<{data: {content: any[], totalElements: number}}>(`${this.apiUrl}/shop-products/available-master-products`, { params })
+      .pipe(
+        switchMap(response => of(response.data || {content: [], totalElements: 0})),
+        catchError(() => {
+          // Fallback to mock data
+          const mockMasterProducts = [
+            {
+              id: 3,
+              name: 'Organic Tomatoes',
+              description: 'Fresh organic tomatoes from local farms',
+              sku: 'TOM-ORG-001',
+              brand: 'Fresh Farm',
+              category: { name: 'Vegetables', id: 3 },
+              baseUnit: 'kg',
+              baseWeight: 1.0,
+              status: 'ACTIVE',
+              isFeatured: true,
+              primaryImageUrl: '/assets/images/tomatoes.jpg',
+              images: [{ imageUrl: '/assets/images/tomatoes.jpg', isPrimary: true }]
+            },
+            {
+              id: 4,
+              name: 'Premium Chicken',
+              description: 'Fresh chicken from organic farms',
+              sku: 'CHK-PREM-001',
+              brand: 'Organic Meat',
+              category: { name: 'Meat', id: 4 },
+              baseUnit: 'kg',
+              baseWeight: 1.0,
+              status: 'ACTIVE',
+              isFeatured: false,
+              primaryImageUrl: '/assets/images/chicken.jpg',
+              images: [{ imageUrl: '/assets/images/chicken.jpg', isPrimary: true }]
+            }
+          ];
+          return of({content: mockMasterProducts, totalElements: mockMasterProducts.length});
         })
       );
   }

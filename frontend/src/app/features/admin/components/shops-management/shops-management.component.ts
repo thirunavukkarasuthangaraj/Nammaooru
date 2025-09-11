@@ -77,14 +77,17 @@ export class ShopsManagementComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error loading shops:', error);
-        this.loadMockShops();
+        this.shops = [];
+        this.filteredShops = [];
+        this.dataSource.data = [];
+        this.categories = [];
         this.isLoading = false;
+        this.snackBar.open('Failed to load shops. Please try again later.', 'Close', { duration: 5000 });
       }
     });
   }
 
-  private loadMockShops(): void {
-    const mockShops: AdminShop[] = [
+  // Mock data method removed - now uses real API data only
       {
         id: 1,
         name: 'Annamalai Stores',

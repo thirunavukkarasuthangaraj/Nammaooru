@@ -360,6 +360,57 @@ public class ShopProductService {
         log.debug("Updated product count for shop {}: {}", shop.getId(), productCount);
     }
 
+    @Transactional(readOnly = true)
+    public Page<com.shopmanagement.product.dto.MasterProductResponse> getAvailableMasterProducts(
+            Long shopId, String search, Long categoryId, String brand, Pageable pageable) {
+        log.info("Fetching available master products for shop: {}", shopId);
+        
+        Shop shop = shopRepository.findById(shopId)
+                .orElseThrow(() -> new RuntimeException("Shop not found with id: " + shopId));
+        
+        // Create specification to filter master products
+        Specification<MasterProduct> spec = Specification.where(null);
+        
+        // Filter out products already assigned to this shop
+        spec = spec.and((root, query, cb) -> {
+            var subquery = query.subquery(Long.class);
+            var subRoot = subquery.from(ShopProduct.class);
+            subquery.select(subRoot.get("masterProduct").get("id"))
+                   .where(cb.equal(subRoot.get("shop"), shop));
+            return cb.not(cb.in(root.get("id")).value(subquery));
+        });
+        
+        // Apply search filter
+        if (search != null && !search.isEmpty()) {
+            String searchPattern = "%" + search.toLowerCase() + "%";
+            spec = spec.and((root, query, cb) -> cb.or(
+                cb.like(cb.lower(root.get("name")), searchPattern),
+                cb.like(cb.lower(root.get("description")), searchPattern),
+                cb.like(cb.lower(root.get("sku")), searchPattern),
+                cb.like(cb.lower(root.get("barcode")), searchPattern),
+                cb.like(cb.lower(root.get("brand")), searchPattern)
+            ));
+        }
+        
+        // Apply category filter
+        if (categoryId != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("category").get("id"), categoryId));
+        }
+        
+        // Apply brand filter
+        if (brand != null && !brand.isEmpty()) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("brand"), brand));
+        }
+        
+        // Only show active products
+        spec = spec.and((root, query, cb) -> cb.equal(root.get("status"), MasterProduct.ProductStatus.ACTIVE));
+        
+        Page<MasterProduct> masterProducts = masterProductRepository.findAll(spec, pageable);
+        
+        // Convert to MasterProductResponse using ProductMapper
+        return masterProducts.map(productMapper::toResponse);
+    }
+
     private String getCurrentUsername() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         return authentication != null ? authentication.getName() : "system";

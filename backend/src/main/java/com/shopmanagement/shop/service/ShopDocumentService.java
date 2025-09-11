@@ -140,6 +140,11 @@ public class ShopDocumentService {
         }
     }
 
+    public ShopDocument getDocumentById(Long documentId) {
+        return documentRepository.findById(documentId)
+                .orElseThrow(() -> new RuntimeException("Document not found"));
+    }
+
     public void deleteDocument(Long documentId) {
         ShopDocument document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Document not found"));

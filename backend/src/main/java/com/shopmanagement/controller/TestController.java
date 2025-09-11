@@ -126,4 +126,45 @@ public class TestController {
         userRepository.save(superadmin);
         return "Superadmin user created successfully - Email: superadmin@shopmanagement.com, Password: password";
     }
+    
+    @PostMapping("/create-custom-superadmin")
+    public String createCustomSuperAdmin() {
+        String customEmail = "thiruna2394@gmail.com";
+        String customPassword = "Super@123";
+        
+        // Check if user already exists with this email
+        User existingUser = userRepository.findByEmail(customEmail).orElse(null);
+        if (existingUser != null) {
+            existingUser.setPassword(passwordEncoder.encode(customPassword));
+            existingUser.setRole(User.UserRole.SUPER_ADMIN);
+            existingUser.setIsActive(true);
+            existingUser.setEmailVerified(true);
+            existingUser.setStatus(User.UserStatus.ACTIVE);
+            userRepository.save(existingUser);
+            return "User updated to superadmin successfully - Email: " + customEmail + ", Password: " + customPassword;
+        }
+        
+        // Create new custom superadmin user
+        User superadmin = User.builder()
+                .username("superadmin_custom")
+                .email(customEmail)
+                .password(passwordEncoder.encode(customPassword))
+                .firstName("Super")
+                .lastName("Admin")
+                .mobileNumber("9876543210")
+                .role(User.UserRole.SUPER_ADMIN)
+                .status(User.UserStatus.ACTIVE)
+                .isActive(true)
+                .emailVerified(true)
+                .mobileVerified(true)
+                .twoFactorEnabled(false)
+                .isTemporaryPassword(false)
+                .passwordChangeRequired(false)
+                .failedLoginAttempts(0)
+                .createdBy("system")
+                .build();
+        
+        userRepository.save(superadmin);
+        return "Custom superadmin user created successfully - Email: " + customEmail + ", Password: " + customPassword;
+    }
 }

@@ -1,0 +1,2 @@
+DELETE FROM delivery_partner_documents WHERE partner_id IN (SELECT id FROM delivery_partners WHERE user_id NOT IN (SELECT id FROM users));
+DELETE FROM delivery_partners WHERE user_id NOT IN (SELECT id FROM users);
