@@ -68,6 +68,11 @@ export class ResponseInterceptor implements HttpInterceptor {
   }
 
   private getErrorMessage(statusCode: string, message?: string): string {
+    // For auth errors, use the backend message if it's specific
+    if (statusCode === '9999' && message && message.toLowerCase().includes('password')) {
+      return message;
+    }
+    
     // First try to get message from our error codes mapping
     if (API_ERROR_MESSAGES[statusCode]) {
       return API_ERROR_MESSAGES[statusCode];

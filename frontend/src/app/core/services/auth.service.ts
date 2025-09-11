@@ -334,13 +334,18 @@ export class AuthService {
     }
   }
 
-  private handleAuthError(error: HttpErrorResponse): void {
+  private handleAuthError(error: HttpErrorResponse | Error | any): void {
     let errorMessage = 'An error occurred during authentication.';
     
-    if (error.error?.message) {
+    // Handle regular Error objects (thrown by our ApiResponseHelper)
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    // Handle HttpErrorResponse from HTTP calls
+    else if (error.error?.message) {
       errorMessage = error.error.message;
     } else if (error.status === 401) {
-      errorMessage = 'Invalid credentials. Please try again.';
+      errorMessage = 'Invalid username or password';
     } else if (error.status === 403) {
       errorMessage = 'Access denied. Please contact support.';
     }

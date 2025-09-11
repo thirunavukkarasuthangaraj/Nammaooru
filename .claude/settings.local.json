@@ -106,7 +106,8 @@
       "Bash(\"start chrome\" \"http://localhost:4200\")",
       "Bash(\"taskkill\" \"/F\" \"/PID\" \"23344\")",
       "Bash(ng build:*)",
-      "Bash(\"C:\\Program Files\\PostgreSQL\\16\\bin\\psql.exe\" -h localhost -p 5432 -U shop_user -d shop_management -c \"SELECT id, master_product_id, image_url, is_primary FROM master_product_images WHERE image_url LIKE ''%master_27%'' LIMIT 5;\")"
+      "Bash(\"C:\\Program Files\\PostgreSQL\\16\\bin\\psql.exe\" -h localhost -p 5432 -U shop_user -d shop_management -c \"SELECT id, master_product_id, image_url, is_primary FROM master_product_images WHERE image_url LIKE ''%master_27%'' LIMIT 5;\")",
+      "Bash(\"TASKKILL\" \"/F\" \"/IM\" \"java.exe\")"
     ],
     "deny": [],
     "ask": [],
