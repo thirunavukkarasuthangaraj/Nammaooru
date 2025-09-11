@@ -69,8 +69,11 @@ export class ResponseInterceptor implements HttpInterceptor {
 
   private getErrorMessage(statusCode: string, message?: string): string {
     // For auth errors, use the backend message if it's specific
-    if (statusCode === '9999' && message && message.toLowerCase().includes('password')) {
-      return message;
+    if (statusCode === '9999' && message && 
+        (message.toLowerCase().includes('password') || 
+         message.toLowerCase().includes('credentials') ||
+         message.toLowerCase().includes('invalid email'))) {
+      return message === 'Bad credentials' ? 'Invalid email or password' : message;
     }
     
     // First try to get message from our error codes mapping
