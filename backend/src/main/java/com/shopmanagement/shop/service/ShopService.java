@@ -11,7 +11,10 @@ import com.shopmanagement.shop.util.ShopSlugGenerator;
 import com.shopmanagement.service.EmailService;
 import com.shopmanagement.service.AuthService;
 import com.shopmanagement.entity.User;
+import com.shopmanagement.entity.Order;
 import com.shopmanagement.repository.UserRepository;
+import com.shopmanagement.repository.OrderRepository;
+import com.shopmanagement.dto.order.OrderResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -43,6 +46,7 @@ public class ShopService {
     private final EmailService emailService;
     private final AuthService authService;
     private final UserRepository userRepository;
+    private final OrderRepository orderRepository;
 
     public ShopResponse createShop(ShopCreateRequest request) {
         log.info("Creating new shop: {}", request.getName());
@@ -572,31 +576,54 @@ public class ShopService {
         Shop shop = shopRepository.findByShopId(shopId)
                 .orElseThrow(() -> new ShopNotFoundException("Shop not found with shop ID: " + shopId));
         
-        // TODO: Implement actual order retrieval when Order repository is available
-        // For now, return empty result with proper structure
+        // Fetch orders from the database using the shop's internal ID
+        Page<Order> orderPage = orderRepository.findByShopIdWithOrderItems(shop.getId(), pageable);
+        
+        // Convert to response DTOs
+        List<OrderResponse> orderResponses = orderPage.getContent().stream()
+                .map(this::convertToOrderResponse)
+                .toList();
+        
+        // Calculate summary statistics
+        Long totalOrders = orderRepository.countOrdersByShop(shop.getId());
+        BigDecimal totalRevenue = orderRepository.getTotalRevenueByShop(shop.getId());
+        if (totalRevenue == null) totalRevenue = BigDecimal.ZERO;
+        
+        BigDecimal avgOrderValue = orderRepository.getAverageOrderValueByShop(shop.getId());
+        if (avgOrderValue == null) avgOrderValue = BigDecimal.ZERO;
+        
+        // Get status breakdown
+        List<Object[]> statusBreakdownData = orderRepository.getOrderStatusDistribution(shop.getId());
+        Map<String, Long> statusBreakdown = new HashMap<>();
+        statusBreakdown.put("PENDING", 0L);
+        statusBreakdown.put("CONFIRMED", 0L);
+        statusBreakdown.put("PREPARING", 0L);
+        statusBreakdown.put("READY", 0L);
+        statusBreakdown.put("OUT_FOR_DELIVERY", 0L);
+        statusBreakdown.put("DELIVERED", 0L);
+        statusBreakdown.put("CANCELLED", 0L);
+        
+        for (Object[] row : statusBreakdownData) {
+            String orderStatus = row[0].toString();
+            Long count = (Long) row[1];
+            statusBreakdown.put(orderStatus, count);
+        }
+        
         Map<String, Object> ordersData = new HashMap<>();
-        ordersData.put("orders", List.of());
-        ordersData.put("totalElements", 0);
-        ordersData.put("totalPages", 0);
-        ordersData.put("currentPage", pageable.getPageNumber());
-        ordersData.put("pageSize", pageable.getPageSize());
-        ordersData.put("hasNext", false);
-        ordersData.put("hasPrevious", false);
+        ordersData.put("orders", orderResponses);
+        ordersData.put("totalElements", orderPage.getTotalElements());
+        ordersData.put("totalPages", orderPage.getTotalPages());
+        ordersData.put("currentPage", orderPage.getNumber());
+        ordersData.put("pageSize", orderPage.getSize());
+        ordersData.put("hasNext", orderPage.hasNext());
+        ordersData.put("hasPrevious", orderPage.hasPrevious());
         
         // Summary data
         ordersData.put("summary", Map.of(
-            "totalOrders", 0,
-            "totalRevenue", BigDecimal.ZERO,
-            "avgOrderValue", BigDecimal.ZERO,
-            "statusBreakdown", Map.of(
-                "PENDING", 0,
-                "CONFIRMED", 0,
-                "PREPARING", 0,
-                "READY", 0,
-                "OUT_FOR_DELIVERY", 0,
-                "DELIVERED", 0,
-                "CANCELLED", 0
-            )
+            "totalOrders", totalOrders,
+            "totalRevenue", totalRevenue,
+            "avgOrderValue", avgOrderValue,
+            "statusBreakdown", statusBreakdown
         ));
         
         return ordersData;
@@ -673,6 +700,41 @@ public class ShopService {
         ));
         
         return analytics;
+    }
+    
+    private OrderResponse convertToOrderResponse(Order order) {
+        return OrderResponse.builder()
+                .id(order.getId())
+                .orderNumber(order.getOrderNumber())
+                .status(order.getStatus())
+                .paymentStatus(order.getPaymentStatus())
+                .paymentMethod(order.getPaymentMethod())
+                .customerId(order.getCustomer() != null ? order.getCustomer().getId() : null)
+                .customerName(order.getCustomer() != null ? 
+                    order.getCustomer().getFirstName() + " " + order.getCustomer().getLastName() : null)
+                .customerEmail(order.getCustomer() != null ? order.getCustomer().getEmail() : null)
+                .customerPhone(order.getCustomer() != null ? order.getCustomer().getPhone() : null)
+                .shopId(order.getShop() != null ? order.getShop().getId() : null)
+                .shopName(order.getShop() != null ? order.getShop().getName() : null)
+                .shopAddress(order.getShop() != null ? order.getShop().getAddressLine1() : null)
+                .subtotal(order.getSubtotal())
+                .taxAmount(order.getTaxAmount())
+                .deliveryFee(order.getDeliveryFee())
+                .discountAmount(order.getDiscountAmount())
+                .totalAmount(order.getTotalAmount())
+                .notes(order.getNotes())
+                .cancellationReason(order.getCancellationReason())
+                .deliveryAddress(order.getDeliveryAddress())
+                .deliveryCity(order.getDeliveryCity())
+                .deliveryState(order.getDeliveryState())
+                .deliveryPostalCode(order.getDeliveryPostalCode())
+                .deliveryPhone(order.getDeliveryPhone())
+                .deliveryContactName(order.getDeliveryContactName())
+                .estimatedDeliveryTime(order.getEstimatedDeliveryTime())
+                .actualDeliveryTime(order.getActualDeliveryTime())
+                .createdAt(order.getCreatedAt())
+                .updatedAt(order.getUpdatedAt())
+                .build();
     }
 
 }

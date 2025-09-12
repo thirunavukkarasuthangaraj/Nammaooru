@@ -213,12 +213,38 @@ public class CustomerOrderController {
     public ResponseEntity<ApiResponse<List<OrderResponse>>> getMyOrders(
             @RequestParam(required = false) Long customerId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            Authentication authentication) {
         
         try {
-            log.info("Getting orders for customer ID: {}", customerId);
+            Long finalCustomerId = customerId;
             
-            List<OrderResponse> orders = orderService.getCustomerOrders(customerId, page, size);
+            // If no customerId provided, get from authenticated user
+            if (finalCustomerId == null && authentication != null && authentication.isAuthenticated()) {
+                String username = authentication.getName();
+                User authenticatedUser = userRepository.findByUsername(username).orElse(null);
+                if (authenticatedUser != null) {
+                    // Find customer by email or mobile number
+                    Optional<Customer> customerOpt = customerService.findCustomerByEmailOrMobile(authenticatedUser.getEmail());
+                    if (!customerOpt.isPresent()) {
+                        customerOpt = customerService.findCustomerByEmailOrMobile(authenticatedUser.getMobileNumber());
+                    }
+                    if (customerOpt.isPresent()) {
+                        finalCustomerId = customerOpt.get().getId();
+                        log.info("Found customer ID {} for authenticated user {}", finalCustomerId, username);
+                    } else {
+                        log.warn("No customer record found for authenticated user: {}", username);
+                        return ResponseUtil.success(List.of(), "No orders found");
+                    }
+                } else {
+                    log.error("Authenticated user not found: {}", username);
+                    return ResponseUtil.error("User not found");
+                }
+            }
+            
+            log.info("Getting orders for customer ID: {}", finalCustomerId);
+            
+            List<OrderResponse> orders = orderService.getCustomerOrders(finalCustomerId, page, size);
             
             return ResponseUtil.success(orders, "Orders retrieved successfully");
             

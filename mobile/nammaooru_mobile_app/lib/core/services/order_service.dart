@@ -22,6 +22,7 @@ class OrderService {
       final response = await ApiClient.get(
         '/customer/orders',
         queryParameters: queryParams,
+        includeAuth: true,
       );
       
       if (response.statusCode == 200) {
@@ -78,7 +79,7 @@ class OrderService {
 
   Future<Map<String, dynamic>> getOrderById(String orderId) async {
     try {
-      final response = await ApiClient.get('/customer/orders/$orderId');
+      final response = await ApiClient.get('/customer/orders/$orderId', includeAuth: true);
       
       if (response.statusCode == 200) {
         final responseData = response.data;
@@ -122,7 +123,7 @@ class OrderService {
     try {
       print('🚀 Placing order with data: ${orderData.toString()}');
       
-      final response = await ApiClient.post('/customer/orders', data: orderData);
+      final response = await ApiClient.post('/customer/orders', data: orderData, includeAuth: true);
       
       print('📦 Order response: ${response.data.toString()}');
       
@@ -191,6 +192,7 @@ class OrderService {
       final response = await ApiClient.post(
         '/customer/orders/$orderId/cancel',
         data: {'reason': reason},
+        includeAuth: true,
       );
       
       if (response.statusCode == 200) {
@@ -234,7 +236,7 @@ class OrderService {
 
   Future<Map<String, dynamic>> trackOrder(String orderId) async {
     try {
-      final response = await ApiClient.get('/customer/orders/$orderId/track');
+      final response = await ApiClient.get('/customer/orders/$orderId/tracking', includeAuth: true);
       
       if (response.statusCode == 200) {
         final responseData = response.data;
@@ -274,7 +276,7 @@ class OrderService {
 
   Future<Map<String, dynamic>> reorderItems(String orderId) async {
     try {
-      final response = await ApiClient.post('/customer/orders/$orderId/reorder');
+      final response = await ApiClient.post('/customer/orders/$orderId/reorder', includeAuth: true);
       
       if (response.statusCode == 200) {
         final responseData = response.data;

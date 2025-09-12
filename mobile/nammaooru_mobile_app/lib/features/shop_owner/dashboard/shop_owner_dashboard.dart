@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/utils/helpers.dart';
+import '../../../shared/services/notification_service.dart';
 
 class ShopOwnerDashboard extends StatefulWidget {
   const ShopOwnerDashboard({super.key});
@@ -85,9 +86,9 @@ class _ShopOwnerDashboardState extends State<ShopOwnerDashboard> {
                     minWidth: 16,
                     minHeight: 16,
                   ),
-                  child: const Text(
-                    '5',
-                    style: TextStyle(
+                  child: Text(
+                    '${NotificationService.getUnreadCount()}',
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 10,
                     ),
@@ -317,9 +318,9 @@ class _ShopOwnerDashboardState extends State<ShopOwnerDashboard> {
                   color: Colors.red.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Text(
-                  '8 New',
-                  style: TextStyle(
+                child: Text(
+                  '${NotificationService.getUnreadCount()} New',
+                  style: const TextStyle(
                     color: Colors.red,
                     fontSize: 12,
                     fontWeight: FontWeight.bold,

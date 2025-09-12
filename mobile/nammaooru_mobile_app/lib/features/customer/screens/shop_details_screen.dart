@@ -630,11 +630,28 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
   }
 
   Widget _buildProductCard(Map<String, dynamic> product) {
-    final productName = product['customName']?.toString() ?? product['name']?.toString() ?? 'Product';
+    // Get display name from customName or displayName or master product name
+    final productName = product['customName']?.toString() ?? 
+                       product['displayName']?.toString() ?? 
+                       product['masterProduct']?['name']?.toString() ?? 
+                       'Product';
+    
+    // Get description
+    final description = product['customDescription']?.toString() ?? 
+                       product['displayDescription']?.toString() ??
+                       product['masterProduct']?['description']?.toString() ?? '';
+    
     final price = double.tryParse(product['price']?.toString() ?? '0') ?? 0.0;
     final originalPrice = double.tryParse(product['originalPrice']?.toString() ?? '0') ?? 0.0;
     final isInStock = product['inStock'] ?? true;
     final stockQuantity = int.tryParse(product['stockQuantity']?.toString() ?? '0') ?? 0;
+    
+    // Get image URL from primaryImageUrl or master product images
+    final imageUrl = product['primaryImageUrl']?.toString() ?? 
+                    product['masterProduct']?['primaryImageUrl']?.toString() ?? '';
+    
+    // Debug: print image URL
+    print('Product: $productName, Image URL: $imageUrl');
 
     final hasDiscount = originalPrice > price;
     final discountPercentage = hasDiscount ? ((originalPrice - price) / originalPrice * 100).round() : 0;
@@ -665,8 +682,61 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
               ),
               child: Stack(
                 children: [
-                  const Center(
-                    child: Text('📦', style: TextStyle(fontSize: 40)),
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                    child: imageUrl.isNotEmpty
+                        ? Image.network(
+                            imageUrl.startsWith('http') 
+                                ? imageUrl 
+                                : 'http://localhost:8082$imageUrl',
+                            width: double.infinity,
+                            height: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              print('Error loading image: $imageUrl - Error: $error');
+                              return Container(
+                                color: Colors.grey[200],
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.image_not_supported, 
+                                         size: 30, 
+                                         color: Colors.grey[400]),
+                                    const SizedBox(height: 4),
+                                    Text('Image not available',
+                                         style: TextStyle(
+                                           fontSize: 10,
+                                           color: Colors.grey[600],
+                                         )),
+                                  ],
+                                ),
+                              );
+                            },
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Container(
+                                color: Colors.grey[100],
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                    value: loadingProgress.expectedTotalBytes != null
+                                        ? loadingProgress.cumulativeBytesLoaded /
+                                            loadingProgress.expectedTotalBytes!
+                                        : null,
+                                    color: const Color(0xFF2E7D32),
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              );
+                            },
+                          )
+                        : Container(
+                            color: Colors.grey[200],
+                            child: const Center(
+                              child: Icon(Icons.inventory_2, 
+                                   size: 40, 
+                                   color: Colors.grey),
+                            ),
+                          ),
                   ),
                   if (hasDiscount)
                     Positioned(
@@ -726,14 +796,48 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF212121),
                     ),
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  // Add brand and unit info if available
+                  if (product['masterProduct']?['brand'] != null || product['masterProduct']?['baseUnit'] != null) ...[
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        if (product['masterProduct']?['brand'] != null) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              product['masterProduct']['brand'].toString(),
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.blue,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                        ],
+                        if (product['masterProduct']?['baseUnit'] != null) 
+                          Text(
+                            '${product['masterProduct']['baseWeight'] ?? ''} ${product['masterProduct']['baseUnit']}'.trim(),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 4),
                   Row(
                     children: [
                       Text(
-                        '₹${price.toStringAsFixed(0)}',
+                        '₹${price.toStringAsFixed(price == price.roundToDouble() ? 0 : 2)}',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -743,7 +847,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
                       if (hasDiscount) ...[
                         const SizedBox(width: 6),
                         Text(
-                          '₹${originalPrice.toStringAsFixed(0)}',
+                          '₹${originalPrice.toStringAsFixed(originalPrice == originalPrice.roundToDouble() ? 0 : 2)}',
                           style: const TextStyle(
                             fontSize: 12,
                             color: Colors.grey,
@@ -753,45 +857,126 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
                       ],
                     ],
                   ),
+                  // Add stock status
+                  if (isInStock && stockQuantity > 0 && stockQuantity <= 10) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      'Only $stockQuantity left',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.orange,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                   const Spacer(),
-                  SizedBox(
-                    width: double.infinity,
-                    child: Consumer<CartProvider>(
-                      builder: (context, cartProvider, child) {
-                        return ElevatedButton(
-                          onPressed: isInStock
-                              ? () {
-                                  cartProvider.addToCart(ProductModel(
-                                    id: product['id'].toString(),
-                                    name: productName,
-                                    description: product['description']?.toString() ?? '',
-                                    price: price,
-                                    category: product['category']?.toString() ?? '',
-                                    shopId: widget.shopId.toString(),
-                                    shopName: _shop?['name']?.toString() ?? 'Shop',
-                                    images: List<String>.from(product['images'] ?? ['']),
-                                    stockQuantity: product['stockQuantity'] ?? 0,
-                                    createdAt: DateTime.now(),
-                                    updatedAt: DateTime.now(),
-                                  ));
-                                  Helpers.showSnackBar(context, 'Added to cart');
-                                }
-                              : null,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF2E7D32),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                  Consumer<CartProvider>(
+                    builder: (context, cartProvider, child) {
+                      final productModel = ProductModel(
+                        id: product['id'].toString(),
+                        name: productName,
+                        description: description,
+                        price: price,
+                        category: product['masterProduct']?['category']?.toString() ?? '',
+                        shopId: widget.shopId.toString(),
+                        shopName: _shop?['name']?.toString() ?? 'Shop',
+                        images: imageUrl.isNotEmpty ? [imageUrl] : [],
+                        stockQuantity: stockQuantity,
+                        createdAt: DateTime.now(),
+                        updatedAt: DateTime.now(),
+                      );
+                      
+                      final cartQuantity = cartProvider.getQuantity(productModel.id);
+                      
+                      if (!isInStock) {
+                        return Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            'Out of Stock',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 12, 
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey,
                             ),
                           ),
-                          child: Text(
-                            isInStock ? 'Add to Cart' : 'Out of Stock',
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                        );
+                      }
+                      
+                      if (cartQuantity == 0) {
+                        return SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              cartProvider.addToCart(productModel);
+                              Helpers.showSnackBar(context, 'Added to cart');
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF1976D2),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: const Text(
+                              'ADD TO CART',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                            ),
                           ),
                         );
-                      },
-                    ),
+                      }
+                      
+                      return Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1976D2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            IconButton(
+                              onPressed: () {
+                                cartProvider.removeFromCart(productModel.id);
+                              },
+                              icon: const Icon(Icons.remove, color: Colors.white, size: 18),
+                              padding: const EdgeInsets.all(4),
+                              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                '$cartQuantity',
+                                style: const TextStyle(
+                                  color: Color(0xFF1976D2),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () {
+                                cartProvider.addToCart(productModel);
+                                Helpers.showSnackBar(context, 'Added to cart');
+                              },
+                              icon: const Icon(Icons.add, color: Colors.white, size: 18),
+                              padding: const EdgeInsets.all(4),
+                              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),

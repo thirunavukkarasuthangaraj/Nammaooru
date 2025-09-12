@@ -97,6 +97,113 @@ class OrderApiService {
     }
   }
 
+  // Get Shop Orders (for shop owners)
+  Future<Map<String, dynamic>> getShopOrders({
+    required String shopId,
+    int page = 0,
+    int size = 20,
+    String sortBy = 'createdAt',
+    String sortDir = 'desc',
+    String? status,
+    String? dateFrom,
+    String? dateTo,
+  }) async {
+    try {
+      Logger.order('Fetching shop orders - shopId: $shopId, page: $page, status: $status');
+      
+      final queryParams = <String, String>{
+        'page': page.toString(),
+        'size': size.toString(),
+        'sortBy': sortBy,
+        'sortDir': sortDir,
+      };
+      
+      if (status != null) queryParams['status'] = status;
+      if (dateFrom != null) queryParams['dateFrom'] = dateFrom;
+      if (dateTo != null) queryParams['dateTo'] = dateTo;
+      
+      final response = await _apiService.get(
+        '/shops/$shopId/orders',
+        queryParams: queryParams,
+        includeAuth: true,
+      );
+
+      return response;
+    } catch (e) {
+      Logger.e('Failed to fetch shop orders', 'ORDER', e);
+      rethrow;
+    }
+  }
+
+  // Accept Order (shop owner)
+  Future<Map<String, dynamic>> acceptOrder(int orderId) async {
+    try {
+      Logger.order('Accepting order: $orderId');
+      
+      final response = await _apiService.post(
+        '/orders/$orderId/accept',
+        includeAuth: true,
+      );
+
+      return response;
+    } catch (e) {
+      Logger.e('Failed to accept order', 'ORDER', e);
+      rethrow;
+    }
+  }
+
+  // Reject Order (shop owner)
+  Future<Map<String, dynamic>> rejectOrder(int orderId, {String? reason}) async {
+    try {
+      Logger.order('Rejecting order: $orderId, reason: $reason');
+      
+      final response = await _apiService.post(
+        '/orders/$orderId/reject',
+        data: reason != null ? {'reason': reason} : null,
+        includeAuth: true,
+      );
+
+      return response;
+    } catch (e) {
+      Logger.e('Failed to reject order', 'ORDER', e);
+      rethrow;
+    }
+  }
+
+  // Start Preparing Order (shop owner)
+  Future<Map<String, dynamic>> startPreparingOrder(int orderId) async {
+    try {
+      Logger.order('Starting preparation for order: $orderId');
+      
+      final response = await _apiService.post(
+        '/orders/$orderId/prepare',
+        includeAuth: true,
+      );
+
+      return response;
+    } catch (e) {
+      Logger.e('Failed to start preparing order', 'ORDER', e);
+      rethrow;
+    }
+  }
+
+  // Mark Order Ready (shop owner)
+  Future<Map<String, dynamic>> markOrderReady(int orderId) async {
+    try {
+      Logger.order('Marking order ready: $orderId');
+      
+      final response = await _apiService.post(
+        '/orders/$orderId/ready',
+        includeAuth: true,
+      );
+
+      return response;
+    } catch (e) {
+      Logger.e('Failed to mark order ready', 'ORDER', e);
+      rethrow;
+    }
+  }
+
   // Cancel Order
   Future<Map<String, dynamic>> cancelOrder({
     required int orderId,

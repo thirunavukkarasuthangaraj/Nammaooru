@@ -154,25 +154,45 @@ class _CartScreenState extends State<CartScreen> {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: CachedNetworkImage(
-              imageUrl: item.product.images.isNotEmpty
-                  ? item.product.images.first
-                  : 'https://via.placeholder.com/80x80',
-              width: 80,
-              height: 80,
-              fit: BoxFit.cover,
-              placeholder: (context, url) => Container(
-                width: 80,
-                height: 80,
-                color: Colors.grey[200],
-                child: const Icon(Icons.image),
-              ),
-              errorWidget: (context, url, error) => Container(
-                width: 80,
-                height: 80,
-                color: Colors.grey[200],
-                child: const Icon(Icons.image_not_supported),
-              ),
+            child: Builder(
+              builder: (context) {
+                String imageUrl;
+                if (item.product.images.isNotEmpty) {
+                  final rawUrl = item.product.images.first;
+                  imageUrl = rawUrl.startsWith('http') 
+                      ? rawUrl 
+                      : 'http://localhost:8082$rawUrl';
+                  print('Cart Product: ${item.product.name}, Image URL: $rawUrl -> $imageUrl');
+                } else {
+                  imageUrl = 'https://via.placeholder.com/80x80';
+                }
+                
+                return Image.network(
+                  imageUrl,
+                  width: 80,
+                  height: 80,
+                  fit: BoxFit.cover,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      width: 80,
+                      height: 80,
+                      color: Colors.grey[200],
+                      child: const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      width: 80,
+                      height: 80,
+                      color: Colors.grey[200],
+                      child: const Icon(Icons.image_not_supported),
+                    );
+                  },
+                );
+              },
             ),
           ),
           const SizedBox(width: 12),
@@ -219,7 +239,7 @@ class _CartScreenState extends State<CartScreen> {
                   children: [
                     Container(
                       decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.shade300),
+                        color: const Color(0xFF1976D2),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
@@ -229,19 +249,25 @@ class _CartScreenState extends State<CartScreen> {
                             onPressed: () {
                               cartProvider.decreaseQuantity(item.product.id);
                             },
-                            icon: const Icon(Icons.remove, size: 18),
+                            icon: const Icon(Icons.remove, color: Colors.white, size: 18),
+                            padding: const EdgeInsets.all(4),
                             constraints: const BoxConstraints(
                               minWidth: 32,
                               minHeight: 32,
                             ),
                           ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
                             child: Text(
                               item.quantity.toString(),
                               style: const TextStyle(
+                                color: Color(0xFF1976D2),
                                 fontWeight: FontWeight.bold,
-                                fontSize: 16,
+                                fontSize: 14,
                               ),
                             ),
                           ),
@@ -251,7 +277,12 @@ class _CartScreenState extends State<CartScreen> {
                                     cartProvider.increaseQuantity(item.product.id);
                                   }
                                 : null,
-                            icon: const Icon(Icons.add, size: 18),
+                            icon: Icon(
+                              Icons.add, 
+                              color: item.quantity < item.product.stockQuantity ? Colors.white : Colors.grey, 
+                              size: 18
+                            ),
+                            padding: const EdgeInsets.all(4),
                             constraints: const BoxConstraints(
                               minWidth: 32,
                               minHeight: 32,

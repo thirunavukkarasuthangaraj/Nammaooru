@@ -44,7 +44,7 @@ interface OrderItem {
 export class OrderManagementComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   
-  shopId: number | null = null;
+  shopId: string | null = null;
   pendingOrders: Order[] = [];
   activeOrders: Order[] = [];
   completedOrders: Order[] = [];
@@ -85,8 +85,8 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
     this.shopContext.shop$.pipe(
       takeUntil(this.destroy$)
     ).subscribe(shop => {
-      if (shop) {
-        this.shopId = shop.id;
+      if (shop && shop.shopId) {
+        this.shopId = shop.shopId;
         this.loadAllData();
         this.startAutoRefresh();
       }
@@ -112,7 +112,7 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
     console.log('Loading orders for shop ID:', this.shopId);
     
     // Load all orders for this shop
-    this.http.get<any>(`${this.apiUrl}/orders/shop/${this.shopId}`, {
+    this.http.get<any>(`${this.apiUrl}/shops/${this.shopId}/orders`, {
       params: { size: '100' }
     })
       .pipe(takeUntil(this.destroy$))
@@ -207,7 +207,7 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
       cancelButtonText: 'Cancel'
     }).then((result) => {
       if (result.isConfirmed) {
-        this.updateOrderStatus(order.id, 'CONFIRMED', 'Order accepted successfully!');
+        this.performOrderAction(order.id, 'accept', 'Order accepted successfully!');
       }
     });
   }
@@ -226,7 +226,7 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
       cancelButtonText: 'Cancel'
     }).then((result) => {
       if (result.isConfirmed) {
-        this.updateOrderStatus(order.id, 'CANCELLED', 'Order rejected successfully!');
+        this.performOrderAction(order.id, 'reject', 'Order rejected successfully!');
       }
     });
   }
@@ -245,22 +245,21 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
       cancelButtonText: 'Cancel'
     }).then((result) => {
       if (result.isConfirmed) {
-        this.updateOrderStatus(order.id, 'READY_FOR_PICKUP', 'Order marked as ready for delivery!');
+        this.performOrderAction(order.id, 'ready', 'Order marked as ready for delivery!');
       }
     });
   }
 
   markAsPreparing(order: Order): void {
-    this.updateOrderStatus(order.id, 'PREPARING', 'Order is now being prepared!');
+    this.performOrderAction(order.id, 'prepare', 'Order is now being prepared!');
   }
 
-  private updateOrderStatus(orderId: number, status: string, successMessage: string): void {
-    // First try the status update endpoint
-    this.http.put(`${this.apiUrl}/orders/${orderId}/status`, { status })
+  private performOrderAction(orderId: number, action: string, successMessage: string): void {
+    this.http.post(`${this.apiUrl}/orders/${orderId}/${action}`, {})
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
-          console.log('Order status update response:', response);
+          console.log(`Order ${action} response:`, response);
           this.loadAllData();
           this.snackBar.open(successMessage, 'Close', { duration: 3000 });
           
@@ -273,20 +272,8 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
           });
         },
         error: (error) => {
-          console.error('Error updating order status:', error);
-          // Fallback: try PUT to /orders/{id} with full order update
-          this.http.put(`${this.apiUrl}/orders/${orderId}`, { status })
-            .pipe(takeUntil(this.destroy$))
-            .subscribe({
-              next: () => {
-                this.loadAllData();
-                this.snackBar.open(successMessage, 'Close', { duration: 3000 });
-              },
-              error: (fallbackError) => {
-                console.error('Fallback order update failed:', fallbackError);
-                this.handleError('Failed to update order status. Please try again.');
-              }
-            });
+          console.error(`Error performing order action ${action}:`, error);
+          this.handleError(`Failed to ${action} order. Please try again.`);
         }
       });
   }

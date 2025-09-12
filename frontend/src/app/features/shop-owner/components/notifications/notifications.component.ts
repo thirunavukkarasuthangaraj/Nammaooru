@@ -729,66 +729,7 @@ export class NotificationsComponent implements OnInit {
   showOnlyUnread = false;
   showOnlyActionRequired = false;
 
-  notifications: ShopNotification[] = [
-    {
-      id: 1,
-      title: 'New Order Received',
-      message: 'You have received a new order #ORD-2024-001 from Rajesh Kumar worth ₹1,250',
-      type: 'order',
-      priority: 'high',
-      status: 'unread',
-      createdAt: new Date(),
-      actionRequired: true,
-      actionUrl: '/orders/1',
-      relatedEntity: { type: 'order', id: 1, name: 'ORD-2024-001' }
-    },
-    {
-      id: 2,
-      title: 'Low Stock Alert',
-      message: 'Fresh Tomatoes stock is running low. Only 3 kg remaining.',
-      type: 'inventory',
-      priority: 'urgent',
-      status: 'unread',
-      createdAt: new Date(Date.now() - 30 * 60 * 1000),
-      actionRequired: true,
-      actionUrl: '/inventory',
-      relatedEntity: { type: 'product', id: 2, name: 'Fresh Tomatoes' }
-    },
-    {
-      id: 3,
-      title: 'Customer Review',
-      message: 'Priya Sharma left a 5-star review for your shop!',
-      type: 'customer',
-      priority: 'medium',
-      status: 'read',
-      createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-      readAt: new Date(Date.now() - 1 * 60 * 60 * 1000),
-      actionRequired: false,
-      relatedEntity: { type: 'customer', id: 3, name: 'Priya Sharma' }
-    },
-    {
-      id: 4,
-      title: 'Payment Received',
-      message: 'Payment of ₹950 received for order #ORD-2024-002',
-      type: 'success',
-      priority: 'medium',
-      status: 'read',
-      createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000),
-      readAt: new Date(Date.now() - 3 * 60 * 60 * 1000),
-      actionRequired: false,
-      relatedEntity: { type: 'order', id: 2, name: 'ORD-2024-002' }
-    },
-    {
-      id: 5,
-      title: 'System Maintenance',
-      message: 'Scheduled system maintenance will occur tonight from 2:00 AM to 4:00 AM',
-      type: 'system',
-      priority: 'low',
-      status: 'unread',
-      createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000),
-      actionRequired: false
-    }
-  ];
+  notifications: ShopNotification[] = [];
 
   constructor(
     private snackBar: MatSnackBar,
@@ -819,20 +760,25 @@ export class NotificationsComponent implements OnInit {
       .subscribe({
         next: (notifications) => {
           console.log('Loaded order notifications:', notifications);
-          // Replace hardcoded notifications with order-based ones
-          this.notifications = [...notifications, ...this.notifications.filter(n => n.type !== 'order')];
+          // Use only real order-based notifications
+          this.notifications = notifications;
         },
         error: (error) => {
           console.error('Error loading order notifications:', error);
-          this.snackBar.open('Using sample notifications', 'Close', { duration: 3000 });
-          // Keep existing mock data on error
+          this.snackBar.open('Failed to load notifications', 'Close', { duration: 3000 });
+          // Show empty state on error
+          this.notifications = [];
         }
       });
   }
 
   private loadOrderNotifications() {
     const currentUser = this.authService.getCurrentUser();
-    const shopId = currentUser?.shopId || 1; // fallback to shop ID 1
+    if (!currentUser?.shopId) {
+      console.error('No shop ID found for current user');
+      return of([]);
+    }
+    const shopId = currentUser.shopId;
     
     return this.orderService.getOrdersByShop(shopId, 0, 20)
       .pipe(
@@ -854,29 +800,8 @@ export class NotificationsComponent implements OnInit {
           return of(notifications);
         }),
         catchError(() => {
-          // Fallback: enhance mock data with actual order data if available
-          return this.orderService.getOrderById(101).pipe(
-            switchMap(order => {
-              if (order) {
-                const notification: ShopNotification = {
-                  id: 1,
-                  title: 'New Order Received',
-                  message: `You have received a new order ${order.orderNumber} from ${order.customerName} worth ₹${order.totalAmount}`,
-                  type: 'order',
-                  priority: 'high',
-                  status: 'unread',
-                  createdAt: new Date(order.createdAt),
-                  actionRequired: true,
-                  actionUrl: `/orders/${order.id}`,
-                  relatedEntity: { type: 'order', id: order.id, name: order.orderNumber },
-                  orderData: order
-                };
-                return of([notification]);
-              }
-              return of([]);
-            }),
-            catchError(() => of([])) // If all fails, return empty array
-          );
+          // Return empty array on error
+          return of([]);
         })
       );
   }

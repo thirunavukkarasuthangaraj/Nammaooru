@@ -347,21 +347,39 @@ public class ProductImageService {
             
             String filename = String.format("%s_%s_%s_%s%s", type, String.join("_", Arrays.stream(ids).map(String::valueOf).toArray(String[]::new)), timestamp, uuid, extension);
             
-            // Create directory structure
+            // Create directory structure with better error handling
             Path uploadPath = Paths.get(uploadDir, productImageDir, type);
-            if (!Files.exists(uploadPath)) {
-                Files.createDirectories(uploadPath);
+            
+            log.info("Attempting to create/access upload directory: {}", uploadPath.toAbsolutePath());
+            
+            try {
+                if (!Files.exists(uploadPath)) {
+                    Files.createDirectories(uploadPath);
+                    log.info("Created upload directory: {}", uploadPath.toAbsolutePath());
+                }
+            } catch (IOException e) {
+                log.error("Failed to create upload directory: {}. Error: {}", uploadPath.toAbsolutePath(), e.getMessage());
+                throw new RuntimeException("Failed to create upload directory: " + uploadPath.toAbsolutePath() + ". Please ensure the application has write permissions.");
+            }
+            
+            // Check if directory is writable
+            if (!Files.isWritable(uploadPath)) {
+                log.error("Upload directory is not writable: {}", uploadPath.toAbsolutePath());
+                throw new RuntimeException("Upload directory is not writable: " + uploadPath.toAbsolutePath() + ". Please check permissions.");
             }
             
             Path filePath = uploadPath.resolve(filename);
+            log.info("Saving file to: {}", filePath.toAbsolutePath());
+            
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+            log.info("Successfully saved file: {}", filePath.toAbsolutePath());
             
             // Return the relative URL path
             return String.format("/uploads/%s/%s/%s", productImageDir, type, filename);
             
         } catch (IOException e) {
-            log.error("Error saving image file", e);
-            throw new RuntimeException("Failed to save image file: " + e.getMessage());
+            log.error("Error saving image file: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to save image file: " + uploadDir + ". " + e.getMessage());
         }
     }
 

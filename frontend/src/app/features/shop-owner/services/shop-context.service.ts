@@ -6,6 +6,7 @@ import { environment } from '../../../../environments/environment';
 
 export interface Shop {
   id: number;
+  shopId: string; // The string identifier used for API calls
   name: string;
   businessName: string;
   description?: string;
@@ -148,7 +149,7 @@ export class ShopContextService {
   }
 
   /**
-   * Get current shop ID
+   * Get current shop ID (internal database ID)
    */
   getCurrentShopId(): number | null {
     const shop = this.shopSubject.value;
@@ -157,6 +158,14 @@ export class ShopContextService {
     // Try from localStorage as fallback
     const cachedId = localStorage.getItem('current_shop_id');
     return cachedId ? parseInt(cachedId, 10) : null;
+  }
+
+  /**
+   * Get current shop identifier (string used for API calls)
+   */
+  getCurrentShopIdentifier(): string | null {
+    const shop = this.shopSubject.value;
+    return shop ? shop.shopId : null;
   }
 
   /**

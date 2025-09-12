@@ -7,6 +7,7 @@ import '../../../shared/widgets/custom_app_bar.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../services/shop_api_service.dart';
 import '../../../services/order_api_service.dart';
+import '../../../shared/services/notification_service.dart';
 import '../screens/shop_listing_screen.dart';
 import '../screens/shop_details_screen.dart';
 
@@ -175,9 +176,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                     minWidth: 16,
                     minHeight: 16,
                   ),
-                  child: const Text(
-                    '3',
-                    style: TextStyle(
+                  child: Text(
+                    '${NotificationService.getUnreadCount()}',
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 10,
                     ),

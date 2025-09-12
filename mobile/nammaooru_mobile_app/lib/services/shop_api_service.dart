@@ -122,7 +122,7 @@ class ShopApiService {
       Logger.api('Fetching shop details: $shopId');
       
       final response = await _apiService.get(
-        '/shops/$shopId',
+        '/customer/shops/$shopId',
         includeAuth: true,
       );
 
@@ -193,7 +193,7 @@ class ShopApiService {
       if (inStock != null) queryParams['inStock'] = inStock.toString();
       
       final response = await _apiService.get(
-        '/shops/$shopId/products',
+        '/customer/shops/$shopId/products',
         queryParams: queryParams,
         includeAuth: true,
       );
@@ -216,7 +216,7 @@ class ShopApiService {
       Logger.api('Searching shop products: $shopId - $query');
       
       final response = await _apiService.get(
-        '/shops/$shopId/products/search',
+        '/customer/shops/$shopId/products/search',
         queryParams: {
           'q': query,
           'page': page.toString(),

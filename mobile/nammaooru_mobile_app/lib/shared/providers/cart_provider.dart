@@ -214,11 +214,50 @@ class CartProvider with ChangeNotifier {
     try {
       final response = await _cartService.getCart();
       if (response['success'] == true) {
-        final backendCart = response['data'] as CoreCart.Cart;
-        // TODO: Convert backend cart items to local cart items
-        // This requires mapping backend cart structure to local ProductModel structure
+        final cartData = response['data']['cart'] as Map<String, dynamic>;
+        final backendCart = CoreCart.Cart.fromJson(cartData);
+        
         if (kDebugMode) {
           print('Loaded cart from backend: ${backendCart.items.length} items');
+        }
+        
+        // Convert backend cart items to local cart items
+        final List<CartItem> convertedItems = [];
+        
+        for (final backendItem in backendCart.items) {
+          // Create a ProductModel from the backend cart item data
+          final product = ProductModel(
+            id: backendItem.productId,
+            name: backendItem.productName,
+            description: backendItem.productName, // Use name as description fallback
+            price: backendItem.price,
+            category: 'Unknown', // Backend doesn't provide category in cart
+            shopId: backendItem.shopId,
+            shopName: backendItem.shopName,
+            images: backendItem.productImage.isNotEmpty ? [backendItem.productImage] : [],
+            stockQuantity: 999, // Assume high stock since we don't get this from backend cart
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
+          
+          // Create the UI CartItem with the ProductModel
+          final cartItem = CartItem(
+            id: backendItem.id,
+            product: product,
+            quantity: backendItem.quantity,
+            addedAt: DateTime.now(),
+          );
+          
+          convertedItems.add(cartItem);
+        }
+        
+        // Update local cart with backend data
+        _items = convertedItems;
+        _saveCartToStorage();
+        notifyListeners();
+        
+        if (kDebugMode) {
+          print('🛒 Converted ${convertedItems.length} backend items to local cart items');
         }
       }
     } catch (e) {

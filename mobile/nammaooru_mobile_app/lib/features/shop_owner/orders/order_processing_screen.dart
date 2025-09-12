@@ -7,6 +7,7 @@ import '../../../shared/widgets/error_widget.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../shared/models/order_model.dart';
+import '../../../services/order_api_service.dart';
 
 class OrderProcessingScreen extends StatefulWidget {
   const OrderProcessingScreen({super.key});
@@ -22,6 +23,8 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen>
   String _sortBy = 'newest';
   List<OrderModel> _orders = [];
   bool _isLoading = false;
+  final OrderApiService _orderApiService = OrderApiService();
+  final String _shopId = "SHA686F7D3"; // Shop ID for Thirunavukkarasu shop
 
   @override
   void initState() {
@@ -39,105 +42,40 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen>
   Future<void> _loadOrders() async {
     setState(() => _isLoading = true);
     
-    // Simulate API call - Replace with actual API call
-    await Future.delayed(const Duration(seconds: 1));
-    
-    setState(() {
-      _orders = _generateSampleOrders();
-      _isLoading = false;
-    });
+    try {
+      final response = await _orderApiService.getShopOrders(
+        shopId: _shopId,
+        page: 0,
+        size: 100, // Load more orders for shop owner view
+        sortBy: 'createdAt',
+        sortDir: 'desc',
+      );
+      
+      if (response['success'] == true) {
+        final ordersData = response['data']['content'] as List<dynamic>;
+        
+        setState(() {
+          _orders = ordersData.map((orderJson) {
+            return OrderModel.fromJson(orderJson);
+          }).toList();
+          _isLoading = false;
+        });
+      } else {
+        throw Exception('Failed to load orders: ${response['message']}');
+      }
+    } catch (e) {
+      print('Error loading shop orders: $e');
+      setState(() {
+        _orders = []; // Show empty state on error
+        _isLoading = false;
+      });
+      
+      if (mounted) {
+        Helpers.showSnackBar(context, 'Failed to load orders: $e', isError: true);
+      }
+    }
   }
 
-  List<OrderModel> _generateSampleOrders() {
-    return [
-      OrderModel(
-        id: 'ORD001',
-        customerId: 'CUST001',
-        customerName: 'John Doe',
-        customerPhone: '+91 9876543210',
-        status: OrderStatus.pending,
-        items: [],
-        subtotal: 245.0,
-        deliveryFee: 30.0,
-        taxAmount: 27.5,
-        total: 302.5,
-        deliveryAddress: '123 Main St, Bangalore',
-        orderDate: DateTime.now().subtract(const Duration(minutes: 5)),
-        updatedAt: DateTime.now(),
-        estimatedDeliveryTime: DateTime.now().add(const Duration(minutes: 30)),
-        paymentMethod: 'Online',
-        specialInstructions: 'Please call before delivery',
-      ),
-      OrderModel(
-        id: 'ORD002',
-        customerId: 'CUST002',
-        customerName: 'Jane Smith',
-        customerPhone: '+91 9876543211',
-        status: OrderStatus.accepted,
-        items: [],
-        subtotal: 180.0,
-        deliveryFee: 25.0,
-        taxAmount: 20.5,
-        total: 225.5,
-        deliveryAddress: '456 Park Ave, Bangalore',
-        orderDate: DateTime.now().subtract(const Duration(minutes: 15)),
-        updatedAt: DateTime.now(),
-        estimatedDeliveryTime: DateTime.now().add(const Duration(minutes: 25)),
-        paymentMethod: 'Cash on Delivery',
-      ),
-      OrderModel(
-        id: 'ORD003',
-        customerId: 'CUST003',
-        customerName: 'Raj Kumar',
-        customerPhone: '+91 9876543212',
-        status: OrderStatus.preparing,
-        items: [],
-        subtotal: 320.0,
-        deliveryFee: 0.0,
-        taxAmount: 32.0,
-        total: 352.0,
-        deliveryAddress: '789 Tech Park, Bangalore',
-        orderDate: DateTime.now().subtract(const Duration(hours: 1)),
-        updatedAt: DateTime.now(),
-        estimatedDeliveryTime: DateTime.now().add(const Duration(minutes: 20)),
-        paymentMethod: 'Online',
-      ),
-      OrderModel(
-        id: 'ORD004',
-        customerId: 'CUST004',
-        customerName: 'Priya Sharma',
-        customerPhone: '+91 9876543213',
-        status: OrderStatus.readyForPickup,
-        items: [],
-        subtotal: 150.0,
-        deliveryFee: 20.0,
-        taxAmount: 17.0,
-        total: 187.0,
-        deliveryAddress: '321 Garden Street, Bangalore',
-        orderDate: DateTime.now().subtract(const Duration(hours: 2)),
-        updatedAt: DateTime.now(),
-        estimatedDeliveryTime: DateTime.now().add(const Duration(minutes: 10)),
-        paymentMethod: 'Online',
-      ),
-      OrderModel(
-        id: 'ORD005',
-        customerId: 'CUST005',
-        customerName: 'Amit Patel',
-        customerPhone: '+91 9876543214',
-        status: OrderStatus.outForDelivery,
-        items: [],
-        subtotal: 275.0,
-        deliveryFee: 30.0,
-        taxAmount: 30.5,
-        total: 335.5,
-        deliveryAddress: '654 IT Hub, Bangalore',
-        orderDate: DateTime.now().subtract(const Duration(hours: 3)),
-        updatedAt: DateTime.now(),
-        estimatedDeliveryTime: DateTime.now().add(const Duration(minutes: 5)),
-        paymentMethod: 'Cash on Delivery',
-      ),
-    ];
-  }
 
   List<OrderModel> get _filteredOrders {
     List<OrderModel> filtered = _orders;
@@ -753,16 +691,22 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen>
     );
 
     if (confirmed == true) {
-      setState(() {
-        final index = _orders.indexWhere((o) => o.id == order.id);
-        if (index != -1) {
-          _orders[index] = order.copyWith(status: OrderStatus.accepted);
-        }
-      });
-      
-      Helpers.showSnackBar(context, 'Order accepted successfully');
-      
-      // TODO: Update order status via API
+      try {
+        final orderId = int.parse(order.id);
+        await _orderApiService.acceptOrder(orderId);
+        
+        setState(() {
+          final index = _orders.indexWhere((o) => o.id == order.id);
+          if (index != -1) {
+            _orders[index] = order.copyWith(status: OrderStatus.accepted);
+          }
+        });
+        
+        Helpers.showSnackBar(context, 'Order accepted successfully');
+      } catch (e) {
+        print('Error accepting order: $e');
+        Helpers.showSnackBar(context, 'Failed to accept order: $e', isError: true);
+      }
     }
   }
 
@@ -809,44 +753,61 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen>
     );
 
     if (confirmed == true) {
-      setState(() {
-        final index = _orders.indexWhere((o) => o.id == order.id);
-        if (index != -1) {
-          _orders[index] = order.copyWith(status: OrderStatus.cancelled);
-        }
-      });
-      
-      Helpers.showSnackBar(context, 'Order rejected');
-      
-      // TODO: Update order status via API with rejection reason
+      try {
+        final orderId = int.parse(order.id);
+        await _orderApiService.rejectOrder(orderId, reason: reason);
+        
+        setState(() {
+          final index = _orders.indexWhere((o) => o.id == order.id);
+          if (index != -1) {
+            _orders[index] = order.copyWith(status: OrderStatus.cancelled);
+          }
+        });
+        
+        Helpers.showSnackBar(context, 'Order rejected');
+      } catch (e) {
+        print('Error rejecting order: $e');
+        Helpers.showSnackBar(context, 'Failed to reject order: $e', isError: true);
+      }
     }
   }
 
   Future<void> _startPreparing(OrderModel order) async {
-    setState(() {
-      final index = _orders.indexWhere((o) => o.id == order.id);
-      if (index != -1) {
-        _orders[index] = order.copyWith(status: OrderStatus.preparing);
-      }
-    });
-    
-    Helpers.showSnackBar(context, 'Order preparation started');
-    
-    // TODO: Update order status via API
+    try {
+      final orderId = int.parse(order.id);
+      await _orderApiService.startPreparingOrder(orderId);
+      
+      setState(() {
+        final index = _orders.indexWhere((o) => o.id == order.id);
+        if (index != -1) {
+          _orders[index] = order.copyWith(status: OrderStatus.preparing);
+        }
+      });
+      
+      Helpers.showSnackBar(context, 'Order preparation started');
+    } catch (e) {
+      print('Error starting preparation: $e');
+      Helpers.showSnackBar(context, 'Failed to start preparation: $e', isError: true);
+    }
   }
 
   Future<void> _markReady(OrderModel order) async {
-    setState(() {
-      final index = _orders.indexWhere((o) => o.id == order.id);
-      if (index != -1) {
-        _orders[index] = order.copyWith(status: OrderStatus.readyForPickup);
-      }
-    });
-    
-    Helpers.showSnackBar(context, 'Order marked as ready for pickup');
-    
-    // TODO: Update order status via API
-    // TODO: Notify delivery partners
+    try {
+      final orderId = int.parse(order.id);
+      await _orderApiService.markOrderReady(orderId);
+      
+      setState(() {
+        final index = _orders.indexWhere((o) => o.id == order.id);
+        if (index != -1) {
+          _orders[index] = order.copyWith(status: OrderStatus.readyForPickup);
+        }
+      });
+      
+      Helpers.showSnackBar(context, 'Order marked as ready for pickup');
+    } catch (e) {
+      print('Error marking order ready: $e');
+      Helpers.showSnackBar(context, 'Failed to mark order ready: $e', isError: true);
+    }
   }
 
   void _callCustomer(OrderModel order) {

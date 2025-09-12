@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/utils/helpers.dart';
+import '../../../shared/services/notification_service.dart';
 
 class DeliveryPartnerDashboard extends StatefulWidget {
   const DeliveryPartnerDashboard({super.key});
@@ -105,9 +106,9 @@ class _DeliveryPartnerDashboardState extends State<DeliveryPartnerDashboard> {
                       minWidth: 16,
                       minHeight: 16,
                     ),
-                    child: const Text(
-                      '3',
-                      style: TextStyle(
+                    child: Text(
+                      '${NotificationService.getUnreadCount()}',
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 10,
                       ),
@@ -548,9 +549,9 @@ class _DeliveryPartnerDashboardState extends State<DeliveryPartnerDashboard> {
                     color: Colors.green.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Text(
-                    '3 New',
-                    style: TextStyle(
+                  child: Text(
+                    '${NotificationService.getUnreadCount()} New',
+                    style: const TextStyle(
                       color: Colors.green,
                       fontSize: 12,
                       fontWeight: FontWeight.bold,

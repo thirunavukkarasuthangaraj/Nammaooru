@@ -1,7 +1,7 @@
 class EnvConfig {
   // Base API Configuration
   // DEVELOPMENT: Local development  
-  static const String baseUrl = 'http://localhost:8084';
+  static const String baseUrl = 'http://localhost:8082';
   
   // PRODUCTION: Use your deployed server
   // static const String baseUrl = 'https://api.nammaoorudelivary.in';
