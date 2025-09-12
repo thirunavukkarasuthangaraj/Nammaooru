@@ -8,6 +8,8 @@ This documentation covers everything you need to know about the NammaOoru Shop M
 
 | Document | Description | When to Use |
 |----------|-------------|-------------|
+| [📖 Main README](README.md) | Complete application overview, features, recent updates | Project overview and current status |
+| [🛍️ Customer & Shop Owner Flows](CUSTOMER_SHOP_OWNER_FLOWS.md) | Complete e-commerce flow implementation details | Understanding customer/shop owner features |
 | [📧 Email Configuration](EMAIL_CONFIGURATION.md) | SMTP setup, OTP emails, Hostinger config | When email isn't working |
 | [🚀 Deployment Guide](DEPLOYMENT_GUIDE.md) | Server setup, Docker, why we faced issues | When deploying or rebuilding |
 | [📱 Mobile App Guide](MOBILE_APP_GUIDE.md) | Flutter app, API integration, build process | When working on mobile app |
@@ -244,6 +246,41 @@ Keep this documentation updated. Your future self (and your team) will appreciat
 ---
 
 **Created**: January 2025  
-**Last Updated**: After resolving email SMTP issues  
-**Status**: ✅ All systems operational and documented  
-**Next Review**: When new major features are added
+**Last Updated**: January 2025 - After implementing complete Customer & Shop Owner flows  
+**Status**: ✅ All systems operational with full e-commerce functionality  
+**Next Review**: When delivery partner module is added
+
+## 🎉 Recent Major Updates (January 2025)
+
+### ✅ Complete Customer & Shop Owner Flow Implementation
+
+We've successfully implemented and integrated the entire e-commerce workflow:
+
+#### Customer Experience
+- **Shop Discovery**: Browse available shops with search and filtering
+- **Product Browsing**: View products by shop with categories and search functionality  
+- **Shopping Cart**: Full cart management with quantity controls and single-shop restriction
+- **Checkout Process**: Complete order placement with delivery address and payment options
+- **Order Integration**: Orders properly created in backend with customer authentication
+
+#### Shop Owner Experience  
+- **Product Management**: Add, edit, and manage product inventory with image upload
+- **Order Processing**: View and manage incoming customer orders
+- **Dashboard Analytics**: Sales metrics and business insights
+- **Profile Management**: Update business information and operating hours
+
+#### Technical Achievements
+- **API Integration**: All frontend services correctly mapped to backend endpoints
+- **Authentication Flow**: Fixed login error messages to show specific credential errors
+- **Image Management**: Resolved URL inconsistencies between shop owner and customer views
+- **Service Architecture**: Proper separation of concerns with Angular services
+- **Error Handling**: Comprehensive error management with user-friendly messages
+
+#### Key Fixes Applied
+1. **Shop List Service**: Updated to use `/api/customer/shops` endpoint
+2. **Product Browsing**: Integrated with `/api/customer/shops/{id}/products`
+3. **Checkout Integration**: Connected to `/api/customer/orders` for order placement
+4. **Image URL Consistency**: Fixed missing file extensions and API path issues
+5. **Authentication**: Enhanced error messages for invalid login credentials
+
+The system now provides a complete end-to-end e-commerce experience from shop discovery to order placement, with all major user flows fully functional and tested.

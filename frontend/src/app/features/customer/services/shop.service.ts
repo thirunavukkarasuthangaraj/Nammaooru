@@ -48,7 +48,7 @@ export class ShopService {
     if (category) params = params.set('category', category);
     
     // Get only active and approved shops
-    return this.http.get<any>(`${this.apiUrl}/shops`, { params })
+    return this.http.get<any>(`${this.apiUrl}/customer/shops`, { params })
       .pipe(
         switchMap(response => {
           // Handle paginated response

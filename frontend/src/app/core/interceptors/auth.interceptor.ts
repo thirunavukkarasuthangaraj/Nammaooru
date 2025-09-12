@@ -11,13 +11,16 @@ export class AuthInterceptor implements HttpInterceptor {
   intercept(request: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
     const token = this.authService.getToken();
     
+    // Add client identification headers
+    let headers = request.headers
+      .set('X-Client-Type', 'web')
+      .set('X-Platform', 'angular');
+    
     if (token && this.authService.isAuthenticated()) {
-      const authRequest = request.clone({
-        headers: request.headers.set('Authorization', `Bearer ${token}`)
-      });
-      return next.handle(authRequest);
+      headers = headers.set('Authorization', `Bearer ${token}`);
     }
     
-    return next.handle(request);
+    const modifiedRequest = request.clone({ headers });
+    return next.handle(modifiedRequest);
   }
 }

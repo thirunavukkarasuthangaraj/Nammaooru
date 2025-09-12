@@ -54,7 +54,7 @@ export interface OrderResponse {
   providedIn: 'root'
 })
 export class CheckoutService {
-  private apiUrl = `${environment.apiUrl}/orders`;
+  private apiUrl = `${environment.apiUrl}/customer`;
 
   constructor(
     private http: HttpClient,
@@ -101,7 +101,7 @@ export class CheckoutService {
 
     console.log('Placing order with request:', orderRequest);
 
-    return this.http.post<ApiResponse<OrderResponse>>(`${this.apiUrl}`, orderRequest).pipe(
+    return this.http.post<ApiResponse<OrderResponse>>(`${this.apiUrl}/orders`, orderRequest).pipe(
       map(response => {
         if (ApiResponseHelper.isError(response)) {
           const errorMessage = ApiResponseHelper.getErrorMessage(response);
