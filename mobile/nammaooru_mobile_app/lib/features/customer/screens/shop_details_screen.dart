@@ -808,14 +808,14 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                             decoration: BoxDecoration(
-                              color: Colors.blue.withOpacity(0.1),
+                              color: const Color(0xFF4CAF50).withOpacity(0.1),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
                               product['masterProduct']['brand'].toString(),
                               style: const TextStyle(
                                 fontSize: 10,
-                                color: Colors.blue,
+                                color: const Color(0xFF4CAF50),
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -878,7 +878,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
                         description: description,
                         price: price,
                         category: product['masterProduct']?['category']?.toString() ?? '',
-                        shopId: widget.shopId.toString(),
+                        shopId: _shop?['shopId']?.toString() ?? widget.shopId.toString(),
                         shopName: _shop?['name']?.toString() ?? 'Shop',
                         images: imageUrl.isNotEmpty ? [imageUrl] : [],
                         stockQuantity: stockQuantity,
@@ -912,12 +912,11 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
                         return SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: () {
-                              cartProvider.addToCart(productModel);
-                              Helpers.showSnackBar(context, 'Added to cart');
+                            onPressed: () async {
+                              await _handleAddToCart(context, cartProvider, productModel);
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF1976D2),
+                              backgroundColor: const Color(0xFF4CAF50),
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 8),
                               shape: RoundedRectangleBorder(
@@ -935,7 +934,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
                       return Container(
                         width: double.infinity,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1976D2),
+                          color: const Color(0xFF4CAF50),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
@@ -958,16 +957,15 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
                               child: Text(
                                 '$cartQuantity',
                                 style: const TextStyle(
-                                  color: Color(0xFF1976D2),
+                                  color: const Color(0xFF4CAF50),
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,
                                 ),
                               ),
                             ),
                             IconButton(
-                              onPressed: () {
-                                cartProvider.addToCart(productModel);
-                                Helpers.showSnackBar(context, 'Added to cart');
+                              onPressed: () async {
+                                await _handleAddToCart(context, cartProvider, productModel);
                               },
                               icon: const Icon(Icons.add, color: Colors.white, size: 18),
                               padding: const EdgeInsets.all(4),
@@ -985,6 +983,66 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
         ],
       ),
     );
+  }
+  
+  Future<void> _handleAddToCart(BuildContext context, CartProvider cartProvider, ProductModel product) async {
+    final success = await cartProvider.addToCart(product);
+    
+    if (success) {
+      // Successfully added to cart
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${product.name} added to cart'),
+            backgroundColor: const Color(0xFF4CAF50),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } else {
+      // Show dialog for different shop
+      if (context.mounted) {
+        final currentShopName = cartProvider.getCurrentShopName();
+        final shouldClearCart = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Different Shop'),
+            content: Text(
+              'Your cart contains items from "$currentShopName".\n\n'
+              'Adding items from "${product.shopName}" will clear your current cart.\n\n'
+              'Do you want to continue?'
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF4CAF50),
+                ),
+                child: const Text('Clear Cart & Add'),
+              ),
+            ],
+          ),
+        );
+        
+        if (shouldClearCart == true) {
+          cartProvider.clearCart();
+          await cartProvider.addToCart(product, clearCartConfirmed: true);
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Cart cleared. ${product.name} added to cart'),
+                backgroundColor: const Color(0xFF4CAF50),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+        }
+      }
+    }
   }
 }
 

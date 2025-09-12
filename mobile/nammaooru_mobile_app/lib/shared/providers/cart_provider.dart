@@ -35,9 +35,20 @@ class CartProvider with ChangeNotifier {
     loadCartFromBackend();
   }
 
-  Future<void> addToCart(ProductModel product, {int quantity = 1}) async {
+  Future<bool> addToCart(ProductModel product, {int quantity = 1, bool clearCartConfirmed = false}) async {
     if (kDebugMode) {
       print('🛒 CartProvider: Adding ${product.name} (qty: $quantity) to cart');
+    }
+    
+    // Check if cart has items from different shop
+    if (_items.isNotEmpty && !clearCartConfirmed) {
+      final currentShopId = _items.first.product.shopId;
+      if (currentShopId != product.shopId) {
+        if (kDebugMode) {
+          print('🛒 Different shop detected. Current: $currentShopId, New: ${product.shopId}');
+        }
+        return false; // Return false to indicate shop conflict
+      }
     }
     
     _isLoading = true;
@@ -85,6 +96,8 @@ class CartProvider with ChangeNotifier {
           print('🛒 Backend sync failed (item still in local cart): $backendError');
         }
       }
+      
+      return true; // Successfully added
       
     } catch (e) {
       if (kDebugMode) {
@@ -155,6 +168,11 @@ class CartProvider with ChangeNotifier {
     } catch (e) {
       return null;
     }
+  }
+
+  int getQuantity(String productId) {
+    final item = getCartItem(productId);
+    return item?.quantity ?? 0;
   }
 
   void clearCart() {
@@ -312,6 +330,22 @@ class CartProvider with ChangeNotifier {
   bool canCheckout() {
     return _items.isNotEmpty && _items.every((item) => 
         item.product.isAvailable && item.quantity <= item.product.stockQuantity);
+  }
+  
+  /// Get the shop ID of items currently in cart (null if cart is empty)
+  String? getCurrentShopId() {
+    return _items.isNotEmpty ? _items.first.product.shopId : null;
+  }
+  
+  /// Get the shop name of items currently in cart (null if cart is empty)
+  String? getCurrentShopName() {
+    return _items.isNotEmpty ? _items.first.product.shopName : null;
+  }
+  
+  /// Check if product is from same shop as current cart items
+  bool isFromSameShop(ProductModel product) {
+    final currentShopId = getCurrentShopId();
+    return currentShopId == null || currentShopId == product.shopId;
   }
 
   List<String> getCheckoutIssues() {

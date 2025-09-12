@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Accepted - NammaOoru Delivery</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 0;
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 300;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .order-info {
+            background-color: #f8f9fa;
+            border-left: 4px solid #4CAF50;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .order-details {
+            margin: 20px 0;
+        }
+        .order-details table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .order-details th, .order-details td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .order-details th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+        .item-row:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        .total-section {
+            background-color: #e8f5e8;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            padding: 5px 0;
+        }
+        .total-row.final {
+            font-weight: bold;
+            font-size: 18px;
+            color: #4CAF50;
+            border-top: 2px solid #4CAF50;
+            padding-top: 15px;
+            margin-top: 15px;
+        }
+        .payment-info {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .payment-info h3 {
+            color: #856404;
+            margin-top: 0;
+        }
+        .delivery-info {
+            background-color: #e7f3ff;
+            border: 1px solid #b8daff;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .delivery-info h3 {
+            color: #004085;
+            margin-top: 0;
+        }
+        .status-badge {
+            display: inline-block;
+            background-color: #4CAF50;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .footer {
+            text-align: center;
+            padding: 30px 20px;
+            background-color: #f8f9fa;
+            color: #6c757d;
+            font-size: 14px;
+        }
+        .button {
+            display: inline-block;
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            margin: 10px 0;
+        }
+        .button:hover {
+            background-color: #45a049;
+        }
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            .header h1 {
+                font-size: 24px;
+            }
+            .content {
+                padding: 20px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 Order Accepted!</h1>
+            <p>Great news! Your order has been confirmed</p>
+        </div>
+        
+        <div class="content">
+            <p>Dear <strong th:text="${customerName}">Customer</strong>,</p>
+            
+            <div class="order-info">
+                <h3>Order Status: <span class="status-badge">CONFIRMED</span></h3>
+                <p><strong>Order Number:</strong> <span th:text="${orderNumber}">#12345</span></p>
+                <p><strong>Shop:</strong> <span th:text="${shopName}">Shop Name</span></p>
+                <p th:if="${estimatedDeliveryTime}"><strong>Estimated Delivery:</strong> <span th:text="${#temporals.format(estimatedDeliveryTime, 'dd MMM yyyy, hh:mm a')}">30 mins</span></p>
+                <p th:if="${shopNotes}"><strong>Shop Notes:</strong> <span th:text="${shopNotes}">Your order is being prepared</span></p>
+            </div>
+
+            <div class="order-details">
+                <h3>Order Details</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Qty</th>
+                            <th>Price</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="item : ${orderItems}" class="item-row">
+                            <td th:text="${item.productName}">Product Name</td>
+                            <td th:text="${item.quantity}">1</td>
+                            <td>₹<span th:text="${#numbers.formatDecimal(item.unitPrice, 0, 2)}">100.00</span></td>
+                            <td>₹<span th:text="${#numbers.formatDecimal(item.totalPrice, 0, 2)}">100.00</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="total-section">
+                <div class="total-row">
+                    <span>Subtotal:</span>
+                    <span>₹<span th:text="${#numbers.formatDecimal(subtotal, 0, 2)}">500.00</span></span>
+                </div>
+                <div class="total-row" th:if="${taxAmount > 0}">
+                    <span>Tax:</span>
+                    <span>₹<span th:text="${#numbers.formatDecimal(taxAmount, 0, 2)}">25.00</span></span>
+                </div>
+                <div class="total-row" th:if="${deliveryFee > 0}">
+                    <span>Delivery Fee:</span>
+                    <span>₹<span th:text="${#numbers.formatDecimal(deliveryFee, 0, 2)}">30.00</span></span>
+                </div>
+                <div class="total-row" th:if="${discountAmount > 0}">
+                    <span>Discount:</span>
+                    <span>-₹<span th:text="${#numbers.formatDecimal(discountAmount, 0, 2)}">50.00</span></span>
+                </div>
+                <div class="total-row final">
+                    <span>Total Amount:</span>
+                    <span>₹<span th:text="${#numbers.formatDecimal(totalAmount, 0, 2)}">505.00</span></span>
+                </div>
+            </div>
+
+            <div class="payment-info">
+                <h3>💰 Payment Information</h3>
+                <p><strong>Payment Method:</strong> <span th:text="${paymentMethod}">Cash on Delivery</span></p>
+                <div th:if="${paymentMethod == 'CASH_ON_DELIVERY'}">
+                    <p><strong>Payment Status:</strong> <span style="color: #856404; font-weight: bold;">Pay on Delivery</span></p>
+                    <p>🚛 <strong>Please keep cash ready:</strong> ₹<span th:text="${#numbers.formatDecimal(totalAmount, 0, 2)}">505.00</span></p>
+                    <p>💡 <em>Our delivery partner will collect the payment at the time of delivery.</em></p>
+                </div>
+            </div>
+
+            <div class="delivery-info">
+                <h3>🚚 Delivery Address</h3>
+                <p><strong th:text="${deliveryAddress.name}">Customer Name</strong></p>
+                <p th:text="${deliveryAddress.phone}">+91 9876543210</p>
+                <p th:text="${deliveryAddress.addressLine1}">Address Line 1</p>
+                <p th:if="${deliveryAddress.addressLine2}" th:text="${deliveryAddress.addressLine2}">Address Line 2</p>
+                <p th:if="${deliveryAddress.landmark}" th:text="${'Near ' + deliveryAddress.landmark}">Landmark</p>
+                <p><span th:text="${deliveryAddress.city}">City</span>, <span th:text="${deliveryAddress.state}">State</span> - <span th:text="${deliveryAddress.pincode}">123456</span></p>
+                <p th:if="${deliveryInstructions}"><strong>Special Instructions:</strong> <span th:text="${deliveryInstructions}">Instructions</span></p>
+            </div>
+
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="#" th:href="${trackingUrl}" class="button">Track Your Order</a>
+            </div>
+
+            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h4 style="color: #495057; margin-top: 0;">What happens next?</h4>
+                <ul style="color: #6c757d; padding-left: 20px;">
+                    <li>Your order is now being prepared by <span th:text="${shopName}">the shop</span></li>
+                    <li>You'll receive updates via email and push notifications</li>
+                    <li>Our delivery partner will pick up and deliver your order</li>
+                    <li>Pay the total amount to the delivery partner</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Thank you for choosing NammaOoru Delivery!</p>
+            <p>For support, contact us at <a href="mailto:support@nammaoorudelivary.in">support@nammaoorudelivary.in</a></p>
+            <p>&copy; 2024 NammaOoru Delivery. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

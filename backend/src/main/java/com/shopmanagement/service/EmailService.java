@@ -505,6 +505,50 @@ public class EmailService {
         }
     }
 
+    public void sendOrderAcceptedNotification(String customerEmail, String customerName, String orderNumber,
+                                              String shopName, String paymentMethod, Double totalAmount,
+                                              String estimatedDeliveryTime, String shopNotes,
+                                              java.util.List<java.util.Map<String, Object>> orderItems,
+                                              java.util.Map<String, Object> deliveryAddress,
+                                              String deliveryInstructions, Double subtotal,
+                                              Double taxAmount, Double deliveryFee, Double discountAmount) {
+        try {
+            java.util.Map<String, Object> variables = new java.util.HashMap<>();
+            variables.put("customerName", customerName);
+            variables.put("orderNumber", orderNumber);
+            variables.put("shopName", shopName);
+            variables.put("paymentMethod", paymentMethod);
+            variables.put("totalAmount", totalAmount);
+            variables.put("subtotal", subtotal != null ? subtotal : totalAmount);
+            variables.put("taxAmount", taxAmount != null ? taxAmount : 0.0);
+            variables.put("deliveryFee", deliveryFee != null ? deliveryFee : 0.0);
+            variables.put("discountAmount", discountAmount != null ? discountAmount : 0.0);
+            variables.put("orderItems", orderItems);
+            variables.put("deliveryAddress", deliveryAddress);
+            variables.put("deliveryInstructions", deliveryInstructions);
+            variables.put("shopNotes", shopNotes);
+            variables.put("supportEmail", emailProperties.getFrom());
+            variables.put("trackingUrl", "#"); // Will be updated with actual tracking URL later
+            
+            // Parse estimated delivery time if provided
+            if (estimatedDeliveryTime != null && !estimatedDeliveryTime.trim().isEmpty()) {
+                try {
+                    int minutes = Integer.parseInt(estimatedDeliveryTime.trim());
+                    java.time.LocalDateTime estimatedTime = java.time.LocalDateTime.now().plusMinutes(minutes);
+                    variables.put("estimatedDeliveryTime", estimatedTime);
+                } catch (NumberFormatException e) {
+                    log.warn("Invalid estimated delivery time format: {}", estimatedDeliveryTime);
+                }
+            }
+            
+            String subject = "🎉 Order Accepted - Order #" + orderNumber + " from " + shopName;
+            sendHtmlEmail(customerEmail, subject, "order-accepted", variables);
+            log.info("Order acceptance notification sent to customer: {} for order: {}", customerEmail, orderNumber);
+        } catch (Exception e) {
+            log.error("Failed to send order acceptance notification to customer: {} for order: {}", customerEmail, orderNumber, e);
+        }
+    }
+
     public void sendDeliveryAssignmentNotification(String partnerEmail, String partnerName, String orderNumber, 
                                                     String shopName, String customerAddress, String customerPhone) {
         try {

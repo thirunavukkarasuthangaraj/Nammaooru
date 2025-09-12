@@ -2,7 +2,7 @@ package com.shopmanagement.controller;
 
 import com.shopmanagement.common.dto.ApiResponse;
 import com.shopmanagement.common.util.ResponseUtil;
-import com.shopmanagement.dto.order.CustomerOrderRequest;
+import com.shopmanagement.dto.customer.CustomerOrderRequest;
 import com.shopmanagement.dto.order.OrderResponse;
 import com.shopmanagement.dto.order.OrderTrackingResponse;
 import com.shopmanagement.service.OrderService;
@@ -28,6 +28,7 @@ import com.shopmanagement.entity.User;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
 
 @RestController
 @RequestMapping("/api/customer")
@@ -194,6 +195,21 @@ public class CustomerOrderController {
         }
     }
 
+    @GetMapping("/orders/{orderId}")
+    public ResponseEntity<ApiResponse<OrderResponse>> getOrderById(@PathVariable Long orderId) {
+        try {
+            log.info("Getting order details for order ID: {}", orderId);
+            
+            OrderResponse order = orderService.getOrderById(orderId);
+            
+            return ResponseUtil.success(order, "Order details retrieved successfully");
+            
+        } catch (Exception e) {
+            log.error("Error retrieving order details for ID: {}", orderId, e);
+            return ResponseUtil.error("Order not found");
+        }
+    }
+
     @GetMapping("/orders/{orderNumber}/tracking")
     public ResponseEntity<ApiResponse<OrderTrackingResponse>> getOrderTracking(@PathVariable String orderNumber) {
         try {
@@ -210,7 +226,7 @@ public class CustomerOrderController {
     }
 
     @GetMapping("/orders")
-    public ResponseEntity<ApiResponse<List<OrderResponse>>> getMyOrders(
+    public ResponseEntity<ApiResponse<Page<OrderResponse>>> getMyOrders(
             @RequestParam(required = false) Long customerId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -234,7 +250,7 @@ public class CustomerOrderController {
                         log.info("Found customer ID {} for authenticated user {}", finalCustomerId, username);
                     } else {
                         log.warn("No customer record found for authenticated user: {}", username);
-                        return ResponseUtil.success(List.of(), "No orders found");
+                        return ResponseUtil.success(Page.empty(), "No orders found");
                     }
                 } else {
                     log.error("Authenticated user not found: {}", username);
@@ -244,7 +260,7 @@ public class CustomerOrderController {
             
             log.info("Getting orders for customer ID: {}", finalCustomerId);
             
-            List<OrderResponse> orders = orderService.getCustomerOrders(finalCustomerId, page, size);
+            Page<OrderResponse> orders = orderService.getOrdersByCustomer(finalCustomerId, page, size);
             
             return ResponseUtil.success(orders, "Orders retrieved successfully");
             

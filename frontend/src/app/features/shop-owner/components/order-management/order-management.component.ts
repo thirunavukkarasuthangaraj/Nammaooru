@@ -5,6 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
 import { ShopContextService } from '../../services/shop-context.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { OrderService } from '../../../../core/services/order.service';
 import Swal from 'sweetalert2';
 
 interface Order {
@@ -76,6 +77,7 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
 
   constructor(
     private http: HttpClient,
+    private orderService: OrderService,
     private shopContext: ShopContextService,
     private snackBar: MatSnackBar
   ) {}
@@ -85,8 +87,16 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
     this.shopContext.shop$.pipe(
       takeUntil(this.destroy$)
     ).subscribe(shop => {
-      if (shop && shop.shopId) {
-        this.shopId = shop.shopId;
+      if (shop) {
+        // Use the numeric database ID for API calls
+        this.shopId = shop.id.toString();
+        console.log('Shop loaded:', shop, 'Using shopId:', this.shopId);
+        this.loadAllData();
+        this.startAutoRefresh();
+      } else {
+        // Fallback: Use shopId 2 directly since we know the order was created with shopId 2
+        console.log('No shop context, using hardcoded shopId: 2');
+        this.shopId = "2";
         this.loadAllData();
         this.startAutoRefresh();
       }
@@ -111,14 +121,14 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
     this.loading = true;
     console.log('Loading orders for shop ID:', this.shopId);
     
-    // Load all orders for this shop
-    this.http.get<any>(`${this.apiUrl}/shops/${this.shopId}/orders`, {
-      params: { size: '100' }
-    })
+    // Use OrderService to load orders for this shop
+    this.orderService.getOrdersByShop(this.shopId, 0, 100)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
-          const orders = response.content || response || [];
+          console.log('Full API response:', response);
+          const orders = response.content || [];
+          console.log('Extracted orders:', orders);
           this.categorizeOrders(orders);
           this.loading = false;
           console.log('Orders loaded:', orders.length);
@@ -216,17 +226,30 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
     console.log('Rejecting order:', order.id);
     
     Swal.fire({
-      title: 'Reject Order?',
-      text: `Are you sure you want to reject order ${order.orderNumber}?`,
+      title: 'Reject Order',
+      text: `Please provide a reason for rejecting order ${order.orderNumber}:`,
+      input: 'textarea',
+      inputPlaceholder: 'Enter rejection reason...',
+      inputValidator: (value) => {
+        if (!value) {
+          return 'Please provide a reason for rejection';
+        }
+        if (value.length < 10) {
+          return 'Rejection reason must be at least 10 characters long';
+        }
+        return null;
+      },
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#dc3545',
       cancelButtonColor: '#6c757d',
-      confirmButtonText: 'Yes, Reject!',
-      cancelButtonText: 'Cancel'
+      confirmButtonText: 'Reject Order',
+      cancelButtonText: 'Cancel',
+      allowOutsideClick: false,
+      allowEscapeKey: false
     }).then((result) => {
-      if (result.isConfirmed) {
-        this.performOrderAction(order.id, 'reject', 'Order rejected successfully!');
+      if (result.isConfirmed && result.value) {
+        this.performOrderReject(order.id, result.value);
       }
     });
   }
@@ -254,8 +277,49 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
     this.performOrderAction(order.id, 'prepare', 'Order is now being prepared!');
   }
 
+  private performOrderReject(orderId: number, reason: string): void {
+    this.orderService.rejectOrder(orderId, reason)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          console.log('Order reject response:', response);
+          this.loadAllData();
+          this.snackBar.open('Order rejected successfully!', 'Close', { duration: 3000 });
+          
+          Swal.fire({
+            title: 'Order Rejected!',
+            text: 'Order has been rejected successfully.',
+            icon: 'success',
+            timer: 3000,
+            timerProgressBar: true
+          });
+        },
+        error: (error) => {
+          console.error('Error rejecting order:', error);
+          this.handleError('Failed to reject order. Please try again.');
+        }
+      });
+  }
+
   private performOrderAction(orderId: number, action: string, successMessage: string): void {
-    this.http.post(`${this.apiUrl}/orders/${orderId}/${action}`, {})
+    let actionObservable;
+    
+    switch (action) {
+      case 'accept':
+        actionObservable = this.orderService.acceptOrder(orderId);
+        break;
+      case 'ready':
+        actionObservable = this.orderService.markOrderAsReady(orderId);
+        break;
+      case 'prepare':
+        actionObservable = this.orderService.markOrderAsPreparing(orderId);
+        break;
+      default:
+        console.error('Unknown action:', action);
+        return;
+    }
+    
+    actionObservable
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {

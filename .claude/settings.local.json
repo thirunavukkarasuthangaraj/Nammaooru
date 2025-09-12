@@ -114,7 +114,11 @@
       "Bash(nc:*)",
       "Bash(\"start chrome\" \"http://localhost:3000\")",
       "Bash(\"start chrome\" \"http://localhost:3000/#/login\")",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(\"C:\\Program Files\\PostgreSQL\\16\\bin\\psql.exe\" -h localhost -p 5432 -U shop_user -d shop_management -c \"SELECT id, shop_id, name, created_by FROM shops;\")",
+      "Bash(\"TASKKILL\" \"/F\" \"/IM\" \"node.exe\")",
+      "Bash(TASKKILL:*)",
+      "Bash(\"C:\\Program Files\\PostgreSQL\\16\\bin\\psql.exe\" -h localhost -p 5432 -U shop_user -d shop_management -c \"UPDATE orders SET shop_id = ''SHA686F7D3'' WHERE shop_id = ''2'';\")"
     ],
     "deny": [],
     "ask": [],

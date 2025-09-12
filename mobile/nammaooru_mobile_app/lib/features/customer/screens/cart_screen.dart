@@ -239,7 +239,7 @@ class _CartScreenState extends State<CartScreen> {
                   children: [
                     Container(
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1976D2),
+                        color: const Color(0xFF4CAF50),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
@@ -265,7 +265,7 @@ class _CartScreenState extends State<CartScreen> {
                             child: Text(
                               item.quantity.toString(),
                               style: const TextStyle(
-                                color: Color(0xFF1976D2),
+                                color: const Color(0xFF4CAF50),
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
                               ),
@@ -473,7 +473,7 @@ class _CartScreenState extends State<CartScreen> {
               child: Text(
                 'Add ₹${(500 - cartProvider.subtotal).toStringAsFixed(0)} more for free delivery',
                 style: const TextStyle(
-                  color: Colors.blue,
+                  color: const Color(0xFF4CAF50),
                   fontSize: 12,
                 ),
               ),

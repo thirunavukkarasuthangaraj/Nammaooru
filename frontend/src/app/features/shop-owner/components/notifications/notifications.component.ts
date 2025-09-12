@@ -780,7 +780,7 @@ export class NotificationsComponent implements OnInit {
     }
     const shopId = currentUser.shopId;
     
-    return this.orderService.getOrdersByShop(shopId, 0, 20)
+    return this.orderService.getOrdersByShop(String(shopId || ''), 0, 20)
       .pipe(
         switchMap(orderPage => {
           const pendingOrders = orderPage.content.filter(order => order.status === 'PENDING');

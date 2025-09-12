@@ -104,12 +104,12 @@ export class OrderService {
     return this.http.put<OrderResponse>(`${this.apiUrl}/${orderId}/cancel`, {}, { params });
   }
 
-  getOrdersByShop(shopId: number, page: number = 0, size: number = 10): Observable<PageResponse<OrderResponse>> {
+  getOrdersByShop(shopId: string, page: number = 0, size: number = 10): Observable<PageResponse<OrderResponse>> {
     const params = new HttpParams()
       .set('page', page.toString())
       .set('size', size.toString());
 
-    return this.http.get<PageResponse<OrderResponse>>(`${this.apiUrl}/shop/${shopId}`, { params });
+    return this.http.get<PageResponse<OrderResponse>>(`${environment.apiUrl}/orders/shop/${shopId}`, { params });
   }
 
   getOrdersByCustomer(customerId: number, page: number = 0, size: number = 10): Observable<PageResponse<OrderResponse>> {
@@ -143,5 +143,22 @@ export class OrderService {
 
   getOrderDeliveryInfo(orderId: number): Observable<any> {
     return this.http.get(`${this.apiUrl}/${orderId}/delivery-info`);
+  }
+
+  acceptOrder(orderId: number): Observable<OrderResponse> {
+    return this.http.post<OrderResponse>(`${this.apiUrl}/${orderId}/accept`, {});
+  }
+
+  rejectOrder(orderId: number, reason: string): Observable<OrderResponse> {
+    const params = new HttpParams().set('reason', reason);
+    return this.http.post<OrderResponse>(`${this.apiUrl}/${orderId}/reject`, {}, { params });
+  }
+
+  markOrderAsReady(orderId: number): Observable<OrderResponse> {
+    return this.http.post<OrderResponse>(`${this.apiUrl}/${orderId}/ready`, {});
+  }
+
+  markOrderAsPreparing(orderId: number): Observable<OrderResponse> {
+    return this.http.post<OrderResponse>(`${this.apiUrl}/${orderId}/prepare`, {});
   }
 }

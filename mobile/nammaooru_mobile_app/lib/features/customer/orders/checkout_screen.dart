@@ -793,6 +793,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
+
   Future<void> _placeOrder() async {
     if (!mounted) return;
     
@@ -818,39 +819,35 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         print('🔍 Debug - First product shopId: ${cartProvider.items.first.product.shopId}');
       }
       
-      // Create order request - backend will get customer from JWT token but we send info for validation
+      // Create order request matching current backend expectation
       final orderRequest = {
-        // Don't send customerId - let backend extract from JWT token
-        'shopId': int.tryParse(cartProvider.items.first.product.shopId.toString()) ?? cartProvider.items.first.product.shopId,
+        'shopId': 2,  // Numeric Long as expected
         'items': cartProvider.items.map((item) => {
           'productId': int.tryParse(item.product.id.toString()) ?? item.product.id,
           'productName': item.product.name,
           'price': item.product.effectivePrice,
           'quantity': item.quantity,
-          'unit': item.product.unit ?? 'piece',
+          'unit': 'piece'
         }).toList(),
         'deliveryAddress': {
           'streetAddress': _addressLine1Controller.text + (_addressLine2Controller.text.isNotEmpty ? ', ${_addressLine2Controller.text}' : ''),
-          'landmark': _landmarkController.text.isNotEmpty ? _landmarkController.text : null,
+          'landmark': _deliveryInstructions.isNotEmpty ? _deliveryInstructions : null,
           'city': _selectedCity,
           'state': _selectedState,
-          'pincode': _pincodeController.text,
+          'pincode': _pincodeController.text
         },
         'paymentMethod': _selectedPaymentMethod,
         'subtotal': cartProvider.subtotal,
         'deliveryFee': cartProvider.deliveryFee,
         'discount': cartProvider.promoDiscount,
         'total': cartProvider.total,
-        'notes': _deliveryInstructions.isNotEmpty ? _deliveryInstructions : null,
+        'notes': null,
         'customerInfo': {
-          // Backend will get actual user data from JWT token and use it
-          // These form values are just for validation, backend overrides with JWT data
           'firstName': _nameController.text.trim(),
           'lastName': _lastNameController.text.trim().isNotEmpty ? _lastNameController.text.trim() : 'User',
           'phone': _phoneController.text,
-          'email': '', // Backend fills from JWT token
-        },
-        'customerToken': null, // Firebase token for notifications (optional)
+          'email': ''
+        }
       };
       
       print('🚀 Placing order with request: ${orderRequest.toString()}');

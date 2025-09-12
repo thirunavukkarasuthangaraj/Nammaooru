@@ -327,21 +327,67 @@ public class OrderService {
         
         Order acceptedOrder = orderRepository.save(order);
         
-        // Send order acceptance email to customer
+        // Send detailed order acceptance email to customer
         try {
-            emailService.sendOrderStatusUpdateToCustomer(
-                order.getCustomer().getEmail(),
-                order.getCustomer().getFullName(),
-                order.getOrderNumber(),
-                "PENDING",
-                "CONFIRMED",
-                "Order accepted by " + order.getShop().getName()
+            // Prepare order items for email template
+            java.util.List<java.util.Map<String, Object>> orderItemsList = acceptedOrder.getOrderItems().stream()
+                .map(item -> {
+                    java.util.Map<String, Object> itemMap = new java.util.HashMap<>();
+                    itemMap.put("productName", item.getProductName());
+                    itemMap.put("quantity", item.getQuantity());
+                    itemMap.put("unitPrice", item.getUnitPrice());
+                    itemMap.put("totalPrice", item.getTotalPrice());
+                    return itemMap;
+                })
+                .collect(java.util.stream.Collectors.toList());
+            
+            // Prepare delivery address for email template
+            java.util.Map<String, Object> deliveryAddressMap = new java.util.HashMap<>();
+            deliveryAddressMap.put("name", acceptedOrder.getDeliveryAddress().getName());
+            deliveryAddressMap.put("phone", acceptedOrder.getDeliveryAddress().getPhone());
+            deliveryAddressMap.put("addressLine1", acceptedOrder.getDeliveryAddress().getAddressLine1());
+            deliveryAddressMap.put("addressLine2", acceptedOrder.getDeliveryAddress().getAddressLine2());
+            deliveryAddressMap.put("landmark", acceptedOrder.getDeliveryAddress().getLandmark());
+            deliveryAddressMap.put("city", acceptedOrder.getDeliveryAddress().getCity());
+            deliveryAddressMap.put("state", acceptedOrder.getDeliveryAddress().getState());
+            deliveryAddressMap.put("pincode", acceptedOrder.getDeliveryAddress().getPincode());
+            
+            // Send detailed order acceptance email
+            emailService.sendOrderAcceptedNotification(
+                acceptedOrder.getCustomer().getEmail(),
+                acceptedOrder.getCustomer().getFullName(),
+                acceptedOrder.getOrderNumber(),
+                acceptedOrder.getShop().getName(),
+                acceptedOrder.getPaymentMethod().toString(),
+                acceptedOrder.getTotalAmount(),
+                estimatedPreparationTime,
+                notes,
+                orderItemsList,
+                deliveryAddressMap,
+                acceptedOrder.getDeliveryInstructions(),
+                acceptedOrder.getSubtotal(),
+                acceptedOrder.getTaxAmount(),
+                acceptedOrder.getDeliveryFee(),
+                acceptedOrder.getDiscountAmount()
             );
         } catch (Exception e) {
             log.error("Failed to send order acceptance email to customer", e);
         }
         
-        log.info("Order accepted successfully: {}", acceptedOrder.getOrderNumber());
+        // Send push notification to customer
+        try {
+            if (acceptedOrder.getCustomer().getFcmToken() != null && !acceptedOrder.getCustomer().getFcmToken().isEmpty()) {
+                firebaseNotificationService.sendOrderNotification(
+                    acceptedOrder.getOrderNumber(),
+                    "ACCEPTED",
+                    acceptedOrder.getCustomer().getFcmToken()
+                );
+            }
+        } catch (Exception e) {
+            log.error("Failed to send push notification to customer", e);
+        }
+        
+        log.info("Order accepted successfully with notifications sent: {}", acceptedOrder.getOrderNumber());
         return mapToResponse(acceptedOrder);
     }
     

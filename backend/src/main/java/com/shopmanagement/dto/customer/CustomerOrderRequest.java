@@ -66,6 +66,28 @@ public class CustomerOrderRequest {
 
     private String couponCode;
 
+    // Customer ID (for existing customers)
+    private Long customerId;
+
+    // Firebase token for notifications
+    private String customerToken;
+
+    // Customer Information
+    @Valid
+    private CustomerInfoRequest customerInfo;
+
+    @Data
+    @Builder
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class CustomerInfoRequest {
+        private Long customerId;
+        private String firstName;
+        private String lastName;
+        private String phone;
+        private String email;
+    }
+
     @Data
     @Builder
     @AllArgsConstructor
