@@ -30,8 +30,10 @@ WORKDIR /app
 # Copy the JAR file from build stage
 COPY --from=build /app/target/*.jar app.jar
 
-# Create uploads directory and set permissions
-RUN mkdir -p /app/uploads && \
+# Create uploads directory structure and set permissions
+RUN mkdir -p /app/uploads/products/master && \
+    mkdir -p /app/uploads/products/shop && \
+    mkdir -p /app/uploads/documents/shops && \
     chown -R appuser:appgroup /app
 
 # Switch to non-root user
