@@ -2,7 +2,7 @@ package com.shopmanagement.controller;
 
 import com.shopmanagement.common.dto.ApiResponse;
 import com.shopmanagement.common.util.ResponseUtil;
-import com.shopmanagement.dto.customer.CustomerOrderRequest;
+import com.shopmanagement.dto.order.CustomerOrderRequest;
 import com.shopmanagement.dto.order.OrderResponse;
 import com.shopmanagement.dto.order.OrderTrackingResponse;
 import com.shopmanagement.service.OrderService;

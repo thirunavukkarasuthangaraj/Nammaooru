@@ -59,7 +59,10 @@ export class RegisterComponent implements OnInit {
       const formData = this.registerForm.value;
       const registerData: RegisterRequest = {
         username: `${formData.firstName} ${formData.lastName}`, // Combine first + last name for username
+        firstName: formData.firstName,
+        lastName: formData.lastName,
         email: formData.email,
+        mobileNumber: formData.mobile,
         password: formData.password,
         role: UserRole.CUSTOMER
       };

@@ -263,6 +263,201 @@
   }
 }
 
+// Partner Assignment Modal
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.assignment-modal {
+  background: white;
+  border-radius: 12px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #e0e0e0;
+
+    h3 {
+      margin: 0;
+      color: #333;
+    }
+  }
+
+  .modal-body {
+    padding: 20px;
+
+    .order-summary {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+
+      h4 {
+        margin: 0 0 10px 0;
+        color: #2196f3;
+      }
+
+      p {
+        margin: 5px 0;
+        font-size: 14px;
+      }
+    }
+
+    .partners-section {
+      h4 {
+        margin: 0 0 15px 0;
+        color: #333;
+      }
+
+      .loading {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 40px;
+        justify-content: center;
+        color: #666;
+      }
+
+      .partner-list {
+        max-height: 400px;
+        overflow-y: auto;
+
+        .partner-card {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 15px;
+          border: 2px solid #e0e0e0;
+          border-radius: 8px;
+          margin-bottom: 12px;
+          transition: all 0.2s ease;
+
+          &.online {
+            border-color: #4caf50;
+            background: #f8fff8;
+          }
+
+          &.offline {
+            border-color: #ff9800;
+            background: #fff8f0;
+            opacity: 0.7;
+          }
+
+          .partner-info {
+            flex: 1;
+
+            .partner-header {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 8px;
+
+              h5 {
+                margin: 0;
+                color: #333;
+                font-size: 16px;
+              }
+
+              .status-indicators {
+                display: flex;
+                gap: 12px;
+                align-items: center;
+
+                .status {
+                  font-size: 12px;
+                  padding: 4px 8px;
+                  border-radius: 12px;
+                  font-weight: 500;
+
+                  &.online {
+                    background: #4caf50;
+                    color: white;
+                  }
+
+                  &:not(.online) {
+                    background: #ff9800;
+                    color: white;
+                  }
+                }
+
+                .rating {
+                  font-size: 14px;
+                  font-weight: 500;
+                  color: #ff9800;
+                }
+              }
+            }
+
+            .partner-details {
+              display: flex;
+              gap: 15px;
+              font-size: 13px;
+              color: #666;
+
+              .vehicle {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+              }
+
+              .workload {
+                color: #2196f3;
+                font-weight: 500;
+              }
+            }
+          }
+
+          button {
+            min-width: 120px;
+            height: 40px;
+            font-weight: 500;
+
+            &:disabled {
+              background: #ccc !important;
+              color: #666 !important;
+            }
+          }
+        }
+
+        .no-partners {
+          text-align: center;
+          padding: 40px;
+          color: #666;
+
+          mat-icon {
+            font-size: 48px;
+            width: 48px;
+            height: 48px;
+            margin-bottom: 10px;
+            color: #ccc;
+          }
+
+          p {
+            margin: 0;
+            font-size: 16px;
+          }
+        }
+      }
+    }
+  }
+}
+
 // Responsive design
 @media (max-width: 768px) {
   .order-management {
@@ -277,6 +472,27 @@
         button {
           font-size: 12px;
           padding: 8px 12px;
+        }
+      }
+    }
+  }
+
+  .assignment-modal {
+    width: 95%;
+    margin: 20px;
+
+    .modal-body {
+      .partner-card {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+
+        .partner-info {
+          width: 100%;
+        }
+
+        button {
+          width: 100%;
         }
       }
     }

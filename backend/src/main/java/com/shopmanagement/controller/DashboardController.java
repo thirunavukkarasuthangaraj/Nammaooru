@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import com.shopmanagement.repository.*;
 import com.shopmanagement.shop.repository.ShopRepository;
 import com.shopmanagement.product.repository.MasterProductRepository;
-import com.shopmanagement.delivery.repository.DeliveryPartnerRepository;
+// import com.shopmanagement.delivery.repository.DeliveryPartnerRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -28,7 +28,7 @@ public class DashboardController {
     private final CustomerRepository customerRepository;
     private final ShopRepository shopRepository;
     private final MasterProductRepository productRepository;
-    private final DeliveryPartnerRepository deliveryPartnerRepository;
+    // private final DeliveryPartnerRepository deliveryPartnerRepository;
 
     @GetMapping
     @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN')")
@@ -44,7 +44,8 @@ public class DashboardController {
         stats.put("totalShops", shopRepository.count());
         stats.put("totalProducts", productRepository.count());
         stats.put("totalCustomers", customerRepository.count());
-        stats.put("totalDeliveryPartners", deliveryPartnerRepository.count());
+        // stats.put("totalDeliveryPartners", deliveryPartnerRepository.count());
+        stats.put("totalDeliveryPartners", 0L);
         
         // Today's Stats
         LocalDateTime startOfDay = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);

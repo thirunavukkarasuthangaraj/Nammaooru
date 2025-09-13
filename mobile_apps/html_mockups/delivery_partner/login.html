@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NammaOoru Delivery - Login</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .mobile-container {
+            width: 100%;
+            max-width: 375px;
+            background: #f1f8e9;
+            border-radius: 25px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+
+        .screen {
+            padding: 40px 20px;
+            min-height: 667px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .logo {
+            width: 120px;
+            height: 120px;
+            background: #4CAF50;
+            border-radius: 60px;
+            margin: 0 auto 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+            color: white;
+        }
+
+        .title {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .title h1 {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2E7D32;
+            margin-bottom: 5px;
+        }
+
+        .title p {
+            font-size: 16px;
+            color: #666;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .input-container {
+            position: relative;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            background: white;
+            overflow: hidden;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #666;
+            font-size: 18px;
+        }
+
+        input {
+            width: 100%;
+            padding: 15px 15px 15px 50px;
+            border: none;
+            font-size: 16px;
+            outline: none;
+        }
+
+        input::placeholder {
+            color: #999;
+        }
+
+        .prefix-text {
+            position: absolute;
+            left: 50px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #333;
+            font-size: 16px;
+            pointer-events: none;
+        }
+
+        .phone-input {
+            padding-left: 85px !important;
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 15px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: none;
+            border: none;
+            color: #4CAF50;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 15px;
+            text-decoration: underline;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .otp-section {
+            display: none;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .otp-section.active {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-container">
+        <div class="screen">
+            <div class="logo">🚚</div>
+            
+            <div class="title">
+                <h1>NammaOoru Delivery</h1>
+                <p>Partner Portal</p>
+            </div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <div class="input-container">
+                        <span class="input-icon">📱</span>
+                        <span class="prefix-text">+91 </span>
+                        <input type="tel" 
+                               id="phoneNumber" 
+                               class="phone-input" 
+                               placeholder="Mobile Number" 
+                               maxlength="10"
+                               required>
+                    </div>
+                </div>
+
+                <div class="form-group otp-section" id="otpSection">
+                    <div class="success-message" id="otpMessage">
+                        OTP sent to +91 <span id="phoneDisplay"></span>
+                    </div>
+                    <div class="input-container">
+                        <span class="input-icon">🔐</span>
+                        <input type="number" 
+                               id="otpInput" 
+                               placeholder="Enter 6-digit OTP" 
+                               maxlength="6">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <button type="submit" class="btn-primary" id="submitBtn">
+                        SEND OTP
+                    </button>
+                </div>
+
+                <div class="form-group" id="resendSection" style="display: none;">
+                    <button type="button" class="btn-secondary" onclick="resendOtp()">
+                        Resend OTP
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let otpSent = false;
+        let loading = false;
+
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if (loading) return;
+            
+            if (!otpSent) {
+                sendOtp();
+            } else {
+                verifyOtp();
+            }
+        });
+
+        function sendOtp() {
+            const phoneNumber = document.getElementById('phoneNumber').value;
+            
+            if (phoneNumber.length !== 10) {
+                alert('Please enter a valid 10-digit mobile number');
+                return;
+            }
+
+            loading = true;
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.innerHTML = '<span class="loading"></span>';
+            submitBtn.disabled = true;
+
+            // Simulate API call
+            setTimeout(() => {
+                loading = false;
+                otpSent = true;
+                
+                document.getElementById('phoneDisplay').textContent = phoneNumber;
+                document.getElementById('otpSection').classList.add('active');
+                document.getElementById('resendSection').style.display = 'block';
+                
+                submitBtn.innerHTML = 'VERIFY OTP';
+                submitBtn.disabled = false;
+            }, 2000);
+        }
+
+        function verifyOtp() {
+            const otp = document.getElementById('otpInput').value;
+            
+            if (otp.length !== 6) {
+                alert('Please enter a valid 6-digit OTP');
+                return;
+            }
+
+            loading = true;
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.innerHTML = '<span class="loading"></span>';
+            submitBtn.disabled = true;
+
+            // Simulate API call
+            setTimeout(() => {
+                loading = false;
+                alert('Login successful! Redirecting to dashboard...');
+                // In real app: window.location.href = 'dashboard.html';
+            }, 2000);
+        }
+
+        function resendOtp() {
+            const phoneNumber = document.getElementById('phoneNumber').value;
+            alert(`OTP resent to +91 ${phoneNumber}`);
+        }
+
+        // Auto-focus next input
+        document.getElementById('phoneNumber').addEventListener('input', function(e) {
+            if (e.target.value.length === 10 && !otpSent) {
+                document.getElementById('submitBtn').focus();
+            }
+        });
+
+        document.getElementById('otpInput').addEventListener('input', function(e) {
+            if (e.target.value.length === 6) {
+                document.getElementById('submitBtn').focus();
+            }
+        });
+    </script>
+</body>
+</html>

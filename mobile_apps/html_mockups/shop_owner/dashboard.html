@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NammaOoru Shop - Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+        }
+
+        .mobile-container {
+            width: 100%;
+            max-width: 375px;
+            margin: 0 auto;
+            background: #f5f5f5;
+            min-height: 100vh;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            background: #FF9800;
+            color: white;
+            padding: 20px 15px 15px;
+            position: relative;
+        }
+
+        .status-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            background: rgba(255,255,255,0.2);
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .status-badge.open {
+            background: #4CAF50;
+        }
+
+        .status-badge.closed {
+            background: #f44336;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 25px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 25px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .toggle-switch.active {
+            background: #4CAF50;
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 21px;
+            height: 21px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+
+        .toggle-switch.active::after {
+            transform: translateX(25px);
+        }
+
+        .shop-info h2 {
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+
+        .shop-details {
+            font-size: 14px;
+            opacity: 0.9;
+            line-height: 1.4;
+        }
+
+        .stats-container {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .stat-card {
+            flex: 1;
+            background: rgba(255,255,255,0.15);
+            padding: 10px 8px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            opacity: 0.8;
+        }
+
+        .content {
+            padding: 15px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .order-card {
+            background: white;
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .order-card.new {
+            border-left: 4px solid #FF9800;
+        }
+
+        .order-card.preparing {
+            border-left: 4px solid #2196F3;
+        }
+
+        .order-card.delivery {
+            border-left: 4px solid #4CAF50;
+        }
+
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .order-number {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .order-amount {
+            background: #e8f5e8;
+            color: #2E7D32;
+            padding: 4px 8px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .order-details {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.4;
+            margin-bottom: 10px;
+        }
+
+        .order-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-accept {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn-reject {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-ready {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn-call {
+            background: #2196F3;
+            color: white;
+            flex: 0.5;
+        }
+
+        .btn-track {
+            background: #FF9800;
+            color: white;
+            flex: 0.8;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+
+        .empty-state h3 {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+            opacity: 0.7;
+        }
+
+        .time-selection {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .time-modal {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            max-width: 300px;
+            width: 90%;
+        }
+
+        .time-buttons {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .time-btn {
+            flex: 1;
+            padding: 12px 8px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 375px;
+            background: white;
+            display: flex;
+            border-top: 1px solid #eee;
+        }
+
+        .nav-item {
+            flex: 1;
+            padding: 12px 5px;
+            text-align: center;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .nav-item.active {
+            color: #FF9800;
+        }
+
+        .nav-item:hover {
+            background: #f5f5f5;
+        }
+
+        .nav-icon {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #f44336;
+            color: white;
+            border-radius: 10px;
+            padding: 2px 6px;
+            font-size: 10px;
+            min-width: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-container">
+        <div class="header">
+            <div class="status-toggle">
+                <div class="status-badge open" id="statusBadge">
+                    🟢 OPEN
+                </div>
+                <div class="toggle-switch active" id="toggleSwitch" onclick="toggleShopStatus()"></div>
+            </div>
+            
+            <div class="shop-info">
+                <h2>👋 Hello, Ramesh!</h2>
+                <div class="shop-details">
+                    🏪 Pizza Palace<br>
+                    📍 MG Road, Bangalore<br>
+                    ⭐ 4.5 Rating (234 reviews)
+                </div>
+            </div>
+
+            <div class="stats-container">
+                <div class="stat-card">
+                    <div class="stat-value">12</div>
+                    <div class="stat-label">Orders</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">₹2,400</div>
+                    <div class="stat-label">Revenue</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">3</div>
+                    <div class="stat-label">New Customers</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="section-title">
+                🔔 NEW ORDERS (3)
+                <div class="notification-badge">3</div>
+            </div>
+
+            <div id="newOrdersContainer">
+                <div class="order-card new">
+                    <div class="order-header">
+                        <div class="order-number">🛍️ Order #ORD001</div>
+                        <div class="order-amount">₹450</div>
+                    </div>
+                    <div class="order-details">
+                        👤 Suresh Kumar | 📞 +91 98765 43210<br>
+                        🛍️ 2x Margherita, 1x Coke<br>
+                        🏠 HSR Layout<br>
+                        ⏰ 5 minutes ago
+                    </div>
+                    <div class="order-actions">
+                        <button class="btn btn-reject" onclick="rejectOrder('ORD001')">REJECT</button>
+                        <button class="btn btn-accept" onclick="acceptOrder('ORD001')">ACCEPT</button>
+                    </div>
+                </div>
+
+                <div class="order-card new">
+                    <div class="order-header">
+                        <div class="order-number">🛍️ Order #ORD002</div>
+                        <div class="order-amount">₹380</div>
+                    </div>
+                    <div class="order-details">
+                        👤 Priya Sharma | 📞 +91 87654 32109<br>
+                        🛍️ 1x Pepperoni, 2x Sprite<br>
+                        🏠 Koramangala<br>
+                        ⏰ 8 minutes ago
+                    </div>
+                    <div class="order-actions">
+                        <button class="btn btn-reject" onclick="rejectOrder('ORD002')">REJECT</button>
+                        <button class="btn btn-accept" onclick="acceptOrder('ORD002')">ACCEPT</button>
+                    </div>
+                </div>
+
+                <div class="order-card new">
+                    <div class="order-header">
+                        <div class="order-number">🛍️ Order #ORD003</div>
+                        <div class="order-amount">₹520</div>
+                    </div>
+                    <div class="order-details">
+                        👤 Rajesh Kumar | 📞 +91 90123 45678<br>
+                        🛍️ 1x Chicken Burger, 1x Fries, 2x Coke<br>
+                        🏠 BTM Layout<br>
+                        ⏰ 12 minutes ago
+                    </div>
+                    <div class="order-actions">
+                        <button class="btn btn-reject" onclick="rejectOrder('ORD003')">REJECT</button>
+                        <button class="btn btn-accept" onclick="acceptOrder('ORD003')">ACCEPT</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-title" style="margin-top: 20px;">
+                🍳 PREPARING ORDERS (2)
+            </div>
+
+            <div id="preparingOrdersContainer">
+                <div class="order-card preparing">
+                    <div class="order-header">
+                        <div class="order-number">🛍️ Order #ORD004</div>
+                        <div class="order-amount">₹320</div>
+                    </div>
+                    <div class="order-details">
+                        👤 Rajesh Kumar | 📞 +91 90123 45678<br>
+                        🛍️ 1x Chicken Burger, 1x Fries<br>
+                        🏠 BTM Layout<br>
+                        ⏰ Prep Time: 15 mins
+                    </div>
+                    <div class="order-actions">
+                        <button class="btn btn-call" onclick="callCustomer()">📞</button>
+                        <button class="btn btn-ready" onclick="markReady('ORD004')">MARK READY</button>
+                    </div>
+                </div>
+
+                <div class="order-card preparing">
+                    <div class="order-header">
+                        <div class="order-number">🛍️ Order #ORD005</div>
+                        <div class="order-amount">₹540</div>
+                    </div>
+                    <div class="order-details">
+                        👤 Anita Singh | 📞 +91 78901 23456<br>
+                        🛍️ 2x Veg Pizza, 1x Juice<br>
+                        🏠 Jayanagar<br>
+                        ⏰ Prep Time: 10 mins
+                    </div>
+                    <div class="order-actions">
+                        <button class="btn btn-call" onclick="callCustomer()">📞</button>
+                        <button class="btn btn-ready" onclick="markReady('ORD005')">MARK READY</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-title" style="margin-top: 20px;">
+                🚚 OUT FOR DELIVERY (1)
+            </div>
+
+            <div id="deliveryOrdersContainer">
+                <div class="order-card delivery">
+                    <div class="order-header">
+                        <div class="order-number">🛍️ Order #ORD006</div>
+                        <div class="order-amount">₹720</div>
+                    </div>
+                    <div class="order-details">
+                        👤 Vikash Patel | 📞 +91 67890 12345<br>
+                        🛍️ 3x Margherita, 2x Coke<br>
+                        🏠 Indiranagar<br>
+                        ⏰ Partner: Rajesh | ETA: 10 mins
+                    </div>
+                    <div class="order-actions">
+                        <button class="btn btn-call" onclick="callCustomer()">📞</button>
+                        <button class="btn btn-track" onclick="trackOrder('ORD006')">📍 TRACK</button>
+                    </div>
+                </div>
+            </div>
+
+            <div style="height: 80px;"></div>
+        </div>
+
+        <div class="bottom-nav">
+            <div class="nav-item active">
+                <div class="nav-icon">🏠</div>
+                <div>Home</div>
+            </div>
+            <div class="nav-item">
+                <div class="nav-icon">📋</div>
+                <div>Orders</div>
+            </div>
+            <div class="nav-item" onclick="window.location.href='products.html'">
+                <div class="nav-icon">🛍️</div>
+                <div>Products</div>
+            </div>
+            <div class="nav-item">
+                <div class="nav-icon">📊</div>
+                <div>Analytics</div>
+            </div>
+        </div>
+
+        <div class="time-selection" id="timeModal">
+            <div class="time-modal">
+                <h3>Accept Order</h3>
+                <p>How long will it take to prepare?</p>
+                <div class="time-buttons">
+                    <button class="time-btn" onclick="confirmTime('15 mins')">15 mins</button>
+                    <button class="time-btn" onclick="confirmTime('30 mins')">30 mins</button>
+                    <button class="time-btn" onclick="confirmTime('45 mins')">45 mins</button>
+                </div>
+                <button class="btn btn-reject" onclick="closeTimeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isShopOpen = true;
+        let pendingOrderId = null;
+
+        function toggleShopStatus() {
+            isShopOpen = !isShopOpen;
+            const statusBadge = document.getElementById('statusBadge');
+            const toggleSwitch = document.getElementById('toggleSwitch');
+            const newOrdersContainer = document.getElementById('newOrdersContainer');
+
+            if (isShopOpen) {
+                statusBadge.innerHTML = '🟢 OPEN';
+                statusBadge.className = 'status-badge open';
+                toggleSwitch.classList.add('active');
+                newOrdersContainer.style.display = 'block';
+            } else {
+                statusBadge.innerHTML = '🔴 CLOSED';
+                statusBadge.className = 'status-badge closed';
+                toggleSwitch.classList.remove('active');
+                newOrdersContainer.innerHTML = `
+                    <div class="empty-state">
+                        <h3>🔴 Shop is closed</h3>
+                        <p>Open shop to receive orders</p>
+                    </div>
+                `;
+            }
+        }
+
+        function acceptOrder(orderNumber) {
+            pendingOrderId = orderNumber;
+            document.getElementById('timeModal').style.display = 'flex';
+        }
+
+        function confirmTime(time) {
+            document.getElementById('timeModal').style.display = 'none';
+            alert(`✅ Order ${pendingOrderId} accepted! Prep time: ${time}`);
+            
+            // Remove from new orders and add to preparing orders
+            setTimeout(() => {
+                const orderCards = document.querySelectorAll('.order-card');
+                orderCards.forEach(card => {
+                    if (card.textContent.includes(pendingOrderId)) {
+                        card.style.animation = 'slideOut 0.3s ease-in';
+                        setTimeout(() => card.remove(), 300);
+                    }
+                });
+            }, 1000);
+            
+            pendingOrderId = null;
+        }
+
+        function closeTimeModal() {
+            document.getElementById('timeModal').style.display = 'none';
+            pendingOrderId = null;
+        }
+
+        function rejectOrder(orderNumber) {
+            alert(`❌ Order ${orderNumber} rejected!`);
+            const orderCards = document.querySelectorAll('.order-card');
+            orderCards.forEach(card => {
+                if (card.textContent.includes(orderNumber)) {
+                    card.style.animation = 'slideOut 0.3s ease-in';
+                    setTimeout(() => card.remove(), 300);
+                }
+            });
+        }
+
+        function markReady(orderNumber) {
+            alert(`✅ Order ${orderNumber} marked as ready! Delivery partner notified.`);
+            const orderCards = document.querySelectorAll('.order-card');
+            orderCards.forEach(card => {
+                if (card.textContent.includes(orderNumber)) {
+                    card.style.animation = 'slideOut 0.3s ease-in';
+                    setTimeout(() => card.remove(), 300);
+                }
+            });
+        }
+
+        function callCustomer() {
+            alert('📞 Calling customer...');
+        }
+
+        function trackOrder(orderNumber) {
+            alert(`📍 Tracking Order ${orderNumber}...\n\n🚚 Delivery partner is 5 minutes away from customer location.`);
+        }
+
+        // Auto refresh orders every 30 seconds
+        setInterval(() => {
+            if (isShopOpen) {
+                console.log('Checking for new orders...');
+            }
+        }, 30000);
+    </script>
+
+    <style>
+        @keyframes slideOut {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(-100%);
+            }
+        }
+    </style>
+</body>
+</html>

@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NammaOoru Delivery - Order History</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+        }
+
+        .mobile-container {
+            width: 100%;
+            max-width: 375px;
+            margin: 0 auto;
+            background: #f5f5f5;
+            min-height: 100vh;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            background: #4CAF50;
+            color: white;
+            padding: 20px 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .back-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .filter-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        .search-bar {
+            padding: 15px;
+            background: white;
+            border-bottom: 1px solid #eee;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px 15px 10px 40px;
+            border: 1px solid #ddd;
+            border-radius: 25px;
+            font-size: 14px;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23666"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>') no-repeat 12px center;
+            background-size: 16px;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+
+        .filter-tabs {
+            display: flex;
+            background: white;
+            border-bottom: 1px solid #eee;
+            overflow-x: auto;
+        }
+
+        .filter-tab {
+            padding: 15px 20px;
+            font-size: 14px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            white-space: nowrap;
+            color: #666;
+            border-bottom: 3px solid transparent;
+        }
+
+        .filter-tab.active {
+            color: #4CAF50;
+            border-bottom-color: #4CAF50;
+            font-weight: bold;
+        }
+
+        .content {
+            padding: 0 15px 100px;
+        }
+
+        .summary-card {
+            background: white;
+            margin: 15px 0;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .summary-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .summary-stats {
+            display: flex;
+            gap: 15px;
+        }
+
+        .summary-stat {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .summary-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #4CAF50;
+            margin-bottom: 2px;
+        }
+
+        .summary-label {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .order-card {
+            background: white;
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        .order-card.delivered {
+            border-left: 4px solid #4CAF50;
+        }
+
+        .order-card.cancelled {
+            border-left: 4px solid #f44336;
+        }
+
+        .order-card.rejected {
+            border-left: 4px solid #FF9800;
+        }
+
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .order-info {
+            flex: 1;
+        }
+
+        .order-number {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .order-date {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .order-status {
+            padding: 6px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .status-delivered {
+            background: #e8f5e8;
+            color: #4CAF50;
+        }
+
+        .status-cancelled {
+            background: #ffebee;
+            color: #f44336;
+        }
+
+        .status-rejected {
+            background: #fff3e0;
+            color: #FF9800;
+        }
+
+        .order-details {
+            margin-bottom: 12px;
+        }
+
+        .detail-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 6px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .detail-icon {
+            width: 16px;
+            margin-right: 10px;
+        }
+
+        .order-route {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 8px 0;
+            font-size: 13px;
+        }
+
+        .route-from {
+            color: #FF9800;
+            font-weight: 500;
+        }
+
+        .route-to {
+            color: #4CAF50;
+            font-weight: 500;
+        }
+
+        .order-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 10px;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        .order-earnings {
+            font-size: 16px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .order-rating {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 14px;
+        }
+
+        .rating-stars {
+            color: #FF9800;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .btn-report {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-receipt {
+            background: #2196F3;
+            color: white;
+        }
+
+        .btn-reorder {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .no-results-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+        }
+
+        .no-results h3 {
+            font-size: 18px;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .no-results p {
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 375px;
+            background: white;
+            display: flex;
+            border-top: 1px solid #eee;
+        }
+
+        .nav-item {
+            flex: 1;
+            padding: 12px 5px;
+            text-align: center;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .nav-item.active {
+            color: #4CAF50;
+        }
+
+        .nav-item:hover {
+            background: #f5f5f5;
+        }
+
+        .nav-icon {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+
+        .load-more {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .load-more-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            width: 100%;
+            max-width: 320px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .filter-options {
+            margin-bottom: 20px;
+        }
+
+        .filter-group {
+            margin-bottom: 20px;
+        }
+
+        .filter-label {
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .filter-option {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .filter-option.selected {
+            background: #4CAF50;
+            color: white;
+            border-color: #4CAF50;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-modal {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .btn-clear {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .btn-apply {
+            background: #4CAF50;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-container">
+        <div class="header">
+            <div class="header-left">
+                <button class="back-btn" onclick="window.location.href='dashboard.html'">←</button>
+                <h1>📋 Order History</h1>
+            </div>
+            <button class="filter-btn" onclick="showFilterModal()">🔍</button>
+        </div>
+
+        <div class="search-bar">
+            <input type="text" class="search-input" placeholder="Search by order number, restaurant..." id="searchInput">
+        </div>
+
+        <div class="filter-tabs">
+            <button class="filter-tab active" onclick="filterOrders('all', this)">All Orders</button>
+            <button class="filter-tab" onclick="filterOrders('delivered', this)">Delivered</button>
+            <button class="filter-tab" onclick="filterOrders('cancelled', this)">Cancelled</button>
+            <button class="filter-tab" onclick="filterOrders('today', this)">Today</button>
+            <button class="filter-tab" onclick="filterOrders('week', this)">This Week</button>
+        </div>
+
+        <div class="content">
+            <!-- Summary Card -->
+            <div class="summary-card">
+                <div class="summary-title">📊 Your Performance Summary</div>
+                <div class="summary-stats">
+                    <div class="summary-stat">
+                        <div class="summary-value">186</div>
+                        <div class="summary-label">Total Orders</div>
+                    </div>
+                    <div class="summary-stat">
+                        <div class="summary-value">₹18,640</div>
+                        <div class="summary-label">Total Earnings</div>
+                    </div>
+                    <div class="summary-stat">
+                        <div class="summary-value">4.8⭐</div>
+                        <div class="summary-label">Avg Rating</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Order List -->
+            <div id="orderList">
+                <!-- Today's Orders -->
+                <div class="order-card delivered">
+                    <div class="order-header">
+                        <div class="order-info">
+                            <div class="order-number">🛍️ Order #ORD12345</div>
+                            <div class="order-date">Today, 2:45 PM</div>
+                        </div>
+                        <div class="order-status status-delivered">✅ Delivered</div>
+                    </div>
+                    
+                    <div class="order-details">
+                        <div class="detail-row">
+                            <div class="detail-icon">👤</div>
+                            <div>Suresh Kumar (+91 98765 43210)</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-icon">🛍️</div>
+                            <div>2x Margherita Pizza, 1x Coke</div>
+                        </div>
+                        <div class="order-route">
+                            <span class="route-from">📍 Pizza Palace, MG Road</span><br>
+                            <span style="color: #999;">↓ 2.3 km, 18 mins</span><br>
+                            <span class="route-to">🏠 HSR Layout, Block 7</span>
+                        </div>
+                    </div>
+                    
+                    <div class="order-footer">
+                        <div class="order-earnings">💰 ₹85</div>
+                        <div class="order-rating">
+                            <span class="rating-stars">⭐⭐⭐⭐⭐</span>
+                            <span>5.0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="order-card delivered">
+                    <div class="order-header">
+                        <div class="order-info">
+                            <div class="order-number">🛍️ Order #ORD12344</div>
+                            <div class="order-date">Today, 1:30 PM</div>
+                        </div>
+                        <div class="order-status status-delivered">✅ Delivered</div>
+                    </div>
+                    
+                    <div class="order-details">
+                        <div class="detail-row">
+                            <div class="detail-icon">👤</div>
+                            <div>Priya Sharma (+91 87654 32109)</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-icon">🛍️</div>
+                            <div>1x Chicken Burger, 1x Fries</div>
+                        </div>
+                        <div class="order-route">
+                            <span class="route-from">📍 KFC, Koramangala</span><br>
+                            <span style="color: #999;">↓ 1.8 km, 15 mins</span><br>
+                            <span class="route-to">🏠 BTM Layout, 1st Stage</span>
+                        </div>
+                    </div>
+                    
+                    <div class="order-footer">
+                        <div class="order-earnings">💰 ₹75</div>
+                        <div class="order-rating">
+                            <span class="rating-stars">⭐⭐⭐⭐⭐</span>
+                            <span>4.9</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Yesterday's Orders -->
+                <div class="order-card cancelled">
+                    <div class="order-header">
+                        <div class="order-info">
+                            <div class="order-number">🛍️ Order #ORD12343</div>
+                            <div class="order-date">Yesterday, 8:20 PM</div>
+                        </div>
+                        <div class="order-status status-cancelled">❌ Cancelled</div>
+                    </div>
+                    
+                    <div class="order-details">
+                        <div class="detail-row">
+                            <div class="detail-icon">👤</div>
+                            <div>Rajesh Kumar (+91 90123 45678)</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-icon">🛍️</div>
+                            <div>3x Veg Pizza, 2x Sprite</div>
+                        </div>
+                        <div class="order-route">
+                            <span class="route-from">📍 Domino's Pizza, Jayanagar</span><br>
+                            <span style="color: #999;">↓ 3.5 km</span><br>
+                            <span class="route-to">🏠 JP Nagar, 6th Phase</span>
+                        </div>
+                        <div style="background: #ffebee; color: #c62828; padding: 8px; border-radius: 6px; font-size: 12px; margin-top: 8px;">
+                            ⚠️ Cancellation reason: Customer unavailable after multiple calls
+                        </div>
+                    </div>
+                    
+                    <div class="order-footer">
+                        <div class="order-earnings">💰 ₹0</div>
+                        <div>Compensation: ₹25</div>
+                    </div>
+                </div>
+
+                <div class="order-card delivered">
+                    <div class="order-header">
+                        <div class="order-info">
+                            <div class="order-number">🛍️ Order #ORD12342</div>
+                            <div class="order-date">Yesterday, 7:15 PM</div>
+                        </div>
+                        <div class="order-status status-delivered">✅ Delivered</div>
+                    </div>
+                    
+                    <div class="order-details">
+                        <div class="detail-row">
+                            <div class="detail-icon">👤</div>
+                            <div>Anita Singh (+91 78901 23456)</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-icon">🛍️</div>
+                            <div>1x Chicken Biryani, 1x Raita</div>
+                        </div>
+                        <div class="order-route">
+                            <span class="route-from">📍 Paradise Biryani, BTM</span><br>
+                            <span style="color: #999;">↓ 2.1 km, 20 mins</span><br>
+                            <span class="route-to">🏠 Banashankari, 2nd Stage</span>
+                        </div>
+                    </div>
+                    
+                    <div class="order-footer">
+                        <div class="order-earnings">💰 ₹95 <span style="font-size: 12px; color: #4CAF50;">+₹10 tip</span></div>
+                        <div class="order-rating">
+                            <span class="rating-stars">⭐⭐⭐⭐⭐</span>
+                            <span>4.8</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="order-card rejected">
+                    <div class="order-header">
+                        <div class="order-info">
+                            <div class="order-number">🛍️ Order #ORD12341</div>
+                            <div class="order-date">2 days ago, 9:30 PM</div>
+                        </div>
+                        <div class="order-status status-rejected">⚠️ Rejected</div>
+                    </div>
+                    
+                    <div class="order-details">
+                        <div class="detail-row">
+                            <div class="detail-icon">👤</div>
+                            <div>Vikram Patel (+91 67890 12345)</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-icon">🛍️</div>
+                            <div>2x Masala Dosa, 1x Filter Coffee</div>
+                        </div>
+                        <div class="order-route">
+                            <span class="route-from">📍 MTR, Lalbagh Road</span><br>
+                            <span style="color: #999;">↓ 8.2 km</span><br>
+                            <span class="route-to">🏠 Electronic City, Phase 1</span>
+                        </div>
+                        <div style="background: #fff3e0; color: #e65100; padding: 8px; border-radius: 6px; font-size: 12px; margin-top: 8px;">
+                            ⚠️ Rejection reason: Distance too far from current location
+                        </div>
+                    </div>
+                    
+                    <div class="order-footer">
+                        <div class="order-earnings">💰 ₹0</div>
+                        <div>No earnings</div>
+                    </div>
+                </div>
+
+                <div class="order-card delivered">
+                    <div class="order-header">
+                        <div class="order-info">
+                            <div class="order-number">🛍️ Order #ORD12340</div>
+                            <div class="order-date">3 days ago, 6:45 PM</div>
+                        </div>
+                        <div class="order-status status-delivered">✅ Delivered</div>
+                    </div>
+                    
+                    <div class="order-details">
+                        <div class="detail-row">
+                            <div class="detail-icon">👤</div>
+                            <div>Meera Reddy (+91 56789 01234)</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-icon">🛍️</div>
+                            <div>1x Paneer Butter Masala, 2x Naan</div>
+                        </div>
+                        <div class="order-route">
+                            <span class="route-from">📍 Punjabi Dhaba, Koramangala</span><br>
+                            <span style="color: #999;">↓ 1.5 km, 12 mins</span><br>
+                            <span class="route-to">🏠 Koramangala, 4th Block</span>
+                        </div>
+                    </div>
+                    
+                    <div class="order-footer">
+                        <div class="order-earnings">💰 ₹68</div>
+                        <div class="order-rating">
+                            <span class="rating-stars">⭐⭐⭐⭐</span>
+                            <span>4.2</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="load-more">
+                <button class="load-more-btn" onclick="loadMoreOrders()">
+                    📥 Load More Orders
+                </button>
+            </div>
+        </div>
+
+        <div class="bottom-nav">
+            <div class="nav-item" onclick="window.location.href='dashboard.html'">
+                <div class="nav-icon">🏠</div>
+                <div>Home</div>
+            </div>
+            <div class="nav-item" onclick="window.location.href='earnings.html'">
+                <div class="nav-icon">💰</div>
+                <div>Earnings</div>
+            </div>
+            <div class="nav-item" onclick="window.location.href='stats.html'">
+                <div class="nav-icon">📊</div>
+                <div>Stats</div>
+            </div>
+            <div class="nav-item" onclick="window.location.href='profile.html'">
+                <div class="nav-icon">👤</div>
+                <div>Profile</div>
+            </div>
+        </div>
+
+        <!-- Filter Modal -->
+        <div class="modal" id="filterModal">
+            <div class="modal-content">
+                <div class="modal-header">🔍 Filter Orders</div>
+                
+                <div class="filter-options">
+                    <div class="filter-group">
+                        <div class="filter-label">Date Range</div>
+                        <div class="filter-option" onclick="selectFilter(this)">Today</div>
+                        <div class="filter-option" onclick="selectFilter(this)">Last 7 days</div>
+                        <div class="filter-option" onclick="selectFilter(this)">Last 30 days</div>
+                        <div class="filter-option selected" onclick="selectFilter(this)">All time</div>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <div class="filter-label">Order Status</div>
+                        <div class="filter-option selected" onclick="selectFilter(this)">All statuses</div>
+                        <div class="filter-option" onclick="selectFilter(this)">Delivered only</div>
+                        <div class="filter-option" onclick="selectFilter(this)">Cancelled only</div>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <div class="filter-label">Earnings Range</div>
+                        <div class="filter-option selected" onclick="selectFilter(this)">All amounts</div>
+                        <div class="filter-option" onclick="selectFilter(this)">₹50 - ₹100</div>
+                        <div class="filter-option" onclick="selectFilter(this)">₹100+</div>
+                    </div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button class="btn-modal btn-clear" onclick="clearFilters()">Clear All</button>
+                    <button class="btn-modal btn-apply" onclick="applyFilters()">Apply Filters</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function filterOrders(type, element) {
+            // Remove active class from all tabs
+            document.querySelectorAll('.filter-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Add active class to clicked tab
+            element.classList.add('active');
+            
+            // Filter orders based on type
+            const orderCards = document.querySelectorAll('.order-card');
+            
+            orderCards.forEach(card => {
+                card.style.display = 'block';
+                
+                if (type === 'delivered' && !card.classList.contains('delivered')) {
+                    card.style.display = 'none';
+                } else if (type === 'cancelled' && !card.classList.contains('cancelled')) {
+                    card.style.display = 'none';
+                } else if (type === 'today') {
+                    const dateText = card.querySelector('.order-date').textContent;
+                    if (!dateText.includes('Today')) {
+                        card.style.display = 'none';
+                    }
+                } else if (type === 'week') {
+                    const dateText = card.querySelector('.order-date').textContent;
+                    if (!dateText.includes('Today') && !dateText.includes('Yesterday')) {
+                        card.style.display = 'none';
+                    }
+                }
+            });
+            
+            console.log(`Filtering orders by: ${type}`);
+        }
+
+        function showFilterModal() {
+            document.getElementById('filterModal').style.display = 'flex';
+        }
+
+        function selectFilter(element) {
+            // Toggle selection within the same group
+            const group = element.parentNode;
+            const options = group.querySelectorAll('.filter-option');
+            
+            // For single-select groups, remove selection from others
+            options.forEach(option => option.classList.remove('selected'));
+            element.classList.add('selected');
+        }
+
+        function clearFilters() {
+            document.querySelectorAll('.filter-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            
+            // Select default options
+            document.querySelector('.filter-group:nth-child(1) .filter-option:last-child').classList.add('selected');
+            document.querySelector('.filter-group:nth-child(2) .filter-option:first-child').classList.add('selected');
+            document.querySelector('.filter-group:nth-child(3) .filter-option:first-child').classList.add('selected');
+        }
+
+        function applyFilters() {
+            document.getElementById('filterModal').style.display = 'none';
+            alert('Filters applied! Orders updated based on your selection.');
+        }
+
+        function loadMoreOrders() {
+            alert('📥 Loading more orders...\n\nShowing 20 more orders from your history.');
+        }
+
+        // Search functionality
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const orderCards = document.querySelectorAll('.order-card');
+            
+            orderCards.forEach(card => {
+                const orderText = card.textContent.toLowerCase();
+                if (orderText.includes(searchTerm)) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+
+        // Close modal when clicking outside
+        document.getElementById('filterModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.style.display = 'none';
+            }
+        });
+
+        // Auto-refresh order history every 2 minutes
+        setInterval(() => {
+            console.log('Refreshing order history...');
+        }, 120000);
+    </script>
+</body>
+</html>

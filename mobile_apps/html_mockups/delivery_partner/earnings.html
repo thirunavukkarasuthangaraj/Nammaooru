@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NammaOoru Delivery - Earnings</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+        }
+
+        .mobile-container {
+            width: 100%;
+            max-width: 375px;
+            margin: 0 auto;
+            background: #f5f5f5;
+            min-height: 100vh;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            background: #4CAF50;
+            color: white;
+            padding: 20px 15px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .period-selector {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            margin: 15px;
+        }
+
+        .period-chip {
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid #ddd;
+            background: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .period-chip.active {
+            background: #4CAF50;
+            color: white;
+            border-color: #4CAF50;
+        }
+
+        .summary-card {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            margin: 15px;
+            padding: 20px;
+            border-radius: 15px;
+            color: white;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+        }
+
+        .summary-header {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            opacity: 0.9;
+        }
+
+        .summary-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .summary-stats {
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .summary-amount {
+            text-align: right;
+        }
+
+        .total-amount {
+            font-size: 32px;
+            font-weight: bold;
+            line-height: 1;
+        }
+
+        .amount-label {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .content {
+            padding: 0 15px 80px;
+        }
+
+        .section-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .payment-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .payment-row:last-child {
+            border-bottom: none;
+            border-top: 2px solid #4CAF50;
+            padding-top: 10px;
+            margin-top: 5px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .payment-label {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .payment-amount {
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .payment-row:last-child .payment-amount {
+            color: #4CAF50;
+            font-size: 16px;
+        }
+
+        .delivery-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .delivery-item:last-child {
+            border-bottom: none;
+        }
+
+        .delivery-info {
+            flex: 1;
+        }
+
+        .delivery-order {
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 2px;
+        }
+
+        .delivery-route {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 2px;
+        }
+
+        .delivery-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .delivery-earning {
+            font-size: 14px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .payment-status {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+
+        .status-info {
+            flex: 1;
+        }
+
+        .bank-info {
+            text-align: right;
+        }
+
+        .info-label {
+            font-size: 12px;
+            font-weight: bold;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 2px;
+        }
+
+        .withdraw-btn {
+            width: 100%;
+            padding: 15px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.3s;
+        }
+
+        .withdraw-btn:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 375px;
+            background: white;
+            display: flex;
+            border-top: 1px solid #eee;
+        }
+
+        .nav-item {
+            flex: 1;
+            padding: 12px 5px;
+            text-align: center;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .nav-item.active {
+            color: #4CAF50;
+        }
+
+        .nav-item:hover {
+            background: #f5f5f5;
+        }
+
+        .nav-icon {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+
+        .success-icon {
+            color: #4CAF50;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-container">
+        <div class="header">
+            <h1>💰 Earnings Dashboard</h1>
+        </div>
+
+        <div class="period-selector">
+            <div class="period-chip active" onclick="selectPeriod('Today', this)">Today</div>
+            <div class="period-chip" onclick="selectPeriod('Week', this)">Week</div>
+            <div class="period-chip" onclick="selectPeriod('Month', this)">Month</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-header">📊 TODAY'S SUMMARY</div>
+            <div class="summary-content">
+                <div class="summary-stats">
+                    🚚 Deliveries: 8<br>
+                    ⏰ Online Hours: 6h 30m<br>
+                    📈 Efficiency: 92%
+                </div>
+                <div class="summary-amount">
+                    <div class="total-amount">₹640</div>
+                    <div class="amount-label">Total Earned</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="section-card">
+                <div class="section-title">💳 PAYMENT BREAKDOWN</div>
+                
+                <div class="payment-row">
+                    <div class="payment-label">💵 Base Earnings:</div>
+                    <div class="payment-amount">₹520</div>
+                </div>
+                
+                <div class="payment-row">
+                    <div class="payment-label">🎯 Distance Bonus:</div>
+                    <div class="payment-amount">₹75</div>
+                </div>
+                
+                <div class="payment-row">
+                    <div class="payment-label">🎁 Customer Tips:</div>
+                    <div class="payment-amount">₹45</div>
+                </div>
+                
+                <div class="payment-row">
+                    <div class="payment-label">💰 Total Today:</div>
+                    <div class="payment-amount">₹640</div>
+                </div>
+            </div>
+
+            <div class="section-card">
+                <div class="section-title">📋 RECENT DELIVERIES</div>
+                
+                <div class="delivery-item">
+                    <div class="delivery-info">
+                        <div class="delivery-order">🛍️ #ORD12345</div>
+                        <div class="delivery-route">Pizza Palace → HSR Layout</div>
+                        <div class="delivery-meta">
+                            <span>2:45 PM</span>
+                            <span>⭐4.8</span>
+                        </div>
+                    </div>
+                    <div class="delivery-earning">₹85</div>
+                </div>
+                
+                <div class="delivery-item">
+                    <div class="delivery-info">
+                        <div class="delivery-order">🛍️ #ORD12344</div>
+                        <div class="delivery-route">KFC → Jayanagar</div>
+                        <div class="delivery-meta">
+                            <span>1:30 PM</span>
+                            <span>⭐4.9</span>
+                        </div>
+                    </div>
+                    <div class="delivery-earning">₹75</div>
+                </div>
+                
+                <div class="delivery-item">
+                    <div class="delivery-info">
+                        <div class="delivery-order">🛍️ #ORD12343</div>
+                        <div class="delivery-route">McDonald's → BTM</div>
+                        <div class="delivery-meta">
+                            <span>12:15 PM</span>
+                            <span>⭐4.6</span>
+                        </div>
+                    </div>
+                    <div class="delivery-earning">₹90</div>
+                </div>
+                
+                <div class="delivery-item">
+                    <div class="delivery-info">
+                        <div class="delivery-order">🛍️ #ORD12342</div>
+                        <div class="delivery-route">Subway → Koramangala</div>
+                        <div class="delivery-meta">
+                            <span>11:45 AM</span>
+                            <span>⭐4.7</span>
+                        </div>
+                    </div>
+                    <div class="delivery-earning">₹70</div>
+                </div>
+                
+                <div class="delivery-item">
+                    <div class="delivery-info">
+                        <div class="delivery-order">🛍️ #ORD12341</div>
+                        <div class="delivery-route">Pizza Hut → Indiranagar</div>
+                        <div class="delivery-meta">
+                            <span>10:20 AM</span>
+                            <span>⭐4.8</span>
+                        </div>
+                    </div>
+                    <div class="delivery-earning">₹95</div>
+                </div>
+            </div>
+
+            <div class="section-card">
+                <div class="payment-status">
+                    <div class="status-info">
+                        <div class="info-label">💳 PAYMENT STATUS:</div>
+                        <div class="info-value">
+                            <span class="success-icon">✅</span> All payments processed
+                        </div>
+                        <div class="info-value">
+                            💰 Available for withdrawal: <strong>₹640</strong>
+                        </div>
+                    </div>
+                    <div class="bank-info">
+                        <div class="info-label">🏦 BANK DETAILS:</div>
+                        <div class="info-value">💳 HDFC Bank</div>
+                        <div class="info-value">🔢 ****1234</div>
+                    </div>
+                </div>
+                
+                <button class="withdraw-btn" onclick="withdrawEarnings()">
+                    💳 WITHDRAW EARNINGS
+                </button>
+            </div>
+        </div>
+
+        <div class="bottom-nav">
+            <div class="nav-item" onclick="window.location.href='dashboard.html'">
+                <div class="nav-icon">🏠</div>
+                <div>Home</div>
+            </div>
+            <div class="nav-item active">
+                <div class="nav-icon">💰</div>
+                <div>Earnings</div>
+            </div>
+            <div class="nav-item">
+                <div class="nav-icon">📊</div>
+                <div>Stats</div>
+            </div>
+            <div class="nav-item">
+                <div class="nav-icon">👤</div>
+                <div>Profile</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function selectPeriod(period, element) {
+            // Remove active class from all chips
+            document.querySelectorAll('.period-chip').forEach(chip => {
+                chip.classList.remove('active');
+            });
+            
+            // Add active class to clicked chip
+            element.classList.add('active');
+            
+            // Update summary header
+            document.querySelector('.summary-header').textContent = `📊 ${period.toUpperCase()}'S SUMMARY`;
+            
+            // Update earnings data based on period
+            updateEarningsData(period);
+        }
+
+        function updateEarningsData(period) {
+            const earningsData = {
+                'Today': {
+                    deliveries: 8,
+                    hours: '6h 30m',
+                    efficiency: '92%',
+                    total: '₹640',
+                    base: '₹520',
+                    bonus: '₹75',
+                    tips: '₹45'
+                },
+                'Week': {
+                    deliveries: 42,
+                    hours: '32h 15m',
+                    efficiency: '89%',
+                    total: '₹3,850',
+                    base: '₹3,200',
+                    bonus: '₹425',
+                    tips: '₹225'
+                },
+                'Month': {
+                    deliveries: 186,
+                    hours: '148h 30m',
+                    efficiency: '91%',
+                    total: '₹18,640',
+                    base: '₹15,200',
+                    bonus: '₹2,140',
+                    tips: '₹1,300'
+                }
+            };
+
+            const data = earningsData[period];
+            
+            // Update summary stats
+            document.querySelector('.summary-stats').innerHTML = `
+                🚚 Deliveries: ${data.deliveries}<br>
+                ⏰ Online Hours: ${data.hours}<br>
+                📈 Efficiency: ${data.efficiency}
+            `;
+            
+            document.querySelector('.total-amount').textContent = data.total;
+            
+            // Update payment breakdown
+            const paymentRows = document.querySelectorAll('.payment-amount');
+            paymentRows[0].textContent = data.base;
+            paymentRows[1].textContent = data.bonus;
+            paymentRows[2].textContent = data.tips;
+            paymentRows[3].textContent = data.total;
+            
+            // Update withdrawal amount
+            document.querySelector('.info-value strong').textContent = data.total;
+        }
+
+        function withdrawEarnings() {
+            const amount = document.querySelector('.total-amount').textContent;
+            
+            if (confirm(`${amount} will be transferred to your HDFC Bank account ending in 1234.\n\nProcessing time: 1-2 business days.\n\nConfirm withdrawal?`)) {
+                alert('✅ Withdrawal request submitted successfully!\n\nYou will receive a confirmation SMS shortly.');
+            }
+        }
+
+        // Auto-refresh earnings every 30 seconds
+        setInterval(() => {
+            const activePeriod = document.querySelector('.period-chip.active').textContent;
+            console.log(`Refreshing ${activePeriod} earnings data...`);
+        }, 30000);
+    </script>
+</body>
+</html>

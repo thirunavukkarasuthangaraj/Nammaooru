@@ -6,6 +6,8 @@ import { environment } from '../../../../../environments/environment';
 import { ShopContextService } from '../../services/shop-context.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { OrderService } from '../../../../core/services/order.service';
+import { OrderAssignmentService } from '../../../../core/services/order-assignment.service';
+import { DeliveryPartnerService, DeliveryPartner } from '../../../delivery/services/delivery-partner.service';
 import Swal from 'sweetalert2';
 
 interface Order {
@@ -75,30 +77,45 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
   
   private apiUrl = environment.apiUrl;
 
+  // Assignment Modal Properties
+  showAssignmentModal = false;
+  selectedOrder: Order | null = null;
+  availablePartners: DeliveryPartner[] = [];
+  loadingPartners = false;
+  partnerAssignments: { [partnerId: number]: number } = {};
+
   constructor(
     private http: HttpClient,
     private orderService: OrderService,
+    private assignmentService: OrderAssignmentService,
+    private partnerService: DeliveryPartnerService,
     private shopContext: ShopContextService,
     private snackBar: MatSnackBar
   ) {}
 
   ngOnInit(): void {
-    // Wait for shop context to load
+    console.log('Order Management Component initialized');
+    
+    // Always start with fallback shopId and load data immediately
+    this.shopId = "2";
+    console.log('Starting with hardcoded shopId: 2 for demo');
+    
+    // Load data immediately
+    this.loadAllData();
+    this.startAutoRefresh();
+    
+    // Also try to get shop context in parallel but don't wait for it
     this.shopContext.shop$.pipe(
       takeUntil(this.destroy$)
     ).subscribe(shop => {
       if (shop) {
-        // Use the numeric database ID for API calls
+        console.log('Shop context loaded:', shop, 'Updating shopId to:', shop.id);
+        // Only update shopId if we get a valid shop context
         this.shopId = shop.id.toString();
-        console.log('Shop loaded:', shop, 'Using shopId:', this.shopId);
+        // Reload data with correct shop ID
         this.loadAllData();
-        this.startAutoRefresh();
       } else {
-        // Fallback: Use shopId 2 directly since we know the order was created with shopId 2
-        console.log('No shop context, using hardcoded shopId: 2');
-        this.shopId = "2";
-        this.loadAllData();
-        this.startAutoRefresh();
+        console.log('No shop context available, continuing with fallback shopId: 2');
       }
     });
   }
@@ -112,30 +129,50 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
     if (!this.shopId) return;
     
     this.loadOrders();
-    this.loadTodayStats();
+    // loadTodayStats() is now called from within loadOrders() after orders are loaded
   }
 
   loadOrders(): void {
-    if (!this.shopId) return;
+    console.log('=== loadOrders called ===');
+    console.log('shopId:', this.shopId);
+    
+    if (!this.shopId) {
+      console.log('No shopId available, aborting load');
+      return;
+    }
     
     this.loading = true;
-    console.log('Loading orders for shop ID:', this.shopId);
+    console.log('Starting to load orders for shop ID:', this.shopId);
     
     // Use OrderService to load orders for this shop
     this.orderService.getOrdersByShop(this.shopId, 0, 100)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
+          console.log('=== API Response received ===');
           console.log('Full API response:', response);
-          const orders = response.content || [];
+          console.log('Response type:', typeof response);
+          console.log('Response keys:', Object.keys(response));
+          
+          const orders = response.data.content || [];
           console.log('Extracted orders:', orders);
+          console.log('Orders count:', orders.length);
+          
           this.categorizeOrders(orders);
+          this.calculateTodayStats(orders); // Calculate stats after orders are loaded
           this.loading = false;
-          console.log('Orders loaded:', orders.length);
+          console.log('=== Orders successfully loaded ===');
+          console.log('Pending:', this.pendingOrders.length);
+          console.log('Active:', this.activeOrders.length);
+          console.log('Completed:', this.completedOrders.length);
+          console.log('Today Stats:', this.todayStats);
         },
         error: (error) => {
+          console.error('=== API Error ===');
           console.error('Error loading orders:', error);
-          this.handleError('Failed to load orders');
+          console.error('Error status:', error.status);
+          console.error('Error message:', error.message);
+          this.handleError('Failed to load orders: ' + (error.message || error.status));
           this.loading = false;
         }
       });
@@ -151,12 +188,6 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
     );
   }
 
-  private loadTodayStats(): void {
-    if (!this.shopId) return;
-    
-    // Use the orders we already loaded instead of separate API call
-    this.calculateTodayStats(this.getAllOrders());
-  }
   
   private calculateTodayStats(orders: Order[]): void {
     const today = new Date().toDateString();
@@ -465,5 +496,116 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
 
   sendDailySummary(): void {
     this.snackBar.open('Daily summary sent!', 'Close', { duration: 2000 });
+  }
+
+  // Assignment Methods
+  assignDeliveryPartner(order: Order): void {
+    this.selectedOrder = order;
+    this.showAssignmentModal = true;
+    this.loadAvailablePartners();
+  }
+
+  closeAssignmentModal(): void {
+    this.showAssignmentModal = false;
+    this.selectedOrder = null;
+    this.availablePartners = [];
+    this.partnerAssignments = {};
+  }
+
+  private loadAvailablePartners(): void {
+    this.loadingPartners = true;
+    
+    this.partnerService.getAvailablePartners()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          if (response && response.data) {
+            this.availablePartners = response.data;
+            this.loadPartnerWorkloads();
+          } else {
+            this.availablePartners = [];
+          }
+          this.loadingPartners = false;
+        },
+        error: (error) => {
+          console.error('Error loading partners:', error);
+          this.availablePartners = [];
+          this.loadingPartners = false;
+          this.snackBar.open('Failed to load delivery partners', 'Close', { duration: 3000 });
+        }
+      });
+  }
+
+  private loadPartnerWorkloads(): void {
+    this.availablePartners.forEach(partner => {
+      this.assignmentService.getActiveAssignments(partner.id)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (response) => {
+            if (response && response.data) {
+              this.partnerAssignments[partner.id] = response.data.length;
+            } else {
+              this.partnerAssignments[partner.id] = 0;
+            }
+          },
+          error: (error) => {
+            console.error(`Error loading assignments for partner ${partner.id}:`, error);
+            this.partnerAssignments[partner.id] = 0;
+          }
+        });
+    });
+  }
+
+  assignToPartner(orderId: number, partnerId: number): void {
+    const assignmentRequest = {
+      orderId: orderId,
+      deliveryPartnerId: partnerId,
+      notes: 'Assigned from order management dashboard'
+    };
+
+    this.assignmentService.assignOrder(assignmentRequest)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          console.log('Order assigned successfully:', response);
+          this.snackBar.open('Order assigned to delivery partner!', 'Close', { duration: 3000 });
+          
+          Swal.fire({
+            title: 'Success!',
+            text: 'Order has been assigned to delivery partner.',
+            icon: 'success',
+            timer: 3000,
+            timerProgressBar: true
+          });
+
+          this.closeAssignmentModal();
+          this.loadAllData(); // Refresh orders
+        },
+        error: (error) => {
+          console.error('Error assigning order:', error);
+          this.snackBar.open('Failed to assign order. Please try again.', 'Close', { duration: 3000 });
+          
+          Swal.fire({
+            title: 'Error!',
+            text: 'Failed to assign order to delivery partner.',
+            icon: 'error'
+          });
+        }
+      });
+  }
+
+  getActiveOrdersCount(partnerId: number): number {
+    return this.partnerAssignments[partnerId] || 0;
+  }
+
+  getVehicleIcon(vehicleType: string): string {
+    switch (vehicleType) {
+      case 'BIKE': return '🏍️';
+      case 'SCOOTER': return '🛵';
+      case 'BICYCLE': return '🚲';
+      case 'CAR': return '🚗';
+      case 'AUTO': return '🛺';
+      default: return '🚚';
+    }
   }
 }

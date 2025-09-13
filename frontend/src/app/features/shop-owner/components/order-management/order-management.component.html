@@ -225,6 +225,12 @@
                       style="background-color: #4caf50; color: white;">
                 <mat-icon>check_circle</mat-icon>Ready for Pickup
               </button>
+              <button mat-raised-button class="action-btn" 
+                      *ngIf="order.status === 'READY' || order.status === 'READY_FOR_PICKUP'"
+                      (click)="assignDeliveryPartner(order)"
+                      style="background-color: #ff9800; color: white;">
+                <mat-icon>local_shipping</mat-icon>Assign Partner
+              </button>
               <button mat-button class="details-btn" (click)="viewOrderDetails(order)">
                 <mat-icon>visibility</mat-icon>Details
               </button>
@@ -290,4 +296,70 @@
       </div>
     </mat-tab>
   </mat-tab-group>
+</div>
+
+<!-- Partner Assignment Modal -->
+<div class="modal-overlay" *ngIf="showAssignmentModal" (click)="closeAssignmentModal()">
+  <div class="assignment-modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Assign Delivery Partner</h3>
+      <button mat-icon-button (click)="closeAssignmentModal()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+    
+    <div class="modal-body" *ngIf="selectedOrder">
+      <div class="order-summary">
+        <h4>Order #{{selectedOrder.orderNumber}}</h4>
+        <p><strong>Customer:</strong> {{selectedOrder.customerName}}</p>
+        <p><strong>Total:</strong> ₹{{selectedOrder.totalAmount}}</p>
+        <p><strong>Address:</strong> {{selectedOrder.deliveryAddress}}</p>
+      </div>
+      
+      <div class="partners-section">
+        <h4>Available Delivery Partners</h4>
+        <div class="loading" *ngIf="loadingPartners">
+          <mat-spinner diameter="30"></mat-spinner>
+          <span>Loading partners...</span>
+        </div>
+        
+        <div class="partner-list" *ngIf="!loadingPartners">
+          <div *ngFor="let partner of availablePartners" 
+               class="partner-card"
+               [class.online]="partner.isOnline"
+               [class.offline]="!partner.isOnline">
+            
+            <div class="partner-info">
+              <div class="partner-header">
+                <h5>{{partner.fullName}}</h5>
+                <div class="status-indicators">
+                  <span class="status" [class.online]="partner.isOnline">
+                    {{partner.isOnline ? 'Online' : 'Offline'}}
+                  </span>
+                  <span class="rating">⭐ {{partner.rating}}</span>
+                </div>
+              </div>
+              
+              <div class="partner-details">
+                <span class="vehicle">{{getVehicleIcon(partner.vehicleType)}} {{partner.vehicleType}}</span>
+                <span class="workload">{{getActiveOrdersCount(partner.id)}} active orders</span>
+              </div>
+            </div>
+            
+            <button mat-raised-button 
+                    color="primary"
+                    [disabled]="!partner.isOnline"
+                    (click)="assignToPartner(selectedOrder.id, partner.id)">
+              {{partner.isOnline ? 'Assign Order' : 'Unavailable'}}
+            </button>
+          </div>
+          
+          <div *ngIf="availablePartners.length === 0" class="no-partners">
+            <mat-icon>person_off</mat-icon>
+            <p>No delivery partners available</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>

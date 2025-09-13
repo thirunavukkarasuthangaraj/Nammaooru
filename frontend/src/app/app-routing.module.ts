@@ -6,6 +6,8 @@ import { UserRole } from './core/models/auth.model';
 import { UnauthorizedComponent } from './shared/components/unauthorized/unauthorized.component';
 import { MainLayoutComponent } from './layout/main-layout/main-layout.component';
 import { RoleTestComponent } from './shared/components/role-test/role-test.component';
+import { PrivacyPolicyComponent } from './shared/components/privacy-policy/privacy-policy.component';
+import { TermsConditionsComponent } from './shared/components/terms-conditions/terms-conditions.component';
 
 const routes: Routes = [
   {
@@ -16,6 +18,14 @@ const routes: Routes = [
   {
     path: 'auth',
     loadChildren: () => import('./features/auth/auth.module').then(m => m.AuthModule)
+  },
+  {
+    path: 'privacy-policy',
+    component: PrivacyPolicyComponent
+  },
+  {
+    path: 'terms-conditions',
+    component: TermsConditionsComponent
   },
   {
     path: 'role-test',

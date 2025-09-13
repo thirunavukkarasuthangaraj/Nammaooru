@@ -783,8 +783,8 @@ export class NotificationsComponent implements OnInit {
     return this.orderService.getOrdersByShop(String(shopId || ''), 0, 20)
       .pipe(
         switchMap(orderPage => {
-          const pendingOrders = orderPage.content.filter(order => order.status === 'PENDING');
-          const notifications: ShopNotification[] = pendingOrders.map(order => ({
+          const pendingOrders = orderPage.data.content.filter((order: any) => order.status === 'PENDING');
+          const notifications: ShopNotification[] = pendingOrders.map((order: any) => ({
             id: order.id,
             title: 'New Order Received',
             message: `You have received a new order ${order.orderNumber} from ${order.customerName} worth ₹${order.totalAmount}`,

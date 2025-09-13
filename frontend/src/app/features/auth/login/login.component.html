@@ -141,8 +141,13 @@
     </mat-card>
   </div>
 
-  <!-- Version Footer -->
-  <div class="version-footer">
+  <!-- Legal Footer -->
+  <div class="legal-footer">
+    <div class="legal-links">
+      <a routerLink="/privacy-policy" class="legal-link">Privacy Policy</a>
+      <span class="separator">•</span>
+      <a routerLink="/terms-conditions" class="legal-link">Terms & Conditions</a>
+    </div>
     <span class="version-text">{{ versionService.getVersion() }}</span>
   </div>
 </div>

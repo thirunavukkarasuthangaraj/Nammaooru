@@ -1,9 +1,5 @@
 package com.shopmanagement.service;
 
-import com.shopmanagement.delivery.entity.OrderAssignment;
-import com.shopmanagement.delivery.entity.PartnerEarning;
-import com.shopmanagement.delivery.repository.OrderAssignmentRepository;
-import com.shopmanagement.delivery.repository.PartnerEarningRepository;
 import com.shopmanagement.entity.Order;
 import com.shopmanagement.entity.OrderItem;
 import com.shopmanagement.repository.OrderRepository;
@@ -27,8 +23,6 @@ import java.util.stream.Collectors;
 public class InvoiceService {
 
     private final OrderRepository orderRepository;
-    private final OrderAssignmentRepository assignmentRepository;
-    private final PartnerEarningRepository earningRepository;
     private final EmailService emailService;
 
     @Transactional(readOnly = true)
@@ -39,8 +33,8 @@ public class InvoiceService {
                 .orElseThrow(() -> new RuntimeException("Order not found"));
 
         // Get delivery assignment for distance and partner info
-        OrderAssignment assignment = assignmentRepository.findByOrderId(orderId).stream().findFirst().orElse(null);
-        PartnerEarning earning = null; // assignment != null ? 
+        // OrderAssignment assignment = assignmentRepository.findByOrderId(orderId).stream().findFirst().orElse(null);
+        // PartnerEarning earning = null; // assignment != null ? 
             // earningRepository.findByOrderAssignment(assignment).orElse(null) : null;
 
         Map<String, Object> invoiceData = new HashMap<>();
@@ -71,21 +65,21 @@ public class InvoiceService {
         invoiceData.put("orderStatus", order.getStatus().name());
         invoiceData.put("paymentStatus", order.getPaymentStatus().name());
 
-        // Delivery information
-        if (assignment != null) {
-            invoiceData.put("distanceCovered", earning != null && earning.getDistanceCovered() != null ? 
-                earning.getDistanceCovered() : calculateEstimatedDistance(order));
-            invoiceData.put("deliveryTime", calculateDeliveryTime(assignment));
-            invoiceData.put("deliveryPartnerName", assignment.getDeliveryPartner().getFullName());
-            invoiceData.put("vehicleType", assignment.getDeliveryPartner().getVehicleType().name());
-            invoiceData.put("vehicleNumber", assignment.getDeliveryPartner().getVehicleNumber());
-        } else {
+        // Delivery information - commented out due to delivery package removal
+        // if (assignment != null) {
+        //     invoiceData.put("distanceCovered", earning != null && earning.getDistanceCovered() != null ? 
+        //         earning.getDistanceCovered() : calculateEstimatedDistance(order));
+        //     invoiceData.put("deliveryTime", calculateDeliveryTime(assignment));
+        //     invoiceData.put("deliveryPartnerName", assignment.getDeliveryPartner().getFullName());
+        //     invoiceData.put("vehicleType", assignment.getDeliveryPartner().getVehicleType().name());
+        //     invoiceData.put("vehicleNumber", assignment.getDeliveryPartner().getVehicleNumber());
+        // } else {
             invoiceData.put("distanceCovered", BigDecimal.ZERO);
             invoiceData.put("deliveryTime", "N/A");
             invoiceData.put("deliveryPartnerName", "Not Assigned");
             invoiceData.put("vehicleType", "N/A");
             invoiceData.put("vehicleNumber", "N/A");
-        }
+        // }
 
         // Order items
         List<Map<String, Object>> itemsList = order.getOrderItems().stream()
@@ -183,13 +177,13 @@ public class InvoiceService {
         return order.getDeliveryFee().divide(BigDecimal.valueOf(4), 2, RoundingMode.HALF_UP); // Assume ₹4 per km
     }
 
-    private String calculateDeliveryTime(OrderAssignment assignment) {
-        if (assignment.getPickupTime() != null && assignment.getDeliveryTime() != null) {
-            long minutes = java.time.Duration.between(assignment.getPickupTime(), assignment.getDeliveryTime()).toMinutes();
-            return minutes + " minutes";
-        }
-        return "N/A";
-    }
+    // private String calculateDeliveryTime(OrderAssignment assignment) {
+    //     if (assignment.getPickupTime() != null && assignment.getDeliveryTime() != null) {
+    //         long minutes = java.time.Duration.between(assignment.getPickupTime(), assignment.getDeliveryTime()).toMinutes();
+    //         return minutes + " minutes";
+    //     }
+    //     return "N/A";
+    // }
 
     @Transactional(readOnly = true)
     public List<Map<String, Object>> generateMonthlyInvoiceReport(int year, int month) {

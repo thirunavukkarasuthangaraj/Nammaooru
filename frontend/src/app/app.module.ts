@@ -55,6 +55,8 @@ import { SharedModule } from './shared/shared.module';
 import { HeaderComponent } from './shared/components/header/header.component';
 import { FooterComponent } from './shared/components/footer/footer.component';
 import { LoadingComponent } from './shared/components/loading/loading.component';
+import { PrivacyPolicyComponent } from './shared/components/privacy-policy/privacy-policy.component';
+import { TermsConditionsComponent } from './shared/components/terms-conditions/terms-conditions.component';
 
 // Layout
 import { LayoutModule } from './layout/layout.module';
@@ -68,7 +70,9 @@ import { ShopModule } from './features/shop/shop.module';
     AppComponent,
     HeaderComponent,
     FooterComponent,
-    LoadingComponent
+    LoadingComponent,
+    PrivacyPolicyComponent,
+    TermsConditionsComponent
   ],
   imports: [
     BrowserModule,

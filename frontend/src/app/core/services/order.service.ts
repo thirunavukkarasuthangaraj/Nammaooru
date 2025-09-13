@@ -61,11 +61,13 @@ export interface OrderItemResponse {
 }
 
 export interface PageResponse<T> {
-  content: T[];
-  totalElements: number;
-  totalPages: number;
-  size: number;
-  number: number;
+  data: {
+    content: T[];
+    totalElements: number;
+    totalPages: number;
+    size: number;
+    number: number;
+  };
 }
 
 @Injectable({
@@ -150,8 +152,8 @@ export class OrderService {
   }
 
   rejectOrder(orderId: number, reason: string): Observable<OrderResponse> {
-    const params = new HttpParams().set('reason', reason);
-    return this.http.post<OrderResponse>(`${this.apiUrl}/${orderId}/reject`, {}, { params });
+    const body = { reason: reason };
+    return this.http.post<OrderResponse>(`${this.apiUrl}/${orderId}/reject`, body);
   }
 
   markOrderAsReady(orderId: number): Observable<OrderResponse> {

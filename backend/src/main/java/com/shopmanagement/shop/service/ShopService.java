@@ -713,7 +713,7 @@ public class ShopService {
                 .customerName(order.getCustomer() != null ? 
                     order.getCustomer().getFirstName() + " " + order.getCustomer().getLastName() : null)
                 .customerEmail(order.getCustomer() != null ? order.getCustomer().getEmail() : null)
-                .customerPhone(order.getCustomer() != null ? order.getCustomer().getPhone() : null)
+                .customerPhone(order.getCustomer() != null ? order.getCustomer().getMobileNumber() : null)
                 .shopId(order.getShop() != null ? order.getShop().getId() : null)
                 .shopName(order.getShop() != null ? order.getShop().getName() : null)
                 .shopAddress(order.getShop() != null ? order.getShop().getAddressLine1() : null)

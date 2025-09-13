@@ -69,8 +69,8 @@ export class OrderListComponent implements OnInit, OnDestroy {
     this.loading = true;
     this.orderService.getAllOrders(this.currentPage, this.pageSize).subscribe({
       next: (response) => {
-        this.dataSource.data = response.content;
-        this.totalOrders = response.totalElements;
+        this.dataSource.data = response.data.content;
+        this.totalOrders = response.data.totalElements;
         this.loading = false;
       },
       error: (error) => {
@@ -446,15 +446,17 @@ export class OrderListComponent implements OnInit, OnDestroy {
     ];
 
     const mockResponse: PageResponse<OrderResponse> = {
-      content: mockOrders,
-      totalElements: mockOrders.length,
-      totalPages: 1,
-      size: 20,
-      number: 0
+      data: {
+        content: mockOrders,
+        totalElements: mockOrders.length,
+        totalPages: 1,
+        size: 20,
+        number: 0
+      }
     };
 
-    this.dataSource.data = mockResponse.content;
-    this.totalOrders = mockResponse.totalElements;
+    this.dataSource.data = mockResponse.data.content;
+    this.totalOrders = mockResponse.data.totalElements;
     
     this.snackBar.open('Loaded mock data - API not available', 'Close', { duration: 3000 });
   }
@@ -593,10 +595,10 @@ export class OrderListComponent implements OnInit, OnDestroy {
     this.orderService.getAllOrders(this.currentPage, this.pageSize).subscribe({
       next: (response) => {
         const currentOrderCount = this.dataSource.data.length;
-        const newOrderCount = response.content.length;
+        const newOrderCount = response.data.content.length;
         
-        this.dataSource.data = response.content;
-        this.totalOrders = response.totalElements;
+        this.dataSource.data = response.data.content;
+        this.totalOrders = response.data.totalElements;
         
         // Show toast if new orders arrived
         if (newOrderCount > currentOrderCount) {
