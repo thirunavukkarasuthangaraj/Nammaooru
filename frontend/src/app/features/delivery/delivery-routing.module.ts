@@ -9,6 +9,7 @@ import { AdminPartnersComponent } from './components/admin-partners/admin-partne
 import { OrderTrackingComponent } from './components/order-tracking/order-tracking.component';
 import { PartnerOrdersComponent } from './components/partner-orders/partner-orders.component';
 import { DeliveryAnalyticsComponent } from './components/delivery-analytics/delivery-analytics.component';
+import { SimpleDocumentViewerComponent } from './components/simple-document-viewer/simple-document-viewer.component';
 
 const routes: Routes = [
   {
@@ -58,10 +59,16 @@ const routes: Routes = [
     path: 'analytics',
     component: DeliveryAnalyticsComponent,
     canActivate: [AuthGuard, RoleGuard],
-    data: { 
+    data: {
       expectedRoles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER'],
       title: 'Delivery Analytics'
     }
+  },
+  {
+    path: 'documents/view/:id/:name',
+    component: SimpleDocumentViewerComponent,
+    canActivate: [AuthGuard],
+    title: 'View Documents'
   },
   {
     path: 'admin/assignments',

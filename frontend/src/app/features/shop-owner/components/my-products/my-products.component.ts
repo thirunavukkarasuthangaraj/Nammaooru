@@ -375,7 +375,7 @@ export class MyProductsComponent implements OnInit, OnDestroy {
     }
     
     // For relative URLs, use the base server URL (without /api) for file serving
-    // Extract base URL from apiUrl (remove '/api' part) - e.g., http://localhost:8082/api -> http://localhost:8082
+    // Extract base URL from apiUrl (remove '/api' part) - e.g., http://localhost:8080/api -> http://localhost:8082
     const baseUrl = this.apiUrl.replace('/api', '');
     
     // Ensure proper path format

@@ -60,7 +60,25 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAuthentication();
+    });
     _loadSavedAddress();
+  }
+
+  void _checkAuthentication() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (!authProvider.isAuthenticated) {
+      Navigator.pop(context); // Go back to cart/previous screen
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please log in to continue checkout'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      // Navigate to login screen using GoRouter
+      Navigator.pushNamed(context, '/login');
+    }
   }
 
   @override
@@ -810,7 +828,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       
       // Ensure user is authenticated before placing order
       if (!authProvider.isAuthenticated) {
-        throw Exception('Please log in to place an order');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please log in to place an order'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          Navigator.pushNamed(context, '/login');
+        }
+        return;
       }
       
       print('🔍 Debug - User authenticated with userId: ${authProvider.userId}'); 

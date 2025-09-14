@@ -5,10 +5,11 @@ import 'package:shimmer/shimmer.dart';
 import '../../../shared/widgets/custom_app_bar.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/error_widget.dart';
-import '../../../shared/models/product_model.dart';
+import '../../../core/models/product_model.dart';
 import '../../../shared/providers/cart_provider.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/utils/helpers.dart';
+import '../../../core/utils/image_url_helper.dart';
 import 'product_detail_screen.dart';
 
 class ProductsScreen extends StatefulWidget {
@@ -85,7 +86,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
         category: ['Vegetables', 'Fruits', 'Dairy', 'Snacks'][index % 4],
         shopId: 'shop_${index % 3}',
         shopName: 'Shop ${index % 3 + 1}',
-        images: ['https://via.placeholder.com/300x300'],
+        images: ['/api/uploads/products/product_${index + 1}.jpg'],
         stockQuantity: 10 + index,
         unit: 'kg',
         rating: 3.5 + (index % 2 * 0.8),
@@ -103,15 +104,15 @@ class _ProductsScreenState extends State<ProductsScreen> {
         final matchesSearch = product.name.toLowerCase().contains(query) ||
             product.description.toLowerCase().contains(query) ||
             product.category.toLowerCase().contains(query);
-            
-        final matchesCategory = _selectedCategory == null || 
+
+        final matchesCategory = _selectedCategory == null ||
             product.category == _selectedCategory;
-            
-        final matchesPrice = product.effectivePrice >= _minPrice && 
+
+        final matchesPrice = product.effectivePrice >= _minPrice &&
             product.effectivePrice <= _maxPrice;
-            
+
         final matchesStock = !_inStockOnly || product.isInStock;
-        
+
         return matchesSearch && matchesCategory && matchesPrice && matchesStock;
       }).toList();
       
@@ -310,9 +311,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     top: Radius.circular(12),
                   ),
                   child: CachedNetworkImage(
-                    imageUrl: product.images.isNotEmpty 
-                        ? product.images.first 
-                        : 'https://via.placeholder.com/300x300',
+                    imageUrl: ImageUrlHelper.getFullImageUrl(
+                        product.images.isNotEmpty ? product.images.first : null),
                     fit: BoxFit.cover,
                     placeholder: (context, url) => Shimmer.fromColors(
                       baseColor: Colors.grey[300]!,
@@ -401,9 +401,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
         leading: ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: CachedNetworkImage(
-            imageUrl: product.images.isNotEmpty 
-                ? product.images.first 
-                : 'https://via.placeholder.com/80x80',
+            imageUrl: ImageUrlHelper.getFullImageUrl(
+                product.images.isNotEmpty ? product.images.first : null),
             width: 60,
             height: 60,
             fit: BoxFit.cover,
@@ -464,8 +463,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
         if (cartItem == null) {
           return IconButton(
             icon: const Icon(Icons.add_shopping_cart),
-            onPressed: product.isInStock 
-                ? () => cartProvider.addToCart(product) 
+            onPressed: product.isInStock
+                ? () => cartProvider.addToCart(product)
                 : null,
             color: AppColors.primary,
           );

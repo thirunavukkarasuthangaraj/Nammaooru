@@ -53,7 +53,7 @@
 
         .title {
             text-align: center;
-            margin-bottom: 40px;
+            margin-bottom: 30px;
         }
 
         .title h1 {
@@ -66,6 +66,51 @@
         .title p {
             font-size: 16px;
             color: #666;
+        }
+
+        .login-tabs {
+            display: flex;
+            background: rgba(255, 152, 0, 0.1);
+            border-radius: 15px;
+            margin-bottom: 30px;
+            padding: 5px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: transparent;
+            color: #666;
+        }
+
+        .tab-btn.active {
+            background: #FF9800;
+            color: white;
+            box-shadow: 0 2px 10px rgba(255, 152, 0, 0.3);
+        }
+
+        .form-container {
+            position: relative;
+        }
+
+        .form-section {
+            display: none;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .form-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .form-group {
@@ -115,6 +160,16 @@
             padding-left: 85px !important;
         }
 
+        .password-toggle {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #666;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
         .btn-primary {
             width: 100%;
             padding: 15px;
@@ -146,6 +201,21 @@
             font-size: 14px;
             cursor: pointer;
             margin-top: 15px;
+            text-decoration: underline;
+        }
+
+        .forgot-password {
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .forgot-password a {
+            color: #FF9800;
+            font-size: 14px;
+            text-decoration: none;
+        }
+
+        .forgot-password a:hover {
             text-decoration: underline;
         }
 
@@ -218,72 +288,133 @@
     <div class="mobile-container">
         <div class="screen">
             <div class="logo">🏪</div>
-            
+
             <div class="title">
                 <h1>NammaOoru Shop</h1>
                 <p>Owner Portal</p>
             </div>
 
-            <form id="loginForm">
-                <div class="form-group">
-                    <div class="input-container">
-                        <span class="input-icon">📱</span>
-                        <span class="prefix-text">+91 </span>
-                        <input type="tel" 
-                               id="phoneNumber" 
-                               class="phone-input" 
-                               placeholder="Mobile Number" 
-                               maxlength="10"
-                               required>
-                    </div>
+            <div class="login-tabs">
+                <button class="tab-btn active" onclick="switchLoginMethod('phone')" id="phoneTab">
+                    📱 Phone OTP
+                </button>
+                <button class="tab-btn" onclick="switchLoginMethod('email')" id="emailTab">
+                    📧 Email Login
+                </button>
+            </div>
+
+            <div class="form-container">
+                <!-- Phone OTP Login Form -->
+                <div class="form-section active" id="phoneLoginForm">
+                    <form id="phoneForm">
+                        <div class="form-group">
+                            <div class="input-container">
+                                <span class="input-icon">📱</span>
+                                <span class="prefix-text">+91 </span>
+                                <input type="tel"
+                                       id="phoneNumber"
+                                       class="phone-input"
+                                       placeholder="Mobile Number"
+                                       maxlength="10"
+                                       required>
+                            </div>
+                        </div>
+
+                        <div class="form-group otp-section" id="otpSection">
+                            <div class="success-message" id="otpMessage">
+                                OTP sent to +91 <span id="phoneDisplay"></span>
+                            </div>
+                            <div class="input-container">
+                                <span class="input-icon">🔐</span>
+                                <input type="number"
+                                       id="otpInput"
+                                       placeholder="Enter 6-digit OTP"
+                                       maxlength="6">
+                            </div>
+                        </div>
+
+                        <div class="form-group shop-info" id="shopInfo" style="display: none;">
+                            <div class="shop-name">🏪 Pizza Palace</div>
+                            <div class="shop-details">
+                                📍 MG Road, Bangalore<br>
+                                ⭐ 4.5 Rating (234 reviews)<br>
+                                📞 +91 98765 43210
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <button type="submit" class="btn-primary" id="phoneSubmitBtn">
+                                SEND OTP
+                            </button>
+                        </div>
+
+                        <div class="form-group" id="resendSection" style="display: none;">
+                            <button type="button" class="btn-secondary" onclick="resendOtp()">
+                                Resend OTP
+                            </button>
+                        </div>
+                    </form>
                 </div>
 
-                <div class="form-group otp-section" id="otpSection">
-                    <div class="success-message" id="otpMessage">
-                        OTP sent to +91 <span id="phoneDisplay"></span>
-                    </div>
-                    <div class="input-container">
-                        <span class="input-icon">🔐</span>
-                        <input type="number" 
-                               id="otpInput" 
-                               placeholder="Enter 6-digit OTP" 
-                               maxlength="6">
-                    </div>
-                </div>
+                <!-- Email Password Login Form -->
+                <div class="form-section" id="emailLoginForm">
+                    <form id="emailForm">
+                        <div class="form-group">
+                            <div class="input-container">
+                                <span class="input-icon">📧</span>
+                                <input type="email"
+                                       id="emailAddress"
+                                       placeholder="Email Address"
+                                       required>
+                            </div>
+                        </div>
 
-                <div class="form-group shop-info" id="shopInfo" style="display: none;">
-                    <div class="shop-name">🏪 Pizza Palace</div>
-                    <div class="shop-details">
-                        📍 MG Road, Bangalore<br>
-                        ⭐ 4.5 Rating (234 reviews)<br>
-                        📞 +91 98765 43210
-                    </div>
-                </div>
+                        <div class="form-group">
+                            <div class="input-container">
+                                <span class="input-icon">🔒</span>
+                                <input type="password"
+                                       id="password"
+                                       placeholder="Password"
+                                       required>
+                                <span class="password-toggle" onclick="togglePassword()" id="passwordToggle">👁️</span>
+                            </div>
+                        </div>
 
-                <div class="form-group">
-                    <button type="submit" class="btn-primary" id="submitBtn">
-                        SEND OTP
-                    </button>
-                </div>
+                        <div class="form-group shop-info" id="emailShopInfo" style="display: none;">
+                            <div class="shop-name">🏪 Pizza Palace</div>
+                            <div class="shop-details">
+                                📍 MG Road, Bangalore<br>
+                                ⭐ 4.5 Rating (234 reviews)<br>
+                                📧 owner@pizzapalace.com
+                            </div>
+                        </div>
 
-                <div class="form-group" id="resendSection" style="display: none;">
-                    <button type="button" class="btn-secondary" onclick="resendOtp()">
-                        Resend OTP
-                    </button>
+                        <div class="form-group">
+                            <button type="submit" class="btn-primary" id="emailSubmitBtn">
+                                LOGIN
+                            </button>
+                        </div>
+
+                        <div class="forgot-password">
+                            <a href="#" onclick="forgotPassword()">Forgot Password?</a>
+                        </div>
+                    </form>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 
     <script>
         let otpSent = false;
         let loading = false;
+        let currentLoginMethod = 'phone';
 
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
+        // Handle phone form submission
+        document.getElementById('phoneForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            
+
             if (loading) return;
-            
+
             if (!otpSent) {
                 sendOtp();
             } else {
@@ -291,16 +422,57 @@
             }
         });
 
+        // Handle email form submission
+        document.getElementById('emailForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            if (loading) return;
+
+            loginWithEmail();
+        });
+
+        function switchLoginMethod(method) {
+            currentLoginMethod = method;
+
+            // Update tab states
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(method + 'Tab').classList.add('active');
+
+            // Show/hide forms
+            document.querySelectorAll('.form-section').forEach(section => section.classList.remove('active'));
+            document.getElementById(method + 'LoginForm').classList.add('active');
+
+            // Reset any previous states
+            resetForms();
+        }
+
+        function resetForms() {
+            otpSent = false;
+            loading = false;
+
+            // Reset phone form
+            document.getElementById('otpSection').classList.remove('active');
+            document.getElementById('shopInfo').style.display = 'none';
+            document.getElementById('resendSection').style.display = 'none';
+            document.getElementById('phoneSubmitBtn').innerHTML = 'SEND OTP';
+            document.getElementById('phoneSubmitBtn').disabled = false;
+
+            // Reset email form
+            document.getElementById('emailShopInfo').style.display = 'none';
+            document.getElementById('emailSubmitBtn').innerHTML = 'LOGIN';
+            document.getElementById('emailSubmitBtn').disabled = false;
+        }
+
         function sendOtp() {
             const phoneNumber = document.getElementById('phoneNumber').value;
-            
+
             if (phoneNumber.length !== 10) {
                 alert('Please enter a valid 10-digit mobile number');
                 return;
             }
 
             loading = true;
-            const submitBtn = document.getElementById('submitBtn');
+            const submitBtn = document.getElementById('phoneSubmitBtn');
             submitBtn.innerHTML = '<span class="loading"></span>';
             submitBtn.disabled = true;
 
@@ -308,12 +480,12 @@
             setTimeout(() => {
                 loading = false;
                 otpSent = true;
-                
+
                 document.getElementById('phoneDisplay').textContent = phoneNumber;
                 document.getElementById('otpSection').classList.add('active');
                 document.getElementById('shopInfo').style.display = 'block';
                 document.getElementById('resendSection').style.display = 'block';
-                
+
                 submitBtn.innerHTML = 'VERIFY OTP';
                 submitBtn.disabled = false;
             }, 2000);
@@ -321,40 +493,114 @@
 
         function verifyOtp() {
             const otp = document.getElementById('otpInput').value;
-            
+
             if (otp.length !== 6) {
                 alert('Please enter a valid 6-digit OTP');
                 return;
             }
 
             loading = true;
-            const submitBtn = document.getElementById('submitBtn');
+            const submitBtn = document.getElementById('phoneSubmitBtn');
             submitBtn.innerHTML = '<span class="loading"></span>';
             submitBtn.disabled = true;
 
             // Simulate API call
             setTimeout(() => {
                 loading = false;
-                alert('✅ Login successful! Welcome to Pizza Palace dashboard...');
+                alert('✅ Phone Login successful! Welcome to Pizza Palace dashboard...');
                 // In real app: window.location.href = 'dashboard.html';
             }, 2000);
         }
 
-        function resendOtp() {
-            const phoneNumber = document.getElementById('phoneNumber').value;
-            alert(`OTP resent to +91 ${phoneNumber}`);
+        function loginWithEmail() {
+            const email = document.getElementById('emailAddress').value;
+            const password = document.getElementById('password').value;
+
+            if (!email || !password) {
+                alert('Please enter both email and password');
+                return;
+            }
+
+            if (!isValidEmail(email)) {
+                alert('Please enter a valid email address');
+                return;
+            }
+
+            loading = true;
+            const submitBtn = document.getElementById('emailSubmitBtn');
+            submitBtn.innerHTML = '<span class="loading"></span>';
+            submitBtn.disabled = true;
+
+            // Simulate API call
+            setTimeout(() => {
+                loading = false;
+
+                // Show shop info for email login
+                document.getElementById('emailShopInfo').style.display = 'block';
+
+                // Simulate successful login
+                setTimeout(() => {
+                    alert('✅ Email Login successful! Welcome to Pizza Palace dashboard...');
+                    // In real app: window.location.href = 'dashboard.html';
+                }, 1000);
+
+                submitBtn.innerHTML = 'LOGIN';
+                submitBtn.disabled = false;
+            }, 2000);
         }
 
-        // Auto-focus next input
+        function isValidEmail(email) {
+            const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailPattern.test(email);
+        }
+
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const toggleIcon = document.getElementById('passwordToggle');
+
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.textContent = '🙈';
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.textContent = '👁️';
+            }
+        }
+
+        function forgotPassword() {
+            const email = document.getElementById('emailAddress').value;
+            if (email) {
+                alert(`🔐 Password reset link sent to: ${email}\n\nPlease check your email and follow the instructions to reset your password.`);
+            } else {
+                alert('🔐 Forgot Password\n\nPlease enter your email address first, then click "Forgot Password?" to receive reset instructions.');
+            }
+        }
+
+        function resendOtp() {
+            const phoneNumber = document.getElementById('phoneNumber').value;
+            alert(`📱 OTP resent to +91 ${phoneNumber}`);
+        }
+
+        // Auto-focus functionality
         document.getElementById('phoneNumber').addEventListener('input', function(e) {
             if (e.target.value.length === 10 && !otpSent) {
-                document.getElementById('submitBtn').focus();
+                document.getElementById('phoneSubmitBtn').focus();
             }
         });
 
         document.getElementById('otpInput').addEventListener('input', function(e) {
             if (e.target.value.length === 6) {
-                document.getElementById('submitBtn').focus();
+                document.getElementById('phoneSubmitBtn').focus();
+            }
+        });
+
+        // Email validation on blur
+        document.getElementById('emailAddress').addEventListener('blur', function(e) {
+            const email = e.target.value;
+            if (email && !isValidEmail(email)) {
+                e.target.style.borderColor = '#f44336';
+            } else {
+                e.target.style.borderColor = '#ddd';
             }
         });
 

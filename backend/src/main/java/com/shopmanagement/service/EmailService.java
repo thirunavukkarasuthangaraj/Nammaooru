@@ -424,11 +424,13 @@ public class EmailService {
     }
 
     // User management email methods
-    public void sendWelcomeEmail(String to, String fullName, String username) {
+    public void sendWelcomeEmail(String to, String fullName, String username, String password) {
         try {
             Map<String, Object> variables = Map.of(
                 "fullName", fullName,
                 "username", username,
+                "email", to,
+                "password", password,
                 "loginUrl", loginUrl,
                 "supportEmail", emailProperties.getFrom(),
                 "companyName", "NammaOoru"

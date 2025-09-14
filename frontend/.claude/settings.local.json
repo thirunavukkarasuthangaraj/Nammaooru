@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//d/AAWS/nammaooru/shop-management-system/mobile_apps/html_mockups/shop_owner/**)",
+      "Bash(find:*)",
+      "Read(//d/AAWS/nammaooru/shop-management-system/backend/**)",
+      "Bash(ng build)",
+      "Read(//d/AAWS/nammaooru/shop-management-system/**)",
+      "Bash(npm start)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

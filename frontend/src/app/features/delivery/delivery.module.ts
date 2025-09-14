@@ -46,6 +46,9 @@ import { EarningsOverviewComponent } from './components/earnings-overview/earnin
 import { AvailableOrdersComponent } from './components/available-orders/available-orders.component';
 import { PartnerDetailsDialogComponent } from './components/partner-details-dialog/partner-details-dialog.component';
 import { DocumentVerificationDialogComponent } from './components/document-verification-dialog/document-verification-dialog.component';
+import { DeliveryPartnerDocumentsComponent } from './components/delivery-partner-documents/delivery-partner-documents.component';
+import { DeliveryPartnerDocumentViewerComponent } from './components/delivery-partner-document-viewer/delivery-partner-document-viewer.component';
+import { SimpleDocumentViewerComponent } from './components/simple-document-viewer/simple-document-viewer.component';
 
 // Services
 import { DeliveryPartnerService } from './services/delivery-partner.service';
@@ -68,7 +71,10 @@ import { DeliveryAssignmentService } from './services/delivery-assignment.servic
     EarningsOverviewComponent,
     AvailableOrdersComponent,
     PartnerDetailsDialogComponent,
-    DocumentVerificationDialogComponent
+    DocumentVerificationDialogComponent,
+    DeliveryPartnerDocumentsComponent,
+    DeliveryPartnerDocumentViewerComponent,
+    SimpleDocumentViewerComponent
   ],
   imports: [
     CommonModule,
@@ -110,6 +116,10 @@ import { DeliveryAssignmentService } from './services/delivery-assignment.servic
     OrderAssignmentService,
     DeliveryTrackingService,
     DeliveryAssignmentService
+  ],
+  exports: [
+    DeliveryPartnerDocumentsComponent,
+    DeliveryPartnerDocumentViewerComponent
   ]
 })
 export class DeliveryModule { }

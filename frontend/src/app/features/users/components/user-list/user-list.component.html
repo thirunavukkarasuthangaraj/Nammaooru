@@ -97,12 +97,36 @@
         <mat-header-cell *matHeaderCellDef mat-sort-header>Status</mat-header-cell>
         <mat-cell *matCellDef="let user">
           <div class="status-container">
-            <mat-chip 
-              [class]="'status-chip status-' + (user.isActive ? 'active' : 'inactive')"
-              [matTooltip]="getStatusTooltip(user)">
-              <mat-icon class="status-icon">{{ getStatusIcon(user) }}</mat-icon>
-              <span class="status-text">{{ getDisplayStatus(user) }}</span>
-            </mat-chip>
+            <!-- Delivery Partner Status Indicators -->
+            <div *ngIf="user.role === 'DELIVERY_PARTNER'; else generalStatus" class="delivery-status">
+              <!-- Online/Offline Status -->
+              <mat-chip
+                [class]="'status-chip online-status-' + (user.isOnline ? 'online' : 'offline')"
+                [matTooltip]="getOnlineStatusTooltip(user)">
+                <mat-icon class="status-icon">
+                  {{ user.isOnline ? 'wifi' : 'wifi_off' }}
+                </mat-icon>
+                <span class="status-text">{{ user.isOnline ? 'Online' : 'Offline' }}</span>
+              </mat-chip>
+
+              <!-- Ride Status for Online Partners -->
+              <mat-chip *ngIf="user.isOnline"
+                [class]="'status-chip ride-status-' + getRideStatusClass(user.rideStatus)"
+                [matTooltip]="getRideStatusTooltip(user.rideStatus)">
+                <mat-icon class="status-icon">{{ getRideStatusIcon(user.rideStatus) }}</mat-icon>
+                <span class="status-text">{{ getRideStatusDisplay(user.rideStatus) }}</span>
+              </mat-chip>
+            </div>
+
+            <!-- General User Status -->
+            <ng-template #generalStatus>
+              <mat-chip
+                [class]="'status-chip status-' + (user.isActive ? 'active' : 'inactive')"
+                [matTooltip]="getStatusTooltip(user)">
+                <mat-icon class="status-icon">{{ getStatusIcon(user) }}</mat-icon>
+                <span class="status-text">{{ getDisplayStatus(user) }}</span>
+              </mat-chip>
+            </ng-template>
           </div>
         </mat-cell>
       </ng-container>
@@ -154,7 +178,34 @@
                 <mat-icon>edit</mat-icon>
               </button>
               
-              <button mat-icon-button [matMenuTriggerFor]="menu" 
+              <!-- Document buttons for delivery partners - conditional based on document status -->
+              <ng-container *ngIf="user.role === 'DELIVERY_PARTNER'">
+                <!-- Show "View Documents" if documents exist -->
+                <button *ngIf="hasDocuments(user.id)"
+                        mat-raised-button
+                        (click)="viewDocuments(user)"
+                        matTooltip="View Uploaded Documents"
+                        color="primary"
+                        class="action-btn view-doc-btn"
+                        style="margin-right: 4px; font-size: 11px;">
+                  <mat-icon style="font-size: 16px;">folder_open</mat-icon>
+                  View Docs
+                </button>
+
+                <!-- Show "Add Documents" if no documents exist -->
+                <button *ngIf="!hasDocuments(user.id)"
+                        mat-raised-button
+                        (click)="addDocuments(user)"
+                        matTooltip="Add Documents"
+                        color="accent"
+                        class="action-btn add-doc-btn"
+                        style="margin-right: 4px; font-size: 11px;">
+                  <mat-icon style="font-size: 16px;">add_circle</mat-icon>
+                  Add Docs
+                </button>
+              </ng-container>
+
+              <button mat-icon-button [matMenuTriggerFor]="menu"
                       matTooltip="More Actions"
                       class="action-btn more-btn">
                 <mat-icon>more_vert</mat-icon>
@@ -162,10 +213,39 @@
             </div>
             
             <mat-menu #menu="matMenu" class="user-actions-menu">
+              <!-- Delivery Partner Document Management - conditional based on document status -->
+              <ng-container *ngIf="user.role === 'DELIVERY_PARTNER'">
+                <!-- If documents exist, show view and manage options -->
+                <ng-container *ngIf="hasDocuments(user.id)">
+                  <button mat-menu-item (click)="viewDocuments(user)" class="primary-menu-item">
+                    <mat-icon color="primary">folder_open</mat-icon>
+                    <span><strong>View Documents</strong></span>
+                  </button>
+                  <button mat-menu-item (click)="manageDocuments(user)">
+                    <mat-icon color="accent">upload_file</mat-icon>
+                    <span>Manage Documents</span>
+                  </button>
+                </ng-container>
+
+                <!-- If no documents, show add option prominently -->
+                <ng-container *ngIf="!hasDocuments(user.id)">
+                  <button mat-menu-item (click)="addDocuments(user)" class="primary-menu-item">
+                    <mat-icon color="accent">add_circle</mat-icon>
+                    <span><strong>Add Documents</strong></span>
+                  </button>
+                  <button mat-menu-item (click)="manageDocuments(user)">
+                    <mat-icon color="primary">upload_file</mat-icon>
+                    <span>Upload Documents</span>
+                  </button>
+                </ng-container>
+                <mat-divider></mat-divider>
+              </ng-container>
+
               <button mat-menu-item (click)="resetPassword(user)">
                 <mat-icon color="primary">lock_reset</mat-icon>
                 <span>Reset Password</span>
               </button>
+
               <mat-divider></mat-divider>
               <button mat-menu-item (click)="deleteUser(user)" class="delete-action">
                 <mat-icon color="warn">delete</mat-icon>

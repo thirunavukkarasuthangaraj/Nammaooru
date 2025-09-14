@@ -611,6 +611,8 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   void _proceedToCheckout() {
+    // Since CheckoutScreen now handles authentication checking in initState,
+    // we can proceed directly to it. The CheckoutScreen will redirect to login if needed.
     Navigator.push(
       context,
       MaterialPageRoute(

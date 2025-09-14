@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NammaOoru Shop - Analytics</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+        }
+
+        .mobile-container {
+            width: 100%;
+            max-width: 375px;
+            margin: 0 auto;
+            background: #f5f5f5;
+            min-height: 100vh;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            background: #FF9800;
+            color: white;
+            padding: 20px 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .back-btn {
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .date-filter {
+            background: rgba(255,255,255,0.2);
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .summary-cards {
+            padding: 15px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .summary-card {
+            background: white;
+            padding: 20px 15px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .summary-card.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .summary-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .summary-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .summary-value.revenue { color: #4CAF50; }
+        .summary-value.orders { color: #2196F3; }
+        .summary-value.rating { color: #FF9800; }
+        .summary-value.customers { color: #9C27B0; }
+
+        .summary-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .summary-change {
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        .summary-change.positive {
+            background: rgba(76, 175, 80, 0.1);
+            color: #4CAF50;
+        }
+
+        .summary-change.negative {
+            background: rgba(244, 67, 54, 0.1);
+            color: #f44336;
+        }
+
+        .content {
+            padding: 0 15px 100px;
+        }
+
+        .section {
+            background: white;
+            border-radius: 15px;
+            margin-bottom: 15px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .section-header {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .view-all {
+            font-size: 12px;
+            color: #FF9800;
+            cursor: pointer;
+        }
+
+        .chart-placeholder {
+            height: 200px;
+            background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 16px;
+            margin: 20px;
+            border-radius: 10px;
+        }
+
+        .top-products {
+            padding: 20px;
+        }
+
+        .product-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .product-item:last-child {
+            border-bottom: none;
+        }
+
+        .product-rank {
+            width: 24px;
+            height: 24px;
+            background: #FF9800;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .product-icon {
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .product-info {
+            flex: 1;
+        }
+
+        .product-name {
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .product-sales {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .product-revenue {
+            font-size: 14px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .time-stats {
+            padding: 20px;
+        }
+
+        .time-slot {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .time-label {
+            width: 80px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .time-bar {
+            flex: 1;
+            height: 8px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            margin: 0 10px;
+            overflow: hidden;
+        }
+
+        .time-fill {
+            height: 100%;
+            background: #FF9800;
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+
+        .time-value {
+            width: 40px;
+            font-size: 12px;
+            font-weight: bold;
+            color: #333;
+            text-align: right;
+        }
+
+        .insights-list {
+            padding: 20px;
+        }
+
+        .insight-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .insight-icon {
+            font-size: 20px;
+            margin-top: 2px;
+        }
+
+        .insight-text {
+            font-size: 14px;
+            color: #333;
+            line-height: 1.4;
+        }
+
+        .export-btn {
+            background: #FF9800;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 0 20px 20px;
+            width: calc(100% - 40px);
+            transition: all 0.3s;
+        }
+
+        .export-btn:hover {
+            background: #F57C00;
+            transform: translateY(-1px);
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 375px;
+            background: white;
+            display: flex;
+            border-top: 1px solid #eee;
+        }
+
+        .nav-item {
+            flex: 1;
+            padding: 12px 5px;
+            text-align: center;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .nav-item.active {
+            color: #FF9800;
+        }
+
+        .nav-item:hover {
+            background: #f5f5f5;
+        }
+
+        .nav-icon {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+
+        @media (max-width: 375px) {
+            .summary-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-container">
+        <div class="header">
+            <div class="header-left">
+                <div class="back-btn" onclick="window.location.href='dashboard.html'">←</div>
+                <h1>📊 Analytics & Reports</h1>
+            </div>
+            <div class="date-filter" onclick="showDateFilter()">This Month ▼</div>
+        </div>
+
+        <div class="summary-cards">
+            <div class="summary-card">
+                <div class="summary-icon">💰</div>
+                <div class="summary-value revenue">₹45,200</div>
+                <div class="summary-label">Total Revenue</div>
+                <div class="summary-change positive">+12.5%</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-icon">📦</div>
+                <div class="summary-value orders">156</div>
+                <div class="summary-label">Total Orders</div>
+                <div class="summary-change positive">+8.3%</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-icon">⭐</div>
+                <div class="summary-value rating">4.6</div>
+                <div class="summary-label">Avg Rating</div>
+                <div class="summary-change positive">+0.2</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-icon">👥</div>
+                <div class="summary-value customers">89</div>
+                <div class="summary-label">New Customers</div>
+                <div class="summary-change positive">+15.8%</div>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-title">📈 REVENUE TREND</div>
+                    <div class="view-all" onclick="viewDetailedChart()">View Details</div>
+                </div>
+                <div class="chart-placeholder">
+                    📊 Revenue Chart<br>
+                    <small>Daily earnings visualization</small>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-title">🏆 TOP SELLING PRODUCTS</div>
+                    <div class="view-all" onclick="viewAllProducts()">View All</div>
+                </div>
+                <div class="top-products">
+                    <div class="product-item">
+                        <div class="product-rank">1</div>
+                        <div class="product-icon">🍕</div>
+                        <div class="product-info">
+                            <div class="product-name">Margherita Pizza</div>
+                            <div class="product-sales">45 orders this month</div>
+                        </div>
+                        <div class="product-revenue">₹8,100</div>
+                    </div>
+                    <div class="product-item">
+                        <div class="product-rank">2</div>
+                        <div class="product-icon">🍔</div>
+                        <div class="product-info">
+                            <div class="product-name">Chicken Burger</div>
+                            <div class="product-sales">32 orders this month</div>
+                        </div>
+                        <div class="product-revenue">₹4,800</div>
+                    </div>
+                    <div class="product-item">
+                        <div class="product-rank">3</div>
+                        <div class="product-icon">🥤</div>
+                        <div class="product-info">
+                            <div class="product-name">Coca Cola</div>
+                            <div class="product-sales">58 orders this month</div>
+                        </div>
+                        <div class="product-revenue">₹3,480</div>
+                    </div>
+                    <div class="product-item">
+                        <div class="product-rank">4</div>
+                        <div class="product-icon">🍟</div>
+                        <div class="product-info">
+                            <div class="product-name">French Fries</div>
+                            <div class="product-sales">28 orders this month</div>
+                        </div>
+                        <div class="product-revenue">₹2,240</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-title">⏰ PEAK HOURS</div>
+                    <div class="view-all" onclick="viewHourlyDetails()">Details</div>
+                </div>
+                <div class="time-stats">
+                    <div class="time-slot">
+                        <div class="time-label">9-12 AM</div>
+                        <div class="time-bar">
+                            <div class="time-fill" style="width: 25%"></div>
+                        </div>
+                        <div class="time-value">8</div>
+                    </div>
+                    <div class="time-slot">
+                        <div class="time-label">12-3 PM</div>
+                        <div class="time-bar">
+                            <div class="time-fill" style="width: 65%"></div>
+                        </div>
+                        <div class="time-value">23</div>
+                    </div>
+                    <div class="time-slot">
+                        <div class="time-label">3-6 PM</div>
+                        <div class="time-bar">
+                            <div class="time-fill" style="width: 45%"></div>
+                        </div>
+                        <div class="time-value">15</div>
+                    </div>
+                    <div class="time-slot">
+                        <div class="time-label">6-9 PM</div>
+                        <div class="time-bar">
+                            <div class="time-fill" style="width: 90%"></div>
+                        </div>
+                        <div class="time-value">42</div>
+                    </div>
+                    <div class="time-slot">
+                        <div class="time-label">9-12 PM</div>
+                        <div class="time-bar">
+                            <div class="time-fill" style="width: 35%"></div>
+                        </div>
+                        <div class="time-value">12</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-title">💡 BUSINESS INSIGHTS</div>
+                </div>
+                <div class="insights-list">
+                    <div class="insight-item">
+                        <div class="insight-icon">🔥</div>
+                        <div class="insight-text">
+                            <strong>Peak time opportunity:</strong> Your busiest hour is 7-8 PM. Consider promoting combo deals during this time to increase average order value.
+                        </div>
+                    </div>
+                    <div class="insight-item">
+                        <div class="insight-icon">📈</div>
+                        <div class="insight-text">
+                            <strong>Growth trend:</strong> Your revenue has increased by 12.5% this month. Margherita Pizza is your top performer.
+                        </div>
+                    </div>
+                    <div class="insight-item">
+                        <div class="insight-icon">⚠️</div>
+                        <div class="insight-text">
+                            <strong>Low performance alert:</strong> Lunch hours (12-3 PM) show potential for growth. Consider special lunch offers.
+                        </div>
+                    </div>
+                    <div class="insight-item">
+                        <div class="insight-icon">👥</div>
+                        <div class="insight-text">
+                            <strong>Customer retention:</strong> 68% of your customers are repeat buyers. Implement a loyalty program to boost this further.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="export-btn" onclick="exportReport()">
+                📄 Export Monthly Report
+            </button>
+        </div>
+
+        <div class="bottom-nav">
+            <div class="nav-item" onclick="window.location.href='dashboard.html'">
+                <div class="nav-icon">🏠</div>
+                <div>Home</div>
+            </div>
+            <div class="nav-item" onclick="window.location.href='order-history.html'">
+                <div class="nav-icon">📋</div>
+                <div>Orders</div>
+            </div>
+            <div class="nav-item" onclick="window.location.href='products.html'">
+                <div class="nav-icon">🛍️</div>
+                <div>Products</div>
+            </div>
+            <div class="nav-item active">
+                <div class="nav-icon">📊</div>
+                <div>Analytics</div>
+            </div>
+            <div class="nav-item" onclick="window.location.href='profile.html'">
+                <div class="nav-icon">👤</div>
+                <div>Profile</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showDateFilter() {
+            const options = ['This Week', 'This Month', 'Last 3 Months', 'Custom Range'];
+            const choice = prompt(`Select time period:\n${options.map((opt, i) => `${i+1}. ${opt}`).join('\n')}`);
+
+            if (choice && choice >= 1 && choice <= 4) {
+                document.querySelector('.date-filter').textContent = options[choice-1] + ' ▼';
+                alert(`📅 Updating analytics for: ${options[choice-1]}`);
+            }
+        }
+
+        function viewDetailedChart() {
+            alert('📈 Opening detailed revenue chart...\n\nFeatures:\n• Daily/Weekly/Monthly views\n• Interactive data points\n• Export options\n• Trend analysis');
+        }
+
+        function viewAllProducts() {
+            alert('🏆 All Product Performance:\n\n1. Margherita Pizza - ₹8,100\n2. Chicken Burger - ₹4,800\n3. Coca Cola - ₹3,480\n4. French Fries - ₹2,240\n5. Pepperoni Pizza - ₹1,980\n\n+ 3 more products...');
+        }
+
+        function viewHourlyDetails() {
+            alert('⏰ Detailed Hourly Breakdown:\n\n🔥 Peak Hours:\n• 7-8 PM: 25 orders\n• 8-9 PM: 17 orders\n• 1-2 PM: 12 orders\n\n📊 Average prep time: 18 mins\n📈 Order acceptance rate: 96%');
+        }
+
+        function exportReport() {
+            alert('📄 Exporting Monthly Report...\n\n✅ Generating PDF report\n✅ Including charts and insights\n✅ Adding customer data\n\nReport will be emailed to: owner@pizzapalace.com');
+        }
+
+        // Simulate real-time data updates
+        setInterval(() => {
+            console.log('Updating analytics data...');
+        }, 30000);
+
+        // Add interactive chart functionality
+        document.querySelector('.chart-placeholder').addEventListener('click', function() {
+            alert('📊 Interactive Chart Features:\n\n• Tap data points for details\n• Swipe to change time period\n• Pinch to zoom\n• Long press for options');
+        });
+    </script>
+</body>
+</html>

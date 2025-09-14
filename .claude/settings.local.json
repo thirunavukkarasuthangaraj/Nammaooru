@@ -122,7 +122,15 @@
       "Bash(\"start chrome\" \"http://localhost:4200/shop-owner/orders\")",
       "Bash(keytool:*)",
       "Bash(\"taskkill\" \"/F\" \"/PID\" \"3936\")",
-      "Bash(del CLAUDE.md)"
+      "Bash(del CLAUDE.md)",
+      "Bash(\"start chrome\" \"http://localhost:8090\")",
+      "Bash(\"C:\\Program Files\\PostgreSQL\\16\\bin\\psql.exe\" -h localhost -p 5432 -U shop_user -d shop_management -c \"SELECT id, username, email, role, password FROM users WHERE email = ''testdriver@nammaooru.com'';\")",
+      "Bash(\"taskkill\" \"/F\" \"/PID\" \"34308\")",
+      "Bash(tee:*)",
+      "Read(//c//**)",
+      "Bash(\"taskkill\" \"/F\" \"/PID\" \"35656\")",
+      "Bash(\"C:\\Program Files\\PostgreSQL\\16\\bin\\psql.exe\" -h localhost -p 5432 -U shop_user -d shop_management -f fix_image_urls.sql)",
+      "Bash(\"C:\\Program Files\\PostgreSQL\\16\\bin\\psql.exe\" -h localhost -p 5432 -U shop_user -d shop_management)"
     ],
     "deny": [],
     "ask": [],

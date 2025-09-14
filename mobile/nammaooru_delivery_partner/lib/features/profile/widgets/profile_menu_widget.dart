@@ -61,6 +61,14 @@ class ProfileMenuWidget extends StatelessWidget {
               },
             ),
             _buildMenuItem(
+              icon: Icons.lock_reset,
+              title: 'Change Password',
+              subtitle: 'Update your account password',
+              onTap: () {
+                Navigator.pushNamed(context, '/change-password');
+              },
+            ),
+            _buildMenuItem(
               icon: Icons.history,
               title: 'Order History',
               subtitle: 'View all your completed deliveries',

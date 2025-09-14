@@ -1,9 +1,53 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams, HttpEvent, HttpEventType, HttpRequest } from '@angular/common/http';
 import { Observable, BehaviorSubject } from 'rxjs';
-import { tap } from 'rxjs/operators';
+import { tap, map } from 'rxjs/operators';
 import { ApiResponse, ApiResponseHelper } from '../../../core/models/api-response.model';
 import { environment } from '../../../../environments/environment';
+
+// Document related interfaces
+export enum DeliveryPartnerDocumentType {
+  DRIVER_PHOTO = 'DRIVER_PHOTO',
+  DRIVING_LICENSE = 'DRIVING_LICENSE',
+  LICENSE_FRONT = 'LICENSE_FRONT',
+  LICENSE_BACK = 'LICENSE_BACK',
+  VEHICLE_PHOTO = 'VEHICLE_PHOTO',
+  RC_BOOK = 'RC_BOOK'
+}
+
+export enum DocumentVerificationStatus {
+  PENDING = 'PENDING',
+  VERIFIED = 'VERIFIED',
+  REJECTED = 'REJECTED',
+  EXPIRED = 'EXPIRED'
+}
+
+export interface DeliveryPartnerDocument {
+  id?: number;
+  partnerId: number;
+  documentType: DeliveryPartnerDocumentType;
+  documentName: string;
+  originalFilename: string;
+  filePath: string;
+  fileSize: number;
+  fileType?: string;
+  verificationStatus: DocumentVerificationStatus;
+  verificationNotes?: string;
+  verifiedBy?: string;
+  verifiedAt?: Date;
+  licenseNumber?: string;
+  vehicleNumber?: string;
+  expiryDate?: Date;
+  downloadUrl?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface DocumentUploadResult {
+  type: 'progress' | 'complete';
+  progress?: number;
+  document?: DeliveryPartnerDocument;
+}
 
 export interface DeliveryPartner {
   id: number;
@@ -173,7 +217,16 @@ export class DeliveryPartnerService {
   }
 
   getAvailablePartners(): Observable<ApiResponse<DeliveryPartner[]>> {
-    return this.http.get<ApiResponse<DeliveryPartner[]>>(`${this.apiUrl}/available`);
+    return this.http.get<any>(`${environment.apiUrl}/assignments/available-partners`)
+      .pipe(
+        map(response => ({
+          success: response.success,
+          data: response.partners,
+          message: response.message,
+          statusCode: response.statusCode || 200,
+          timestamp: response.timestamp || new Date().toISOString()
+        }))
+      );
   }
 
   getNearbyPartners(latitude: number, longitude: number): Observable<ApiResponse<DeliveryPartner[]>> {
@@ -227,6 +280,104 @@ export class DeliveryPartnerService {
   getPartnersWithExpiringLicenses(days: number = 30): Observable<ApiResponse<DeliveryPartner[]>> {
     const params = new HttpParams().set('days', days.toString());
     return this.http.get<ApiResponse<DeliveryPartner[]>>(`${this.apiUrl}/expiring-licenses`, { params });
+  }
+
+  // Document Management Methods
+  getPartnerDocuments(partnerId: number): Observable<ApiResponse<DeliveryPartnerDocument[]>> {
+    return this.http.get<ApiResponse<DeliveryPartnerDocument[]>>(`${this.apiUrl}/${partnerId}/documents`);
+  }
+
+  downloadPartnerDocument(partnerId: number, documentId: number): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/${partnerId}/documents/${documentId}/download`, {
+      responseType: 'blob'
+    });
+  }
+
+  verifyPartnerDocument(
+    partnerId: number,
+    documentId: number,
+    status: DocumentVerificationStatus,
+    notes?: string
+  ): Observable<ApiResponse<DeliveryPartnerDocument>> {
+    return this.http.put<ApiResponse<DeliveryPartnerDocument>>(
+      `${this.apiUrl}/${partnerId}/documents/${documentId}/verify`,
+      { verificationStatus: status, verificationNotes: notes }
+    );
+  }
+
+  uploadPartnerDocument(
+    partnerId: number,
+    documentType: DeliveryPartnerDocumentType,
+    documentName: string,
+    file: File,
+    metadata?: { licenseNumber?: string; vehicleNumber?: string }
+  ): Observable<DocumentUploadResult> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('documentType', documentType);
+    formData.append('documentName', documentName);
+
+    // Add metadata as separate form fields (matching backend controller)
+    if (metadata?.licenseNumber) {
+      formData.append('licenseNumber', metadata.licenseNumber);
+    }
+    if (metadata?.vehicleNumber) {
+      formData.append('vehicleNumber', metadata.vehicleNumber);
+    }
+
+    const uploadRequest = new HttpRequest(
+      'POST',
+      `${this.apiUrl}/${partnerId}/documents/upload`,
+      formData,
+      {
+        reportProgress: true,
+        responseType: 'json'
+      }
+    );
+
+    return this.http.request(uploadRequest).pipe(
+      map((event: HttpEvent<any>) => {
+        if (event.type === HttpEventType.UploadProgress) {
+          const progress = Math.round(100 * event.loaded / (event.total || 1));
+          return { type: 'progress' as const, progress };
+        } else if (event.type === HttpEventType.Response) {
+          return { type: 'complete' as const, document: event.body?.data };
+        }
+        return { type: 'progress' as const, progress: 0 };
+      })
+    );
+  }
+
+  deletePartnerDocument(partnerId: number, documentId: number): Observable<ApiResponse<void>> {
+    return this.http.delete<ApiResponse<void>>(`${this.apiUrl}/${partnerId}/documents/${documentId}`);
+  }
+
+  getRequiredDocumentTypes(): DeliveryPartnerDocumentType[] {
+    return [
+      DeliveryPartnerDocumentType.DRIVER_PHOTO,
+      DeliveryPartnerDocumentType.DRIVING_LICENSE,
+      DeliveryPartnerDocumentType.VEHICLE_PHOTO,
+      DeliveryPartnerDocumentType.RC_BOOK
+    ];
+  }
+
+  getDocumentDisplayName(documentType: DeliveryPartnerDocumentType): string {
+    switch (documentType) {
+      case DeliveryPartnerDocumentType.DRIVER_PHOTO:
+        return 'Driver Photo';
+      case DeliveryPartnerDocumentType.DRIVING_LICENSE:
+        return 'Driving License';
+      case DeliveryPartnerDocumentType.LICENSE_FRONT:
+        return 'License Front';
+      case DeliveryPartnerDocumentType.LICENSE_BACK:
+        return 'License Back';
+      case DeliveryPartnerDocumentType.VEHICLE_PHOTO:
+        return 'Vehicle Photo';
+      case DeliveryPartnerDocumentType.RC_BOOK:
+        return 'RC Book';
+      default:
+        return documentType;
+    }
   }
 
   // Utility Methods

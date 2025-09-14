@@ -234,6 +234,102 @@
       color: #666;
     }
   }
+
+  // Document Upload Section
+  .document-card {
+    margin-top: 32px;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    overflow: hidden;
+
+    mat-card-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 24px 32px;
+
+      mat-card-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 20px;
+        font-weight: 600;
+        margin-bottom: 8px;
+
+        mat-icon {
+          font-size: 28px;
+          width: 28px;
+          height: 28px;
+        }
+      }
+
+      mat-card-subtitle {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 14px;
+        margin: 0;
+      }
+    }
+
+    mat-card-content {
+      padding: 32px;
+
+      .document-upload-header {
+        margin-bottom: 24px;
+
+        .info-text {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          background: #e8f5e8;
+          border: 1px solid #4caf50;
+          border-radius: 8px;
+          padding: 16px;
+          margin: 0;
+          color: #2e7d32;
+          font-weight: 500;
+
+          mat-icon {
+            color: #4caf50;
+            font-size: 20px;
+            width: 20px;
+            height: 20px;
+          }
+        }
+      }
+
+      .document-actions {
+        display: flex;
+        justify-content: center;
+        gap: 16px;
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 1px solid #e9ecef;
+
+        button {
+          min-width: 160px;
+          height: 48px;
+          font-weight: 500;
+          transition: all 0.3s ease;
+
+          &[color="primary"] {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+            &:hover:not([disabled]) {
+              background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+              transform: translateY(-2px);
+              box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+            }
+          }
+
+          mat-icon {
+            margin-right: 8px;
+          }
+        }
+      }
+    }
+  }
 }
 
 // Form field customizations

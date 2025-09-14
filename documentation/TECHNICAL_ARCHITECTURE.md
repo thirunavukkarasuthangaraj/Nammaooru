@@ -1540,16 +1540,803 @@ ORDER BY date DESC;
 
 ---
 
-**📋 Document Status**  
+---
+
+## 🚚 Delivery Partner Document Management System
+
+### Overview
+A comprehensive document lifecycle management system integrated into the delivery partner management workflow, providing secure document upload, verification, and compliance tracking.
+
+### System Architecture
+
+#### Document Management Components
+```
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                        Delivery Partner Document Management                         │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+
+Frontend Components                Backend Services                Database Tables
+┌─────────────────┐              ┌─────────────────────┐          ┌─────────────────┐
+│  User List      │              │  Document Service   │          │ delivery_       │
+│  Component      │◄────────────►│                     │◄────────►│ partner_        │
+│                 │              │ - Upload handling   │          │ documents       │
+│ - Role-based    │              │ - File validation   │          │                 │
+│   menu options  │              │ - Storage mgmt      │          │ - Document      │
+│ - Document      │              │                     │          │   metadata      │
+│   access        │              │                     │          │ - Verification  │
+│                 │              │                     │          │   status        │
+└─────────────────┘              └─────────────────────┘          └─────────────────┘
+         │                                   │                            │
+         ▼                                   ▼                            ▼
+┌─────────────────┐              ┌─────────────────────┐          ┌─────────────────┐
+│ Document Upload │              │  Document           │          │ File Storage    │
+│ Component       │              │  Controller         │          │                 │
+│                 │              │                     │          │ - Secure paths  │
+│ - 4 Doc types   │              │ - REST endpoints    │          │ - Unique names  │
+│ - Progress      │              │ - Security layer    │          │ - Type/size     │
+│   tracking      │              │ - Download mgmt     │          │   validation    │
+│ - Validation    │              │                     │          │                 │
+└─────────────────┘              └─────────────────────┘          └─────────────────┘
+         │                                   │
+         ▼                                   ▼
+┌─────────────────┐              ┌─────────────────────┐
+│ Document Viewer │              │  Verification       │
+│ Component       │              │  Workflow           │
+│                 │              │                     │
+│ - Modal view    │              │ - Admin approval    │
+│ - Admin verify  │              │ - Status tracking   │
+│ - Download      │              │ - Audit trail       │
+│ - Full screen   │              │                     │
+└─────────────────┘              └─────────────────────┘
+```
+
+#### Document Types and Requirements
+```
+Required Documents for Delivery Partners:
+├─ DRIVER_PHOTO
+│  ├─ Purpose: Partner identification
+│  ├─ Format: JPG, PNG (Max 5MB)
+│  └─ Validation: Face recognition, clarity
+│
+├─ DRIVING_LICENSE
+│  ├─ Purpose: Legal driving authorization
+│  ├─ Format: PDF, JPG, PNG (Max 10MB)
+│  ├─ Metadata: License number, expiry date
+│  └─ Validation: Government document verification
+│
+├─ VEHICLE_PHOTO
+│  ├─ Purpose: Vehicle identification & condition
+│  ├─ Format: JPG, PNG (Max 5MB)
+│  ├─ Metadata: Vehicle registration number
+│  └─ Validation: Clear vehicle visibility
+│
+└─ RC_BOOK
+   ├─ Purpose: Vehicle registration proof
+   ├─ Format: PDF, JPG, PNG (Max 10MB)
+   ├─ Validation: Government registration document
+   └─ Verification: Vehicle ownership proof
+```
+
+### Database Schema
+
+#### delivery_partner_documents Table
+```sql
+CREATE TABLE delivery_partner_documents (
+    id BIGSERIAL PRIMARY KEY,
+    delivery_partner_id BIGINT NOT NULL REFERENCES users(id),
+    document_type VARCHAR(50) NOT NULL,
+    document_name VARCHAR(255) NOT NULL,
+    original_filename VARCHAR(255) NOT NULL,
+    file_path VARCHAR(500) NOT NULL,
+    file_type VARCHAR(100),
+    file_size BIGINT NOT NULL,
+
+    -- Verification Information
+    verification_status VARCHAR(20) DEFAULT 'PENDING',
+    verification_notes TEXT,
+    verified_by VARCHAR(100),
+    verified_at TIMESTAMP,
+
+    -- Document Metadata
+    license_number VARCHAR(50),
+    vehicle_number VARCHAR(20),
+    expiry_date DATE,
+    is_required BOOLEAN DEFAULT TRUE,
+
+    -- Audit Information
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Indexes for performance
+CREATE INDEX idx_delivery_partner_docs_partner ON delivery_partner_documents(delivery_partner_id);
+CREATE INDEX idx_delivery_partner_docs_type ON delivery_partner_documents(document_type);
+CREATE INDEX idx_delivery_partner_docs_status ON delivery_partner_documents(verification_status);
+CREATE INDEX idx_delivery_partner_docs_created ON delivery_partner_documents(created_at);
+
+-- Constraints
+ALTER TABLE delivery_partner_documents
+ADD CONSTRAINT uk_partner_doc_type UNIQUE (delivery_partner_id, document_type);
+```
+
+### API Endpoints
+
+#### Document Management API
+```yaml
+Base URL: /api/delivery/partners
+
+Endpoints:
+  GET /{partnerId}/documents:
+    Description: Retrieve all documents for a delivery partner
+    Authorization: ADMIN, DELIVERY_PARTNER
+    Response: List of DeliveryPartnerDocumentResponse
+
+  POST /{partnerId}/documents/upload:
+    Description: Upload a new document
+    Authorization: ADMIN, DELIVERY_PARTNER
+    Content-Type: multipart/form-data
+    Parameters:
+      - file: MultipartFile (required)
+      - documentType: DeliveryPartnerDocument.DocumentType (required)
+      - documentName: String (required)
+      - licenseNumber: String (optional)
+      - vehicleNumber: String (optional)
+    Response: DeliveryPartnerDocumentResponse
+
+  GET /{partnerId}/documents/{documentId}/download:
+    Description: Download a specific document
+    Authorization: ADMIN, DELIVERY_PARTNER
+    Response: Binary file stream
+
+  PUT /{partnerId}/documents/{documentId}/verify:
+    Description: Admin verification of document
+    Authorization: ADMIN only
+    Request Body: DocumentVerificationRequest
+    Response: DeliveryPartnerDocumentResponse
+
+  DELETE /{partnerId}/documents/{documentId}:
+    Description: Delete a document
+    Authorization: ADMIN only
+    Response: Success message
+
+  GET /{partnerId}/documents/status:
+    Description: Get document completion status
+    Authorization: ADMIN, DELIVERY_PARTNER
+    Response: Document status summary
+```
+
+### Security Implementation
+
+#### File Security Measures
+```yaml
+Upload Security:
+  - File type validation (PDF, JPG, PNG, DOCX only)
+  - File size limits (10MB maximum)
+  - Filename sanitization
+  - Virus scanning (planned)
+  - Content-type verification
+
+Storage Security:
+  - Files stored outside web root
+  - Unique filename generation
+  - Directory structure per partner
+  - Access control through API only
+
+Download Security:
+  - Authentication required
+  - Role-based access control
+  - Secure file serving
+  - Audit logging
+```
+
+### User Flow Integration
+
+#### Document Upload Process
+```
+1. User Creation (Admin)
+   ├─ Create delivery partner user
+   ├─ Role assignment: DELIVERY_PARTNER
+   └─ User appears in user list
+
+2. Document Access (UI)
+   ├─ Admin navigates to Users → Delivery Partners
+   ├─ Actions menu shows document options for delivery partners only
+   ├─ "View Documents": Check existing documents
+   └─ "Manage Documents": Navigate to upload interface
+
+3. Document Upload (Partner/Admin)
+   ├─ Navigate to /users/{userId}/documents
+   ├─ Upload interface with 4 document types
+   ├─ Progress tracking and validation
+   ├─ Metadata capture (license/vehicle numbers)
+   └─ Real-time status updates
+
+4. Admin Verification
+   ├─ View all partner documents
+   ├─ Preview/download capability
+   ├─ Approve/reject with notes
+   └─ Status updates and notifications
+
+5. Compliance Tracking
+   ├─ Document completion status
+   ├─ Expiry date tracking
+   ├─ Renewal notifications
+   └─ Audit trail maintenance
+```
+
+### Performance Considerations
+
+#### Optimization Strategies
+```yaml
+File Handling:
+  - Chunked upload for large files
+  - Progress tracking with WebSocket updates
+  - Asynchronous processing
+  - Image thumbnail generation
+
+Caching:
+  - Document metadata caching
+  - Verification status caching
+  - User permission caching
+
+Database:
+  - Proper indexing strategy
+  - Efficient query optimization
+  - Connection pool management
+
+Storage:
+  - CDN integration (planned)
+  - Compressed storage
+  - Regular cleanup of orphaned files
+```
+
+### Monitoring & Analytics
+
+#### Key Metrics
+```yaml
+Document Management KPIs:
+  - Document upload success rate
+  - Average verification time
+  - Document compliance percentage
+  - Partner onboarding completion rate
+
+Performance Metrics:
+  - File upload speeds
+  - API response times
+  - Storage utilization
+  - Error rates by document type
+
+Business Metrics:
+  - Partner verification completion
+  - Document rejection reasons
+  - Compliance audit results
+  - Partner activation timelines
+```
+
+## 🌐 Real-time Delivery Partner Status Tracking System
+
+### Overview
+A comprehensive real-time status monitoring system for delivery partners that provides live online/offline status tracking, ride status management, and location-based updates integrated into the Angular frontend and Spring Boot backend.
+
+### System Architecture
+
+#### Status Tracking Components
+```
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                     Real-time Delivery Partner Status System                       │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+
+Frontend Components              Backend Services                Database Enhancements
+┌─────────────────┐              ┌─────────────────────┐          ┌─────────────────┐
+│  User List      │              │  Status Tracking    │          │ users table     │
+│  Component      │◄────────────►│  API Endpoints      │◄────────►│                 │
+│                 │              │                     │          │ + is_online     │
+│ - Dual status   │              │ - Online status     │          │ + is_available  │
+│   indicators    │              │ - Ride status       │          │ + ride_status   │
+│ - Real-time     │              │ - Location tracking │          │ + current_lat   │
+│   updates       │              │ - Activity mgmt     │          │ + current_lng   │
+│ - Color coding  │              │                     │          │ + last_activity │
+│                 │              │                     │          │ + last_location │
+│                 │              │                     │          │   _update       │
+└─────────────────┘              └─────────────────────┘          └─────────────────┘
+         │                                   │                            │
+         ▼                                   ▼                            ▼
+┌─────────────────┐              ┌─────────────────────┐          ┌─────────────────┐
+│ Status Display  │              │  UserRepository     │          │ New Repository  │
+│ Components      │              │  Enhancements       │          │ Methods         │
+│                 │              │                     │          │                 │
+│ - Online/Offline│              │ - Status queries    │          │ - By online     │
+│ - Ride Status   │              │ - Location queries  │          │   status        │
+│ - Animations    │              │ - Activity tracking │          │ - By ride status│
+│ - Tooltips      │              │ - Performance opt   │          │ - With location │
+│ - Visual cues   │              │                     │          │ - Inactive      │
+└─────────────────┘              └─────────────────────┘          └─────────────────┘
+```
+
+#### Status Types and States
+
+**Online/Offline Status:**
+```yaml
+Online Status Types:
+  ONLINE:
+    - Color: Green gradient with pulsing animation
+    - Icon: wifi
+    - Meaning: Partner is actively connected and responsive
+    - Auto-update: Based on last activity timestamp
+
+  OFFLINE:
+    - Color: Gray gradient
+    - Icon: wifi_off
+    - Meaning: Partner is not connected or inactive
+    - Auto-update: After 10 minutes of inactivity
+```
+
+**Ride Status Types:**
+```yaml
+Ride Status Types:
+  AVAILABLE:
+    - Color: Green gradient with pulse animation
+    - Icon: check_circle
+    - Meaning: Online and ready to accept orders
+    - Prerequisites: Must be online
+
+  ON_RIDE:
+    - Color: Blue gradient with spinning animation
+    - Icon: directions_bike
+    - Meaning: Currently on active delivery
+    - Auto-transition: From pickup to delivery complete
+
+  BUSY:
+    - Color: Yellow/Orange gradient with pulse animation
+    - Icon: hourglass_empty
+    - Meaning: Occupied but not on delivery
+    - Usage: Multiple orders, break time
+
+  ON_BREAK:
+    - Color: Purple gradient
+    - Icon: coffee
+    - Meaning: Temporarily unavailable by choice
+    - Manual: Partner-controlled status
+
+  OFFLINE:
+    - Color: Red gradient
+    - Icon: offline_pin
+    - Meaning: Not available for assignments
+    - Auto-set: When going offline
+```
+
+### Database Schema Enhancements
+
+#### Enhanced users Table
+```sql
+-- New columns added to existing users table for delivery partner status tracking
+ALTER TABLE users
+ADD COLUMN is_online BOOLEAN DEFAULT FALSE,
+ADD COLUMN is_available BOOLEAN DEFAULT FALSE,
+ADD COLUMN ride_status VARCHAR(20) DEFAULT 'AVAILABLE',
+ADD COLUMN current_latitude DECIMAL(10,6),
+ADD COLUMN current_longitude DECIMAL(10,6),
+ADD COLUMN last_location_update TIMESTAMP,
+ADD COLUMN last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
+-- Indexes for performance optimization
+CREATE INDEX idx_users_online_status ON users(is_online) WHERE role = 'DELIVERY_PARTNER';
+CREATE INDEX idx_users_ride_status ON users(ride_status) WHERE role = 'DELIVERY_PARTNER';
+CREATE INDEX idx_users_location ON users(current_latitude, current_longitude) WHERE role = 'DELIVERY_PARTNER';
+CREATE INDEX idx_users_last_activity ON users(last_activity) WHERE role = 'DELIVERY_PARTNER';
+
+-- Composite index for efficient partner queries
+CREATE INDEX idx_users_partner_status ON users(role, is_online, ride_status, is_available);
+```
+
+#### Enum Definitions
+```java
+public enum RideStatus {
+    AVAILABLE,     // Ready to accept new orders
+    ON_RIDE,      // Currently delivering an order
+    BUSY,         // Occupied with multiple tasks
+    ON_BREAK,     // Taking a break
+    OFFLINE       // Not available for assignments
+}
+```
+
+### API Endpoints
+
+#### Delivery Partner Status Management
+```yaml
+Base URL: /api/delivery/partners
+
+Status Management Endpoints:
+
+  PUT /{partnerId}/online-status:
+    Description: Update online/offline status
+    Authorization: ADMIN, DELIVERY_PARTNER
+    Request Body: { "isOnline": boolean }
+    Response: StatusUpdateResponse
+    Side Effects: Auto-updates availability and activity timestamp
+
+  PUT /{partnerId}/ride-status:
+    Description: Update current ride status
+    Authorization: ADMIN, DELIVERY_PARTNER
+    Request Body: { "rideStatus": "AVAILABLE|ON_RIDE|BUSY|ON_BREAK|OFFLINE" }
+    Response: StatusUpdateResponse
+    Business Logic: Automatically manages online status based on ride status
+
+  PUT /{partnerId}/location:
+    Description: Update current GPS location
+    Authorization: DELIVERY_PARTNER
+    Request Body: {
+      "latitude": number,
+      "longitude": number,
+      "accuracy": number (optional)
+    }
+    Response: LocationUpdateResponse
+    Side Effects: Updates last_activity and location timestamps
+
+  PUT /{partnerId}/availability:
+    Description: Update availability for new orders
+    Authorization: ADMIN, DELIVERY_PARTNER
+    Request Body: { "isAvailable": boolean }
+    Response: StatusUpdateResponse
+
+  GET /all-partners-status:
+    Description: Get comprehensive status overview for all partners
+    Authorization: ADMIN
+    Response: {
+      "partners": [...],
+      "statistics": {
+        "total": number,
+        "online": number,
+        "available": number,
+        "on_ride": number,
+        "busy": number
+      }
+    }
+
+  GET /{partnerId}/status-history:
+    Description: Get historical status changes
+    Authorization: ADMIN
+    Query Parameters: startDate, endDate, limit
+    Response: List of status change events
+
+  POST /batch-status-update:
+    Description: Update multiple partners' status
+    Authorization: ADMIN
+    Request Body: [{ "partnerId": string, "updates": {...} }]
+    Response: BatchUpdateResponse
+```
+
+### Frontend Implementation
+
+#### Angular Component Structure
+```typescript
+// Enhanced User Interface for Status Display
+interface User {
+  // Existing fields...
+
+  // New status tracking fields
+  isOnline?: boolean;
+  isAvailable?: boolean;
+  rideStatus?: 'AVAILABLE' | 'ON_RIDE' | 'BUSY' | 'ON_BREAK' | 'OFFLINE';
+  currentLatitude?: number;
+  currentLongitude?: number;
+  lastLocationUpdate?: string;
+  lastActivity?: string;
+}
+
+// Status Display Methods
+class UserListComponent {
+  // Online status helpers
+  getOnlineStatusTooltip(user: User): string {
+    const lastActivity = user.lastActivity ?
+      new Date(user.lastActivity).toLocaleString() : 'Never';
+    return user.isOnline ?
+      `Partner is online. Last activity: ${lastActivity}` :
+      `Partner is offline. Last activity: ${lastActivity}`;
+  }
+
+  // Ride status helpers
+  getRideStatusIcon(rideStatus: string): string {
+    const iconMap = {
+      'AVAILABLE': 'check_circle',
+      'ON_RIDE': 'directions_bike',
+      'BUSY': 'hourglass_empty',
+      'ON_BREAK': 'coffee',
+      'OFFLINE': 'offline_pin'
+    };
+    return iconMap[rideStatus] || 'help_outline';
+  }
+
+  getRideStatusDisplay(rideStatus: string): string {
+    const displayMap = {
+      'AVAILABLE': 'Available',
+      'ON_RIDE': 'On Ride',
+      'BUSY': 'Busy',
+      'ON_BREAK': 'Break',
+      'OFFLINE': 'Offline'
+    };
+    return displayMap[rideStatus] || 'Unknown';
+  }
+
+  // Real-time status updates
+  updatePartnerStatus(partnerId: string, statusUpdate: any): void {
+    this.deliveryPartnerService.updateStatus(partnerId, statusUpdate)
+      .subscribe(response => {
+        this.refreshUserList();
+        this.notificationService.success('Status updated successfully');
+      });
+  }
+}
+```
+
+#### CSS Styling with Animations
+```scss
+// Delivery partner status indicators with advanced styling
+.delivery-status {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+
+  .status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+    // Online status styling with gradient backgrounds
+    &.online-status-online {
+      background: linear-gradient(135deg, #e6fffa 0%, #ccfbf1 100%);
+      color: #047857;
+      border: 1px solid #10b981;
+
+      .status-icon {
+        color: #059669;
+        animation: pulse-online 2s ease-in-out infinite;
+      }
+    }
+
+    &.online-status-offline {
+      background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+      color: #6b7280;
+      border: 1px solid #9ca3af;
+    }
+
+    // Ride status styling with unique animations
+    &.ride-status-available {
+      background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+      color: #065f46;
+
+      .status-icon {
+        animation: pulse-available 3s ease-in-out infinite;
+      }
+    }
+
+    &.ride-status-on-ride {
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      color: #1e40af;
+
+      .status-icon {
+        animation: spin 2s linear infinite;
+      }
+    }
+
+    &.ride-status-busy {
+      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+      color: #92400e;
+
+      .status-icon {
+        animation: pulse-busy 1.5s ease-in-out infinite;
+      }
+    }
+
+    // Hover effects for better interaction
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+  }
+}
+
+// Keyframe animations for visual feedback
+@keyframes pulse-online {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes pulse-available {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(0.95); }
+}
+
+@keyframes pulse-busy {
+  0%, 100% { opacity: 1; }
+  25% { opacity: 0.6; }
+  50% { opacity: 1; }
+  75% { opacity: 0.8; }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+```
+
+### Repository Enhancements
+
+#### New Query Methods
+```java
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
+
+    // Status-based queries for delivery partners
+    List<User> findByRoleAndIsOnline(UserRole role, Boolean isOnline);
+
+    List<User> findByRoleAndIsAvailable(UserRole role, Boolean isAvailable);
+
+    List<User> findByRoleAndRideStatus(UserRole role, RideStatus rideStatus);
+
+    @Query("SELECT u FROM User u WHERE u.role = :role AND u.isOnline = true AND " +
+           "u.currentLatitude IS NOT NULL AND u.currentLongitude IS NOT NULL")
+    List<User> findOnlinePartnersWithLocation(@Param("role") UserRole role);
+
+    @Query("SELECT u FROM User u WHERE u.role = :role AND u.lastActivity < :cutoffTime")
+    List<User> findInactivePartners(@Param("role") UserRole role,
+                                   @Param("cutoffTime") LocalDateTime cutoffTime);
+
+    // Statistical queries for dashboard
+    @Query("SELECT u.rideStatus, COUNT(u) FROM User u WHERE u.role = 'DELIVERY_PARTNER' " +
+           "GROUP BY u.rideStatus")
+    List<Object[]> getPartnerCountByRideStatus();
+
+    @Query("SELECT COUNT(u) FROM User u WHERE u.role = 'DELIVERY_PARTNER' AND u.isOnline = true")
+    Long countOnlinePartners();
+}
+```
+
+### Performance Optimizations
+
+#### Caching Strategy
+```java
+@Service
+public class PartnerStatusService {
+
+    @Cacheable(value = "partnerStatus", key = "#partnerId")
+    public PartnerStatusDTO getPartnerStatus(String partnerId) {
+        // Implementation with caching
+    }
+
+    @CacheEvict(value = "partnerStatus", key = "#partnerId")
+    public void updatePartnerStatus(String partnerId, StatusUpdateRequest request) {
+        // Cache invalidation on status update
+    }
+
+    @Scheduled(fixedRate = 60000) // Every minute
+    public void updateInactivePartners() {
+        LocalDateTime cutoff = LocalDateTime.now().minus(10, ChronoUnit.MINUTES);
+        List<User> inactivePartners = userRepository.findInactivePartners(
+            UserRole.DELIVERY_PARTNER, cutoff);
+
+        // Auto-mark as offline
+        inactivePartners.forEach(partner -> {
+            partner.setIsOnline(false);
+            partner.setRideStatus(RideStatus.OFFLINE);
+        });
+        userRepository.saveAll(inactivePartners);
+    }
+}
+```
+
+### Business Logic Rules
+
+#### Automatic Status Management
+```yaml
+Status Transition Rules:
+
+  Going Online:
+    - Set is_online = true
+    - Set last_activity = current_timestamp
+    - Default ride_status = AVAILABLE
+    - Set is_available = true
+
+  Going Offline:
+    - Set is_online = false
+    - Set ride_status = OFFLINE
+    - Set is_available = false
+    - Maintain last_activity timestamp
+
+  Starting Ride:
+    - Ensure is_online = true
+    - Set ride_status = ON_RIDE
+    - Set is_available = false
+    - Update location if provided
+
+  Completing Ride:
+    - Set ride_status = AVAILABLE
+    - Set is_available = true
+    - Update earnings and stats
+    - Reset location tracking
+
+  Inactivity Detection:
+    - Monitor last_activity timestamp
+    - Auto-offline after 10 minutes
+    - Send push notification before auto-offline
+    - Allow manual override
+```
+
+### Monitoring and Analytics
+
+#### Key Performance Indicators
+```sql
+-- Partner utilization metrics
+SELECT
+    DATE(last_activity) as activity_date,
+    COUNT(*) as total_partners,
+    COUNT(CASE WHEN is_online = true THEN 1 END) as online_partners,
+    COUNT(CASE WHEN ride_status = 'AVAILABLE' THEN 1 END) as available_partners,
+    COUNT(CASE WHEN ride_status = 'ON_RIDE' THEN 1 END) as active_deliveries,
+    ROUND(COUNT(CASE WHEN is_online = true THEN 1 END) * 100.0 / COUNT(*), 2) as online_percentage
+FROM users
+WHERE role = 'DELIVERY_PARTNER'
+    AND last_activity >= CURRENT_DATE - INTERVAL '7 days'
+GROUP BY DATE(last_activity)
+ORDER BY activity_date DESC;
+
+-- Average response time for status updates
+SELECT
+    AVG(EXTRACT(EPOCH FROM (updated_at - created_at))) as avg_response_time_seconds,
+    COUNT(*) as total_updates
+FROM partner_status_logs
+WHERE created_at >= CURRENT_DATE - INTERVAL '1 day';
+```
+
+### Future Enhancements
+
+#### Planned Features
+```yaml
+Real-time Updates:
+  - WebSocket integration for live status broadcasting
+  - Push notifications for status changes
+  - Real-time dashboard updates
+
+Advanced Analytics:
+  - Partner performance scoring
+  - Predictive availability modeling
+  - Geographic heat mapping
+  - Peak hours analysis
+
+Mobile Integration:
+  - Automatic status detection based on app state
+  - Battery-optimized location tracking
+  - Background activity monitoring
+  - Smart status suggestions
+```
+
+---
+
+**📋 Document Status**
 - **Created**: January 2025
-- **Version**: 1.0  
-- **Next Review**: When system architecture changes
+- **Version**: 1.1
+- **Last Updated**: September 2025 - Added Delivery Partner Document Management
+- **Next Review**: When additional delivery features are added
 - **Maintainer**: Development Team
 
-**🔄 Change Log**  
+**🔄 Change Log**
 - v1.0: Initial comprehensive architecture documentation
 - Added detailed database schema with all tables
 - Included complete system diagrams
 - Added deployment and scalability considerations
+- v1.1: Added Delivery Partner Document Management System
+- Included document management components and workflows
+- Added security implementation details
+- Added performance optimization strategies
 
 This document serves as the definitive technical reference for the NammaOoru Shop Management System architecture.

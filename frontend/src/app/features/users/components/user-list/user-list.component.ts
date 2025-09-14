@@ -3,8 +3,11 @@ import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatDialog } from '@angular/material/dialog';
 import { Router, ActivatedRoute } from '@angular/router';
 import { UserService, UserResponse } from '../../../../core/services/user.service';
+import { DeliveryPartnerService } from '../../../delivery/services/delivery-partner.service';
+import { DeliveryPartnerDocumentViewerComponent } from '../../../delivery/components/delivery-partner-document-viewer/delivery-partner-document-viewer.component';
 
 export interface User {
   id: number;
@@ -21,6 +24,15 @@ export interface User {
   emailVerified: boolean;
   lastLogin: string;
   createdAt: string;
+
+  // Delivery Partner Status Tracking Fields
+  isOnline?: boolean;
+  isAvailable?: boolean;
+  rideStatus?: 'AVAILABLE' | 'ON_RIDE' | 'BUSY' | 'ON_BREAK' | 'OFFLINE';
+  currentLatitude?: number;
+  currentLongitude?: number;
+  lastLocationUpdate?: string;
+  lastActivity?: string;
 }
 
 @Component({
@@ -39,6 +51,7 @@ export class UserListComponent implements OnInit {
   searchText = '';
   roleFilter = '';
   statusFilter = '';
+  documentStatus: Map<number, boolean> = new Map(); // Track if delivery partner has documents
   
   roleOptions = [
     { value: '', label: 'All Roles' },
@@ -48,7 +61,7 @@ export class UserListComponent implements OnInit {
     { value: 'MANAGER', label: 'Manager' },
     { value: 'EMPLOYEE', label: 'Employee' },
     { value: 'CUSTOMER_SERVICE', label: 'Customer Service' },
-    { value: 'DELIVERY_AGENT', label: 'Delivery Agent' },
+    { value: 'DELIVERY_PARTNER', label: 'Delivery Partner' },
     { value: 'USER', label: 'User' }
   ];
 
@@ -64,7 +77,9 @@ export class UserListComponent implements OnInit {
     private userService: UserService,
     private snackBar: MatSnackBar,
     private router: Router,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private dialog: MatDialog,
+    private deliveryPartnerService: DeliveryPartnerService
   ) {}
 
   ngOnInit(): void {
@@ -95,8 +110,12 @@ export class UserListComponent implements OnInit {
         console.log('Real API Users data:', response.content); // Debug log
         this.originalData = response.content;
         this.dataSource.data = [...this.originalData];
+
+        // Check document status for delivery partners
+        this.checkDocumentStatusForDeliveryPartners();
+
         this.loading = false;
-        
+
         const roleMessage = this.roleFilter ? `${this.roleFilter} users` : 'all users';
         this.snackBar.open(`✅ Loaded ${roleMessage} successfully!`, 'Close', { duration: 3000 });
       },
@@ -198,10 +217,10 @@ export class UserListComponent implements OnInit {
         firstName: 'Ravi',
         lastName: 'Delivery',
         fullName: 'Ravi Delivery',
-        role: 'DELIVERY_AGENT',
+        role: 'DELIVERY_PARTNER',
         status: 'ACTIVE',
         department: 'Logistics',
-        designation: 'Delivery Agent',
+        designation: 'Delivery Partner',
         isActive: true,
         emailVerified: true,
         lastLogin: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
@@ -494,9 +513,157 @@ export class UserListComponent implements OnInit {
       case 'MANAGER': return 'Manager';
       case 'EMPLOYEE': return 'Employee';
       case 'CUSTOMER_SERVICE': return 'Customer Service';
-      case 'DELIVERY_AGENT': return 'Delivery Agent';
+      case 'DELIVERY_PARTNER': return 'Delivery Partner';
       case 'USER': return 'Customer';
       default: return role.replace('_', ' ');
     }
+  }
+
+  // Delivery Partner Status Methods
+  getOnlineStatusTooltip(user: any): string {
+    const lastActivity = user.lastActivity ? new Date(user.lastActivity).toLocaleString() : 'Never';
+    if (user.isOnline) {
+      return `Partner is online. Last activity: ${lastActivity}`;
+    } else {
+      return `Partner is offline. Last activity: ${lastActivity}`;
+    }
+  }
+
+  getRideStatusClass(rideStatus: string | undefined): string {
+    switch (rideStatus) {
+      case 'AVAILABLE': return 'available';
+      case 'ON_RIDE': return 'on-ride';
+      case 'BUSY': return 'busy';
+      case 'ON_BREAK': return 'on-break';
+      case 'OFFLINE': return 'offline';
+      default: return 'unknown';
+    }
+  }
+
+  getRideStatusIcon(rideStatus: string | undefined): string {
+    switch (rideStatus) {
+      case 'AVAILABLE': return 'check_circle';
+      case 'ON_RIDE': return 'directions_bike';
+      case 'BUSY': return 'hourglass_empty';
+      case 'ON_BREAK': return 'coffee';
+      case 'OFFLINE': return 'offline_pin';
+      default: return 'help_outline';
+    }
+  }
+
+  getRideStatusDisplay(rideStatus: string | undefined): string {
+    switch (rideStatus) {
+      case 'AVAILABLE': return 'Available';
+      case 'ON_RIDE': return 'On Ride';
+      case 'BUSY': return 'Busy';
+      case 'ON_BREAK': return 'On Break';
+      case 'OFFLINE': return 'Offline';
+      default: return 'Unknown';
+    }
+  }
+
+  getRideStatusTooltip(rideStatus: string | undefined): string {
+    switch (rideStatus) {
+      case 'AVAILABLE': return 'Partner is available for new deliveries';
+      case 'ON_RIDE': return 'Partner is currently on a delivery';
+      case 'BUSY': return 'Partner is busy and cannot take new orders';
+      case 'ON_BREAK': return 'Partner is on a break';
+      case 'OFFLINE': return 'Partner is offline';
+      default: return 'Status unknown';
+    }
+  }
+
+  // Delivery Partner Document Management Methods
+  viewDocuments(user: UserResponse): void {
+    if (user.role !== 'DELIVERY_PARTNER') {
+      this.snackBar.open('Document viewing is only available for delivery partners', 'Close', { duration: 3000 });
+      return;
+    }
+
+    // Navigate to simple document viewer page
+    this.router.navigate(['/delivery/documents/view', user.id, user.fullName]);
+  }
+
+  manageDocuments(user: UserResponse): void {
+    if (user.role !== 'DELIVERY_PARTNER') {
+      this.snackBar.open('Document management is only available for delivery partners', 'Close', { duration: 3000 });
+      return;
+    }
+
+    // Navigate to document management page
+    this.router.navigate(['/users', user.id, 'documents']);
+  }
+
+  // Check document status for delivery partners
+  private checkDocumentStatusForDeliveryPartners(): void {
+    const deliveryPartners = this.originalData.filter(user => user.role === 'DELIVERY_PARTNER');
+
+    deliveryPartners.forEach(partner => {
+      this.deliveryPartnerService.getPartnerDocuments(partner.id).subscribe({
+        next: (response) => {
+          const hasDocuments = response.data && response.data.length > 0;
+          this.documentStatus.set(partner.id, hasDocuments);
+        },
+        error: (error) => {
+          console.error(`Error checking documents for partner ${partner.id}:`, error);
+          this.documentStatus.set(partner.id, false);
+        }
+      });
+    });
+  }
+
+  // Check if delivery partner has documents
+  hasDocuments(userId: number): boolean {
+    return this.documentStatus.get(userId) || false;
+  }
+
+  // Add documents for delivery partner
+  addDocuments(user: UserResponse): void {
+    if (user.role !== 'DELIVERY_PARTNER') {
+      this.snackBar.open('Document upload is only available for delivery partners', 'Close', { duration: 3000 });
+      return;
+    }
+
+    // Navigate to document management page for upload
+    this.router.navigate(['/users', user.id, 'documents']);
+  }
+
+  private openDocumentViewerDialog(user: UserResponse): void {
+    // Use user.id as partnerId since backend expects user ID for delivery partner documents
+    this.deliveryPartnerService.getPartnerDocuments(user.id).subscribe({
+      next: (response) => {
+        if (response.data && response.data.length > 0) {
+          // Open document viewer dialog
+          const dialogRef = this.dialog.open(DeliveryPartnerDocumentViewerComponent, {
+            width: '90%',
+            maxWidth: '1200px',
+            height: '80vh',
+            data: {
+              partnerId: user.id,
+              partnerName: user.fullName,
+              documents: response.data,
+              isAdmin: true
+            }
+          });
+
+          dialogRef.afterClosed().subscribe(result => {
+            if (result === 'refresh') {
+              // Refresh user list if needed
+              this.loadUsers();
+            }
+          });
+        } else {
+          this.snackBar.open(
+            `No documents found for ${user.fullName}. Use "Manage Documents" to upload.`,
+            'Close',
+            { duration: 5000 }
+          );
+        }
+      },
+      error: (error) => {
+        console.error('Error loading partner documents:', error);
+        this.snackBar.open('Error loading documents. Please try again.', 'Close', { duration: 3000 });
+      }
+    });
   }
 }

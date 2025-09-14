@@ -23,6 +23,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { UsersRoutingModule } from './users-routing.module';
+import { DeliveryModule } from '../delivery/delivery.module';
 import { UserListComponent } from './components/user-list/user-list.component';
 import { UserDetailComponent } from './components/user-detail/user-detail.component';
 import { UserFormComponent } from './components/user-form/user-form.component';
@@ -36,6 +37,7 @@ import { UserFormComponent } from './components/user-form/user-form.component';
   imports: [
     CommonModule,
     UsersRoutingModule,
+    DeliveryModule,
     ReactiveFormsModule,
     FormsModule,
     MatTableModule,

@@ -136,6 +136,43 @@
     </form>
   </mat-card>
 
+  <!-- Delivery Partner Document Upload Section -->
+  <mat-card *ngIf="showDeliveryPartnerDocuments && savedUserId" class="document-card">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>upload_file</mat-icon>
+        Delivery Partner Documents
+      </mat-card-title>
+      <mat-card-subtitle>Upload required documents for delivery partner verification</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      <div class="document-upload-header">
+        <p class="info-text">
+          <mat-icon>info</mat-icon>
+          Delivery partner created successfully! Now upload the required documents for verification.
+        </p>
+      </div>
+
+      <app-delivery-partner-documents
+        [partnerId]="deliveryPartnerId"
+        [readonly]="false"
+        [isAdmin]="true"
+        (documentsChanged)="onDocumentsChanged($event)">
+      </app-delivery-partner-documents>
+
+      <div class="document-actions">
+        <button mat-raised-button color="primary" (click)="finishDeliveryPartnerSetup()">
+          <mat-icon>check</mat-icon>
+          Complete Setup
+        </button>
+        <button mat-stroked-button (click)="skipDocumentUpload()">
+          Skip for Now
+        </button>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
   <div *ngIf="loading && !userForm.dirty" class="loading-container">
     <mat-spinner></mat-spinner>
     <p>Loading user details...</p>

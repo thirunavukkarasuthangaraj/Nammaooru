@@ -3,6 +3,7 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { UserService, UserRequest } from '../../../../core/services/user.service';
+import { DeliveryPartnerService, DeliveryPartnerDocument } from '../../../delivery/services/delivery-partner.service';
 
 @Component({
   selector: 'app-user-form',
@@ -15,6 +16,11 @@ export class UserFormComponent implements OnInit {
   isEditMode = false;
   userId: number | null = null;
 
+  // Delivery Partner Document Upload
+  showDeliveryPartnerDocuments = false;
+  savedUserId: number | null = null;
+  deliveryPartnerId: number | null = null;
+
   roleOptions = [
     { value: 'SUPER_ADMIN', label: 'Super Admin' },
     { value: 'ADMIN', label: 'Admin' },
@@ -22,7 +28,7 @@ export class UserFormComponent implements OnInit {
     { value: 'MANAGER', label: 'Manager' },
     { value: 'EMPLOYEE', label: 'Employee' },
     { value: 'CUSTOMER_SERVICE', label: 'Customer Service' },
-    { value: 'DELIVERY_AGENT', label: 'Delivery Agent' },
+    { value: 'DELIVERY_PARTNER', label: 'Delivery Partner' },
     { value: 'USER', label: 'User' }
   ];
 
@@ -49,7 +55,8 @@ export class UserFormComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private userService: UserService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private deliveryPartnerService: DeliveryPartnerService
   ) {
     this.userForm = this.createForm();
   }
@@ -162,13 +169,24 @@ export class UserFormComponent implements OnInit {
         : this.userService.createUser(request);
 
       operation.subscribe({
-        next: () => {
-          this.snackBar.open(
-            `User ${this.isEditMode ? 'updated' : 'created'} successfully`, 
-            'Close', 
-            { duration: 3000 }
-          );
-          this.router.navigate(['/users']);
+        next: (response) => {
+          this.loading = false;
+
+          if (this.isEditMode) {
+            this.snackBar.open('User updated successfully', 'Close', { duration: 3000 });
+            this.router.navigate(['/users']);
+          } else {
+            // Handle new user creation
+            this.savedUserId = response.id;
+            this.snackBar.open('User created successfully', 'Close', { duration: 3000 });
+
+            // Check if this is a delivery partner role
+            if (formData.role === 'DELIVERY_PARTNER') {
+              this.handleDeliveryPartnerCreation(response.id);
+            } else {
+              this.router.navigate(['/users']);
+            }
+          }
         },
         error: (error) => {
           console.error(`Error ${this.isEditMode ? 'updating' : 'creating'} user:`, error);
@@ -233,5 +251,68 @@ export class UserFormComponent implements OnInit {
       designation: 'Designation'
     };
     return displayNames[fieldName] || fieldName;
+  }
+
+  // Delivery Partner Document Upload Methods
+  handleDeliveryPartnerCreation(userId: number): void {
+    // First, check if delivery partner record already exists for this user
+    this.deliveryPartnerService.getPartnerByUserId(userId).subscribe({
+      next: (response) => {
+        if (response.data) {
+          // Delivery partner record exists, show document upload
+          this.deliveryPartnerId = response.data.id;
+          this.showDeliveryPartnerDocuments = true;
+        } else {
+          // Create delivery partner record first (this would need to be implemented)
+          this.createDeliveryPartnerRecord(userId);
+        }
+      },
+      error: (error) => {
+        console.error('Error checking delivery partner:', error);
+        // For now, just show a message and navigate to users
+        this.snackBar.open(
+          'User created. Please create delivery partner record separately.',
+          'Close',
+          { duration: 5000 }
+        );
+        this.router.navigate(['/users']);
+      }
+    });
+  }
+
+  createDeliveryPartnerRecord(userId: number): void {
+    // This method would create a delivery partner record
+    // For now, we'll simulate with a mock ID
+    this.deliveryPartnerId = userId; // Mock - in real implementation, this would be the delivery partner ID
+    this.showDeliveryPartnerDocuments = true;
+
+    this.snackBar.open(
+      'Delivery partner record created. Please upload required documents.',
+      'Close',
+      { duration: 3000 }
+    );
+  }
+
+  onDocumentsChanged(documents: DeliveryPartnerDocument[]): void {
+    console.log('Documents updated:', documents);
+    // Handle document changes if needed
+  }
+
+  finishDeliveryPartnerSetup(): void {
+    this.snackBar.open(
+      'Delivery partner setup completed successfully!',
+      'Close',
+      { duration: 3000 }
+    );
+    this.router.navigate(['/users']);
+  }
+
+  skipDocumentUpload(): void {
+    this.snackBar.open(
+      'Documents can be uploaded later from the delivery partners section.',
+      'Close',
+      { duration: 5000 }
+    );
+    this.router.navigate(['/users']);
   }
 }

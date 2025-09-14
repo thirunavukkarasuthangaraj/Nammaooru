@@ -1,242 +1,182 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-
-import '../../../core/constants/app_colors.dart';
-import '../../../core/providers/earnings_provider.dart';
-import '../../../core/models/earnings_model.dart';
-import '../widgets/period_selector_widget.dart';
-import '../widgets/earnings_summary_widget.dart';
-import '../widgets/payment_breakdown_widget.dart';
-import '../widgets/recent_deliveries_widget.dart';
-import '../widgets/withdrawal_section_widget.dart';
+import '../../../core/providers/delivery_partner_provider.dart';
 
 class EarningsScreen extends StatefulWidget {
-  const EarningsScreen({super.key});
+  const EarningsScreen({Key? key}) : super(key: key);
 
   @override
   State<EarningsScreen> createState() => _EarningsScreenState();
 }
 
-class _EarningsScreenState extends State<EarningsScreen> with TickerProviderStateMixin {
-  EarningsPeriod _selectedPeriod = EarningsPeriod.today;
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
+class _EarningsScreenState extends State<EarningsScreen> {
+  String _selectedPeriod = 'all';
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 600),
-      vsync: this,
-    );
-    
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
-    
     _loadEarnings();
-    _animationController.forward();
   }
 
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadEarnings() async {
-    final earningsProvider = Provider.of<EarningsProvider>(context, listen: false);
-    await earningsProvider.loadEarnings(_selectedPeriod);
+  void _loadEarnings() {
+    final provider = Provider.of<DeliveryPartnerProvider>(context, listen: false);
+    provider.loadEarnings(period: _selectedPeriod == 'all' ? null : _selectedPeriod);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('💰 Earnings Dashboard'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        title: const Text(
+          'Earnings',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
+        backgroundColor: const Color(0xFF2196F3),
         elevation: 0,
+        automaticallyImplyLeading: false,
+        actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.filter_list, color: Colors.white),
+            onSelected: (value) {
+              setState(() {
+                _selectedPeriod = value;
+              });
+              _loadEarnings();
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(value: 'today', child: Text('Today')),
+              const PopupMenuItem(value: 'week', child: Text('This Week')),
+              const PopupMenuItem(value: 'month', child: Text('This Month')),
+              const PopupMenuItem(value: 'all', child: Text('All Time')),
+            ],
+          ),
+        ],
       ),
-      body: FadeTransition(
-        opacity: _fadeAnimation,
-        child: Column(
-          children: [
-            // Period Selector
-            Container(
-              color: Colors.white,
-              child: PeriodSelectorWidget(
-                selectedPeriod: _selectedPeriod,
-                onPeriodChanged: (period) {
-                  setState(() => _selectedPeriod = period);
-                  _loadEarnings();
-                },
-              ),
-            ),
-            
-            // Content
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: _loadEarnings,
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.only(bottom: 100),
-                  child: Consumer<EarningsProvider>(
-                    builder: (context, earningsProvider, child) {
-                      if (earningsProvider.isLoading) {
-                        return _buildLoadingState();
-                      }
+      body: RefreshIndicator(
+        onRefresh: () async => _loadEarnings(),
+        child: Consumer<DeliveryPartnerProvider>(
+          builder: (context, provider, child) {
+            if (provider.isLoading) {
+              return const Center(
+                child: CircularProgressIndicator(color: Color(0xFF2196F3)),
+              );
+            }
 
-                      if (earningsProvider.error != null) {
-                        return _buildErrorState(earningsProvider.error!);
-                      }
-
-                      final earnings = earningsProvider.earnings;
-                      if (earnings == null) {
-                        return _buildEmptyState();
-                      }
-
-                      return Column(
-                        children: [
-                          const SizedBox(height: 15),
-                          
-                          // Summary Card
-                          EarningsSummaryWidget(
-                            earnings: earnings,
-                            period: _selectedPeriod,
-                          ),
-                          
-                          const SizedBox(height: 20),
-                          
-                          // Payment Breakdown
-                          PaymentBreakdownWidget(
-                            earnings: earnings,
-                          ),
-                          
-                          const SizedBox(height: 20),
-                          
-                          // Recent Deliveries
-                          RecentDeliveriesWidget(
-                            deliveries: earnings.recentDeliveries,
-                          ),
-                          
-                          const SizedBox(height: 20),
-                          
-                          // Withdrawal Section
-                          WithdrawalSectionWidget(
-                            availableAmount: earnings.totalEarnings,
-                            bankDetails: earnings.bankDetails,
-                            onWithdraw: _handleWithdraw,
-                          ),
-                        ],
-                      );
-                    },
-                  ),
+            if (provider.error != null) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.error_outline, size: 64, color: Colors.red[400]),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Error: ${provider.error}',
+                      style: const TextStyle(fontSize: 16),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _loadEarnings,
+                      child: const Text('Retry'),
+                    ),
+                  ],
                 ),
-              ),
-            ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
-    );
-  }
+              );
+            }
 
-  Widget _buildLoadingState() {
-    return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.6,
-      child: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-            ),
-            SizedBox(height: 16),
-            Text(
-              'Loading earnings data...',
-              style: TextStyle(
-                fontSize: 16,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+            final earnings = provider.earnings;
+            if (earnings == null) {
+              return const Center(
+                child: Text(
+                  'No earnings data available',
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                ),
+              );
+            }
 
-  Widget _buildErrorState(String error) {
-    return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.6,
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.error_outline,
-              size: 64,
-              color: AppColors.error,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Failed to load earnings',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: AppColors.textPrimary,
+            return SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Total Earnings Card
+                  _buildTotalEarningsCard(earnings),
+                  
+                  const SizedBox(height: 16),
+                  
+                  // Period Summary Cards
+                  _buildPeriodSummaryCards(earnings),
+                  
+                  const SizedBox(height: 24),
+                  
+                  // Withdraw Button
+                  _buildWithdrawButton(),
+                  
+                  const SizedBox(height: 24),
+                  
+                  // Recent Earnings
+                  _buildRecentEarnings(earnings),
+                ],
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              error,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: _loadEarnings,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );
   }
 
-  Widget _buildEmptyState() {
-    return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.6,
-      child: Center(
+  Widget _buildTotalEarningsCard(earnings) {
+    return Card(
+      elevation: 6,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF4CAF50), Color(0xFF45A048)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.account_balance_wallet_outlined,
-              size: 64,
-              color: AppColors.textHint,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No earnings data',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 8),
             const Text(
-              'Complete deliveries to start earning',
-              textAlign: TextAlign.center,
+              'Total Earnings',
               style: TextStyle(
-                color: AppColors.textHint,
+                color: Colors.white70,
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
               ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '₹${earnings.totalEarnings.toStringAsFixed(0)}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 36,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildEarningsStat(
+                  'Today',
+                  '₹${earnings.todayEarnings.toStringAsFixed(0)}',
+                ),
+                _buildEarningsStat(
+                  'This Week',
+                  '₹${earnings.weeklyEarnings.toStringAsFixed(0)}',
+                ),
+                _buildEarningsStat(
+                  'This Month',
+                  '₹${earnings.monthlyEarnings.toStringAsFixed(0)}',
+                ),
+              ],
             ),
           ],
         ),
@@ -244,131 +184,195 @@ class _EarningsScreenState extends State<EarningsScreen> with TickerProviderStat
     );
   }
 
-  Widget _buildBottomNavigationBar() {
-    return BottomNavigationBar(
-      currentIndex: 1, // Earnings tab
-      onTap: (index) {
-        switch (index) {
-          case 0:
-            Navigator.pushReplacementNamed(context, '/dashboard');
-            break;
-          case 1:
-            // Already on earnings
-            break;
-          case 2:
-            Navigator.pushNamed(context, '/stats');
-            break;
-          case 3:
-            Navigator.pushNamed(context, '/profile');
-            break;
-        }
-      },
-      type: BottomNavigationBarType.fixed,
-      selectedItemColor: AppColors.primary,
-      unselectedItemColor: AppColors.textSecondary,
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home),
-          label: 'Home',
+  Widget _buildEarningsStat(String label, String value) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 12,
+          ),
         ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.account_balance_wallet),
-          label: 'Earnings',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.bar_chart),
-          label: 'Stats',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.person),
-          label: 'Profile',
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
         ),
       ],
     );
   }
 
-  Future<void> _handleWithdraw(double amount) async {
-    final confirmed = await _showWithdrawConfirmationDialog(amount);
-    if (confirmed == true) {
-      final earningsProvider = Provider.of<EarningsProvider>(context, listen: false);
-      
-      try {
-        await earningsProvider.requestWithdrawal(amount);
-        
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                '✅ Withdrawal request for ${NumberFormat.currency(locale: 'en_IN', symbol: '₹').format(amount)} submitted successfully!',
-              ),
-              backgroundColor: AppColors.success,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to submit withdrawal request: $e'),
-              backgroundColor: AppColors.error,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-          );
-        }
-      }
-    }
+  Widget _buildPeriodSummaryCards(earnings) {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildSummaryCard(
+            'Total Deliveries',
+            earnings.totalDeliveries.toString(),
+            Icons.delivery_dining,
+            Colors.blue,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _buildSummaryCard(
+            'Avg. per Delivery',
+            earnings.totalDeliveries > 0
+                ? '₹${(earnings.totalEarnings / earnings.totalDeliveries).toStringAsFixed(0)}'
+                : '₹0',
+            Icons.trending_up,
+            Colors.orange,
+          ),
+        ),
+      ],
+    );
   }
 
-  Future<bool?> _showWithdrawConfirmationDialog(double amount) {
-    return showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-          title: const Text(
-            '💳 Withdraw Earnings',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '${NumberFormat.currency(locale: 'en_IN', symbol: '₹').format(amount)} will be transferred to your HDFC Bank account ending in 1234.',
-                style: const TextStyle(fontSize: 14),
+  Widget _buildSummaryCard(String title, String value, IconData icon, Color color) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Icon(icon, size: 32, color: color),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
               ),
-              const SizedBox(height: 12),
-              const Text(
-                'Processing time: 1-2 business days.',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
+              textAlign: TextAlign.center,
             ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-              child: const Text(
-                'Confirm',
-                style: TextStyle(color: Colors.white),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ],
-        );
-      },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWithdrawButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: ElevatedButton.icon(
+        onPressed: () => _showWithdrawDialog(),
+        icon: const Icon(Icons.account_balance_wallet),
+        label: const Text(
+          'Withdraw Earnings',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF2196F3),
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 2,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecentEarnings(earnings) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Recent Earnings',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (earnings.recentEarnings.isEmpty)
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                children: [
+                  Icon(Icons.history, size: 48, color: Colors.grey[400]),
+                  const SizedBox(height: 12),
+                  Text(
+                    'No recent earnings',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Start accepting orders to see your earnings here',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[500],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          ...earnings.recentEarnings.map<Widget>((earning) => Card(
+            elevation: 2,
+            margin: const EdgeInsets.only(bottom: 8),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: Color(0xFF4CAF50),
+                child: Icon(Icons.add, color: Colors.white),
+              ),
+              title: Text('Order #${earning.orderId}'),
+              subtitle: Text(
+                DateFormat('dd MMM yyyy, hh:mm a').format(earning.date),
+              ),
+              trailing: Text(
+                '₹${earning.amount.toStringAsFixed(0)}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF4CAF50),
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          )).toList(),
+      ],
+    );
+  }
+
+  void _showWithdrawDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Withdraw Earnings'),
+        content: const Text(
+          'Withdrawal feature is coming soon! You will be able to withdraw your earnings directly to your bank account.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
     );
   }
 }

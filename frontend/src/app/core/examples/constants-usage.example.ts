@@ -231,7 +231,7 @@ class BadExampleComponent {
   
   makeApiCall() {
     // ❌ BAD: Hardcoded URLs
-    return fetch('http://localhost:8082/api/shops');
+    return fetch('http://localhost:8080/api/shops');
   }
 }
 

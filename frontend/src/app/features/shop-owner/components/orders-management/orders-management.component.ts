@@ -7,6 +7,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { FormControl } from '@angular/forms';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { ShopOwnerOrderService, ShopOwnerOrder } from '../../services/shop-owner-order.service';
+import { AssignmentService } from '../../services/assignment.service';
 
 @Component({
   selector: 'app-orders-management',
@@ -39,10 +40,14 @@ export class OrdersManagementComponent implements OnInit {
   totalOrders = 0;
   pageSize = 10;
 
+  // Assignment state
+  isAssigningPartner = false;
+
   constructor(
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
-    private orderService: ShopOwnerOrderService
+    private orderService: ShopOwnerOrderService,
+    private assignmentService: AssignmentService
   ) {}
 
   ngOnInit(): void {
@@ -67,8 +72,8 @@ export class OrdersManagementComponent implements OnInit {
     this.pendingOrders = this.orders.filter(o => o.status === 'PENDING');
     this.processingOrders = this.orders.filter(o => o.status === 'CONFIRMED');
     this.todayOrders = this.orders.filter(o => this.isToday(new Date(o.createdAt)));
-    this.inProgressOrders = this.orders.filter(o => 
-      ['CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP'].includes(o.status)
+    this.inProgressOrders = this.orders.filter(o =>
+      ['CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY'].includes(o.status)
     );
     this.totalOrders = this.orders.length;
   }
@@ -273,6 +278,42 @@ export class OrdersManagementComponent implements OnInit {
 
   reportIssue(orderId: number): void {
     this.snackBar.open('Issue reporting dialog would open here', 'Close', { duration: 3000 });
+  }
+
+  assignDeliveryPartner(orderId: number): void {
+    this.isAssigningPartner = true;
+
+    // For now, we'll auto-assign to available partner
+    // Later this can be enhanced with a partner selection dialog
+    const assignedBy = 1; // TODO: Should get from auth service - current user ID
+
+    this.assignmentService.autoAssignOrder(orderId, assignedBy).subscribe({
+      next: (response) => {
+        this.isAssigningPartner = false;
+
+        if (response.success && response.assignment) {
+          // Update order status
+          const orderIndex = this.orders.findIndex(o => o.id === orderId);
+          if (orderIndex !== -1) {
+            this.orders[orderIndex].status = 'OUT_FOR_DELIVERY';
+            this.updateOrderLists();
+          }
+
+          this.snackBar.open(
+            `Order assigned to ${response.assignment.deliveryPartner.name}`,
+            'Close',
+            { duration: 5000 }
+          );
+        } else {
+          this.snackBar.open(response.message || 'Failed to assign delivery partner', 'Close', { duration: 3000 });
+        }
+      },
+      error: (error) => {
+        this.isAssigningPartner = false;
+        console.error('Error assigning delivery partner:', error);
+        this.snackBar.open('Error assigning delivery partner', 'Close', { duration: 3000 });
+      }
+    });
   }
 
   onPageChange(event: any): void {

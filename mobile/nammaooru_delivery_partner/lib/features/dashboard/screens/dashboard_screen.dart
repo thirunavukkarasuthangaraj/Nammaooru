@@ -1,0 +1,812 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
+import '../../../core/providers/delivery_partner_provider.dart';
+import '../../../core/models/delivery_partner.dart';
+import '../../orders/screens/order_history_screen.dart';
+import '../../earnings/screens/earnings_screen.dart';
+import '../../auth/screens/login_screen.dart';
+
+class DashboardScreen extends StatefulWidget {
+  const DashboardScreen({Key? key}) : super(key: key);
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  int _selectedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  void _loadData() {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final provider = Provider.of<DeliveryPartnerProvider>(context, listen: false);
+      await provider.loadDashboardData();
+    });
+  }
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Consumer<DeliveryPartnerProvider>(
+        builder: (context, provider, child) {
+          if (provider.isLoading) {
+            return const Center(
+              child: CircularProgressIndicator(
+                color: Color(0xFF2196F3),
+              ),
+            );
+          }
+
+          if (provider.error != null) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    size: 64,
+                    color: Colors.red[400],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Error: ${provider.error}',
+                    style: const TextStyle(fontSize: 16),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _loadData,
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final screens = [
+            HomeTab(partner: provider.currentPartner, parentContext: context),
+            const EarningsScreen(),
+            OrderHistoryTab(orders: provider.orderHistory),
+            ProfileTab(partner: provider.currentPartner),
+          ];
+
+          return screens[_selectedIndex];
+        },
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: const Color(0xFF2196F3),
+        unselectedItemColor: Colors.grey,
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.account_balance_wallet),
+            label: 'Earnings',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.history),
+            label: 'Orders',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Profile',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class HomeTab extends StatelessWidget {
+  final DeliveryPartner? partner;
+  final BuildContext parentContext;
+
+  const HomeTab({Key? key, this.partner, required this.parentContext}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'Dashboard',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        backgroundColor: const Color(0xFF2196F3),
+        elevation: 0,
+        actions: [
+          Consumer<DeliveryPartnerProvider>(
+            builder: (context, provider, child) {
+              final isOnline = provider.currentPartner?.isOnline ?? false;
+              return Row(
+                children: [
+                  Switch(
+                    value: isOnline,
+                    onChanged: (value) => provider.toggleOnlineStatus(),
+                    activeColor: Colors.green,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    isOnline ? 'Online' : 'Offline',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          final provider = Provider.of<DeliveryPartnerProvider>(context, listen: false);
+          await provider.refreshAll();
+        },
+        child: Consumer<DeliveryPartnerProvider>(
+          builder: (context, provider, child) {
+            return SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Welcome Section
+                  _buildWelcomeCard(),
+                  
+                  const SizedBox(height: 16),
+                  
+                  // Stats Cards
+                  _buildStatsCards(provider),
+                  
+                  const SizedBox(height: 24),
+                  
+                  // Available Orders Section
+                  _buildAvailableOrdersSection(provider),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWelcomeCard() {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF2196F3), Color(0xFF21CBF3)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Row(
+          children: [
+            const CircleAvatar(
+              radius: 30,
+              backgroundColor: Colors.white24,
+              child: Icon(
+                Icons.person,
+                size: 30,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Welcome Back!',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                    ),
+                  ),
+                  Text(
+                    partner?.name ?? 'Delivery Partner',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    'Rating: ${partner?.rating.toStringAsFixed(1) ?? '0.0'}⭐',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatsCards(DeliveryPartnerProvider provider) {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildStatCard(
+            'Today Orders',
+            provider.earnings?.todayDeliveries.toString() ?? '0',
+            Icons.delivery_dining,
+            Colors.blue,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _buildStatCard(
+            'Today Earnings',
+            '₹${provider.earnings?.todayEarnings.toStringAsFixed(0) ?? '0'}',
+            Icons.monetization_on,
+            Colors.green,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Icon(icon, size: 32, color: color),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvailableOrdersSection(DeliveryPartnerProvider provider) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Available Orders',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (provider.availableOrders.isEmpty)
+          _buildEmptyOrdersCard(provider)
+        else
+          ...provider.availableOrders.map((order) => _buildOrderCard(order, provider)),
+      ],
+    );
+  }
+
+  Widget _buildEmptyOrdersCard(DeliveryPartnerProvider provider) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            Icon(
+              Icons.assignment,
+              size: 48,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'No orders available',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'New orders will appear here when available',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[500],
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () => provider.loadAvailableOrders(),
+              icon: const Icon(Icons.refresh),
+              label: const Text('Refresh'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2196F3),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOrderCard(DeliveryOrder order, DeliveryPartnerProvider provider) {
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Order #${order.orderId}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    order.status.toUpperCase(),
+                    style: const TextStyle(
+                      color: Colors.orange,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Icon(Icons.person, size: 16, color: Colors.grey),
+                const SizedBox(width: 8),
+                Text(order.customerName),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Icon(Icons.phone, size: 16, color: Colors.grey),
+                const SizedBox(width: 8),
+                Text(order.customerPhone),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.location_on, size: 16, color: Colors.red),
+                const SizedBox(width: 8),
+                Expanded(child: Text(order.deliveryAddress)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Order Value: ₹${order.orderValue.toStringAsFixed(0)}',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    Text(
+                      'Delivery Fee: ₹${order.deliveryFee.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                        color: Colors.green,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final success = await provider.acceptOrder(order.orderId);
+                    if (success) {
+                      ScaffoldMessenger.of(parentContext).showSnackBar(
+                        const SnackBar(
+                          content: Text('Order accepted successfully!'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text('Accept'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class OrderHistoryTab extends StatelessWidget {
+  final List<DeliveryOrder> orders;
+
+  const OrderHistoryTab({Key? key, required this.orders}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'Order History',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
+        backgroundColor: const Color(0xFF2196F3),
+        elevation: 0,
+      ),
+      body: orders.isEmpty
+          ? const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.history, size: 64, color: Colors.grey),
+                  SizedBox(height: 16),
+                  Text(
+                    'No order history',
+                    style: TextStyle(fontSize: 18, color: Colors.grey),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Your completed orders will appear here',
+                    style: TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+                ],
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: orders.length,
+              itemBuilder: (context, index) {
+                final order = orders[index];
+                return Card(
+                  elevation: 2,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: _getStatusColor(order.status),
+                      child: Icon(
+                        _getStatusIcon(order.status),
+                        color: Colors.white,
+                      ),
+                    ),
+                    title: Text('Order #${order.orderId}'),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(order.customerName),
+                        Text(
+                          DateFormat('dd MMM yyyy, hh:mm a')
+                              .format(order.createdAt),
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ],
+                    ),
+                    trailing: Text(
+                      '₹${order.deliveryFee.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+    );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'delivered':
+        return Colors.green;
+      case 'picked_up':
+        return Colors.orange;
+      case 'accepted':
+        return Colors.blue;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getStatusIcon(String status) {
+    switch (status.toLowerCase()) {
+      case 'delivered':
+        return Icons.check;
+      case 'picked_up':
+        return Icons.local_shipping;
+      case 'accepted':
+        return Icons.assignment_turned_in;
+      default:
+        return Icons.help_outline;
+    }
+  }
+}
+
+class ProfileTab extends StatelessWidget {
+  final DeliveryPartner? partner;
+
+  const ProfileTab({Key? key, this.partner}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'Profile',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
+        backgroundColor: const Color(0xFF2196F3),
+        elevation: 0,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            // Profile Header
+            Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    const CircleAvatar(
+                      radius: 50,
+                      backgroundColor: Color(0xFF2196F3),
+                      child: Icon(
+                        Icons.person,
+                        size: 50,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      partner?.name ?? 'Delivery Partner',
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      partner?.phoneNumber ?? '',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.green,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'Verified',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Profile Options
+            Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                children: [
+                  _buildProfileOption(
+                    Icons.edit,
+                    'Edit Profile',
+                    () {},
+                  ),
+                  const Divider(height: 1),
+                  _buildProfileOption(
+                    Icons.motorcycle,
+                    'Vehicle Details',
+                    () {},
+                  ),
+                  const Divider(height: 1),
+                  _buildProfileOption(
+                    Icons.document_scanner,
+                    'Documents',
+                    () {},
+                  ),
+                  const Divider(height: 1),
+                  _buildProfileOption(
+                    Icons.account_balance,
+                    'Bank Details',
+                    () {},
+                  ),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 16),
+            
+            Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                children: [
+                  _buildProfileOption(
+                    Icons.settings,
+                    'Settings',
+                    () {},
+                  ),
+                  const Divider(height: 1),
+                  _buildProfileOption(
+                    Icons.help,
+                    'Help & Support',
+                    () {},
+                  ),
+                  const Divider(height: 1),
+                  _buildProfileOption(
+                    Icons.info,
+                    'About',
+                    () {},
+                  ),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // Logout Button
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: OutlinedButton.icon(
+                onPressed: () => _showLogoutDialog(context),
+                icon: const Icon(Icons.logout, color: Colors.red),
+                label: const Text(
+                  'Logout',
+                  style: TextStyle(color: Colors.red),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.red),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileOption(IconData icon, String title, VoidCallback onTap) {
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(title),
+      trailing: const Icon(Icons.arrow_forward_ios),
+      onTap: onTap,
+    );
+  }
+
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final provider = Provider.of<DeliveryPartnerProvider>(
+                context,
+                listen: false,
+              );
+              await provider.logout();
+              if (context.mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                  (route) => false,
+                );
+              }
+            },
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+  }
+}

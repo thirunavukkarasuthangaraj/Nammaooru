@@ -7,6 +7,7 @@ import '../../../shared/models/product_model.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/utils/helpers.dart';
+import '../../../core/utils/image_url_helper.dart';
 import 'cart_screen.dart';
 
 class ShopDetailsScreen extends StatefulWidget {
@@ -686,9 +687,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                     child: imageUrl.isNotEmpty
                         ? Image.network(
-                            imageUrl.startsWith('http') 
-                                ? imageUrl 
-                                : 'http://localhost:8082$imageUrl',
+                            ImageUrlHelper.getFullImageUrl(imageUrl),
                             width: double.infinity,
                             height: double.infinity,
                             fit: BoxFit.cover,

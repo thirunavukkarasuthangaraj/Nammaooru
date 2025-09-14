@@ -23,6 +23,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -85,7 +86,7 @@ public class UserService {
         
         // Send welcome email
         try {
-            emailService.sendWelcomeEmail(savedUser.getEmail(), savedUser.getFullName(), savedUser.getUsername());
+            emailService.sendWelcomeEmail(savedUser.getEmail(), savedUser.getFullName(), savedUser.getUsername(), request.getPassword());
         } catch (Exception e) {
             log.error("Failed to send welcome email to user: {}", savedUser.getUsername(), e);
         }
@@ -423,5 +424,71 @@ public class UserService {
                 .accountAge(accountAge)
                 .lastLoginFormatted(lastLoginFormatted)
                 .build();
+    }
+    
+    // Additional methods for delivery partner functionality
+    public Optional<User> findByEmail(String email) {
+        return userRepository.findByEmail(email);
+    }
+    
+    public Optional<User> findById(Long id) {
+        return userRepository.findById(id);
+    }
+    
+    public User save(User user) {
+        return userRepository.save(user);
+    }
+    
+    @Transactional
+    public void updateLastLogin(Long userId) {
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            user.setLastLogin(LocalDateTime.now());
+            user.setFailedLoginAttempts(0); // Reset failed attempts on successful login
+            userRepository.save(user);
+        }
+    }
+
+    // Delivery Partner Status Tracking Methods
+
+    public List<User> findByRole(User.UserRole role) {
+        return userRepository.findByRole(role);
+    }
+
+    public List<User> findByRoleAndIsOnline(User.UserRole role, Boolean isOnline) {
+        return userRepository.findByRoleAndIsOnline(role, isOnline);
+    }
+
+    public List<User> findByRoleAndIsAvailable(User.UserRole role, Boolean isAvailable) {
+        return userRepository.findByRoleAndIsAvailable(role, isAvailable);
+    }
+
+    public List<User> findByRoleAndRideStatus(User.UserRole role, User.RideStatus rideStatus) {
+        return userRepository.findByRoleAndRideStatus(role, rideStatus);
+    }
+
+    public List<User> findOnlinePartnersWithLocation(User.UserRole role) {
+        return userRepository.findOnlinePartnersWithLocation(role);
+    }
+
+    public List<User> findInactivePartners(User.UserRole role, LocalDateTime cutoffTime) {
+        return userRepository.findInactivePartners(role, cutoffTime);
+    }
+
+    @Transactional
+    public User loginDeliveryPartner(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+
+        // Update login info and set online status
+        user.setLastLogin(LocalDateTime.now());
+        user.setFailedLoginAttempts(0);
+        user.setIsOnline(true);
+        user.setIsAvailable(true);
+        user.setRideStatus(User.RideStatus.AVAILABLE);
+        user.setLastActivity(LocalDateTime.now());
+
+        return userRepository.save(user);
     }
 }

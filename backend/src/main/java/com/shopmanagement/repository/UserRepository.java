@@ -109,4 +109,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // Find managers (users who have direct reports)
     @Query("SELECT DISTINCT u FROM User u WHERE u.id IN (SELECT r.reportsTo FROM User r WHERE r.reportsTo IS NOT NULL)")
     List<User> findManagers();
+
+    // Delivery Partner Status Tracking Methods
+    List<User> findByRoleAndIsOnline(User.UserRole role, Boolean isOnline);
+    List<User> findByRoleAndIsAvailable(User.UserRole role, Boolean isAvailable);
+    List<User> findByRoleAndRideStatus(User.UserRole role, User.RideStatus rideStatus);
+
+    @Query("SELECT u FROM User u WHERE u.role = :role AND u.isOnline = true AND u.currentLatitude IS NOT NULL AND u.currentLongitude IS NOT NULL")
+    List<User> findOnlinePartnersWithLocation(@Param("role") User.UserRole role);
+
+    @Query("SELECT u FROM User u WHERE u.role = :role AND u.lastActivity < :cutoffTime")
+    List<User> findInactivePartners(@Param("role") User.UserRole role, @Param("cutoffTime") LocalDateTime cutoffTime);
 }

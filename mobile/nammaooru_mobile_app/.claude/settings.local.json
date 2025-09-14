@@ -27,7 +27,9 @@
       "Bash(\"C:\\Users\\MVNLA\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb\" shell \"ps | grep -i namma\")",
       "Bash(\"C:\\Users\\MVNLA\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb\" logcat --pid=3390 -v time)",
       "Bash(\"C:\\Users\\MVNLA\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb\" logcat -c)",
-      "Bash(\"C:\\Users\\MVNLA\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb\" shell \"am start -n com.nammaooru.app/.MainActivity\")"
+      "Bash(\"C:\\Users\\MVNLA\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb\" shell \"am start -n com.nammaooru.app/.MainActivity\")",
+      "Bash(ipconfig)",
+      "Bash(findstr:*)"
     ],
     "deny": [],
     "ask": [],

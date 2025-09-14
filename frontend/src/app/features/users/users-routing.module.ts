@@ -3,6 +3,7 @@ import { RouterModule, Routes } from '@angular/router';
 import { UserListComponent } from './components/user-list/user-list.component';
 import { UserDetailComponent } from './components/user-detail/user-detail.component';
 import { UserFormComponent } from './components/user-form/user-form.component';
+import { DeliveryPartnerDocumentsComponent } from '../delivery/components/delivery-partner-documents/delivery-partner-documents.component';
 import { AuthGuard } from '../../core/guards/auth.guard';
 
 const routes: Routes = [
@@ -54,6 +55,11 @@ const routes: Routes = [
   {
     path: ':id/edit',
     component: UserFormComponent,
+    canActivate: [AuthGuard]
+  },
+  {
+    path: ':id/documents',
+    component: DeliveryPartnerDocumentsComponent,
     canActivate: [AuthGuard]
   }
 ];

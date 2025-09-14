@@ -99,29 +99,86 @@
             line-height: 1.4;
         }
 
+        .money-highlight {
+            background: rgba(76, 175, 80, 0.2);
+            padding: 15px;
+            border-radius: 15px;
+            margin: 15px 0;
+            text-align: center;
+            border: 2px solid rgba(76, 175, 80, 0.3);
+        }
+
+        .money-title {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+
+        .money-amount {
+            font-size: 48px;
+            font-weight: bold;
+            color: #4CAF50;
+            text-shadow: 0 3px 6px rgba(0,0,0,0.2);
+            margin-bottom: 8px;
+            font-family: Georgia, serif;
+            letter-spacing: -1px;
+        }
+
+        .money-change {
+            font-size: 12px;
+            color: #4CAF50;
+            font-weight: bold;
+        }
+
         .stats-container {
             display: flex;
             gap: 8px;
-            margin-top: 15px;
+            margin-top: 10px;
         }
 
         .stat-card {
             flex: 1;
             background: rgba(255,255,255,0.15);
-            padding: 10px 8px;
+            padding: 12px 8px;
             border-radius: 10px;
             text-align: center;
+            position: relative;
+        }
+
+        .stat-card.money-focused {
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid rgba(76, 175, 80, 0.3);
         }
 
         .stat-value {
-            font-size: 16px;
+            font-size: 18px;
             font-weight: bold;
             margin-bottom: 2px;
+        }
+
+        .stat-value.money {
+            color: #4CAF50;
+            font-size: 20px;
         }
 
         .stat-label {
             font-size: 10px;
             opacity: 0.8;
+        }
+
+        .quick-money {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #4CAF50;
+            color: white;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .content {
@@ -172,12 +229,25 @@
         }
 
         .order-amount {
-            background: #e8f5e8;
-            color: #2E7D32;
-            padding: 4px 8px;
-            border-radius: 8px;
-            font-size: 14px;
+            background: #4CAF50;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-size: 16px;
             font-weight: bold;
+            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+            position: relative;
+        }
+
+        .order-amount::before {
+            content: '💰';
+            margin-right: 4px;
+        }
+
+        .order-amount.large {
+            font-size: 18px;
+            padding: 10px 15px;
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
         }
 
         .order-details {
@@ -358,18 +428,25 @@
                 </div>
             </div>
 
+            <div class="money-highlight" onclick="viewDetailedEarnings()">
+                <div class="money-title">💰 आज का पैसा / Today Money</div>
+                <div class="money-amount" id="todayEarnings">₹2,450</div>
+                <div class="money-change">कल से ₹380 ज्यादा</div>
+            </div>
+
             <div class="stats-container">
+                <div class="stat-card money-focused" onclick="viewMoneyDetails()">
+                    <div class="quick-money">💰</div>
+                    <div class="stat-value money">₹18,650</div>
+                    <div class="stat-label">सप्ताह का पैसा</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">45</div>
+                    <div class="stat-label">आर्डर</div>
+                </div>
                 <div class="stat-card">
                     <div class="stat-value">12</div>
-                    <div class="stat-label">Orders</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">₹2,400</div>
-                    <div class="stat-label">Revenue</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">3</div>
-                    <div class="stat-label">New Customers</div>
+                    <div class="stat-label">ग्राहक</div>
                 </div>
             </div>
         </div>
@@ -384,7 +461,7 @@
                 <div class="order-card new">
                     <div class="order-header">
                         <div class="order-number">🛍️ Order #ORD001</div>
-                        <div class="order-amount">₹450</div>
+                        <div class="order-amount large">₹450</div>
                     </div>
                     <div class="order-details">
                         👤 Suresh Kumar | 📞 +91 98765 43210<br>
@@ -418,7 +495,7 @@
                 <div class="order-card new">
                     <div class="order-header">
                         <div class="order-number">🛍️ Order #ORD003</div>
-                        <div class="order-amount">₹520</div>
+                        <div class="order-amount large">₹520</div>
                     </div>
                     <div class="order-details">
                         👤 Rajesh Kumar | 📞 +91 90123 45678<br>
@@ -618,12 +695,31 @@
             alert(`📍 Tracking Order ${orderNumber}...\n\n🚚 Delivery partner is 5 minutes away from customer location.`);
         }
 
+        function viewDetailedEarnings() {
+            alert(`💰 आज का पैसा विस्तार से\n\n🌅 सुबह (6-12): ₹650\n🌞 दोपहर (12-6): ₹980\n🌙 शाम (6-12): ₹820\n\n📊 कुल: ₹2,450\n💵 नकद: ₹1,200\n📱 ऑनलाइन: ₹1,250\n\nकल से ₹380 ज्यादा मिला!`);
+        }
+
+        function viewMoneyDetails() {
+            alert(`💰 सप्ताह का पैसा\n\n📅 इस सप्ताह: ₹18,650\n📈 पिछले सप्ताह से: +₹3,200 ज्यादा\n\n💵 रोज का औसत: ₹2,664\n🏆 सबसे अच्छा दिन: गुरुवार (₹3,450)\n\n💵 नकद: ₹9,700 (52%)\n📱 ऑनलाइन: ₹8,950 (48%)\n\n🎯 महीने का लक्ष्य: ₹75,000\nअब तक: 72% पूरा हो गया`);
+        }
+
         // Auto refresh orders every 30 seconds
         setInterval(() => {
             if (isShopOpen) {
                 console.log('Checking for new orders...');
+                // Update earnings in real-time
+                updateEarnings();
             }
         }, 30000);
+
+        function updateEarnings() {
+            const currentEarnings = document.getElementById('todayEarnings');
+            // Simulate real-time earnings update
+            const baseAmount = 2450;
+            const variance = Math.floor(Math.random() * 100);
+            const newAmount = baseAmount + variance;
+            currentEarnings.textContent = `₹${newAmount.toLocaleString()}`;
+        }
     </script>
 
     <style>

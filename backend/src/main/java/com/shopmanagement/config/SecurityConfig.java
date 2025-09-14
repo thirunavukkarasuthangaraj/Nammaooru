@@ -22,14 +22,15 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.context.annotation.Lazy;
 
 import java.util.Arrays;
 import java.util.List;
 
-//@Configuration
-//@EnableWebSecurity
+@Configuration
+@EnableWebSecurity
 @RequiredArgsConstructor
-//@EnableMethodSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
     private final UserRepository userRepository;
@@ -59,7 +60,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, @Lazy JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -67,6 +68,12 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/auth/**",
                                 "/api/public/**",
+                                "/api/mobile/delivery-partner/login",
+                                "/api/mobile/delivery-partner/forgot-password",
+                                "/api/delivery/partners/documents/*/view",
+                                "/uploads/**",
+                                "/shops/**",
+                                "/delivery-partners/**",
                                 "/actuator/**",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
@@ -75,10 +82,14 @@ public class SecurityConfig {
                         ).permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/shop-owner/**").hasAnyRole("ADMIN", "SHOP_OWNER")
+                        .requestMatchers("/api/mobile/delivery-partner/**").hasAnyRole("ADMIN", "DELIVERY_PARTNER")
+                        .requestMatchers("/api/delivery/partners/**").hasAnyRole("ADMIN", "DELIVERY_PARTNER")
+                        .requestMatchers("/api/assignments/**").hasAnyRole("ADMIN", "DELIVERY_PARTNER")
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authenticationProvider(authenticationProvider());
+                .authenticationProvider(authenticationProvider())
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

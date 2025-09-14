@@ -5,7 +5,7 @@ export const environment = {
   apiUrl: 'http://localhost:8080/api',
   appUrl: 'http://localhost:4200',
   googleMapsApiKey: 'AIzaSyAr_uGbaOnhebjRyz7ohU6N-hWZJVV_R3U',
-  websocketUrl: 'ws://localhost:8082/ws',
+  websocketUrl: 'ws://localhost:8080/ws',
   version: packageInfo.version,
   buildDate: new Date().toISOString(),
   defaultMapCenter: {

@@ -25,13 +25,13 @@
               <mat-label>Status</mat-label>
               <mat-select [(ngModel)]="selectedStatus" (selectionChange)="applyFilter()">
                 <mat-option value="">All Status</mat-option>
-                <mat-option value="pending">Pending</mat-option>
-                <mat-option value="accepted">Accepted</mat-option>
-                <mat-option value="preparing">Preparing</mat-option>
-                <mat-option value="ready">Ready</mat-option>
-                <mat-option value="picked_up">Picked Up</mat-option>
-                <mat-option value="delivered">Delivered</mat-option>
-                <mat-option value="cancelled">Cancelled</mat-option>
+                <mat-option value="PENDING">Pending</mat-option>
+                <mat-option value="CONFIRMED">Confirmed</mat-option>
+                <mat-option value="PREPARING">Preparing</mat-option>
+                <mat-option value="READY_FOR_PICKUP">Ready for Pickup</mat-option>
+                <mat-option value="OUT_FOR_DELIVERY">Out for Delivery</mat-option>
+                <mat-option value="DELIVERED">Delivered</mat-option>
+                <mat-option value="CANCELLED">Cancelled</mat-option>
               </mat-select>
             </mat-form-field>
             
@@ -78,7 +78,7 @@
               
               <div class="order-actions">
                 <ng-container [ngSwitch]="order.status">
-                  <div *ngSwitchCase="'pending'" class="pending-actions">
+                  <div *ngSwitchCase="'PENDING'" class="pending-actions">
                     <button mat-raised-button color="primary" (click)="acceptOrder(order.id)">
                       <mat-icon>check</mat-icon> Accept Order
                     </button>
@@ -87,20 +87,25 @@
                     </button>
                   </div>
                   
-                  <div *ngSwitchCase="'accepted'" class="accepted-actions">
+                  <div *ngSwitchCase="'CONFIRMED'" class="accepted-actions">
                     <button mat-raised-button color="primary" (click)="startPreparing(order.id)">
                       <mat-icon>restaurant</mat-icon> Start Preparing
                     </button>
                   </div>
                   
-                  <div *ngSwitchCase="'preparing'" class="preparing-actions">
+                  <div *ngSwitchCase="'PREPARING'" class="preparing-actions">
                     <button mat-raised-button color="primary" (click)="markReady(order.id)">
                       <mat-icon>done</mat-icon> Mark Ready
                     </button>
                   </div>
                   
-                  <div *ngSwitchCase="'ready'" class="ready-actions">
-                    <button mat-raised-button color="primary" (click)="markPickedUp(order.id)">
+                  <div *ngSwitchCase="'READY_FOR_PICKUP'" class="ready-actions">
+                    <button mat-raised-button color="primary" (click)="assignDeliveryPartner(order.id)"
+                            [disabled]="isAssigningPartner">
+                      <mat-icon>person_add</mat-icon>
+                      {{ isAssigningPartner ? 'Assigning...' : 'Assign Partner' }}
+                    </button>
+                    <button mat-stroked-button color="accent" (click)="markPickedUp(order.id)">
                       <mat-icon>local_shipping</mat-icon> Mark Picked Up
                     </button>
                   </div>

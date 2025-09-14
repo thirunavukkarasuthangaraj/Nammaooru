@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NammaOoru Shop - Business Hours</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+        }
+
+        .mobile-container {
+            width: 100%;
+            max-width: 375px;
+            margin: 0 auto;
+            background: #f5f5f5;
+            min-height: 100vh;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            background: #FF9800;
+            color: white;
+            padding: 20px 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .back-btn {
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .save-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .save-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .content {
+            padding: 15px;
+            padding-bottom: 100px;
+        }
+
+        .section {
+            background: white;
+            border-radius: 15px;
+            margin-bottom: 15px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .section-header {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .quick-actions {
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .quick-btn {
+            padding: 15px;
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            background: none;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            color: #666;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .quick-btn:hover {
+            border-color: #FF9800;
+            color: #FF9800;
+        }
+
+        .day-schedule {
+            padding: 0;
+        }
+
+        .day-item {
+            display: flex;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .day-item:last-child {
+            border-bottom: none;
+        }
+
+        .day-toggle {
+            position: relative;
+            width: 50px;
+            height: 25px;
+            background: #ddd;
+            border-radius: 25px;
+            cursor: pointer;
+            margin-right: 15px;
+            transition: background 0.3s;
+        }
+
+        .day-toggle.active {
+            background: #4CAF50;
+        }
+
+        .day-toggle::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 21px;
+            height: 21px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+
+        .day-toggle.active::after {
+            transform: translateX(25px);
+        }
+
+        .day-info {
+            flex: 1;
+        }
+
+        .day-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 2px;
+        }
+
+        .day-hours {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .day-hours.closed {
+            color: #f44336;
+            font-style: italic;
+        }
+
+        .day-edit {
+            color: #FF9800;
+            font-size: 14px;
+            cursor: pointer;
+            padding: 5px 10px;
+        }
+
+        .day-edit:hover {
+            background: rgba(255, 152, 0, 0.1);
+            border-radius: 5px;
+        }
+
+        .special-hours {
+            padding: 20px;
+        }
+
+        .special-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: #fff3e0;
+            border-left: 4px solid #FF9800;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        .special-date {
+            font-size: 14px;
+            font-weight: bold;
+            color: #E65100;
+        }
+
+        .special-desc {
+            font-size: 12px;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        .special-remove {
+            color: #f44336;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        .add-special {
+            width: 100%;
+            padding: 15px;
+            border: 2px dashed #FF9800;
+            background: none;
+            color: #FF9800;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .add-special:hover {
+            background: rgba(255, 152, 0, 0.1);
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            width: 100%;
+            max-width: 350px;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .time-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .time-group {
+            text-align: center;
+        }
+
+        .time-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .time-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            text-align: center;
+            background: #f8f9fa;
+        }
+
+        .time-input:focus {
+            outline: none;
+            border-color: #FF9800;
+            background: white;
+        }
+
+        .break-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .break-header {
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .break-toggle {
+            position: relative;
+            width: 40px;
+            height: 20px;
+            background: #ddd;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .break-toggle.active {
+            background: #FF9800;
+        }
+
+        .break-toggle::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+
+        .break-toggle.active::after {
+            transform: translateX(20px);
+        }
+
+        .break-times {
+            display: none;
+            margin-top: 10px;
+        }
+
+        .break-times.active {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-modal {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .btn-cancel {
+            background: #666;
+            color: white;
+        }
+
+        .btn-save-time {
+            background: #FF9800;
+            color: white;
+        }
+
+        .status-info {
+            padding: 20px;
+            background: #e8f5e8;
+            border-left: 4px solid #4CAF50;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+
+        .status-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #2E7D32;
+            margin-bottom: 5px;
+        }
+
+        .status-desc {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 375px;
+            background: white;
+            display: flex;
+            border-top: 1px solid #eee;
+        }
+
+        .nav-item {
+            flex: 1;
+            padding: 12px 5px;
+            text-align: center;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .nav-item:hover {
+            background: #f5f5f5;
+        }
+
+        .nav-icon {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-container">
+        <div class="header">
+            <div class="header-left">
+                <div class="back-btn" onclick="window.location.href='profile.html'">←</div>
+                <h1>🕒 Business Hours</h1>
+            </div>
+            <button class="save-btn" onclick="saveAllChanges()">💾 Save</button>
+        </div>
+
+        <div class="content">
+            <div class="status-info">
+                <div class="status-title">🟢 Currently Open</div>
+                <div class="status-desc">
+                    Your shop is open according to your schedule. Next closure: Today 10:00 PM
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">
+                    ⚡ QUICK ACTIONS
+                </div>
+                <div class="quick-actions">
+                    <button class="quick-btn" onclick="copyTimes()">📋<br>Copy Hours</button>
+                    <button class="quick-btn" onclick="resetDefault()">🔄<br>Reset Default</button>
+                    <button class="quick-btn" onclick="closeAllDay()">🚫<br>Close All</button>
+                    <button class="quick-btn" onclick="openAllDay()">✅<br>24/7 Mode</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">
+                    📅 WEEKLY SCHEDULE
+                </div>
+                <div class="day-schedule">
+                    <div class="day-item">
+                        <div class="day-toggle active" onclick="toggleDay(this, 'monday')" data-day="monday"></div>
+                        <div class="day-info">
+                            <div class="day-name">Monday</div>
+                            <div class="day-hours">9:00 AM - 10:00 PM</div>
+                        </div>
+                        <div class="day-edit" onclick="editDayHours('Monday', '9:00', '22:00')">✏️</div>
+                    </div>
+
+                    <div class="day-item">
+                        <div class="day-toggle active" onclick="toggleDay(this, 'tuesday')" data-day="tuesday"></div>
+                        <div class="day-info">
+                            <div class="day-name">Tuesday</div>
+                            <div class="day-hours">9:00 AM - 10:00 PM</div>
+                        </div>
+                        <div class="day-edit" onclick="editDayHours('Tuesday', '9:00', '22:00')">✏️</div>
+                    </div>
+
+                    <div class="day-item">
+                        <div class="day-info">
+                            <div class="day-name">Wednesday</div>
+                            <div class="day-hours closed">Closed</div>
+                        </div>
+                        <div class="day-toggle" onclick="toggleDay(this, 'wednesday')" data-day="wednesday"></div>
+                        <div class="day-edit" onclick="editDayHours('Wednesday', '', '')">✏️</div>
+                    </div>
+
+                    <div class="day-item">
+                        <div class="day-toggle active" onclick="toggleDay(this, 'thursday')" data-day="thursday"></div>
+                        <div class="day-info">
+                            <div class="day-name">Thursday</div>
+                            <div class="day-hours">9:00 AM - 10:00 PM</div>
+                        </div>
+                        <div class="day-edit" onclick="editDayHours('Thursday', '9:00', '22:00')">✏️</div>
+                    </div>
+
+                    <div class="day-item">
+                        <div class="day-toggle active" onclick="toggleDay(this, 'friday')" data-day="friday"></div>
+                        <div class="day-info">
+                            <div class="day-name">Friday</div>
+                            <div class="day-hours">9:00 AM - 11:00 PM</div>
+                        </div>
+                        <div class="day-edit" onclick="editDayHours('Friday', '9:00', '23:00')">✏️</div>
+                    </div>
+
+                    <div class="day-item">
+                        <div class="day-toggle active" onclick="toggleDay(this, 'saturday')" data-day="saturday"></div>
+                        <div class="day-info">
+                            <div class="day-name">Saturday</div>
+                            <div class="day-hours">10:00 AM - 11:00 PM</div>
+                        </div>
+                        <div class="day-edit" onclick="editDayHours('Saturday', '10:00', '23:00')">✏️</div>
+                    </div>
+
+                    <div class="day-item">
+                        <div class="day-toggle active" onclick="toggleDay(this, 'sunday')" data-day="sunday"></div>
+                        <div class="day-info">
+                            <div class="day-name">Sunday</div>
+                            <div class="day-hours">10:00 AM - 9:00 PM</div>
+                        </div>
+                        <div class="day-edit" onclick="editDayHours('Sunday', '10:00', '21:00')">✏️</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">
+                    🗓️ SPECIAL HOURS & HOLIDAYS
+                </div>
+                <div class="special-hours">
+                    <div class="special-item">
+                        <div>
+                            <div class="special-date">Dec 31, 2024</div>
+                            <div class="special-desc">New Year's Eve - Open till 2:00 AM</div>
+                        </div>
+                        <div class="special-remove" onclick="removeSpecialHours(this)">🗑️</div>
+                    </div>
+
+                    <div class="special-item">
+                        <div>
+                            <div class="special-date">Jan 1, 2025</div>
+                            <div class="special-desc">New Year's Day - Closed</div>
+                        </div>
+                        <div class="special-remove" onclick="removeSpecialHours(this)">🗑️</div>
+                    </div>
+
+                    <button class="add-special" onclick="addSpecialHours()">
+                        ➕ Add Special Hours / Holiday
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Hours Modal -->
+        <div class="modal" id="hoursModal">
+            <div class="modal-content">
+                <div class="modal-title" id="modalDay">Edit Monday Hours</div>
+
+                <div class="time-inputs">
+                    <div class="time-group">
+                        <label class="time-label">Opening Time</label>
+                        <input type="time" class="time-input" id="openTime" value="09:00">
+                    </div>
+                    <div class="time-group">
+                        <label class="time-label">Closing Time</label>
+                        <input type="time" class="time-input" id="closeTime" value="22:00">
+                    </div>
+                </div>
+
+                <div class="break-section">
+                    <div class="break-header">
+                        ☕ Break Time
+                        <div class="break-toggle" id="breakToggle" onclick="toggleBreak()"></div>
+                    </div>
+                    <div class="break-times" id="breakTimes">
+                        <div class="time-group">
+                            <label class="time-label">Break Start</label>
+                            <input type="time" class="time-input" id="breakStart" value="14:00">
+                        </div>
+                        <div class="time-group">
+                            <label class="time-label">Break End</label>
+                            <input type="time" class="time-input" id="breakEnd" value="15:00">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button class="btn-modal btn-cancel" onclick="closeHoursModal()">Cancel</button>
+                    <button class="btn-modal btn-save-time" onclick="saveDayHours()">Save Hours</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bottom-nav">
+            <div class="nav-item" onclick="window.location.href='dashboard.html'">
+                <div class="nav-icon">🏠</div>
+                <div>Home</div>
+            </div>
+            <div class="nav-item" onclick="window.location.href='order-history.html'">
+                <div class="nav-icon">📋</div>
+                <div>Orders</div>
+            </div>
+            <div class="nav-item" onclick="window.location.href='products.html'">
+                <div class="nav-icon">🛍️</div>
+                <div>Products</div>
+            </div>
+            <div class="nav-item" onclick="window.location.href='analytics.html'">
+                <div class="nav-icon">📊</div>
+                <div>Analytics</div>
+            </div>
+            <div class="nav-item" onclick="window.location.href='profile.html'">
+                <div class="nav-icon">👤</div>
+                <div>Profile</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentEditDay = '';
+
+        function toggleDay(element, dayName) {
+            element.classList.toggle('active');
+            const isOpen = element.classList.contains('active');
+
+            // Update the hours display
+            const dayItem = element.closest('.day-item');
+            const hoursElement = dayItem.querySelector('.day-hours');
+
+            if (!isOpen) {
+                hoursElement.textContent = 'Closed';
+                hoursElement.classList.add('closed');
+            } else {
+                hoursElement.textContent = '9:00 AM - 10:00 PM';
+                hoursElement.classList.remove('closed');
+            }
+
+            console.log(`${dayName} ${isOpen ? 'opened' : 'closed'}`);
+        }
+
+        function editDayHours(dayName, openTime, closeTime) {
+            currentEditDay = dayName;
+            document.getElementById('modalDay').textContent = `Edit ${dayName} Hours`;
+            document.getElementById('openTime').value = openTime;
+            document.getElementById('closeTime').value = closeTime;
+            document.getElementById('hoursModal').style.display = 'flex';
+        }
+
+        function closeHoursModal() {
+            document.getElementById('hoursModal').style.display = 'none';
+        }
+
+        function toggleBreak() {
+            const breakToggle = document.getElementById('breakToggle');
+            const breakTimes = document.getElementById('breakTimes');
+
+            breakToggle.classList.toggle('active');
+            breakTimes.classList.toggle('active');
+        }
+
+        function saveDayHours() {
+            const openTime = document.getElementById('openTime').value;
+            const closeTime = document.getElementById('closeTime').value;
+
+            if (!openTime || !closeTime) {
+                alert('Please select both opening and closing times');
+                return;
+            }
+
+            // Convert 24hr to 12hr format for display
+            const formatTime = (time) => {
+                const [hours, minutes] = time.split(':');
+                const hour24 = parseInt(hours);
+                const hour12 = hour24 > 12 ? hour24 - 12 : (hour24 === 0 ? 12 : hour24);
+                const period = hour24 >= 12 ? 'PM' : 'AM';
+                return `${hour12}:${minutes} ${period}`;
+            };
+
+            const openFormatted = formatTime(openTime);
+            const closeFormatted = formatTime(closeTime);
+
+            alert(`✅ ${currentEditDay} hours updated!\n\n🕘 Open: ${openFormatted}\n🕙 Close: ${closeFormatted}`);
+            closeHoursModal();
+        }
+
+        function copyTimes() {
+            const options = ['Copy Monday to all days', 'Copy weekday hours', 'Copy weekend hours'];
+            const choice = prompt(`Select copy option:\n${options.map((opt, i) => `${i+1}. ${opt}`).join('\n')}`);
+
+            if (choice && choice >= 1 && choice <= 3) {
+                alert(`📋 ${options[choice-1]} applied successfully!`);
+            }
+        }
+
+        function resetDefault() {
+            if (confirm('Reset all days to default hours (9:00 AM - 10:00 PM)?')) {
+                alert('🔄 All hours reset to default schedule');
+            }
+        }
+
+        function closeAllDay() {
+            if (confirm('Close shop for all days? You can reopen individual days later.')) {
+                alert('🚫 Shop closed for all days');
+            }
+        }
+
+        function openAllDay() {
+            if (confirm('Set shop to 24/7 mode for all days?')) {
+                alert('✅ Shop set to 24/7 mode for all days');
+            }
+        }
+
+        function addSpecialHours() {
+            const date = prompt('Enter date (MM/DD/YYYY):');
+            if (date) {
+                const type = prompt('Select type:\n1. Special hours\n2. Holiday (closed)\n3. Extended hours');
+                if (type) {
+                    alert(`🗓️ Special hours added for ${date}`);
+                }
+            }
+        }
+
+        function removeSpecialHours(element) {
+            if (confirm('Remove this special hours entry?')) {
+                element.closest('.special-item').remove();
+                alert('🗑️ Special hours entry removed');
+            }
+        }
+
+        function saveAllChanges() {
+            alert('💾 All business hours saved successfully!\n\n✅ Weekly schedule updated\n✅ Special hours saved\n✅ Break times configured\n\nChanges are now live!');
+        }
+
+        // Auto-save functionality
+        let hasUnsavedChanges = false;
+
+        function markUnsaved() {
+            hasUnsavedChanges = true;
+            document.querySelector('.save-btn').style.background = '#f44336';
+        }
+
+        // Monitor changes
+        document.addEventListener('input', markUnsaved);
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('day-toggle') || e.target.classList.contains('break-toggle')) {
+                markUnsaved();
+            }
+        });
+
+        // Warn about unsaved changes
+        window.addEventListener('beforeunload', function(e) {
+            if (hasUnsavedChanges) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+    </script>
+</body>
+</html>

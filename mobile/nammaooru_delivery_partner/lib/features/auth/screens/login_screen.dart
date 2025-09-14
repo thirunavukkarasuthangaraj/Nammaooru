@@ -1,396 +1,381 @@
 import 'package:flutter/material.dart';
-import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:provider/provider.dart';
-
-import '../../../core/constants/app_colors.dart';
-import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/delivery_partner_provider.dart';
+import '../../dashboard/screens/dashboard_screen.dart';
+import '../../profile/screens/force_password_change_screen.dart';
+import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({Key? key}) : super(key: key);
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin {
-  final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _otpController = TextEditingController();
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  
-  bool _showOtpField = false;
-  bool _isLoading = false;
-  
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-    
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
-    
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOutCubic,
-    ));
-    
-    _animationController.forward();
-  }
+class _LoginScreenState extends State<LoginScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isPasswordVisible = false;
+  bool _rememberMe = false;
 
   @override
   void dispose() {
-    _animationController.dispose();
-    _phoneController.dispose();
-    _otpController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleLogin() async {
+    if (!_formKey.currentState!.validate()) return;
+    
+    final provider = Provider.of<DeliveryPartnerProvider>(context, listen: false);
+    
+    final loginResult = await provider.loginWithPasswordCheck(
+      _emailController.text.trim(),
+      _passwordController.text,
+    );
+    
+    if (loginResult['success'] && mounted) {
+      if (loginResult['requiresPasswordChange'] == true) {
+        // First time login - force password change
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const ForcePasswordChangeScreen()),
+        );
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please change your password to continue'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      } else {
+        // Normal login - go to dashboard
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const DashboardScreen()),
+        );
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Login successful! Welcome back.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(provider.error ?? 'Login failed'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _navigateToForgotPassword() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F8E9),
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: SlideTransition(
-              position: _slideAnimation,
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 60),
-                    
-                    // Logo
-                    Hero(
-                      tag: 'app_logo',
-                      child: Container(
-                        width: 120,
-                        height: 120,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(60),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primary.withOpacity(0.3),
-                              spreadRadius: 2,
-                              blurRadius: 20,
-                              offset: const Offset(0, 10),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.delivery_dining,
-                          size: 60,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 30),
-                    
-                    // Title
-                    Text(
-                      'NammaOoru Delivery',
-                      style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                        color: AppColors.primaryDark,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Partner Portal',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 40),
-                    
-                    // Phone Number Field
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(15),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.grey.withOpacity(0.1),
-                            spreadRadius: 1,
-                            blurRadius: 10,
-                          ),
-                        ],
-                      ),
-                      child: TextFormField(
-                        controller: _phoneController,
-                        keyboardType: TextInputType.phone,
-                        maxLength: 10,
-                        enabled: !_showOtpField,
-                        decoration: InputDecoration(
-                          labelText: 'Mobile Number',
-                          prefixText: '+91 ',
-                          prefixIcon: const Icon(Icons.phone),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(15),
-                            borderSide: BorderSide.none,
-                          ),
-                          filled: true,
-                          fillColor: Colors.white,
-                          counterText: '',
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter mobile number';
-                          }
-                          if (value.length != 10) {
-                            return 'Please enter valid 10-digit mobile number';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    
-                    // OTP Field (animated visibility)
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 500),
-                      height: _showOtpField ? null : 0,
-                      child: AnimatedOpacity(
-                        duration: const Duration(milliseconds: 500),
-                        opacity: _showOtpField ? 1.0 : 0.0,
-                        child: Column(
-                          children: [
-                            // Success message
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: AppColors.success.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: AppColors.success.withOpacity(0.3),
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.check_circle,
-                                    color: AppColors.success,
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      'OTP sent to +91 ${_phoneController.text}',
-                                      style: TextStyle(
-                                        color: AppColors.success,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            
-                            // OTP Input
-                            PinCodeTextField(
-                              appContext: context,
-                              length: 6,
-                              controller: _otpController,
-                              keyboardType: TextInputType.number,
-                              animationType: AnimationType.scale,
-                              pinTheme: PinTheme(
-                                shape: PinCodeFieldShape.box,
-                                borderRadius: BorderRadius.circular(10),
-                                fieldHeight: 55,
-                                fieldWidth: 45,
-                                activeFillColor: Colors.white,
-                                inactiveFillColor: Colors.white,
-                                selectedFillColor: AppColors.primary.withOpacity(0.1),
-                                activeColor: AppColors.primary,
-                                inactiveColor: AppColors.border,
-                                selectedColor: AppColors.primary,
-                              ),
-                              animationDuration: const Duration(milliseconds: 300),
-                              backgroundColor: Colors.transparent,
-                              enableActiveFill: true,
-                              onChanged: (value) {
-                                // Auto-submit when 6 digits entered
-                                if (value.length == 6) {
-                                  _verifyOtp();
-                                }
-                              },
-                            ),
-                            const SizedBox(height: 15),
-                            
-                            // Resend OTP
-                            TextButton(
-                              onPressed: _resendOtp,
-                              child: Text(
-                                'Resend OTP',
-                                style: TextStyle(
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    
-                    const SizedBox(height: 30),
-                    
-                    // Submit Button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _handleSubmit,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          elevation: 3,
-                        ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                ),
-                              )
-                            : Text(
-                                _showOtpField ? 'VERIFY OTP' : 'SEND OTP',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                      ),
-                    ),
-                    
-                    const SizedBox(height: 40),
-                    
-                    // Terms and conditions
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Text(
-                        'By continuing, you agree to our Terms of Service and Privacy Policy',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.textHint,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 40),
+              _buildHeader(),
+              const SizedBox(height: 40),
+              _buildLoginForm(),
+              const SizedBox(height: 24),
+              _buildLoginButton(),
+              const SizedBox(height: 24),
+              _buildForgotPasswordLink(),
+              const SizedBox(height: 32),
+              _buildDemoLogin(),
+              const SizedBox(height: 40),
+              _buildTerms(),
+            ],
           ),
         ),
       ),
     );
   }
 
-  void _handleSubmit() {
-    if (!_formKey.currentState!.validate()) return;
-    
-    if (!_showOtpField) {
-      _sendOtp();
-    } else {
-      _verifyOtp();
-    }
+  Widget _buildHeader() {
+    return Column(
+      children: [
+        // Logo
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF2196F3).withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.delivery_dining,
+            size: 60,
+            color: Color(0xFF2196F3),
+          ),
+        ),
+        
+        const SizedBox(height: 24),
+        
+        const Text(
+          'Welcome Back!',
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF2196F3),
+          ),
+          textAlign: TextAlign.center,
+        ),
+        
+        const SizedBox(height: 8),
+        
+        Text(
+          'Sign in to your delivery partner account',
+          style: TextStyle(
+            fontSize: 16,
+            color: Colors.grey[600],
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
   }
 
-  Future<void> _sendOtp() async {
-    setState(() => _isLoading = true);
-    
-    try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      await authProvider.sendOtp(_phoneController.text);
-      
-      setState(() {
-        _showOtpField = true;
-        _isLoading = false;
-      });
-      
-      _showSuccessMessage('OTP sent to +91 ${_phoneController.text}');
-    } catch (e) {
-      setState(() => _isLoading = false);
-      _showErrorMessage('Failed to send OTP. Please try again.');
-    }
-  }
-
-  Future<void> _verifyOtp() async {
-    if (_otpController.text.length != 6) {
-      _showErrorMessage('Please enter valid 6-digit OTP');
-      return;
-    }
-    
-    setState(() => _isLoading = true);
-    
-    try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final success = await authProvider.verifyOtp(
-        _phoneController.text,
-        _otpController.text,
-      );
-      
-      if (success) {
-        Navigator.pushReplacementNamed(context, '/dashboard');
-      } else {
-        setState(() => _isLoading = false);
-        _showErrorMessage('Invalid OTP. Please try again.');
-      }
-    } catch (e) {
-      setState(() => _isLoading = false);
-      _showErrorMessage('Failed to verify OTP. Please try again.');
-    }
-  }
-
-  Future<void> _resendOtp() async {
-    await _sendOtp();
-    _showSuccessMessage('OTP resent to +91 ${_phoneController.text}');
-  }
-
-  void _showSuccessMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.success,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+  Widget _buildLoginForm() {
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Email Field
+          const Text(
+            'Email Address',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
+            style: const TextStyle(fontSize: 16),
+            decoration: InputDecoration(
+              hintText: 'Enter your email address',
+              prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF2196F3)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey[300]!),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFF2196F3), width: 2),
+              ),
+              filled: true,
+              fillColor: Colors.grey[50],
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter your email address';
+              }
+              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                return 'Please enter a valid email address';
+              }
+              return null;
+            },
+          ),
+          
+          const SizedBox(height: 20),
+          
+          // Password Field
+          const Text(
+            'Password',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: _passwordController,
+            obscureText: !_isPasswordVisible,
+            style: const TextStyle(fontSize: 16),
+            decoration: InputDecoration(
+              hintText: 'Enter your password',
+              prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF2196F3)),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                  color: Colors.grey[600],
+                ),
+                onPressed: () {
+                  setState(() {
+                    _isPasswordVisible = !_isPasswordVisible;
+                  });
+                },
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey[300]!),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFF2196F3), width: 2),
+              ),
+              filled: true,
+              fillColor: Colors.grey[50],
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter your password';
+              }
+              if (value.length < 6) {
+                return 'Password must be at least 6 characters long';
+              }
+              return null;
+            },
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // Remember Me Checkbox
+          Row(
+            children: [
+              Checkbox(
+                value: _rememberMe,
+                onChanged: (value) {
+                  setState(() {
+                    _rememberMe = value ?? false;
+                  });
+                },
+                activeColor: const Color(0xFF2196F3),
+              ),
+              const Text(
+                'Remember me',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  void _showErrorMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+  Widget _buildLoginButton() {
+    return Consumer<DeliveryPartnerProvider>(
+      builder: (context, provider, child) {
+        return SizedBox(
+          width: double.infinity,
+          height: 56,
+          child: ElevatedButton(
+            onPressed: provider.isLoading ? null : _handleLogin,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2196F3),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 2,
+            ),
+            child: provider.isLoading
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
+                : const Text(
+                    'Sign In',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildForgotPasswordLink() {
+    return Center(
+      child: TextButton(
+        onPressed: _navigateToForgotPassword,
+        child: const Text(
+          'Forgot Password?',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF2196F3),
+          ),
+        ),
       ),
+    );
+  }
+
+  Widget _buildDemoLogin() {
+    return Column(
+      children: [
+        const Divider(),
+        const SizedBox(height: 16),
+        const Text(
+          'Demo Account (For Testing)',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey,
+          ),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton(
+          onPressed: () {
+            _emailController.text = 'delivery@nammaooru.com';
+            _passwordController.text = 'password123';
+            _handleLogin();
+          },
+          style: OutlinedButton.styleFrom(
+            foregroundColor: const Color(0xFF2196F3),
+            side: const BorderSide(color: Color(0xFF2196F3)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+          ),
+          child: const Text('Use Demo Account'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTerms() {
+    return Text(
+      'By signing in, you agree to NammaOoru\'s Terms of Service and Privacy Policy for delivery partners',
+      style: TextStyle(
+        fontSize: 12,
+        color: Colors.grey[600],
+      ),
+      textAlign: TextAlign.center,
     );
   }
 }

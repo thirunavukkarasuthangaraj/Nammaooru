@@ -129,6 +129,32 @@ public class User implements UserDetails {
     @Column(name = "updated_by", length = 100)
     private String updatedBy;
 
+    // Delivery Partner Status Tracking Fields
+    @Column(name = "is_online")
+    @Builder.Default
+    private Boolean isOnline = false;
+
+    @Column(name = "is_available")
+    @Builder.Default
+    private Boolean isAvailable = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "ride_status")
+    @Builder.Default
+    private RideStatus rideStatus = RideStatus.AVAILABLE;
+
+    @Column(name = "current_latitude")
+    private Double currentLatitude;
+
+    @Column(name = "current_longitude")
+    private Double currentLongitude;
+
+    @Column(name = "last_location_update")
+    private LocalDateTime lastLocationUpdate;
+
+    @Column(name = "last_activity")
+    private LocalDateTime lastActivity;
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
@@ -178,5 +204,9 @@ public class User implements UserDetails {
 
     public enum UserStatus {
         ACTIVE, INACTIVE, SUSPENDED, PENDING_VERIFICATION
+    }
+
+    public enum RideStatus {
+        AVAILABLE, ON_RIDE, BUSY, ON_BREAK, OFFLINE
     }
 }

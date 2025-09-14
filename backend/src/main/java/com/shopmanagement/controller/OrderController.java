@@ -6,6 +6,8 @@ import com.shopmanagement.dto.order.OrderRequest;
 import com.shopmanagement.dto.order.OrderResponse;
 import com.shopmanagement.entity.Order;
 import com.shopmanagement.service.OrderService;
+import com.shopmanagement.service.OrderAssignmentService;
+import com.shopmanagement.entity.OrderAssignment;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -29,8 +31,9 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Slf4j
 public class OrderController {
-    
+
     private final OrderService orderService;
+    private final OrderAssignmentService assignmentService;
     
     @PostMapping
     @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER') or hasRole('CUSTOMER') or hasRole('USER')")
@@ -192,6 +195,18 @@ public class OrderController {
     public ResponseEntity<ApiResponse<OrderResponse>> markOrderReady(@PathVariable Long orderId) {
         log.info("Marking order ready: {}", orderId);
         OrderResponse response = orderService.updateOrderStatus(orderId, Order.OrderStatus.READY_FOR_PICKUP);
+
+        // Trigger auto-assignment when order becomes ready for pickup
+        try {
+            log.info("Attempting auto-assignment for order: {}", orderId);
+            OrderAssignment assignment = assignmentService.autoAssignOrder(orderId, 1L); // Using system user ID 1 as assignedBy
+            log.info("Order {} successfully auto-assigned to partner: {}", orderId, assignment.getDeliveryPartner().getEmail());
+        } catch (Exception e) {
+            log.warn("Auto-assignment failed for order {}: {}", orderId, e.getMessage());
+            // Continue with success response even if auto-assignment fails
+            // This allows manual assignment later
+        }
+
         return ResponseUtil.success(response, "Order marked as ready successfully");
     }
     

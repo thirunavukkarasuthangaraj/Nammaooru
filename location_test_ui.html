@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delivery Partner Location Tracking & Auto-Assignment Test</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+        }
+        #map {
+            width: 70%;
+            height: 100%;
+        }
+        #sidebar {
+            width: 30%;
+            padding: 20px;
+            background: #f5f5f5;
+            overflow-y: auto;
+        }
+        .partner-card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .partner-online {
+            border-left: 4px solid #4CAF50;
+        }
+        .partner-busy {
+            border-left: 4px solid #FF9800;
+        }
+        .partner-offline {
+            border-left: 4px solid #9E9E9E;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+        }
+        .status-available { background: #4CAF50; }
+        .status-busy { background: #FF9800; }
+        .status-offline { background: #9E9E9E; }
+        .shop-card {
+            background: #E3F2FD;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid #2196F3;
+        }
+        button {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #1976D2;
+        }
+        .test-controls {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .distance-info {
+            font-size: 11px;
+            color: #666;
+            margin-top: 5px;
+        }
+        #assignment-log {
+            background: #FFFDE7;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            padding: 5px;
+            margin: 5px 0;
+            border-left: 3px solid #FFC107;
+            background: white;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div id="sidebar">
+        <h2>📍 Location-Based Auto-Assignment Test</h2>
+
+        <div class="test-controls">
+            <h3>🎮 Test Controls</h3>
+            <button onclick="simulatePartnerMovement()">🚗 Simulate Partner Movement</button>
+            <button onclick="createNewOrder()">📦 Create New Order</button>
+            <button onclick="triggerAutoAssign()">⚡ Trigger Auto-Assignment</button>
+            <button onclick="updateAllLocations()">📍 Update All Locations</button>
+        </div>
+
+        <div class="shop-card">
+            <h4>🏪 Shop: Thirunavukkarasu</h4>
+            <div>📍 Location: 13.0827°N, 80.2707°E</div>
+            <div>📦 Pending Orders: <span id="pending-orders">2</span></div>
+            <button onclick="markOrderReady()">✅ Mark Order Ready</button>
+        </div>
+
+        <h3>🚴 Delivery Partners</h3>
+        <div id="partners-list"></div>
+
+        <div id="assignment-log">
+            <h4>📋 Assignment Log</h4>
+            <div id="log-entries"></div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize map centered on Chennai
+        const map = L.map('map').setView([13.0827, 80.2707], 13);
+
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Shop marker
+        const shopIcon = L.divIcon({
+            html: '<div style="background: #2196F3; color: white; padding: 8px; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;">🏪</div>',
+            iconSize: [30, 30],
+            className: 'shop-marker'
+        });
+
+        const shopMarker = L.marker([13.0827, 80.2707], {icon: shopIcon}).addTo(map);
+        shopMarker.bindPopup('<b>Shop: Thirunavukkarasu</b><br>Ready for pickup orders');
+
+        // Delivery partners data
+        let partners = [
+            {
+                id: 39,
+                name: 'Delivery Partner 1',
+                status: 'available',
+                lat: 13.0900,
+                lng: 80.2750,
+                lastUpdate: new Date(),
+                speed: 0,
+                currentOrder: null
+            },
+            {
+                id: 40,
+                name: 'Thiru Driver',
+                status: 'busy',
+                lat: 13.0750,
+                lng: 80.2650,
+                lastUpdate: new Date(),
+                speed: 25,
+                currentOrder: 'ORD123456',
+                pickupTime: new Date(Date.now() - 25 * 60000) // 25 mins ago
+            },
+            {
+                id: 37,
+                name: 'Partner 3',
+                status: 'available',
+                lat: 13.0950,
+                lng: 80.2800,
+                lastUpdate: new Date(),
+                speed: 0,
+                currentOrder: null
+            }
+        ];
+
+        let partnerMarkers = {};
+        let assignmentLog = [];
+
+        // Create partner markers
+        function updatePartnerMarkers() {
+            partners.forEach(partner => {
+                const icon = L.divIcon({
+                    html: `<div style="background: ${getStatusColor(partner.status)}; color: white; padding: 5px; border-radius: 50%; width: 25px; height: 25px; display: flex; align-items: center; justify-content: center;">🚴</div>`,
+                    iconSize: [25, 25],
+                    className: 'partner-marker'
+                });
+
+                if (partnerMarkers[partner.id]) {
+                    partnerMarkers[partner.id].setLatLng([partner.lat, partner.lng]);
+                    partnerMarkers[partner.id].setIcon(icon);
+                } else {
+                    partnerMarkers[partner.id] = L.marker([partner.lat, partner.lng], {icon}).addTo(map);
+                }
+
+                partnerMarkers[partner.id].bindPopup(`
+                    <b>${partner.name}</b><br>
+                    Status: ${partner.status}<br>
+                    Speed: ${partner.speed} km/h<br>
+                    ${partner.currentOrder ? `Order: ${partner.currentOrder}` : 'No active order'}
+                `);
+            });
+        }
+
+        function getStatusColor(status) {
+            switch(status) {
+                case 'available': return '#4CAF50';
+                case 'busy': return '#FF9800';
+                default: return '#9E9E9E';
+            }
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return (R * c).toFixed(2);
+        }
+
+        function updatePartnersList() {
+            const shopLat = 13.0827;
+            const shopLng = 80.2707;
+            const listHtml = partners.map(partner => {
+                const distance = calculateDistance(shopLat, shopLng, partner.lat, partner.lng);
+                const timeSincePickup = partner.pickupTime ?
+                    Math.floor((Date.now() - partner.pickupTime) / 60000) : 0;
+
+                return `
+                    <div class="partner-card partner-${partner.status === 'available' ? 'online' : partner.status === 'busy' ? 'busy' : 'offline'}">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h4>${partner.name}</h4>
+                            <span class="status-badge status-${partner.status}">${partner.status.toUpperCase()}</span>
+                        </div>
+                        <div>📍 Location: ${partner.lat.toFixed(4)}°N, ${partner.lng.toFixed(4)}°E</div>
+                        <div class="distance-info">📏 Distance from shop: ${distance} km</div>
+                        <div>⚡ Speed: ${partner.speed} km/h</div>
+                        ${partner.currentOrder ? `
+                            <div>📦 Current Order: ${partner.currentOrder}</div>
+                            <div style="color: #FF9800;">⏱️ Picked up ${timeSincePickup} mins ago</div>
+                        ` : '<div style="color: #4CAF50;">✅ Available for assignment</div>'}
+                        <div style="font-size: 11px; color: #999; margin-top: 5px;">
+                            Last update: ${new Date(partner.lastUpdate).toLocaleTimeString()}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('partners-list').innerHTML = listHtml;
+        }
+
+        function simulatePartnerMovement() {
+            partners.forEach(partner => {
+                // Simulate movement (random small changes)
+                partner.lat += (Math.random() - 0.5) * 0.005;
+                partner.lng += (Math.random() - 0.5) * 0.005;
+                partner.lastUpdate = new Date();
+
+                // Update speed for moving partners
+                if (partner.status === 'busy') {
+                    partner.speed = Math.floor(Math.random() * 30) + 10;
+                }
+            });
+
+            updatePartnerMarkers();
+            updatePartnersList();
+            addLogEntry('📍 Updated all partner locations');
+        }
+
+        function createNewOrder() {
+            const orderId = 'ORD' + Math.floor(Math.random() * 1000000);
+            document.getElementById('pending-orders').textContent =
+                parseInt(document.getElementById('pending-orders').textContent) + 1;
+            addLogEntry(`📦 New order created: ${orderId}`);
+        }
+
+        function markOrderReady() {
+            addLogEntry('✅ Order marked as READY_FOR_PICKUP');
+            setTimeout(() => triggerAutoAssign(), 1000);
+        }
+
+        function triggerAutoAssign() {
+            const shopLat = 13.0827;
+            const shopLng = 80.2707;
+
+            // Sort partners by smart logic
+            const availablePartners = partners.map(partner => {
+                const distance = calculateDistance(shopLat, shopLng, partner.lat, partner.lng);
+                const timeSincePickup = partner.pickupTime ?
+                    (Date.now() - partner.pickupTime) / 60000 : 0;
+
+                let priority = 100;
+
+                if (partner.status === 'available') {
+                    priority = distance; // Lower is better
+                } else if (partner.status === 'busy' && timeSincePickup > 20) {
+                    priority = distance + 5; // Add penalty but still consider
+                } else {
+                    priority = 999; // Not available
+                }
+
+                return { ...partner, distance, priority, timeSincePickup };
+            }).sort((a, b) => a.priority - b.priority);
+
+            const bestPartner = availablePartners[0];
+
+            if (bestPartner.priority < 999) {
+                const reason = bestPartner.status === 'available' ?
+                    'Available and nearest' :
+                    `Completing soon (${Math.floor(bestPartner.timeSincePickup)} mins since pickup)`;
+
+                addLogEntry(`
+                    ⚡ AUTO-ASSIGNED to ${bestPartner.name}<br>
+                    📏 Distance: ${bestPartner.distance} km<br>
+                    📊 Reason: ${reason}
+                `);
+
+                // Update partner status
+                bestPartner.status = 'busy';
+                bestPartner.currentOrder = 'ORD' + Math.floor(Math.random() * 1000000);
+                bestPartner.pickupTime = new Date();
+
+                updatePartnerMarkers();
+                updatePartnersList();
+
+                // Draw assignment line
+                L.polyline([
+                    [shopLat, shopLng],
+                    [bestPartner.lat, bestPartner.lng]
+                ], {color: 'green', weight: 3, opacity: 0.7, dashArray: '10, 10'}).addTo(map);
+            } else {
+                addLogEntry('❌ No suitable partners available');
+            }
+        }
+
+        function updateAllLocations() {
+            partners.forEach(partner => {
+                partner.lastUpdate = new Date();
+            });
+            updatePartnersList();
+            addLogEntry('🔄 Received location updates from all partners');
+        }
+
+        function addLogEntry(message) {
+            const entry = {
+                time: new Date().toLocaleTimeString(),
+                message: message
+            };
+            assignmentLog.unshift(entry);
+
+            const logHtml = assignmentLog.slice(0, 10).map(log => `
+                <div class="log-entry">
+                    <strong>${log.time}</strong>: ${log.message}
+                </div>
+            `).join('');
+
+            document.getElementById('log-entries').innerHTML = logHtml;
+        }
+
+        // Auto-update every 1 minute (simulating real updates)
+        setInterval(() => {
+            simulatePartnerMovement();
+            addLogEntry('⏰ 1-minute location update received');
+        }, 60000);
+
+        // Initial setup
+        updatePartnerMarkers();
+        updatePartnersList();
+        addLogEntry('🚀 System initialized - Location tracking active');
+    </script>
+</body>
+</html>

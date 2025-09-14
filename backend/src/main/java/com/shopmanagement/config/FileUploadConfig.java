@@ -15,7 +15,10 @@ public class FileUploadConfig implements WebMvcConfigurer {
 
     @Value("${app.upload.documents.path:uploads/documents/shops}")
     private String documentUploadPath;
-    
+
+    @Value("${app.upload.documents.path.delivery-partners:uploads/documents/delivery-partners}")
+    private String deliveryPartnerDocumentUploadPath;
+
     @Value("${file.upload.path:./uploads}")
     private String fileUploadPath;
 
@@ -37,11 +40,16 @@ public class FileUploadConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        // Serve uploaded documents
+        // Serve uploaded shop documents
         String documentPath = Paths.get(documentUploadPath).toAbsolutePath().toString();
         registry.addResourceHandler("/uploads/documents/**")
                 .addResourceLocations("file:" + documentPath + "/");
-        
+
+        // Serve uploaded delivery partner documents
+        String deliveryPartnerDocumentPath = Paths.get(deliveryPartnerDocumentUploadPath).toAbsolutePath().toString();
+        registry.addResourceHandler("/uploads/documents/delivery-partners/**")
+                .addResourceLocations("file:" + deliveryPartnerDocumentPath + "/");
+
         // Serve uploaded shop images (from both locations)
         String imagePath = Paths.get(fileUploadPath).toAbsolutePath().toString();
         registry.addResourceHandler("/shops/**")
@@ -49,9 +57,16 @@ public class FileUploadConfig implements WebMvcConfigurer {
                     "file:" + imagePath + "/shops/",
                     "file:" + documentPath + "/"
                 );
-        
+
         // Serve product images
         registry.addResourceHandler("/uploads/products/**")
                 .addResourceLocations("file:" + imagePath + "/products/");
+
+        // Serve delivery partner profile images (if needed in future)
+        registry.addResourceHandler("/delivery-partners/**")
+                .addResourceLocations(
+                    "file:" + imagePath + "/delivery-partners/",
+                    "file:" + deliveryPartnerDocumentPath + "/"
+                );
     }
 }

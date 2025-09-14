@@ -8,6 +8,7 @@ import '../../../shared/providers/cart_provider.dart';
 import '../../../shared/models/cart_model.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/theme/village_theme.dart';
+import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/helpers.dart';
 import '../orders/checkout_screen.dart';
 
@@ -159,9 +160,7 @@ class _CartScreenState extends State<CartScreen> {
                 String imageUrl;
                 if (item.product.images.isNotEmpty) {
                   final rawUrl = item.product.images.first;
-                  imageUrl = rawUrl.startsWith('http') 
-                      ? rawUrl 
-                      : 'http://localhost:8082$rawUrl';
+                  imageUrl = ImageUrlHelper.getFullImageUrl(rawUrl);
                   print('Cart Product: ${item.product.name}, Image URL: $rawUrl -> $imageUrl');
                 } else {
                   imageUrl = 'https://via.placeholder.com/80x80';

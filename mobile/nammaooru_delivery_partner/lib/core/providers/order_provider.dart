@@ -4,8 +4,10 @@ import 'dart:convert';
 
 import '../constants/api_endpoints.dart';
 import '../models/order_model.dart';
+import '../services/api_service.dart';
 
 class OrderProvider with ChangeNotifier {
+  final ApiService _apiService = ApiService();
   List<Order> _availableOrders = [];
   List<Order> _activeOrders = [];
   List<Order> _orderHistory = [];
@@ -22,91 +24,120 @@ class OrderProvider with ChangeNotifier {
   // Load available orders for pickup
   Future<void> loadAvailableOrders() async {
     _setLoading(true);
-    
+
     try {
-      // For demo, create mock orders
-      _availableOrders = _createMockAvailableOrders();
+      final response = await _apiService.getAvailableOrders();
+      if (response['success'] == true && response['orders'] != null) {
+        _availableOrders = (response['orders'] as List)
+            .map((orderData) => Order.fromJson(orderData))
+            .toList();
+      } else {
+        _availableOrders = [];
+      }
       _error = null;
     } catch (e) {
-      _error = 'Failed to load available orders';
+      _error = 'Failed to load available orders: ${e.toString()}';
+      _availableOrders = [];
       if (kDebugMode) {
         print('Load Available Orders Error: $e');
       }
     }
-    
+
     _setLoading(false);
   }
 
   // Load active orders (accepted, picked up, in transit)
   Future<void> loadActiveOrders() async {
     _setLoading(true);
-    
+
     try {
-      // For demo, create mock active orders
-      _activeOrders = _createMockActiveOrders();
+      final response = await _apiService.getActiveOrders();
+      if (response['success'] == true && response['orders'] != null) {
+        _activeOrders = (response['orders'] as List)
+            .map((orderData) => Order.fromJson(orderData))
+            .toList();
+      } else {
+        _activeOrders = [];
+      }
       _error = null;
     } catch (e) {
-      _error = 'Failed to load active orders';
+      _error = 'Failed to load active orders: ${e.toString()}';
+      _activeOrders = [];
       if (kDebugMode) {
         print('Load Active Orders Error: $e');
       }
     }
-    
+
     _setLoading(false);
   }
 
   // Load order history
   Future<void> loadOrderHistory() async {
     _setLoading(true);
-    
+
     try {
-      // For demo, create mock order history
-      _orderHistory = _createMockOrderHistory();
+      final response = await _apiService.getOrderHistory();
+      if (response['success'] == true && response['orders'] != null) {
+        _orderHistory = (response['orders'] as List)
+            .map((orderData) => Order.fromJson(orderData))
+            .toList();
+      } else {
+        _orderHistory = [];
+      }
       _error = null;
     } catch (e) {
-      _error = 'Failed to load order history';
+      _error = 'Failed to load order history: ${e.toString()}';
+      _orderHistory = [];
       if (kDebugMode) {
         print('Load Order History Error: $e');
       }
     }
-    
+
     _setLoading(false);
   }
 
   // Accept an order
   Future<bool> acceptOrder(String orderId, String preparationTime) async {
     _setLoading(true);
-    
+
     try {
-      // Remove from available orders and add to active orders
-      final orderIndex = _availableOrders.indexWhere((order) => order.id == orderId);
-      if (orderIndex != -1) {
-        final order = _availableOrders.removeAt(orderIndex);
-        final acceptedOrder = Order(
-          id: order.id,
-          orderNumber: order.orderNumber,
-          customer: order.customer,
-          restaurant: order.restaurant,
-          items: order.items,
-          totalAmount: order.totalAmount,
-          deliveryFee: order.deliveryFee,
-          status: OrderStatus.accepted,
-          createdAt: order.createdAt,
-          estimatedDeliveryTime: DateTime.now().add(Duration(
-            minutes: int.tryParse(preparationTime.replaceAll(RegExp(r'[^0-9]'), '')) ?? 30,
-          )),
-          deliveryAddress: order.deliveryAddress,
-          specialInstructions: order.specialInstructions,
-          paymentMethod: order.paymentMethod,
-          distance: order.distance,
-          estimatedDuration: order.estimatedDuration,
-        );
-        
-        _activeOrders.insert(0, acceptedOrder);
+      // Call API to accept order
+      final response = await _apiService.acceptOrder(orderId);
+
+      if (response['success'] == true) {
+        // Remove from available orders and add to active orders
+        final orderIndex = _availableOrders.indexWhere((order) => order.id == orderId);
+        if (orderIndex != -1) {
+          final order = _availableOrders.removeAt(orderIndex);
+          final acceptedOrder = Order(
+            id: order.id,
+            orderNumber: order.orderNumber,
+            customer: order.customer,
+            restaurant: order.restaurant,
+            items: order.items,
+            totalAmount: order.totalAmount,
+            deliveryFee: order.deliveryFee,
+            status: OrderStatus.accepted,
+            createdAt: order.createdAt,
+            estimatedDeliveryTime: DateTime.now().add(Duration(
+              minutes: int.tryParse(preparationTime.replaceAll(RegExp(r'[^0-9]'), '')) ?? 30,
+            )),
+            deliveryAddress: order.deliveryAddress,
+            specialInstructions: order.specialInstructions,
+            paymentMethod: order.paymentMethod,
+            distance: order.distance,
+            estimatedDuration: order.estimatedDuration,
+          );
+
+          _activeOrders.insert(0, acceptedOrder);
+        }
+
+        _setLoading(false);
+        return true;
+      } else {
+        _setLoading(false);
+        return false;
       }
-      
-      _setLoading(false);
-      return true;
     } catch (e) {
       _setLoading(false);
       if (kDebugMode) {
@@ -136,32 +167,41 @@ class OrderProvider with ChangeNotifier {
   // Mark order as picked up
   Future<bool> markOrderPickedUp(String orderId) async {
     _setLoading(true);
-    
+
     try {
-      final orderIndex = _activeOrders.indexWhere((order) => order.id == orderId);
-      if (orderIndex != -1) {
-        final order = _activeOrders[orderIndex];
-        _activeOrders[orderIndex] = Order(
-          id: order.id,
-          orderNumber: order.orderNumber,
-          customer: order.customer,
-          restaurant: order.restaurant,
-          items: order.items,
-          totalAmount: order.totalAmount,
-          deliveryFee: order.deliveryFee,
-          status: OrderStatus.pickedUp,
-          createdAt: order.createdAt,
-          estimatedDeliveryTime: order.estimatedDeliveryTime,
-          deliveryAddress: order.deliveryAddress,
-          specialInstructions: order.specialInstructions,
-          paymentMethod: order.paymentMethod,
-          distance: order.distance,
-          estimatedDuration: order.estimatedDuration,
-        );
+      // Call API to update order status to picked up
+      final response = await _apiService.updateOrderStatus(orderId, 'PICKED_UP');
+
+      if (response['success'] == true) {
+        // Update local order status
+        final orderIndex = _activeOrders.indexWhere((order) => order.id == orderId);
+        if (orderIndex != -1) {
+          final order = _activeOrders[orderIndex];
+          _activeOrders[orderIndex] = Order(
+            id: order.id,
+            orderNumber: order.orderNumber,
+            customer: order.customer,
+            restaurant: order.restaurant,
+            items: order.items,
+            totalAmount: order.totalAmount,
+            deliveryFee: order.deliveryFee,
+            status: OrderStatus.pickedUp,
+            createdAt: order.createdAt,
+            estimatedDeliveryTime: order.estimatedDeliveryTime,
+            deliveryAddress: order.deliveryAddress,
+            specialInstructions: order.specialInstructions,
+            paymentMethod: order.paymentMethod,
+            distance: order.distance,
+            estimatedDuration: order.estimatedDuration,
+          );
+        }
+
+        _setLoading(false);
+        return true;
+      } else {
+        _setLoading(false);
+        return false;
       }
-      
-      _setLoading(false);
-      return true;
     } catch (e) {
       _setLoading(false);
       if (kDebugMode) {
@@ -174,34 +214,43 @@ class OrderProvider with ChangeNotifier {
   // Mark order as delivered
   Future<bool> markOrderDelivered(String orderId) async {
     _setLoading(true);
-    
+
     try {
-      final orderIndex = _activeOrders.indexWhere((order) => order.id == orderId);
-      if (orderIndex != -1) {
-        final order = _activeOrders.removeAt(orderIndex);
-        final deliveredOrder = Order(
-          id: order.id,
-          orderNumber: order.orderNumber,
-          customer: order.customer,
-          restaurant: order.restaurant,
-          items: order.items,
-          totalAmount: order.totalAmount,
-          deliveryFee: order.deliveryFee,
-          status: OrderStatus.delivered,
-          createdAt: order.createdAt,
-          estimatedDeliveryTime: order.estimatedDeliveryTime,
-          deliveryAddress: order.deliveryAddress,
-          specialInstructions: order.specialInstructions,
-          paymentMethod: order.paymentMethod,
-          distance: order.distance,
-          estimatedDuration: order.estimatedDuration,
-        );
-        
-        _orderHistory.insert(0, deliveredOrder);
+      // Call API to update order status to delivered
+      final response = await _apiService.updateOrderStatus(orderId, 'DELIVERED');
+
+      if (response['success'] == true) {
+        // Update local order status
+        final orderIndex = _activeOrders.indexWhere((order) => order.id == orderId);
+        if (orderIndex != -1) {
+          final order = _activeOrders.removeAt(orderIndex);
+          final deliveredOrder = Order(
+            id: order.id,
+            orderNumber: order.orderNumber,
+            customer: order.customer,
+            restaurant: order.restaurant,
+            items: order.items,
+            totalAmount: order.totalAmount,
+            deliveryFee: order.deliveryFee,
+            status: OrderStatus.delivered,
+            createdAt: order.createdAt,
+            estimatedDeliveryTime: order.estimatedDeliveryTime,
+            deliveryAddress: order.deliveryAddress,
+            specialInstructions: order.specialInstructions,
+            paymentMethod: order.paymentMethod,
+            distance: order.distance,
+            estimatedDuration: order.estimatedDuration,
+          );
+
+          _orderHistory.insert(0, deliveredOrder);
+        }
+
+        _setLoading(false);
+        return true;
+      } else {
+        _setLoading(false);
+        return false;
       }
-      
-      _setLoading(false);
-      return true;
     } catch (e) {
       _setLoading(false);
       if (kDebugMode) {
@@ -214,143 +263,5 @@ class OrderProvider with ChangeNotifier {
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();
-  }
-
-  // Mock data generation methods
-  List<Order> _createMockAvailableOrders() {
-    return [
-      Order(
-        id: 'ORD001',
-        orderNumber: 'ORD001',
-        customer: const Customer(
-          id: 'CUST001',
-          name: 'Suresh Kumar',
-          phoneNumber: '+91 98765 43210',
-          rating: 4.5,
-        ),
-        restaurant: const Restaurant(
-          id: 'REST001',
-          name: 'Pizza Palace',
-          phoneNumber: '+91 80 12345678',
-          address: Address(
-            street: '123 MG Road',
-            area: 'MG Road',
-            city: 'Bangalore',
-            state: 'Karnataka',
-            pincode: '560001',
-          ),
-        ),
-        items: const [
-          OrderItem(id: 'ITEM001', name: 'Margherita Pizza', quantity: 2, price: 180.0),
-          OrderItem(id: 'ITEM002', name: 'Coke', quantity: 1, price: 60.0),
-        ],
-        totalAmount: 450.0,
-        deliveryFee: 30.0,
-        status: OrderStatus.pending,
-        createdAt: DateTime.now().subtract(const Duration(minutes: 5)),
-        deliveryAddress: const Address(
-          street: '456 HSR Layout',
-          area: 'HSR Layout',
-          city: 'Bangalore',
-          state: 'Karnataka',
-          pincode: '560102',
-        ),
-        paymentMethod: PaymentMethod.cash,
-        distance: 2.3,
-        estimatedDuration: const Duration(minutes: 18),
-      ),
-      Order(
-        id: 'ORD002',
-        orderNumber: 'ORD002',
-        customer: const Customer(
-          id: 'CUST002',
-          name: 'Priya Sharma',
-          phoneNumber: '+91 87654 32109',
-          rating: 4.8,
-        ),
-        restaurant: const Restaurant(
-          id: 'REST002',
-          name: 'KFC',
-          phoneNumber: '+91 80 23456789',
-          address: Address(
-            street: '789 Koramangala',
-            area: 'Koramangala',
-            city: 'Bangalore',
-            state: 'Karnataka',
-            pincode: '560034',
-          ),
-        ),
-        items: const [
-          OrderItem(id: 'ITEM003', name: 'Chicken Burger', quantity: 1, price: 150.0),
-          OrderItem(id: 'ITEM004', name: 'Fries', quantity: 1, price: 80.0),
-        ],
-        totalAmount: 380.0,
-        deliveryFee: 25.0,
-        status: OrderStatus.pending,
-        createdAt: DateTime.now().subtract(const Duration(minutes: 8)),
-        deliveryAddress: const Address(
-          street: '321 BTM Layout',
-          area: 'BTM Layout',
-          city: 'Bangalore',
-          state: 'Karnataka',
-          pincode: '560076',
-        ),
-        paymentMethod: PaymentMethod.upi,
-        distance: 1.8,
-        estimatedDuration: const Duration(minutes: 15),
-      ),
-    ];
-  }
-
-  List<Order> _createMockActiveOrders() {
-    return [
-      Order(
-        id: 'ORD003',
-        orderNumber: 'ORD003',
-        customer: const Customer(
-          id: 'CUST003',
-          name: 'Vikash Patel',
-          phoneNumber: '+91 67890 12345',
-          rating: 4.2,
-        ),
-        restaurant: const Restaurant(
-          id: 'REST001',
-          name: 'Pizza Palace',
-          phoneNumber: '+91 80 12345678',
-          address: Address(
-            street: '123 MG Road',
-            area: 'MG Road',
-            city: 'Bangalore',
-            state: 'Karnataka',
-            pincode: '560001',
-          ),
-        ),
-        items: const [
-          OrderItem(id: 'ITEM005', name: 'Margherita Pizza', quantity: 3, price: 180.0),
-          OrderItem(id: 'ITEM006', name: 'Coke', quantity: 2, price: 60.0),
-        ],
-        totalAmount: 720.0,
-        deliveryFee: 40.0,
-        status: OrderStatus.accepted,
-        createdAt: DateTime.now().subtract(const Duration(minutes: 15)),
-        estimatedDeliveryTime: DateTime.now().add(const Duration(minutes: 10)),
-        deliveryAddress: const Address(
-          street: '654 Indiranagar',
-          area: 'Indiranagar',
-          city: 'Bangalore',
-          state: 'Karnataka',
-          pincode: '560038',
-        ),
-        paymentMethod: PaymentMethod.card,
-        distance: 3.1,
-        estimatedDuration: const Duration(minutes: 25),
-      ),
-    ];
-  }
-
-  List<Order> _createMockOrderHistory() {
-    return [
-      // Add delivered orders here for history
-    ];
   }
 }
