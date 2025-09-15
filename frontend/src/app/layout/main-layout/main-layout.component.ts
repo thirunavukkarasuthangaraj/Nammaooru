@@ -29,6 +29,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   
   // Notifications
   notificationCount = 3; // Mock data
+
   
   // Version info
   versionInfo: any = null;
@@ -249,7 +250,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     {
       category: 'Orders',
       items: [
-        { title: 'Orders', icon: 'receipt_long', route: '/shop-owner/orders', badge: '3' },
+        // { title: 'Order List', icon: 'list_alt', route: '/shop-owner/orders', badge: '3' },
+        { title: 'Order Management', icon: 'assignment_turned_in', route: '/shop-owner/orders-management', badge: '7' },
         { title: 'Notifications', icon: 'notifications', route: '/shop-owner/notifications', badge: '5' }
       ]
     }

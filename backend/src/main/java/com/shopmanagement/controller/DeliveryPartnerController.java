@@ -15,6 +15,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -27,6 +28,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/mobile/delivery-partner")
 @CrossOrigin(origins = "*")
+@Slf4j
 public class DeliveryPartnerController {
 
     @Autowired
@@ -105,16 +107,16 @@ public class DeliveryPartnerController {
             
             // Generate proper JWT token
             String token = jwtService.generateToken(user);
-            
-            // Set delivery partner as online upon successful login
-            userService.loginDeliveryPartner(user.getId());
 
-            // Additional status update to ensure consistency
-            Map<String, Object> statusRequest = new HashMap<>();
-            statusRequest.put("isOnline", true);
-            statusRequest.put("isAvailable", true);
-            statusRequest.put("rideStatus", "AVAILABLE");
-            updateOnlineStatus(user.getId().toString(), statusRequest);
+            // Set delivery partner as online upon successful login
+            user.setIsOnline(true);
+            user.setIsAvailable(true);
+            user.setRideStatus(User.RideStatus.AVAILABLE);
+            user.setLastLogin(LocalDateTime.now());
+            user.setLastActivity(LocalDateTime.now());
+            userService.save(user);
+
+            System.out.println("Delivery partner " + user.getEmail() + " logged in and set to online");
             
             response.put("success", true);
             response.put("message", "Login successful");
@@ -271,6 +273,7 @@ public class DeliveryPartnerController {
             response.put("success", true);
 
         } catch (Exception e) {
+            log.error("Error fetching active orders for partner {}: {}", partnerId, e.getMessage(), e);
             response.put("orders", new ArrayList<>());
             response.put("totalCount", 0);
             response.put("success", false);
@@ -674,6 +677,229 @@ public class DeliveryPartnerController {
             Map<String, Object> response = new HashMap<>();
             response.put("success", false);
             response.put("message", "An error occurred while fetching partners status");
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    // Order Accept/Reject endpoints for mobile app
+    @PostMapping("/orders/{orderId}/accept")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> acceptOrder(@PathVariable String orderId, @RequestBody Map<String, Object> request) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            Long partnerId = Long.parseLong(request.get("partnerId").toString());
+
+            // Find the assignment by order number and partnerId
+            List<OrderAssignment> assignments = orderAssignmentService.findAssignmentsByOrderNumber(orderId);
+            OrderAssignment assignment = assignments.stream()
+                .filter(a -> a.getDeliveryPartner().getId().equals(partnerId) &&
+                           a.getStatus() == OrderAssignment.AssignmentStatus.ASSIGNED)
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("No pending assignment found for this order and partner"));
+
+            // Accept the assignment
+            OrderAssignment acceptedAssignment = orderAssignmentService.acceptAssignment(assignment.getId(), partnerId);
+
+            response.put("success", true);
+            response.put("message", "Order accepted successfully");
+            response.put("assignmentId", acceptedAssignment.getId());
+            response.put("orderNumber", acceptedAssignment.getOrder().getOrderNumber());
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Error accepting order: " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    @PostMapping("/orders/{orderId}/reject")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> rejectOrder(@PathVariable String orderId, @RequestBody Map<String, Object> request) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            Long partnerId = Long.parseLong(request.get("partnerId").toString());
+            String reason = request.containsKey("reason") ? request.get("reason").toString() : "No reason provided";
+
+            // Find the assignment by order number and partnerId
+            List<OrderAssignment> assignments = orderAssignmentService.findAssignmentsByOrderNumber(orderId);
+            OrderAssignment assignment = assignments.stream()
+                .filter(a -> a.getDeliveryPartner().getId().equals(partnerId) &&
+                           a.getStatus() == OrderAssignment.AssignmentStatus.ASSIGNED)
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("No pending assignment found for this order and partner"));
+
+            // Reject the assignment
+            orderAssignmentService.rejectAssignment(assignment.getId(), partnerId, reason);
+
+            response.put("success", true);
+            response.put("message", "Order rejected successfully");
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Error rejecting order: " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    @PostMapping("/orders/{orderId}/pickup")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> markOrderPickedUp(@PathVariable String orderId, @RequestBody Map<String, Object> request) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            Long partnerId = Long.parseLong(request.get("partnerId").toString());
+
+            // Find the assignment by order number and partnerId
+            List<OrderAssignment> assignments = orderAssignmentService.findAssignmentsByOrderNumber(orderId);
+            OrderAssignment assignment = assignments.stream()
+                .filter(a -> a.getDeliveryPartner().getId().equals(partnerId) &&
+                           a.getStatus() == OrderAssignment.AssignmentStatus.ACCEPTED)
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("No accepted assignment found for this order and partner"));
+
+            // Mark as picked up
+            OrderAssignment updatedAssignment = orderAssignmentService.markPickedUp(assignment.getId(), partnerId);
+
+            response.put("success", true);
+            response.put("message", "Order marked as picked up");
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Error marking order as picked up: " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    @PostMapping("/orders/{orderId}/deliver")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> markOrderDelivered(@PathVariable String orderId, @RequestBody Map<String, Object> request) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            Long partnerId = Long.parseLong(request.get("partnerId").toString());
+            String deliveryNotes = request.containsKey("deliveryNotes") ? request.get("deliveryNotes").toString() : null;
+
+            // Find the assignment by order number and partnerId
+            List<OrderAssignment> assignments = orderAssignmentService.findAssignmentsByOrderNumber(orderId);
+            OrderAssignment assignment = assignments.stream()
+                .filter(a -> a.getDeliveryPartner().getId().equals(partnerId) &&
+                           (a.getStatus() == OrderAssignment.AssignmentStatus.PICKED_UP ||
+                            a.getStatus() == OrderAssignment.AssignmentStatus.IN_TRANSIT))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("No picked up or in-transit assignment found for this order and partner"));
+
+            // Mark as delivered
+            OrderAssignment updatedAssignment = orderAssignmentService.markDelivered(assignment.getId(), partnerId, deliveryNotes);
+
+            response.put("success", true);
+            response.put("message", "Order marked as delivered");
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Error marking order as delivered: " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    @GetMapping("/orders/{partnerId}/history")
+    @Transactional(readOnly = true)
+    public ResponseEntity<Map<String, Object>> getOrderHistory(@PathVariable String partnerId) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            Long id = Long.parseLong(partnerId);
+
+            // Get completed assignments for this partner (DELIVERED status)
+            List<OrderAssignment> completedAssignments = orderAssignmentService.findAssignmentsByPartnerId(id,
+                org.springframework.data.domain.Pageable.unpaged()).getContent()
+                .stream()
+                .filter(assignment -> assignment.getStatus() == OrderAssignment.AssignmentStatus.DELIVERED)
+                .collect(Collectors.toList());
+
+            List<Map<String, Object>> orders = new ArrayList<>();
+            for (OrderAssignment assignment : completedAssignments) {
+                Map<String, Object> orderData = new HashMap<>();
+                orderData.put("id", assignment.getId().toString());
+                orderData.put("orderNumber", assignment.getOrder().getOrderNumber());
+                orderData.put("totalAmount", assignment.getOrder().getTotalAmount());
+                orderData.put("deliveryFee", assignment.getDeliveryFee());
+                orderData.put("status", assignment.getStatus().name());
+                orderData.put("createdAt", assignment.getCreatedAt().toString());
+                orderData.put("deliveryAddress", assignment.getOrder().getDeliveryAddress());
+                orderData.put("customerName", assignment.getOrder().getCustomer().getFirstName() + " " + assignment.getOrder().getCustomer().getLastName());
+                orderData.put("customerPhone", assignment.getOrder().getCustomer().getMobileNumber());
+                orderData.put("shopName", assignment.getOrder().getShop().getName());
+                orderData.put("shopAddress", assignment.getOrder().getShop().getAddressLine1());
+                orderData.put("deliveredAt", assignment.getDeliveryCompletedAt() != null ? assignment.getDeliveryCompletedAt().toString() : null);
+                orders.add(orderData);
+            }
+
+            response.put("orders", orders);
+            response.put("totalCount", orders.size());
+            response.put("success", true);
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            response.put("orders", new ArrayList<>());
+            response.put("totalCount", 0);
+            response.put("success", false);
+            response.put("message", "Error fetching order history: " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    @GetMapping("/earnings/{partnerId}")
+    @Transactional(readOnly = true)
+    public ResponseEntity<Map<String, Object>> getEarnings(@PathVariable String partnerId, @RequestParam(required = false) String period) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            Long id = Long.parseLong(partnerId);
+
+            // Calculate earnings from completed assignments
+            List<OrderAssignment> completedAssignments = orderAssignmentService.findAssignmentsByPartnerId(id,
+                org.springframework.data.domain.Pageable.unpaged()).getContent()
+                .stream()
+                .filter(assignment -> assignment.getStatus() == OrderAssignment.AssignmentStatus.DELIVERED)
+                .collect(Collectors.toList());
+
+            double totalEarnings = completedAssignments.stream()
+                .mapToDouble(assignment -> assignment.getPartnerCommission() != null ? assignment.getPartnerCommission().doubleValue() : 0.0)
+                .sum();
+
+            long totalDeliveries = completedAssignments.size();
+
+            // Simple earnings calculation (can be enhanced with period filtering)
+            Map<String, Object> earnings = new HashMap<>();
+            earnings.put("todayEarnings", totalEarnings); // Simplified - shows total for now
+            earnings.put("weeklyEarnings", totalEarnings);
+            earnings.put("monthlyEarnings", totalEarnings);
+            earnings.put("totalEarnings", totalEarnings);
+            earnings.put("todayDeliveries", totalDeliveries);
+            earnings.put("weeklyDeliveries", totalDeliveries);
+            earnings.put("monthlyDeliveries", totalDeliveries);
+            earnings.put("totalDeliveries", totalDeliveries);
+            earnings.put("recentEarnings", new ArrayList<>());
+
+            response.put("success", true);
+            response.putAll(earnings);
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Error fetching earnings: " + e.getMessage());
             return ResponseEntity.badRequest().body(response);
         }
     }

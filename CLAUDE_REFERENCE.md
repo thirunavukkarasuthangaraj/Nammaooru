@@ -89,8 +89,8 @@ Registration → Login → Create Shop → Add Products → Manage Inventory →
 - `POST /api/auth/register` - Shop owner registration
 - `POST /api/shop-owner/shops` - Create shop
 - `POST /api/shop-owner/products` - Add products
-- `GET /api/shop-owner/orders` - View incoming orders
-- `PUT /api/shop-owner/orders/{id}/status` - Update order status
+- `GET /api/shop-owner/orders-management` - View incoming orders
+- `PUT /api/shop-owner/orders-management/{id}/status` - Update order status
 
 ### 3. Delivery Partner Journey Flow
 ```
@@ -190,7 +190,7 @@ POST /api/customer/orders
 // Shop Owner APIs  
 GET /api/shop-owner/shops
 POST /api/shop-owner/products
-GET /api/shop-owner/orders
+GET /api/shop-owner/orders-management
 PUT /api/shop-owner/shops/{id}/hours    // Business hours management
 
 // Delivery APIs

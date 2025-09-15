@@ -67,6 +67,20 @@ public class OrderController {
             @RequestParam Order.OrderStatus status) {
         log.info("Updating order status: {} to {}", id, status);
         OrderResponse response = orderService.updateOrderStatus(id, status);
+
+        // Trigger auto-assignment when order becomes ready for pickup
+        if (status == Order.OrderStatus.READY_FOR_PICKUP) {
+            try {
+                log.info("Attempting auto-assignment for order: {}", id);
+                OrderAssignment assignment = assignmentService.autoAssignOrder(id, 1L); // Using system user ID 1 as assignedBy
+                log.info("Order {} successfully auto-assigned to partner: {}", id, assignment.getDeliveryPartner().getEmail());
+            } catch (Exception e) {
+                log.warn("Auto-assignment failed for order {}: {}", id, e.getMessage());
+                // Continue with success response even if auto-assignment fails
+                // This allows manual assignment later
+            }
+        }
+
         return ResponseUtil.success(response, "Order status updated successfully");
     }
     

@@ -1,0 +1,516 @@
+<!-- SCREEN 2: Enhanced Delivery Management -->
+<div class="delivery-management">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <h1>
+        <mat-icon>local_shipping</mat-icon>
+        Delivery Management
+      </h1>
+      <p>Manage delivery assignments, track orders, and monitor delivery partners</p>
+    </div>
+    <div class="header-actions">
+      <button mat-raised-button color="primary" (click)="refreshDeliveries()">
+        <mat-icon>refresh</mat-icon>
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- Quick Stats -->
+  <div class="delivery-stats">
+    <div class="stat-card">
+      <mat-icon>local_shipping</mat-icon>
+      <div class="stat-info">
+        <h3>{{ deliveryStats.activeDeliveries }}</h3>
+        <p>Active Deliveries</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <mat-icon>person</mat-icon>
+      <div class="stat-info">
+        <h3>{{ deliveryStats.onlinePartners }}</h3>
+        <p>Online Partners</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <mat-icon>schedule</mat-icon>
+      <div class="stat-info">
+        <h3>{{ deliveryStats.avgDeliveryTime }}min</h3>
+        <p>Avg Delivery Time</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <mat-icon>check_circle</mat-icon>
+      <div class="stat-info">
+        <h3>{{ deliveryStats.completedToday }}</h3>
+        <p>Completed Today</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content Tabs -->
+  <mat-tab-group [(selectedIndex)]="selectedTabIndex" class="delivery-tabs">
+
+    <!-- Ready for Assignment Tab -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon>assignment</mat-icon>
+        Ready for Assignment ({{ readyOrders.length }})
+      </ng-template>
+
+      <div class="tab-content">
+        <div class="orders-grid">
+          <div *ngFor="let order of readyOrders" class="assignment-card">
+
+            <!-- Order Info -->
+            <div class="order-header">
+              <h3>Order #{{ order.orderNumber }}</h3>
+              <mat-chip color="accent">Ready for Pickup</mat-chip>
+            </div>
+
+            <div class="order-details">
+              <div class="customer-info">
+                <mat-icon>person</mat-icon>
+                <div>
+                  <p class="customer-name">{{ order.customerName }}</p>
+                  <p class="customer-phone">{{ order.customerPhone }}</p>
+                </div>
+              </div>
+
+              <div class="delivery-address">
+                <mat-icon>location_on</mat-icon>
+                <span>{{ order.deliveryAddress }}</span>
+              </div>
+
+              <div class="order-value">
+                <mat-icon>account_balance_wallet</mat-icon>
+                <span>₹{{ order.totalAmount | number }} - {{ order.paymentMethod }}</span>
+              </div>
+            </div>
+
+            <!-- Partner Assignment -->
+            <div class="assignment-section">
+              <h4>Assign Delivery Partner</h4>
+
+              <mat-form-field class="partner-select">
+                <mat-label>Select Partner</mat-label>
+                <mat-select [(ngModel)]="order.selectedPartnerId" (selectionChange)="onPartnerSelect(order, $event)">
+                  <mat-option *ngFor="let partner of availablePartners" [value]="partner.id">
+                    <div class="partner-option">
+                      <div class="partner-info">
+                        <strong>{{ partner.fullName }}</strong>
+                        <span class="partner-rating">⭐ {{ partner.rating }}</span>
+                      </div>
+                      <div class="partner-status">
+                        <span [ngClass]="partner.isOnline ? 'online' : 'offline'">
+                          {{ partner.isOnline ? 'Online' : 'Offline' }}
+                        </span>
+                        <span class="vehicle">{{ partner.vehicleType }}</span>
+                      </div>
+                    </div>
+                  </mat-option>
+                </mat-select>
+              </mat-form-field>
+
+              <div class="assignment-actions">
+                <button mat-raised-button color="primary"
+                        [disabled]="!order.selectedPartnerId"
+                        (click)="assignDeliveryPartner(order)">
+                  <mat-icon>send</mat-icon>
+                  Assign Order
+                </button>
+                <button mat-button (click)="viewOrderDetails(order.id)">
+                  <mat-icon>visibility</mat-icon>
+                  Details
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Empty State -->
+          <div *ngIf="readyOrders.length === 0" class="empty-state">
+            <mat-icon>inbox</mat-icon>
+            <h3>No orders ready for assignment</h3>
+            <p>Orders will appear here when they're ready for delivery pickup</p>
+          </div>
+        </div>
+      </div>
+    </mat-tab>
+
+    <!-- Active Deliveries Tab -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon>gps_fixed</mat-icon>
+        Active Deliveries ({{ activeDeliveries.length }})
+      </ng-template>
+
+      <div class="tab-content">
+        <div class="delivery-grid">
+          <div *ngFor="let delivery of activeDeliveries" class="delivery-card">
+
+            <!-- Delivery Header -->
+            <div class="delivery-header">
+              <div class="delivery-info">
+                <h3>Order #{{ delivery.orderNumber }}</h3>
+                <mat-chip [ngClass]="getDeliveryStatusClass(delivery.status)">
+                  {{ delivery.status | titlecase }}
+                </mat-chip>
+              </div>
+              <div class="delivery-time">
+                <mat-icon>schedule</mat-icon>
+                <span>{{ getDeliveryETA(delivery) }}</span>
+              </div>
+            </div>
+
+            <!-- Driver Info -->
+            <div class="driver-section" *ngIf="delivery.assignedDriver">
+              <div class="driver-info">
+                <div class="driver-avatar">
+                  <mat-icon>person</mat-icon>
+                </div>
+                <div class="driver-details">
+                  <p class="driver-name">{{ delivery.assignedDriver.name }}</p>
+                  <p class="driver-vehicle">{{ delivery.assignedDriver.vehicleType }} - {{ delivery.assignedDriver.vehicleNumber }}</p>
+                  <p class="driver-rating">⭐ {{ delivery.assignedDriver.rating }} rating</p>
+                </div>
+              </div>
+
+              <!-- Driver Contact Actions -->
+              <div class="driver-actions">
+                <button mat-icon-button matTooltip="Call Driver"
+                        (click)="callDriver(delivery.assignedDriver.phone)">
+                  <mat-icon>phone</mat-icon>
+                </button>
+                <button mat-icon-button matTooltip="Message Driver"
+                        (click)="messageDriver(delivery.assignedDriver.id, delivery.id)">
+                  <mat-icon>message</mat-icon>
+                </button>
+                <button mat-icon-button matTooltip="Track Location"
+                        (click)="trackDriver(delivery.assignedDriver.id)">
+                  <mat-icon>gps_fixed</mat-icon>
+                </button>
+              </div>
+            </div>
+
+            <!-- Customer Info -->
+            <div class="customer-section">
+              <div class="customer-info">
+                <mat-icon>person_outline</mat-icon>
+                <div>
+                  <p>{{ delivery.customerName }}</p>
+                  <p>{{ delivery.customerPhone }}</p>
+                  <p class="address">{{ delivery.deliveryAddress }}</p>
+                </div>
+              </div>
+
+              <div class="customer-actions">
+                <button mat-icon-button matTooltip="Call Customer"
+                        (click)="callCustomer(delivery.customerPhone)">
+                  <mat-icon>phone</mat-icon>
+                </button>
+                <button mat-icon-button matTooltip="Message Customer"
+                        (click)="messageCustomer(delivery.customerId, delivery.id)">
+                  <mat-icon>message</mat-icon>
+                </button>
+              </div>
+            </div>
+
+            <!-- Delivery Timeline -->
+            <div class="timeline-section">
+              <h4>Delivery Progress</h4>
+              <div class="timeline">
+                <div class="timeline-item"
+                     [ngClass]="{'completed': isTimelineStepCompleted(delivery, 'pickup')}">
+                  <div class="timeline-marker"></div>
+                  <div class="timeline-content">
+                    <p>Order Picked Up</p>
+                    <small>{{ delivery.pickupTime | date:'short' }}</small>
+                  </div>
+                </div>
+                <div class="timeline-item"
+                     [ngClass]="{'completed': isTimelineStepCompleted(delivery, 'transit'), 'active': delivery.status === 'OUT_FOR_DELIVERY'}">
+                  <div class="timeline-marker"></div>
+                  <div class="timeline-content">
+                    <p>In Transit</p>
+                    <small>{{ delivery.transitTime | date:'short' }}</small>
+                  </div>
+                </div>
+                <div class="timeline-item"
+                     [ngClass]="{'completed': isTimelineStepCompleted(delivery, 'delivered')}">
+                  <div class="timeline-marker"></div>
+                  <div class="timeline-content">
+                    <p>Delivered</p>
+                    <small>{{ delivery.deliveryTime | date:'short' }}</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Payment Status -->
+            <div class="payment-section">
+              <div class="payment-info">
+                <mat-icon>payment</mat-icon>
+                <div>
+                  <p>₹{{ delivery.totalAmount | number }}</p>
+                  <p class="payment-status" [ngClass]="delivery.paymentStatus.toLowerCase()">
+                    {{ delivery.paymentStatus }}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Driver Verification (if not yet verified) -->
+            <div class="verification-section" *ngIf="delivery.status === 'ASSIGNED' && !delivery.driverVerified">
+              <h4>Driver Verification Required</h4>
+              <div class="verification-form">
+                <mat-form-field>
+                  <mat-label>Enter OTP from Driver</mat-label>
+                  <input matInput [(ngModel)]="delivery.otpCode" placeholder="6-digit code" maxlength="6">
+                  <mat-icon matSuffix>security</mat-icon>
+                </mat-form-field>
+                <button mat-raised-button color="primary"
+                        [disabled]="!delivery.otpCode || delivery.otpCode.length < 6"
+                        (click)="verifyDriver(delivery.id, delivery.otpCode)">
+                  <mat-icon>verified_user</mat-icon>
+                  Verify & Release
+                </button>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="delivery-actions">
+              <button mat-button (click)="viewOrderDetails(delivery.orderId)">
+                <mat-icon>visibility</mat-icon>
+                Order Details
+              </button>
+              <button mat-button color="warn" (click)="reportDeliveryIssue(delivery.id)">
+                <mat-icon>report_problem</mat-icon>
+                Report Issue
+              </button>
+            </div>
+          </div>
+
+          <!-- Empty State -->
+          <div *ngIf="activeDeliveries.length === 0" class="empty-state">
+            <mat-icon>local_shipping</mat-icon>
+            <h3>No active deliveries</h3>
+            <p>Assigned deliveries will appear here for tracking</p>
+          </div>
+        </div>
+      </div>
+    </mat-tab>
+
+    <!-- Completed Deliveries Tab -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon>done_all</mat-icon>
+        Completed ({{ completedDeliveries.length }})
+      </ng-template>
+
+      <div class="tab-content">
+        <div class="completed-grid">
+          <div *ngFor="let delivery of completedDeliveries" class="completed-card">
+
+            <div class="completed-header">
+              <div class="completion-info">
+                <h3>Order #{{ delivery.orderNumber }}</h3>
+                <mat-chip color="primary">
+                  <mat-icon>check_circle</mat-icon>
+                  {{ delivery.status === 'DELIVERED' ? 'Delivered' : 'Failed' }}
+                </mat-chip>
+              </div>
+              <div class="completion-time">
+                <mat-icon>schedule</mat-icon>
+                <span>{{ delivery.completedAt | date:'short' }}</span>
+              </div>
+            </div>
+
+            <div class="completion-details">
+              <div class="completion-info-row">
+                <span class="label">Customer:</span>
+                <span>{{ delivery.customerName }}</span>
+              </div>
+              <div class="completion-info-row">
+                <span class="label">Driver:</span>
+                <span>{{ delivery.assignedDriver?.name }}</span>
+              </div>
+              <div class="completion-info-row">
+                <span class="label">Amount:</span>
+                <span>₹{{ delivery.totalAmount | number }}</span>
+              </div>
+              <div class="completion-info-row">
+                <span class="label">Duration:</span>
+                <span>{{ delivery.deliveryDuration }} min</span>
+              </div>
+            </div>
+
+            <!-- Proof of Delivery -->
+            <div class="proof-section" *ngIf="delivery.proofOfDelivery">
+              <h4>Proof of Delivery</h4>
+              <div class="proof-content">
+                <div class="proof-photo" *ngIf="delivery.proofOfDelivery.photo">
+                  <img [src]="delivery.proofOfDelivery.photo" alt="Delivery proof" (click)="viewProofPhoto(delivery.proofOfDelivery.photo)">
+                </div>
+                <div class="proof-signature" *ngIf="delivery.proofOfDelivery.signature">
+                  <p>Received by: {{ delivery.proofOfDelivery.receiverName }}</p>
+                  <p>Signature verified</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Failed Delivery Info -->
+            <div class="failed-section" *ngIf="delivery.status === 'FAILED'">
+              <h4>Delivery Failed</h4>
+              <div class="failed-reason">
+                <mat-icon color="warn">error</mat-icon>
+                <div>
+                  <p>{{ delivery.failureReason }}</p>
+                  <p class="failed-time">Failed at: {{ delivery.failedAt | date:'short' }}</p>
+                </div>
+              </div>
+              <div class="failed-actions">
+                <button mat-stroked-button (click)="rescheduleDelivery(delivery.id)">
+                  <mat-icon>schedule</mat-icon>
+                  Reschedule
+                </button>
+                <button mat-stroked-button (click)="processRefund(delivery.id)">
+                  <mat-icon>money</mat-icon>
+                  Process Refund
+                </button>
+              </div>
+            </div>
+
+            <div class="completed-actions">
+              <button mat-button (click)="viewDeliveryReceipt(delivery.id)">
+                <mat-icon>receipt</mat-icon>
+                Receipt
+              </button>
+              <button mat-button (click)="downloadDeliveryReport(delivery.id)">
+                <mat-icon>download</mat-icon>
+                Report
+              </button>
+            </div>
+          </div>
+
+          <!-- Empty State -->
+          <div *ngIf="completedDeliveries.length === 0" class="empty-state">
+            <mat-icon>history</mat-icon>
+            <h3>No completed deliveries today</h3>
+            <p>Completed deliveries will appear here</p>
+          </div>
+        </div>
+      </div>
+    </mat-tab>
+
+    <!-- Delivery Partners Tab -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon>people</mat-icon>
+        Partners ({{ deliveryPartners.length }})
+      </ng-template>
+
+      <div class="tab-content">
+        <div class="partners-grid">
+          <div *ngFor="let partner of deliveryPartners" class="partner-card" [ngClass]="partner.isOnline ? 'online' : 'offline'">
+
+            <div class="partner-header">
+              <div class="partner-avatar">
+                <img *ngIf="partner.profilePhoto" [src]="partner.profilePhoto" [alt]="partner.fullName">
+                <mat-icon *ngIf="!partner.profilePhoto">person</mat-icon>
+              </div>
+              <div class="partner-info">
+                <h3>{{ partner.fullName }}</h3>
+                <p class="partner-id">ID: {{ partner.partnerId }}</p>
+                <div class="partner-status">
+                  <span [ngClass]="partner.isOnline ? 'online' : 'offline'">
+                    {{ partner.isOnline ? 'Online' : 'Offline' }}
+                  </span>
+                  <span class="rating">⭐ {{ partner.rating }}/5</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="partner-details">
+              <div class="detail-row">
+                <mat-icon>phone</mat-icon>
+                <span>{{ partner.phone }}</span>
+              </div>
+              <div class="detail-row">
+                <mat-icon>two_wheeler</mat-icon>
+                <span>{{ partner.vehicleType }} - {{ partner.vehicleNumber }}</span>
+              </div>
+              <div class="detail-row">
+                <mat-icon>delivery_dining</mat-icon>
+                <span>{{ partner.activeOrders }} active orders</span>
+              </div>
+              <div class="detail-row">
+                <mat-icon>schedule</mat-icon>
+                <span>Avg: {{ partner.avgDeliveryTime }}min</span>
+              </div>
+            </div>
+
+            <div class="partner-stats">
+              <div class="stat">
+                <span class="stat-value">{{ partner.totalDeliveries }}</span>
+                <span class="stat-label">Deliveries</span>
+              </div>
+              <div class="stat">
+                <span class="stat-value">{{ partner.successRate }}%</span>
+                <span class="stat-label">Success Rate</span>
+              </div>
+              <div class="stat">
+                <span class="stat-value">{{ partner.monthlyEarnings | currency:'INR':'symbol':'1.0-0' }}</span>
+                <span class="stat-label">This Month</span>
+              </div>
+            </div>
+
+            <div class="partner-actions">
+              <button mat-button (click)="callPartner(partner.phone)">
+                <mat-icon>phone</mat-icon>
+                Call
+              </button>
+              <button mat-button (click)="messagePartner(partner.id)">
+                <mat-icon>message</mat-icon>
+                Message
+              </button>
+              <button mat-button (click)="viewPartnerDetails(partner.id)">
+                <mat-icon>visibility</mat-icon>
+                Details
+              </button>
+            </div>
+          </div>
+
+          <!-- Empty State -->
+          <div *ngIf="deliveryPartners.length === 0" class="empty-state">
+            <mat-icon>person_add</mat-icon>
+            <h3>No delivery partners</h3>
+            <p>Register delivery partners to start accepting deliveries</p>
+            <button mat-raised-button color="primary" routerLink="/delivery/partner/register">
+              <mat-icon>add</mat-icon>
+              Add Partner
+            </button>
+          </div>
+        </div>
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</div>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" *ngIf="isLoading">
+  <mat-spinner></mat-spinner>
+  <p>{{ loadingMessage || 'Loading...' }}</p>
+</div>
+
+<!-- Success/Error Messages -->
+<div class="message-container">
+  <div *ngIf="successMessage" class="success-message">
+    <mat-icon>check_circle</mat-icon>
+    {{ successMessage }}
+  </div>
+  <div *ngIf="errorMessage" class="error-message">
+    <mat-icon>error</mat-icon>
+    {{ errorMessage }}
+  </div>
+</div>

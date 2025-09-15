@@ -70,6 +70,7 @@ public class SecurityConfig {
                                 "/api/public/**",
                                 "/api/mobile/delivery-partner/login",
                                 "/api/mobile/delivery-partner/forgot-password",
+                                "/api/mobile/delivery-partner/orders/**",
                                 "/api/delivery/partners/documents/*/view",
                                 "/uploads/**",
                                 "/shops/**",
@@ -84,7 +85,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/shop-owner/**").hasAnyRole("ADMIN", "SHOP_OWNER")
                         .requestMatchers("/api/mobile/delivery-partner/**").hasAnyRole("ADMIN", "DELIVERY_PARTNER")
                         .requestMatchers("/api/delivery/partners/**").hasAnyRole("ADMIN", "DELIVERY_PARTNER")
-                        .requestMatchers("/api/assignments/**").hasAnyRole("ADMIN", "DELIVERY_PARTNER")
+                        .requestMatchers("/api/assignments/**").hasAnyRole("ADMIN", "SHOP_OWNER", "DELIVERY_PARTNER")
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -97,11 +98,17 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
+
+        // Allow all origins - simpler approach for development
         configuration.setAllowedOriginPatterns(List.of("*"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
-        configuration.setAllowCredentials(true);
-        
+
+        // Allow credentials only for same-origin and localhost requests
+        // Mobile apps typically don't need credentials for API calls
+        configuration.setAllowCredentials(false);
+        configuration.setMaxAge(3600L);
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;

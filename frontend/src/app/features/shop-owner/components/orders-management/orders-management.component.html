@@ -1,214 +1,145 @@
-<div class="orders-management chennai-page">
+<div class="orders-page">
+  <!-- Simple Header -->
   <div class="page-header">
-    <h1>Orders Management</h1>
-    <div class="header-stats">
-      <mat-chip-set>
-        <mat-chip color="primary">{{ pendingOrders.length }} Pending</mat-chip>
-        <mat-chip color="accent">{{ processingOrders.length }} Processing</mat-chip>
-        <mat-chip>{{ todayOrders.length }} Today</mat-chip>
-      </mat-chip-set>
+    <h1>Orders</h1>
+    <div class="header-actions">
+      <button mat-raised-button color="primary" (click)="setTestToken(); loadDashboardData()">
+        Refresh Orders
+      </button>
     </div>
   </div>
 
-  <div class="orders-tabs">
-    <mat-tab-group [(selectedIndex)]="selectedTabIndex" (selectedTabChange)="onTabChange($event)">
-      <mat-tab label="All Orders">
-        <div class="tab-content">
-          <div class="filters-section">
-            <mat-form-field>
-              <mat-label>Search Orders</mat-label>
-              <input matInput [(ngModel)]="searchTerm" (ngModelChange)="applyFilter()">
-              <mat-icon matSuffix>search</mat-icon>
-            </mat-form-field>
-            
-            <mat-form-field>
-              <mat-label>Status</mat-label>
-              <mat-select [(ngModel)]="selectedStatus" (selectionChange)="applyFilter()">
-                <mat-option value="">All Status</mat-option>
-                <mat-option value="PENDING">Pending</mat-option>
-                <mat-option value="CONFIRMED">Confirmed</mat-option>
-                <mat-option value="PREPARING">Preparing</mat-option>
-                <mat-option value="READY_FOR_PICKUP">Ready for Pickup</mat-option>
-                <mat-option value="OUT_FOR_DELIVERY">Out for Delivery</mat-option>
-                <mat-option value="DELIVERED">Delivered</mat-option>
-                <mat-option value="CANCELLED">Cancelled</mat-option>
-              </mat-select>
-            </mat-form-field>
-            
-            <mat-form-field>
-              <mat-label>Date Range</mat-label>
-              <mat-date-range-input [rangePicker]="picker">
-                <input matStartDate [(ngModel)]="startDate" placeholder="Start date">
-                <input matEndDate [(ngModel)]="endDate" placeholder="End date">
-              </mat-date-range-input>
-              <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
-              <mat-date-range-picker #picker></mat-date-range-picker>
-            </mat-form-field>
-          </div>
-          
-          <div class="orders-list">
-            <mat-card *ngFor="let order of filteredOrders" class="order-card">
-              <div class="order-header">
-                <div class="order-info">
-                  <h3>Order #{{ order.orderNumber }}</h3>
-                  <div class="order-meta">
-                    <span class="customer">{{ order.customerName }}</span>
-                    <span class="separator">•</span>
-                    <span class="date">{{ order.createdAt | date:'medium' }}</span>
-                  </div>
-                </div>
-                <div class="order-status">
-                  <mat-chip [color]="getStatusColor(order.status)">
-                    {{ order.status | titlecase }}
-                  </mat-chip>
-                  <span class="amount">₹{{ order.totalAmount | number }}</span>
-                </div>
-              </div>
-              
-              <div class="order-items">
-                <div *ngFor="let item of order.items" class="order-item">
-                  <img [src]="item.image || 'assets/images/placeholder-product.jpg'" [alt]="item.name">
-                  <div class="item-details">
-                    <span class="item-name">{{ item.name }}</span>
-                    <span class="item-quantity">Qty: {{ item.quantity }}</span>
-                  </div>
-                  <span class="item-price">₹{{ item.price * item.quantity | number }}</span>
-                </div>
-              </div>
-              
-              <div class="order-actions">
-                <ng-container [ngSwitch]="order.status">
-                  <div *ngSwitchCase="'PENDING'" class="pending-actions">
-                    <button mat-raised-button color="primary" (click)="acceptOrder(order.id)">
-                      <mat-icon>check</mat-icon> Accept Order
-                    </button>
-                    <button mat-stroked-button color="warn" (click)="rejectOrder(order.id)">
-                      <mat-icon>close</mat-icon> Reject
-                    </button>
-                  </div>
-                  
-                  <div *ngSwitchCase="'CONFIRMED'" class="accepted-actions">
-                    <button mat-raised-button color="primary" (click)="startPreparing(order.id)">
-                      <mat-icon>restaurant</mat-icon> Start Preparing
-                    </button>
-                  </div>
-                  
-                  <div *ngSwitchCase="'PREPARING'" class="preparing-actions">
-                    <button mat-raised-button color="primary" (click)="markReady(order.id)">
-                      <mat-icon>done</mat-icon> Mark Ready
-                    </button>
-                  </div>
-                  
-                  <div *ngSwitchCase="'READY_FOR_PICKUP'" class="ready-actions">
-                    <button mat-raised-button color="primary" (click)="assignDeliveryPartner(order.id)"
-                            [disabled]="isAssigningPartner">
-                      <mat-icon>person_add</mat-icon>
-                      {{ isAssigningPartner ? 'Assigning...' : 'Assign Partner' }}
-                    </button>
-                    <button mat-stroked-button color="accent" (click)="markPickedUp(order.id)">
-                      <mat-icon>local_shipping</mat-icon> Mark Picked Up
-                    </button>
-                  </div>
-                  
-                  <div *ngSwitchDefault class="default-actions">
-                    <button mat-button (click)="viewOrderDetails(order.id)">
-                      <mat-icon>visibility</mat-icon> View Details
-                    </button>
-                  </div>
-                </ng-container>
-                
-                <button mat-button (click)="printOrder(order.id)">
-                  <mat-icon>print</mat-icon> Print
-                </button>
-                
-                <button mat-icon-button [matMenuTriggerFor]="orderMenu">
-                  <mat-icon>more_vert</mat-icon>
-                </button>
-                <mat-menu #orderMenu="matMenu">
-                  <button mat-menu-item (click)="viewCustomer(order.customerId)">
-                    <mat-icon>person</mat-icon> View Customer
-                  </button>
-                  <button mat-menu-item (click)="refundOrder(order.id)" 
-                          *ngIf="order.status === 'DELIVERED'">
-                    <mat-icon>undo</mat-icon> Process Refund
-                  </button>
-                  <button mat-menu-item (click)="reportIssue(order.id)">
-                    <mat-icon>report</mat-icon> Report Issue
-                  </button>
-                </mat-menu>
-              </div>
-            </mat-card>
-          </div>
-          
-          <mat-paginator [length]="totalOrders" 
-                         [pageSize]="pageSize" 
-                         [pageSizeOptions]="[10, 25, 50]"
-                         (page)="onPageChange($event)">
-          </mat-paginator>
-        </div>
-      </mat-tab>
-      
-      <mat-tab label="Pending Orders">
-        <div class="tab-content">
-          <div class="pending-orders-grid">
-            <mat-card *ngFor="let order of pendingOrders" class="pending-order-card">
-              <div class="urgent-indicator" *ngIf="isUrgent(order.createdAt)">
-                <mat-icon>warning</mat-icon> URGENT
-              </div>
-              
-              <div class="order-summary">
-                <h3>Order #{{ order.orderNumber }}</h3>
-                <p>{{ order.customerName }} • {{ order.items.length }} items</p>
-                <span class="amount">₹{{ order.totalAmount | number }}</span>
-                <span class="time-ago">{{ getTimeAgo(order.createdAt) }}</span>
-              </div>
-              
-              <div class="quick-actions">
-                <button mat-raised-button color="primary" (click)="quickAccept(order.id)">
-                  Accept
-                </button>
-                <button mat-stroked-button color="warn" (click)="quickReject(order.id)">
-                  Reject
-                </button>
-              </div>
-            </mat-card>
-          </div>
-        </div>
-      </mat-tab>
-      
-      <mat-tab label="In Progress">
-        <div class="tab-content">
-          <div class="progress-timeline">
-            <div *ngFor="let order of inProgressOrders" class="timeline-item">
-              <div class="timeline-indicator" [ngClass]="order.status"></div>
-              <div class="timeline-content">
-                <mat-card class="progress-card">
-                  <div class="progress-header">
-                    <h3>Order #{{ order.orderNumber }}</h3>
-                    <mat-chip [color]="getStatusColor(order.status)">
-                      {{ order.status | titlecase }}
-                    </mat-chip>
-                  </div>
-                  
-                  <div class="progress-info">
-                    <p>{{ order.customerName }} • {{ order.items.length }} items • ₹{{ order.totalAmount | number }}</p>
-                    <div class="estimated-time">
-                      <mat-icon>schedule</mat-icon>
-                      <span>Est. {{ getEstimatedTime(order.status) }} min</span>
-                    </div>
-                  </div>
-                  
-                  <div class="progress-actions">
-                    <button mat-raised-button color="primary" (click)="moveToNextStage(order.id)">
-                      {{ getNextStageAction(order.status) }}
-                    </button>
-                  </div>
-                </mat-card>
-              </div>
-            </div>
-          </div>
-        </div>
-      </mat-tab>
-    </mat-tab-group>
+  <!-- Quick Stats -->
+  <div class="quick-stats">
+    <div class="stat">
+      <span class="number">{{ totalOrders }}</span>
+      <span class="label">Total</span>
+    </div>
+    <div class="stat">
+      <span class="number">{{ pendingOrders.length }}</span>
+      <span class="label">Pending</span>
+    </div>
+    <div class="stat">
+      <span class="number">{{ activeOrders.length }}</span>
+      <span class="label">Active</span>
+    </div>
+    <div class="stat">
+      <span class="number">{{ completedOrders.length }}</span>
+      <span class="label">Done</span>
+    </div>
+    <div class="stat">
+      <span class="number">₹{{ todayRevenue | number:'1.0-0' }}</span>
+      <span class="label">Revenue</span>
+    </div>
   </div>
+
+  <!-- Filters -->
+  <div class="filters">
+    <input type="text"
+           placeholder="Search orders..."
+           [(ngModel)]="searchTerm"
+           (input)="applyFilter()"
+           class="search-input">
+
+    <select [(ngModel)]="selectedStatus" (change)="applyFilter()" class="status-filter">
+      <option value="">All Status</option>
+      <option value="PENDING">Pending</option>
+      <option value="CONFIRMED">Confirmed</option>
+      <option value="PREPARING">Preparing</option>
+      <option value="READY_FOR_PICKUP">Ready</option>
+      <option value="DELIVERED">Delivered</option>
+    </select>
+  </div>
+
+  <!-- Orders Table -->
+  <div class="orders-container">
+    <div class="orders-header">
+      <div class="col-order">Order</div>
+      <div class="col-customer">Customer</div>
+      <div class="col-items">Items</div>
+      <div class="col-amount">Amount</div>
+      <div class="col-status">Status</div>
+      <div class="col-actions">Actions</div>
+    </div>
+
+    <div class="orders-list">
+      <div *ngFor="let order of filteredOrders" class="order-row" [ngClass]="'status-' + order.status.toLowerCase()">
+
+        <!-- Order Info -->
+        <div class="col-order">
+          <div class="order-id">{{ order.orderNumber }}</div>
+          <div class="order-time">{{ order.createdAt | date:'MMM d, HH:mm' }}</div>
+        </div>
+
+        <!-- Customer Info -->
+        <div class="col-customer">
+          <div class="customer-name">{{ order.customerName }}</div>
+          <div class="customer-phone" *ngIf="order.customerPhone">{{ order.customerPhone }}</div>
+        </div>
+
+        <!-- Items -->
+        <div class="col-items">
+          <div class="items-list">
+            <span *ngFor="let item of order.items; let last = last">
+              {{ item.quantity }}x {{ item.name || item.productName }}{{ !last ? ', ' : '' }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Amount -->
+        <div class="col-amount">
+          <div class="amount">₹{{ order.totalAmount | number:'1.0-0' }}</div>
+          <div class="payment-method">{{ order.paymentMethod === 'CASH_ON_DELIVERY' ? 'COD' : 'Paid' }}</div>
+        </div>
+
+        <!-- Status -->
+        <div class="col-status">
+          <span class="status-badge" [ngClass]="getStatusClass(order.status)">
+            {{ getStatusLabel(order.status) }}
+          </span>
+        </div>
+
+        <!-- Actions -->
+        <div class="col-actions">
+          <div class="action-buttons">
+
+            <!-- Pending Actions -->
+            <ng-container *ngIf="order.status === 'PENDING'">
+              <button class="btn btn-accept" (click)="acceptOrder(order)">Accept</button>
+              <button class="btn btn-reject" (click)="rejectOrder(order)">Reject</button>
+            </ng-container>
+
+            <!-- Confirmed Actions -->
+            <ng-container *ngIf="order.status === 'CONFIRMED'">
+              <button class="btn btn-prepare" (click)="startPreparing(order.id)">Start Prep</button>
+            </ng-container>
+
+            <!-- Preparing Actions -->
+            <ng-container *ngIf="order.status === 'PREPARING'">
+              <button class="btn btn-ready" (click)="markReady(order.id)">Mark Ready</button>
+            </ng-container>
+
+            <!-- Ready Actions -->
+            <ng-container *ngIf="order.status === 'READY_FOR_PICKUP'">
+              <button class="btn btn-assign" (click)="assignDelivery(order.id)">Assign Delivery</button>
+            </ng-container>
+
+            <!-- Always available actions -->
+            <button class="btn btn-details" (click)="viewOrderDetails(order)" title="View Details">⋯</button>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div *ngIf="filteredOrders.length === 0" class="empty-state">
+      <p>No orders found</p>
+      <p class="empty-subtitle" *ngIf="searchTerm">Try adjusting your search terms</p>
+    </div>
+  </div>
+
+  <!-- Messages -->
+  <div *ngIf="successMessage" class="message success">{{ successMessage }}</div>
+  <div *ngIf="errorMessage" class="message error">{{ errorMessage }}</div>
 </div>

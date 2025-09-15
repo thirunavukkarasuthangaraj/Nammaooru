@@ -34,18 +34,15 @@ public class WebConfig implements WebMvcConfigurer {
         return new RestTemplate();
     }
 
-    // DISABLED - Using Security-level CORS configuration instead to avoid duplicate headers
-    // @Override
-    // public void addCorsMappings(CorsRegistry registry) {
-    //     String[] originsArray = allowedOrigins.split(",");
-    //     String[] methodsArray = allowedMethods.split(",");
-    //     
-    //     registry.addMapping("/**")
-    //             .allowedOriginPatterns(originsArray)
-    //             .allowedMethods(methodsArray)
-    //             .allowedHeaders("*")
-    //             .allowCredentials(allowCredentials);
-    // }
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/**")
+                .allowedOriginPatterns("*")
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
+                .allowedHeaders("*")
+                .allowCredentials(false)  // Disable credentials to allow * origins
+                .maxAge(3600);
+    }
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {

@@ -7,14 +7,16 @@ class DeliveryPartnerProvider extends ChangeNotifier {
   
   DeliveryPartner? _currentPartner;
   List<DeliveryOrder> _availableOrders = [];
+  List<DeliveryOrder> _activeOrders = [];
   List<DeliveryOrder> _orderHistory = [];
   Earnings? _earnings;
   bool _isLoading = false;
   String? _error;
-  
+
   // Getters
   DeliveryPartner? get currentPartner => _currentPartner;
   List<DeliveryOrder> get availableOrders => _availableOrders;
+  List<DeliveryOrder> get activeOrders => _activeOrders;
   List<DeliveryOrder> get orderHistory => _orderHistory;
   Earnings? get earnings => _earnings;
   bool get isLoading => _isLoading;
@@ -144,16 +146,31 @@ class DeliveryPartnerProvider extends ChangeNotifier {
     try {
       _setLoading(true);
       _setError(null);
-      
+
       final response = await _apiService.getAvailableOrders();
       _availableOrders = (response['orders'] as List? ?? [])
           .map((order) => DeliveryOrder.fromJson(order))
           .toList();
-          
+
     } catch (e) {
       _setError(e.toString());
     } finally {
       _setLoading(false);
+    }
+  }
+
+  Future<void> loadActiveOrders() async {
+    try {
+      _setError(null);
+
+      final response = await _apiService.getActiveOrders();
+      _activeOrders = (response['orders'] as List? ?? [])
+          .map((order) => DeliveryOrder.fromJson(order))
+          .toList();
+
+      notifyListeners();
+    } catch (e) {
+      _setError(e.toString());
     }
   }
   
@@ -164,8 +181,9 @@ class DeliveryPartnerProvider extends ChangeNotifier {
       final response = await _apiService.acceptOrder(orderId);
       
       if (response['success'] == true) {
-        // Remove from available orders and refresh
+        // Remove from available orders and refresh both available and active orders
         await loadAvailableOrders();
+        await loadActiveOrders();
         await loadOrderHistory();
         return true;
       } else {
@@ -181,11 +199,13 @@ class DeliveryPartnerProvider extends ChangeNotifier {
   Future<bool> updateOrderStatus(String orderId, String status) async {
     try {
       _setError(null);
-      
+
       final response = await _apiService.updateOrderStatus(orderId, status);
-      
+
       if (response['success'] == true) {
-        // Refresh data
+        // Refresh all order data to update UI
+        await loadActiveOrders();
+        await loadAvailableOrders();
         await loadOrderHistory();
         await loadEarnings();
         return true;
@@ -238,6 +258,7 @@ class DeliveryPartnerProvider extends ChangeNotifier {
       await Future.wait([
         loadProfile(),
         loadAvailableOrders(),
+        loadActiveOrders(),
         loadEarnings(),
       ]);
       
@@ -298,6 +319,46 @@ class DeliveryPartnerProvider extends ChangeNotifier {
     }
   }
   
+  // OTP Verification for Pickup
+  Future<bool> verifyPickupOTP(String orderId, String otp) async {
+    try {
+      _setError(null);
+
+      final response = await _apiService.verifyPickupOTP(orderId, otp);
+
+      if (response['success'] == true) {
+        // Update order status to picked up after successful verification
+        await updateOrderStatus(orderId, 'PICKED_UP');
+        return true;
+      } else {
+        _setError(response['message'] ?? 'Invalid OTP');
+        return false;
+      }
+    } catch (e) {
+      _setError(e.toString());
+      return false;
+    }
+  }
+
+  // Request new OTP for pickup
+  Future<bool> requestNewPickupOTP(String orderId) async {
+    try {
+      _setError(null);
+
+      final response = await _apiService.requestNewPickupOTP(orderId);
+
+      if (response['success'] == true) {
+        return true;
+      } else {
+        _setError(response['message'] ?? 'Failed to request new OTP');
+        return false;
+      }
+    } catch (e) {
+      _setError(e.toString());
+      return false;
+    }
+  }
+
   // Refresh all data
   Future<void> refreshAll() async {
     await loadDashboardData();

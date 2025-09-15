@@ -15,8 +15,7 @@ import com.shopmanagement.repository.OrderRepository;
 import com.shopmanagement.repository.UserRepository;
 import com.shopmanagement.shop.repository.ShopRepository;
 import com.shopmanagement.entity.User;
-// import com.shopmanagement.delivery.service.OrderAssignmentService;
-// import com.shopmanagement.delivery.dto.OrderAssignmentRequest;
+import com.shopmanagement.service.OrderAssignmentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -35,6 +34,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -50,7 +50,7 @@ public class OrderService {
     private final EmailService emailService;
     private final InvoiceService invoiceService;
     private final FirebaseNotificationService firebaseNotificationService;
-    // private final OrderAssignmentService orderAssignmentService;
+    private final OrderAssignmentService orderAssignmentService;
     
     @Transactional
     public OrderResponse createOrder(OrderRequest request) {
@@ -213,15 +213,25 @@ public class OrderService {
         
         Order updatedOrder = orderRepository.save(order);
         
-        // Notify delivery partner when order is ready for pickup
+        // Save the order status update first
+        OrderResponse response = mapToResponse(updatedOrder);
+
+        // Auto-assign delivery partner when order is ready for pickup (separate transaction)
         if (status == Order.OrderStatus.READY_FOR_PICKUP) {
-            try {
-                log.info("Order {} is ready for pickup - notifying assigned delivery partner", order.getOrderNumber());
-                // TODO: Add WhatsApp/SMS notification to delivery partner via MSG91
-                // This would send message: "Order {orderNumber} is ready for pickup at {shopName}"
-            } catch (Exception e) {
-                log.error("Failed to notify delivery partner for ready order: {}", order.getOrderNumber(), e);
-            }
+            // Use a separate thread to avoid transaction rollback issues
+            CompletableFuture.runAsync(() -> {
+                try {
+                    log.info("Order {} is ready for pickup - auto-assigning delivery partner", order.getOrderNumber());
+
+                    // Auto-assign to available delivery partner
+                    Long assignedBy = 1L; // System auto-assignment
+                    orderAssignmentService.autoAssignOrder(orderId, assignedBy);
+
+                    log.info("Order {} successfully auto-assigned to delivery partner", order.getOrderNumber());
+                } catch (Exception e) {
+                    log.error("Failed to auto-assign delivery partner for order: {}", order.getOrderNumber(), e);
+                }
+            });
         }
         
         // Send status update email
@@ -247,7 +257,7 @@ public class OrderService {
             }
         }
         
-        return mapToResponse(updatedOrder);
+        return response;
     }
     
     @Transactional

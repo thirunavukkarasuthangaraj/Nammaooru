@@ -207,7 +207,7 @@ import { Shop } from '@core/models/shop.model';
               </div>
             </button>
             
-            <button mat-raised-button class="action-button orders-action" (click)="navigateTo('/shop-owner/orders')">
+            <button mat-raised-button class="action-button orders-action" (click)="navigateTo('/shop-owner/orders-management')">
               <mat-icon>receipt_long</mat-icon>
               <div class="action-text">
                 <span>Orders</span>

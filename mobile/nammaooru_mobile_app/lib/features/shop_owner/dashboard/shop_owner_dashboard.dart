@@ -15,11 +15,11 @@ class ShopOwnerDashboard extends StatefulWidget {
 
 class _ShopOwnerDashboardState extends State<ShopOwnerDashboard> {
   bool _isShopOnline = true;
-  
+
   @override
   Widget build(BuildContext context) {
     const primaryColor = Color(0xFFFF9800); // Orange theme for shop owners
-    
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       body: CustomScrollView(
@@ -161,7 +161,8 @@ class _ShopOwnerDashboardState extends State<ShopOwnerDashboard> {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: _isShopOnline ? Colors.green : Colors.red,
                   borderRadius: BorderRadius.circular(20),
@@ -192,10 +193,30 @@ class _ShopOwnerDashboardState extends State<ShopOwnerDashboard> {
 
   Widget _buildQuickStats(Color primaryColor) {
     final stats = [
-      {'title': 'Today\'s Sales', 'value': '₹2,450', 'icon': Icons.trending_up, 'change': '+12%'},
-      {'title': 'Pending Orders', 'value': '8', 'icon': Icons.pending_actions, 'change': '+2'},
-      {'title': 'Total Products', 'value': '156', 'icon': Icons.inventory, 'change': '+5'},
-      {'title': 'Active Orders', 'value': '23', 'icon': Icons.local_shipping, 'change': '+7'},
+      {
+        'title': 'Today\'s Sales',
+        'value': '₹2,450',
+        'icon': Icons.trending_up,
+        'change': '+12%'
+      },
+      {
+        'title': 'Pending Orders',
+        'value': '8',
+        'icon': Icons.pending_actions,
+        'change': '+2'
+      },
+      {
+        'title': 'Total Products',
+        'value': '156',
+        'icon': Icons.inventory,
+        'change': '+5'
+      },
+      {
+        'title': 'Active Orders',
+        'value': '23',
+        'icon': Icons.local_shipping,
+        'change': '+7'
+      },
     ];
 
     return GridView.builder(
@@ -235,7 +256,8 @@ class _ShopOwnerDashboardState extends State<ShopOwnerDashboard> {
                     size: 24,
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: Colors.green.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(4),
@@ -344,7 +366,7 @@ class _ShopOwnerDashboardState extends State<ShopOwnerDashboard> {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () {
-                context.go('/shop-owner/orders');
+                context.go('/shop-owner/orders-management');
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: primaryColor,
@@ -457,9 +479,21 @@ class _ShopOwnerDashboardState extends State<ShopOwnerDashboard> {
   Widget _buildQuickActions(Color primaryColor) {
     final actions = [
       {'name': 'Add Product', 'icon': Icons.add_box, 'color': Colors.blue},
-      {'name': 'Manage Inventory', 'icon': Icons.inventory_2, 'color': Colors.green},
-      {'name': 'View Analytics', 'icon': Icons.analytics, 'color': Colors.purple},
-      {'name': 'Customer Reviews', 'icon': Icons.star_rate, 'color': Colors.orange},
+      {
+        'name': 'Manage Inventory',
+        'icon': Icons.inventory_2,
+        'color': Colors.green
+      },
+      {
+        'name': 'View Analytics',
+        'icon': Icons.analytics,
+        'color': Colors.purple
+      },
+      {
+        'name': 'Customer Reviews',
+        'icon': Icons.star_rate,
+        'color': Colors.orange
+      },
     ];
 
     return Container(

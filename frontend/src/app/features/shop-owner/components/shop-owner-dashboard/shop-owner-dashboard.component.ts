@@ -53,7 +53,7 @@ import { Observable, interval, Subscription } from 'rxjs';
         </mat-card>
 
         <!-- Orders -->
-        <mat-card class="menu-card orders-card" routerLink="/shop-owner/orders">
+        <mat-card class="menu-card orders-card" routerLink="/shop-owner/orders-management">
           <mat-card-content>
             <div class="card-content">
               <div class="card-icon">

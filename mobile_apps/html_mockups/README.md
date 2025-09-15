@@ -148,8 +148,8 @@ POST /api/delivery/orders/{id}/reject
 GET /api/delivery/earnings
 
 // Shop Owner
-GET /api/shop-owner/orders
-POST /api/shop-owner/orders/{id}/accept
+GET /api/shop-owner/orders-management
+POST /api/shop-owner/orders-management/{id}/accept
 POST /api/shop-owner/products
 PUT /api/shop-owner/products/{id}
 ```

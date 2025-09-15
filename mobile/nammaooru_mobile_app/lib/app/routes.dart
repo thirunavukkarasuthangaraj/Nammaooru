@@ -48,7 +48,6 @@ class AppRouter {
         path: '/forgot-password',
         builder: (context, state) => const ForgotPasswordScreen(),
       ),
-      
       ShellRoute(
         builder: (context, state, child) {
           return CustomerShell(child: child);
@@ -107,7 +106,6 @@ class AppRouter {
           ),
         ],
       ),
-      
       ShellRoute(
         builder: (context, state, child) {
           return ShopOwnerShell(child: child);
@@ -126,7 +124,7 @@ class AppRouter {
             builder: (context, state) => const InventoryScreen(),
           ),
           GoRoute(
-            path: '/shop-owner/orders',
+            path: '/shop-owner/orders-management',
             builder: (context, state) => const OrderProcessingScreen(),
           ),
           GoRoute(
@@ -135,7 +133,6 @@ class AppRouter {
           ),
         ],
       ),
-      
       ShellRoute(
         builder: (context, state, child) {
           return DeliveryPartnerShell(child: child);
@@ -153,9 +150,9 @@ class AppRouter {
 
 class CustomerShell extends StatefulWidget {
   final Widget child;
-  
+
   const CustomerShell({super.key, required this.child});
-  
+
   @override
   State<CustomerShell> createState() => _CustomerShellState();
 }
@@ -163,20 +160,20 @@ class CustomerShell extends StatefulWidget {
 class _CustomerShellState extends State<CustomerShell> {
   int _currentIndex = 0;
   String? _userRole;
-  
+
   @override
   void initState() {
     super.initState();
     _loadUserRole();
   }
-  
+
   Future<void> _loadUserRole() async {
     final userRole = await AuthService.getCurrentUserRole();
     setState(() {
       _userRole = userRole;
     });
   }
-  
+
   @override
   Widget build(BuildContext context) {
     if (_userRole == null) {
@@ -184,7 +181,7 @@ class _CustomerShellState extends State<CustomerShell> {
         body: Center(child: CircularProgressIndicator()),
       );
     }
-    
+
     return Scaffold(
       body: widget.child,
       bottomNavigationBar: BottomNavigationBar(
@@ -200,7 +197,7 @@ class _CustomerShellState extends State<CustomerShell> {
       ),
     );
   }
-  
+
   void _navigateToCustomerRoute(int index, BuildContext context) {
     switch (index) {
       case 0:
@@ -221,9 +218,9 @@ class _CustomerShellState extends State<CustomerShell> {
 
 class ShopOwnerShell extends StatefulWidget {
   final Widget child;
-  
+
   const ShopOwnerShell({super.key, required this.child});
-  
+
   @override
   State<ShopOwnerShell> createState() => _ShopOwnerShellState();
 }
@@ -231,20 +228,20 @@ class ShopOwnerShell extends StatefulWidget {
 class _ShopOwnerShellState extends State<ShopOwnerShell> {
   int _currentIndex = 0;
   String? _userRole;
-  
+
   @override
   void initState() {
     super.initState();
     _loadUserRole();
   }
-  
+
   Future<void> _loadUserRole() async {
     final userRole = await AuthService.getCurrentUserRole();
     setState(() {
       _userRole = userRole;
     });
   }
-  
+
   @override
   Widget build(BuildContext context) {
     if (_userRole == null) {
@@ -252,7 +249,7 @@ class _ShopOwnerShellState extends State<ShopOwnerShell> {
         body: Center(child: CircularProgressIndicator()),
       );
     }
-    
+
     return Scaffold(
       body: widget.child,
       bottomNavigationBar: BottomNavigationBar(
@@ -268,7 +265,7 @@ class _ShopOwnerShellState extends State<ShopOwnerShell> {
       ),
     );
   }
-  
+
   void _navigateToShopOwnerRoute(int index, BuildContext context) {
     switch (index) {
       case 0:
@@ -278,7 +275,7 @@ class _ShopOwnerShellState extends State<ShopOwnerShell> {
         context.go('/shop-owner/products');
         break;
       case 2:
-        context.go('/shop-owner/orders');
+        context.go('/shop-owner/orders-management');
         break;
       case 3:
         context.go('/shop-owner/analytics');
@@ -292,9 +289,9 @@ class _ShopOwnerShellState extends State<ShopOwnerShell> {
 
 class DeliveryPartnerShell extends StatefulWidget {
   final Widget child;
-  
+
   const DeliveryPartnerShell({super.key, required this.child});
-  
+
   @override
   State<DeliveryPartnerShell> createState() => _DeliveryPartnerShellState();
 }
@@ -302,20 +299,20 @@ class DeliveryPartnerShell extends StatefulWidget {
 class _DeliveryPartnerShellState extends State<DeliveryPartnerShell> {
   int _currentIndex = 0;
   String? _userRole;
-  
+
   @override
   void initState() {
     super.initState();
     _loadUserRole();
   }
-  
+
   Future<void> _loadUserRole() async {
     final userRole = await AuthService.getCurrentUserRole();
     setState(() {
       _userRole = userRole;
     });
   }
-  
+
   @override
   Widget build(BuildContext context) {
     if (_userRole == null) {
@@ -323,7 +320,7 @@ class _DeliveryPartnerShellState extends State<DeliveryPartnerShell> {
         body: Center(child: CircularProgressIndicator()),
       );
     }
-    
+
     return Scaffold(
       body: widget.child,
       bottomNavigationBar: BottomNavigationBar(
@@ -339,7 +336,7 @@ class _DeliveryPartnerShellState extends State<DeliveryPartnerShell> {
       ),
     );
   }
-  
+
   void _navigateToDeliveryPartnerRoute(int index, BuildContext context) {
     switch (index) {
       case 0:

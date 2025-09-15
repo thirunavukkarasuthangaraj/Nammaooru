@@ -608,4 +608,30 @@ public class EmailService {
         }
     }
 
+    @Async
+    public void sendDeliveryNotificationEmail(String customerEmail, String customerName,
+                                            String orderNumber, String deliveryPartnerName, String shopName) {
+        try {
+            String subject = "Order Delivered Successfully - " + orderNumber;
+            String text = String.format(
+                "Dear %s,\n\n" +
+                "Your order %s has been successfully delivered by %s.\n\n" +
+                "Order Details:\n" +
+                "- Order Number: %s\n" +
+                "- Shop: %s\n" +
+                "- Delivered by: %s\n\n" +
+                "Thank you for choosing NammaOoru!\n\n" +
+                "Best regards,\n" +
+                "The NammaOoru Team",
+                customerName, orderNumber, deliveryPartnerName, orderNumber, shopName, deliveryPartnerName
+            );
+
+            sendSimpleEmail(customerEmail, subject, text);
+            log.info("Delivery notification email sent to: {} for order: {}", customerEmail, orderNumber);
+
+        } catch (Exception e) {
+            log.error("Failed to send delivery notification email to: {} for order: {}", customerEmail, orderNumber, e);
+        }
+    }
+
 }

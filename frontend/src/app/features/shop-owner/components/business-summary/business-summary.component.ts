@@ -288,7 +288,7 @@ export class BusinessSummaryComponent implements OnInit, OnDestroy {
 
   viewOrderDetails(order: OrderSummary): void {
     // Navigate to order details or open modal
-    window.open(`/shop-owner/orders?orderId=${order.id}`, '_blank');
+    window.open(`/shop-owner/orders-management?orderId=${order.id}`, '_blank');
   }
 
   updateProductStock(product: Product): void {
@@ -339,7 +339,7 @@ export class BusinessSummaryComponent implements OnInit, OnDestroy {
 
   // Navigation methods
   goToOrders(): void {
-    window.location.href = '/shop-owner/orders';
+    window.location.href = '/shop-owner/orders-management';
   }
 
   goToProducts(): void {

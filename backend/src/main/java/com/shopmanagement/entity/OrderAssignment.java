@@ -145,7 +145,7 @@ public class OrderAssignment {
     }
 
     public boolean canBeDelivered() {
-        return status == AssignmentStatus.IN_TRANSIT;
+        return status == AssignmentStatus.IN_TRANSIT || status == AssignmentStatus.PICKED_UP;
     }
 
     public boolean isCompleted() {

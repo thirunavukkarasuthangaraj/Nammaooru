@@ -197,8 +197,8 @@ docker-compose up --build -d
 - `GET /api/shop-owner/products` - Manage products
 - `POST /api/shop-owner/products` - Add new product
 - `PUT /api/shop-owner/products/{id}` - Update product
-- `GET /api/shop-owner/orders` - Shop orders
-- `PUT /api/shop-owner/orders/{id}/status` - Update order status
+- `GET /api/shop-owner/orders-management` - Shop orders
+- `PUT /api/shop-owner/orders-management/{id}/status` - Update order status
 
 ### Admin APIs
 - `GET /api/admin/shops` - All shops management

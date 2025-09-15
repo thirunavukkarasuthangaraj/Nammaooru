@@ -384,6 +384,60 @@ public class OrderAssignmentController {
     }
 
     /**
+     * Diagnostic endpoint to check auto-assignment readiness
+     */
+    @GetMapping("/debug/auto-assignment/{orderId}")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SHOP_OWNER')")
+    public ResponseEntity<Map<String, Object>> debugAutoAssignment(@PathVariable Long orderId) {
+
+        try {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("orderId", orderId);
+
+            // Check available partners
+            List<User> availablePartners = assignmentService.findAvailableDeliveryPartners();
+            response.put("availablePartners", availablePartners.stream()
+                .map(this::createPartnerResponse)
+                .toList());
+            response.put("availablePartnersCount", availablePartners.size());
+
+            // Check if order already has active assignment
+            Optional<OrderAssignment> existingAssignment = assignmentService.findActiveAssignmentByOrderId(orderId);
+            response.put("hasExistingAssignment", existingAssignment.isPresent());
+            if (existingAssignment.isPresent()) {
+                response.put("existingAssignment", createAssignmentResponse(existingAssignment.get()));
+            }
+
+            // Try to simulate auto-assignment without actually doing it
+            String autoAssignmentStatus = "ready";
+            String autoAssignmentMessage = "Auto-assignment is ready";
+
+            if (availablePartners.isEmpty()) {
+                autoAssignmentStatus = "no_partners";
+                autoAssignmentMessage = "No available delivery partners found";
+            } else if (existingAssignment.isPresent()) {
+                autoAssignmentStatus = "already_assigned";
+                autoAssignmentMessage = "Order already has an active assignment";
+            }
+
+            response.put("autoAssignmentStatus", autoAssignmentStatus);
+            response.put("autoAssignmentMessage", autoAssignmentMessage);
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Error debugging auto-assignment for order {}: {}", orderId, e.getMessage());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", e.getMessage());
+
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    /**
      * Get assignments for a specific order
      */
     @GetMapping("/orders/{orderId}")

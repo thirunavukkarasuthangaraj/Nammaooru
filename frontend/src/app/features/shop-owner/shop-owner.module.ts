@@ -21,12 +21,13 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatNativeDateModule } from '@angular/material/core';
+import { MatNativeDateModule, MatOptionModule } from '@angular/material/core';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatStepperModule } from '@angular/material/stepper';
+import { MatListModule } from '@angular/material/list';
 
 import { ShopOwnerRoutingModule } from './shop-owner-routing.module';
 import { ShopOwnerDashboardComponent } from './components/shop-owner-dashboard/shop-owner-dashboard.component';
@@ -35,6 +36,8 @@ import { ShopOverviewComponent } from './components/shop-overview/shop-overview.
 import { MyProductsComponent } from './components/my-products/my-products.component';
 import { InventoryManagementComponent } from './components/inventory-management/inventory-management.component';
 import { OrderManagementComponent } from './components/order-management/order-management.component';
+import { OrdersManagementComponent } from './components/orders-management/orders-management.component';
+import { DeliveryManagementComponent } from './components/delivery-management/delivery-management.component';
 import { AddProductComponent } from './components/add-product/add-product.component';
 import { BulkUploadComponent } from './components/bulk-upload/bulk-upload.component';
 import { CategoriesComponent } from './components/categories/categories.component';
@@ -60,6 +63,8 @@ import { ProductAssignmentDialogComponent } from './components/product-assignmen
     MyProductsComponent,
     InventoryManagementComponent,
     OrderManagementComponent,
+    OrdersManagementComponent,
+    DeliveryManagementComponent,
     AddProductComponent,
     BulkUploadComponent,
     CategoriesComponent,
@@ -106,7 +111,9 @@ import { ProductAssignmentDialogComponent } from './components/product-assignmen
     MatCheckboxModule,
     MatTabsModule,
     MatSlideToggleModule,
-    MatStepperModule
+    MatStepperModule,
+    MatListModule,
+    MatOptionModule
   ]
 })
 export class ShopOwnerModule { }

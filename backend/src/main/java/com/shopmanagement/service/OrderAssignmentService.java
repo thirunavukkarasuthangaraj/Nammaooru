@@ -30,6 +30,7 @@ public class OrderAssignmentService {
     private final OrderAssignmentRepository assignmentRepository;
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
+    private final EmailService emailService;
 
     // Active assignment statuses
     private static final List<AssignmentStatus> ACTIVE_STATUSES = Arrays.asList(
@@ -71,6 +72,12 @@ public class OrderAssignmentService {
 
         // Calculate delivery fee and commission
         BigDecimal deliveryFee = order.getDeliveryFee();
+        if (deliveryFee == null || deliveryFee.compareTo(BigDecimal.ZERO) == 0) {
+            // Set default delivery fee if not set
+            deliveryFee = new BigDecimal("50.00"); // Default ₹50 delivery fee
+            order.setDeliveryFee(deliveryFee);
+            orderRepository.save(order);
+        }
         BigDecimal partnerCommission = calculatePartnerCommission(deliveryFee);
 
         // Create assignment
@@ -140,6 +147,12 @@ public class OrderAssignmentService {
 
         // Calculate delivery fee and commission
         BigDecimal deliveryFee = order.getDeliveryFee();
+        if (deliveryFee == null || deliveryFee.compareTo(BigDecimal.ZERO) == 0) {
+            // Set default delivery fee if not set
+            deliveryFee = new BigDecimal("50.00"); // Default ₹50 delivery fee
+            order.setDeliveryFee(deliveryFee);
+            orderRepository.save(order);
+        }
         BigDecimal partnerCommission = calculatePartnerCommission(deliveryFee);
 
         // Create assignment
@@ -292,6 +305,20 @@ public class OrderAssignmentService {
         partner.setLastActivity(LocalDateTime.now());
         userRepository.save(partner);
 
+        // Send delivery notification email
+        try {
+            emailService.sendDeliveryNotificationEmail(
+                order.getCustomer().getEmail(),
+                order.getCustomer().getFirstName() + " " + order.getCustomer().getLastName(),
+                order.getOrderNumber(),
+                assignment.getDeliveryPartner().getFirstName() + " " + assignment.getDeliveryPartner().getLastName(),
+                order.getShop().getName()
+            );
+            log.info("Delivery notification email sent to customer {}", order.getCustomer().getEmail());
+        } catch (Exception e) {
+            log.error("Failed to send delivery notification email: {}", e.getMessage());
+        }
+
         log.info("Assignment {} marked as delivered by partner {}. Order {} status updated to DELIVERED",
                  assignmentId, partnerId, order.getId());
         return assignment;
@@ -306,6 +333,7 @@ public class OrderAssignmentService {
         return assignmentRepository.findActiveAssignmentByOrderId(orderId, ACTIVE_STATUSES);
     }
 
+    @Transactional(readOnly = true)
     public Optional<OrderAssignment> findCurrentAssignmentByPartnerId(Long partnerId) {
         return assignmentRepository.findCurrentAssignmentByPartnerId(partnerId, ACTIVE_STATUSES);
     }
@@ -322,6 +350,12 @@ public class OrderAssignmentService {
 
     public List<OrderAssignment> findAssignmentsByOrderId(Long orderId) {
         return assignmentRepository.findByOrderId(orderId);
+    }
+
+    public List<OrderAssignment> findAssignmentsByOrderNumber(String orderNumber) {
+        Order order = orderRepository.findByOrderNumber(orderNumber)
+            .orElseThrow(() -> new RuntimeException("Order not found with number: " + orderNumber));
+        return assignmentRepository.findByOrderId(order.getId());
     }
 
     // Helper methods
@@ -352,6 +386,18 @@ public class OrderAssignmentService {
      */
     private User findBestAvailablePartner() {
         List<User> availablePartners = findAvailableDeliveryPartners();
+
+        System.out.println("DEBUG: Found " + availablePartners.size() + " available partners");
+
+        // Debug: Print all delivery partners status
+        List<User> allDeliveryPartners = userRepository.findByRole(User.UserRole.DELIVERY_PARTNER);
+        System.out.println("DEBUG: Total delivery partners: " + allDeliveryPartners.size());
+        for (User partner : allDeliveryPartners) {
+            System.out.println("DEBUG: Partner " + partner.getEmail() +
+                " - Online: " + partner.getIsOnline() +
+                ", Available: " + partner.getIsAvailable() +
+                ", RideStatus: " + partner.getRideStatus());
+        }
 
         if (availablePartners.isEmpty()) {
             // If no available partners, check for partners who might finish soon

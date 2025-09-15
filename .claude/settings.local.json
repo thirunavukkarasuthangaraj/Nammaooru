@@ -119,7 +119,7 @@
       "Bash(\"TASKKILL\" \"/F\" \"/IM\" \"node.exe\")",
       "Bash(TASKKILL:*)",
       "Bash(\"C:\\Program Files\\PostgreSQL\\16\\bin\\psql.exe\" -h localhost -p 5432 -U shop_user -d shop_management -c \"UPDATE orders SET shop_id = ''SHA686F7D3'' WHERE shop_id = ''2'';\")",
-      "Bash(\"start chrome\" \"http://localhost:4200/shop-owner/orders\")",
+      "Bash(\"start chrome\" \"http://localhost:4200/shop-owner/orders-management\")",
       "Bash(keytool:*)",
       "Bash(\"taskkill\" \"/F\" \"/PID\" \"3936\")",
       "Bash(del CLAUDE.md)",
@@ -130,7 +130,8 @@
       "Read(//c//**)",
       "Bash(\"taskkill\" \"/F\" \"/PID\" \"35656\")",
       "Bash(\"C:\\Program Files\\PostgreSQL\\16\\bin\\psql.exe\" -h localhost -p 5432 -U shop_user -d shop_management -f fix_image_urls.sql)",
-      "Bash(\"C:\\Program Files\\PostgreSQL\\16\\bin\\psql.exe\" -h localhost -p 5432 -U shop_user -d shop_management)"
+      "Bash(\"C:\\Program Files\\PostgreSQL\\16\\bin\\psql.exe\" -h localhost -p 5432 -U shop_user -d shop_management)",
+      "Bash(\"C:\\Program Files\\PostgreSQL\\16\\bin\\psql.exe\" -h localhost -p 5432 -U shop_user -d shop_management -c \"SELECT id, email, mobile_number, role, is_online, is_available, ride_status FROM users WHERE role = ''DELIVERY_PARTNER'';\")"
     ],
     "deny": [],
     "ask": [],

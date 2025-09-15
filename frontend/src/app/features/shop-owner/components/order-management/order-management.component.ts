@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Subject, interval } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { HttpClient } from '@angular/common/http';
+import { Router } from '@angular/router';
 import { environment } from '../../../../../environments/environment';
 import { ShopContextService } from '../../services/shop-context.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -29,13 +30,16 @@ interface Order {
   createdAt: string;
   updatedAt: string;
   orderItems?: OrderItem[];
+  items?: OrderItem[]; // Alternative property name
 }
 
 interface OrderItem {
   id: number;
   productName: string;
+  name?: string; // Alternative property name
   quantity: number;
   unitPrice: number;
+  price?: number; // Alternative property name
   totalPrice: number;
 }
 
@@ -56,6 +60,15 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
   loading = false;
   autoRefreshEnabled = true;
   refreshInterval = 30000; // 30 seconds
+
+  // Additional properties for template binding
+  totalOrders = 0;
+  todayRevenue = 0;
+  searchTerm = '';
+  filteredOrders: Order[] = [];
+  successMessage = '';
+  errorMessage = '';
+  selectedStatus = '';
   
   todayStats = {
     totalOrders: 0,
@@ -86,6 +99,7 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
 
   constructor(
     private http: HttpClient,
+    private router: Router,
     private orderService: OrderService,
     private assignmentService: OrderAssignmentService,
     private partnerService: DeliveryPartnerService,
@@ -608,4 +622,78 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
       default: return '🚚';
     }
   }
+
+  // ===== NAVIGATION TO DELIVERY MANAGEMENT =====
+
+  /**
+   * Navigate to enhanced delivery management screen for order assignment and tracking
+   */
+  assignDelivery(orderId: number): void {
+    console.log('Navigating to delivery management for order:', orderId);
+    this.router.navigate(['/shop-owner/delivery-management'], {
+      queryParams: { orderId: orderId }
+    });
+  }
+
+  // ===== ADDITIONAL METHODS FOR TEMPLATE BINDING =====
+
+  printReceipt(orderId: number): void {
+    // Implement receipt printing
+    this.snackBar.open('Receipt printing feature will be implemented', 'Close', { duration: 3000 });
+  }
+
+  callCustomer(phone: string): void {
+    if (phone) {
+      window.open(`tel:${phone}`, '_self');
+    }
+  }
+
+  reportIssue(orderId: number): void {
+    // Implement issue reporting
+    this.snackBar.open('Issue reporting feature will be implemented', 'Close', { duration: 3000 });
+  }
+
+  applyFilter(): void {
+    // Apply filtering logic
+    this.filteredOrders = this.pendingOrders.filter(order => {
+      return !this.searchTerm ||
+        order.orderNumber.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
+        (order.customerName && order.customerName.toLowerCase().includes(this.searchTerm.toLowerCase()));
+    });
+  }
+
+  getStatusClass(status: string): string {
+    switch (status) {
+      case 'PENDING': return 'status-pending';
+      case 'CONFIRMED': return 'status-confirmed';
+      case 'PREPARING': return 'status-preparing';
+      case 'READY_FOR_PICKUP': return 'status-ready';
+      case 'OUT_FOR_DELIVERY': return 'status-delivery';
+      case 'DELIVERED': return 'status-delivered';
+      case 'CANCELLED': return 'status-cancelled';
+      default: return '';
+    }
+  }
+
+  getStatusLabel(status: string): string {
+    switch (status) {
+      case 'PENDING': return 'Pending';
+      case 'CONFIRMED': return 'Confirmed';
+      case 'PREPARING': return 'Preparing';
+      case 'READY_FOR_PICKUP': return 'Ready';
+      case 'OUT_FOR_DELIVERY': return 'Out for Delivery';
+      case 'DELIVERED': return 'Delivered';
+      case 'CANCELLED': return 'Cancelled';
+      default: return status;
+    }
+  }
+
+  startPreparing(orderId: number): void {
+    this.markAsPreparing(this.pendingOrders.find(o => o.id === orderId)!);
+  }
+
+  markReady(orderId: number): void {
+    this.markAsReady(this.activeOrders.find(o => o.id === orderId)!);
+  }
+
 }

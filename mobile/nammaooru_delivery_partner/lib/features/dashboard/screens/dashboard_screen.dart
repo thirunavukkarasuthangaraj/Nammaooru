@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../core/providers/delivery_partner_provider.dart';
 import '../../../core/models/delivery_partner.dart';
 import '../../orders/screens/order_history_screen.dart';
+import '../../orders/screens/otp_handover_screen.dart';
 import '../../earnings/screens/earnings_screen.dart';
 import '../../auth/screens/login_screen.dart';
 
@@ -181,7 +182,12 @@ class HomeTab extends StatelessWidget {
                   _buildStatsCards(provider),
                   
                   const SizedBox(height: 24),
-                  
+
+                  // Active Orders Section
+                  _buildActiveOrdersSection(provider),
+
+                  const SizedBox(height: 16),
+
                   // Available Orders Section
                   _buildAvailableOrdersSection(provider),
                 ],
@@ -310,6 +316,26 @@ class HomeTab extends StatelessWidget {
     );
   }
 
+  Widget _buildActiveOrdersSection(DeliveryPartnerProvider provider) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Active Orders',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (provider.activeOrders.isEmpty)
+          _buildEmptyActiveOrdersCard()
+        else
+          ...provider.activeOrders.map((order) => _buildActiveOrderCard(order, provider)),
+      ],
+    );
+  }
+
   Widget _buildAvailableOrdersSection(DeliveryPartnerProvider provider) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -380,6 +406,233 @@ class HomeTab extends StatelessWidget {
     );
   }
 
+  Widget _buildEmptyActiveOrdersCard() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            Icon(
+              Icons.delivery_dining,
+              size: 48,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'No active orders',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Accepted orders will appear here',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[500],
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActiveOrderCard(DeliveryOrder order, DeliveryPartnerProvider provider) {
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Order #${order.orderId}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    order.status.toUpperCase(),
+                    style: const TextStyle(
+                      color: Colors.blue,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Icon(Icons.person, size: 16, color: Colors.grey),
+                const SizedBox(width: 8),
+                Text(order.customerName),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Icon(Icons.phone, size: 16, color: Colors.grey),
+                const SizedBox(width: 8),
+                Text(order.customerPhone),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.location_on, size: 16, color: Colors.red),
+                const SizedBox(width: 8),
+                Expanded(child: Text(order.deliveryAddress)),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Items Section
+            if (order.items.isNotEmpty) ...[
+              const Text(
+                'Items:',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ...order.items.map((item) => Container(
+                margin: const EdgeInsets.only(bottom: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey[300]!),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.name,
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ),
+                    Text(
+                      '${item.quantity}x',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.blue,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '₹${item.price.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              )).toList(),
+              const SizedBox(height: 12),
+            ],
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Order Value: ₹${order.orderValue.toStringAsFixed(0)}',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    Text(
+                      'Delivery Fee: ₹${order.deliveryFee.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                        color: Colors.green,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    if (order.status.toLowerCase() == 'accepted') ...[
+                      ElevatedButton(
+                        onPressed: () async {
+                          // Navigate to OTP handover screen
+                          final result = await Navigator.of(parentContext).push(
+                            MaterialPageRoute(
+                              builder: (context) => OTPHandoverScreen(order: order),
+                            ),
+                          );
+
+                          // If OTP verification was successful, refresh the dashboard
+                          if (result == true) {
+                            final provider = Provider.of<DeliveryPartnerProvider>(parentContext, listen: false);
+                            await provider.refreshAll();
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text('Pick Up'),
+                      ),
+                    ],
+                    if (order.status.toLowerCase() == 'picked_up' || order.status.toLowerCase() == 'in_transit') ...[
+                      ElevatedButton(
+                        onPressed: () async {
+                          final success = await provider.updateOrderStatus(order.orderId, 'DELIVERED');
+                          if (success) {
+                            ScaffoldMessenger.of(parentContext).showSnackBar(
+                              const SnackBar(
+                                content: Text('Order delivered successfully!'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text('Deliver'),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildOrderCard(DeliveryOrder order, DeliveryPartnerProvider provider) {
     return Card(
       elevation: 2,
@@ -442,6 +695,54 @@ class HomeTab extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
+
+            // Items Section
+            if (order.items.isNotEmpty) ...[
+              const Text(
+                'Items:',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ...order.items.map((item) => Container(
+                margin: const EdgeInsets.only(bottom: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey[300]!),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.name,
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ),
+                    Text(
+                      '${item.quantity}x',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.blue,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '₹${item.price.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              )).toList(),
+              const SizedBox(height: 12),
+            ],
+
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [

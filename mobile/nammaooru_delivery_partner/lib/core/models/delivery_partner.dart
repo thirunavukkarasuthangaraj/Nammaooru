@@ -81,12 +81,12 @@ class DeliveryOrder {
 
   factory DeliveryOrder.fromJson(Map<String, dynamic> json) {
     return DeliveryOrder(
-      orderId: json['orderId'] ?? '',
+      orderId: json['orderNumber'] ?? json['orderId'] ?? '',
       customerName: json['customerName'] ?? '',
       customerPhone: json['customerPhone'] ?? '',
-      pickupAddress: json['pickupAddress'] ?? '',
+      pickupAddress: json['shopAddress'] ?? json['pickupAddress'] ?? '',
       deliveryAddress: json['deliveryAddress'] ?? '',
-      orderValue: (json['orderValue'] ?? 0).toDouble(),
+      orderValue: (json['totalAmount'] ?? json['orderValue'] ?? 0).toDouble(),
       deliveryFee: (json['deliveryFee'] ?? 0).toDouble(),
       status: json['status'] ?? '',
       createdAt: DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String()),

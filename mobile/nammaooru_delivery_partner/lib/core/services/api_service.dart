@@ -110,9 +110,9 @@ class ApiService {
       throw ApiException('Partner ID not found. Please login again.', 401);
     }
 
-    // Get assignments available for this partner
+    // Get assignments available for this partner - corrected endpoint
     final response = await http.get(
-      Uri.parse('$_assignmentEndpoint/partner/$partnerId/available'),
+      Uri.parse('$_deliveryPartnerEndpoint/orders/$partnerId/available'),
       headers: await _getHeaders(),
     );
 
@@ -127,9 +127,9 @@ class ApiService {
       throw ApiException('Partner ID not found. Please login again.', 401);
     }
 
-    // Get active assignments for this partner
+    // Get active assignments for this partner - corrected endpoint
     final response = await http.get(
-      Uri.parse('$_assignmentEndpoint/partner/$partnerId/active'),
+      Uri.parse('$_deliveryPartnerEndpoint/orders/$partnerId/active'),
       headers: await _getHeaders(),
     );
 
@@ -144,10 +144,29 @@ class ApiService {
       throw ApiException('Partner ID not found. Please login again.', 401);
     }
 
-    // Use the actual backend endpoint for accepting assignments
+    // Use the correct backend endpoint for accepting assignments
     final response = await http.post(
-      Uri.parse('$_assignmentEndpoint/$orderId/accept?partnerId=$partnerId'),
+      Uri.parse('$_deliveryPartnerEndpoint/orders/$orderId/accept'),
       headers: await _getHeaders(),
+      body: json.encode({'partnerId': partnerId}),
+    );
+
+    return _handleResponse(response);
+  }
+
+  Future<Map<String, dynamic>> rejectOrder(String orderId, {String reason = 'No reason provided'}) async {
+    final prefs = await SharedPreferences.getInstance();
+    final partnerId = prefs.getString(_partnerIdKey);
+
+    if (partnerId == null) {
+      throw ApiException('Partner ID not found. Please login again.', 401);
+    }
+
+    // Use the correct backend endpoint for rejecting assignments
+    final response = await http.post(
+      Uri.parse('$_deliveryPartnerEndpoint/orders/$orderId/reject'),
+      headers: await _getHeaders(),
+      body: json.encode({'partnerId': partnerId, 'reason': reason}),
     );
 
     return _handleResponse(response);
@@ -163,20 +182,23 @@ class ApiService {
     }
 
     String endpoint = '';
+    Map<String, dynamic> requestBody = {'partnerId': partnerId};
+
     if (status == 'PICKED_UP') {
-      endpoint = '$_assignmentEndpoint/$orderId/pickup?partnerId=$partnerId';
+      endpoint = '$_deliveryPartnerEndpoint/orders/$orderId/pickup';
     } else if (status == 'DELIVERED') {
-      endpoint = '$_assignmentEndpoint/$orderId/deliver?partnerId=$partnerId';
+      endpoint = '$_deliveryPartnerEndpoint/orders/$orderId/deliver';
+      requestBody['deliveryNotes'] = 'Order delivered successfully';
     } else {
-      endpoint = '$_assignmentEndpoint/$orderId/status';
+      // For other status updates, we might need a different endpoint
+      endpoint = '$_deliveryPartnerEndpoint/orders/$orderId/status';
+      requestBody['status'] = status;
     }
 
     final response = await http.post(
       Uri.parse(endpoint),
       headers: await _getHeaders(),
-      body: status != 'PICKED_UP' && status != 'DELIVERED'
-          ? json.encode({'status': status, 'partnerId': partnerId})
-          : null,
+      body: json.encode(requestBody),
     );
 
     return _handleResponse(response);
@@ -277,6 +299,33 @@ class ApiService {
         'partnerId': partnerId,
         'currentPassword': currentPassword,
         'newPassword': newPassword,
+      }),
+    );
+
+    return _handleResponse(response);
+  }
+
+  // OTP Verification for Pickup
+  Future<Map<String, dynamic>> verifyPickupOTP(String orderId, String otp) async {
+    final response = await _makeRequest(
+      'POST',
+      '/api/delivery-partner/verify-pickup-otp',
+      body: json.encode({
+        'orderId': orderId,
+        'otp': otp,
+      }),
+    );
+
+    return _handleResponse(response);
+  }
+
+  // Request new OTP for pickup
+  Future<Map<String, dynamic>> requestNewPickupOTP(String orderId) async {
+    final response = await _makeRequest(
+      'POST',
+      '/api/delivery-partner/request-pickup-otp',
+      body: json.encode({
+        'orderId': orderId,
       }),
     );
 

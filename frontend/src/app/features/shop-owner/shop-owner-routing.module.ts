@@ -6,6 +6,8 @@ import { ShopOverviewComponent } from './components/shop-overview/shop-overview.
 import { MyProductsComponent } from './components/my-products/my-products.component';
 import { InventoryManagementComponent } from './components/inventory-management/inventory-management.component';
 import { OrderManagementComponent } from './components/order-management/order-management.component';
+import { OrdersManagementComponent } from './components/orders-management/orders-management.component';
+import { DeliveryManagementComponent } from './components/delivery-management/delivery-management.component';
 import { AddProductComponent } from './components/add-product/add-product.component';
 import { BulkUploadComponent } from './components/bulk-upload/bulk-upload.component';
 import { CategoriesComponent } from './components/categories/categories.component';
@@ -37,7 +39,16 @@ const routes: Routes = [
   },
   {
     path: 'orders',
-    component: OrderManagementComponent
+    redirectTo: 'orders-management',
+    pathMatch: 'full'
+  },
+  {
+    path: 'orders-management',
+    component: OrdersManagementComponent
+  },
+  {
+    path: 'delivery-management',
+    component: DeliveryManagementComponent
   },
   {
     path: 'dashboard',

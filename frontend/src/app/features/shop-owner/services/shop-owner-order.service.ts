@@ -4,6 +4,7 @@ import { Observable, of } from 'rxjs';
 import { catchError, switchMap } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
 import { FirebaseService } from '../../../core/services/firebase.service';
+import { AuthService } from '../../../core/services/auth.service';
 
 export interface ShopOwnerOrder {
   id: number;
@@ -12,16 +13,25 @@ export interface ShopOwnerOrder {
   customerPhone: string;
   customerEmail: string;
   customerAddress: string;
+  deliveryAddress?: string;
   items: OrderItem[];
   totalAmount: number;
   createdAt: string;
-  status: 'PENDING' | 'CONFIRMED' | 'PREPARING' | 'READY' | 'COMPLETED' | 'CANCELLED';
+  status: 'PENDING' | 'CONFIRMED' | 'PREPARING' | 'READY_FOR_PICKUP' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'CANCELLED';
   paymentStatus: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
   paymentMethod: string;
   estimatedDeliveryTime?: string;
   notes?: string;
   customerId: number;
   shopId: number;
+  assignedDriver?: {
+    id: number;
+    name: string;
+    driverId: string;
+    phone: string;
+    vehicleNumber: string;
+  };
+  driverVerified?: boolean;
 }
 
 export interface OrderItem {
@@ -52,7 +62,8 @@ export class ShopOwnerOrderService {
 
   constructor(
     private http: HttpClient,
-    private firebaseService: FirebaseService
+    private firebaseService: FirebaseService,
+    private authService: AuthService
   ) {}
 
   getShopOrders(shopId: number, page: number = 0, size: number = 20): Observable<ShopOwnerOrder[]> {
@@ -60,45 +71,51 @@ export class ShopOwnerOrderService {
       .set('page', page.toString())
       .set('size', size.toString());
 
-    return this.http.get<{data: ShopOwnerOrder[]}>(`${this.apiUrl}/orders/shop/${shopId}`, { params })
+    // Debug authentication state
+    const token = this.authService.getToken();
+    const isAuthenticated = this.authService.isAuthenticated();
+    console.log('Making API request with token:', token ? 'Present' : 'Missing');
+    console.log('Authentication status:', isAuthenticated);
+
+    return this.http.get<{data: {content: ShopOwnerOrder[], totalItems: number, totalPages: number}}>(`${this.apiUrl}/orders/shop/${shopId}`, { params })
       .pipe(
-        switchMap(response => of(response.data || [])),
-        catchError(() => {
-          // Fallback to mock data
-          const mockOrders: ShopOwnerOrder[] = [
-            {
-              id: 1,
-              orderNumber: 'ORD001',
-              customerName: 'John Doe',
-              customerPhone: '+91 9876543210',
-              customerEmail: 'john@example.com',
-              customerAddress: '123 Main St, Chennai',
-              items: [
-                {
-                  id: 1,
-                  name: 'Chicken Biryani',
-                  productName: 'Chicken Biryani',
-                  quantity: 2,
-                  price: 250,
-                  unitPrice: 250,
-                  total: 500,
-                  totalPrice: 500,
-                  unit: 'plates',
-                  image: '/assets/images/biryani.jpg',
-                  productImageUrl: '/assets/images/biryani.jpg'
-                }
-              ],
-              totalAmount: 550,
-              createdAt: new Date().toISOString(),
-              status: 'PENDING',
-              paymentStatus: 'PENDING',
-              paymentMethod: 'CASH_ON_DELIVERY',
-              notes: 'Extra spicy',
-              customerId: 1,
-              shopId: shopId
-            }
-          ];
-          return of(mockOrders);
+        switchMap(response => {
+          // Extract the actual orders from the paginated response
+          const orders = response.data?.content || [];
+          console.log('API Response received - Orders:', orders.length, 'Total items:', response.data?.totalItems);
+
+          // Transform the API response to match our interface
+          const transformedOrders = orders.map((order: any) => ({
+            ...order,
+            items: (order.orderItems || []).map((item: any) => ({
+              id: item.id,
+              name: item.productName,
+              productName: item.productName,
+              quantity: item.quantity,
+              price: item.unitPrice,
+              unitPrice: item.unitPrice,
+              total: item.totalPrice,
+              totalPrice: item.totalPrice,
+              unit: 'pcs',
+              image: item.productImageUrl,
+              productImageUrl: item.productImageUrl
+            })),
+            customerName: order.customerName,
+            customerPhone: order.customerPhone || order.deliveryPhone,
+            customerEmail: order.customerEmail,
+            customerAddress: order.fullDeliveryAddress || order.deliveryAddress,
+            deliveryAddress: order.fullDeliveryAddress || order.deliveryAddress
+          }));
+
+          console.log('Transformed orders:', transformedOrders);
+          return of(transformedOrders);
+        }),
+        catchError((error) => {
+          // Log the error details for debugging
+          console.error('API Error details:', error);
+          console.error('Error status:', error.status);
+          console.error('Error message:', error.message);
+          return of([]);
         })
       );
   }
@@ -120,32 +137,9 @@ export class ShopOwnerOrderService {
           );
           return of(response.data);
         }),
-        catchError(() => {
-          // Fallback with mock response
-          const mockOrder: ShopOwnerOrder = {
-            id: orderId,
-            orderNumber: 'ORD' + orderId,
-            customerName: 'Mock Customer',
-            customerPhone: '+91 9876543210',
-            customerEmail: 'customer@example.com',
-            customerAddress: 'Mock Address',
-            items: [],
-            totalAmount: 0,
-            createdAt: new Date().toISOString(),
-            status: 'CONFIRMED',
-            paymentStatus: 'PENDING',
-            paymentMethod: 'CASH_ON_DELIVERY',
-            customerId: 1,
-            shopId: 1
-          };
-          
-          this.firebaseService.sendOrderNotification(
-            mockOrder.orderNumber,
-            'CONFIRMED',
-            'Your order has been accepted'
-          );
-          
-          return of(mockOrder);
+        catchError((error) => {
+          console.error('Error accepting order:', error);
+          throw error;
         })
       );
   }
@@ -164,32 +158,9 @@ export class ShopOwnerOrderService {
           );
           return of(response.data);
         }),
-        catchError(() => {
-          // Fallback with mock response
-          const mockOrder: ShopOwnerOrder = {
-            id: orderId,
-            orderNumber: 'ORD' + orderId,
-            customerName: 'Mock Customer',
-            customerPhone: '+91 9876543210',
-            customerEmail: 'customer@example.com',
-            customerAddress: 'Mock Address',
-            items: [],
-            totalAmount: 0,
-            createdAt: new Date().toISOString(),
-            status: 'CANCELLED',
-            paymentStatus: 'PENDING',
-            paymentMethod: 'CASH_ON_DELIVERY',
-            customerId: 1,
-            shopId: 1
-          };
-          
-          this.firebaseService.sendOrderNotification(
-            mockOrder.orderNumber,
-            'CANCELLED',
-            `Order cancelled: ${reason}`
-          );
-          
-          return of(mockOrder);
+        catchError((error) => {
+          console.error('Error rejecting order:', error);
+          throw error;
         })
       );
   }
@@ -227,25 +198,9 @@ export class ShopOwnerOrderService {
           
           return of(response.data);
         }),
-        catchError(() => {
-          // Fallback with mock response
-          const mockOrder: ShopOwnerOrder = {
-            id: orderId,
-            orderNumber: 'ORD' + orderId,
-            customerName: 'Mock Customer',
-            customerPhone: '+91 9876543210',
-            customerEmail: 'customer@example.com',
-            customerAddress: 'Mock Address',
-            items: [],
-            totalAmount: 0,
-            createdAt: new Date().toISOString(),
-            status: status as any,
-            paymentStatus: 'PENDING',
-            paymentMethod: 'CASH_ON_DELIVERY',
-            customerId: 1,
-            shopId: 1
-          };
-          return of(mockOrder);
+        catchError((error) => {
+          console.error('Error updating order status:', error);
+          throw error;
         })
       );
   }
@@ -280,10 +235,24 @@ export class ShopOwnerOrderService {
     return this.getShopOrders(shopId).pipe(
       switchMap(orders => {
         const today = new Date().toDateString();
-        const todayOrders = orders.filter(order => 
+        const todayOrders = orders.filter(order =>
           new Date(order.createdAt).toDateString() === today
         );
         return of(todayOrders);
+      })
+    );
+  }
+
+  verifyDriverForPickup(orderId: number, otp: string): Observable<{ success: boolean; message: string }> {
+    const body = { otp };
+
+    return this.http.post<{ success: boolean; message: string }>(
+      `${this.apiUrl}/orders/${orderId}/verify-pickup`,
+      body
+    ).pipe(
+      catchError((error) => {
+        console.error('Error verifying driver:', error);
+        throw error;
       })
     );
   }

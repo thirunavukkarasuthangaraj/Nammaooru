@@ -26,11 +26,11 @@
     <nav class="professional-nav">
       <div class="nav-section" *ngFor="let section of currentMenuItems">
         <p class="nav-section-title" *ngIf="!isSidebarCollapsed">{{ section.category }}</p>
-        
+
         <ul class="nav-menu">
           <li *ngFor="let item of section.items" class="nav-item">
-            <a [routerLink]="item.route" 
-               routerLinkActive="active" 
+            <a [routerLink]="item.route"
+               routerLinkActive="active"
                [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' || item.route === '/shop-owner' }"
                class="nav-link"
                [matTooltip]="isSidebarCollapsed ? item.title : ''"
@@ -39,7 +39,7 @@
                 <mat-icon>{{ item.icon }}</mat-icon>
               </div>
               <span class="nav-text" *ngIf="!isSidebarCollapsed">{{ item.title }}</span>
-              <span class="nav-badge" *ngIf="!isSidebarCollapsed && item.badge" 
+              <span class="nav-badge" *ngIf="!isSidebarCollapsed && item.badge"
                     [class.badge-new]="item.badge === 'new'"
                     [class.badge-count]="item.badge !== 'new'">
                 {{ item.badge }}
@@ -278,7 +278,7 @@
         <span>Add Product</span>
       </button>
       
-      <button mat-menu-item routerLink="/shop-owner/orders/new">
+      <button mat-menu-item routerLink="/shop-owner/orders-management/new">
         <mat-icon>receipt</mat-icon>
         <span>New Order</span>
       </button>
