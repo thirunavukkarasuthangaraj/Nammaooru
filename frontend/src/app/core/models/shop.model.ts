@@ -18,7 +18,6 @@ export interface Shop {
   longitude?: number;
   minOrderAmount: number;
   deliveryRadius: number;
-  deliveryFee: number;
   freeDeliveryAbove?: number;
   commissionRate: number;
   gstNumber?: string;
@@ -64,7 +63,6 @@ export interface ShopCreateRequest {
   longitude?: number;
   minOrderAmount?: number;
   deliveryRadius?: number;
-  deliveryFee?: number;
   freeDeliveryAbove?: number;
   commissionRate?: number;
   gstNumber?: string;
@@ -88,7 +86,6 @@ export interface ShopUpdateRequest {
   longitude?: number;
   minOrderAmount?: number;
   deliveryRadius?: number;
-  deliveryFee?: number;
   freeDeliveryAbove?: number;
   commissionRate?: number;
   gstNumber?: string;

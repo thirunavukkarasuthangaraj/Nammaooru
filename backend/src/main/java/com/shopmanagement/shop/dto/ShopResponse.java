@@ -37,7 +37,6 @@ public class ShopResponse {
     
     private BigDecimal minOrderAmount;
     private BigDecimal deliveryRadius;
-    private BigDecimal deliveryFee;
     private BigDecimal freeDeliveryAbove;
     private BigDecimal commissionRate;
     

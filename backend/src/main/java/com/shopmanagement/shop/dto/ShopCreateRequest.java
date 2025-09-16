@@ -74,8 +74,6 @@ public class ShopCreateRequest {
     @DecimalMin(value = "0.0", message = "Delivery radius cannot be negative")
     private BigDecimal deliveryRadius;
 
-    @DecimalMin(value = "0.0", message = "Delivery fee cannot be negative")
-    private BigDecimal deliveryFee;
 
     @DecimalMin(value = "0.0", message = "Free delivery threshold cannot be negative")
     private BigDecimal freeDeliveryAbove;

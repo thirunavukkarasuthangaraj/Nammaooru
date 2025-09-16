@@ -199,7 +199,6 @@ public class DataInitializer {
                         .rating(new BigDecimal("4.5"))
                         .deliveryRadius(new BigDecimal("5.0"))
                         .minOrderAmount(new BigDecimal("100.00"))
-                        .deliveryFee(new BigDecimal("30.00"))
                         .createdBy("shopowner")
                         .updatedBy("shopowner")
                         .build();

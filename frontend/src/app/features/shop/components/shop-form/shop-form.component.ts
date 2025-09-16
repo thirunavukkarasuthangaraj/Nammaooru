@@ -156,11 +156,6 @@ import { ShopService } from '../../../../core/services/shop.service';
                 <span matTextPrefix>₹&nbsp;</span>
               </mat-form-field>
 
-              <mat-form-field>
-                <mat-label>Delivery Fee</mat-label>
-                <input matInput type="number" formControlName="deliveryFee" placeholder="0">
-                <span matTextPrefix>₹&nbsp;</span>
-              </mat-form-field>
 
               <mat-form-field>
                 <mat-label>Delivery Radius</mat-label>
@@ -278,7 +273,6 @@ export class ShopFormComponent implements OnInit {
       postalCode: ['', Validators.required],
       country: ['India'],
       minOrderAmount: [0],
-      deliveryFee: [0],
       deliveryRadius: [5],
       freeDeliveryAbove: [500],
       commissionRate: [15]

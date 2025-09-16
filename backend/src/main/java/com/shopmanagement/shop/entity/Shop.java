@@ -122,10 +122,6 @@ public class Shop {
     @Column(name = "delivery_radius", precision = 8, scale = 2)
     private BigDecimal deliveryRadius = new BigDecimal("5.0");
 
-    @DecimalMin(value = "0.0")
-    @Builder.Default
-    @Column(name = "delivery_fee", precision = 10, scale = 2)
-    private BigDecimal deliveryFee = BigDecimal.ZERO;
 
     @DecimalMin(value = "0.0")
     @Column(name = "free_delivery_above", precision = 10, scale = 2)
