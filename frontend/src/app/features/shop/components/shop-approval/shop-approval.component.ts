@@ -110,10 +110,6 @@ import Swal from 'sweetalert2';
                   </mat-chip>
                 </div>
                 <div class="info-item" *ngIf="shop.deliveryRadius && shop.deliveryRadius > 0">
-                  <span class="label">Delivery Fee:</span>
-                  <span>₹{{ shop.deliveryFee || 0 }}</span>
-                </div>
-                <div class="info-item" *ngIf="shop.deliveryRadius && shop.deliveryRadius > 0">
                   <span class="label">Delivery Radius:</span>
                   <span>{{ shop.deliveryRadius || 0 }} km</span>
                 </div>

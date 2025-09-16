@@ -608,7 +608,6 @@ export class AddProductComponent implements OnInit {
       longitude: 0,
       minOrderAmount: 100,
       deliveryRadius: 5,
-      deliveryFee: 30,
       freeDeliveryAbove: 500,
       commissionRate: 15,
       status: ShopStatus.APPROVED,

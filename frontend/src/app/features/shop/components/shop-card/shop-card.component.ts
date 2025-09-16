@@ -76,7 +76,7 @@ import { AuthService } from '@core/services/auth.service';
           
           <div class="info-row" *ngIf="shop.deliveryRadius > 0">
             <mat-icon class="info-icon">local_shipping</mat-icon>
-            <span>Delivery: {{shop.deliveryRadius}}km (₹{{shop.deliveryFee}})</span>
+            <span>Delivery: {{shop.deliveryRadius}}km (Distance-based pricing)</span>
           </div>
         </div>
 

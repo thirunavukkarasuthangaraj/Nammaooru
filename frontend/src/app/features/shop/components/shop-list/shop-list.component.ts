@@ -782,7 +782,7 @@ export class ShopListComponent implements OnInit {
               <h4>💼 Business Details</h4>
               <table style="width: 100%; margin-bottom: 20px;">
                 <tr><td><strong>Min Order:</strong></td><td>₹${shop.minOrderAmount || 0}</td></tr>
-                <tr><td><strong>Delivery Fee:</strong></td><td>₹${shop.deliveryFee || 0}</td></tr>
+                <tr><td><strong>Delivery Fee:</strong></td><td>Distance-based pricing</td></tr>
                 <tr><td><strong>Delivery Radius:</strong></td><td>${shop.deliveryRadius || 0} km</td></tr>
                 <tr><td><strong>Free Delivery Above:</strong></td><td>₹${shop.freeDeliveryAbove || 0}</td></tr>
                 <tr><td><strong>Rating:</strong></td><td>${shop.rating || 'Not Rated'}</td></tr>
@@ -855,7 +855,7 @@ export class ShopListComponent implements OnInit {
           <h4>💼 Business Details</h4>
           <table style="width: 100%; margin-bottom: 20px;">
             <tr><td><strong>Min Order:</strong></td><td>₹${shop.minOrderAmount || 0}</td></tr>
-            <tr><td><strong>Delivery Fee:</strong></td><td>₹${shop.deliveryFee || 0}</td></tr>
+            <tr><td><strong>Delivery Fee:</strong></td><td>Distance-based pricing</td></tr>
             <tr><td><strong>Delivery Radius:</strong></td><td>${shop.deliveryRadius || 0} km</td></tr>
             <tr><td><strong>Free Delivery Above:</strong></td><td>₹${shop.freeDeliveryAbove || 0}</td></tr>
             <tr><td><strong>Rating:</strong></td><td>${shop.rating || 'Not Rated'}</td></tr>

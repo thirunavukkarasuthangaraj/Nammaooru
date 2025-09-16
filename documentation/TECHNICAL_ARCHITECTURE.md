@@ -2320,12 +2320,395 @@ Mobile Integration:
   - Smart status suggestions
 ```
 
+## 🚚 Distance-Based Delivery Fee System
+
+### Overview
+A comprehensive distance-based delivery fee calculation system that replaces fixed shop-based delivery fees with dynamic pricing based on the distance between shops and customers. This system provides fair, transparent, and scalable delivery fee management.
+
+### System Architecture
+
+#### Delivery Fee Components
+```
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                        Distance-Based Delivery Fee System                          │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+
+Frontend (Super Admin)          Backend Services               Database Layer
+┌─────────────────┐              ┌─────────────────────┐          ┌─────────────────┐
+│  Delivery Fee   │              │  DeliveryFeeService │          │ delivery_fee_   │
+│  Management     │◄────────────►│                     │◄────────►│ ranges          │
+│  Component      │              │ - Distance calc     │          │                 │
+│                 │              │ - Fee lookup        │          │ - Range tiers   │
+│ - Range CRUD    │              │ - Haversine formula │          │ - Fees & comm   │
+│ - Distance calc │              │                     │          │ - Active status │
+│ - Preview       │              │                     │          │                 │
+│ - Bulk ops      │              │                     │          │                 │
+└─────────────────┘              └─────────────────────┘          └─────────────────┘
+         │                                   │                            │
+         ▼                                   ▼                            ▼
+┌─────────────────┐              ┌─────────────────────┐          ┌─────────────────┐
+│ Order Flow      │              │  Order Assignment   │          │ Integration     │
+│ Integration     │              │  Service            │          │ Points          │
+│                 │              │                     │          │                 │
+│ - Auto fee calc │              │ - Auto distance     │          │ - Shop coords   │
+│ - Real-time     │              │   calculation       │          │ - Customer addr │
+│   updates       │              │ - Fee assignment    │          │ - Order table   │
+│ - Order display │              │ - Commission calc   │          │ - Assignment    │
+└─────────────────┘              └─────────────────────┘          └─────────────────┘
+```
+
+#### Distance Calculation Flow
+```
+Customer Places Order → Get Shop Coordinates → Get Customer Coordinates
+                                ↓                        ↓
+                        (Latitude, Longitude)    (Address Geocoding)
+                                ↓                        ↓
+                        Calculate Distance using Haversine Formula
+                                        ↓
+                              Distance in Kilometers
+                                        ↓
+                        Query delivery_fee_ranges Table
+                                        ↓
+                        SELECT * FROM delivery_fee_ranges
+                        WHERE ? BETWEEN min_distance_km AND max_distance_km
+                                        ↓
+                              Extract Fee & Commission
+                                        ↓
+                        Update Order.deliveryFee & Assignment.commission
+```
+
+### Database Schema
+
+#### delivery_fee_ranges Table
+```sql
+CREATE TABLE delivery_fee_ranges (
+    id BIGSERIAL PRIMARY KEY,
+    min_distance_km DOUBLE PRECISION NOT NULL,
+    max_distance_km DOUBLE PRECISION,
+    delivery_fee DECIMAL(10,2) NOT NULL,
+    partner_commission DECIMAL(10,2) NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Sample data with 4-tier distance ranges
+INSERT INTO delivery_fee_ranges (min_distance_km, max_distance_km, delivery_fee, partner_commission, is_active) VALUES
+(0.0, 5.0, 20.00, 15.00, true),    -- Short distance: ₹20 (Partner gets ₹15)
+(5.0, 10.0, 40.00, 30.00, true),   -- Medium distance: ₹40 (Partner gets ₹30)
+(10.0, 20.0, 60.00, 45.00, true),  -- Long distance: ₹60 (Partner gets ₹45)
+(20.0, NULL, 100.00, 75.00, true); -- Very long distance: ₹100 (Partner gets ₹75)
+
+-- Indexes for performance
+CREATE INDEX idx_delivery_fee_ranges_distance ON delivery_fee_ranges(min_distance_km, max_distance_km);
+CREATE INDEX idx_delivery_fee_ranges_active ON delivery_fee_ranges(is_active);
+```
+
+#### Database Migration Changes
+```sql
+-- V15__Create_delivery_fee_ranges_table.sql
+-- Creates the new delivery fee ranges table with initial data
+
+-- V16__Drop_shop_delivery_fee_column.sql
+-- Removes the old shop-based delivery fee column
+ALTER TABLE shops DROP COLUMN IF EXISTS delivery_fee;
+```
+
+### API Endpoints
+
+#### Super Admin Delivery Fee Management
+```yaml
+Base URL: /api/super-admin/delivery-fee-ranges
+
+Endpoints:
+  GET /:
+    Description: Get all delivery fee ranges
+    Authorization: SUPER_ADMIN only
+    Response: List of DeliveryFeeRange entities
+
+  POST /:
+    Description: Create new delivery fee range
+    Authorization: SUPER_ADMIN only
+    Request Body: {
+      "minDistanceKm": number,
+      "maxDistanceKm": number|null,
+      "deliveryFee": number,
+      "partnerCommission": number
+    }
+    Response: Created DeliveryFeeRange
+
+  PUT /{id}:
+    Description: Update existing range
+    Authorization: SUPER_ADMIN only
+    Request Body: DeliveryFeeRange updates
+    Response: Updated DeliveryFeeRange
+
+  DELETE /{id}:
+    Description: Delete delivery fee range
+    Authorization: SUPER_ADMIN only
+    Response: Success confirmation
+
+  PUT /{id}/toggle-status:
+    Description: Toggle active/inactive status
+    Authorization: SUPER_ADMIN only
+    Response: Updated status
+```
+
+#### Distance Calculation Service
+```java
+@Service
+public class DeliveryFeeService {
+
+    public Double calculateDistance(Double lat1, Double lon1, Double lat2, Double lon2) {
+        double R = 6371; // Earth's radius in kilometers
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+
+        double a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+        return R * c; // Distance in kilometers
+    }
+
+    public DeliveryFeeRange findByDistance(Double distance) {
+        return deliveryFeeRangeRepository.findByDistanceRange(distance)
+            .orElseThrow(() -> new RuntimeException("No delivery fee range found for distance: " + distance));
+    }
+}
+```
+
+### Frontend Implementation
+
+#### Super Admin Management Component
+```typescript
+@Component({
+  selector: 'app-delivery-fee-management',
+  template: `
+    <mat-card class="management-card">
+      <mat-card-header>
+        <mat-card-title>Distance-Based Delivery Fee Management</mat-card-title>
+        <mat-card-subtitle>Configure delivery fees based on distance ranges</mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        <!-- Distance Calculator -->
+        <mat-expansion-panel class="calculator-panel">
+          <mat-expansion-panel-header>
+            <mat-panel-title>Distance Calculator</mat-panel-title>
+          </mat-expansion-panel-header>
+
+          <div class="calculator-form">
+            <!-- Coordinate inputs and calculation -->
+          </div>
+        </mat-expansion-panel>
+
+        <!-- Fee Ranges Table -->
+        <div class="ranges-table">
+          <table mat-table [dataSource]="ranges" class="full-width-table">
+            <ng-container matColumnDef="distance">
+              <th mat-header-cell *matHeaderCellDef>Distance Range (km)</th>
+              <td mat-cell *matCellDef="let range">
+                {{range.minDistanceKm}} - {{range.maxDistanceKm || '∞'}}
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="fee">
+              <th mat-header-cell *matHeaderCellDef>Delivery Fee</th>
+              <td mat-cell *matCellDef="let range">₹{{range.deliveryFee}}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="commission">
+              <th mat-header-cell *matHeaderCellDef>Partner Commission</th>
+              <td mat-cell *matCellDef="let range">₹{{range.partnerCommission}}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Actions</th>
+              <td mat-cell *matCellDef="let range">
+                <button mat-icon-button (click)="editRange(range)">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button mat-icon-button (click)="toggleStatus(range)">
+                  <mat-icon>{{range.isActive ? 'toggle_on' : 'toggle_off'}}</mat-icon>
+                </button>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+          </table>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  `
+})
+export class DeliveryFeeManagementComponent {
+  ranges: DeliveryFeeRange[] = [];
+  displayedColumns: string[] = ['distance', 'fee', 'commission', 'actions'];
+
+  constructor(private deliveryFeeService: DeliveryFeeService) {}
+
+  ngOnInit(): void {
+    this.loadRanges();
+  }
+
+  loadRanges(): void {
+    this.deliveryFeeService.getAllRanges().subscribe(ranges => {
+      this.ranges = ranges;
+    });
+  }
+}
+```
+
+### Integration Points
+
+#### Order Assignment Integration
+```java
+@Service
+public class OrderAssignmentService {
+
+    public void assignOrderToDeliveryPartner(Order order, DeliveryPartner partner) {
+        // Calculate distance between shop and customer
+        Double distance = deliveryFeeService.calculateDistance(
+            order.getShop().getLatitude().doubleValue(),
+            order.getShop().getLongitude().doubleValue(),
+            order.getDeliveryLatitude().doubleValue(),
+            order.getDeliveryLongitude().doubleValue()
+        );
+
+        // Find appropriate fee range and set delivery fee
+        DeliveryFeeRange feeRange = deliveryFeeService.findByDistance(distance);
+        order.setDeliveryFee(feeRange.getDeliveryFee());
+
+        // Create assignment with partner commission
+        OrderAssignment assignment = OrderAssignment.builder()
+            .order(order)
+            .partner(partner)
+            .deliveryFee(feeRange.getDeliveryFee())
+            .commission(feeRange.getPartnerCommission())
+            .status(AssignmentStatus.ASSIGNED)
+            .build();
+
+        orderAssignmentRepository.save(assignment);
+        orderRepository.save(order);
+    }
+}
+```
+
+#### Frontend Shop Integration
+```typescript
+// Shop components updated to show "Distance-based pricing" instead of fixed fees
+export class ShopCardComponent {
+  // In shop-card.component.ts line 79
+  getDeliveryInfo(): string {
+    return "Distance-based pricing"; // Replaces: `₹${shop.deliveryFee}`
+  }
+}
+```
+
+### Security Implementation
+
+#### Super Admin Access Control
+```java
+@RestController
+@RequestMapping("/api/super-admin/delivery-fee-ranges")
+@PreAuthorize("hasRole('SUPER_ADMIN')")
+public class SuperAdminDeliveryFeeController {
+
+    @PostMapping
+    public ResponseEntity<Map<String, Object>> createRange(@RequestBody DeliveryFeeRange range) {
+        // Validation and creation logic
+        validateRangeOverlap(range);
+        DeliveryFeeRange savedRange = deliveryFeeRangeRepository.save(range);
+
+        return ResponseEntity.ok(Map.of(
+            "success", true,
+            "message", "Delivery fee range created successfully",
+            "data", savedRange
+        ));
+    }
+
+    private void validateRangeOverlap(DeliveryFeeRange newRange) {
+        List<DeliveryFeeRange> existingRanges = deliveryFeeRangeRepository.findByIsActiveTrue();
+        // Check for overlapping ranges and throw exception if found
+    }
+}
+```
+
+### Performance Considerations
+
+#### Caching Strategy
+```java
+@Service
+public class DeliveryFeeService {
+
+    @Cacheable(value = "deliveryFeeRanges", key = "'all'")
+    public List<DeliveryFeeRange> getAllActiveRanges() {
+        return deliveryFeeRangeRepository.findByIsActiveTrueOrderByMinDistanceKm();
+    }
+
+    @CacheEvict(value = "deliveryFeeRanges", allEntries = true)
+    public DeliveryFeeRange saveRange(DeliveryFeeRange range) {
+        return deliveryFeeRangeRepository.save(range);
+    }
+}
+```
+
+#### Database Optimization
+```sql
+-- Efficient range lookup query with proper indexing
+SELECT id, min_distance_km, max_distance_km, delivery_fee, partner_commission
+FROM delivery_fee_ranges
+WHERE is_active = true
+  AND min_distance_km <= ?
+  AND (max_distance_km IS NULL OR max_distance_km >= ?)
+ORDER BY min_distance_km
+LIMIT 1;
+```
+
+### Sample Calculations
+
+#### Distance-Fee Examples
+| Distance | Range Selected | Customer Pays | Partner Gets | Platform Keeps |
+|----------|---------------|---------------|--------------|----------------|
+| 3 km     | 0-5 km       | ₹20          | ₹15         | ₹5            |
+| 7 km     | 5-10 km      | ₹40          | ₹30         | ₹10           |
+| 15 km    | 10-20 km     | ₹60          | ₹45         | ₹15           |
+| 25 km    | 20+ km       | ₹100         | ₹75         | ₹25           |
+
+### Business Benefits
+
+#### Advantages Over Fixed Shop Fees
+```yaml
+Fairness:
+  - Customers pay based on actual delivery distance
+  - No arbitrary shop-based pricing differences
+  - Transparent and predictable pricing
+
+Scalability:
+  - Easy to add new distance ranges
+  - Centralized fee management
+  - Consistent pricing across all shops
+
+Partner Incentives:
+  - Higher commission for longer distances
+  - Fair compensation for delivery effort
+  - Reduced rejection of distant orders
+
+Platform Revenue:
+  - Optimized pricing strategy
+  - Distance-based margin optimization
+  - Reduced customer complaints about pricing
+```
+
 ---
 
 **📋 Document Status**
 - **Created**: January 2025
-- **Version**: 1.1
-- **Last Updated**: September 2025 - Added Delivery Partner Document Management
+- **Version**: 1.2
+- **Last Updated**: September 2025 - Added Distance-Based Delivery Fee System
 - **Next Review**: When additional delivery features are added
 - **Maintainer**: Development Team
 
@@ -2338,5 +2721,11 @@ Mobile Integration:
 - Included document management components and workflows
 - Added security implementation details
 - Added performance optimization strategies
+- v1.2: Added Distance-Based Delivery Fee System
+- Comprehensive delivery fee calculation architecture
+- Database schema changes and migration details
+- Super admin management interface
+- Integration with order assignment flow
+- Performance optimizations and caching strategy
 
 This document serves as the definitive technical reference for the NammaOoru Shop Management System architecture.

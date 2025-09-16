@@ -122,7 +122,7 @@ import { ShopService } from '../../../../core/services/shop.service';
               </div>
               <div class="info-item">
                 <label>Delivery Fee:</label>
-                <span>₹{{shop.deliveryFee || 0}}</span>
+                <span>Distance-based pricing</span>
               </div>
               <div class="info-item">
                 <label>Delivery Radius:</label>
