@@ -31,6 +31,7 @@ public class OrderAssignmentService {
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
+    private final DeliveryFeeService deliveryFeeService;
 
     // Active assignment statuses
     private static final List<AssignmentStatus> ACTIVE_STATUSES = Arrays.asList(
@@ -70,14 +71,17 @@ public class OrderAssignmentService {
         User assignedBy = userRepository.findById(assignedByUserId)
             .orElseThrow(() -> new RuntimeException("Assigned by user not found: " + assignedByUserId));
 
-        // Calculate delivery fee and commission
+        // Calculate delivery fee and commission based on distance
         BigDecimal deliveryFee = order.getDeliveryFee();
         if (deliveryFee == null || deliveryFee.compareTo(BigDecimal.ZERO) == 0) {
-            // Set default delivery fee if not set
-            deliveryFee = new BigDecimal("50.00"); // Default ₹50 delivery fee
+            // Calculate distance-based fee if not already calculated
+            Double distance = calculateOrderDistance(order);
+            deliveryFee = deliveryFeeService.calculateDeliveryFee(distance);
             order.setDeliveryFee(deliveryFee);
             orderRepository.save(order);
+            log.info("Calculated delivery fee for order {}: ₹{} for {}km", order.getId(), deliveryFee, distance);
         }
+
         BigDecimal partnerCommission = calculatePartnerCommission(deliveryFee);
 
         // Create assignment
@@ -145,14 +149,17 @@ public class OrderAssignmentService {
             throw new RuntimeException("Order is already assigned to a delivery partner");
         }
 
-        // Calculate delivery fee and commission
+        // Calculate delivery fee and commission based on distance
         BigDecimal deliveryFee = order.getDeliveryFee();
         if (deliveryFee == null || deliveryFee.compareTo(BigDecimal.ZERO) == 0) {
-            // Set default delivery fee if not set
-            deliveryFee = new BigDecimal("50.00"); // Default ₹50 delivery fee
+            // Calculate distance-based fee if not already calculated
+            Double distance = calculateOrderDistance(order);
+            deliveryFee = deliveryFeeService.calculateDeliveryFee(distance);
             order.setDeliveryFee(deliveryFee);
             orderRepository.save(order);
+            log.info("Calculated delivery fee for order {}: ₹{} for {}km", order.getId(), deliveryFee, distance);
         }
+
         BigDecimal partnerCommission = calculatePartnerCommission(deliveryFee);
 
         // Create assignment
@@ -360,8 +367,26 @@ public class OrderAssignmentService {
 
     // Helper methods
     private BigDecimal calculatePartnerCommission(BigDecimal deliveryFee) {
-        // Partner gets 80% of delivery fee as commission
-        return deliveryFee.multiply(BigDecimal.valueOf(0.8));
+        // Calculate 75% of delivery fee as commission
+        return deliveryFee.multiply(BigDecimal.valueOf(0.75));
+    }
+
+    private Double calculateOrderDistance(Order order) {
+        try {
+            // Get shop coordinates
+            Double shopLat = order.getShop().getLatitude() != null ? order.getShop().getLatitude().doubleValue() : null;
+            Double shopLon = order.getShop().getLongitude() != null ? order.getShop().getLongitude().doubleValue() : null;
+
+            // Get customer coordinates (assuming from delivery address)
+            // For now, use default coordinates or implement geocoding
+            Double customerLat = 12.9716; // Default Bangalore coordinates
+            Double customerLon = 77.5946;
+
+            return deliveryFeeService.calculateDistance(shopLat, shopLon, customerLat, customerLon);
+        } catch (Exception e) {
+            log.warn("Could not calculate distance for order {}, using default 5km", order.getId());
+            return 5.0; // Default 5km distance
+        }
     }
 
     // Analytics and reporting methods

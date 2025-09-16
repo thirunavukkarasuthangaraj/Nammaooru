@@ -1,7 +1,7 @@
 <div class="orders-page">
-  <!-- Simple Header -->
+  <!-- Header -->
   <div class="page-header">
-    <h1>Orders</h1>
+    <h1>Order Management</h1>
     <div class="header-actions">
       <button mat-raised-button color="primary" (click)="loadDashboardData()">
         Refresh Orders
@@ -41,101 +41,204 @@
            (input)="applyFilter()"
            class="search-input">
 
-    <select [(ngModel)]="selectedStatus" (change)="applyFilter()" class="status-filter">
-      <option value="">All Status</option>
-      <option value="PENDING">Pending</option>
-      <option value="CONFIRMED">Confirmed</option>
-      <option value="PREPARING">Preparing</option>
-      <option value="READY_FOR_PICKUP">Ready</option>
-      <option value="DELIVERED">Delivered</option>
-    </select>
+    <div class="date-filters">
+      <input type="date"
+             placeholder="From Date"
+             [(ngModel)]="fromDate"
+             (change)="applyFilter()"
+             class="date-input">
+      <span class="date-separator">to</span>
+      <input type="date"
+             placeholder="To Date"
+             [(ngModel)]="toDate"
+             (change)="applyFilter()"
+             class="date-input">
+      <button class="filter-btn" (click)="clearDateFilter()">Clear</button>
+    </div>
   </div>
 
-  <!-- Orders Table -->
-  <div class="orders-container">
-    <div class="orders-header">
-      <div class="col-order">Order</div>
-      <div class="col-customer">Customer</div>
-      <div class="col-items">Items</div>
-      <div class="col-amount">Amount</div>
-      <div class="col-status">Status</div>
-      <div class="col-actions">Actions</div>
-    </div>
+  <!-- Status Tabs -->
+  <div class="status-tabs">
+    <button class="tab-btn"
+            [class.active]="selectedStatus === ''"
+            (click)="selectStatusTab('')">
+      All Orders ({{ totalOrders }})
+    </button>
+    <button class="tab-btn tab-pending"
+            [class.active]="selectedStatus === 'PENDING'"
+            (click)="selectStatusTab('PENDING')">
+      Pending ({{ pendingOrders.length }})
+    </button>
+    <button class="tab-btn tab-confirmed"
+            [class.active]="selectedStatus === 'CONFIRMED'"
+            (click)="selectStatusTab('CONFIRMED')">
+      Confirmed ({{ getOrdersByStatus('CONFIRMED').length }})
+    </button>
+    <button class="tab-btn tab-preparing"
+            [class.active]="selectedStatus === 'PREPARING'"
+            (click)="selectStatusTab('PREPARING')">
+      Preparing ({{ getOrdersByStatus('PREPARING').length }})
+    </button>
+    <button class="tab-btn tab-ready"
+            [class.active]="selectedStatus === 'READY_FOR_PICKUP'"
+            (click)="selectStatusTab('READY_FOR_PICKUP')">
+      Ready ({{ getOrdersByStatus('READY_FOR_PICKUP').length }})
+    </button>
+    <button class="tab-btn tab-delivered"
+            [class.active]="selectedStatus === 'DELIVERED'"
+            (click)="selectStatusTab('DELIVERED')">
+      Delivered ({{ completedOrders.length }})
+    </button>
+  </div>
 
-    <div class="orders-list">
-      <div *ngFor="let order of filteredOrders" class="order-row" [ngClass]="'status-' + order.status.toLowerCase()">
+  <!-- Orders Cards Grid -->
+  <div class="orders-grid">
+    <div *ngFor="let order of filteredOrders" class="order-card" [ngClass]="'status-' + order.status.toLowerCase()">
 
-        <!-- Order Info -->
-        <div class="col-order">
-          <div class="order-id">{{ order.orderNumber }}</div>
+      <!-- Card Header -->
+      <div class="card-header">
+        <div class="order-info">
+          <div class="order-number">{{ order.orderNumber }}</div>
           <div class="order-time">{{ order.createdAt | date:'MMM d, HH:mm' }}</div>
         </div>
-
-        <!-- Customer Info -->
-        <div class="col-customer">
-          <div class="customer-name">{{ order.customerName }}</div>
-          <div class="customer-phone" *ngIf="order.customerPhone">{{ order.customerPhone }}</div>
-        </div>
-
-        <!-- Items -->
-        <div class="col-items">
-          <div class="items-list">
-            <span *ngFor="let item of order.items; let last = last">
-              {{ item.quantity }}x {{ item.name || item.productName }}{{ !last ? ', ' : '' }}
-            </span>
-          </div>
-        </div>
-
-        <!-- Amount -->
-        <div class="col-amount">
-          <div class="amount">₹{{ order.totalAmount | number:'1.0-0' }}</div>
-          <div class="payment-method">{{ order.paymentMethod === 'CASH_ON_DELIVERY' ? 'COD' : 'Paid' }}</div>
-        </div>
-
-        <!-- Status -->
-        <div class="col-status">
-          <span class="status-badge" [ngClass]="getStatusClass(order.status)">
+        <div class="header-actions">
+          <button class="header-btn print-header-btn" (click)="printOrder(order.id)" title="Print Order">
+            🖨️
+          </button>
+          <button class="header-btn details-header-btn" (click)="viewOrderDetails(order)" title="View Details">
+            👁️
+          </button>
+          <div class="status-badge" [ngClass]="getStatusClass(order.status)">
             {{ getStatusLabel(order.status) }}
-          </span>
-        </div>
-
-        <!-- Actions -->
-        <div class="col-actions">
-          <div class="action-buttons">
-
-            <!-- Pending Actions -->
-            <ng-container *ngIf="order.status === 'PENDING'">
-              <button class="btn btn-accept" (click)="acceptOrder(order)">Accept</button>
-              <button class="btn btn-reject" (click)="rejectOrder(order)">Reject</button>
-            </ng-container>
-
-            <!-- Confirmed Actions -->
-            <ng-container *ngIf="order.status === 'CONFIRMED'">
-              <button class="btn btn-prepare" (click)="startPreparing(order.id)">Start Prep</button>
-            </ng-container>
-
-            <!-- Preparing Actions -->
-            <ng-container *ngIf="order.status === 'PREPARING'">
-              <button class="btn btn-ready" (click)="markReady(order.id)">Mark Ready</button>
-            </ng-container>
-
-            <!-- Ready Actions -->
-            <ng-container *ngIf="order.status === 'READY_FOR_PICKUP'">
-              <button class="btn btn-assign" (click)="assignDelivery(order.id)">Assign Delivery</button>
-            </ng-container>
-
-            <!-- Always available actions -->
-            <button class="btn btn-details" (click)="viewOrderDetails(order)" title="View Details">⋯</button>
-
           </div>
         </div>
       </div>
+
+      <!-- Customer Section -->
+      <div class="customer-section">
+        <div class="customer-avatar">
+          <div class="avatar-circle">{{ (order.customerName || 'U')[0].toUpperCase() }}</div>
+        </div>
+        <div class="customer-details">
+          <div class="customer-name">{{ order.customerName }}</div>
+          <div class="customer-phone" *ngIf="order.customerPhone">📞 {{ order.customerPhone }}</div>
+        </div>
+      </div>
+
+      <!-- Pending Order Actions (Prominent) -->
+      <div *ngIf="order.status === 'PENDING'" class="pending-actions-section">
+        <div class="pending-alert">
+          ⚠️ New order requires your attention!
+        </div>
+        <div class="pending-buttons">
+          <button class="pending-btn accept-pending-btn" (click)="acceptOrder(order)">
+            ✅ Accept Order
+          </button>
+          <button class="pending-btn reject-pending-btn" (click)="rejectOrder(order)">
+            ❌ Reject Order
+          </button>
+        </div>
+      </div>
+
+      <!-- Items Section -->
+      <div class="items-section">
+        <div class="items-header">
+          <span class="items-icon">🛍️</span>
+          <span class="items-label">Items ({{ order.items?.length || 0 }})</span>
+        </div>
+        <div class="items-grid">
+          <div *ngFor="let item of order.items" class="item-card">
+            <div class="item-image-container">
+              <div class="image-wrapper">
+                <img *ngIf="item.image || item.productImageUrl"
+                     [src]="getImageUrl((item.image || item.productImageUrl) || '')"
+                     [alt]="item.name || item.productName"
+                     class="item-image"
+                     (error)="onImageError($event)">
+                <div *ngIf="!item.image && !item.productImageUrl" class="item-icon">
+                  {{ getItemIcon(item.name || item.productName) }}
+                </div>
+              </div>
+              <div class="item-image-price">
+                ₹{{ item.price || item.unitPrice }}
+              </div>
+            </div>
+            <div class="item-info">
+              <div class="item-name">{{ item.name || item.productName }}</div>
+              <div class="item-details">
+                <span class="item-quantity-badge">{{ item.quantity }}</span>
+                <span class="item-calculation">
+                  {{ item.quantity }} × ₹{{ item.price || item.unitPrice }} = ₹{{ (item.quantity * (item.price || item.unitPrice)) | number:'1.0-0' }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Total Section -->
+      <div class="total-section">
+        <div class="total-amount">
+          <div class="total-label">Order Total</div>
+          <div class="total-price">₹{{ order.totalAmount | number:'1.0-0' }}</div>
+        </div>
+        <div class="payment-info">
+          <span class="payment-icon">{{ order.paymentMethod === 'CASH_ON_DELIVERY' ? '💰' : '💳' }}</span>
+          <span class="payment-text">{{ order.paymentMethod === 'CASH_ON_DELIVERY' ? 'Cash on Delivery' : 'Paid Online' }}</span>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="card-actions">
+        <!-- Pending Actions -->
+        <ng-container *ngIf="order.status === 'PENDING'">
+          <button class="action-btn accept-btn" (click)="acceptOrder(order)">
+            ✅ Accept Order
+          </button>
+          <button class="action-btn reject-btn" (click)="rejectOrder(order)">
+            ❌ Reject
+          </button>
+        </ng-container>
+
+        <!-- Confirmed Actions -->
+        <ng-container *ngIf="order.status === 'CONFIRMED'">
+          <button class="action-btn prepare-btn" (click)="startPreparing(order.id)">
+            👨‍🍳 Start Preparing
+          </button>
+        </ng-container>
+
+        <!-- Preparing Actions -->
+        <ng-container *ngIf="order.status === 'PREPARING'">
+          <button class="action-btn ready-btn" (click)="markReady(order.id)">
+            ✅ Mark Ready
+          </button>
+        </ng-container>
+
+        <!-- Ready Actions -->
+        <ng-container *ngIf="order.status === 'READY_FOR_PICKUP'">
+          <button class="action-btn print-btn" (click)="printOrder(order.id)">
+            🖨️ Print Order
+          </button>
+          <button class="action-btn assign-btn" (click)="assignDelivery(order.id)">
+            🚚 Assign Delivery
+          </button>
+        </ng-container>
+
+        <!-- Details Button (Always Available) -->
+        <button class="action-btn details-btn" (click)="viewOrderDetails(order)">
+          👁️ View Details
+        </button>
+
+      </div>
+
     </div>
 
     <!-- Empty State -->
     <div *ngIf="filteredOrders.length === 0" class="empty-state">
-      <p>No orders found</p>
-      <p class="empty-subtitle" *ngIf="searchTerm">Try adjusting your search terms</p>
+      <div class="empty-icon">📦</div>
+      <div class="empty-title">No orders found</div>
+      <div class="empty-subtitle" *ngIf="searchTerm">Try adjusting your search terms</div>
+      <div class="empty-subtitle" *ngIf="!searchTerm">No orders in this status</div>
     </div>
   </div>
 

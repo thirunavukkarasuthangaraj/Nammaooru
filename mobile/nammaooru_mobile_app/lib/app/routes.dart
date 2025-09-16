@@ -19,6 +19,7 @@ import '../features/shop_owner/orders/order_processing_screen.dart';
 import '../features/shop_owner/analytics/analytics_screen.dart';
 import '../features/shop_owner/inventory/inventory_screen.dart';
 import '../features/delivery_partner/dashboard/delivery_partner_dashboard.dart';
+import '../features/delivery_fee_test/delivery_fee_test_screen.dart';
 
 class AppRouter {
   static final GoRouter router = GoRouter(
@@ -47,6 +48,10 @@ class AppRouter {
       GoRoute(
         path: '/forgot-password',
         builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        path: '/delivery-fee-test',
+        builder: (context, state) => const DeliveryFeeTestScreen(),
       ),
       ShellRoute(
         builder: (context, state, child) {

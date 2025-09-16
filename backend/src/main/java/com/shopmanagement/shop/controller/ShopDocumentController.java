@@ -37,14 +37,14 @@ public class ShopDocumentController {
     private final ShopDocumentService documentService;
 
     @GetMapping("/shop/{shopId}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SHOP_OWNER')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER')")
     public ResponseEntity<ApiResponse<List<ShopDocumentResponse>>> getShopDocuments(@PathVariable Long shopId) {
         List<ShopDocumentResponse> documents = documentService.getShopDocuments(shopId);
         return ResponseUtil.success(documents, "Documents retrieved successfully");
     }
 
     @PostMapping("/shop/{shopId}/upload")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SHOP_OWNER')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER')")
     public ResponseEntity<?> uploadDocument(
             @PathVariable Long shopId,
             @RequestParam("documentType") ShopDocument.DocumentType documentType,
@@ -80,7 +80,7 @@ public class ShopDocumentController {
     }
 
     @GetMapping("/{documentId}/download")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SHOP_OWNER')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER')")
     public ResponseEntity<Resource> downloadDocument(@PathVariable Long documentId) {
         try {
             Resource resource = documentService.downloadDocument(documentId);

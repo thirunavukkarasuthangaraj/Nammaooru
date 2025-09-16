@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ShopService } from '../../../../core/services/shop.service';
 import { DocumentService } from '../../../../core/services/document.service';
-import { Shop } from '../../../../core/models/shop.model';
+import { Shop, DocumentVerificationStatus } from '../../../../core/models/shop.model';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -1643,6 +1643,9 @@ export class ShopApprovalComponent implements OnInit {
     Swal.fire({
       title: 'Verify Document',
       text: `Mark "${this.getDocumentDisplayName(document.documentType)}" as verified?`,
+      input: 'textarea',
+      inputLabel: 'Verification Notes (Optional)',
+      inputPlaceholder: 'Enter any notes for the verification...',
       icon: 'question',
       showCancelButton: true,
       confirmButtonColor: '#10b981',
@@ -1651,15 +1654,36 @@ export class ShopApprovalComponent implements OnInit {
       cancelButtonText: 'Cancel'
     }).then((result) => {
       if (result.isConfirmed) {
-        // Update document status locally (replace with API call)
-        document.verificationStatus = 'VERIFIED';
-        document.verifiedAt = new Date().toISOString();
-        
-        Swal.fire({
-          title: 'Verified!',
-          text: 'Document has been marked as verified.',
-          icon: 'success',
-          confirmButtonColor: '#667eea'
+        const notes = result.value?.trim();
+        const verificationRequest = {
+          verificationStatus: DocumentVerificationStatus.VERIFIED,
+          verificationNotes: notes || ''
+        };
+
+        this.documentService.verifyDocument(document.id, verificationRequest).subscribe({
+          next: (updatedDocument) => {
+            // Update the local document in the array
+            const index = this.documents.findIndex(d => d.id === document.id);
+            if (index !== -1) {
+              this.documents[index] = updatedDocument;
+            }
+
+            Swal.fire({
+              title: 'Verified!',
+              text: 'Document has been marked as verified.',
+              icon: 'success',
+              confirmButtonColor: '#667eea'
+            });
+          },
+          error: (error) => {
+            console.error('Error verifying document:', error);
+            Swal.fire({
+              title: 'Error!',
+              text: 'Failed to verify document. Please try again.',
+              icon: 'error',
+              confirmButtonColor: '#667eea'
+            });
+          }
         });
       }
     });
@@ -1688,15 +1712,35 @@ export class ShopApprovalComponent implements OnInit {
       }
     }).then((result) => {
       if (result.isConfirmed && result.value) {
-        // Update document status locally (replace with API call)
-        document.verificationStatus = 'REJECTED';
-        document.verificationNotes = result.value.trim();
-        
-        Swal.fire({
-          title: 'Rejected!',
-          text: 'Document has been rejected.',
-          icon: 'success',
-          confirmButtonColor: '#667eea'
+        const verificationRequest = {
+          verificationStatus: DocumentVerificationStatus.REJECTED,
+          verificationNotes: result.value.trim()
+        };
+
+        this.documentService.verifyDocument(document.id, verificationRequest).subscribe({
+          next: (updatedDocument) => {
+            // Update the local document in the array
+            const index = this.documents.findIndex(d => d.id === document.id);
+            if (index !== -1) {
+              this.documents[index] = updatedDocument;
+            }
+
+            Swal.fire({
+              title: 'Rejected!',
+              text: 'Document has been rejected.',
+              icon: 'success',
+              confirmButtonColor: '#667eea'
+            });
+          },
+          error: (error) => {
+            console.error('Error rejecting document:', error);
+            Swal.fire({
+              title: 'Error!',
+              text: 'Failed to reject document. Please try again.',
+              icon: 'error',
+              confirmButtonColor: '#667eea'
+            });
+          }
         });
       }
     });

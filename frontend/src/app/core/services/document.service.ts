@@ -14,7 +14,13 @@ export class DocumentService {
   constructor(private http: HttpClient) { }
 
   getShopDocuments(shopId: number): Observable<ShopDocument[]> {
-    return this.http.get<ShopDocument[]>(`${this.apiUrl}/shop/${shopId}`).pipe(
+    return this.http.get<ApiResponse<ShopDocument[]>>(`${this.apiUrl}/shop/${shopId}`).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
       catchError(error => throwError(() => error))
     );
   }

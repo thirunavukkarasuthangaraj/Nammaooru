@@ -74,6 +74,7 @@ public class SecurityConfig {
                                 "/api/mobile/delivery-partner/orders/**",
                                 "/api/delivery/partners/*/documents/**",
                                 "/api/delivery/partners/documents/*/view",
+                                "/api/delivery-fees/**",
                                 "/uploads/**",
                                 "/shops/**",
                                 "/delivery-partners/**",
@@ -93,6 +94,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/mobile/delivery-partner/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "DELIVERY_PARTNER")
                         .requestMatchers("/api/delivery/partners/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "DELIVERY_PARTNER")
                         .requestMatchers("/api/assignments/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "SHOP_OWNER", "DELIVERY_PARTNER")
+                        .requestMatchers("/api/documents/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "SHOP_OWNER")
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

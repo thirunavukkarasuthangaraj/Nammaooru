@@ -114,7 +114,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
         { title: 'Delivery Partners', icon: 'delivery_dining', route: '/delivery/admin/partners', badge: '5' },
         { title: 'Order Assignments', icon: 'assignment', route: '/delivery/admin/assignments', badge: null },
         { title: 'Live Tracking', icon: 'gps_fixed', route: '/delivery/admin/tracking', badge: null },
-        { title: 'Delivery Zones', icon: 'map', route: '/delivery/zones', badge: null }
+        { title: 'Delivery Zones', icon: 'map', route: '/delivery/zones', badge: null },
+        { title: 'Delivery Fee Management', icon: 'local_shipping', route: '/admin/delivery-fees', badge: null }
       ]
     },
     {
@@ -131,6 +132,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       items: [
         { title: 'System Settings', icon: 'settings', route: '/settings', badge: null },
         { title: 'App Configuration', icon: 'tune', route: '/admin/config', badge: null },
+        { title: 'Delivery Fee Management', icon: 'local_shipping', route: '/admin/delivery-fees', badge: null },
         { title: 'Notifications', icon: 'notifications', route: '/notifications', badge: '8' },
         { title: 'Audit Logs', icon: 'history', route: '/admin/audit', badge: null },
         { title: 'Backup & Restore', icon: 'backup', route: '/admin/backup', badge: null }

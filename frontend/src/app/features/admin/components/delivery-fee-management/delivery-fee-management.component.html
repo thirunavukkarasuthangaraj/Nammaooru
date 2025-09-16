@@ -1,0 +1,142 @@
+<div class="delivery-fee-management">
+  <div class="page-header">
+    <h1>Delivery Fee Management</h1>
+    <button mat-raised-button color="primary" (click)="startAdding()" [disabled]="isAddingRange">
+      <mat-icon>add</mat-icon>
+      Add New Range
+    </button>
+  </div>
+
+  <!-- Add New Range Form -->
+  <div *ngIf="isAddingRange" class="add-range-form">
+    <h3>Add New Delivery Fee Range</h3>
+    <div class="form-row">
+      <mat-form-field>
+        <mat-label>Min Distance (km)</mat-label>
+        <input matInput type="number" [(ngModel)]="newRange.minDistanceKm" min="0" step="0.1">
+      </mat-form-field>
+
+      <mat-form-field>
+        <mat-label>Max Distance (km)</mat-label>
+        <input matInput type="number" [(ngModel)]="newRange.maxDistanceKm" min="0" step="0.1">
+      </mat-form-field>
+
+      <mat-form-field>
+        <mat-label>Delivery Fee (₹)</mat-label>
+        <input matInput type="number" [(ngModel)]="newRange.deliveryFee" min="0" step="1">
+      </mat-form-field>
+
+      <mat-form-field>
+        <mat-label>Partner Commission (₹)</mat-label>
+        <input matInput type="number" [(ngModel)]="newRange.partnerCommission" min="0" step="1">
+      </mat-form-field>
+    </div>
+
+    <div class="form-actions">
+      <button mat-raised-button color="primary" (click)="addRange()">Add Range</button>
+      <button mat-button (click)="cancelAdding()">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="isLoading" class="loading">
+    <mat-spinner diameter="40"></mat-spinner>
+    <p>Loading delivery fee ranges...</p>
+  </div>
+
+  <!-- Ranges Table -->
+  <div *ngIf="!isLoading" class="ranges-table">
+    <table mat-table [dataSource]="ranges" class="mat-elevation-8">
+
+      <!-- Distance Range Column -->
+      <ng-container matColumnDef="distanceRange">
+        <th mat-header-cell *matHeaderCellDef>Distance Range</th>
+        <td mat-cell *matCellDef="let range">
+          <span *ngIf="editingRange?.id !== range.id">{{ getDistanceRangeText(range) }}</span>
+          <div *ngIf="editingRange?.id === range.id" class="edit-distance">
+            <mat-form-field class="distance-input">
+              <input matInput type="number" [(ngModel)]="editingRange!.minDistanceKm" min="0" step="0.1">
+            </mat-form-field>
+            <span>to</span>
+            <mat-form-field class="distance-input">
+              <input matInput type="number" [(ngModel)]="editingRange!.maxDistanceKm" min="0" step="0.1">
+            </mat-form-field>
+            <span>km</span>
+          </div>
+        </td>
+      </ng-container>
+
+      <!-- Delivery Fee Column -->
+      <ng-container matColumnDef="deliveryFee">
+        <th mat-header-cell *matHeaderCellDef>Delivery Fee</th>
+        <td mat-cell *matCellDef="let range">
+          <span *ngIf="editingRange?.id !== range.id" class="fee-amount">₹{{ range.deliveryFee }}</span>
+          <mat-form-field *ngIf="editingRange?.id === range.id" class="fee-input">
+            <input matInput type="number" [(ngModel)]="editingRange!.deliveryFee" min="0" step="1">
+          </mat-form-field>
+        </td>
+      </ng-container>
+
+      <!-- Partner Commission Column -->
+      <ng-container matColumnDef="partnerCommission">
+        <th mat-header-cell *matHeaderCellDef>Partner Commission</th>
+        <td mat-cell *matCellDef="let range">
+          <span *ngIf="editingRange?.id !== range.id" class="commission-amount">₹{{ range.partnerCommission }}</span>
+          <mat-form-field *ngIf="editingRange?.id === range.id" class="commission-input">
+            <input matInput type="number" [(ngModel)]="editingRange!.partnerCommission" min="0" step="1">
+          </mat-form-field>
+        </td>
+      </ng-container>
+
+      <!-- Status Column -->
+      <ng-container matColumnDef="status">
+        <th mat-header-cell *matHeaderCellDef>Status</th>
+        <td mat-cell *matCellDef="let range">
+          <span *ngIf="editingRange?.id !== range.id"
+                [class]="range.isActive ? 'status-active' : 'status-inactive'">
+            {{ range.isActive ? 'Active' : 'Inactive' }}
+          </span>
+          <mat-slide-toggle *ngIf="editingRange?.id === range.id"
+                           [(ngModel)]="editingRange!.isActive">
+          </mat-slide-toggle>
+        </td>
+      </ng-container>
+
+      <!-- Actions Column -->
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef>Actions</th>
+        <td mat-cell *matCellDef="let range">
+          <div *ngIf="editingRange?.id !== range.id" class="action-buttons">
+            <button mat-icon-button color="primary" (click)="startEditing(range)">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button color="warn" (click)="deleteRange(range.id!)">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </div>
+          <div *ngIf="editingRange?.id === range.id" class="edit-actions">
+            <button mat-icon-button color="primary" (click)="updateRange(editingRange!)">
+              <mat-icon>save</mat-icon>
+            </button>
+            <button mat-icon-button (click)="cancelEditing()">
+              <mat-icon>cancel</mat-icon>
+            </button>
+          </div>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="['distanceRange', 'deliveryFee', 'partnerCommission', 'status', 'actions']"></tr>
+      <tr mat-row *matRowDef="let row; columns: ['distanceRange', 'deliveryFee', 'partnerCommission', 'status', 'actions'];"></tr>
+    </table>
+
+    <!-- Empty State -->
+    <div *ngIf="ranges.length === 0" class="empty-state">
+      <mat-icon>local_shipping</mat-icon>
+      <h3>No delivery fee ranges configured</h3>
+      <p>Add your first delivery fee range to get started</p>
+      <button mat-raised-button color="primary" (click)="startAdding()">
+        Add Range
+      </button>
+    </div>
+  </div>
+</div>

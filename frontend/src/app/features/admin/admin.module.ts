@@ -18,16 +18,20 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 
 import { CustomerListComponent } from './components/customer-list/customer-list.component';
 import { CustomerFormComponent } from './components/customer-form/customer-form.component';
 import { CustomerDetailComponent } from './components/customer-detail/customer-detail.component';
+import { DeliveryFeeManagementComponent } from './components/delivery-fee-management/delivery-fee-management.component';
 
 @NgModule({
   declarations: [
     CustomerListComponent,
     CustomerFormComponent,
-    CustomerDetailComponent
+    CustomerDetailComponent,
+    DeliveryFeeManagementComponent
   ],
   imports: [
     CommonModule,
@@ -49,6 +53,8 @@ import { CustomerDetailComponent } from './components/customer-detail/customer-d
     MatChipsModule,
     MatTooltipModule,
     MatProgressSpinnerModule,
+    MatSnackBarModule,
+    MatSlideToggleModule,
     RouterModule.forChild([
       {
         path: '',
@@ -70,6 +76,10 @@ import { CustomerDetailComponent } from './components/customer-detail/customer-d
       {
         path: 'customers/:id/edit',
         component: CustomerFormComponent
+      },
+      {
+        path: 'delivery-fees',
+        component: DeliveryFeeManagementComponent
       },
       {
         path: 'shops',
