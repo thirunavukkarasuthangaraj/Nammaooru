@@ -140,6 +140,29 @@ import { ShopService } from '../../../../core/services/shop.service';
                   Country is required
                 </mat-error>
               </mat-form-field>
+
+              <mat-form-field>
+                <mat-label>Latitude</mat-label>
+                <input matInput type="number" formControlName="latitude" placeholder="13.0827" step="0.000001">
+                <mat-error *ngIf="shopForm.get('latitude')?.hasError('required')">
+                  Latitude is required for delivery calculations
+                </mat-error>
+                <mat-hint>GPS Latitude coordinate (e.g., 13.0827 for Chennai)</mat-hint>
+              </mat-form-field>
+
+              <mat-form-field>
+                <mat-label>Longitude</mat-label>
+                <input matInput type="number" formControlName="longitude" placeholder="80.2707" step="0.000001">
+                <mat-error *ngIf="shopForm.get('longitude')?.hasError('required')">
+                  Longitude is required for delivery calculations
+                </mat-error>
+                <mat-hint>GPS Longitude coordinate (e.g., 80.2707 for Chennai)</mat-hint>
+              </mat-form-field>
+            </div>
+
+            <div class="location-helper">
+              <mat-icon>info</mat-icon>
+              <span>GPS coordinates are required for distance-based delivery fee calculation. You can get coordinates from Google Maps by right-clicking on your shop location.</span>
             </div>
           </mat-card-content>
         </mat-card>
@@ -232,6 +255,22 @@ import { ShopService } from '../../../../core/services/shop.service';
     mat-form-field {
       width: 100%;
     }
+
+    .location-helper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+      background-color: #e3f2fd;
+      border-radius: 8px;
+      margin-top: 16px;
+      font-size: 14px;
+      color: #1976d2;
+    }
+
+    .location-helper mat-icon {
+      color: #1976d2;
+    }
   `]
 })
 export class ShopFormComponent implements OnInit {
@@ -272,6 +311,8 @@ export class ShopFormComponent implements OnInit {
       state: ['', Validators.required],
       postalCode: ['', Validators.required],
       country: ['India'],
+      latitude: ['', [Validators.required, Validators.min(-90), Validators.max(90)]],
+      longitude: ['', [Validators.required, Validators.min(-180), Validators.max(180)]],
       minOrderAmount: [0],
       deliveryRadius: [5],
       freeDeliveryAbove: [500],
