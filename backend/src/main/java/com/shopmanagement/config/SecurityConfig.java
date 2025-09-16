@@ -68,9 +68,11 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/auth/**",
                                 "/api/public/**",
+                                "/api/version",
                                 "/api/mobile/delivery-partner/login",
                                 "/api/mobile/delivery-partner/forgot-password",
                                 "/api/mobile/delivery-partner/orders/**",
+                                "/api/delivery/partners/*/documents/**",
                                 "/api/delivery/partners/documents/*/view",
                                 "/uploads/**",
                                 "/shops/**",
@@ -81,11 +83,16 @@ public class SecurityConfig {
                                 "/swagger-resources/**",
                                 "/webjars/**"
                         ).permitAll()
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/shop-owner/**").hasAnyRole("ADMIN", "SHOP_OWNER")
-                        .requestMatchers("/api/mobile/delivery-partner/**").hasAnyRole("ADMIN", "DELIVERY_PARTNER")
-                        .requestMatchers("/api/delivery/partners/**").hasAnyRole("ADMIN", "DELIVERY_PARTNER")
-                        .requestMatchers("/api/assignments/**").hasAnyRole("ADMIN", "SHOP_OWNER", "DELIVERY_PARTNER")
+                        .requestMatchers("/api/delivery/partners/*/documents/upload").hasAnyRole("SUPER_ADMIN", "ADMIN", "DELIVERY_PARTNER")
+                        .requestMatchers("/api/super-admin/**").hasRole("SUPER_ADMIN")
+                        .requestMatchers("/api/admin/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
+                        .requestMatchers("/api/shops/approvals/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
+                        .requestMatchers("/api/shops/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "SHOP_OWNER")
+                        .requestMatchers("/api/shop-owner/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "SHOP_OWNER")
+                        .requestMatchers("/api/orders/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "SHOP_OWNER", "DELIVERY_PARTNER")
+                        .requestMatchers("/api/mobile/delivery-partner/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "DELIVERY_PARTNER")
+                        .requestMatchers("/api/delivery/partners/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "DELIVERY_PARTNER")
+                        .requestMatchers("/api/assignments/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "SHOP_OWNER", "DELIVERY_PARTNER")
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

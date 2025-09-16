@@ -170,12 +170,79 @@ public class ShopController {
     @GetMapping("/featured")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getFeaturedShops() {
         List<ShopResponse> featuredShops = shopService.getFeaturedShops();
-        
+
         Map<String, Object> response = new HashMap<>();
         response.put("shops", featuredShops);
         response.put("count", featuredShops.size());
-        
+
         return ResponseUtil.success(response, "Featured shops retrieved successfully");
+    }
+
+    @GetMapping("/approvals")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<ShopPageResponse>> getShopsAwaitingApproval(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir,
+            @RequestParam(required = false) String status) {
+
+        Sort sort = Sort.by(sortDir.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC, sortBy);
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Page<ShopResponse> shopPage;
+        if (status != null && !status.isEmpty()) {
+            // If status is specified, get shops with that status
+            Shop.ShopStatus shopStatus = Shop.ShopStatus.valueOf(status.toUpperCase());
+            shopPage = shopService.getShopsByStatus(shopStatus, pageable);
+        } else {
+            // Default: get all shops for approval review (PENDING, APPROVED, REJECTED)
+            shopPage = shopService.getAllShopsForApproval(pageable);
+        }
+
+        ShopPageResponse response = ShopPageResponse.builder()
+                .content(shopPage.getContent())
+                .page(shopPage.getNumber())
+                .size(shopPage.getSize())
+                .totalElements(shopPage.getTotalElements())
+                .totalPages(shopPage.getTotalPages())
+                .first(shopPage.isFirst())
+                .last(shopPage.isLast())
+                .build();
+
+        return ResponseUtil.success(response, "Shops for approval retrieved successfully");
+    }
+
+    @GetMapping("/approvals/stats")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getApprovalStats() {
+        Map<String, Object> stats = new HashMap<>();
+
+        // Get counts for different approval statuses
+        long pendingCount = shopService.countShopsByStatus(Shop.ShopStatus.PENDING);
+        long approvedCount = shopService.countShopsByStatus(Shop.ShopStatus.APPROVED);
+        long rejectedCount = shopService.countShopsByStatus(Shop.ShopStatus.REJECTED);
+
+        stats.put("pending", pendingCount);
+        stats.put("approved", approvedCount);
+        stats.put("rejected", rejectedCount);
+        stats.put("total", pendingCount + approvedCount + rejectedCount);
+
+        return ResponseUtil.success(stats, "Approval statistics retrieved successfully");
+    }
+
+    @GetMapping("/approvals/{shopId}/documents/verification-status")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getDocumentVerificationStatus(@PathVariable Long shopId) {
+        log.info("Getting document verification status for shop: {}", shopId);
+
+        try {
+            Map<String, Object> verificationStatus = shopService.getDocumentVerificationStatus(shopId);
+            return ResponseUtil.success(verificationStatus, "Document verification status retrieved successfully");
+        } catch (RuntimeException e) {
+            log.error("Error getting verification status for shop {}: {}", shopId, e.getMessage());
+            return ResponseUtil.error("Shop not found or verification status unavailable");
+        }
     }
 
     @GetMapping("/{id}")

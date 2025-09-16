@@ -111,6 +111,49 @@ public class ShopService {
     }
 
     @Transactional(readOnly = true)
+    public Page<ShopResponse> getShopsAwaitingApproval(Pageable pageable) {
+        return shopRepository.findByStatus(Shop.ShopStatus.PENDING, pageable)
+                .map(shopMapper::toResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ShopResponse> getAllShopsForApproval(Pageable pageable) {
+        // Get all shops regardless of status for admin review
+        return shopRepository.findAll(pageable)
+                .map(shopMapper::toResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public long countShopsByStatus(Shop.ShopStatus status) {
+        return shopRepository.countByStatus(status);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getDocumentVerificationStatus(Long shopId) {
+        // Get shop to ensure it exists
+        Shop shop = shopRepository.findById(shopId)
+                .orElseThrow(() -> new RuntimeException("Shop not found with id: " + shopId));
+
+        Map<String, Object> status = new HashMap<>();
+        status.put("shopId", shopId);
+        status.put("shopName", shop.getName());
+        status.put("overallStatus", shop.getStatus().name());
+
+        // Mock document verification status - replace with actual logic
+        Map<String, Object> documents = new HashMap<>();
+        documents.put("businessLicense", Map.of("status", "VERIFIED", "uploadedAt", "2025-09-15T10:30:00"));
+        documents.put("gstCertificate", Map.of("status", "VERIFIED", "uploadedAt", "2025-09-15T10:35:00"));
+        documents.put("panCard", Map.of("status", "VERIFIED", "uploadedAt", "2025-09-15T10:40:00"));
+        documents.put("addressProof", Map.of("status", "VERIFIED", "uploadedAt", "2025-09-15T10:45:00"));
+
+        status.put("documents", documents);
+        status.put("allDocumentsVerified", true);
+        status.put("lastUpdated", LocalDateTime.now());
+
+        return status;
+    }
+
+    @Transactional(readOnly = true)
     public Page<ShopResponse> searchShops(String searchTerm, Pageable pageable) {
         return shopRepository.searchShops(searchTerm, pageable)
                 .map(shopMapper::toResponse);

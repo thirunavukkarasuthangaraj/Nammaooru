@@ -74,7 +74,9 @@ export class ShopOwnerOrderService {
     // Debug authentication state
     const token = this.authService.getToken();
     const isAuthenticated = this.authService.isAuthenticated();
-    console.log('Making API request with token:', token ? 'Present' : 'Missing');
+    console.log('Making API request to:', `${this.apiUrl}/orders/shop/${shopId}`);
+    console.log('Token from authService:', token);
+    console.log('Full token value:', token ? token.substring(0, 20) + '...' : 'No token');
     console.log('Authentication status:', isAuthenticated);
 
     return this.http.get<{data: {content: ShopOwnerOrder[], totalItems: number, totalPages: number}}>(`${this.apiUrl}/orders/shop/${shopId}`, { params })

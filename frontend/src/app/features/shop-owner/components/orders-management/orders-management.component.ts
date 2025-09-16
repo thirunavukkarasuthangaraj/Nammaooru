@@ -1,4 +1,7 @@
 import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTabChangeEvent } from '@angular/material/tabs';
 import { ShopOwnerOrderService, ShopOwnerOrder } from '../../services/shop-owner-order.service';
 import { AssignmentService } from '../../services/assignment.service';
 import { AuthService } from '../../../../core/services/auth.service';
@@ -52,25 +55,29 @@ export class OrdersManagementComponent implements OnInit {
   constructor(
     private orderService: ShopOwnerOrderService,
     private assignmentService: AssignmentService,
-    private authService: AuthService
+    private authService: AuthService,
+    private snackBar: MatSnackBar,
+    private router: Router
   ) {}
 
-  // Temporary method to manually set token for testing
-  public setTestToken(): void {
-    const testToken = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0aGlydTI3OCIsImV4cCI6MTc1ODAwMzY1MCwiaWF0IjoxNzU3OTE3MjUwfQ.JKSEk9skIGXFzAsZrbfhzhYSeArqYgg9Swvvet2Nzbo';
-    localStorage.setItem('shop_management_token', testToken);
-    localStorage.setItem('token', testToken); // Fallback key
-    console.log('Test token set in localStorage');
-  }
-
   ngOnInit(): void {
-    // Set token for testing purposes
-    this.setTestToken();
+    // Check if user is authenticated
+    if (!this.authService.isAuthenticated()) {
+      console.error('User not authenticated. Redirecting to login...');
+      this.router.navigate(['/auth/login']);
+      return;
+    }
 
-    // Debug: Check token and authentication status
-    console.log('Token in localStorage:', localStorage.getItem('shop_management_token'));
-    console.log('Auth service token:', this.authService.getToken());
-    console.log('Is authenticated:', this.authService.isAuthenticated());
+    // Get the current user
+    const currentUser = this.authService.getCurrentUser();
+    if (currentUser && currentUser.role === 'SHOP_OWNER') {
+      // Get shop ID from user or use default
+      // In production, this should come from the user's shop association
+      this.shopId = 2; // This should be fetched from user's actual shop
+    }
+
+    console.log('Current user:', currentUser);
+    console.log('Loading orders for shop:', this.shopId);
 
     this.loadDashboardData();
   }
