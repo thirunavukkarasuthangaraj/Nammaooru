@@ -76,7 +76,7 @@ jwt:
 
 file:
   upload:
-    path: ${FILE_UPLOAD_PATH:./uploads}
+    path: ${FILE_UPLOAD_PATH:D:/AAWS/nammaooru/uploads}
     max-size: 10485760
     allowed-extensions: jpg,jpeg,png,gif,webp
 
@@ -84,10 +84,10 @@ app:
   version: @project.version@
   name: @project.name@
   upload:
-    dir: ${APP_UPLOAD_DIR:./uploads}
+    dir: ${APP_UPLOAD_DIR:D:/AAWS/nammaooru/uploads}
     documents:
-      path: ${DOCUMENT_UPLOAD_PATH:uploads/documents/shops}
-    product-images: ${PRODUCT_IMAGES_PATH:products}
+      path: ${DOCUMENT_UPLOAD_PATH:D:/AAWS/nammaooru/uploads/documents/shops}
+    product-images: ${PRODUCT_IMAGES_PATH:D:/AAWS/nammaooru/uploads/products}
     max-file-size: 10MB
     allowed-types: pdf,jpg,jpeg,png,docx,doc
   frontend:

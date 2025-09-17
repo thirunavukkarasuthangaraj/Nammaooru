@@ -65,7 +65,7 @@ file:
     
     # Local storage (use absolute path on server)
     local:
-      base-path: ${FILE_STORAGE_PATH:/var/www/shop-management/uploads}
+      base-path: ${FILE_STORAGE_PATH:/opt/shop-management/uploads}
       serve-url: ${FILE_SERVE_URL:https://nammaoorudelivary.in/uploads}
     
     # Option 2: S3/Spaces Configuration (RECOMMENDED)
@@ -89,10 +89,10 @@ file:
 app:
   upload:
     # Use environment variables for production
-    dir: ${APP_UPLOAD_DIR:/var/www/shop-management/uploads}
+    dir: ${APP_UPLOAD_DIR:/opt/shop-management/uploads}
     documents:
-      path: ${DOCUMENT_UPLOAD_PATH:/var/www/shop-management/uploads/documents}
-    product-images: ${PRODUCT_IMAGES_PATH:/var/www/shop-management/uploads/products}
+      path: ${DOCUMENT_UPLOAD_PATH:/opt/shop-management/uploads/documents}
+    product-images: ${PRODUCT_IMAGES_PATH:/opt/shop-management/uploads/products}
     max-file-size: 10MB
     allowed-types: pdf,jpg,jpeg,png,docx,doc,webp
     
