@@ -54,36 +54,34 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF2196F3)),
-        title: const Text(
-          'Reset Password',
-          style: TextStyle(
-            color: Color(0xFF1C1C1E), 
-            fontWeight: FontWeight.w600,
-            fontSize: 18,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF8B5A96),
+              Color(0xFF6B4F72),
+              Color(0xFF5D4E75),
+            ],
           ),
         ),
-      ),
-      body: SafeArea(
-        child: Consumer<ForgotPasswordProvider>(
-          builder: (context, provider, child) {
-            if (provider.isLoading) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2196F3)),
+        child: SafeArea(
+          child: Consumer<ForgotPasswordProvider>(
+            builder: (context, provider, child) {
+              if (provider.isLoading) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
                     ),
                     const SizedBox(height: 16),
                     Text(
                       _getLoadingMessage(provider.currentStep),
                       style: const TextStyle(
-                        color: Color(0xFF666666),
+                        color: Colors.white,
                         fontSize: 16,
                       ),
                     ),
@@ -91,15 +89,31 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 ),
               );
             }
-            
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: _buildCurrentStep(provider),
+
+            return Center(
+              child: SingleChildScrollView(
+                child: Container(
+                  margin: const EdgeInsets.all(24.0),
+                  padding: const EdgeInsets.all(32.0),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: _buildCurrentStep(provider),
+                ),
+              ),
             );
           },
         ),
       ),
-    );
+    ));
   }
 
   String _getLoadingMessage(ForgotPasswordStep step) {

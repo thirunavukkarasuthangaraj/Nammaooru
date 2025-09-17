@@ -142,12 +142,24 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
     final loc = AppLocalizations.of(context);
     
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      body: _isLoadingShop
-          ? const Center(child: LoadingWidget())
-          : _hasError
-              ? _buildErrorState()
-              : _buildShopDetails(),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF8B5A96),
+              Color(0xFF6B4F72),
+              Color(0xFF5D4E75),
+            ],
+          ),
+        ),
+        child: _isLoadingShop
+            ? const Center(child: LoadingWidget())
+            : _hasError
+                ? _buildErrorState()
+                : _buildShopDetails(),
+      ),
       floatingActionButton: Consumer<CartProvider>(
         builder: (context, cartProvider, child) {
           // Only show floating button when cart has items
@@ -238,7 +250,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
                 _loadProducts();
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2E7D32),
+                backgroundColor: VillageTheme.primaryGreen,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
@@ -312,7 +324,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
     return SliverAppBar(
       expandedHeight: 200,
       pinned: true,
-      backgroundColor: const Color(0xFF2E7D32),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
       automaticallyImplyLeading: true,
       leading: IconButton(
         icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 24),
@@ -322,15 +335,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
       // Cart actions removed - using floating action button instead
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                const Color(0xFF2E7D32),
-                const Color(0xFF388E3C).withOpacity(0.8),
-              ],
-            ),
+          decoration: const BoxDecoration(
+            color: Colors.transparent,
           ),
           child: Stack(
             children: [
@@ -374,7 +380,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
                           child: Text(
                             businessType,
                             style: const TextStyle(
-                              color: Color(0xFF2E7D32),
+                              color: VillageTheme.primaryGreen,
                               fontWeight: FontWeight.bold,
                               fontSize: 12,
                             ),
@@ -449,12 +455,12 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -466,10 +472,10 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2E7D32).withOpacity(0.1),
+                    color: VillageTheme.primaryGreen.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.location_on, color: Color(0xFF2E7D32), size: 20),
+                  child: const Icon(Icons.location_on, color: VillageTheme.primaryGreen, size: 20),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -507,7 +513,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF2E7D32).withOpacity(0.1),
+        color: VillageTheme.primaryGreen.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -526,7 +532,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF2E7D32),
+              color: VillageTheme.primaryGreen,
             ),
           ),
         ],
@@ -539,12 +545,12 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
       margin: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(25),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -553,7 +559,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
         decoration: InputDecoration(
           hintText: '🔍 பொருட்களைத் தேடுங்கள் / Search products...',
           hintStyle: TextStyle(color: Colors.grey[600]),
-          prefixIcon: const Icon(Icons.search, color: Color(0xFF2E7D32)),
+          prefixIcon: const Icon(Icons.search, color: VillageTheme.primaryGreen),
           suffixIcon: _searchController.text.isNotEmpty
               ? IconButton(
                   icon: const Icon(Icons.clear, color: Colors.grey),
@@ -590,7 +596,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
                 width: 120,
                 height: 120,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2E7D32).withOpacity(0.1),
+                  color: VillageTheme.primaryGreen.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(60),
                 ),
                 child: const Center(
@@ -660,12 +666,12 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -679,12 +685,12 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
               width: double.infinity,
               decoration: BoxDecoration(
                 color: Colors.grey[100],
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
               ),
               child: Stack(
                 children: [
                   ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                     child: imageUrl.isNotEmpty
                         ? Image.network(
                             ImageUrlHelper.getFullImageUrl(imageUrl),
@@ -721,7 +727,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
                                         ? loadingProgress.cumulativeBytesLoaded /
                                             loadingProgress.expectedTotalBytes!
                                         : null,
-                                    color: const Color(0xFF2E7D32),
+                                    color: VillageTheme.primaryGreen,
                                     strokeWidth: 2,
                                   ),
                                 ),
@@ -762,7 +768,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
                       child: Container(
                         decoration: BoxDecoration(
                           color: Colors.black54,
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                         ),
                         child: const Center(
                           child: Text(
@@ -840,7 +846,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF2E7D32),
+                          color: VillageTheme.primaryGreen,
                         ),
                       ),
                       if (hasDiscount) ...[
@@ -1086,7 +1092,7 @@ class _CategoryTabDelegate extends SliverPersistentHeaderDelegate {
                     Text(
                       category['name'],
                       style: TextStyle(
-                        color: isSelected ? Colors.white : const Color(0xFF2E7D32),
+                        color: isSelected ? Colors.white : VillageTheme.primaryGreen,
                         fontWeight: FontWeight.w600,
                         fontSize: 12,
                       ),
@@ -1098,12 +1104,12 @@ class _CategoryTabDelegate extends SliverPersistentHeaderDelegate {
                   onCategoryChanged(category['key']);
                 },
                 backgroundColor: Colors.white,
-                selectedColor: const Color(0xFF2E7D32),
+                selectedColor: VillageTheme.primaryGreen,
                 checkmarkColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                   side: BorderSide(
-                    color: isSelected ? const Color(0xFF2E7D32) : const Color(0xFF2E7D32).withOpacity(0.3),
+                    color: isSelected ? VillageTheme.primaryGreen : VillageTheme.primaryGreen.withOpacity(0.3),
                     width: 2,
                   ),
                 ),

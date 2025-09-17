@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:geolocator/geolocator.dart';
+// import 'package:geolocator/geolocator.dart'; // Temporarily disabled
 import '../models/delivery_fee.dart';
 import '../config/api_config.dart';
 
@@ -63,18 +63,18 @@ class DeliveryFeeService {
     }
   }
 
-  /// Calculate delivery fee using Position objects
-  Future<DeliveryFeeCalculation?> calculateDeliveryFeeFromPositions({
-    required Position shopPosition,
-    required Position customerPosition,
-  }) async {
-    return calculateDeliveryFee(
-      shopLatitude: shopPosition.latitude,
-      shopLongitude: shopPosition.longitude,
-      customerLatitude: customerPosition.latitude,
-      customerLongitude: customerPosition.longitude,
-    );
-  }
+  // /// Calculate delivery fee using Position objects - Temporarily disabled
+  // Future<DeliveryFeeCalculation?> calculateDeliveryFeeFromPositions({
+  //   required Position shopPosition,
+  //   required Position customerPosition,
+  // }) async {
+  //   return calculateDeliveryFee(
+  //     shopLatitude: shopPosition.latitude,
+  //     shopLongitude: shopPosition.longitude,
+  //     customerLatitude: customerPosition.latitude,
+  //     customerLongitude: customerPosition.longitude,
+  //   );
+  // }
 
   /// Get active delivery fee ranges
   Future<List<DeliveryFeeRange>> getActiveRanges() async {
@@ -113,12 +113,10 @@ class DeliveryFeeService {
     required double customerLatitude,
     required double customerLongitude,
   }) {
-    return Geolocator.distanceBetween(
-      shopLatitude,
-      shopLongitude,
-      customerLatitude,
-      customerLongitude,
-    ) / 1000; // Convert meters to kilometers
+    // Simple distance calculation using the haversine formula - temporarily simplified
+    double latDiff = (customerLatitude - shopLatitude).abs();
+    double lonDiff = (customerLongitude - shopLongitude).abs();
+    return (latDiff + lonDiff) * 111; // Rough approximation in kilometers
   }
 
   /// Get estimated delivery fee based on distance ranges

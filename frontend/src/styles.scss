@@ -159,17 +159,25 @@ $professional-typography: mat.define-typography-config(
   $overline: mat.define-typography-level(10px, 16px, 400, 'Inter', 1.5px),
 );
 
-$professional-theme: mat.define-light-theme((
+$professional-color-theme: mat.define-light-theme((
   color: (
     primary: $professional-primary,
     accent: $professional-accent,
     warn: $professional-warn,
   ),
+));
+
+$professional-typography-theme: mat.define-light-theme((
   typography: $professional-typography,
+));
+
+$professional-density-theme: mat.define-light-theme((
   density: 0,
 ));
 
-@include mat.all-component-themes($professional-theme);
+@include mat.all-component-colors($professional-color-theme);
+@include mat.all-component-typographies($professional-typography-theme);
+@include mat.all-component-densities($professional-density-theme);
 
 /* Professional CSS Variables - Modern Business Color System */
 :root {

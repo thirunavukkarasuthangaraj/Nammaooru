@@ -49,6 +49,7 @@ import { DocumentVerificationDialogComponent } from './components/document-verif
 import { DeliveryPartnerDocumentsComponent } from './components/delivery-partner-documents/delivery-partner-documents.component';
 import { DeliveryPartnerDocumentViewerComponent } from './components/delivery-partner-document-viewer/delivery-partner-document-viewer.component';
 import { SimpleDocumentViewerComponent } from './components/simple-document-viewer/simple-document-viewer.component';
+import { OrderAssignmentsComponent } from './components/order-assignments/order-assignments.component';
 
 // Services
 import { DeliveryPartnerService } from './services/delivery-partner.service';
@@ -74,7 +75,8 @@ import { DeliveryAssignmentService } from './services/delivery-assignment.servic
     DocumentVerificationDialogComponent,
     DeliveryPartnerDocumentsComponent,
     DeliveryPartnerDocumentViewerComponent,
-    SimpleDocumentViewerComponent
+    SimpleDocumentViewerComponent,
+    OrderAssignmentsComponent
   ],
   imports: [
     CommonModule,

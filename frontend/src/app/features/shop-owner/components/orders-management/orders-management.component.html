@@ -144,7 +144,7 @@
       <div class="items-section">
         <div class="items-header">
           <span class="items-icon">🛍️</span>
-          <span class="items-label">Items ({{ order.items?.length || 0 }})</span>
+          <span class="items-label">Items ({{ order.items.length || 0 }})</span>
         </div>
         <div class="items-grid">
           <div *ngFor="let item of order.items" class="item-card">

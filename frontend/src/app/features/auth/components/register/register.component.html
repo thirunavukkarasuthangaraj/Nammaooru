@@ -75,7 +75,9 @@
           </div>
           <span class="error-text" *ngIf="registerForm.get('email')?.invalid && registerForm.get('email')?.touched">
             <mat-icon>error</mat-icon>
-            {{ registerForm.get('email')?.hasError('required') ? 'Email is required' : 'Enter a valid email address' }}
+            <ng-container *ngIf="registerForm.get('email')?.hasError('required')">Email is required</ng-container>
+            <ng-container *ngIf="registerForm.get('email')?.hasError('email')">Enter a valid email address</ng-container>
+            <ng-container *ngIf="registerForm.get('email')?.hasError('serverError')">This email is already registered</ng-container>
           </span>
         </div>
 
@@ -93,7 +95,9 @@
           </div>
           <span class="error-text" *ngIf="registerForm.get('mobile')?.invalid && registerForm.get('mobile')?.touched">
             <mat-icon>error</mat-icon>
-            {{ registerForm.get('mobile')?.hasError('required') ? 'Mobile number is required' : 'Enter a valid mobile number' }}
+            <ng-container *ngIf="registerForm.get('mobile')?.hasError('required')">Mobile number is required</ng-container>
+            <ng-container *ngIf="registerForm.get('mobile')?.hasError('pattern')">Enter a valid 10-digit mobile number</ng-container>
+            <ng-container *ngIf="registerForm.get('mobile')?.hasError('serverError')">This mobile number is already registered</ng-container>
           </span>
         </div>
 

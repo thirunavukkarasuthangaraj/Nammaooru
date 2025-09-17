@@ -3,7 +3,10 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../../core/providers/delivery_partner_provider.dart';
 import '../../../core/models/delivery_partner.dart';
+import '../../../core/constants/app_colors.dart';
 import '../../orders/screens/order_history_screen.dart';
+import '../../orders/screens/available_orders_screen.dart';
+import '../../orders/screens/active_orders_screen.dart';
 import '../../orders/screens/otp_handover_screen.dart';
 import '../../earnings/screens/earnings_screen.dart';
 import '../../auth/screens/login_screen.dart';
@@ -45,7 +48,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           if (provider.isLoading) {
             return const Center(
               child: CircularProgressIndicator(
-                color: Color(0xFF2196F3),
+                color: AppColors.primary,
               ),
             );
           }
@@ -88,8 +91,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: const Color(0xFF2196F3),
-        unselectedItemColor: Colors.grey,
+        selectedItemColor: AppColors.primary,
+        unselectedItemColor: AppColors.textSecondary,
+        backgroundColor: AppColors.surface,
+        elevation: 8,
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
         items: const [
@@ -132,7 +137,7 @@ class HomeTab extends StatelessWidget {
             fontWeight: FontWeight.w600,
           ),
         ),
-        backgroundColor: const Color(0xFF2196F3),
+        backgroundColor: AppColors.primary,
         elevation: 0,
         actions: [
           Consumer<DeliveryPartnerProvider>(
@@ -143,7 +148,7 @@ class HomeTab extends StatelessWidget {
                   Switch(
                     value: isOnline,
                     onChanged: (value) => provider.toggleOnlineStatus(),
-                    activeColor: Colors.green,
+                    activeColor: AppColors.online,
                   ),
                   const SizedBox(width: 8),
                   Text(
@@ -207,11 +212,7 @@ class HomeTab extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          gradient: const LinearGradient(
-            colors: [Color(0xFF2196F3), Color(0xFF21CBF3)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+          gradient: AppColors.primaryGradient,
         ),
         child: Row(
           children: [
@@ -268,7 +269,7 @@ class HomeTab extends StatelessWidget {
             'Today Orders',
             provider.earnings?.todayDeliveries.toString() ?? '0',
             Icons.delivery_dining,
-            Colors.blue,
+            AppColors.primary,
           ),
         ),
         const SizedBox(width: 12),
@@ -277,7 +278,7 @@ class HomeTab extends StatelessWidget {
             'Today Earnings',
             '₹${provider.earnings?.todayEarnings.toStringAsFixed(0) ?? '0'}',
             Icons.monetization_on,
-            Colors.green,
+            AppColors.success,
           ),
         ),
       ],
@@ -320,18 +321,34 @@ class HomeTab extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Active Orders',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Active Orders',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.push(
+                  parentContext,
+                  MaterialPageRoute(
+                    builder: (context) => const ActiveOrdersScreen(),
+                  ),
+                );
+              },
+              child: const Text('View All'),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
         if (provider.activeOrders.isEmpty)
           _buildEmptyActiveOrdersCard()
         else
-          ...provider.activeOrders.map((order) => _buildActiveOrderCard(order, provider)),
+          ...provider.activeOrders.take(2).map((order) => _buildActiveOrderCard(order, provider)),
       ],
     );
   }
@@ -340,18 +357,34 @@ class HomeTab extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Available Orders',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Available Orders',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.push(
+                  parentContext,
+                  MaterialPageRoute(
+                    builder: (context) => const AvailableOrdersScreen(),
+                  ),
+                );
+              },
+              child: const Text('View All'),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
         if (provider.availableOrders.isEmpty)
           _buildEmptyOrdersCard(provider)
         else
-          ...provider.availableOrders.map((order) => _buildOrderCard(order, provider)),
+          ...provider.availableOrders.take(2).map((order) => _buildOrderCard(order, provider)),
       ],
     );
   }
@@ -393,7 +426,7 @@ class HomeTab extends StatelessWidget {
               icon: const Icon(Icons.refresh),
               label: const Text('Refresh'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2196F3),
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -805,7 +838,7 @@ class OrderHistoryTab extends StatelessWidget {
           'Order History',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
         ),
-        backgroundColor: const Color(0xFF2196F3),
+        backgroundColor: AppColors.primary,
         elevation: 0,
       ),
       body: orders.isEmpty
@@ -912,7 +945,7 @@ class ProfileTab extends StatelessWidget {
           'Profile',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
         ),
-        backgroundColor: const Color(0xFF2196F3),
+        backgroundColor: AppColors.primary,
         elevation: 0,
       ),
       body: SingleChildScrollView(

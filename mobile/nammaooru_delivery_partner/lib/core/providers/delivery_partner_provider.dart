@@ -1,23 +1,25 @@
 import 'package:flutter/material.dart';
 import '../models/delivery_partner.dart';
+import '../models/simple_order_model.dart';
 import '../services/api_service.dart';
 
 class DeliveryPartnerProvider extends ChangeNotifier {
   final ApiService _apiService = ApiService();
   
   DeliveryPartner? _currentPartner;
-  List<DeliveryOrder> _availableOrders = [];
-  List<DeliveryOrder> _activeOrders = [];
-  List<DeliveryOrder> _orderHistory = [];
+  List<OrderModel> _availableOrders = [];
+  List<OrderModel> _activeOrders = [];
+  List<OrderModel> _orderHistory = [];
   Earnings? _earnings;
   bool _isLoading = false;
   String? _error;
 
   // Getters
   DeliveryPartner? get currentPartner => _currentPartner;
-  List<DeliveryOrder> get availableOrders => _availableOrders;
-  List<DeliveryOrder> get activeOrders => _activeOrders;
-  List<DeliveryOrder> get orderHistory => _orderHistory;
+  List<OrderModel> get availableOrders => _availableOrders;
+  List<OrderModel> get activeOrders => _activeOrders;
+  List<OrderModel> get currentOrders => _activeOrders;
+  List<OrderModel> get orderHistory => _orderHistory;
   Earnings? get earnings => _earnings;
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -149,7 +151,7 @@ class DeliveryPartnerProvider extends ChangeNotifier {
 
       final response = await _apiService.getAvailableOrders();
       _availableOrders = (response['orders'] as List? ?? [])
-          .map((order) => DeliveryOrder.fromJson(order))
+          .map((order) => OrderModel.fromJson(order))
           .toList();
 
     } catch (e) {
@@ -159,19 +161,24 @@ class DeliveryPartnerProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> loadActiveOrders() async {
+  Future<void> loadCurrentOrders() async {
     try {
       _setError(null);
 
-      final response = await _apiService.getActiveOrders();
+      final response = await _apiService.getCurrentOrders();
       _activeOrders = (response['orders'] as List? ?? [])
-          .map((order) => DeliveryOrder.fromJson(order))
+          .map((order) => OrderModel.fromJson(order))
           .toList();
 
       notifyListeners();
     } catch (e) {
       _setError(e.toString());
     }
+  }
+
+  // Alias for backwards compatibility
+  Future<void> loadActiveOrders() async {
+    await loadCurrentOrders();
   }
   
   Future<bool> acceptOrder(String orderId) async {
@@ -183,7 +190,7 @@ class DeliveryPartnerProvider extends ChangeNotifier {
       if (response['success'] == true) {
         // Remove from available orders and refresh both available and active orders
         await loadAvailableOrders();
-        await loadActiveOrders();
+        await loadCurrentOrders();
         await loadOrderHistory();
         return true;
       } else {
@@ -204,7 +211,7 @@ class DeliveryPartnerProvider extends ChangeNotifier {
 
       if (response['success'] == true) {
         // Refresh all order data to update UI
-        await loadActiveOrders();
+        await loadCurrentOrders();
         await loadAvailableOrders();
         await loadOrderHistory();
         await loadEarnings();
@@ -225,7 +232,7 @@ class DeliveryPartnerProvider extends ChangeNotifier {
       
       final response = await _apiService.getOrderHistory();
       _orderHistory = (response['orders'] as List? ?? [])
-          .map((order) => DeliveryOrder.fromJson(order))
+          .map((order) => OrderModel.fromJson(order))
           .toList();
           
       notifyListeners();
@@ -258,7 +265,7 @@ class DeliveryPartnerProvider extends ChangeNotifier {
       await Future.wait([
         loadProfile(),
         loadAvailableOrders(),
-        loadActiveOrders(),
+        loadCurrentOrders(),
         loadEarnings(),
       ]);
       
@@ -351,6 +358,27 @@ class DeliveryPartnerProvider extends ChangeNotifier {
         return true;
       } else {
         _setError(response['message'] ?? 'Failed to request new OTP');
+        return false;
+      }
+    } catch (e) {
+      _setError(e.toString());
+      return false;
+    }
+  }
+
+  // Add missing rejectOrder method
+  Future<bool> rejectOrder(String orderId, String reason) async {
+    try {
+      _setError(null);
+
+      final response = await _apiService.rejectOrder(orderId, reason: reason);
+
+      if (response['success'] == true) {
+        // Remove from available orders and refresh
+        await loadAvailableOrders();
+        return true;
+      } else {
+        _setError(response['message'] ?? 'Failed to reject order');
         return false;
       }
     } catch (e) {

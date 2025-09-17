@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  static const String _baseUrl = 'http://localhost:8080/api';
+  static const String _baseUrl = 'http://192.168.1.6:8080/api';
 
   static const String _deliveryPartnerEndpoint =
       '$_baseUrl/mobile/delivery-partner';
@@ -134,6 +134,11 @@ class ApiService {
     );
 
     return _handleResponse(response);
+  }
+
+  // Alias for getActiveOrders
+  Future<Map<String, dynamic>> getCurrentOrders() async {
+    return await getActiveOrders();
   }
 
   Future<Map<String, dynamic>> acceptOrder(String orderId) async {

@@ -49,7 +49,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!_acceptTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('நியம மற்றும் நிபந்தனைகளை ஏற்கவும் / Please accept the terms and conditions'),
+          content: Text('Please accept the terms and conditions'),
           backgroundColor: VillageTheme.errorRed,
         ),
       );
@@ -91,62 +91,149 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: VillageTheme.lightBackground,
-      body: SafeArea(
-        child: Consumer<AuthProvider>(
-          builder: (context, authProvider, child) {
-            if (authProvider.authState == AuthState.loading) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(
-                      color: VillageTheme.primaryGreen,
-                      strokeWidth: 3,
-                    ),
-                    const SizedBox(height: VillageTheme.spacingM),
-                    Text(
-                      '🔄 கணக்கு உருவாக்கப்படுகிறது... / Creating Account...',
-                      style: VillageTheme.bodyLarge.copyWith(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF8B5A96),
+              Color(0xFF6B4F72),
+              Color(0xFF5D4E75),
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Consumer<AuthProvider>(
+            builder: (context, authProvider, child) {
+              if (authProvider.authState == AuthState.loading) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(
                         color: VillageTheme.primaryGreen,
+                        strokeWidth: 3,
+                      ),
+                      const SizedBox(height: VillageTheme.spacingM),
+                      Text(
+                        'Creating Account...',
+                        style: VillageTheme.bodyLarge.copyWith(
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return Center(
+                child: SingleChildScrollView(
+                  child: Container(
+                    margin: const EdgeInsets.all(24.0),
+                    padding: const EdgeInsets.all(32.0),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _buildHeader(),
+                          const SizedBox(height: 32),
+                          _buildTabButtons(),
+                          const SizedBox(height: 24),
+                          _buildNameField(),
+                          const SizedBox(height: 16),
+                          _buildEmailField(),
+                          const SizedBox(height: 16),
+                          _buildPhoneField(),
+                          const SizedBox(height: 16),
+                          _buildPasswordField(),
+                          const SizedBox(height: 16),
+                          _buildConfirmPasswordField(),
+                          const SizedBox(height: 16),
+                          _buildTermsAndConditions(),
+                          const SizedBox(height: 24),
+                          _buildRegisterButton(),
+                          const SizedBox(height: 16),
+                          _buildLoginLink(),
+                        ],
                       ),
                     ),
-                  ],
+                  ),
                 ),
               );
-            }
-            
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(VillageTheme.spacingL),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SizedBox(height: VillageTheme.spacingXL),
-                    _buildHeader(),
-                    const SizedBox(height: VillageTheme.spacingXL),
-                    _buildNameField(),
-                    const SizedBox(height: VillageTheme.spacingM),
-                    _buildEmailField(),
-                    const SizedBox(height: VillageTheme.spacingM),
-                    _buildPhoneField(),
-                    const SizedBox(height: VillageTheme.spacingM),
-                    _buildPasswordField(),
-                    const SizedBox(height: VillageTheme.spacingM),
-                    _buildConfirmPasswordField(),
-                    const SizedBox(height: VillageTheme.spacingM),
-                    _buildTermsAndConditions(),
-                    const SizedBox(height: VillageTheme.spacingXL),
-                    _buildRegisterButton(),
-                    const SizedBox(height: VillageTheme.spacingL),
-                    _buildLoginLink(),
-                  ],
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabButtons() {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FA),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                context.go('/login');
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: const Text(
+                  'Sign In',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                    color: Color(0xFF95A5A6),
+                  ),
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          ),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Text(
+                'Create Account',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF2C3E50),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -155,51 +242,49 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Column(
       children: [
         Container(
-          width: 100,
-          height: 100,
+          width: 80,
+          height: 80,
           decoration: BoxDecoration(
-            gradient: VillageTheme.primaryGradient,
-            borderRadius: BorderRadius.circular(VillageTheme.cardRadius * 2),
-            boxShadow: VillageTheme.buttonShadow,
-          ),
-          child: const Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text('📝', style: TextStyle(fontSize: 40)),
-              Text('பதிவு / Register', style: TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
+            color: VillageTheme.primaryGreen,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: VillageTheme.primaryGreen.withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
             ],
           ),
-        ),
-        const SizedBox(height: VillageTheme.spacingL),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('✨ ', style: TextStyle(fontSize: 24)),
-            Column(
-              children: [
-                Text(
-                  'Create Account!',
-                  style: VillageTheme.headingLarge.copyWith(
-                    color: VillageTheme.primaryGreen,
-                  ),
-                ),
-                Text(
-                  'Join NammaOoru',
-                  style: VillageTheme.headingMedium.copyWith(
-                    color: VillageTheme.secondaryText,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        const SizedBox(height: VillageTheme.spacingM),
-        Text(
-          'Join to order from local shops',
-          style: VillageTheme.bodyLarge.copyWith(
-            color: VillageTheme.secondaryText,
+          child: const Icon(
+            Icons.home,
+            size: 40,
+            color: Colors.white,
           ),
-          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 24),
+        const Text(
+          'Create Account!',
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF2C3E50),
+          ),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Join NammaOoru',
+          style: TextStyle(
+            fontSize: 16,
+            color: Color(0xFF7F8C8D),
+          ),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Connect with your local community',
+          style: TextStyle(
+            fontSize: 14,
+            color: Color(0xFF95A5A6),
+          ),
         ),
       ],
     );
@@ -207,51 +292,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Widget _buildNameField() {
     return Container(
-      decoration: VillageTheme.cardDecoration,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FA),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: TextFormField(
         controller: _nameController,
         textInputAction: TextInputAction.next,
-        style: VillageTheme.bodyLarge,
         validator: Validators.validateName,
+        style: const TextStyle(
+          fontSize: 16,
+          color: Color(0xFF2C3E50),
+        ),
         decoration: InputDecoration(
-          labelText: '👤 Name',
-          labelStyle: VillageTheme.labelText.copyWith(
-            color: VillageTheme.primaryGreen,
-          ),
-          hintText: 'e.g., Ram',
-          hintStyle: VillageTheme.bodyMedium.copyWith(
-            color: VillageTheme.hintText,
+          hintText: 'Enter your full name',
+          hintStyle: TextStyle(
+            color: Colors.grey[500],
+            fontSize: 16,
           ),
           prefixIcon: Icon(
             Icons.person_outlined,
-            color: VillageTheme.primaryGreen,
-            size: VillageTheme.iconMedium,
+            color: Colors.grey[600],
+            size: 20,
           ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
-            borderSide: BorderSide(color: VillageTheme.primaryGreen.withOpacity(0.3)),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
-            borderSide: BorderSide(color: VillageTheme.primaryGreen.withOpacity(0.3)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
-            borderSide: BorderSide(color: VillageTheme.primaryGreen, width: 2),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
-            borderSide: BorderSide(color: VillageTheme.errorRed, width: 2),
-          ),
-          focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
-            borderSide: BorderSide(color: VillageTheme.errorRed, width: 2),
-          ),
-          filled: true,
-          fillColor: VillageTheme.cardBackground,
+          border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
-            horizontal: VillageTheme.spacingM,
-            vertical: VillageTheme.spacingM,
+            horizontal: 16,
+            vertical: 16,
           ),
         ),
       ),
@@ -260,12 +327,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Widget _buildEmailField() {
     return Container(
-      decoration: VillageTheme.cardDecoration,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FA),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: TextFormField(
         controller: _emailController,
         keyboardType: TextInputType.emailAddress,
         textInputAction: TextInputAction.next,
-        style: VillageTheme.bodyLarge,
+        style: const TextStyle(
+          fontSize: 16,
+          color: Color(0xFF2C3E50),
+        ),
         validator: (value) {
           if (value == null || value.isEmpty) {
             return 'Please enter your email';
@@ -276,44 +349,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
           return null;
         },
         decoration: InputDecoration(
-          labelText: '📧 Email',
-          labelStyle: VillageTheme.labelText.copyWith(
-            color: VillageTheme.primaryGreen,
-          ),
-          hintText: 'example@email.com',
-          hintStyle: VillageTheme.bodyMedium.copyWith(
-            color: VillageTheme.hintText,
+          hintText: 'Enter your email address',
+          hintStyle: TextStyle(
+            color: Colors.grey[500],
+            fontSize: 16,
           ),
           prefixIcon: Icon(
             Icons.email_outlined,
-            color: VillageTheme.primaryGreen,
-            size: VillageTheme.iconMedium,
+            color: Colors.grey[600],
+            size: 20,
           ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
-            borderSide: BorderSide(color: VillageTheme.primaryGreen.withOpacity(0.3)),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
-            borderSide: BorderSide(color: VillageTheme.primaryGreen.withOpacity(0.3)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
-            borderSide: BorderSide(color: VillageTheme.primaryGreen, width: 2),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
-            borderSide: BorderSide(color: VillageTheme.errorRed, width: 2),
-          ),
-          focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
-            borderSide: BorderSide(color: VillageTheme.errorRed, width: 2),
-          ),
-          filled: true,
-          fillColor: VillageTheme.cardBackground,
+          border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
-            horizontal: VillageTheme.spacingM,
-            vertical: VillageTheme.spacingM,
+            horizontal: 16,
+            vertical: 16,
           ),
         ),
       ),
@@ -322,12 +371,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Widget _buildPhoneField() {
     return Container(
-      decoration: VillageTheme.cardDecoration,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FA),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: TextFormField(
         controller: _phoneController,
         keyboardType: TextInputType.phone,
         textInputAction: TextInputAction.next,
-        style: VillageTheme.bodyLarge,
+        style: const TextStyle(
+          fontSize: 16,
+          color: Color(0xFF2C3E50),
+        ),
         validator: (value) {
           if (value == null || value.isEmpty) {
             return 'Please enter your phone number';
@@ -338,49 +393,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
           return null;
         },
         decoration: InputDecoration(
-          labelText: '📱 Phone Number',
-          labelStyle: VillageTheme.labelText.copyWith(
-            color: VillageTheme.primaryGreen,
-          ),
-          hintText: '10 digit mobile number',
-          hintStyle: VillageTheme.bodyMedium.copyWith(
-            color: VillageTheme.hintText,
+          hintText: 'Enter your phone number',
+          hintStyle: TextStyle(
+            color: Colors.grey[500],
+            fontSize: 16,
           ),
           prefixIcon: Icon(
             Icons.phone_outlined,
-            color: VillageTheme.primaryGreen,
-            size: VillageTheme.iconMedium,
+            color: Colors.grey[600],
+            size: 20,
           ),
-          prefixText: '+91 ',
-          prefixStyle: VillageTheme.bodyLarge.copyWith(
-            color: VillageTheme.primaryGreen,
-            fontWeight: FontWeight.w600,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
-            borderSide: BorderSide(color: VillageTheme.primaryGreen.withOpacity(0.3)),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
-            borderSide: BorderSide(color: VillageTheme.primaryGreen.withOpacity(0.3)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
-            borderSide: BorderSide(color: VillageTheme.primaryGreen, width: 2),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
-            borderSide: BorderSide(color: VillageTheme.errorRed, width: 2),
-          ),
-          focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
-            borderSide: BorderSide(color: VillageTheme.errorRed, width: 2),
-          ),
-          filled: true,
-          fillColor: VillageTheme.cardBackground,
+          border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
-            horizontal: VillageTheme.spacingM,
-            vertical: VillageTheme.spacingM,
+            horizontal: 16,
+            vertical: 16,
           ),
         ),
       ),
@@ -389,12 +415,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Widget _buildPasswordField() {
     return Container(
-      decoration: VillageTheme.cardDecoration,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FA),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: TextFormField(
         controller: _passwordController,
         obscureText: _obscurePassword,
         textInputAction: TextInputAction.next,
-        style: VillageTheme.bodyLarge,
+        style: const TextStyle(
+          fontSize: 16,
+          color: Color(0xFF2C3E50),
+        ),
         validator: (value) {
           if (value == null || value.isEmpty) {
             return 'Please enter a password';
@@ -405,24 +437,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
           return null;
         },
         decoration: InputDecoration(
-          labelText: '🔐 Password',
-          labelStyle: VillageTheme.labelText.copyWith(
-            color: VillageTheme.primaryGreen,
-          ),
-          hintText: 'Minimum 6 characters',
-          hintStyle: VillageTheme.bodyMedium.copyWith(
-            color: VillageTheme.hintText,
+          hintText: 'Create a strong password',
+          hintStyle: TextStyle(
+            color: Colors.grey[500],
+            fontSize: 16,
           ),
           prefixIcon: Icon(
             Icons.lock_outlined,
-            color: VillageTheme.primaryGreen,
-            size: VillageTheme.iconMedium,
+            color: Colors.grey[600],
+            size: 20,
           ),
           suffixIcon: IconButton(
             icon: Icon(
               _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-              color: VillageTheme.secondaryText,
-              size: VillageTheme.iconMedium,
+              color: Colors.grey[600],
+              size: 20,
             ),
             onPressed: () {
               setState(() {
@@ -430,31 +459,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
               });
             },
           ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
-            borderSide: BorderSide(color: VillageTheme.primaryGreen.withOpacity(0.3)),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
-            borderSide: BorderSide(color: VillageTheme.primaryGreen.withOpacity(0.3)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
-            borderSide: BorderSide(color: VillageTheme.primaryGreen, width: 2),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
-            borderSide: BorderSide(color: VillageTheme.errorRed, width: 2),
-          ),
-          focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
-            borderSide: BorderSide(color: VillageTheme.errorRed, width: 2),
-          ),
-          filled: true,
-          fillColor: VillageTheme.cardBackground,
+          border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
-            horizontal: VillageTheme.spacingM,
-            vertical: VillageTheme.spacingM,
+            horizontal: 16,
+            vertical: 16,
           ),
         ),
       ),
@@ -463,12 +471,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Widget _buildConfirmPasswordField() {
     return Container(
-      decoration: VillageTheme.cardDecoration,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FA),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: TextFormField(
         controller: _confirmPasswordController,
         obscureText: _obscureConfirmPassword,
         textInputAction: TextInputAction.done,
-        style: VillageTheme.bodyLarge,
+        style: const TextStyle(
+          fontSize: 16,
+          color: Color(0xFF2C3E50),
+        ),
         validator: (value) {
           if (value == null || value.isEmpty) {
             return 'Please confirm your password';
@@ -480,24 +494,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
         },
         onFieldSubmitted: (_) => _handleRegister(),
         decoration: InputDecoration(
-          labelText: '🔒 Confirm Password',
-          labelStyle: VillageTheme.labelText.copyWith(
-            color: VillageTheme.primaryGreen,
-          ),
-          hintText: 'Re-enter your password',
-          hintStyle: VillageTheme.bodyMedium.copyWith(
-            color: VillageTheme.hintText,
+          hintText: 'Confirm your password',
+          hintStyle: TextStyle(
+            color: Colors.grey[500],
+            fontSize: 16,
           ),
           prefixIcon: Icon(
             Icons.lock_outlined,
-            color: VillageTheme.primaryGreen,
-            size: VillageTheme.iconMedium,
+            color: Colors.grey[600],
+            size: 20,
           ),
           suffixIcon: IconButton(
             icon: Icon(
               _obscureConfirmPassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-              color: VillageTheme.secondaryText,
-              size: VillageTheme.iconMedium,
+              color: Colors.grey[600],
+              size: 20,
             ),
             onPressed: () {
               setState(() {
@@ -505,31 +516,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
               });
             },
           ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
-            borderSide: BorderSide(color: VillageTheme.primaryGreen.withOpacity(0.3)),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
-            borderSide: BorderSide(color: VillageTheme.primaryGreen.withOpacity(0.3)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
-            borderSide: BorderSide(color: VillageTheme.primaryGreen, width: 2),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
-            borderSide: BorderSide(color: VillageTheme.errorRed, width: 2),
-          ),
-          focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
-            borderSide: BorderSide(color: VillageTheme.errorRed, width: 2),
-          ),
-          filled: true,
-          fillColor: VillageTheme.cardBackground,
+          border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
-            horizontal: VillageTheme.spacingM,
-            vertical: VillageTheme.spacingM,
+            horizontal: 16,
+            vertical: 16,
           ),
         ),
       ),
@@ -623,57 +613,66 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _buildRegisterButton() {
-    return VillageWidgets.bigButton(
-      text: 'Create Account',
-      icon: Icons.person_add,
-      onPressed: _handleRegister,
-      backgroundColor: VillageTheme.primaryGreen,
+    return Container(
+      width: double.infinity,
+      height: 52,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        gradient: const LinearGradient(
+          colors: [VillageTheme.primaryGreen, Color(0xFF45A049)],
+        ),
+      ),
+      child: ElevatedButton(
+        onPressed: _handleRegister,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: const Text(
+          'Create Account',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildLoginLink() {
-    return Container(
-      decoration: VillageTheme.cardDecoration,
-      padding: const EdgeInsets.all(VillageTheme.spacingM),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                '🤔 Already have an account?',
-                style: VillageTheme.bodyMedium.copyWith(
-                  color: VillageTheme.secondaryText,
-                ),
-              ),
-            ],
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Text(
+          'Already have an account? ',
+          style: TextStyle(
+            fontSize: 14,
+            color: Color(0xFF7F8C8D),
           ),
-          const SizedBox(height: VillageTheme.spacingS),
-          TextButton.icon(
-            onPressed: () {
-              context.go('/login');
-            },
-            icon: Text('🚪', style: TextStyle(fontSize: 18)),
-            label: Text(
-              'Sign In',
-              style: VillageTheme.bodyLarge.copyWith(
-                color: VillageTheme.accentOrange,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            style: TextButton.styleFrom(
-              backgroundColor: VillageTheme.accentOrange.withOpacity(0.1),
-              padding: const EdgeInsets.symmetric(
-                horizontal: VillageTheme.spacingL,
-                vertical: VillageTheme.spacingS,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(VillageTheme.buttonRadius),
-              ),
+        ),
+        TextButton(
+          onPressed: () {
+            context.go('/login');
+          },
+          style: TextButton.styleFrom(
+            padding: EdgeInsets.zero,
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          child: const Text(
+            'Sign In',
+            style: TextStyle(
+              fontSize: 14,
+              color: VillageTheme.primaryGreen,
+              fontWeight: FontWeight.w600,
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

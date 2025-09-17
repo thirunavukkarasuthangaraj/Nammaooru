@@ -80,10 +80,28 @@ export class RegisterComponent implements OnInit {
         },
         error: (error) => {
           this.isLoading = false;
-          const errorMessage = error.error?.message || 'Registration failed. Please try again.';
+
+          // SIMPLE ERROR HANDLING - NO BULLSHIT
+          let errorMessage = 'Registration failed. Please try again.';
+
+          // Get the error message from backend
+          if (error.error && error.error.message) {
+            const msg = error.error.message;
+
+            // Check for specific errors and show user-friendly messages
+            if (msg.includes('Mobile number already exists')) {
+              errorMessage = 'This mobile number is already registered. Please try with a different number.';
+            } else if (msg.includes('Email already exists')) {
+              errorMessage = 'This email is already registered. Please use a different email.';
+            } else {
+              errorMessage = msg; // Just show the server message
+            }
+          }
+
+          // Show the error message
           this.snackBar.open(errorMessage, 'Close', {
             duration: 5000,
-            horizontalPosition: 'end',
+            horizontalPosition: 'center',
             verticalPosition: 'top',
             panelClass: ['error-snackbar']
           });

@@ -18,8 +18,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // Basic finders
     Optional<User> findByUsername(String username);
     Optional<User> findByEmail(String email);
+    Optional<User> findByMobileNumber(String mobileNumber);
+    Optional<User> findByEmailOrMobileNumber(String email, String mobileNumber);
     boolean existsByUsername(String username);
     boolean existsByEmail(String email);
+    boolean existsByMobileNumber(String mobileNumber);
     
     // Find by role
     Page<User> findByRole(User.UserRole role, Pageable pageable);
@@ -113,6 +116,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // Delivery Partner Status Tracking Methods
     List<User> findByRoleAndIsOnline(User.UserRole role, Boolean isOnline);
     List<User> findByRoleAndIsAvailable(User.UserRole role, Boolean isAvailable);
+    List<User> findByRoleAndIsOnlineAndIsAvailable(User.UserRole role, Boolean isOnline, Boolean isAvailable);
     List<User> findByRoleAndRideStatus(User.UserRole role, User.RideStatus rideStatus);
 
     @Query("SELECT u FROM User u WHERE u.role = :role AND u.isOnline = true AND u.currentLatitude IS NOT NULL AND u.currentLongitude IS NOT NULL")

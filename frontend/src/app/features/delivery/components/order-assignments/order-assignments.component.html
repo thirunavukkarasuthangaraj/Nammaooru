@@ -1,0 +1,282 @@
+<div class="order-assignments-container">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="header-left">
+      <h1>Order Assignments</h1>
+      <div class="breadcrumb">
+        <span>Home</span>
+        <mat-icon>chevron_right</mat-icon>
+        <span>Delivery</span>
+        <mat-icon>chevron_right</mat-icon>
+        <span>Admin</span>
+        <mat-icon>chevron_right</mat-icon>
+        <span>Assignments</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="search-container">
+        <mat-form-field appearance="outline" class="search-field">
+          <mat-label>Search shops, products, orders</mat-label>
+          <input matInput [(ngModel)]="searchTerm" (keyup)="applyFilter()" placeholder="Search...">
+          <mat-icon matPrefix>search</mat-icon>
+        </mat-form-field>
+      </div>
+      <div class="notifications">
+        <button mat-icon-button class="notification-btn">
+          <mat-icon>notifications</mat-icon>
+          <span class="notification-badge">3</span>
+        </button>
+      </div>
+      <div class="user-menu">
+        <button mat-icon-button>
+          <mat-icon>settings</mat-icon>
+        </button>
+        <div class="user-avatar">TH</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Stats -->
+  <div class="stats-row">
+    <div class="stat-item">
+      <mat-icon>group</mat-icon>
+      <div class="stat-content">
+        <span class="stat-number">{{ totalPartners }}</span>
+        <span class="stat-label">Total Partners</span>
+      </div>
+    </div>
+    <div class="stat-item online">
+      <mat-icon>wifi</mat-icon>
+      <div class="stat-content">
+        <span class="stat-number">{{ onlinePartners }}</span>
+        <span class="stat-label">Online Now</span>
+      </div>
+    </div>
+    <div class="stat-item active">
+      <mat-icon>local_shipping</mat-icon>
+      <div class="stat-content">
+        <span class="stat-number">{{ activeAssignments }}</span>
+        <span class="stat-label">Active Assignments</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Order Issues Alert -->
+  <div class="alert-banner">
+    <mat-icon class="alert-icon">warning</mat-icon>
+    <span class="alert-text">Order Issues</span>
+    <span class="alert-count">3</span>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-container">
+    <div class="filter-group">
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>Search Partners</mat-label>
+        <input matInput [(ngModel)]="searchTerm" (keyup)="applyFilter()" placeholder="Search...">
+        <mat-icon matPrefix>search</mat-icon>
+      </mat-form-field>
+    </div>
+
+    <div class="filter-group">
+      <span class="filter-label">Status Filter</span>
+      <mat-form-field appearance="outline" class="filter-select">
+        <mat-select [(ngModel)]="statusFilter" (selectionChange)="onStatusFilterChange()">
+          <mat-option value="All Status">All Status</mat-option>
+          <mat-option value="ACTIVE">Active</mat-option>
+          <mat-option value="PENDING">Pending</mat-option>
+          <mat-option value="SUSPENDED">Suspended</mat-option>
+          <mat-option value="BLOCKED">Blocked</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <div class="filter-group">
+      <span class="filter-label">Verification Filter</span>
+      <mat-form-field appearance="outline" class="filter-select">
+        <mat-select [(ngModel)]="verificationFilter" (selectionChange)="onVerificationFilterChange()">
+          <mat-option value="All Verification">All Verification</mat-option>
+          <mat-option value="VERIFIED">Verified</mat-option>
+          <mat-option value="PENDING">Pending</mat-option>
+          <mat-option value="REJECTED">Rejected</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <div class="filter-actions">
+      <button mat-raised-button color="primary" (click)="refreshData()" [disabled]="isLoading">
+        <mat-icon>refresh</mat-icon>
+        Refresh
+      </button>
+      <button mat-stroked-button (click)="exportData()">
+        <mat-icon>download</mat-icon>
+        Export
+      </button>
+    </div>
+  </div>
+
+  <!-- Partners Table -->
+  <div class="table-container">
+    <table mat-table [dataSource]="dataSource" matSort class="partners-table">
+
+      <!-- Partner ID Column -->
+      <ng-container matColumnDef="partnerId">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Partner ID</th>
+        <td mat-cell *matCellDef="let partner">
+          <span class="partner-id">{{ partner.partnerId }}</span>
+        </td>
+      </ng-container>
+
+      <!-- Name Column -->
+      <ng-container matColumnDef="name">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Name</th>
+        <td mat-cell *matCellDef="let partner">
+          <div class="name-cell">
+            <mat-icon class="user-icon">person</mat-icon>
+            <span class="partner-name">{{ partner.partnerName }}</span>
+          </div>
+        </td>
+      </ng-container>
+
+      <!-- Phone Column -->
+      <ng-container matColumnDef="phone">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Phone</th>
+        <td mat-cell *matCellDef="let partner">
+          <a href="tel:{{ partner.phone }}" class="phone-link">{{ partner.phone }}</a>
+        </td>
+      </ng-container>
+
+      <!-- Vehicle Column -->
+      <ng-container matColumnDef="vehicle">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Vehicle</th>
+        <td mat-cell *matCellDef="let partner">
+          <div class="vehicle-cell">
+            <mat-icon class="vehicle-icon">{{ getVehicleIcon(partner.vehicle) }}</mat-icon>
+            <span>{{ partner.vehicle }}</span>
+          </div>
+        </td>
+      </ng-container>
+
+      <!-- Status Column -->
+      <ng-container matColumnDef="status">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
+        <td mat-cell *matCellDef="let partner">
+          <span class="status-badge" [ngClass]="getStatusClass(partner.status)">
+            {{ partner.status }}
+          </span>
+        </td>
+      </ng-container>
+
+      <!-- Verification Column -->
+      <ng-container matColumnDef="verification">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Verification</th>
+        <td mat-cell *matCellDef="let partner">
+          <div class="verification-cell">
+            <mat-icon [ngClass]="getVerificationClass(partner.verification)">
+              {{ partner.verification === 'VERIFIED' ? 'verified' : partner.verification === 'PENDING' ? 'pending' : 'cancel' }}
+            </mat-icon>
+            <span>{{ partner.verification }}</span>
+          </div>
+        </td>
+      </ng-container>
+
+      <!-- Rating Column -->
+      <ng-container matColumnDef="rating">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Rating</th>
+        <td mat-cell *matCellDef="let partner">
+          <div class="rating-cell">
+            <mat-icon class="star-icon">star</mat-icon>
+            <span>{{ partner.rating | number:'1.1-1' }}</span>
+          </div>
+        </td>
+      </ng-container>
+
+      <!-- Deliveries Column -->
+      <ng-container matColumnDef="deliveries">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Deliveries</th>
+        <td mat-cell *matCellDef="let partner">
+          <span class="deliveries-count">{{ partner.deliveries }}</span>
+        </td>
+      </ng-container>
+
+      <!-- Online Status Column -->
+      <ng-container matColumnDef="online">
+        <th mat-header-cell *matHeaderCellDef>Online</th>
+        <td mat-cell *matCellDef="let partner">
+          <mat-icon class="online-status" [ngClass]="partner.isOnline ? 'online' : 'offline'">
+            {{ partner.isOnline ? 'wifi' : 'wifi_off' }}
+          </mat-icon>
+        </td>
+      </ng-container>
+
+      <!-- Actions Column -->
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef>Actions</th>
+        <td mat-cell *matCellDef="let partner">
+          <button mat-icon-button [matMenuTriggerFor]="actionsMenu" class="actions-btn">
+            <mat-icon>more_horiz</mat-icon>
+          </button>
+
+          <mat-menu #actionsMenu="matMenu">
+            <button mat-menu-item (click)="viewPartnerDetails(partner)">
+              <mat-icon>visibility</mat-icon>
+              <span>View Details</span>
+            </button>
+            <button mat-menu-item (click)="assignOrder(partner)" [disabled]="!partner.isOnline">
+              <mat-icon>assignment</mat-icon>
+              <span>Assign Order</span>
+            </button>
+            <button mat-menu-item (click)="callPartner(partner.phone)">
+              <mat-icon>phone</mat-icon>
+              <span>Call Partner</span>
+            </button>
+            <button mat-menu-item (click)="messagePartner(partner)">
+              <mat-icon>message</mat-icon>
+              <span>Send Message</span>
+            </button>
+            <button mat-menu-item (click)="trackPartner(partner)" [disabled]="!partner.isOnline">
+              <mat-icon>location_on</mat-icon>
+              <span>Track Location</span>
+            </button>
+            <mat-divider></mat-divider>
+            <button mat-menu-item (click)="togglePartnerStatus(partner)"
+                    [ngClass]="partner.status === 'ACTIVE' ? 'danger' : 'success'">
+              <mat-icon>{{ partner.status === 'ACTIVE' ? 'block' : 'check_circle' }}</mat-icon>
+              <span>{{ partner.status === 'ACTIVE' ? 'Suspend' : 'Activate' }}</span>
+            </button>
+          </mat-menu>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+          [ngClass]="{'online-row': row.isOnline, 'offline-row': !row.isOnline}"></tr>
+    </table>
+
+    <!-- Loading State -->
+    <div *ngIf="isLoading" class="loading-container">
+      <mat-spinner diameter="40"></mat-spinner>
+      <p>Loading partners...</p>
+    </div>
+
+    <!-- Empty State -->
+    <div *ngIf="!isLoading && dataSource.data.length === 0" class="empty-state">
+      <mat-icon>group_off</mat-icon>
+      <h3>No Partners Found</h3>
+      <p>No delivery partners match your current filters.</p>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <mat-paginator
+    [pageSizeOptions]="[10, 25, 50, 100]"
+    [pageSize]="10"
+    showFirstLastButtons
+    class="table-paginator">
+  </mat-paginator>
+
+  <!-- Table Info -->
+  <div class="table-info">
+    <span>{{ dataSource.data.length > 0 ? '0 of 0' : '0 of 0' }}</span>
+  </div>
+</div>

@@ -24,6 +24,23 @@ dependencies:
   
   # Utils
   intl: ^0.18.1
+  url_launcher: ^6.2.2
+
+  # Maps & Location
+  google_maps_flutter: ^2.5.0
+  geolocator: ^10.1.0
+  geocoding: ^2.1.1
+  permission_handler: ^11.1.0
+
+  # Push Notifications & Real-time Communication
+  firebase_core: ^2.24.2
+  firebase_messaging: ^14.7.10
+  flutter_local_notifications: ^16.3.2
+  web_socket_channel: ^2.4.0
+
+  # Camera & Image Processing
+  image_picker: ^1.0.4
+  signature: ^5.4.0
   
 dev_dependencies:
   flutter_test:

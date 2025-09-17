@@ -39,9 +39,9 @@ dependencies:
   # Utils
   connectivity_plus: ^5.0.2
 
-  # Geolocation
-  geolocator: ^10.1.0
-  geocoding: ^2.1.1
+  # Geolocation - temporarily disabled for build
+  # geolocator: ^10.1.0
+  # geocoding: ^2.1.1
   permission_handler: ^11.1.0
   
   # Navigation

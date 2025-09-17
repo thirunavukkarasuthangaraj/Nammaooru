@@ -20,6 +20,7 @@ public interface OrderAssignmentRepository extends JpaRepository<OrderAssignment
     // Find assignments by delivery partner
     List<OrderAssignment> findByDeliveryPartner(User deliveryPartner);
     Page<OrderAssignment> findByDeliveryPartner(User deliveryPartner, Pageable pageable);
+    Long countByDeliveryPartner(User deliveryPartner);
 
     // Find assignments by delivery partner and status
     List<OrderAssignment> findByDeliveryPartnerAndStatus(User deliveryPartner, AssignmentStatus status);

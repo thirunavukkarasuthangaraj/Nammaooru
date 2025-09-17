@@ -1,10 +1,11 @@
 class EnvConfig {
   // Base API Configuration
   // DEVELOPMENT: Local development
-  static const String baseUrl = 'http://localhost:8080';
+  static const String baseUrl = 'http://10.0.2.2:8090'; // USB debugging - bypasses network issues
+  // static const String baseUrl = 'http://10.0.2.2:8080'; // Android emulator
 
   // PRODUCTION: Use your deployed server
-  // static const String baseUrl = 'https://api.nammaoorudelivary.in';so
+  // static const String baseUrl = 'https://api.nammaoorudelivary.in';
   // static const String baseUrl = 'http://10.0.2.2:8080'; // Android Emulator
   // static const String baseUrl = 'http://192.168.1.100:8080'; // Local Network IP
 

@@ -167,43 +167,63 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        title: const Text(
-          'Profile',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF8B5A96),
+              Color(0xFF6B4F72),
+              Color(0xFF5D4E75),
+            ],
           ),
         ),
-        backgroundColor: AppColors.primary,
-        iconTheme: const IconThemeData(color: Colors.white),
-        elevation: 0,
-        actions: [
-          const Padding(
-            padding: EdgeInsets.only(right: 16),
-            child: LanguageSelector(),
-          ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  _buildProfileHeader(),
-                  const SizedBox(height: 24),
-                  _buildUserDetailsCard(),
-                  const SizedBox(height: 24),
-                  _buildAccountActionsCard(),
-                  const SizedBox(height: 24),
-                  _buildSystemInfoCard(),
-                  const SizedBox(height: 32),
-                  _buildLogoutButton(),
+        child: SafeArea(
+          child: Column(
+            children: [
+              AppBar(
+                title: const Text(
+                  'Profile',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                backgroundColor: Colors.transparent,
+                iconTheme: const IconThemeData(color: Colors.white),
+                elevation: 0,
+                actions: [
+                  const Padding(
+                    padding: EdgeInsets.only(right: 16),
+                    child: LanguageSelector(),
+                  ),
                 ],
               ),
-            ),
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : SingleChildScrollView(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          children: [
+                            _buildProfileHeader(),
+                            const SizedBox(height: 24),
+                            _buildUserDetailsCard(),
+                            const SizedBox(height: 24),
+                            _buildAccountActionsCard(),
+                            const SizedBox(height: 24),
+                            _buildSystemInfoCard(),
+                            const SizedBox(height: 32),
+                            _buildLogoutButton(),
+                          ],
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -211,18 +231,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.primary, AppColors.primary.withOpacity(0.8)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(
         children: [
           CircleAvatar(
             radius: 40,
-            backgroundColor: Colors.white,
+            backgroundColor: AppColors.primary.withOpacity(0.1),
             child: Icon(
               Icons.person,
               size: 50,
@@ -235,27 +258,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
             style: const TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: AppColors.textPrimary,
             ),
           ),
           Text(
             _userInfo['email'] ?? 'No email',
             style: const TextStyle(
               fontSize: 16,
-              color: Colors.white70,
+              color: AppColors.textSecondary,
             ),
           ),
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: AppColors.primary.withOpacity(0.1),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
               _userInfo['userRole']?.toString().replaceAll('_', ' ') ?? 'Customer',
               style: const TextStyle(
-                color: Colors.white,
+                color: AppColors.primary,
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
               ),
@@ -325,12 +348,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -434,7 +457,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(24),
           ),
           elevation: 2,
         ),

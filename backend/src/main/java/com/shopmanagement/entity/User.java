@@ -41,11 +41,11 @@ public class User implements UserDetails {
 
     @Column(name = "first_name", length = 100)
     private String firstName;
-    
+
     @Column(name = "last_name", length = 100)
     private String lastName;
-    
-    @Column(name = "mobile_number", length = 15)
+
+    @Column(name = "mobile_number", unique = true, nullable = false, length = 15)
     private String mobileNumber;
 
     @Enumerated(EnumType.STRING)

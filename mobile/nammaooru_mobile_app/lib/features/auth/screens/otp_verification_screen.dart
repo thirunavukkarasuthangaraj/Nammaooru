@@ -206,28 +206,48 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomAppBar(
-        title: 'Verify Email',
-        backgroundColor: Colors.transparent,
-        foregroundColor: AppColors.textPrimary,
-        elevation: 0,
-      ),
-      backgroundColor: Colors.white,
-      body: Consumer<AuthProvider>(
-        builder: (context, authProvider, child) {
-          return LoadingOverlay(
-            isLoading: authProvider.authState == AuthState.loading,
-            loadingMessage: 'Verifying OTP...',
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SizedBox(height: 20),
-                    _buildHeader(),
-                    const SizedBox(height: 40),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF8B5A96),
+              Color(0xFF6B4F72),
+              Color(0xFF5D4E75),
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Consumer<AuthProvider>(
+            builder: (context, authProvider, child) {
+              return LoadingOverlay(
+                isLoading: authProvider.authState == AuthState.loading,
+                loadingMessage: 'Verifying OTP...',
+                child: Center(
+                  child: SingleChildScrollView(
+                    child: Container(
+                      margin: const EdgeInsets.all(24.0),
+                      padding: const EdgeInsets.all(32.0),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _buildHeader(),
+                            const SizedBox(height: 40),
                     const Text(
                       'Enter 6-digit code',
                       style: TextStyle(
@@ -247,12 +267,16 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     _buildResendButton(),
                     const SizedBox(height: 30),
                     _buildChangeEmailButton(),
-                  ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          );
-        },
+              );
+            },
+          ),
+        ),
       ),
     );
   }
@@ -261,27 +285,23 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     return Column(
       children: [
         Container(
-          width: 90,
-          height: 90,
+          width: 80,
+          height: 80,
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                AppColors.primary.withOpacity(0.1),
-                AppColors.primary.withOpacity(0.05),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+            color: const Color(0xFF4CAF50),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: AppColors.primary.withOpacity(0.2),
-              width: 1,
-            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF4CAF50).withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: const Icon(
             Icons.mark_email_read_rounded,
-            size: 44,
-            color: AppColors.primary,
+            size: 40,
+            color: Colors.white,
           ),
         ),
         const SizedBox(height: 24),
@@ -290,37 +310,28 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
           style: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
-            letterSpacing: -0.5,
+            color: Color(0xFF2C3E50),
           ),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 8),
         const Text(
-          'Enter the verification code we sent to',
+          'Enter Verification Code',
           style: TextStyle(
             fontSize: 16,
-            color: AppColors.textSecondary,
-            height: 1.4,
+            color: Color(0xFF7F8C8D),
           ),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 4),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.08),
-            borderRadius: BorderRadius.circular(12),
+        Text(
+          'We sent a 6-digit code to ${widget.email}',
+          style: const TextStyle(
+            fontSize: 14,
+            color: Color(0xFF95A5A6),
+            height: 1.4,
           ),
-          child: Text(
-            widget.email,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              color: AppColors.primary,
-              fontSize: 16,
-            ),
-            textAlign: TextAlign.center,
-          ),
+          textAlign: TextAlign.center,
         ),
       ],
     );

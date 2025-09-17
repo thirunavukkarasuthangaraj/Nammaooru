@@ -34,11 +34,12 @@ public class AuthService {
     private EmailOtpService emailOtpService;
 
     public AuthResponse register(RegisterRequest request) {
-        if (userRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("Username already exists");
-        }
+        // Username is not unique anymore, can be duplicate
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email already exists");
+        }
+        if (request.getMobileNumber() != null && userRepository.existsByMobileNumber(request.getMobileNumber())) {
+            throw new RuntimeException("Mobile number already exists");
         }
 
         // Only allow USER role for registration (customers)
@@ -78,10 +79,27 @@ public class AuthService {
     }
 
     public AuthResponse authenticate(AuthRequest request) {
-        // Find user by email (now the primary login method)
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new AuthenticationFailedException("Invalid email or password"));
-        
+        // Support both new identifier field and legacy email field
+        String loginIdentifier = request.getIdentifier() != null ? request.getIdentifier() : request.getEmail();
+
+        if (loginIdentifier == null || loginIdentifier.isEmpty()) {
+            throw new AuthenticationFailedException("Email or mobile number is required");
+        }
+
+        // Find user by email or mobile number
+        User user;
+
+        // Check if identifier is a mobile number (contains only digits and optional +)
+        if (loginIdentifier.matches("^[+]?[0-9]+$")) {
+            // Try to find by mobile number
+            user = userRepository.findByMobileNumber(loginIdentifier)
+                    .orElseThrow(() -> new AuthenticationFailedException("Invalid mobile number or password"));
+        } else {
+            // Try to find by email
+            user = userRepository.findByEmail(loginIdentifier)
+                    .orElseThrow(() -> new AuthenticationFailedException("Invalid email or password"));
+        }
+
         // Authenticate with the found user's username
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
@@ -89,9 +107,9 @@ public class AuthService {
                         request.getPassword()
                 )
         );
-        
+
         var jwtToken = jwtService.generateToken(user);
-        
+
         return AuthResponse.builder()
                 .accessToken(jwtToken)
                 .tokenType("Bearer")

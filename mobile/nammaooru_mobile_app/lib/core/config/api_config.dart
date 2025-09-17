@@ -1,6 +1,6 @@
 class ApiConfig {
-  // Base URL for API calls
-  static const String baseUrl = 'http://localhost:8080/api';
+  // Base URL for API calls (using local IP for mobile testing)
+  static const String baseUrl = 'http://192.168.1.6:8080/api';
 
   // Web URL for Chrome testing
   static const String webBaseUrl = 'http://localhost:8080/api';

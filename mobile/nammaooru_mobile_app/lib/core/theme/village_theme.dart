@@ -1,29 +1,48 @@
 import 'package:flutter/material.dart';
 
 class VillageTheme {
-  // Village-friendly color palette
-  static const Color primaryGreen = Color(0xFF2E7D32); // Forest Green
-  static const Color lightGreen = Color(0xFF4CAF50);   // Nature Green
-  static const Color accentOrange = Color(0xFFFF8F00);  // Marigold Orange
-  static const Color warmYellow = Color(0xFFFFA726);    // Turmeric Yellow
-  static const Color earthBrown = Color(0xFF8D6E63);    // Earth Brown
-  static const Color skyBlue = Color(0xFF42A5F5);       // Village Sky
-  
+  // Modern color palette
+  static const Color primaryGreen = Color(0xFF4CAF50); // Primary Green
+  static const Color lightGreen = Color(0xFF81C784);   // Light Green variant
+  static const Color accentOrange = Color(0xFFFF9800); // Orange accent
+  static const Color warmYellow = Color(0xFFFFA726);   // Turmeric Yellow
+  static const Color earthBrown = Color(0xFF8D6E63);   // Earth Brown
+  static const Color skyBlue = Color(0xFF2196F3);      // Info Blue
+
+  // Modern gradient colors
+  static const Color gradientPurple1 = Color(0xFF8B5A96);
+  static const Color gradientPurple2 = Color(0xFF6B4F72);
+  static const Color gradientPurple3 = Color(0xFF5D4E75);
+
+  // Modern text colors
+  static const Color modernDark = Color(0xFF2C3E50);
+  static const Color modernGray = Color(0xFF7F8C8D);
+  static const Color modernLight = Color(0xFF95A5A6);
+
   // Background colors
   static const Color lightBackground = Color(0xFFF8F9FA);
   static const Color cardBackground = Color(0xFFFFFFFF);
   static const Color surfaceColor = Color(0xFFF5F5F5);
+  static const Color inputBackground = Color(0xFFF8F9FA);
   
   // Text colors
   static const Color primaryText = Color(0xFF212121);
   static const Color secondaryText = Color(0xFF757575);
   static const Color hintText = Color(0xFFBDBDBD);
   
-  // Status colors
+  // Status colors (matching delivery partner app)
   static const Color successGreen = Color(0xFF4CAF50);
   static const Color warningOrange = Color(0xFFFF9800);
   static const Color errorRed = Color(0xFFF44336);
   static const Color infoBlue = Color(0xFF2196F3);
+
+  // Additional consistent colors
+  static const Color online = Color(0xFF4CAF50);
+  static const Color offline = Color(0xFF9E9E9E);
+  static const Color pending = Color(0xFFFF9800);
+  static const Color accepted = Color(0xFF2196F3);
+  static const Color delivered = Color(0xFF4CAF50);
+  static const Color cancelled = Color(0xFFF44336);
   
   // Text style shortcuts for easy access
   static const Color textPrimary = primaryText;
@@ -221,23 +240,48 @@ class VillageTheme {
     ],
   );
 
-  // Village-friendly gradients
+  // Modern gradients
+  static LinearGradient get modernPurpleGradient => const LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [gradientPurple1, gradientPurple2, gradientPurple3],
+  );
+
   static LinearGradient get primaryGradient => const LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [primaryGreen, lightGreen],
+    colors: [primaryGreen, Color(0xFF66BB6A)],
   );
-  
+
   static LinearGradient get accentGradient => const LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [accentOrange, warmYellow],
   );
-  
+
   static LinearGradient get backgroundGradient => const LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
     colors: [lightBackground, surfaceColor],
+  );
+
+  // Modern card decoration
+  static BoxDecoration get modernCardDecoration => BoxDecoration(
+    color: cardBackground,
+    borderRadius: BorderRadius.circular(24),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withOpacity(0.1),
+        blurRadius: 20,
+        offset: const Offset(0, 10),
+      ),
+    ],
+  );
+
+  // Modern input decoration
+  static BoxDecoration get modernInputDecoration => BoxDecoration(
+    color: inputBackground,
+    borderRadius: BorderRadius.circular(12),
   );
 
   // Icon sizes for village-friendly UI
@@ -271,8 +315,102 @@ class VillageTheme {
   };
 }
 
-// Village-friendly helper widgets
+// Modern helper widgets
 class VillageWidgets {
+  // Modern screen wrapper with gradient background
+  static Widget modernScreenWrapper({
+    required Widget child,
+    bool hasBackButton = false,
+  }) {
+    return Scaffold(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: VillageTheme.modernPurpleGradient,
+        ),
+        child: SafeArea(
+          child: hasBackButton
+              ? Column(
+                  children: [
+                    Align(
+                      alignment: Alignment.topLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: IconButton(
+                          icon: const Icon(Icons.arrow_back, color: Colors.white),
+                          onPressed: () => Navigator.of(Navigator.of(child as BuildContext).context).pop(),
+                        ),
+                      ),
+                    ),
+                    Expanded(child: child),
+                  ],
+                )
+              : child,
+        ),
+      ),
+    );
+  }
+
+  // Modern card container
+  static Widget modernCard({
+    required Widget child,
+    EdgeInsets? margin,
+    EdgeInsets? padding,
+  }) {
+    return Container(
+      margin: margin ?? const EdgeInsets.all(24.0),
+      padding: padding ?? const EdgeInsets.all(32.0),
+      decoration: VillageTheme.modernCardDecoration,
+      child: child,
+    );
+  }
+
+  // Modern input field
+  static Widget modernInput({
+    required TextEditingController controller,
+    required String hintText,
+    IconData? prefixIcon,
+    Widget? suffixIcon,
+    bool obscureText = false,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+    void Function(String)? onFieldSubmitted,
+  }) {
+    return Container(
+      decoration: VillageTheme.modernInputDecoration,
+      child: TextFormField(
+        controller: controller,
+        obscureText: obscureText,
+        keyboardType: keyboardType,
+        validator: validator,
+        onFieldSubmitted: onFieldSubmitted,
+        style: const TextStyle(
+          fontSize: 16,
+          color: VillageTheme.modernDark,
+        ),
+        decoration: InputDecoration(
+          hintText: hintText,
+          hintStyle: TextStyle(
+            color: Colors.grey[500],
+            fontSize: 16,
+          ),
+          prefixIcon: prefixIcon != null
+              ? Icon(
+                  prefixIcon,
+                  color: Colors.grey[600],
+                  size: 20,
+                )
+              : null,
+          suffixIcon: suffixIcon,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
+        ),
+      ),
+    );
+  }
+
   // Large touch-friendly button
   static Widget bigButton({
     required String text,

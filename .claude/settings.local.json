@@ -131,7 +131,14 @@
       "Bash(\"taskkill\" \"/F\" \"/PID\" \"35656\")",
       "Bash(\"C:\\Program Files\\PostgreSQL\\16\\bin\\psql.exe\" -h localhost -p 5432 -U shop_user -d shop_management -f fix_image_urls.sql)",
       "Bash(\"C:\\Program Files\\PostgreSQL\\16\\bin\\psql.exe\" -h localhost -p 5432 -U shop_user -d shop_management)",
-      "Bash(\"C:\\Program Files\\PostgreSQL\\16\\bin\\psql.exe\" -h localhost -p 5432 -U shop_user -d shop_management -c \"SELECT id, email, mobile_number, role, is_online, is_available, ride_status FROM users WHERE role = ''DELIVERY_PARTNER'';\")"
+      "Bash(\"C:\\Program Files\\PostgreSQL\\16\\bin\\psql.exe\" -h localhost -p 5432 -U shop_user -d shop_management -c \"SELECT id, email, mobile_number, role, is_online, is_available, ride_status FROM users WHERE role = ''DELIVERY_PARTNER'';\")",
+      "Bash(\"C:\\Program Files\\PostgreSQL\\16\\bin\\psql.exe\" -h localhost -p 5432 -U shop_user -d shop_management -c \"\\dt\")",
+      "Bash(npx ng build:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(\"C:\\Program Files\\PostgreSQL\\16\\bin\\psql.exe\" -h localhost -p 5432 -U shop_user -d shop_management -f check_existing_data.sql)",
+      "Bash(\"C:\\Users\\MVNLA\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe\" install -r \"mobile/nammaooru_mobile_app/build/app/outputs/flutter-apk/app-debug.apk\")",
+      "Bash(\"C:\\Users\\MVNLA\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe\" shell am start -n com.nammaooru.app/.MainActivity)",
+      "Bash(ping:*)"
     ],
     "deny": [],
     "ask": [],

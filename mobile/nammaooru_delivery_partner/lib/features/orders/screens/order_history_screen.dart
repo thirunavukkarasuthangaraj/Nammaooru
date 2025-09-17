@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../../core/providers/delivery_partner_provider.dart';
-import '../../../core/models/delivery_partner.dart';
+import '../../../core/models/simple_order_model.dart';
+import '../widgets/order_details_bottom_sheet.dart';
 
 class OrderHistoryScreen extends StatefulWidget {
   const OrderHistoryScreen({Key? key}) : super(key: key);
@@ -112,143 +113,166 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
     );
   }
 
-  Widget _buildOrderCard(DeliveryOrder order) {
+  void _showOrderDetails(OrderModel order) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => OrderDetailsBottomSheet(
+        order: order,
+        showActions: false,
+      ),
+    );
+  }
+
+  Widget _buildOrderCard(OrderModel order) {
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Order #${order.orderId}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: _getStatusColor(order.status).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    order.status.toUpperCase(),
-                    style: TextStyle(
-                      color: _getStatusColor(order.status),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+      child: InkWell(
+        onTap: () => _showOrderDetails(order),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Order #${order.id}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
                     ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            
-            // Customer Info
-            Row(
-              children: [
-                const Icon(Icons.person, size: 16, color: Colors.grey),
-                const SizedBox(width: 8),
-                Text(order.customerName),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(Icons.phone, size: 16, color: Colors.grey),
-                const SizedBox(width: 8),
-                Text(order.customerPhone),
-              ],
-            ),
-            const SizedBox(height: 8),
-            
-            // Delivery Address
-            Row(
-              children: [
-                const Icon(Icons.location_on, size: 16, color: Colors.red),
-                const SizedBox(width: 8),
-                Expanded(child: Text(order.deliveryAddress)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            
-            // Order Details
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _getStatusColor(order.status).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      order.status.toUpperCase(),
+                      style: TextStyle(
+                        color: _getStatusColor(order.status),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // Customer Info
+              Row(
+                children: [
+                  const Icon(Icons.person, size: 16, color: Colors.grey),
+                  const SizedBox(width: 8),
+                  Text(order.customerName),
+                ],
+              ),
+              if (order.customerPhone != null) ...[
+                const SizedBox(height: 4),
+                Row(
                   children: [
-                    Text(
-                      'Order Value: ₹${order.orderValue.toStringAsFixed(0)}',
-                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    const Icon(Icons.phone, size: 16, color: Colors.grey),
+                    const SizedBox(width: 8),
+                    Text(order.customerPhone!),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 8),
+
+              // Shop Info
+              Row(
+                children: [
+                  const Icon(Icons.store, size: 16, color: Colors.grey),
+                  const SizedBox(width: 8),
+                  Text(order.shopName),
+                ],
+              ),
+              const SizedBox(height: 8),
+
+              // Delivery Address
+              Row(
+                children: [
+                  const Icon(Icons.location_on, size: 16, color: Colors.red),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(order.deliveryAddress)),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // Order Details
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (order.totalAmount != null)
+                        Text(
+                          'Order Value: ₹${order.totalAmount!.toStringAsFixed(0)}',
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      Text(
+                        'Your Earnings: ₹${(order.commission ?? order.deliveryFee ?? 0).toStringAsFixed(0)}',
+                        style: const TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (order.createdAt != null)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          DateFormat('dd MMM yyyy').format(order.createdAt!),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
+                        Text(
+                          DateFormat('hh:mm a').format(order.createdAt!),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
                     ),
+                ],
+              ),
+
+              // Distance if available
+              if (order.distance != null) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.directions, size: 16, color: Colors.blue),
+                    const SizedBox(width: 8),
                     Text(
-                      'Your Earnings: ₹${order.deliveryFee.toStringAsFixed(0)}',
+                      'Distance: ${order.distance!.toStringAsFixed(1)} km',
                       style: const TextStyle(
-                        color: Colors.green,
+                        color: Colors.blue,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      DateFormat('dd MMM yyyy').format(order.createdAt),
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    Text(
-                      DateFormat('hh:mm a').format(order.createdAt),
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ],
-                ),
               ],
-            ),
-            
-            // Order Items
-            if (order.items.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              const Divider(),
-              const SizedBox(height: 8),
-              const Text(
-                'Items:',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 4),
-              ...order.items.map((item) => Padding(
-                padding: const EdgeInsets.only(left: 16, bottom: 2),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('${item.quantity}x ${item.name}'),
-                    Text('₹${(item.price * item.quantity).toStringAsFixed(0)}'),
-                  ],
-                ),
-              )).toList(),
             ],
-          ],
+          ),
         ),
       ),
     );

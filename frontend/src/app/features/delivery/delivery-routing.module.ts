@@ -10,6 +10,7 @@ import { OrderTrackingComponent } from './components/order-tracking/order-tracki
 import { PartnerOrdersComponent } from './components/partner-orders/partner-orders.component';
 import { DeliveryAnalyticsComponent } from './components/delivery-analytics/delivery-analytics.component';
 import { SimpleDocumentViewerComponent } from './components/simple-document-viewer/simple-document-viewer.component';
+import { OrderAssignmentsComponent } from './components/order-assignments/order-assignments.component';
 
 const routes: Routes = [
   {
@@ -72,9 +73,9 @@ const routes: Routes = [
   },
   {
     path: 'admin/assignments',
-    component: AdminPartnersComponent, // Temporary - will show assignments tab
+    component: OrderAssignmentsComponent,
     canActivate: [AuthGuard, RoleGuard],
-    data: { 
+    data: {
       expectedRoles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER'],
       title: 'Order Assignments'
     }

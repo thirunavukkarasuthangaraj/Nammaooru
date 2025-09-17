@@ -32,39 +32,60 @@ class _CartScreenState extends State<CartScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomAppBar(
-        title: 'Shopping Cart',
-        backgroundColor: VillageTheme.primaryGreen,
-        foregroundColor: Colors.white,
-        showBackButton: true,
-      ),
-      body: Consumer<CartProvider>(
-        builder: (context, cartProvider, child) {
-          if (cartProvider.isEmpty) {
-            return _buildEmptyCart();
-          }
-
-          return Column(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF8B5A96),
+              Color(0xFF6B4F72),
+              Color(0xFF5D4E75),
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
             children: [
+              const CustomAppBar(
+                title: 'Shopping Cart',
+                backgroundColor: Colors.transparent,
+                foregroundColor: Colors.white,
+                showBackButton: true,
+              ),
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildItemsList(cartProvider),
-                      const SizedBox(height: 20),
-                      _buildPromoCodeSection(cartProvider),
-                      const SizedBox(height: 20),
-                      _buildOrderSummary(cartProvider),
-                    ],
-                  ),
+                child: Consumer<CartProvider>(
+                  builder: (context, cartProvider, child) {
+                    if (cartProvider.isEmpty) {
+                      return _buildEmptyCart();
+                    }
+
+                    return Column(
+                      children: [
+                        Expanded(
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildItemsList(cartProvider),
+                                const SizedBox(height: 20),
+                                _buildPromoCodeSection(cartProvider),
+                                const SizedBox(height: 20),
+                                _buildOrderSummary(cartProvider),
+                              ],
+                            ),
+                          ),
+                        ),
+                        _buildBottomBar(cartProvider),
+                      ],
+                    );
+                  },
                 ),
               ),
-              _buildBottomBar(cartProvider),
             ],
-          );
-        },
+          ),
+        ),
       ),
     );
   }
@@ -93,12 +114,12 @@ class _CartScreenState extends State<CartScreen> {
           margin: const EdgeInsets.only(bottom: 16),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
@@ -110,7 +131,7 @@ class _CartScreenState extends State<CartScreen> {
                 decoration: BoxDecoration(
                   color: AppColors.primary.withOpacity(0.1),
                   borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(12),
+                    top: Radius.circular(24),
                   ),
                 ),
                 child: Row(
@@ -326,12 +347,12 @@ class _CartScreenState extends State<CartScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -412,12 +433,12 @@ class _CartScreenState extends State<CartScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
