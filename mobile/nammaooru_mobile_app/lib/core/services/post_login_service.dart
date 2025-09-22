@@ -31,7 +31,7 @@ class PostLoginService {
       
       // If no cached preferences, set defaults
       if (prefs.isEmpty) {
-        await LocalStorage.setUserPreference('location', 'Chennai, Tamil Nadu');
+        await LocalStorage.setUserPreference('location', 'Tirupattur, Tamil Nadu');
         await LocalStorage.setUserPreference('currency', 'INR');
         await LocalStorage.setUserPreference('language', 'en');
       }

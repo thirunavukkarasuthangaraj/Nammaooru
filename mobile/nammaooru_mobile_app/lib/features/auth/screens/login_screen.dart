@@ -97,9 +97,8 @@ class _LoginScreenState extends State<LoginScreen> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Color(0xFF8B5A96),
-              Color(0xFF6B4F72),
-              Color(0xFF5D4E75),
+              Color(0xFF43E97B),  // Light green matching web app
+              Color(0xFF38F9D7),  // Cyan-green matching web app
             ],
           ),
         ),
@@ -144,8 +143,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             _buildLoginButton(),
                             const SizedBox(height: 16),
                             _buildSignUpLink(),
-                            const SizedBox(height: 20),
-                            _buildBusinessPartnersSection(),
                           ],
                         ),
                       ),
@@ -194,7 +191,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Join NammaOoru',
+          'Join Namma Ooru Delivery',
           style: TextStyle(
             fontSize: 16,
             color: Color(0xFF7F8C8D),
@@ -202,7 +199,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         const SizedBox(height: 4),
         const Text(
-          'Connect with your local community',
+          'Serving Thirupattur zone',
           style: TextStyle(
             fontSize: 14,
             color: Color(0xFF95A5A6),
@@ -229,13 +226,13 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         decoration: InputDecoration(
           hintText: 'Enter your email',
-          hintStyle: TextStyle(
-            color: Colors.grey[500],
+          hintStyle: const TextStyle(
+            color: Colors.black54,
             fontSize: 16,
           ),
           prefixIcon: Icon(
             Icons.email_outlined,
-            color: Colors.grey[600],
+            color: Colors.black54,
             size: 20,
           ),
           border: InputBorder.none,
@@ -266,19 +263,19 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         decoration: InputDecoration(
           hintText: 'Enter your password',
-          hintStyle: TextStyle(
-            color: Colors.grey[500],
+          hintStyle: const TextStyle(
+            color: Colors.black54,
             fontSize: 16,
           ),
           prefixIcon: Icon(
             Icons.lock_outlined,
-            color: Colors.grey[600],
+            color: Colors.black54,
             size: 20,
           ),
           suffixIcon: IconButton(
             icon: Icon(
               _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-              color: Colors.grey[600],
+              color: Colors.black54,
               size: 20,
             ),
             onPressed: () {
@@ -430,43 +427,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     color: Color(0xFF95A5A6),
                   ),
                 ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBusinessPartnersSection() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: VillageTheme.primaryGreen.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              Icons.business,
-              color: VillageTheme.primaryGreen,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Text(
-              'For Business Partners: Use your company-provided credentials to sign in',
-              style: TextStyle(
-                fontSize: 12,
-                color: Color(0xFF7F8C8D),
-                height: 1.4,
               ),
             ),
           ),

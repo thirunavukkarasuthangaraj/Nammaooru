@@ -97,9 +97,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Color(0xFF8B5A96),
-              Color(0xFF6B4F72),
-              Color(0xFF5D4E75),
+              Color(0xFF43E97B),  // Light green matching web app
+              Color(0xFF38F9D7),  // Cyan-green matching web app
             ],
           ),
         ),

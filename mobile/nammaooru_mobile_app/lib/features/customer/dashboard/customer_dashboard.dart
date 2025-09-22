@@ -10,6 +10,12 @@ import '../../../services/order_api_service.dart';
 import '../../../shared/services/notification_service.dart';
 import '../screens/shop_listing_screen.dart';
 import '../screens/shop_details_screen.dart';
+import '../screens/shop_categories_screen.dart';
+import '../screens/location_picker_screen.dart';
+import '../screens/google_maps_location_picker_screen.dart';
+import '../../../core/services/location_service.dart';
+import '../../../core/services/address_service.dart';
+import '../widgets/address_selection_dialog.dart';
 
 class CustomerDashboard extends StatefulWidget {
   const CustomerDashboard({super.key});
@@ -19,12 +25,13 @@ class CustomerDashboard extends StatefulWidget {
 }
 
 class _CustomerDashboardState extends State<CustomerDashboard> {
-  String _selectedLocation = 'Chennai, Tamil Nadu';
+  String _selectedLocation = 'Getting your location...';
   bool _isLoadingShops = false;
   bool _isLoadingOrders = false;
+  bool _isLocationPickerOpen = false;
   List<dynamic> _featuredShops = [];
   List<dynamic> _recentOrders = [];
-  
+
   final _shopApi = ShopApiService();
   final _orderApi = OrderApiService();
   
@@ -32,6 +39,103 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   void initState() {
     super.initState();
     _loadDashboardData();
+    _getCurrentLocationOnStartup();
+  }
+
+  Future<void> _getCurrentLocationOnStartup() async {
+    try {
+      // First try to load default saved address
+      final savedAddresses = await AddressService.instance.getSavedAddresses();
+      final defaultAddress = savedAddresses.where((addr) => addr.isDefault).firstOrNull;
+
+      if (defaultAddress != null && mounted) {
+        setState(() {
+          _selectedLocation = '${defaultAddress.addressLine1}, ${defaultAddress.city}';
+        });
+        return;
+      }
+
+      // If no default address, try to get current location
+      final position = await LocationService.instance.getCurrentPosition();
+      if (position != null && position.latitude != null && position.longitude != null) {
+        final address = await LocationService.instance.getAddressFromCoordinates(
+          position.latitude!,
+          position.longitude!,
+        );
+
+        if (address != null && mounted) {
+          setState(() {
+            _selectedLocation = '${address['locality'] ?? ''}, ${address['administrativeArea'] ?? ''}';
+          });
+        }
+      }
+    } catch (e) {
+      print('Error getting location: $e');
+      if (mounted) {
+        setState(() {
+          _selectedLocation = 'Tirupattur, Tamil Nadu'; // Fallback
+        });
+      }
+    }
+  }
+
+  Future<void> _showLocationPicker() async {
+    // Prevent multiple clicks with immediate flag setting
+    if (_isLocationPickerOpen) return;
+
+    _isLocationPickerOpen = true;
+
+    try {
+      // First check if user has saved addresses
+      final savedAddresses = await AddressService.instance.getSavedAddresses();
+
+      if (savedAddresses.isNotEmpty) {
+        // Show address selection dialog if addresses exist
+        await showDialog(
+          context: context,
+          builder: (context) => AddressSelectionDialog(
+            currentLocation: _selectedLocation,
+            onLocationSelected: (selectedLocation) {
+              if (selectedLocation != _selectedLocation) {
+                setState(() {
+                  _selectedLocation = selectedLocation;
+                });
+
+                // Show confirmation
+                Helpers.showSnackBar(
+                  context,
+                  'Delivery address updated',
+                );
+              }
+            },
+          ),
+        );
+      } else {
+        // If no saved addresses, open map picker to add first address
+        final selectedLocation = await Navigator.push<String>(
+          context,
+          MaterialPageRoute(
+            builder: (context) => GoogleMapsLocationPickerScreen(
+              currentLocation: _selectedLocation,
+            ),
+          ),
+        );
+
+        if (selectedLocation != null && selectedLocation != _selectedLocation) {
+          setState(() {
+            _selectedLocation = selectedLocation;
+          });
+
+          // Show confirmation
+          Helpers.showSnackBar(
+            context,
+            'Location updated to $selectedLocation',
+          );
+        }
+      }
+    } finally {
+      _isLocationPickerOpen = false;
+    }
   }
   
   Future<void> _loadDashboardData() async {
@@ -93,9 +197,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Color(0xFF8B5A96),
-              Color(0xFF6B4F72),
-              Color(0xFF5D4E75),
+              Color(0xFF4CAF50),
+              Color(0xFF388E3C),
+              Color(0xFF2E7D32),
             ],
           ),
         ),
@@ -112,14 +216,6 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                       _buildLocationSelector(),
                       const SizedBox(height: 20),
                       _buildServiceCategories(),
-                      const SizedBox(height: 24),
-                      _buildQuickActions(),
-                      const SizedBox(height: 24),
-                      _buildFeaturedShops(),
-                      const SizedBox(height: 24),
-                      _buildRecentOrders(),
-                      const SizedBox(height: 24),
-                      _buildPromotionalBanners(),
                     ],
                   ),
                 ),
@@ -212,56 +308,59 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   }
 
   Widget _buildLocationSelector() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.location_on,
-            color: VillageTheme.primaryGreen,
-            size: 24,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Deliver to',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: VillageTheme.secondaryText,
-                  ),
-                ),
-                Text(
-                  _selectedLocation,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: VillageTheme.primaryText,
-                  ),
-                ),
-              ],
+    return InkWell(
+      onTap: _showLocationPicker,
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.keyboard_arrow_down),
-            onPressed: () {
-              // TODO: Show location picker
-            },
-          ),
-        ],
+          ],
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.location_on,
+              color: VillageTheme.primaryGreen,
+              size: 24,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Deliver to',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: VillageTheme.secondaryText,
+                    ),
+                  ),
+                  Text(
+                    _selectedLocation,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: VillageTheme.primaryText,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.keyboard_arrow_down,
+              color: Colors.grey.shade600,
+              size: 20,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -395,7 +494,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             Icons.delivery_dining,
             VillageTheme.primaryGreen,
             () {
-              // TODO: Navigate to order tracking
+              Navigator.pushNamed(context, '/customer/orders');
             },
           ),
           _buildQuickAction(
@@ -547,8 +646,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => ShopDetailsScreen(
-                  shopId: shop?['id'] ?? 1,
+                builder: (context) => ShopCategoriesScreen(
+                  shopId: (shop?['id'] ?? 1).toString(),
+                  shopName: shop?['name'] ?? 'Shop',
                 ),
               ),
             );
@@ -648,7 +748,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             ),
             TextButton(
               onPressed: () {
-                // TODO: Navigate to order history
+                Navigator.pushNamed(context, '/customer/orders');
               },
               child: const Text(
                 'View All',
