@@ -59,6 +59,10 @@ export class SoundService {
     this.playSound('message');
   }
 
+  playNotificationSound(): void {
+    this.playSound('order');
+  }
+
   toggleSound(): boolean {
     this.soundEnabled = !this.soundEnabled;
     localStorage.setItem('soundEnabled', this.soundEnabled.toString());

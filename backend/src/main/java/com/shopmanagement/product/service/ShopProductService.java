@@ -325,8 +325,8 @@ public class ShopProductService {
         }
         
         if (category != null && !category.isEmpty()) {
-            spec = spec.and((root, query, cb) -> 
-                cb.equal(root.get("category"), category)
+            spec = spec.and((root, query, cb) ->
+                cb.equal(root.get("masterProduct").get("category").get("name"), category)
             );
         }
         
@@ -346,11 +346,20 @@ public class ShopProductService {
     
     public List<String> getShopProductCategories(Long shopId) {
         log.info("Fetching product categories for shop: {}", shopId);
-        
+
         Shop shop = shopRepository.findById(shopId)
                 .orElseThrow(() -> new ShopNotFoundException("Shop not found with id: " + shopId));
-        
+
         return shopProductRepository.findDistinctCategoriesByShop(shop);
+    }
+
+    public int getShopProductCountByCategory(Long shopId, String categoryName) {
+        log.info("Fetching product count for shop: {} and category: {}", shopId, categoryName);
+
+        Shop shop = shopRepository.findById(shopId)
+                .orElseThrow(() -> new ShopNotFoundException("Shop not found with id: " + shopId));
+
+        return shopProductRepository.countByShopAndCategory(shop, categoryName);
     }
 
     private void updateShopProductCount(Shop shop) {

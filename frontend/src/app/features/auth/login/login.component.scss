@@ -14,7 +14,7 @@
   justify-content: center;
   padding: 2rem 1rem;
   position: relative;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
   
   @media (max-width: 768px) {
     padding: 1rem 0.5rem;
@@ -190,12 +190,12 @@
     width: 80px;
     height: 80px;
     margin: 0 auto 1.5rem;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(135deg, #43e97b, #38f9d7);
     border-radius: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 10px 30px rgba(67, 233, 123, 0.3);
     animation: pulse 2s infinite;
     
     mat-icon {
@@ -209,7 +209,7 @@
     font-weight: 800;
     color: #2d3748;
     margin: 0 0 0.75rem 0;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(135deg, #43e97b, #38f9d7);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -287,8 +287,8 @@
     z-index: 2;
     
     &:hover {
-      color: #667eea;
-      background: rgba(102, 126, 234, 0.1);
+      color: #43e97b;
+      background: rgba(67, 233, 123, 0.1);
       transform: scale(1.1);
     }
     
@@ -329,14 +329,14 @@
   
   &:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: #43e97b;
     background: white;
-    box-shadow: 0 0 0 6px rgba(102, 126, 234, 0.15);
+    box-shadow: 0 0 0 6px rgba(67, 233, 123, 0.15);
     transform: translateY(-3px);
   }
   
   &:focus + .input-wrapper .input-icon {
-    color: #667eea;
+    color: #43e97b;
     transform: scale(1.1);
   }
   
@@ -416,7 +416,7 @@
   }
   
   .forgot-link {
-    color: #667eea;
+    color: #43e97b;
     text-decoration: none;
     font-weight: 600;
     font-size: 1rem;
@@ -425,8 +425,8 @@
     transition: all 0.3s ease;
     
     &:hover {
-      color: #764ba2;
-      background: rgba(102, 126, 234, 0.1);
+      color: #38f9d7;
+      background: rgba(67, 233, 123, 0.1);
       text-decoration: underline;
       transform: translateY(-1px);
     }
@@ -498,7 +498,7 @@
 .submit-button {
   width: 100%;
   padding: 1.25rem 2.5rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
   color: white;
   border: none;
   border-radius: 16px;
@@ -524,7 +524,7 @@
   
   &:hover:not(:disabled) {
     transform: translateY(-3px);
-    box-shadow: 0 15px 35px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 15px 35px rgba(67, 233, 123, 0.4);
     
     &::before {
       left: 100%;
@@ -600,24 +600,24 @@
     align-items: center;
     gap: 0.75rem;
     padding: 1rem 2rem;
-    background: rgba(102, 126, 234, 0.1);
-    color: #667eea;
+    background: rgba(67, 233, 123, 0.1);
+    color: #43e97b;
     text-decoration: none;
     border-radius: 12px;
     font-weight: 600;
     font-size: 1rem;
     transition: all 0.3s ease;
-    border: 2px solid rgba(102, 126, 234, 0.2);
+    border: 2px solid rgba(67, 233, 123, 0.2);
     
     mat-icon {
       font-size: 1.2rem;
     }
     
     &:hover {
-      background: rgba(102, 126, 234, 0.15);
-      border-color: rgba(102, 126, 234, 0.4);
+      background: rgba(67, 233, 123, 0.15);
+      border-color: rgba(67, 233, 123, 0.4);
       transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.2);
+      box-shadow: 0 6px 20px rgba(67, 233, 123, 0.2);
     }
   }
 }
@@ -661,7 +661,7 @@
         font-size: 1.8rem;
         width: 48px;
         height: 48px;
-        background: rgba(102, 126, 234, 0.1);
+        background: rgba(67, 233, 123, 0.1);
         border-radius: 12px;
         display: flex;
         align-items: center;
@@ -691,7 +691,7 @@
     }
     
     &.primary ::ng-deep .mat-card-content mat-icon {
-      color: #667eea;
+      color: #43e97b;
     }
     
     &.support ::ng-deep .mat-card-content mat-icon {
@@ -769,15 +769,15 @@
 // Custom Material Design Overrides
 ::ng-deep {
   .mat-checkbox-checked.mat-accent .mat-checkbox-background {
-    background-color: #667eea;
+    background-color: #43e97b;
   }
   
   .mat-checkbox-indeterminate.mat-accent .mat-checkbox-background {
-    background-color: #667eea;
+    background-color: #43e97b;
   }
   
   .mat-checkbox:not(.mat-checkbox-disabled).mat-accent .mat-checkbox-ripple .mat-ripple-element {
-    background-color: rgba(102, 126, 234, 0.15);
+    background-color: rgba(67, 233, 123, 0.15);
   }
 }
 
@@ -802,7 +802,7 @@
     gap: 0.75rem;
 
     .legal-link {
-      color: #667eea;
+      color: #43e97b;
       text-decoration: none;
       font-size: 0.875rem;
       font-weight: 500;
@@ -811,8 +811,8 @@
       transition: all 0.3s ease;
 
       &:hover {
-        color: #764ba2;
-        background: rgba(102, 126, 234, 0.1);
+        color: #38f9d7;
+        background: rgba(67, 233, 123, 0.1);
         text-decoration: underline;
       }
     }

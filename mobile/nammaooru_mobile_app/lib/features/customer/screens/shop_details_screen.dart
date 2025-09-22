@@ -9,6 +9,7 @@ import '../../../core/localization/app_localizations.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../core/utils/image_url_helper.dart';
 import 'cart_screen.dart';
+import 'shop_products_screen.dart';
 
 class ShopDetailsScreen extends StatefulWidget {
   final int shopId;
@@ -131,10 +132,22 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
   }
 
   void _onCategoryChanged(String category) {
-    setState(() {
-      _selectedCategory = category;
-    });
-    _loadProducts();
+    // Find the category name from the category data
+    final categoryItem = _categoryData.firstWhere(
+      (item) => item['key'] == category,
+      orElse: () => {'name': 'All Items', 'key': 'all'},
+    );
+
+    // Navigate to the new products screen with the selected category
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ShopProductsScreen(
+          shopId: widget.shopId.toString(),
+          categoryName: categoryItem['name'] ?? 'Products',
+        ),
+      ),
+    );
   }
 
   @override
@@ -624,7 +637,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
       sliver: SliverGrid(
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
-          childAspectRatio: 0.75,
+          childAspectRatio: 0.78,
           mainAxisSpacing: 16,
           crossAxisSpacing: 16,
         ),

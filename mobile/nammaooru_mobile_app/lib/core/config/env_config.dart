@@ -1,7 +1,7 @@
 class EnvConfig {
   // Base API Configuration
   // DEVELOPMENT: Local development
-  static const String baseUrl = 'http://10.0.2.2:8090'; // USB debugging - bypasses network issues
+  static const String baseUrl = 'http://192.168.1.9:8080';
   // static const String baseUrl = 'http://10.0.2.2:8080'; // Android emulator
 
   // PRODUCTION: Use your deployed server
@@ -12,7 +12,7 @@ class EnvConfig {
   static const String apiVersion = '';
   static const String fullApiUrl = '$baseUrl/api';
 
-  // Google Services
+  // Google Serviceswhen
   static const String googleMapsApiKey = 'YOUR_GOOGLE_MAPS_API_KEY';
   static const String googlePlacesApiKey = 'YOUR_GOOGLE_PLACES_API_KEY';
 
@@ -29,7 +29,8 @@ class EnvConfig {
   static const String fcmServerKey = 'YOUR_FCM_SERVER_KEY';
 
   // App Configuration
-  static const String appName = 'NammaOoru';
+  static const String appName = 'Namma Ooru Delivery';
+  static const String appZone = 'Thirupattur';
   static const String appVersion = '1.0.0';
   static const int appBuildNumber = 1;
 
@@ -45,14 +46,17 @@ class EnvConfig {
   static const int apiCacheDuration = 30; // minutes
   static const int locationCacheDuration = 5; // minutes
 
-  // Location Configuration
+  // Location Configuration - Thirupattur Zone
+  static const String defaultCity = 'Thirupattur';
+  static const String defaultState = 'Tamil Nadu';
+  static const String defaultZone = 'Thirupattur';
   static const double locationAccuracyThreshold = 10.0; // meters
   static const int locationUpdateInterval = 5000; // milliseconds
   static const int backgroundLocationInterval = 10000; // milliseconds
 
-  // Order Configuration
+  // Order Configuration - Thirupattur Zone
   static const int orderCancellationWindow = 5; // minutes
-  static const double deliveryRadiusKm = 25.0; // kilometers
+  static const double deliveryRadiusKm = 15.0; // kilometers within Thirupattur
   static const int maxOrderItems = 50;
   static const double minOrderAmount = 50.0; // rupees
 

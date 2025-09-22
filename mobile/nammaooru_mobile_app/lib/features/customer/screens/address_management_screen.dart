@@ -4,6 +4,9 @@ import '../../../core/constants/colors.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../core/storage/local_storage.dart';
 import '../../../services/address_api_service.dart';
+import 'google_maps_location_picker_screen.dart';
+import '../../../core/services/address_service.dart';
+import '../widgets/address_selection_dialog.dart';
 
 class AddressManagementScreen extends StatefulWidget {
   const AddressManagementScreen({super.key});
@@ -81,9 +84,15 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
       context: context,
       builder: (BuildContext context) {
         return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Container(
-            padding: const EdgeInsets.all(20),
+            constraints: const BoxConstraints(maxWidth: 400),
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
             child: Form(
               key: formKey,
               child: Column(
@@ -92,26 +101,60 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.add_location, color: AppColors.primary),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Add New Address',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(Icons.add_location, color: AppColors.primary, size: 24),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'Add New Address',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.close, color: Colors.black54),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.grey.shade100,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
                   TextFormField(
                     controller: labelController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Label (e.g., Home, Office)',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.label_outline),
+                      labelStyle: const TextStyle(color: Colors.black54),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppColors.primary),
+                      ),
+                      prefixIcon: Icon(Icons.label_outline, color: AppColors.primary),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
                     ),
+                    style: const TextStyle(color: Colors.black87),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter a label';
@@ -122,11 +165,26 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: addressController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Complete Address',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.location_on_outlined),
+                      labelStyle: const TextStyle(color: Colors.black54),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppColors.primary),
+                      ),
+                      prefixIcon: Icon(Icons.location_on_outlined, color: AppColors.primary),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
                     ),
+                    style: const TextStyle(color: Colors.black87),
                     maxLines: 2,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -138,60 +196,71 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: detailsController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Additional Details (Optional)',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.info_outline),
+                      labelStyle: const TextStyle(color: Colors.black54),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppColors.primary),
+                      ),
+                      prefixIcon: Icon(Icons.info_outline, color: AppColors.primary),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
                     ),
+                    style: const TextStyle(color: Colors.black87),
                     maxLines: 2,
                   ),
                   const SizedBox(height: 16),
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.blue.shade200),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.map_outlined, color: AppColors.primary, size: 20),
+                        Icon(Icons.map_outlined, color: Colors.blue.shade600, size: 20),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             'Tip: You can also pick location from map for accurate delivery',
                             style: TextStyle(
                               fontSize: 12,
-                              color: AppColors.primary,
+                              color: Colors.blue.shade700,
                             ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
                   Row(
                     children: [
                       Expanded(
                         child: TextButton(
                           onPressed: () => Navigator.of(context).pop(),
-                          child: const Text('Cancel'),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            _showMapPicker(labelController, addressController, detailsController);
-                          },
-                          icon: const Icon(Icons.map),
-                          label: const Text('Pick from Map'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.secondary,
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            'Cancel',
+                            style: TextStyle(color: Colors.black54, fontSize: 16),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () async {
@@ -206,8 +275,16 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 2,
                           ),
-                          child: const Text('Save'),
+                          child: const Text(
+                            'Save',
+                            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                          ),
                         ),
                       ),
                     ],
@@ -221,87 +298,47 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
     );
   }
 
-  void _showMapPicker(TextEditingController labelController, 
-                      TextEditingController addressController, 
-                      TextEditingController detailsController) {
+  void _showMapPicker(TextEditingController labelController,
+                      TextEditingController addressController,
+                      TextEditingController detailsController) async {
     Navigator.of(context).pop(); // Close the add dialog
-    
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog.fullscreen(
-          child: Scaffold(
-            appBar: AppBar(
-              title: const Text('Pick Location'),
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              actions: [
-                TextButton(
-                  onPressed: () async {
-                    // Simulate map location selection
-                    Navigator.of(context).pop();
-                    await _addAddressFromMap(
-                      'Selected Location',
-                      'Location from map: Chennai, Tamil Nadu',
-                      'Coordinates: 13.0827°N, 80.2707°E',
-                      13.0827,
-                      80.2707,
-                    );
-                  },
-                  child: const Text(
-                    'Confirm Location',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-            body: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.primary.withOpacity(0.1),
-                    AppColors.secondary.withOpacity(0.1),
-                  ],
-                ),
-              ),
-              child: const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.map, size: 100, color: Colors.grey),
-                    SizedBox(height: 20),
-                    Text(
-                      'Interactive Map View',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    SizedBox(height: 10),
-                    Text(
-                      'Drag to select your location',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    SizedBox(height: 20),
-                    Text(
-                      '📍 Current: Chennai, Tamil Nadu',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.blue,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+
+    try {
+      // First check if user has saved addresses
+      final savedAddresses = await AddressService.instance.getSavedAddresses();
+
+      if (savedAddresses.isNotEmpty) {
+        // Show address selection dialog if addresses exist
+        await showDialog(
+          context: context,
+          builder: (context) => AddressSelectionDialog(
+            currentLocation: '',
+            onLocationSelected: (selectedLocation) {
+              addressController.text = selectedLocation;
+              _showAddAddressDialog();
+            },
           ),
         );
-      },
-    );
+      } else {
+        // If no saved addresses, open map picker to add first address
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const GoogleMapsLocationPickerScreen(),
+          ),
+        );
+
+        if (result != null && mounted) {
+          // If user selected a location, show the add dialog again with the selected address
+          addressController.text = result;
+          _showAddAddressDialog();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Helpers.showSnackBar(context, 'Error opening location picker: $e', isError: true);
+      }
+    }
   }
 
   Future<void> _addAddress(String label, String address, String details) async {
@@ -420,6 +457,33 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
     }
   }
 
+  String _buildFullAddress(Map<String, dynamic> address) {
+    // Build full address from components
+    final List<String> parts = [];
+
+    // Add address line 1 (flat/house details)
+    if (address['addressLine1'] != null && address['addressLine1'].toString().isNotEmpty) {
+      parts.add(address['addressLine1']);
+    }
+
+    // Add address line 2 (area)
+    if (address['addressLine2'] != null && address['addressLine2'].toString().isNotEmpty) {
+      parts.add(address['addressLine2']);
+    }
+
+    // If fullAddress is provided, use it
+    if (address['fullAddress'] != null && address['fullAddress'].toString().isNotEmpty) {
+      return address['fullAddress'];
+    }
+
+    // Otherwise build from parts
+    if (parts.isEmpty && address['area'] != null) {
+      parts.add(address['area']);
+    }
+
+    return parts.join(', ');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -486,14 +550,14 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.location_off, size: 100, color: Colors.grey[300]),
+          Icon(Icons.location_off, size: 100, color: Colors.black54),
           const SizedBox(height: 20),
           const Text(
             'No Addresses Found',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.grey,
+              color: Colors.black,
             ),
           ),
           const SizedBox(height: 10),
@@ -501,7 +565,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
             'Add your delivery addresses to get started',
             style: TextStyle(
               fontSize: 16,
-              color: Colors.grey[600],
+              color: Colors.black87,
             ),
             textAlign: TextAlign.center,
           ),
@@ -521,7 +585,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
         borderRadius: BorderRadius.circular(12),
         border: isDefault
             ? Border.all(color: AppColors.primary, width: 2)
-            : Border.all(color: Colors.grey[300]!),
+            : Border.all(color: Colors.black26),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -546,7 +610,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
-                    address['label'] ?? 'Address',
+                    address['addressType'] ?? address['addressLabel'] ?? 'Home',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
@@ -616,17 +680,17 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        address['address'] ?? '',
+                        _buildFullAddress(address),
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary,
                         ),
                       ),
-                      if (address['details'] != null && address['details'].isNotEmpty) ...[
+                      if ((address['landmark'] ?? '').toString().isNotEmpty) ...[
                         const SizedBox(height: 4),
                         Text(
-                          address['details'],
+                          'Landmark: ${address['landmark']}',
                           style: TextStyle(
                             fontSize: 14,
                             color: AppColors.textSecondary,
@@ -643,8 +707,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            'Lat: ${address['latitude']?.toStringAsFixed(4)}, '
-                            'Lng: ${address['longitude']?.toStringAsFixed(4)}',
+                            '${address['city'] ?? 'Tirupattur'}, ${address['state'] ?? 'Tamil Nadu'}',
                             style: TextStyle(
                               fontSize: 12,
                               color: AppColors.textHint,
@@ -652,6 +715,27 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                           ),
                         ],
                       ),
+                      if ((address['postalCode'] ?? address['pincode'] ?? '').toString().isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.pin_drop,
+                              size: 14,
+                              color: AppColors.primary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Pincode: ${address['postalCode'] ?? address['pincode'] ?? ''}',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),

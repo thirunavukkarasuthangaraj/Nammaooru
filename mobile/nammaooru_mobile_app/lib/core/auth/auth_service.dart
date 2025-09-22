@@ -205,6 +205,14 @@ class AuthService {
   static Future<String?> getCurrentUserId() async {
     return await SecureStorage.getUserId();
   }
+
+  static Future<String?> getCurrentUserEmail() async {
+    return await SecureStorage.getUserEmail();
+  }
+
+  static Future<String?> getAuthToken() async {
+    return await SecureStorage.getAuthToken();
+  }
   
   static Future<AuthResult> refreshAuthToken() async {
     try {

@@ -186,6 +186,7 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
         children: [
           TextField(
             controller: _searchController,
+            textCapitalization: TextCapitalization.sentences,
             decoration: InputDecoration(
               hintText: 'Search products...',
               prefixIcon: const Icon(Icons.search),

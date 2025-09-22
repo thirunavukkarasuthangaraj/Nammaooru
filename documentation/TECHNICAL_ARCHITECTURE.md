@@ -2727,5 +2727,294 @@ Platform Revenue:
 - Super admin management interface
 - Integration with order assignment flow
 - Performance optimizations and caching strategy
+- v1.3: Added Firebase Notification System
+- Complete FCM integration across platforms
+- Real-time push notification architecture
+- Notification management and monitoring
+
+---
+
+## 🔔 Firebase Notification System
+
+### Architecture Overview
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                  Firebase Cloud Messaging (FCM)                 │
+│                      Notification System                        │
+└─────────────────────────────────────────────────────────────────┘
+
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│   Backend    │────►│   Firebase   │────►│   Clients    │
+│  Spring Boot │     │     FCM      │     │              │
+│              │     │              │     │ - Angular    │
+│ - Events     │     │ - Message    │     │ - Flutter    │
+│ - Triggers   │     │   Routing    │     │ - iOS/Android│
+│ - Token Mgmt │     │ - Delivery   │     │              │
+└──────────────┘     └──────────────┘     └──────────────┘
+```
+
+### Component Integration
+
+#### Backend Services
+```java
+FirebaseService.java
+├── sendNotificationToUser(userId, title, body)
+├── sendNotificationToShop(shopId, notification)
+├── sendBulkNotifications(tokens[], message)
+└── removeExpiredTokens()
+
+NotificationTriggerService.java
+├── onOrderPlaced(order) → Shop notification
+├── onOrderAccepted(order) → Customer notification
+├── onOrderStatusChange(order, status)
+├── onDeliveryAssignment(assignment) → Partner notification
+└── onPaymentSuccess(payment) → Confirmation notifications
+```
+
+#### Database Schema
+```sql
+-- FCM Token Management
+CREATE TABLE user_fcm_tokens (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    token VARCHAR(500) NOT NULL,
+    device_type VARCHAR(50),
+    device_info TEXT,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE INDEX idx_fcm_user_id ON user_fcm_tokens(user_id);
+CREATE INDEX idx_fcm_token ON user_fcm_tokens(token);
+CREATE INDEX idx_fcm_active ON user_fcm_tokens(is_active);
+```
+
+### Notification Flow Diagrams
+
+#### Order Notification Flow
+```
+Customer Places Order
+        │
+        ▼
+Backend Creates Order
+        │
+        ▼
+NotificationTriggerService.onOrderPlaced()
+        │
+        ├─────► FirebaseService.sendNotificationToShop()
+        │              │
+        │              ▼
+        │       Get Shop Owner FCM Tokens
+        │              │
+        │              ▼
+        │       Send via Firebase Admin SDK
+        │              │
+        │              ▼
+        │       Shop Owner Devices Receive Push
+        │
+        └─────► EmailService.sendOrderEmail()
+```
+
+#### Real-time Notification Updates
+```
+┌──────────────────────────────────────────────┐
+│           Shop Owner Dashboard               │
+│                                              │
+│  ┌────────────────────────────────────┐     │
+│  │    Notification Bell Icon 🔔       │     │
+│  │    Badge: 3 unread                 │     │
+│  └────────────────────────────────────┘     │
+│                    │                         │
+│                    ▼                         │
+│  ┌────────────────────────────────────┐     │
+│  │    Notification Center              │     │
+│  │                                     │     │
+│  │ • New Order #1234 - ₹500           │     │
+│  │ • Order #1233 Delivered            │     │
+│  │ • Order #1232 Cancelled            │     │
+│  └────────────────────────────────────┘     │
+└──────────────────────────────────────────────┘
+```
+
+### Frontend Implementation
+
+#### Angular Service Structure
+```typescript
+FirebaseService.ts
+├── requestPermission()
+├── getToken() → Register with backend
+├── onMessageReceived() → Handle foreground
+├── showNotification(title, body)
+└── debouncing → Prevent duplicates
+
+NotificationOrchestratorService.ts
+├── handleNotification(event)
+├── routeToChannel(firebase/email/sms)
+├── updateNotificationUI()
+└── syncWithBackend()
+```
+
+#### Flutter Mobile Implementation
+```dart
+FirebaseNotificationService.dart
+├── initialize()
+├── getToken() → Store in backend
+├── setupMessageHandlers()
+│   ├── onMessage → Foreground
+│   ├── onBackgroundMessage → Background
+│   └── onMessageOpenedApp → Tap action
+└── showLocalNotification()
+```
+
+### Notification Types & Templates
+
+| Event | Recipient | Title | Body | Priority |
+|-------|-----------|-------|------|----------|
+| Order Placed | Shop Owner | 🆕 New Order | Order #1234 from {customer} - ₹{amount} | High |
+| Order Accepted | Customer | ✅ Order Accepted | Your order is being prepared | High |
+| Out for Delivery | Customer | 🚚 Out for Delivery | Your order is on the way! | High |
+| Order Delivered | Customer | ✔️ Delivered | Order successfully delivered | Medium |
+| Order Cancelled | Both | ❌ Cancelled | Order #{id} has been cancelled | High |
+| Order Returned | Shop | ↩️ Returned | Order #{id} returned by customer | High |
+
+### Performance & Optimization
+
+#### Caching Strategy
+```yaml
+Token Cache:
+  - Redis cache for FCM tokens
+  - 15-minute TTL
+  - Reduces database queries
+
+Notification Queue:
+  - RabbitMQ for high volume
+  - Batch processing (500 max)
+  - Retry mechanism for failures
+
+Debouncing:
+  - 1-second minimum gap
+  - Prevents duplicate sounds
+  - Client-side implementation
+```
+
+#### Monitoring & Analytics
+```
+Metrics Tracked:
+- Delivery success rate
+- Token expiration rate
+- Click-through rate
+- Device type distribution
+- Peak notification hours
+
+Logging:
+- INFO: Notification sent to user {id}
+- WARN: FCM token expired for {id}
+- ERROR: Failed to deliver: {reason}
+```
+
+### Security Considerations
+
+1. **Token Security**
+   - Encrypted storage in database
+   - HTTPS-only transmission
+   - Regular token rotation
+
+2. **Authentication**
+   - JWT validation before token registration
+   - User-device binding
+   - Rate limiting on endpoints
+
+3. **Privacy**
+   - No sensitive data in notifications
+   - User preference management
+   - GDPR compliance for EU users
+
+### Configuration Files
+
+#### Firebase Configuration
+```json
+// firebase-service-account.json
+{
+  "type": "service_account",
+  "project_id": "grocery-5ecc5",
+  "private_key_id": "***",
+  "private_key": "***",
+  "client_email": "firebase-adminsdk@grocery-5ecc5.iam.gserviceaccount.com"
+}
+
+// google-services.json (Android)
+{
+  "project_info": {
+    "project_number": "368788713881",
+    "project_id": "grocery-5ecc5"
+  },
+  "client": [{
+    "client_info": {
+      "mobilesdk_app_id": "1:368788713881:android:7c1dba64bacddbfd866308",
+      "android_client_info": {
+        "package_name": "com.nammaooru.app"
+      }
+    }
+  }]
+}
+```
+
+### API Endpoints
+
+```yaml
+Notification APIs:
+  POST /api/firebase/register-token:
+    - Register FCM token
+    - Body: { token, deviceType, deviceInfo }
+
+  DELETE /api/firebase/unregister-token:
+    - Remove FCM token
+    - Body: { token }
+
+  POST /api/firebase/send-notification:
+    - Send manual notification
+    - Body: { userId, title, body, data }
+
+  GET /api/firebase/test-notification:
+    - Send test notification to logged user
+
+  GET /api/notifications/unread-count:
+    - Get unread notification count
+```
+
+### Troubleshooting Guide
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| No notifications received | Permission denied | Check browser/app permissions |
+| Duplicate sounds | Multiple listeners | Implement debouncing |
+| Token expired | Old token | Auto-refresh mechanism |
+| Service worker error | HTTPS required | Use HTTPS or localhost |
+| iOS not working | APNs not configured | Configure Apple Push Notification service |
+
+### Future Enhancements
+
+1. **Rich Notifications**
+   - Product images in notifications
+   - Action buttons (Accept/Reject)
+   - Custom notification sounds
+
+2. **Advanced Analytics**
+   - Conversion tracking
+   - A/B testing for messages
+   - User engagement metrics
+
+3. **Segmentation**
+   - Location-based notifications
+   - User preference targeting
+   - Scheduled campaigns
+
+4. **Additional Channels**
+   - WhatsApp Business API
+   - SMS fallback
+   - Email digest options
+
 
 This document serves as the definitive technical reference for the NammaOoru Shop Management System architecture.

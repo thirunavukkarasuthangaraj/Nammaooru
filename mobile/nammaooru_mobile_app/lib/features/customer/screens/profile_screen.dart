@@ -4,10 +4,12 @@ import 'package:go_router/go_router.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/auth/auth_service.dart';
 import '../../../core/constants/colors.dart';
+import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../core/services/cache_service.dart';
 import '../../../core/storage/local_storage.dart';
 import '../../../shared/widgets/language_selector.dart';
+import '../../../core/api/api_client.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -30,60 +32,103 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadUserProfile() async {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      
-      // Get basic auth info
-      final userId = authProvider.userId ?? 'Not Available';
-      final userRole = authProvider.userRole ?? 'CUSTOMER';
-      final isAuthenticated = authProvider.isAuthenticated;
-      
-      // Set default values for user data
-      String email = 'nammaoorucustomer@example.com';
-      String name = 'NammaOoru Customer';
-      String phoneNumber = '+91 98765 43210';
-      String username = userId.length > 5 ? userId : 'customer_${userId.substring(0, 4)}';
-      
-      // Try to get stored user data from secure storage or cache
-      final storedEmail = await LocalStorage.getString('user_email');
-      final storedName = await LocalStorage.getString('user_name');
-      final storedPhone = await LocalStorage.getString('user_phone');
-      final storedUsername = await LocalStorage.getString('user_username');
-      
-      if (storedEmail != null && storedEmail.isNotEmpty) email = storedEmail;
-      if (storedName != null && storedName.isNotEmpty) name = storedName;
-      if (storedPhone != null && storedPhone.isNotEmpty) phoneNumber = storedPhone;
-      if (storedUsername != null && storedUsername.isNotEmpty) username = storedUsername;
 
-      setState(() {
-        _userInfo = {
-          'userId': userId,
-          'userRole': userRole,
-          'email': email,
-          'name': name,
-          'phoneNumber': phoneNumber,
-          'username': username,
-          'isAuthenticated': isAuthenticated,
-          'loginTime': DateTime.now().toString(),
-          'accountCreated': 'NammaOoru Member since 2024',
-          'location': 'Chennai, Tamil Nadu',
-          'totalOrders': '0',
-          'membershipType': userRole == 'SHOP_OWNER' ? 'Shop Owner' : 'Customer',
-          'appVersion': '1.0.0',
-          'lastLogin': 'Just now',
-        };
-        _isLoading = false;
-      });
+      if (!authProvider.isAuthenticated) {
+        setState(() {
+          _isLoading = false;
+          _userInfo = {
+            'error': 'Not authenticated',
+            'name': 'Guest User',
+            'email': 'Please log in',
+          };
+        });
+        return;
+      }
 
-      // Try to get cached user data and merge it
+      // Fetch real user data from API
+      try {
+        final response = await ApiClient.get('/users/me');
+
+        if (response.statusCode == 200) {
+          final responseData = response.data;
+          if (responseData is Map<String, dynamic>) {
+            final statusCode = responseData['statusCode']?.toString();
+            final userData = responseData['data'];
+
+            if (statusCode == '0000' && userData != null) {
+              // Cache the user data
+              await LocalStorage.setMap('user_profile', userData);
+
+              setState(() {
+                _userInfo = {
+                  'userId': userData['id']?.toString() ?? 'N/A',
+                  'userRole': userData['role'] ?? 'CUSTOMER',
+                  'email': userData['email'] ?? 'N/A',
+                  'name': '${userData['firstName'] ?? ''} ${userData['lastName'] ?? ''}',
+                  'phoneNumber': userData['mobileNumber'] ?? 'N/A',
+                  'username': userData['username'] ?? 'N/A',
+                  'address': 'Chennai, Tamil Nadu', // Default for now
+                  'isAuthenticated': true,
+                  'loginTime': DateTime.now().toString(),
+                  'accountCreated': userData['createdAt'] ?? 'N/A',
+                  'location': 'Chennai, Tamil Nadu',
+                  'totalOrders': '0', // TODO: Get from orders API
+                  'membershipType': userData['role'] == 'SHOP_OWNER' ? 'Shop Owner' : 'Customer',
+                  'appVersion': '1.0.0',
+                  'lastLogin': userData['lastLoginAt'] ?? 'Just now',
+                  'isActive': userData['isActive'] ?? true,
+                  'department': userData['department'],
+                };
+                _isLoading = false;
+              });
+              return;
+            }
+          }
+        }
+      } catch (e) {
+        print('Error fetching user profile: $e');
+      }
+
+      // Fallback to cached data if API fails
       try {
         final cachedUserData = await LocalStorage.getMap('user_profile');
         if (cachedUserData.isNotEmpty) {
           setState(() {
-            _userInfo.addAll(cachedUserData);
+            _userInfo = {
+              'userId': cachedUserData['id']?.toString() ?? 'N/A',
+              'userRole': cachedUserData['role'] ?? 'CUSTOMER',
+              'email': cachedUserData['email'] ?? 'N/A',
+              'name': '${cachedUserData['firstName'] ?? ''} ${cachedUserData['lastName'] ?? ''}',
+              'phoneNumber': cachedUserData['mobileNumber'] ?? 'N/A',
+              'username': cachedUserData['username'] ?? 'N/A',
+              'address': 'Chennai, Tamil Nadu',
+              'isAuthenticated': true,
+              'totalOrders': '0',
+              'membershipType': cachedUserData['role'] == 'SHOP_OWNER' ? 'Shop Owner' : 'Customer',
+            };
+            _isLoading = false;
           });
+          return;
         }
       } catch (e) {
         print('No cached user data: $e');
       }
+
+      // Final fallback to basic auth data
+      setState(() {
+        _userInfo = {
+          'userId': authProvider.userId ?? 'N/A',
+          'userRole': authProvider.userRole ?? 'CUSTOMER',
+          'email': 'Email not available',
+          'name': 'User',
+          'phoneNumber': 'Phone not available',
+          'username': 'Username not available',
+          'address': 'Address not available',
+          'isAuthenticated': authProvider.isAuthenticated,
+          'membershipType': authProvider.userRole == 'SHOP_OWNER' ? 'Shop Owner' : 'Customer',
+        };
+        _isLoading = false;
+      });
       
     } catch (e) {
       setState(() {
@@ -168,16 +213,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF8B5A96),
-              Color(0xFF6B4F72),
-              Color(0xFF5D4E75),
-            ],
-          ),
+        decoration: BoxDecoration(
+          gradient: VillageTheme.primaryGradient,
         ),
         child: SafeArea(
           child: Column(
@@ -298,6 +335,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _buildDetailRow('Username', _userInfo['username'] ?? 'N/A'),
         _buildDetailRow('Email', _userInfo['email'] ?? 'N/A'),
         _buildDetailRow('Phone', _userInfo['phoneNumber'] ?? 'N/A'),
+        _buildDetailRow('Address', _userInfo['address'] ?? 'N/A'),
         _buildDetailRow('Role', _userInfo['userRole']?.toString().replaceAll('_', ' ') ?? 'Customer'),
         _buildDetailRow('Location', _userInfo['location'] ?? 'N/A'),
         _buildDetailRow('Account Status', _userInfo['accountCreated'] ?? 'N/A'),

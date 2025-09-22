@@ -16,7 +16,7 @@ dependencies:
   
   # Firebase
   firebase_core: ^2.24.2
-  # firebase_messaging: ^14.7.9  # Temporarily disabled for web build
+  firebase_messaging: ^14.7.9
   firebase_analytics: ^10.7.4
   
   # HTTP & API
@@ -39,10 +39,12 @@ dependencies:
   # Utils
   connectivity_plus: ^5.0.2
 
-  # Geolocation - temporarily disabled for build
-  # geolocator: ^10.1.0
-  # geocoding: ^2.1.1
+  # Geolocation & Maps
+  geocoding: ^2.1.1
   permission_handler: ^11.1.0
+  google_maps_flutter: ^2.5.0
+  location: ^5.0.3
+  google_places_flutter: ^2.0.9
   
   # Navigation
   go_router: ^12.1.3

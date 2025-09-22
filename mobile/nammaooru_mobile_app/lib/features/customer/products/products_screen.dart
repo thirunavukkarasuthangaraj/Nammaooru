@@ -179,6 +179,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
       padding: const EdgeInsets.all(16),
       child: TextField(
         controller: _searchController,
+        textCapitalization: TextCapitalization.sentences,
         decoration: InputDecoration(
           hintText: 'Search products...',
           prefixIcon: const Icon(Icons.search),

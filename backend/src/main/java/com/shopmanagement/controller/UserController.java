@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.security.core.Authentication;
 
 import java.util.List;
 import java.util.Map;
@@ -34,7 +35,7 @@ import java.util.Map;
 public class UserController {
     
     private final UserService userService;
-    
+
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<UserResponse>> createUser(@Valid @RequestBody UserRequest request) {
@@ -42,7 +43,25 @@ public class UserController {
         UserResponse response = userService.createUser(request);
         return ResponseUtil.created(response, "User created successfully");
     }
-    
+
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<UserResponse>> getCurrentUser(Authentication authentication) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                log.error("User not authenticated for profile fetch");
+                return ResponseUtil.error("User must be authenticated to get profile");
+            }
+
+            String username = authentication.getName();
+            log.info("Fetching current user profile: {}", username);
+            UserResponse response = userService.getUserByUsername(username);
+            return ResponseUtil.success(response, "Profile retrieved successfully");
+        } catch (Exception e) {
+            log.error("Error fetching current user profile", e);
+            return ResponseUtil.error("Failed to fetch profile");
+        }
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN') or #id == authentication.principal.id")
     public ResponseEntity<ApiResponse<UserResponse>> getUserById(@PathVariable Long id) {

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Modern food delivery app colors inspired by Zomato/Swiggy
-  static const Color primary = Color(0xFFE23744); // Zomato red
-  static const Color primaryDark = Color(0xFFCB202D);
-  static const Color primaryLight = Color(0xFFFF6B75);
+  // Modern food delivery app colors - Green theme
+  static const Color primary = Color(0xFF4CAF50); // Green primary
+  static const Color primaryDark = Color(0xFF388E3C);
+  static const Color primaryLight = Color(0xFF81C784);
   static const Color secondary = Color(0xFFFC8019); // Swiggy orange
   static const Color accent = Color(0xFF00AC4F); // Green for success/healthy
   

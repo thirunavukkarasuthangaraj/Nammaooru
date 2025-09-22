@@ -117,6 +117,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     
     @Query("SELECT DISTINCT o FROM Order o LEFT JOIN FETCH o.orderItems LEFT JOIN FETCH o.customer LEFT JOIN FETCH o.shop WHERE o.status = :status")
     Page<Order> findByStatusWithOrderItems(@Param("status") Order.OrderStatus status, Pageable pageable);
+
+    @Query("SELECT DISTINCT o FROM Order o LEFT JOIN FETCH o.orderItems LEFT JOIN FETCH o.customer LEFT JOIN FETCH o.shop WHERE o.customer.id = :customerId AND o.status = :status")
+    Page<Order> findByCustomerIdAndStatusWithOrderItems(@Param("customerId") Long customerId, @Param("status") Order.OrderStatus status, Pageable pageable);
     
     @Query("SELECT DISTINCT o FROM Order o LEFT JOIN FETCH o.orderItems LEFT JOIN FETCH o.customer LEFT JOIN FETCH o.shop WHERE " +
            "LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +

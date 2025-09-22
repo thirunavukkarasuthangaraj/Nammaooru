@@ -128,4 +128,7 @@ public interface ShopProductRepository extends JpaRepository<ShopProduct, Long>,
     // Category queries for customers
     @Query("SELECT DISTINCT COALESCE(sp.customName, sp.masterProduct.category.name) FROM ShopProduct sp WHERE sp.shop = :shop AND sp.isAvailable = true")
     List<String> findDistinctCategoriesByShop(@Param("shop") Shop shop);
+
+    @Query("SELECT COUNT(sp) FROM ShopProduct sp WHERE sp.shop = :shop AND sp.masterProduct.category.name = :categoryName AND sp.isAvailable = true")
+    int countByShopAndCategory(@Param("shop") Shop shop, @Param("categoryName") String categoryName);
 }

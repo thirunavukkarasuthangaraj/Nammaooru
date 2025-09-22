@@ -32,25 +32,33 @@ class Order {
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
+    // Use estimatedDeliveryTime as orderDate if orderDate is not available
+    DateTime parseDate(String? dateStr) {
+      if (dateStr == null || dateStr.isEmpty) return DateTime.now();
+      try {
+        return DateTime.parse(dateStr);
+      } catch (e) {
+        return DateTime.now();
+      }
+    }
+
     return Order(
       id: json['id']?.toString() ?? '',
       orderNumber: json['orderNumber'] ?? '',
-      orderDate: DateTime.parse(json['orderDate'] ?? DateTime.now().toIso8601String()),
+      orderDate: parseDate(json['orderDate'] ?? json['estimatedDeliveryTime']),
       status: json['status'] ?? 'PENDING',
       totalAmount: (json['totalAmount'] ?? 0).toDouble(),
       paymentMethod: json['paymentMethod'] ?? 'CASH_ON_DELIVERY',
       paymentStatus: json['paymentStatus'] ?? 'PENDING',
-      items: (json['items'] as List<dynamic>? ?? [])
+      items: (json['orderItems'] as List<dynamic>? ?? [])
           .map((item) => OrderItem.fromJson(item as Map<String, dynamic>))
           .toList(),
-      deliveryAddress: DeliveryAddress.fromJson(json['deliveryAddress'] ?? {}),
-      deliveryInstructions: json['deliveryInstructions'],
+      deliveryAddress: DeliveryAddress.fromBackendJson(json),
+      deliveryInstructions: json['notes'],
       estimatedDeliveryTime: json['estimatedDeliveryTime'] != null
-          ? DateTime.parse(json['estimatedDeliveryTime'])
+          ? parseDate(json['estimatedDeliveryTime'])
           : null,
-      statusHistory: (json['statusHistory'] as List<dynamic>? ?? [])
-          .map((history) => OrderStatusHistory.fromJson(history as Map<String, dynamic>))
-          .toList(),
+      statusHistory: [], // Backend doesn't provide this in the current format
       trackingUrl: json['trackingUrl'],
       cancellationReason: json['cancellationReason'],
     );
@@ -182,6 +190,20 @@ class DeliveryAddress {
       state: json['state'] ?? '',
       pincode: json['pincode'] ?? '',
       type: json['type'] ?? 'HOME',
+    );
+  }
+
+  factory DeliveryAddress.fromBackendJson(Map<String, dynamic> json) {
+    return DeliveryAddress(
+      name: json['customerName'] ?? '',
+      phone: json['customerPhone'] ?? '',
+      addressLine1: json['deliveryAddress'] ?? '',
+      addressLine2: '',
+      landmark: json['deliveryLandmark'] ?? '',
+      city: json['deliveryCity'] ?? '',
+      state: json['deliveryState'] ?? '',
+      pincode: json['deliveryPincode'] ?? '',
+      type: 'HOME',
     );
   }
 

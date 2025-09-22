@@ -11,10 +11,10 @@ class NotificationApiService {
 
   static NotificationApiService get instance => _instance;
 
-  final String _baseUrl = EnvConfig.apiBaseUrl;
+  final String _baseUrl = EnvConfig.fullApiUrl;
 
   Future<Map<String, String>> _getHeaders() async {
-    final token = await AuthService.getToken();
+    final token = await AuthService.getAuthToken();
     return {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
@@ -41,7 +41,7 @@ class NotificationApiService {
       if (type != null) queryParams['type'] = type;
       if (isRead != null) queryParams['isRead'] = isRead.toString();
 
-      final uri = Uri.parse('$_baseUrl/api/customer/notifications')
+      final uri = Uri.parse('$_baseUrl/customer/notifications')
           .replace(queryParameters: queryParams);
 
       final response = await http.get(uri, headers: headers);
@@ -75,7 +75,7 @@ class NotificationApiService {
       final headers = await _getHeaders();
 
       final response = await http.put(
-        Uri.parse('$_baseUrl/api/customer/notifications/$notificationId/read'),
+        Uri.parse('$_baseUrl/customer/notifications/$notificationId/read'),
         headers: headers,
       );
 
@@ -107,7 +107,7 @@ class NotificationApiService {
       final headers = await _getHeaders();
 
       final response = await http.put(
-        Uri.parse('$_baseUrl/api/customer/notifications/mark-all-read'),
+        Uri.parse('$_baseUrl/customer/notifications/mark-all-read'),
         headers: headers,
       );
 
@@ -139,7 +139,7 @@ class NotificationApiService {
       final headers = await _getHeaders();
 
       final response = await http.delete(
-        Uri.parse('$_baseUrl/api/customer/notifications/$notificationId'),
+        Uri.parse('$_baseUrl/customer/notifications/$notificationId'),
         headers: headers,
       );
 
@@ -171,7 +171,7 @@ class NotificationApiService {
       final headers = await _getHeaders();
 
       final response = await http.get(
-        Uri.parse('$_baseUrl/api/customer/notifications/unread-count'),
+        Uri.parse('$_baseUrl/customer/notifications/unread-count'),
         headers: headers,
       );
 
@@ -186,6 +186,39 @@ class NotificationApiService {
         return {
           'statusCode': response.statusCode.toString(),
           'message': 'Failed to get unread count',
+          'data': null,
+        };
+      }
+    } catch (e) {
+      return {
+        'statusCode': '9999',
+        'message': 'Network error: ${e.toString()}',
+        'data': null,
+      };
+    }
+  }
+
+  /// Update FCM token for push notifications
+  Future<Map<String, dynamic>> updateFcmToken(String fcmToken) async {
+    try {
+      final headers = await _getHeaders();
+
+      final response = await http.post(
+        Uri.parse('$_baseUrl/customer/notifications/fcm-token'),
+        headers: headers,
+        body: json.encode({'fcmToken': fcmToken}),
+      );
+
+      if (response.statusCode == 200) {
+        return {
+          'statusCode': '0000',
+          'message': 'FCM token updated successfully',
+          'data': null,
+        };
+      } else {
+        return {
+          'statusCode': response.statusCode.toString(),
+          'message': 'Failed to update FCM token',
           'data': null,
         };
       }

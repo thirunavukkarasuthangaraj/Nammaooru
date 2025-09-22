@@ -23,6 +23,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpMethod;
 
 import java.util.Arrays;
 import java.util.List;
@@ -75,6 +76,7 @@ public class SecurityConfig {
                                 "/api/delivery/partners/*/documents/**",
                                 "/api/delivery/partners/documents/*/view",
                                 "/api/delivery-fees/**",
+                                "/api/customer/shops/**",
                                 "/uploads/**",
                                 "/shops/**",
                                 "/delivery-partners/**",
@@ -85,6 +87,8 @@ public class SecurityConfig {
                                 "/webjars/**"
                         ).permitAll()
                         .requestMatchers("/api/delivery/partners/*/documents/upload").hasAnyRole("SUPER_ADMIN", "ADMIN", "DELIVERY_PARTNER")
+                        .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll() // Allow everyone to view products
+                        .requestMatchers("/api/products/**").authenticated() // Allow all authenticated users for all product operations
                         .requestMatchers("/api/super-admin/**").hasRole("SUPER_ADMIN")
                         .requestMatchers("/api/admin/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
                         .requestMatchers("/api/shops/approvals/**").hasAnyRole("SUPER_ADMIN", "ADMIN")

@@ -21,8 +21,8 @@ class AppTheme {
         error: VillageTheme.errorRed,
         onPrimary: Colors.white,
         onSecondary: Colors.white,
-        onSurface: VillageTheme.primaryText,
-        onBackground: VillageTheme.primaryText,
+        onSurface: Colors.black,
+        onBackground: Colors.black,
         onError: Colors.white,
         outline: VillageTheme.primaryGreen.withOpacity(0.3),
       ),
@@ -90,7 +90,7 @@ class AppTheme {
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: VillageTheme.cardBackground,
         selectedItemColor: VillageTheme.primaryGreen,
-        unselectedItemColor: VillageTheme.secondaryText,
+        unselectedItemColor: Colors.black87,
         type: BottomNavigationBarType.fixed,
         elevation: 8,
         selectedLabelStyle: VillageTheme.bodySmall.copyWith(
@@ -116,7 +116,7 @@ class AppTheme {
       // Tab Bar Theme
       tabBarTheme: TabBarTheme(
         labelColor: VillageTheme.primaryGreen,
-        unselectedLabelColor: VillageTheme.secondaryText,
+        unselectedLabelColor: Colors.black87,
         indicator: UnderlineTabIndicator(
           borderSide: BorderSide(color: VillageTheme.primaryGreen, width: 3),
         ),
@@ -173,7 +173,7 @@ class AppTheme {
         ),
         titleTextStyle: VillageTheme.headingMedium,
         contentTextStyle: VillageTheme.bodyMedium.copyWith(
-          color: VillageTheme.secondaryText,
+          color: Colors.black,
         ),
       ),
 
@@ -196,13 +196,13 @@ class AppTheme {
           if (states.contains(MaterialState.selected)) {
             return VillageTheme.primaryGreen;
           }
-          return VillageTheme.secondaryText;
+          return Colors.black87;
         }),
         trackColor: MaterialStateProperty.resolveWith<Color>((states) {
           if (states.contains(MaterialState.selected)) {
             return VillageTheme.primaryGreen.withOpacity(0.5);
           }
-          return VillageTheme.hintText;
+          return Colors.black54;
         }),
       ),
 
@@ -226,7 +226,7 @@ class AppTheme {
           if (states.contains(MaterialState.selected)) {
             return VillageTheme.primaryGreen;
           }
-          return VillageTheme.secondaryText;
+          return Colors.black87;
         }),
       ),
     );

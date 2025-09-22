@@ -150,6 +150,23 @@ class ShopApiService {
     }
   }
 
+  // Get Shop Categories
+  Future<Map<String, dynamic>> getShopCategories(int shopId) async {
+    try {
+      Logger.api('Fetching shop categories: $shopId');
+
+      final response = await _apiService.get(
+        '/customer/shops/$shopId/categories',
+        includeAuth: true,
+      );
+
+      return response;
+    } catch (e) {
+      Logger.e('Failed to fetch shop categories', 'SHOP', e);
+      rethrow;
+    }
+  }
+
   // Get Available Cities
   Future<Map<String, dynamic>> getCities() async {
     try {
@@ -180,14 +197,19 @@ class ShopApiService {
     String sortDir = 'asc',
   }) async {
     try {
-      Logger.api('Fetching shop products: $shopId');
-      
+      Logger.api('Fetching shop products: $shopId with category: $category');
+
       final queryParams = <String, String>{
         'page': page.toString(),
         'size': size.toString(),
       };
-      
-      if (category != null) queryParams['category'] = category;
+
+      if (category != null) {
+        queryParams['category'] = category;
+        Logger.api('Added category parameter: $category');
+      } else {
+        Logger.api('No category parameter - category is null');
+      }
       if (minPrice != null) queryParams['minPrice'] = minPrice.toString();
       if (maxPrice != null) queryParams['maxPrice'] = maxPrice.toString();
       if (inStock != null) queryParams['inStock'] = inStock.toString();

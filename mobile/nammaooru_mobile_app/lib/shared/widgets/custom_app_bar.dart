@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/colors.dart';
+import '../../core/theme/village_theme.dart';
 
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
@@ -33,7 +34,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           color: foregroundColor ?? Colors.white,
         ),
       ),
-      backgroundColor: backgroundColor ?? AppColors.primary,
+      backgroundColor: backgroundColor ?? VillageTheme.primaryGreen,
       foregroundColor: foregroundColor ?? Colors.white,
       elevation: elevation,
       centerTitle: centerTitle,
@@ -88,7 +89,7 @@ class CustomSliverAppBar extends StatelessWidget {
           color: foregroundColor ?? Colors.white,
         ),
       ),
-      backgroundColor: backgroundColor ?? AppColors.primary,
+      backgroundColor: backgroundColor ?? VillageTheme.primaryGreen,
       foregroundColor: foregroundColor ?? Colors.white,
       expandedHeight: expandedHeight,
       pinned: pinned,

@@ -1,6 +1,7 @@
 package com.shopmanagement.customer.controller;
 
 import com.shopmanagement.common.dto.ApiResponse;
+import com.shopmanagement.dto.customer.CategoryResponse;
 import com.shopmanagement.product.dto.ShopProductResponse;
 import com.shopmanagement.product.service.ShopProductService;
 import com.shopmanagement.shop.dto.ShopResponse;
@@ -56,7 +57,7 @@ public class CustomerShopController {
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String category) {
         
-        log.info("Customer fetching products for shop: {} - page: {}, size: {}", shopId, page, size);
+        log.info("Customer fetching products for shop: {} - page: {}, size: {}, category: {}, search: {}", shopId, page, size, category, search);
         
         Pageable pageable = PageRequest.of(page, size, Sort.by("isFeatured").descending().and(Sort.by("customName")));
         
@@ -78,10 +79,91 @@ public class CustomerShopController {
     }
 
     @GetMapping("/shops/{shopId}/categories")
-    public ResponseEntity<ApiResponse<List<String>>> getShopCategories(@PathVariable Long shopId) {
+    public ResponseEntity<ApiResponse<List<CategoryResponse>>> getShopCategories(@PathVariable Long shopId) {
         log.info("Customer fetching categories for shop: {}", shopId);
-        
-        List<String> categories = shopProductService.getShopProductCategories(shopId);
+
+        List<String> categoryNames = shopProductService.getShopProductCategories(shopId);
+        List<CategoryResponse> categories = categoryNames.stream()
+                .map(categoryName -> createCategoryResponse(categoryName, shopId))
+                .toList();
+
         return ResponseEntity.ok(ApiResponse.success(categories, "Categories fetched successfully"));
+    }
+
+    private CategoryResponse createCategoryResponse(String categoryName, Long shopId) {
+        CategoryResponse category = new CategoryResponse();
+        category.setId(String.valueOf(categoryName.hashCode())); // Simple ID generation
+        category.setName(categoryName);
+
+        // Add Tamil translations for common categories
+        String displayName = getCategoryDisplayName(categoryName);
+        category.setDisplayName(displayName);
+        category.setDescription("Products in " + categoryName + " category");
+
+        // Get actual product count for this category in this shop
+        int productCount = shopProductService.getShopProductCountByCategory(shopId, categoryName);
+        category.setProductCount(productCount);
+
+        category.setIcon(getCategoryIcon(categoryName));
+        category.setColor(getCategoryColor(categoryName));
+
+        return category;
+    }
+
+    private String getCategoryDisplayName(String categoryName) {
+        switch (categoryName.toLowerCase()) {
+            case "grocery":
+                return "மளிகை / Grocery";
+            case "vegetables":
+                return "காய்கறிகள் / Vegetables";
+            case "fruits":
+                return "பழங்கள் / Fruits";
+            case "dairy":
+                return "பால் & முட்டை / Dairy";
+            case "medicine":
+                return "மருந்து / Medicine";
+            case "rice":
+                return "அரிசி & தானியங்கள் / Rice & Grains";
+            default:
+                return categoryName;
+        }
+    }
+
+    private String getCategoryIcon(String categoryName) {
+        switch (categoryName.toLowerCase()) {
+            case "grocery":
+                return "shopping_bag";
+            case "vegetables":
+                return "eco";
+            case "fruits":
+                return "apple";
+            case "dairy":
+                return "egg";
+            case "medicine":
+                return "medical_services";
+            case "rice":
+                return "rice_bowl";
+            default:
+                return "category";
+        }
+    }
+
+    private String getCategoryColor(String categoryName) {
+        switch (categoryName.toLowerCase()) {
+            case "grocery":
+                return "#4CAF50";
+            case "vegetables":
+                return "#4CAF50";
+            case "fruits":
+                return "#FF9800";
+            case "dairy":
+                return "#2196F3";
+            case "medicine":
+                return "#F44336";
+            case "rice":
+                return "#FFC107";
+            default:
+                return "#4CAF50";
+        }
     }
 }

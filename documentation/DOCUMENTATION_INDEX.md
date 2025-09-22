@@ -9,6 +9,8 @@ This documentation covers everything you need to know about the NammaOoru Shop M
 | Document | Description | When to Use |
 |----------|-------------|-------------|
 | [📖 Main README](README.md) | Complete application overview, features, recent updates | Project overview and current status |
+| [🏗️ Technical Architecture](TECHNICAL_ARCHITECTURE.md) | System architecture, database schema, component design | Understanding system design |
+| [🔔 Firebase Notifications](FIREBASE_NOTIFICATION_SYSTEM.md) | Complete Firebase FCM implementation guide | Setting up push notifications |
 | [🛍️ Customer & Shop Owner Flows](CUSTOMER_SHOP_OWNER_FLOWS.md) | Complete e-commerce flow implementation details | Understanding customer/shop owner features |
 | [📧 Email Configuration](EMAIL_CONFIGURATION.md) | SMTP setup, OTP emails, Hostinger config | When email isn't working |
 | [🚀 Deployment Guide](DEPLOYMENT_GUIDE.md) | Server setup, Docker, why we faced issues | When deploying or rebuilding |
@@ -246,11 +248,55 @@ Keep this documentation updated. Your future self (and your team) will appreciat
 ---
 
 **Created**: January 2025
-**Last Updated**: September 2025 - After implementing Delivery Partner Document Management System
-**Status**: ✅ All systems operational with full e-commerce functionality and delivery partner document management
-**Next Review**: When additional delivery features are added
+**Last Updated**: January 2025 - After implementing Firebase Notification System
+**Status**: ✅ All systems operational with full e-commerce functionality, delivery partner document management, and real-time notifications
+**Next Review**: When additional features are added
 
 ## 🎉 Recent Major Updates (January 2025)
+
+### 🔔 Firebase Push Notification System Implementation
+
+We've successfully implemented a comprehensive Firebase Cloud Messaging (FCM) system for real-time push notifications across all platforms:
+
+#### Key Features Implemented
+- **Multi-Platform Support**: Push notifications working on Web (Angular), Mobile (Flutter), and iOS/Android
+- **Real-time Order Notifications**: Instant alerts for new orders, status changes, cancellations, and returns
+- **Shop Owner Dashboard Integration**: Notification bell with unread count badge on dashboard
+- **Notification Center**: Comprehensive notification management interface with filtering and actions
+- **Smart Debouncing**: Prevents duplicate notification sounds with 1-second debouncing
+- **Auto-refresh**: Notifications update every 30 seconds automatically
+
+#### Technical Implementation
+- **Backend Services**:
+  - `FirebaseService.java` - Core FCM integration with Firebase Admin SDK
+  - `NotificationTriggerService.java` - Event-based automatic notifications
+  - `UserFcmToken` entity - Token management and device tracking
+
+- **Frontend Components**:
+  - `FirebaseService.ts` - Angular FCM service with browser notifications
+  - `NotificationOrchestratorService.ts` - Multi-channel notification routing
+  - `firebase-messaging-sw.js` - Service worker for background notifications
+
+- **Mobile Integration**:
+  - `FirebaseNotificationService.dart` - Flutter FCM implementation
+  - `google-services.json` - Android configuration
+  - Background and foreground message handling
+
+#### Notification Types
+- 🆕 New Order Received (High Priority - Action Required)
+- ✅ Order Accepted
+- 🚚 Out for Delivery
+- ✔️ Order Delivered
+- ❌ Order Cancelled
+- ↩️ Order Returned
+- 💰 Payment Confirmed
+
+#### Security & Performance
+- FCM tokens encrypted in database
+- 15-minute token cache for performance
+- Batch processing for bulk notifications (max 500)
+- Rate limiting and duplicate prevention
+- HTTPS-only transmission
 
 ### ✅ Complete Customer & Shop Owner Flow Implementation
 

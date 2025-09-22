@@ -185,6 +185,7 @@ class _CartScreenState extends State<CartScreen> {
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 16,
+                    color: Colors.black, // Changed to black
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -206,7 +207,7 @@ class _CartScreenState extends State<CartScreen> {
                         Helpers.formatCurrency(item.product.price),
                         style: const TextStyle(
                           decoration: TextDecoration.lineThrough,
-                          color: Colors.grey,
+                          color: Colors.black54, // Changed to darker gray
                           fontSize: 14,
                         ),
                       ),
@@ -228,7 +229,11 @@ class _CartScreenState extends State<CartScreen> {
                             onPressed: () {
                               cartProvider.decreaseQuantity(item.product.id);
                             },
-                            icon: const Icon(Icons.remove, size: 18),
+                            icon: const Icon(
+                              Icons.remove,
+                              size: 18,
+                              color: Colors.black, // Changed to black
+                            ),
                             constraints: const BoxConstraints(
                               minWidth: 32,
                               minHeight: 32,
@@ -241,6 +246,7 @@ class _CartScreenState extends State<CartScreen> {
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
+                                color: Colors.black, // Added black color
                               ),
                             ),
                           ),
@@ -250,7 +256,13 @@ class _CartScreenState extends State<CartScreen> {
                                     cartProvider.increaseQuantity(item.product.id);
                                   }
                                 : null,
-                            icon: const Icon(Icons.add, size: 18),
+                            icon: Icon(
+                              Icons.add,
+                              size: 18,
+                              color: item.quantity < item.product.stockQuantity
+                                  ? Colors.black  // Black when enabled
+                                  : Colors.black26, // Light black when disabled
+                            ),
                             constraints: const BoxConstraints(
                               minWidth: 32,
                               minHeight: 32,
@@ -398,6 +410,7 @@ class _CartScreenState extends State<CartScreen> {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
+              color: Colors.black, // Added black color
             ),
           ),
           const SizedBox(height: 16),
@@ -467,6 +480,7 @@ class _CartScreenState extends State<CartScreen> {
             style: TextStyle(
               fontSize: isTotal ? 16 : 14,
               fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+              color: Colors.black, // Added black color
             ),
           ),
           Text(

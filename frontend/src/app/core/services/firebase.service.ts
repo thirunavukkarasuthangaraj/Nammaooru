@@ -10,6 +10,8 @@ export class FirebaseService {
   currentMessage = new BehaviorSubject<any>(null);
   private isSupported = false;
   private currentToken: string | null = null;
+  private lastNotificationTime = 0;
+  private notificationDebounceTime = 1000; // Prevent duplicate notifications within 1 second
 
   constructor(private angularFireMessaging: AngularFireMessaging) {
     this.checkSupport();
@@ -74,6 +76,14 @@ export class FirebaseService {
   }
 
   showNotification(title: string, options?: any): void {
+    // Prevent duplicate notifications
+    const now = Date.now();
+    if (now - this.lastNotificationTime < this.notificationDebounceTime) {
+      console.log('Notification debounced to prevent duplicate sound');
+      return;
+    }
+    this.lastNotificationTime = now;
+
     const body = typeof options === 'string' ? options : options?.body || '';
     const icon = typeof options === 'string' ? undefined : options?.icon;
     if (!this.isSupported) {

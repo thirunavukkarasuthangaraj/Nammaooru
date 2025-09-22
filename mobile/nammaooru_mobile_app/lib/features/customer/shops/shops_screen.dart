@@ -191,6 +191,7 @@ class _ShopsScreenState extends State<ShopsScreen> {
         child: TextField(
           controller: _searchController,
           style: VillageTheme.bodyLarge,
+          textCapitalization: TextCapitalization.sentences,
           decoration: InputDecoration(
             hintText: '🔍 ${loc?.search ?? "தேடல் / Search"} கடைகளை...',
             hintStyle: VillageTheme.bodyMedium.copyWith(color: VillageTheme.hintText),

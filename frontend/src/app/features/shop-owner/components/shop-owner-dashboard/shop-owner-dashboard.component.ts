@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { AuthService } from '@core/services/auth.service';
 import { ShopService } from '@core/services/shop.service';
 import { SoundService } from '@core/services/sound.service';
+import { OrderService } from '@core/services/order.service';
 import { User, UserRole } from '@core/models/auth.model';
 import { Shop } from '@core/models/shop.model';
 import { Observable, interval, Subscription } from 'rxjs';
@@ -20,6 +21,28 @@ import { Observable, interval, Subscription } from 'rxjs';
 
       <!-- Main Menu Cards -->
       <div class="main-menu-grid">
+        <!-- Notifications Card - NEW -->
+        <mat-card class="menu-card notifications-card" routerLink="/shop-owner/notifications">
+          <mat-card-content>
+            <div class="card-content">
+              <div class="card-icon notification-icon">
+                <mat-icon [matBadge]="unreadNotificationCount"
+                         [matBadgeHidden]="unreadNotificationCount === 0"
+                         matBadgeColor="warn"
+                         matBadgeSize="small">notifications</mat-icon>
+              </div>
+              <div class="card-info">
+                <h3 class="card-title">Notifications</h3>
+                <p class="card-description">View all order notifications and updates</p>
+                <div class="notification-status" *ngIf="unreadNotificationCount > 0">
+                  <span class="badge-unread">{{ unreadNotificationCount }} unread</span>
+                </div>
+              </div>
+              <mat-icon class="arrow-icon">arrow_forward_ios</mat-icon>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
         <!-- Shop Profile -->
         <mat-card class="menu-card profile-card" routerLink="/shop-owner/shop-profile">
           <mat-card-content>
@@ -134,9 +157,27 @@ import { Observable, interval, Subscription } from 'rxjs';
       box-shadow: 0 8px 24px rgba(0,0,0,0.15);
     }
 
+    .menu-card.notifications-card { border-left: 6px solid #e91e63; }
     .menu-card.profile-card { border-left: 6px solid #4caf50; }
     .menu-card.products-card { border-left: 6px solid #2196f3; }
     .menu-card.orders-card { border-left: 6px solid #ff9800; }
+
+    .notification-icon {
+      position: relative;
+    }
+
+    .notification-status {
+      margin-top: 8px;
+    }
+
+    .badge-unread {
+      background: #e91e63;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
 
     .card-content {
       display: flex;
@@ -318,7 +359,8 @@ import { Observable, interval, Subscription } from 'rxjs';
 export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
   currentUser$: Observable<User | null>;
   loading = false;
-  
+  unreadNotificationCount = 0;
+
   // Dashboard data from API
   todaysRevenue = 0;
   todaysOrders = 0;
@@ -330,20 +372,22 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
 
   recentOrders: any[] = [];
   lowStockProducts: any[] = [];
-  
+
   // Auto-refresh subscription
   private refreshSubscription?: Subscription;
 
   constructor(
     private authService: AuthService,
     private shopService: ShopService,
-    private soundService: SoundService
+    private soundService: SoundService,
+    private orderService: OrderService
   ) {
     this.currentUser$ = this.authService.currentUser$;
   }
 
   ngOnInit(): void {
     this.loadDashboardData();
+    this.loadNotificationCount();
     this.startAutoRefresh();
   }
   
@@ -359,6 +403,39 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
     this.loadRecentOrders();
     this.loadLowStockProducts();
     this.loadCustomerStats();
+  }
+
+  private loadNotificationCount(): void {
+    const currentUser = this.authService.getCurrentUser();
+    if (currentUser?.shopId) {
+      this.orderService.getOrdersByShop(String(currentUser.shopId), 0, 50)
+        .subscribe({
+          next: (orderPage) => {
+            if (orderPage.data?.content) {
+              // Count pending orders and recent orders (last 24 hours) as unread
+              const pendingOrders = orderPage.data.content.filter((order: any) => order.status === 'PENDING');
+              const yesterday = new Date();
+              yesterday.setDate(yesterday.getDate() - 1);
+              const recentOrders = orderPage.data.content.filter((order: any) => {
+                const orderDate = new Date(order.createdAt);
+                return orderDate > yesterday;
+              });
+
+              // Use whichever count is higher
+              this.unreadNotificationCount = Math.max(pendingOrders.length, recentOrders.length);
+
+              // Play sound for new pending orders
+              if (pendingOrders.length > this.previousOrderCount && this.previousOrderCount > 0) {
+                this.soundService.playNotificationSound();
+              }
+              this.previousOrderCount = pendingOrders.length;
+            }
+          },
+          error: (error) => {
+            console.error('Error loading notification count:', error);
+          }
+        });
+    }
   }
 
   private loadTodaysStats(): void {
@@ -448,9 +525,10 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
     // Check for new orders every 30 seconds
     this.refreshSubscription = interval(30000).subscribe(() => {
       this.checkForNewOrders();
+      this.loadNotificationCount();
     });
   }
-  
+
   private checkForNewOrders(): void {
     // Store the previous order count
     const previousCount = this.recentOrders.length;

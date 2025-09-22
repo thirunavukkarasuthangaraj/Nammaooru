@@ -252,7 +252,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                       'Enter 6-digit code',
                       style: TextStyle(
                         fontSize: 14,
-                        color: AppColors.textSecondary,
+                        color: Colors.black,
                         fontWeight: FontWeight.w500,
                       ),
                       textAlign: TextAlign.center,
@@ -319,7 +319,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
           'Enter Verification Code',
           style: TextStyle(
             fontSize: 16,
-            color: Color(0xFF7F8C8D),
+            color: Colors.black87,
           ),
           textAlign: TextAlign.center,
         ),
@@ -328,7 +328,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
           'We sent a 6-digit code to ${widget.email}',
           style: const TextStyle(
             fontSize: 14,
-            color: Color(0xFF95A5A6),
+            color: Colors.black54,
             height: 1.4,
           ),
           textAlign: TextAlign.center,
@@ -380,9 +380,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w600,
-                color: _otpControllers[index].text.isNotEmpty 
-                    ? AppColors.primary 
-                    : AppColors.textSecondary,
+                color: _otpControllers[index].text.isNotEmpty
+                    ? AppColors.primary
+                    : Colors.black,
               ),
               decoration: const InputDecoration(
                 counterText: '',
@@ -413,7 +413,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         Text(
           'Code expires in',
           style: TextStyle(
-            color: AppColors.textSecondary,
+            color: Colors.black,
             fontSize: 14,
           ),
         ),
@@ -456,7 +456,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       child: const Text(
         'Change Email Address',
         style: TextStyle(
-          color: AppColors.textSecondary,
+          color: Colors.black,
           fontSize: 14,
           decoration: TextDecoration.underline,
         ),

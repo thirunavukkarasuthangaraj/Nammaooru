@@ -107,7 +107,7 @@ class _SupportTicketsScreenState extends State<SupportTicketsScreen> {
             Icon(
               Icons.support_agent,
               size: 80,
-              color: Colors.grey[400],
+              color: Colors.black54,
             ),
             const SizedBox(height: 24),
             Text(
@@ -115,7 +115,7 @@ class _SupportTicketsScreenState extends State<SupportTicketsScreen> {
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.grey[600],
+                color: Colors.black87,
               ),
             ),
             const SizedBox(height: 8),
@@ -123,7 +123,7 @@ class _SupportTicketsScreenState extends State<SupportTicketsScreen> {
               'You haven\'t created any support tickets yet.',
               style: TextStyle(
                 fontSize: 16,
-                color: Colors.grey[500],
+                color: Colors.black87,
               ),
               textAlign: TextAlign.center,
             ),

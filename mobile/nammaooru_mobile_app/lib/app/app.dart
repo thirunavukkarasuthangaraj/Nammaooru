@@ -12,7 +12,7 @@ class NammaOoruApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'NammaOoru',
+      title: 'Namma Ooru Delivery',
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,

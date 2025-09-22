@@ -189,9 +189,9 @@ class OrderService {
 
   Future<Map<String, dynamic>> cancelOrder(String orderId, String reason) async {
     try {
-      final response = await ApiClient.post(
+      final response = await ApiClient.put(
         '/customer/orders/$orderId/cancel',
-        data: {'reason': reason},
+        queryParameters: {'reason': reason},
         includeAuth: true,
       );
       

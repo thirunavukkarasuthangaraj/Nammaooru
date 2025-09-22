@@ -1,6 +1,6 @@
 class ApiEndpoints {
   // Base URL - Update this to match your backend
-  static const String baseUrl = 'http://localhost:8080/api';
+  static const String baseUrl = 'http://localhost:8090/api';
   static const String mobileBaseUrl = '$baseUrl/mobile/delivery-partner';
   
   // Authentication endpoints

@@ -4,7 +4,7 @@ class VillageTheme {
   // Modern color palette
   static const Color primaryGreen = Color(0xFF4CAF50); // Primary Green
   static const Color lightGreen = Color(0xFF81C784);   // Light Green variant
-  static const Color accentOrange = Color(0xFFFF9800); // Orange accent
+  static const Color accentOrange = Color(0xFF66BB6A); // Green accent
   static const Color warmYellow = Color(0xFFFFA726);   // Turmeric Yellow
   static const Color earthBrown = Color(0xFF8D6E63);   // Earth Brown
   static const Color skyBlue = Color(0xFF2196F3);      // Info Blue
@@ -25,10 +25,10 @@ class VillageTheme {
   static const Color surfaceColor = Color(0xFFF5F5F5);
   static const Color inputBackground = Color(0xFFF8F9FA);
   
-  // Text colors
-  static const Color primaryText = Color(0xFF212121);
-  static const Color secondaryText = Color(0xFF757575);
-  static const Color hintText = Color(0xFFBDBDBD);
+  // Text colors - All black for visibility
+  static const Color primaryText = Colors.black;
+  static const Color secondaryText = Colors.black87;
+  static const Color hintText = Colors.black54;
   
   // Status colors (matching delivery partner app)
   static const Color successGreen = Color(0xFF4CAF50);
@@ -48,22 +48,22 @@ class VillageTheme {
   static const Color textPrimary = primaryText;
   static const Color textSecondary = secondaryText;
   
-  // Text styles
+  // Text styles - All black for visibility
   static const TextStyle textSmall = TextStyle(
     fontSize: 12,
-    color: primaryText,
+    color: Colors.black,
     fontWeight: FontWeight.w400,
   );
-  
+
   static const TextStyle textMedium = TextStyle(
     fontSize: 14,
-    color: primaryText,
+    color: Colors.black,
     fontWeight: FontWeight.w500,
   );
-  
+
   static const TextStyle textLarge = TextStyle(
     fontSize: 16,
-    color: primaryText,
+    color: Colors.black,
     fontWeight: FontWeight.w600,
   );
   
@@ -102,42 +102,42 @@ class VillageTheme {
   static const TextStyle headingLarge = TextStyle(
     fontSize: 28,
     fontWeight: FontWeight.bold,
-    color: primaryText,
+    color: Colors.black,
     height: 1.2,
   );
-  
+
   static const TextStyle headingMedium = TextStyle(
     fontSize: 22,
     fontWeight: FontWeight.bold,
-    color: primaryText,
+    color: Colors.black,
     height: 1.3,
   );
-  
+
   static const TextStyle headingSmall = TextStyle(
     fontSize: 18,
     fontWeight: FontWeight.w600,
-    color: primaryText,
+    color: Colors.black,
     height: 1.4,
   );
   
   static const TextStyle bodyLarge = TextStyle(
     fontSize: 16,
     fontWeight: FontWeight.normal,
-    color: primaryText,
+    color: Colors.black,
     height: 1.5,
   );
-  
+
   static const TextStyle bodyMedium = TextStyle(
     fontSize: 14,
     fontWeight: FontWeight.normal,
-    color: primaryText,
+    color: Colors.black,
     height: 1.5,
   );
-  
+
   static const TextStyle bodySmall = TextStyle(
     fontSize: 12,
     fontWeight: FontWeight.normal,
-    color: secondaryText,
+    color: Colors.black87,
     height: 1.4,
   );
   
@@ -151,7 +151,7 @@ class VillageTheme {
   static const TextStyle labelText = TextStyle(
     fontSize: 14,
     fontWeight: FontWeight.w500,
-    color: primaryText,
+    color: Colors.black,
     height: 1.3,
   );
 
@@ -188,7 +188,7 @@ class VillageTheme {
     textStyle: buttonText,
   );
 
-  // Input decoration theme
+  // Input decoration theme - Black text for visibility
   static InputDecorationTheme get inputDecorationTheme => InputDecorationTheme(
     filled: true,
     fillColor: cardBackground,
@@ -209,8 +209,8 @@ class VillageTheme {
       borderRadius: BorderRadius.circular(buttonRadius),
       borderSide: const BorderSide(color: errorRed, width: 2),
     ),
-    labelStyle: labelText,
-    hintStyle: bodyMedium.copyWith(color: hintText),
+    labelStyle: labelText.copyWith(color: Colors.black),
+    hintStyle: bodyMedium.copyWith(color: Colors.black54),
   );
 
   // Input text style for black text
@@ -385,18 +385,18 @@ class VillageWidgets {
         onFieldSubmitted: onFieldSubmitted,
         style: const TextStyle(
           fontSize: 16,
-          color: VillageTheme.modernDark,
+          color: Colors.black,
         ),
         decoration: InputDecoration(
           hintText: hintText,
-          hintStyle: TextStyle(
-            color: Colors.grey[500],
+          hintStyle: const TextStyle(
+            color: Colors.black54,
             fontSize: 16,
           ),
           prefixIcon: prefixIcon != null
               ? Icon(
                   prefixIcon,
-                  color: Colors.grey[600],
+                  color: Colors.black54,
                   size: 20,
                 )
               : null,

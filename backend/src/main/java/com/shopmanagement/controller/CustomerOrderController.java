@@ -27,6 +27,7 @@ import com.shopmanagement.service.UserService;
 import com.shopmanagement.entity.User;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 
@@ -230,6 +231,7 @@ public class CustomerOrderController {
             @RequestParam(required = false) Long customerId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String status,
             Authentication authentication) {
         
         try {
@@ -258,9 +260,9 @@ public class CustomerOrderController {
                 }
             }
             
-            log.info("Getting orders for customer ID: {}", finalCustomerId);
-            
-            Page<OrderResponse> orders = orderService.getOrdersByCustomer(finalCustomerId, page, size);
+            log.info("Getting orders for customer ID: {} with status filter: {}", finalCustomerId, status);
+
+            Page<OrderResponse> orders = orderService.getOrdersByCustomer(finalCustomerId, page, size, status);
             
             return ResponseUtil.success(orders, "Orders retrieved successfully");
             
@@ -270,15 +272,16 @@ public class CustomerOrderController {
         }
     }
 
-    @PutMapping("/orders/{orderId}/cancel")
+    @PostMapping("/orders/{orderId}/cancel")
     public ResponseEntity<ApiResponse<OrderResponse>> cancelOrder(
             @PathVariable Long orderId,
-            @RequestParam String reason,
+            @RequestBody Map<String, String> requestBody,
             @RequestParam(required = false) String customerToken) {
         
         try {
+            String reason = requestBody.get("reason");
             log.info("Cancelling order ID: {} with reason: {}", orderId, reason);
-            
+
             OrderResponse order = orderService.cancelOrder(orderId, reason);
             
             // Send cancellation notification
@@ -303,17 +306,47 @@ public class CustomerOrderController {
             @PathVariable Long orderId,
             @RequestParam int rating,
             @RequestParam(required = false) String review) {
-        
+
         try {
             log.info("Rating order ID: {} with rating: {}", orderId, rating);
-            
+
             orderService.rateOrder(orderId, rating, review);
-            
+
             return ResponseUtil.success("Rating submitted successfully", "Order rated successfully");
-            
+
         } catch (Exception e) {
             log.error("Error rating order ID: {}", orderId, e);
             return ResponseUtil.error("Failed to submit rating");
+        }
+    }
+
+    @PostMapping("/orders/{orderId}/reorder")
+    public ResponseEntity<ApiResponse<String>> reorderItems(
+            @PathVariable Long orderId,
+            Authentication authentication) {
+
+        try {
+            log.info("Reordering items from order ID: {}", orderId);
+
+            // Get authenticated user
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseUtil.error("User must be authenticated to reorder");
+            }
+
+            String username = authentication.getName();
+            User authenticatedUser = userRepository.findByUsername(username).orElse(null);
+            if (authenticatedUser == null) {
+                return ResponseUtil.error("User not found");
+            }
+
+            // Call the service to add items from the order to the cart
+            String result = orderService.reorderItems(orderId, authenticatedUser.getId());
+
+            return ResponseUtil.success(result, "Items added to cart successfully");
+
+        } catch (Exception e) {
+            log.error("Error reordering from order ID: {}", orderId, e);
+            return ResponseUtil.error("Failed to add items to cart");
         }
     }
 }

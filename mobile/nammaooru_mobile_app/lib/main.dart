@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'app/app.dart';
 import 'core/auth/auth_provider.dart';
 import 'shared/providers/cart_provider.dart';
@@ -11,6 +12,7 @@ import 'core/api/api_client.dart';
 import 'core/api/api_service.dart';
 import 'core/services/api_service.dart' as services;
 import 'core/storage/local_storage.dart';
+import 'services/firebase_notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,8 +21,16 @@ void main() async {
   if (!kIsWeb) {
     try {
       await Firebase.initializeApp();
+
+      // Set up background message handler
+      FirebaseMessaging.onBackgroundMessage(FirebaseNotificationService.handleBackgroundMessage);
+
+      // Initialize Firebase notification service
+      await FirebaseNotificationService.initialize();
+
+      debugPrint('✅ Firebase and notifications initialized successfully');
     } catch (e) {
-      debugPrint('Firebase initialization failed: $e');
+      debugPrint('❌ Firebase initialization failed: $e');
     }
   } else {
     // For web, we can optionally initialize with web-specific config later

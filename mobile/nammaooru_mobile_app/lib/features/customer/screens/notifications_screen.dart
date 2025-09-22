@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../shared/models/notification_model.dart';
 import '../../../services/notification_api_service.dart';
+import '../../../services/firebase_notification_service.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../shared/widgets/loading_widget.dart';
@@ -22,6 +23,30 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   void initState() {
     super.initState();
     _loadNotifications();
+    _setupFirebaseListener();
+  }
+
+  void _setupFirebaseListener() {
+    // Listen for new Firebase notifications
+    FirebaseNotificationService.addListener((notification) {
+      if (mounted) {
+        setState(() {
+          // Add new notification to the top of the list
+          _notifications.insert(0, notification);
+          // Keep only latest 100 notifications
+          if (_notifications.length > 100) {
+            _notifications.removeAt(100);
+          }
+        });
+
+        // Show snackbar for new notification
+        Helpers.showSnackBar(
+          context,
+          '🔔 ${notification.title}',
+          isError: false,
+        );
+      }
+    });
   }
 
   Future<void> _loadNotifications() async {
@@ -39,6 +64,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         if (notificationsData is List) {
           setState(() {
             _notifications = _notificationApi.parseNotifications(notificationsData);
+
+            // Merge with Firebase local notifications (avoid duplicates)
+            final firebaseNotifications = FirebaseNotificationService.getLocalNotifications();
+            for (final fbNotification in firebaseNotifications) {
+              if (!_notifications.any((n) => n.id == fbNotification.id)) {
+                _notifications.add(fbNotification);
+              }
+            }
+
+            // Sort by latest first
+            _notifications.sort((a, b) => b.createdAt.compareTo(a.createdAt));
           });
         } else {
           // Fallback to demo data if API response is unexpected

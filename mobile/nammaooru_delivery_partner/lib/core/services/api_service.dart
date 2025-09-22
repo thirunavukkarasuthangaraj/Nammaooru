@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  static const String _baseUrl = 'http://192.168.1.6:8080/api';
+  static const String _baseUrl = 'http://localhost:8090/api';
 
   static const String _deliveryPartnerEndpoint =
       '$_baseUrl/mobile/delivery-partner';
@@ -310,11 +310,29 @@ class ApiService {
     return _handleResponse(response);
   }
 
+  // Generic HTTP methods
+  Future<Map<String, dynamic>> get(String endpoint) async {
+    final response = await http.get(
+      Uri.parse(endpoint),
+      headers: await _getHeaders(),
+    );
+    return _handleResponse(response);
+  }
+
+  Future<Map<String, dynamic>> post(String endpoint, Map<String, dynamic> data) async {
+    final response = await http.post(
+      Uri.parse(endpoint),
+      headers: await _getHeaders(),
+      body: json.encode(data),
+    );
+    return _handleResponse(response);
+  }
+
   // OTP Verification for Pickup
   Future<Map<String, dynamic>> verifyPickupOTP(String orderId, String otp) async {
-    final response = await _makeRequest(
-      'POST',
-      '/api/delivery-partner/verify-pickup-otp',
+    final response = await http.post(
+      Uri.parse('$_deliveryPartnerEndpoint/verify-pickup-otp'),
+      headers: await _getHeaders(),
       body: json.encode({
         'orderId': orderId,
         'otp': otp,
@@ -326,9 +344,9 @@ class ApiService {
 
   // Request new OTP for pickup
   Future<Map<String, dynamic>> requestNewPickupOTP(String orderId) async {
-    final response = await _makeRequest(
-      'POST',
-      '/api/delivery-partner/request-pickup-otp',
+    final response = await http.post(
+      Uri.parse('$_deliveryPartnerEndpoint/request-pickup-otp'),
+      headers: await _getHeaders(),
       body: json.encode({
         'orderId': orderId,
       }),

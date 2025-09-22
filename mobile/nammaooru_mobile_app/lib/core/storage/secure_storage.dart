@@ -53,10 +53,19 @@ class SecureStorage {
     return value == 'true';
   }
   
+  static Future<void> saveUserEmail(String email) async {
+    await LocalStorage.setSecureString('user_email', email);
+  }
+
+  static Future<String?> getUserEmail() async {
+    return await LocalStorage.getSecureString('user_email');
+  }
+
   static Future<void> clearAuthData() async {
     await LocalStorage.removeSecureString(SecureStorageKeys.authToken);
     await LocalStorage.removeSecureString(SecureStorageKeys.refreshToken);
     await LocalStorage.removeSecureString(SecureStorageKeys.userRole);
     await LocalStorage.removeSecureString(SecureStorageKeys.userId);
+    await LocalStorage.removeSecureString('user_email');
   }
 }

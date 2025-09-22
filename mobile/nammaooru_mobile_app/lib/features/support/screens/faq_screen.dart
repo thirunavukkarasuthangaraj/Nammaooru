@@ -126,6 +126,7 @@ class _FAQScreenState extends State<FAQScreen> {
           // Search Bar
           TextField(
             controller: _searchController,
+            textCapitalization: TextCapitalization.sentences,
             decoration: InputDecoration(
               hintText: 'Search FAQs...',
               prefixIcon: const Icon(Icons.search),
@@ -385,7 +386,7 @@ class _FAQScreenState extends State<FAQScreen> {
           Icon(
             Icons.help_outline,
             size: 64,
-            color: Colors.grey[400],
+            color: Colors.black54,
           ),
           const SizedBox(height: 16),
           Text(
@@ -394,7 +395,7 @@ class _FAQScreenState extends State<FAQScreen> {
                 : 'No FAQs available',
             style: TextStyle(
               fontSize: 18,
-              color: Colors.grey[600],
+              color: Colors.black87,
             ),
           ),
           const SizedBox(height: 8),
@@ -404,7 +405,7 @@ class _FAQScreenState extends State<FAQScreen> {
                 : 'FAQs will be loaded here',
             style: TextStyle(
               fontSize: 14,
-              color: Colors.grey[500],
+              color: Colors.black87,
             ),
             textAlign: TextAlign.center,
           ),

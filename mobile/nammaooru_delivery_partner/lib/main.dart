@@ -1,16 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'core/providers/delivery_partner_provider.dart';
-import 'core/providers/location_provider.dart';
-import 'core/providers/realtime_provider.dart';
-import 'core/services/firebase_messaging_service.dart';
-import 'core/constants/app_theme.dart';
-import 'core/constants/app_colors.dart';
 import 'features/auth/screens/login_screen.dart';
-import 'features/dashboard/screens/dashboard_screen.dart';
-import 'features/profile/screens/change_password_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,9 +12,6 @@ void main() async {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-
-  // Set up Firebase background message handler
-  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
   runApp(const DeliveryPartnerApp());
 }
@@ -35,17 +24,15 @@ class DeliveryPartnerApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => DeliveryPartnerProvider()),
-        ChangeNotifierProvider(create: (context) => LocationProvider()),
-        ChangeNotifierProvider(create: (context) => RealtimeProvider()),
       ],
       child: MaterialApp(
         title: 'NammaOoru Delivery Partner',
         debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        home: const AppInitializer(),
-        routes: {
-          '/change-password': (context) => const ChangePasswordScreen(),
-        },
+        theme: ThemeData(
+          primarySwatch: Colors.blue,
+          useMaterial3: true,
+        ),
+        home: const LoginScreen(),
       ),
     );
   }

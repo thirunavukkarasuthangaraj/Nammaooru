@@ -13,6 +13,7 @@ import '../screens/shop_details_screen.dart';
 import '../screens/shop_categories_screen.dart';
 import '../screens/location_picker_screen.dart';
 import '../screens/google_maps_location_picker_screen.dart';
+import '../screens/notifications_screen.dart';
 import '../../../core/services/location_service.dart';
 import '../../../core/services/address_service.dart';
 import '../widgets/address_selection_dialog.dart';
@@ -300,7 +301,12 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             ],
           ),
           onPressed: () {
-            // TODO: Navigate to notifications
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const NotificationsScreen(),
+              ),
+            );
           },
         ),
       ],

@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
@@ -8,8 +8,9 @@ import { NotificationService } from '@core/services/notification.service';
 import { AuthService } from '@core/services/auth.service';
 import { OrderService, OrderResponse } from '@core/services/order.service';
 import { ShopOwnerOrderService } from '../../services/shop-owner-order.service';
-import { finalize, switchMap, catchError } from 'rxjs/operators';
-import { of } from 'rxjs';
+import { FirebaseService } from '@core/services/firebase.service';
+import { finalize, switchMap, catchError, takeUntil } from 'rxjs/operators';
+import { of, Subject, interval } from 'rxjs';
 
 interface ShopNotification {
   id: number;
@@ -716,13 +717,13 @@ interface ShopNotification {
     }
   `]
 })
-export class NotificationsComponent implements OnInit {
+export class NotificationsComponent implements OnInit, OnDestroy {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
   loading = false;
   hasMoreNotifications = true;
-  
+
   selectedType = '';
   selectedPriority = '';
   selectedStatus = '';
@@ -730,6 +731,7 @@ export class NotificationsComponent implements OnInit {
   showOnlyActionRequired = false;
 
   notifications: ShopNotification[] = [];
+  private destroy$ = new Subject<void>();
 
   constructor(
     private snackBar: MatSnackBar,
@@ -737,11 +739,43 @@ export class NotificationsComponent implements OnInit {
     private notificationService: NotificationService,
     private authService: AuthService,
     private orderService: OrderService,
-    private shopOwnerOrderService: ShopOwnerOrderService
+    private shopOwnerOrderService: ShopOwnerOrderService,
+    private firebaseService: FirebaseService
   ) {}
 
   ngOnInit(): void {
     this.loadNotifications();
+
+    // Listen for Firebase notifications
+    this.firebaseService.onMessageReceived()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(message => {
+        if (message) {
+          console.log('New Firebase notification received:', message);
+          // Reload notifications when a new message arrives
+          this.loadNotifications();
+
+          // Show browser notification
+          if (message.notification) {
+            this.firebaseService.showNotification(
+              message.notification.title || 'New Notification',
+              message.notification.body || 'You have a new order notification'
+            );
+          }
+        }
+      });
+
+    // Auto-refresh notifications every 30 seconds
+    interval(30000)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.loadNotifications();
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   loadNotifications(): void {
@@ -779,24 +813,112 @@ export class NotificationsComponent implements OnInit {
       return of([]);
     }
     const shopId = currentUser.shopId;
-    
-    return this.orderService.getOrdersByShop(String(shopId || ''), 0, 20)
+
+    return this.orderService.getOrdersByShop(String(shopId || ''), 0, 50)
       .pipe(
         switchMap(orderPage => {
-          const pendingOrders = orderPage.data.content.filter((order: any) => order.status === 'PENDING');
-          const notifications: ShopNotification[] = pendingOrders.map((order: any) => ({
-            id: order.id,
-            title: 'New Order Received',
-            message: `You have received a new order ${order.orderNumber} from ${order.customerName} worth ₹${order.totalAmount}`,
-            type: 'order',
-            priority: 'high',
-            status: 'unread',
-            createdAt: new Date(order.createdAt),
-            actionRequired: true,
-            actionUrl: `/orders/${order.id}`,
-            relatedEntity: { type: 'order', id: order.id, name: order.orderNumber },
-            orderData: order
-          }));
+          const allOrders = orderPage.data.content;
+          const notifications: ShopNotification[] = allOrders.map((order: any) => {
+            let title = '';
+            let message = '';
+            let type: 'info' | 'success' | 'warning' | 'error' | 'order' = 'order';
+            let priority: 'low' | 'medium' | 'high' | 'urgent' = 'medium';
+            let actionRequired = false;
+
+            // Set notification details based on order status
+            switch(order.status) {
+              case 'PENDING':
+                title = '🆕 New Order Received';
+                message = `New order ${order.orderNumber} from ${order.customerName} - ₹${order.totalAmount}`;
+                type = 'order';
+                priority = 'high';
+                actionRequired = true;
+                break;
+              case 'ACCEPTED':
+                title = '✅ Order Accepted';
+                message = `Order ${order.orderNumber} has been accepted and is being prepared`;
+                type = 'success';
+                priority = 'medium';
+                break;
+              case 'PREPARING':
+                title = '👨‍🍳 Order Being Prepared';
+                message = `Order ${order.orderNumber} is currently being prepared`;
+                type = 'info';
+                priority = 'medium';
+                break;
+              case 'READY_FOR_PICKUP':
+                title = '📦 Order Ready for Pickup';
+                message = `Order ${order.orderNumber} is ready and waiting for pickup`;
+                type = 'info';
+                priority = 'medium';
+                break;
+              case 'OUT_FOR_DELIVERY':
+                title = '🚚 Order Out for Delivery';
+                message = `Order ${order.orderNumber} is out for delivery to ${order.customerName}`;
+                type = 'info';
+                priority = 'low';
+                break;
+              case 'DELIVERED':
+                title = '✔️ Order Delivered';
+                message = `Order ${order.orderNumber} has been successfully delivered - ₹${order.totalAmount}`;
+                type = 'success';
+                priority = 'low';
+                break;
+              case 'CANCELLED':
+                title = '❌ Order Cancelled';
+                message = `Order ${order.orderNumber} has been cancelled by ${order.cancelledBy || 'customer'}`;
+                type = 'warning';
+                priority = 'high';
+                break;
+              case 'REJECTED':
+                title = '🚫 Order Rejected';
+                message = `Order ${order.orderNumber} was rejected`;
+                type = 'error';
+                priority = 'medium';
+                break;
+              case 'RETURNED':
+                title = '↩️ Order Returned';
+                message = `Order ${order.orderNumber} has been returned by customer`;
+                type = 'warning';
+                priority = 'high';
+                break;
+              case 'REFUNDED':
+                title = '💰 Order Refunded';
+                message = `Order ${order.orderNumber} has been refunded - ₹${order.totalAmount}`;
+                type = 'info';
+                priority = 'medium';
+                break;
+              default:
+                title = 'Order Update';
+                message = `Order ${order.orderNumber} status: ${order.status}`;
+                type = 'info';
+                priority = 'low';
+            }
+
+            // Determine if notification is unread (orders from last 24 hours)
+            const orderDate = new Date(order.createdAt);
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const isRecent = orderDate > yesterday;
+
+            return {
+              id: order.id,
+              title: title,
+              message: message,
+              type: type,
+              priority: priority,
+              status: (order.status === 'PENDING' || isRecent) ? 'unread' : 'read',
+              createdAt: new Date(order.createdAt),
+              actionRequired: actionRequired,
+              actionUrl: `/orders/${order.id}`,
+              relatedEntity: { type: 'order', id: order.id, name: order.orderNumber },
+              orderData: order
+            };
+          });
+
+          // Sort notifications by date, newest first
+          notifications.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
           return of(notifications);
         }),
         catchError(() => {

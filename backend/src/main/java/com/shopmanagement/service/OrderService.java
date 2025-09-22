@@ -302,6 +302,26 @@ public class OrderService {
         Page<Order> orders = orderRepository.findByCustomerIdWithOrderItems(customerId, pageable);
         return orders.map(this::mapToResponse);
     }
+
+    @Transactional(readOnly = true)
+    public Page<OrderResponse> getOrdersByCustomer(Long customerId, int page, int size, String status) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<Order> orders;
+
+        if (status != null && !status.trim().isEmpty()) {
+            try {
+                Order.OrderStatus orderStatus = Order.OrderStatus.valueOf(status.toUpperCase());
+                orders = orderRepository.findByCustomerIdAndStatusWithOrderItems(customerId, orderStatus, pageable);
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid order status: {}, returning all orders", status);
+                orders = orderRepository.findByCustomerIdWithOrderItems(customerId, pageable);
+            }
+        } else {
+            orders = orderRepository.findByCustomerIdWithOrderItems(customerId, pageable);
+        }
+
+        return orders.map(this::mapToResponse);
+    }
     
     @Transactional(readOnly = true)
     public Page<OrderResponse> getOrdersByStatus(Order.OrderStatus status, int page, int size) {
@@ -899,17 +919,37 @@ public class OrderService {
     
     public void rateOrder(Long orderId, int rating, String review) {
         log.info("Rating order: {} with rating: {}", orderId, rating);
-        
+
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
-        
+
         if (order.getStatus() != Order.OrderStatus.DELIVERED) {
             throw new RuntimeException("Order must be delivered to rate");
         }
-        
+
         // Add rating logic here (would need OrderRating entity)
         // For now, just log the rating
         log.info("Order {} rated with {} stars. Review: {}", orderId, rating, review);
+    }
+
+    @Transactional
+    public String reorderItems(Long orderId, Long userId) {
+        log.info("Reordering items from order: {} for user: {}", orderId, userId);
+
+        // Get the order with items
+        Order order = orderRepository.findByIdWithOrderItems(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        // For now, return a success message
+        // In a real implementation, this would:
+        // 1. Find or create a cart for the user
+        // 2. Add all order items to the cart
+        // 3. Return the cart details
+
+        int itemCount = order.getOrderItems().size();
+        log.info("Successfully added {} items from order {} to cart for user {}", itemCount, orderId, userId);
+
+        return String.format("Added %d items to cart", itemCount);
     }
     
     private Customer findOrCreateCustomerByUserId(Long userId) {

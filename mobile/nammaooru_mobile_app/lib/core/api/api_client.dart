@@ -69,7 +69,11 @@ class ApiClient {
     dynamic data,
     Map<String, dynamic>? queryParameters,
     Options? options,
+    bool includeAuth = true,
   }) async {
+    if (includeAuth) {
+      await _addAuthToken();
+    }
     return await _dio.put(
       path,
       data: data,

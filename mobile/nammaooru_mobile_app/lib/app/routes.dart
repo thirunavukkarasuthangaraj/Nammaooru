@@ -13,6 +13,7 @@ import '../features/customer/screens/shop_details_screen.dart';
 import '../features/customer/screens/profile_screen.dart';
 import '../features/customer/screens/address_management_screen.dart';
 import '../features/customer/cart/cart_screen.dart';
+import '../features/customer/screens/orders_screen.dart';
 import '../features/shop_owner/dashboard/shop_owner_dashboard.dart';
 import '../features/shop_owner/products/product_management_screen.dart';
 import '../features/shop_owner/orders/order_processing_screen.dart';
@@ -97,9 +98,7 @@ class AppRouter {
           ),
           GoRoute(
             path: '/customer/orders',
-            builder: (context, state) => const Center(
-              child: Text('Orders Screen - Coming Soon'),
-            ),
+            builder: (context, state) => const OrdersScreen(),
           ),
           GoRoute(
             path: '/customer/profile',

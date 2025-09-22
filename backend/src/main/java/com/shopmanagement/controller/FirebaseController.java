@@ -1,0 +1,237 @@
+package com.shopmanagement.controller;
+
+import com.shopmanagement.dto.fcm.FcmTokenRequest;
+import com.shopmanagement.service.FirebaseService;
+import com.shopmanagement.service.JwtService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import jakarta.servlet.http.HttpServletRequest;
+import java.util.HashMap;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api")
+@CrossOrigin(origins = "*")
+public class FirebaseController {
+
+    @Autowired
+    private FirebaseService firebaseService;
+
+    @Autowired
+    private JwtService jwtService;
+
+    /**
+     * Store/Update FCM Token for authenticated user
+     * Called when user logs in or app starts
+     */
+    @PostMapping("/customer/notifications/fcm-token")
+    public ResponseEntity<Map<String, Object>> updateCustomerFcmToken(
+            @RequestBody FcmTokenRequest request,
+            HttpServletRequest httpRequest) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            // Get user ID from JWT token
+            String token = httpRequest.getHeader("Authorization");
+            if (token != null && token.startsWith("Bearer ")) {
+                token = token.substring(7);
+                String username = jwtService.extractUsername(token);
+
+                // Assuming you have a method to get user ID from username
+                // Long userId = userService.getUserIdByUsername(username);
+                Long userId = 1L; // Temporary - replace with actual user lookup
+
+                // Store the FCM token
+                firebaseService.storeFcmToken(
+                    userId,
+                    request.getFcmToken(),
+                    request.getDeviceType() != null ? request.getDeviceType() : "android",
+                    request.getDeviceId()
+                );
+
+                // Subscribe user to appropriate topics
+                firebaseService.subscribeUserToTopics(userId, "CUSTOMER");
+
+                response.put("statusCode", "0000");
+                response.put("message", "FCM token stored successfully");
+                response.put("data", null);
+
+                return ResponseEntity.ok(response);
+            }
+
+            response.put("statusCode", "4001");
+            response.put("message", "Invalid authorization token");
+            response.put("data", null);
+            return ResponseEntity.status(401).body(response);
+
+        } catch (Exception e) {
+            response.put("statusCode", "5000");
+            response.put("message", "Error storing FCM token: " + e.getMessage());
+            response.put("data", null);
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    /**
+     * Store/Update FCM Token for shop owner
+     */
+    @PostMapping("/shop-owner/notifications/fcm-token")
+    public ResponseEntity<Map<String, Object>> updateShopOwnerFcmToken(
+            @RequestBody FcmTokenRequest request,
+            HttpServletRequest httpRequest) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            // Get user ID from JWT token
+            String token = httpRequest.getHeader("Authorization");
+            if (token != null && token.startsWith("Bearer ")) {
+                token = token.substring(7);
+                String username = jwtService.extractUsername(token);
+
+                Long userId = 1L; // Replace with actual user lookup
+
+                firebaseService.storeFcmToken(
+                    userId,
+                    request.getFcmToken(),
+                    request.getDeviceType() != null ? request.getDeviceType() : "android",
+                    request.getDeviceId()
+                );
+
+                // Subscribe to shop owner topics
+                firebaseService.subscribeUserToTopics(userId, "SHOP_OWNER");
+
+                response.put("statusCode", "0000");
+                response.put("message", "FCM token stored successfully");
+                response.put("data", null);
+
+                return ResponseEntity.ok(response);
+            }
+
+            response.put("statusCode", "4001");
+            response.put("message", "Invalid authorization token");
+            response.put("data", null);
+            return ResponseEntity.status(401).body(response);
+
+        } catch (Exception e) {
+            response.put("statusCode", "5000");
+            response.put("message", "Error storing FCM token: " + e.getMessage());
+            response.put("data", null);
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    /**
+     * Store/Update FCM Token for delivery partner
+     */
+    @PostMapping("/delivery-partner/notifications/fcm-token")
+    public ResponseEntity<Map<String, Object>> updateDeliveryPartnerFcmToken(
+            @RequestBody FcmTokenRequest request,
+            HttpServletRequest httpRequest) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            // Get user ID from JWT token
+            String token = httpRequest.getHeader("Authorization");
+            if (token != null && token.startsWith("Bearer ")) {
+                token = token.substring(7);
+                String username = jwtService.extractUsername(token);
+
+                Long userId = 1L; // Replace with actual user lookup
+
+                firebaseService.storeFcmToken(
+                    userId,
+                    request.getFcmToken(),
+                    request.getDeviceType() != null ? request.getDeviceType() : "android",
+                    request.getDeviceId()
+                );
+
+                // Subscribe to delivery partner topics
+                firebaseService.subscribeUserToTopics(userId, "DELIVERY_PARTNER");
+
+                response.put("statusCode", "0000");
+                response.put("message", "FCM token stored successfully");
+                response.put("data", null);
+
+                return ResponseEntity.ok(response);
+            }
+
+            response.put("statusCode", "4001");
+            response.put("message", "Invalid authorization token");
+            response.put("data", null);
+            return ResponseEntity.status(401).body(response);
+
+        } catch (Exception e) {
+            response.put("statusCode", "5000");
+            response.put("message", "Error storing FCM token: " + e.getMessage());
+            response.put("data", null);
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    /**
+     * Send test notification (for development/testing)
+     */
+    @PostMapping("/admin/send-test-notification")
+    public ResponseEntity<Map<String, Object>> sendTestNotification(
+            @RequestParam Long userId,
+            @RequestParam String title,
+            @RequestParam String body) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            Map<String, String> data = new HashMap<>();
+            data.put("test", "true");
+
+            firebaseService.sendNotificationToUser(userId, title, body, data, "test");
+
+            response.put("statusCode", "0000");
+            response.put("message", "Test notification sent successfully");
+            response.put("data", null);
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            response.put("statusCode", "5000");
+            response.put("message", "Error sending test notification: " + e.getMessage());
+            response.put("data", null);
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    /**
+     * Send notification to topic (for admin use)
+     */
+    @PostMapping("/admin/send-topic-notification")
+    public ResponseEntity<Map<String, Object>> sendTopicNotification(
+            @RequestParam String topic,
+            @RequestParam String title,
+            @RequestParam String body) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            Map<String, String> data = new HashMap<>();
+            data.put("topic", topic);
+
+            firebaseService.sendNotificationToTopic(topic, title, body, data, "announcement");
+
+            response.put("statusCode", "0000");
+            response.put("message", "Topic notification sent successfully");
+            response.put("data", null);
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            response.put("statusCode", "5000");
+            response.put("message", "Error sending topic notification: " + e.getMessage());
+            response.put("data", null);
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+}

@@ -238,14 +238,16 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
           Text(
             'No orders yet',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: Colors.grey.shade600,
+              color: Colors.black,
+              fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             'Your order history will appear here',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Colors.grey.shade500,
+              color: Colors.black,
+              fontWeight: FontWeight.w500,
             ),
             textAlign: TextAlign.center,
           ),
@@ -315,9 +317,10 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
               const SizedBox(height: 8),
               Text(
                 _formatDate(order.orderDate),
-                style: TextStyle(
-                  color: Colors.grey.shade600,
+                style: const TextStyle(
+                  color: Colors.black,
                   fontSize: 14,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
               const SizedBox(height: 12),
@@ -335,9 +338,10 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                         Text(
                           order.items.take(2).map((item) => item.productName).join(', ') +
                               (order.items.length > 2 ? '...' : ''),
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
+                          style: const TextStyle(
+                            color: Colors.black,
                             fontSize: 12,
+                            fontWeight: FontWeight.w400,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -359,9 +363,10 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                       const SizedBox(height: 4),
                       Text(
                         order.paymentMethod.replaceAll('_', ' '),
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
+                        style: const TextStyle(
+                          color: Colors.black,
                           fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
