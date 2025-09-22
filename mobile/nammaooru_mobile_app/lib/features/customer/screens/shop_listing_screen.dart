@@ -5,6 +5,7 @@ import '../../../shared/widgets/loading_widget.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/utils/helpers.dart';
+import 'shop_simple_browser.dart';
 
 class ShopListingScreen extends StatefulWidget {
   final String? category;
@@ -49,16 +50,16 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
 
   Future<void> _loadShops() async {
     setState(() => _isLoading = true);
-    
+
     try {
       final response = await _shopApi.getActiveShops(
         page: 0,
         size: 20,
         sortBy: _sortBy,
-        category: widget.category,
+        // category: widget.category, // Temporarily remove category filtering
         city: 'Chennai',
       );
-      
+
       if (mounted && response['statusCode'] == '0000' && response['data'] != null) {
         setState(() {
           _shops = response['data']['content'] ?? [];
@@ -68,7 +69,7 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
       }
     } catch (e) {
       if (mounted) {
-        Helpers.showSnackBar(context, 'Failed to load shops', isError: true);
+        Helpers.showSnackBar(context, 'Failed to load shops: $e', isError: true);
       }
     } finally {
       if (mounted) {
@@ -84,19 +85,19 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
         final shopName = shop['name']?.toString().toLowerCase() ?? '';
         final shopDescription = shop['description']?.toString().toLowerCase() ?? '';
         final shopCategory = shop['businessType']?.toString().toLowerCase() ?? '';
-        final shopRating = double.tryParse(shop['averageRating']?.toString() ?? '0') ?? 0.0;
+        final shopRating = (shop['rating'] ?? 0).toDouble();
         final shopIsActive = shop['isActive'] ?? true;
-        
+
         final matchesSearch = shopName.contains(query) ||
             shopDescription.contains(query) ||
             shopCategory.contains(query);
-            
+
         final matchesRating = shopRating >= _minRating;
         final matchesOpenNow = !_openNowOnly || shopIsActive;
-        
+
         return matchesSearch && matchesRating && matchesOpenNow;
       }).toList();
-      
+
       _applySortAndFilter();
     });
   }
@@ -106,8 +107,8 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
       switch (_sortBy) {
         case 'rating':
           _filteredShops.sort((a, b) {
-            final aRating = double.tryParse(a['averageRating']?.toString() ?? '0') ?? 0.0;
-            final bRating = double.tryParse(b['averageRating']?.toString() ?? '0') ?? 0.0;
+            final aRating = (a['rating'] ?? 0).toDouble();
+            final bRating = (b['rating'] ?? 0).toDouble();
             return bRating.compareTo(aRating);
           });
           break;
@@ -127,41 +128,26 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context);
-    
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA), // Light village background
+      backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
-        title: Row(
-          children: [
-            Text('🏪 ', style: TextStyle(fontSize: 24)),
-            Flexible(
-              child: Text(
-                widget.categoryTitle ?? 'கடைகள் / Shops',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ],
+        title: Text(
+          widget.categoryTitle ?? 'Grocery',
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
         ),
-        backgroundColor: const Color(0xFF2E7D32), // Village green
-        elevation: 2,
+        backgroundColor: const Color(0xFF4CAF50),
+        elevation: 0,
         centerTitle: false,
-        iconTheme: const IconThemeData(color: Colors.white, size: 28),
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 12),
-            child: IconButton(
-              icon: const Icon(Icons.tune, size: 28),
-              onPressed: _showFilterBottomSheet,
-              style: IconButton.styleFrom(
-                backgroundColor: Colors.white.withOpacity(0.2),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.all(8),
-              ),
-            ),
+          IconButton(
+            icon: const Icon(Icons.filter_list),
+            onPressed: _showFilterBottomSheet,
           ),
         ],
       ),
@@ -179,60 +165,41 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
 
   Widget _buildVillageSearchBar() {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: Color(0xFF2E7D32),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(20),
-          bottomRight: Radius.circular(20),
-        ),
-      ),
+      color: const Color(0xFF4CAF50),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(25),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          color: const Color(0xFFFAFAFA),
+          borderRadius: BorderRadius.circular(30),
         ),
         child: TextField(
           controller: _searchController,
-          style: const TextStyle(fontSize: 16),
+          style: const TextStyle(fontSize: 15),
           decoration: InputDecoration(
-            hintText: '🔍 கடை தேடுங்கள் / Search shops...',
-            hintStyle: TextStyle(color: Colors.grey[600], fontSize: 16),
-            prefixIcon: const Padding(
-              padding: EdgeInsets.all(12),
-              child: Icon(
-                Icons.search,
-                size: 24,
-                color: Color(0xFF2E7D32),
-              ),
+            hintText: 'கடை தேடுங்கள் / Search shops...',
+            hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+            prefixIcon: const Icon(
+              Icons.search,
+              size: 22,
+              color: Colors.grey,
             ),
             suffixIcon: _searchController.text.isNotEmpty
                 ? IconButton(
-                    icon: const Icon(Icons.clear, color: Colors.grey),
+                    icon: const Icon(Icons.clear, color: Colors.grey, size: 20),
                     onPressed: () {
                       _searchController.clear();
                       _filterShops();
                     },
                   )
-                : const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: Icon(
-                      Icons.my_location,
-                      size: 20,
-                      color: Colors.orange,
-                    ),
-                  ),
+                : const Icon(
+                  Icons.location_on_outlined,
+                  size: 20,
+                  color: Color(0xFFFF9800),
+                ),
             border: InputBorder.none,
             contentPadding: const EdgeInsets.symmetric(
-              horizontal: 20,
-              vertical: 16,
+              horizontal: 16,
+              vertical: 14,
             ),
           ),
         ),
@@ -242,30 +209,26 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
 
   Widget _buildVillageSortingChips() {
     final sortOptions = [
-      {'key': 'name', 'label': '🔤 பெயர் / Name', 'icon': Icons.sort_by_alpha},
-      {'key': 'rating', 'label': '⭐ ரேடிங் / Rating', 'icon': Icons.star},
-      {'key': 'latest', 'label': '🕰️ புதிய / Latest', 'icon': Icons.access_time},
+      {'key': 'name', 'label': 'பெயர் / Name', 'icon': Icons.sort_by_alpha},
+      {'key': 'rating', 'label': 'ரேடிங் / Rating', 'icon': Icons.star},
     ];
 
     return Container(
-      height: 70,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: sortOptions.length,
-        itemBuilder: (context, index) {
-          final option = sortOptions[index];
+      height: 50,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: sortOptions.map((option) {
           final isSelected = _sortBy == option['key'];
-          
-          return Container(
-            margin: const EdgeInsets.only(right: 12),
-            child: FilterChip(
+
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ChoiceChip(
               label: Text(
                 option['label']! as String,
                 style: TextStyle(
-                  color: isSelected ? Colors.white : const Color(0xFF2E7D32),
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                  fontSize: 14,
+                  color: isSelected ? Colors.white : const Color(0xFF4CAF50),
+                  fontWeight: FontWeight.w500,
+                  fontSize: 13,
                 ),
               ),
               selected: isSelected,
@@ -276,21 +239,19 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
                 });
               },
               backgroundColor: Colors.white,
-              selectedColor: const Color(0xFF2E7D32),
-              checkmarkColor: Colors.white,
+              selectedColor: const Color(0xFF4CAF50),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
                 side: BorderSide(
-                  color: isSelected ? const Color(0xFF2E7D32) : const Color(0xFF2E7D32).withOpacity(0.3),
-                  width: 2,
+                  color: isSelected ? const Color(0xFF4CAF50) : Colors.grey.shade300,
+                  width: 1,
                 ),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              elevation: isSelected ? 4 : 0,
-              shadowColor: const Color(0xFF2E7D32).withOpacity(0.3),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              elevation: 0,
             ),
           );
-        },
+        }).toList(),
       ),
     );
   }
@@ -304,33 +265,36 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 150,
-                height: 150,
+                width: 100,
+                height: 100,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2E7D32).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(75),
+                  color: const Color(0xFF4CAF50).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(50),
                 ),
                 child: const Center(
-                  child: Text('🏪', style: TextStyle(fontSize: 80)),
+                  child: Icon(
+                    Icons.store_outlined,
+                    size: 50,
+                    color: Color(0xFF4CAF50),
+                  ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               const Text(
-                'கடைகள் இல்லை\nNo Shops Found',
+                'No Shops Found',
                 style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
                   color: Color(0xFF424242),
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
               Text(
-                'தேடல் அல்லது ஆப்ஷன்களை மாற்றி மீண்டும் முயலவும்\nTry adjusting your search or filters',
+                'Try adjusting your search or filters',
                 style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[600],
-                  height: 1.5,
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -342,15 +306,10 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
 
     return RefreshIndicator(
       onRefresh: _loadShops,
-      color: const Color(0xFF2E7D32),
-      child: GridView.builder(
+      color: const Color(0xFF4CAF50),
+      child: ListView.builder(
         controller: _scrollController,
-        padding: const EdgeInsets.all(16),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 1,
-          childAspectRatio: 1.3,
-          mainAxisSpacing: 16,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         itemCount: _filteredShops.length,
         itemBuilder: (context, index) {
           return _buildVillageShopCard(_filteredShops[index]);
@@ -367,14 +326,14 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
     final isActive = shop['isActive'] ?? true;
     final address = shop['addressLine1']?.toString() ?? '';
     final city = shop['city']?.toString() ?? '';
-    final fullAddress = city.isNotEmpty ? '$address, $city' : address;
-    
-    // Get business type emoji
+    final fullAddress = 'Test Address, Chennai';
+
+    // Get business type emoji with more variety
     String getBusinessEmoji(String type) {
       switch (type.toLowerCase()) {
         case 'grocery':
         case 'groceries':
-          return '🥬';
+          return '🛒';
         case 'medical':
         case 'pharmacy':
           return '💊';
@@ -385,195 +344,250 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
           return '👕';
         case 'food':
         case 'restaurant':
-          return '🍴';
+          return '🍽️';
         case 'services':
           return '🔧';
+        case 'beauty':
+        case 'salon':
+          return '💄';
+        case 'hardware':
+          return '🔨';
+        case 'books':
+        case 'stationery':
+          return '📚';
         default:
           return '🏪';
       }
     }
-    
+
+    // Get dynamic gradient colors based on business type
+    List<Color> getBusinessGradient(String type) {
+      switch (type.toLowerCase()) {
+        case 'grocery':
+        case 'groceries':
+          return [const Color(0xFF4CAF50), const Color(0xFF81C784)];
+        case 'medical':
+        case 'pharmacy':
+          return [const Color(0xFF2196F3), const Color(0xFF64B5F6)];
+        case 'electronics':
+          return [const Color(0xFF9C27B0), const Color(0xFFBA68C8)];
+        case 'clothing':
+        case 'fashion':
+          return [const Color(0xFFE91E63), const Color(0xFFF06292)];
+        case 'food':
+        case 'restaurant':
+          return [const Color(0xFFFF9800), const Color(0xFFFFB74D)];
+        case 'beauty':
+        case 'salon':
+          return [const Color(0xFFE91E63), const Color(0xFFF8BBD9)];
+        default:
+          return [const Color(0xFF607D8B), const Color(0xFF90A4AE)];
+      }
+    }
+
     return Container(
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+            spreadRadius: 0,
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+            spreadRadius: 0,
           ),
         ],
       ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: () => _navigateToShop(shop),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header with shop image/icon
-            Expanded(
-              flex: 3,
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      const Color(0xFF2E7D32).withOpacity(0.8),
-                      const Color(0xFF388E3C).withOpacity(0.6),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(24),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: () => _navigateToShop(shop),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                // Business Icon with Dynamic Gradient Background
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: getBusinessGradient(businessType),
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: getBusinessGradient(businessType)[0].withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
                     ],
                   ),
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(20),
+                  child: Center(
+                    child: Text(
+                      getBusinessEmoji(businessType),
+                      style: const TextStyle(fontSize: 36),
+                    ),
                   ),
                 ),
-                child: Stack(
-                  children: [
-                    Center(
-                      child: Text(
-                        getBusinessEmoji(businessType),
-                        style: const TextStyle(fontSize: 80),
-                      ),
-                    ),
-                    // Status badges
-                    Positioned(
-                      top: 12,
-                      right: 12,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: isActive ? Colors.green : Colors.red,
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              isActive ? '✅' : '❌',
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              isActive ? 'திறந்து' : 'மூடியது',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    // Rating badge
-                    if (rating > 0)
-                      Positioned(
-                        top: 12,
-                        left: 12,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.orange,
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Text('⭐', style: TextStyle(fontSize: 12)),
-                              const SizedBox(width: 4),
-                              Text(
-                                rating.toStringAsFixed(1),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            
-            // Shop details
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Shop name with emoji
-                    Row(
-                      children: [
-                        Text(
-                          '${getBusinessEmoji(businessType)} ',
-                          style: const TextStyle(fontSize: 20),
-                        ),
-                        Expanded(
-                          child: Text(
-                            shopName,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF212121),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    
-                    // Business type
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        businessType,
-                        style: const TextStyle(
-                          color: Colors.orange,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                    
-                    const Spacer(),
-                    
-                    // Address
-                    if (fullAddress.isNotEmpty)
+
+                const SizedBox(width: 16),
+
+                // Shop Details
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Shop Name Row with Status
                       Row(
                         children: [
-                          const Text('📍 ', style: TextStyle(fontSize: 16)),
                           Expanded(
                             child: Text(
-                              fullAddress,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[700],
-                                fontWeight: FontWeight.w500,
+                              shopName,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1A1A1A),
+                                letterSpacing: -0.5,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
+                          const SizedBox(width: 8),
+                          // Status Indicator
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: isActive
+                                ? const Color(0xFF4CAF50)
+                                : const Color(0xFFFF5252),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 6,
+                                  height: 6,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  isActive ? 'திறந்து' : 'மூடியது',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
-                  ],
+
+                      const SizedBox(height: 8),
+
+                      // Business Type with Rating
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: getBusinessGradient(businessType)[0].withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              businessType,
+                              style: TextStyle(
+                                color: getBusinessGradient(businessType)[0],
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          if (rating > 0) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFF3E0),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text('⭐', style: TextStyle(fontSize: 10)),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    rating.toStringAsFixed(1),
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFFFF8F00),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      // Address with Location Icon
+                      if (fullAddress.isNotEmpty)
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.location_on_rounded,
+                              size: 14,
+                              color: Colors.grey[600],
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                fullAddress,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
                 ),
-              ),
+
+                // Arrow Icon
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 16,
+                  color: Colors.grey[400],
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -581,7 +595,18 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
 
   void _navigateToShop(Map<String, dynamic> shop) {
     final shopId = shop['id'] ?? 1;
-    context.push('/customer/shop/$shopId');
+    final shopName = shop['name'] ?? 'Shop';
+
+    // Show simple browser
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ShopSimpleBrowser(
+          shopId: shopId.toString(),
+          shopName: shopName,
+        ),
+      ),
+    );
   }
 
   void _showFilterBottomSheet() {
@@ -624,7 +649,7 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey[300]!),
+                    border: Border.all(color: Colors.black26),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: CheckboxListTile(
