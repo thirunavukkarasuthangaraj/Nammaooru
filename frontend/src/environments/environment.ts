@@ -20,12 +20,11 @@ export const environment = {
     maximumAge: 60000
   },
   firebase: {
-    apiKey: "AIzaSyB7MSHYRGCj9V-y3VZWCJvQ9I0LCB_-Oag",
-    authDomain: "grocery-5ecc5.firebaseapp.com",
-    projectId: "grocery-5ecc5",
-    storageBucket: "grocery-5ecc5.firebasestorage.app",
-    messagingSenderId: "368788713881",
-    appId: "1:368788713881:web:0394fb0fcd43b57c866308",
-    measurementId: "G-B38Q6YJ7N0"
+    apiKey: "AIzaSyBdwffRV7muLR616_cxTpSP4aSmrxxbetc",
+    authDomain: "nammaooru-shop-management.firebaseapp.com",
+    projectId: "nammaooru-shop-management",
+    storageBucket: "nammaooru-shop-management.firebasestorage.app",
+    messagingSenderId: "913325898379",
+    appId: "1:913325898379:web:9a39a270a6693e9a5b328e"
   }
 };

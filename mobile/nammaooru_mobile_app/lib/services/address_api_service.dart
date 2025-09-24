@@ -65,7 +65,7 @@ class AddressApiService {
     String? village,
   }) async {
     try {
-      final response = await ApiClient.post('$_baseUrl/delivery-locations', data: {
+      final requestData = {
         'addressType': label,
         'flatHouse': flatHouse ?? '',
         'floor': floor ?? '',
@@ -79,19 +79,28 @@ class AddressApiService {
         'latitude': latitude,
         'longitude': longitude,
         'isDefault': isDefault,
-      });
+      };
+
+      print('Sending address request: $requestData');
+
+      final response = await ApiClient.post('$_baseUrl/delivery-locations', data: requestData);
+
+      print('Add address response status: ${response.statusCode}');
+      print('Add address response data: ${response.data}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final responseData = response.data;
         if (responseData is Map<String, dynamic>) {
           final statusCode = responseData['statusCode']?.toString();
           if (statusCode == '0000') {
+            print('Address added successfully with statusCode 0000');
             return {
               'success': true,
               'data': responseData['data'],
               'message': responseData['message'] ?? 'Address added successfully',
             };
           } else {
+            print('Address add failed with statusCode: $statusCode, message: ${responseData['message']}');
             return {
               'success': false,
               'message': responseData['message'] ?? 'Failed to add address',
@@ -100,12 +109,13 @@ class AddressApiService {
         }
       }
 
+      print('Unexpected response format or status code');
       return {
         'success': false,
-        'message': 'Failed to add address',
+        'message': 'Failed to add address - unexpected response format',
       };
     } catch (e) {
-      print('Error adding address: $e');
+      print('Exception in addAddress: $e');
       return {
         'success': false,
         'message': 'Failed to add address: $e',
@@ -154,13 +164,42 @@ class AddressApiService {
   /// Delete address
   static Future<Map<String, dynamic>> deleteAddress(int addressId) async {
     try {
-      // Note: Delete endpoint may need to be implemented in backend
-      await ApiClient.delete('$_baseUrl/delivery-locations/$addressId');
+      print('Deleting address with ID: $addressId');
+      final response = await ApiClient.delete('$_baseUrl/delivery-locations/$addressId');
+
+      print('Delete address response status: ${response.statusCode}');
+      print('Delete address response data: ${response.data}');
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        final responseData = response.data;
+        if (responseData is Map<String, dynamic>) {
+          final statusCode = responseData['statusCode']?.toString();
+          if (statusCode == '0000') {
+            return {
+              'success': true,
+              'message': responseData['message'] ?? 'Address deleted successfully',
+            };
+          } else {
+            return {
+              'success': false,
+              'message': responseData['message'] ?? 'Failed to delete address',
+            };
+          }
+        } else {
+          // For 204 No Content or other successful responses without body
+          return {
+            'success': true,
+            'message': 'Address deleted successfully',
+          };
+        }
+      }
+
       return {
-        'success': true,
-        'message': 'Address deleted successfully',
+        'success': false,
+        'message': 'Failed to delete address - unexpected response',
       };
     } catch (e) {
+      print('Exception in deleteAddress: $e');
       return {
         'success': false,
         'message': 'Failed to delete address: $e',

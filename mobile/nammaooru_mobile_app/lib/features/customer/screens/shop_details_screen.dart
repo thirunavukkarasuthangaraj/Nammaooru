@@ -35,10 +35,48 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
   List<dynamic> _products = [];
   List<String> _categories = [];
   final List<Map<String, dynamic>> _categoryData = [
-    {'name': 'All Items', 'tamil': 'அனைத்து பொருட்கள்', 'emoji': '🛒', 'key': 'all'},
-    {'name': 'Grocery', 'tamil': 'மளிகை', 'emoji': '🥬', 'key': 'grocery'},
-    {'name': 'Milk', 'tamil': 'பால்', 'emoji': '🥛', 'key': 'milk'},
-    {'name': 'Snacks', 'tamil': 'சிற்றுண்டி', 'emoji': '🍿', 'key': 'snacks'},
+    {
+      'name': 'All Items',
+      'tamil': 'அனைத்து பொருட்கள்',
+      'emoji': '🛒',
+      'key': 'all',
+      'image': 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=100&h=100&fit=crop'
+    },
+    {
+      'name': 'Grocery',
+      'tamil': 'மளிகை',
+      'emoji': '🥬',
+      'key': 'grocery',
+      'image': 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=100&h=100&fit=crop'
+    },
+    {
+      'name': 'Milk',
+      'tamil': 'பால்',
+      'emoji': '🥛',
+      'key': 'milk',
+      'image': 'https://images.unsplash.com/photo-1563636619-e9143da7973b?w=100&h=100&fit=crop'
+    },
+    {
+      'name': 'Snacks',
+      'tamil': 'சிற்றுண்டி',
+      'emoji': '🍿',
+      'key': 'snacks',
+      'image': 'https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=100&h=100&fit=crop'
+    },
+    {
+      'name': 'Vegetables',
+      'tamil': 'காய்கறிகள்',
+      'emoji': '🥕',
+      'key': 'vegetables',
+      'image': 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=100&h=100&fit=crop'
+    },
+    {
+      'name': 'Fruits',
+      'tamil': 'பழங்கள்',
+      'emoji': '🍎',
+      'key': 'fruits',
+      'image': 'https://images.unsplash.com/photo-1619566636858-adf3ef46400b?w=100&h=100&fit=crop'
+    }
   ];
   String _selectedCategory = 'all';
   bool _isLoadingShop = false;
@@ -153,26 +191,15 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context);
-    
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF8B5A96),
-              Color(0xFF6B4F72),
-              Color(0xFF5D4E75),
-            ],
-          ),
-        ),
-        child: _isLoadingShop
-            ? const Center(child: LoadingWidget())
-            : _hasError
-                ? _buildErrorState()
-                : _buildShopDetails(),
-      ),
+      backgroundColor: isDarkMode ? Colors.black : Colors.white,
+      body: _isLoadingShop
+          ? const Center(child: LoadingWidget())
+          : _hasError
+              ? _buildErrorState()
+              : _buildShopDetails(),
       floatingActionButton: Consumer<CartProvider>(
         builder: (context, cartProvider, child) {
           // Only show floating button when cart has items
@@ -776,6 +803,27 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
                         ),
                       ),
                     ),
+                  // Stock count badge
+                  if (isInStock && stockQuantity > 0)
+                    Positioned(
+                      top: hasDiscount ? 30 : 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: stockQuantity <= 5 ? Colors.orange : Colors.green,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          stockQuantity <= 5 ? 'Only $stockQuantity left' : '$stockQuantity in stock',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
                   if (!isInStock)
                     Positioned.fill(
                       child: Container(
@@ -875,18 +923,6 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen>
                       ],
                     ],
                   ),
-                  // Add stock status
-                  if (isInStock && stockQuantity > 0 && stockQuantity <= 10) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      'Only $stockQuantity left',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Colors.orange,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
                   const Spacer(),
                   Consumer<CartProvider>(
                     builder: (context, cartProvider, child) {
@@ -1082,7 +1118,7 @@ class _CategoryTabDelegate extends SliverPersistentHeaderDelegate {
     return Container(
       color: Colors.white,
       child: Container(
-        height: 60,
+        height: 100,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: ListView.builder(
           scrollDirection: Axis.horizontal,
@@ -1090,43 +1126,78 @@ class _CategoryTabDelegate extends SliverPersistentHeaderDelegate {
           itemBuilder: (context, index) {
             final category = categoryData[index];
             final isSelected = selectedCategory == category['key'];
-            
-            return Container(
-              margin: const EdgeInsets.only(right: 12),
-              child: FilterChip(
-                label: Row(
-                  mainAxisSize: MainAxisSize.min,
+
+            return GestureDetector(
+              onTap: () => onCategoryChanged(category['key']),
+              child: Container(
+                margin: const EdgeInsets.only(right: 16),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      category['emoji'],
-                      style: const TextStyle(fontSize: 16),
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: isSelected ? VillageTheme.primaryGreen : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isSelected
+                            ? VillageTheme.primaryGreen
+                            : VillageTheme.primaryGreen.withOpacity(0.3),
+                          width: 2,
+                        ),
+                        boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: VillageTheme.primaryGreen.withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ]
+                          : [],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: category['image'] != null
+                          ? Image.network(
+                              category['image'],
+                              width: 56,
+                              height: 56,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Center(
+                                  child: Text(
+                                    category['emoji'] ?? '📦',
+                                    style: TextStyle(
+                                      fontSize: 24,
+                                      color: isSelected ? Colors.white : VillageTheme.primaryGreen,
+                                    ),
+                                  ),
+                                );
+                              },
+                            )
+                          : Center(
+                              child: Text(
+                                category['emoji'] ?? '📦',
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  color: isSelected ? Colors.white : VillageTheme.primaryGreen,
+                                ),
+                              ),
+                            ),
+                      ),
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(height: 4),
                     Text(
                       category['name'],
                       style: TextStyle(
-                        color: isSelected ? Colors.white : VillageTheme.primaryGreen,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
+                        color: isSelected ? VillageTheme.primaryGreen : Colors.grey[700],
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                        fontSize: 11,
                       ),
                     ),
                   ],
                 ),
-                selected: isSelected,
-                onSelected: (selected) {
-                  onCategoryChanged(category['key']);
-                },
-                backgroundColor: Colors.white,
-                selectedColor: VillageTheme.primaryGreen,
-                checkmarkColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  side: BorderSide(
-                    color: isSelected ? VillageTheme.primaryGreen : VillageTheme.primaryGreen.withOpacity(0.3),
-                    width: 2,
-                  ),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               ),
             );
           },
@@ -1136,10 +1207,10 @@ class _CategoryTabDelegate extends SliverPersistentHeaderDelegate {
   }
 
   @override
-  double get maxExtent => 60;
+  double get maxExtent => 100;
 
   @override
-  double get minExtent => 60;
+  double get minExtent => 100;
 
   @override
   bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) => true;

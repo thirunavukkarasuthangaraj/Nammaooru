@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/delivery_partner_provider.dart';
+import '../../../services/firebase_notification_service.dart';
 import '../../dashboard/screens/dashboard_screen.dart';
 import '../../profile/screens/force_password_change_screen.dart';
 import 'forgot_password_screen.dart';
@@ -24,6 +25,27 @@ class _LoginScreenState extends State<LoginScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _setupNotifications() async {
+    try {
+      // Get FCM token
+      final fcmToken = await FirebaseNotificationService.getToken();
+      if (fcmToken != null) {
+        debugPrint('FCM Token obtained for delivery partner: $fcmToken');
+
+        // Subscribe to delivery partner topics
+        final partnerId = _emailController.text.replaceAll('@', '_').replaceAll('.', '_');
+        await FirebaseNotificationService.subscribeToDeliveryPartnerTopics(
+          partnerId,
+          'default_zone', // You can get actual zone from user data
+        );
+
+        debugPrint('Subscribed to delivery partner topics');
+      }
+    } catch (e) {
+      debugPrint('Error setting up notifications: $e');
+    }
   }
 
   Future<void> _handleLogin() async {
@@ -52,11 +74,15 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       } else {
         // Normal login - go to dashboard
+
+        // Get FCM token and send to backend
+        _setupNotifications();
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const DashboardScreen()),
         );
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Login successful! Welcome back.'),

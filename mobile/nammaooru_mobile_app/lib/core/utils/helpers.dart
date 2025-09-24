@@ -1,16 +1,19 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class Helpers {
   static void showSnackBar(BuildContext context, String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red : Colors.green,
-        duration: const Duration(seconds: 3),
-      ),
-    );
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: isError ? Colors.red : Colors.green,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
   }
   
   static void showLoadingDialog(BuildContext context) {
@@ -133,5 +136,23 @@ class Helpers {
   
   static String formatDateTime(DateTime date) {
     return DateFormat('dd MMM yyyy, hh:mm a').format(date);
+  }
+
+  static Future<void> makePhoneCall(String phoneNumber) async {
+    final Uri launchUri = Uri(
+      scheme: 'tel',
+      path: phoneNumber,
+    );
+
+    try {
+      if (await canLaunchUrl(launchUri)) {
+        await launchUrl(launchUri);
+      } else {
+        throw Exception('Could not launch phone dialer');
+      }
+    } catch (e) {
+      // Handle error silently or show a message
+      print('Error making phone call: $e');
+    }
   }
 }

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../../core/providers/delivery_partner_provider.dart';
 import '../../../core/models/delivery_partner.dart';
+import '../../../core/models/simple_order_model.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../orders/screens/order_history_screen.dart';
 import '../../orders/screens/available_orders_screen.dart';
@@ -476,7 +477,7 @@ class HomeTab extends StatelessWidget {
     );
   }
 
-  Widget _buildActiveOrderCard(DeliveryOrder order, DeliveryPartnerProvider provider) {
+  Widget _buildActiveOrderCard(OrderModel order, DeliveryPartnerProvider provider) {
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 12),
@@ -490,7 +491,7 @@ class HomeTab extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Order #${order.orderId}',
+                  'Order #${order.id}',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
@@ -526,7 +527,7 @@ class HomeTab extends StatelessWidget {
               children: [
                 const Icon(Icons.phone, size: 16, color: Colors.grey),
                 const SizedBox(width: 8),
-                Text(order.customerPhone),
+                Text(order.customerPhone ?? 'No phone'),
               ],
             ),
             const SizedBox(height: 8),
@@ -539,7 +540,8 @@ class HomeTab extends StatelessWidget {
             ),
             const SizedBox(height: 12),
 
-            // Items Section
+            // Items Section (commented out as OrderModel doesn't have items)
+            /*
             if (order.items.isNotEmpty) ...[
               const Text(
                 'Items:',
@@ -585,6 +587,7 @@ class HomeTab extends StatelessWidget {
               )).toList(),
               const SizedBox(height: 12),
             ],
+            */
 
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -593,11 +596,11 @@ class HomeTab extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Order Value: ₹${order.orderValue.toStringAsFixed(0)}',
+                      'Order Value: ₹${(order.totalAmount ?? 0).toStringAsFixed(0)}',
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                     Text(
-                      'Delivery Fee: ₹${order.deliveryFee.toStringAsFixed(0)}',
+                      'Delivery Fee: ₹${(order.deliveryFee ?? 0).toStringAsFixed(0)}',
                       style: const TextStyle(
                         color: Colors.green,
                         fontWeight: FontWeight.w600,
@@ -636,7 +639,7 @@ class HomeTab extends StatelessWidget {
                     if (order.status.toLowerCase() == 'picked_up' || order.status.toLowerCase() == 'in_transit') ...[
                       ElevatedButton(
                         onPressed: () async {
-                          final success = await provider.updateOrderStatus(order.orderId, 'DELIVERED');
+                          final success = await provider.updateOrderStatus(order.id, 'DELIVERED');
                           if (success) {
                             ScaffoldMessenger.of(parentContext).showSnackBar(
                               const SnackBar(
@@ -666,7 +669,7 @@ class HomeTab extends StatelessWidget {
     );
   }
 
-  Widget _buildOrderCard(DeliveryOrder order, DeliveryPartnerProvider provider) {
+  Widget _buildOrderCard(OrderModel order, DeliveryPartnerProvider provider) {
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 12),
@@ -680,7 +683,7 @@ class HomeTab extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Order #${order.orderId}',
+                  'Order #${order.id}',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
@@ -716,7 +719,7 @@ class HomeTab extends StatelessWidget {
               children: [
                 const Icon(Icons.phone, size: 16, color: Colors.grey),
                 const SizedBox(width: 8),
-                Text(order.customerPhone),
+                Text(order.customerPhone ?? 'No phone'),
               ],
             ),
             const SizedBox(height: 8),
@@ -729,7 +732,8 @@ class HomeTab extends StatelessWidget {
             ),
             const SizedBox(height: 12),
 
-            // Items Section
+            // Items Section (commented out as OrderModel doesn't have items)
+            /*
             if (order.items.isNotEmpty) ...[
               const Text(
                 'Items:',
@@ -775,6 +779,7 @@ class HomeTab extends StatelessWidget {
               )).toList(),
               const SizedBox(height: 12),
             ],
+            */
 
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -783,11 +788,11 @@ class HomeTab extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Order Value: ₹${order.orderValue.toStringAsFixed(0)}',
+                      'Order Value: ₹${(order.totalAmount ?? 0).toStringAsFixed(0)}',
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                     Text(
-                      'Delivery Fee: ₹${order.deliveryFee.toStringAsFixed(0)}',
+                      'Delivery Fee: ₹${(order.deliveryFee ?? 0).toStringAsFixed(0)}',
                       style: const TextStyle(
                         color: Colors.green,
                         fontWeight: FontWeight.w600,
@@ -797,7 +802,7 @@ class HomeTab extends StatelessWidget {
                 ),
                 ElevatedButton(
                   onPressed: () async {
-                    final success = await provider.acceptOrder(order.orderId);
+                    final success = await provider.acceptOrder(order.id);
                     if (success) {
                       ScaffoldMessenger.of(parentContext).showSnackBar(
                         const SnackBar(
@@ -826,7 +831,7 @@ class HomeTab extends StatelessWidget {
 }
 
 class OrderHistoryTab extends StatelessWidget {
-  final List<DeliveryOrder> orders;
+  final List<OrderModel> orders;
 
   const OrderHistoryTab({Key? key, required this.orders}) : super(key: key);
 
@@ -879,20 +884,20 @@ class OrderHistoryTab extends StatelessWidget {
                         color: Colors.white,
                       ),
                     ),
-                    title: Text('Order #${order.orderId}'),
+                    title: Text('Order #${order.id}'),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(order.customerName),
                         Text(
                           DateFormat('dd MMM yyyy, hh:mm a')
-                              .format(order.createdAt),
+                              .format(order.createdAt ?? DateTime.now()),
                           style: const TextStyle(fontSize: 12),
                         ),
                       ],
                     ),
                     trailing: Text(
-                      '₹${order.deliveryFee.toStringAsFixed(0)}',
+                      '₹${(order.deliveryFee ?? 0).toStringAsFixed(0)}',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.green,

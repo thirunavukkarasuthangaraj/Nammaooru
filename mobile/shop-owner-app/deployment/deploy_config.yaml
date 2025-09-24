@@ -1,0 +1,277 @@
+# Deployment Configuration for NammaOoru Shop Owner App
+# This file contains all deployment-related configurations
+
+app:
+  name: "NammaOoru Shop Owner"
+  package_name: "com.nammaooru.shopowner"
+  version: "1.0.0"
+  build_number: 1
+  description: "Shop owner management app for NammaOoru platform"
+
+# Environment configurations
+environments:
+  development:
+    api_url: "https://dev-api.nammaooru.com"
+    firebase_project: "nammaooru-dev"
+    app_id_android: "com.nammaooru.shopowner.dev"
+    app_id_ios: "com.nammaooru.shopowner.dev"
+    deep_link_scheme: "nammaooru-dev"
+
+  staging:
+    api_url: "https://staging-api.nammaooru.com"
+    firebase_project: "nammaooru-staging"
+    app_id_android: "com.nammaooru.shopowner.staging"
+    app_id_ios: "com.nammaooru.shopowner.staging"
+    deep_link_scheme: "nammaooru-staging"
+
+  production:
+    api_url: "https://api.nammaooru.com"
+    firebase_project: "nammaooru-prod"
+    app_id_android: "com.nammaooru.shopowner"
+    app_id_ios: "com.nammaooru.shopowner"
+    deep_link_scheme: "nammaooru"
+
+# Android build configuration
+android:
+  compile_sdk_version: 34
+  min_sdk_version: 23
+  target_sdk_version: 34
+  build_tools_version: "34.0.0"
+
+  # Signing configuration
+  signing:
+    store_file: "android/app/upload-keystore.jks"
+    key_alias: "upload"
+    # Store password and key password should be provided via environment variables
+
+  # ProGuard configuration
+  proguard:
+    enabled: true
+    minify_enabled: true
+    shrink_resources: true
+    obfuscate: true
+
+  # Build variants
+  build_types:
+    debug:
+      debuggable: true
+      minify_enabled: false
+      application_id_suffix: ".debug"
+      version_name_suffix: "-debug"
+
+    release:
+      debuggable: false
+      minify_enabled: true
+      shrink_resources: true
+
+    profile:
+      debuggable: false
+      minify_enabled: true
+      application_id_suffix: ".profile"
+      version_name_suffix: "-profile"
+
+# iOS build configuration
+ios:
+  deployment_target: "12.0"
+  swift_version: "5.0"
+
+  # Code signing
+  code_signing:
+    team_id: "YOUR_TEAM_ID"
+    provisioning_profile_development: "NammaOoru Shop Owner Development"
+    provisioning_profile_adhoc: "NammaOoru Shop Owner AdHoc"
+    provisioning_profile_appstore: "NammaOoru Shop Owner AppStore"
+
+  # Bundle identifiers
+  bundle_ids:
+    development: "com.nammaooru.shopowner.dev"
+    staging: "com.nammaooru.shopowner.staging"
+    production: "com.nammaooru.shopowner"
+
+# Firebase configuration
+firebase:
+  # Analytics
+  analytics_enabled: true
+  analytics_collection_enabled: true
+
+  # Crashlytics
+  crashlytics_enabled: true
+  crashlytics_collection_enabled: true
+
+  # Performance monitoring
+  performance_monitoring_enabled: true
+  performance_collection_enabled: true
+
+  # Remote config
+  remote_config_enabled: true
+  remote_config_cache_expiration: 3600 # 1 hour
+
+  # Cloud messaging
+  fcm_enabled: true
+  fcm_auto_init_enabled: true
+
+# App Store configuration
+app_stores:
+  google_play:
+    track: "internal" # internal, alpha, beta, production
+    rollout_percentage: 100
+    enable_staged_rollout: false
+
+  apple_app_store:
+    submit_for_review: false
+    automatic_release: false
+    phased_release: false
+
+# Build optimization
+optimization:
+  # Flutter optimizations
+  flutter:
+    build_mode: "release" # debug, profile, release
+    target_platform: "all" # android-arm, android-arm64, android-x64, ios, all
+    tree_shake_icons: true
+    split_debug_info: true
+    obfuscate: true
+    dart_define:
+      - "dart.vm.product=true"
+
+  # Asset optimization
+  assets:
+    compress_images: true
+    optimize_fonts: true
+    remove_unused_assets: true
+
+  # Code optimization
+  code:
+    enable_r8: true
+    enable_proguard: true
+    enable_multidex: true
+
+# Testing configuration
+testing:
+  unit_tests: true
+  widget_tests: true
+  integration_tests: true
+  performance_tests: true
+
+  # Test coverage
+  coverage:
+    minimum_coverage: 80
+    generate_html_report: true
+    exclude_files:
+      - "**/*.g.dart"
+      - "**/*.freezed.dart"
+      - "**/firebase_options.dart"
+
+# Deployment targets
+deployment_targets:
+  - name: "Google Play Console"
+    type: "android"
+    enabled: true
+    auto_deploy: false
+
+  - name: "Apple App Store Connect"
+    type: "ios"
+    enabled: true
+    auto_deploy: false
+
+  - name: "Firebase App Distribution"
+    type: "both"
+    enabled: true
+    auto_deploy: true
+    testers:
+      - "dev-team@nammaooru.com"
+      - "qa-team@nammaooru.com"
+
+# CI/CD configuration
+ci_cd:
+  provider: "github_actions" # github_actions, gitlab_ci, jenkins
+
+  triggers:
+    - branch: "main"
+      environment: "production"
+      auto_deploy: false
+
+    - branch: "staging"
+      environment: "staging"
+      auto_deploy: true
+
+    - branch: "develop"
+      environment: "development"
+      auto_deploy: true
+
+  # Build matrix
+  build_matrix:
+    - platform: "android"
+      build_type: "apk"
+
+    - platform: "android"
+      build_type: "appbundle"
+
+    - platform: "ios"
+      build_type: "ipa"
+
+# Security configuration
+security:
+  # Network security
+  network_security_config: true
+  certificate_pinning: true
+
+  # Code obfuscation
+  obfuscation:
+    enabled: true
+    keep_names:
+      - "**/*Exception"
+      - "**/*Error"
+
+  # API security
+  api_security:
+    jwt_validation: true
+    rate_limiting: true
+    request_signing: true
+
+# Monitoring and analytics
+monitoring:
+  # Performance monitoring
+  performance:
+    enabled: true
+    automatic_trace_collection: true
+    http_metric_collection: true
+
+  # Error tracking
+  error_tracking:
+    enabled: true
+    automatic_collection: true
+    user_identifier_collection: false
+
+  # User analytics
+  analytics:
+    enabled: true
+    automatic_screen_reporting: true
+    user_property_collection: true
+
+# Release notes
+release_notes:
+  version_1_0_0: |
+    🎉 Initial release of NammaOoru Shop Owner App
+
+    Features:
+    • Complete shop management dashboard
+    • Real-time order management
+    • Product catalog management
+    • Customer communication tools
+    • Sales analytics and reporting
+    • Multi-language support
+    • Push notifications
+    • Offline mode support
+
+    Technical improvements:
+    • Optimized performance
+    • Enhanced security
+    • Improved user experience
+    • Bug fixes and stability improvements
+
+# Contact information
+contacts:
+  developer: "dev-team@nammaooru.com"
+  support: "support@nammaooru.com"
+  business: "business@nammaooru.com"

@@ -103,10 +103,10 @@
         </div>
         <div class="header-actions">
           <button class="header-btn print-header-btn" (click)="printOrder(order.id)" title="Print Order">
-            🖨️
+            <span style="font-size: 12px;">Print</span>
           </button>
           <button class="header-btn details-header-btn" (click)="viewOrderDetails(order)" title="View Details">
-            👁️
+            <span style="font-size: 12px;">View</span>
           </button>
           <div class="status-badge" [ngClass]="getStatusClass(order.status)">
             {{ getStatusLabel(order.status) }}
@@ -121,21 +121,21 @@
         </div>
         <div class="customer-details">
           <div class="customer-name">{{ order.customerName }}</div>
-          <div class="customer-phone" *ngIf="order.customerPhone">📞 {{ order.customerPhone }}</div>
+          <div class="customer-phone" *ngIf="order.customerPhone">Tel: {{ order.customerPhone }}</div>
         </div>
       </div>
 
       <!-- Pending Order Actions (Prominent) -->
       <div *ngIf="order.status === 'PENDING'" class="pending-actions-section">
         <div class="pending-alert">
-          ⚠️ New order requires your attention!
+          New order requires your attention
         </div>
         <div class="pending-buttons">
           <button class="pending-btn accept-pending-btn" (click)="acceptOrder(order)">
-            ✅ Accept Order
+            Accept Order
           </button>
           <button class="pending-btn reject-pending-btn" (click)="rejectOrder(order)">
-            ❌ Reject Order
+            Reject Order
           </button>
         </div>
       </div>
@@ -143,8 +143,7 @@
       <!-- Items Section -->
       <div class="items-section">
         <div class="items-header">
-          <span class="items-icon">🛍️</span>
-          <span class="items-label">Items ({{ order.items.length || 0 }})</span>
+          <span class="items-label">Order Items ({{ order.items.length || 0 }})</span>
         </div>
         <div class="items-grid">
           <div *ngFor="let item of order.items" class="item-card">
@@ -155,12 +154,9 @@
                      [alt]="item.name || item.productName"
                      class="item-image"
                      (error)="onImageError($event)">
-                <div *ngIf="!item.image && !item.productImageUrl" class="item-icon">
-                  {{ getItemIcon(item.name || item.productName) }}
+                <div *ngIf="!item.image && !item.productImageUrl" class="item-icon" style="color: #6c757d; font-size: 20px; font-weight: bold;">
+                  {{ (item.name || item.productName || 'P')[0].toUpperCase() }}
                 </div>
-              </div>
-              <div class="item-image-price">
-                ₹{{ item.price || item.unitPrice }}
               </div>
             </div>
             <div class="item-info">
@@ -183,8 +179,7 @@
           <div class="total-price">₹{{ order.totalAmount | number:'1.0-0' }}</div>
         </div>
         <div class="payment-info">
-          <span class="payment-icon">{{ order.paymentMethod === 'CASH_ON_DELIVERY' ? '💰' : '💳' }}</span>
-          <span class="payment-text">{{ order.paymentMethod === 'CASH_ON_DELIVERY' ? 'Cash on Delivery' : 'Paid Online' }}</span>
+          <span class="payment-text">{{ order.paymentMethod === 'CASH_ON_DELIVERY' ? 'Cash on Delivery' : 'Online Payment' }}</span>
         </div>
       </div>
 
@@ -193,40 +188,40 @@
         <!-- Pending Actions -->
         <ng-container *ngIf="order.status === 'PENDING'">
           <button class="action-btn accept-btn" (click)="acceptOrder(order)">
-            ✅ Accept Order
+            Accept Order
           </button>
           <button class="action-btn reject-btn" (click)="rejectOrder(order)">
-            ❌ Reject
+            Reject
           </button>
         </ng-container>
 
         <!-- Confirmed Actions -->
         <ng-container *ngIf="order.status === 'CONFIRMED'">
           <button class="action-btn prepare-btn" (click)="startPreparing(order.id)">
-            👨‍🍳 Start Preparing
+            Start Preparing
           </button>
         </ng-container>
 
         <!-- Preparing Actions -->
         <ng-container *ngIf="order.status === 'PREPARING'">
           <button class="action-btn ready-btn" (click)="markReady(order.id)">
-            ✅ Mark Ready
+            Mark Ready
           </button>
         </ng-container>
 
         <!-- Ready Actions -->
         <ng-container *ngIf="order.status === 'READY_FOR_PICKUP'">
           <button class="action-btn print-btn" (click)="printOrder(order.id)">
-            🖨️ Print Order
+            Print Order
           </button>
           <button class="action-btn assign-btn" (click)="assignDelivery(order.id)">
-            🚚 Assign Delivery
+            Assign Delivery
           </button>
         </ng-container>
 
         <!-- Details Button (Always Available) -->
         <button class="action-btn details-btn" (click)="viewOrderDetails(order)">
-          👁️ View Details
+          View Details
         </button>
 
       </div>
@@ -235,7 +230,7 @@
 
     <!-- Empty State -->
     <div *ngIf="filteredOrders.length === 0" class="empty-state">
-      <div class="empty-icon">📦</div>
+      <div class="empty-icon" style="color: #6c757d; font-weight: 300; font-family: Arial;">[ ]</div>
       <div class="empty-title">No orders found</div>
       <div class="empty-subtitle" *ngIf="searchTerm">Try adjusting your search terms</div>
       <div class="empty-subtitle" *ngIf="!searchTerm">No orders in this status</div>

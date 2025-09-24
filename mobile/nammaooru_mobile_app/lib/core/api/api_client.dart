@@ -87,7 +87,11 @@ class ApiClient {
     dynamic data,
     Map<String, dynamic>? queryParameters,
     Options? options,
+    bool includeAuth = true,
   }) async {
+    if (includeAuth) {
+      await _addAuthToken();
+    }
     return await _dio.delete(
       path,
       data: data,
@@ -121,16 +125,19 @@ class ApiClient {
       if (token != null && token.isNotEmpty) {
         _dio.options.headers['Authorization'] = 'Bearer $token';
         if (kDebugMode) {
-          print('ApiClient: Adding auth token');
+          print('ApiClient: Adding auth token - Bearer ${token.substring(0, 20)}...');
+          print('ApiClient: Headers after adding token: ${_dio.options.headers}');
         }
       } else {
         if (kDebugMode) {
-          print('ApiClient: No auth token found');
+          print('ApiClient: No auth token found in storage');
+          print('ApiClient: Current headers: ${_dio.options.headers}');
         }
       }
     } catch (e) {
       if (kDebugMode) {
         print('ApiClient: Error getting auth token: $e');
+        print('ApiClient: Stack trace: ${StackTrace.current}');
       }
     }
   }

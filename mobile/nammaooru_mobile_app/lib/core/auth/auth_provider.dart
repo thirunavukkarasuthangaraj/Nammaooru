@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'auth_service.dart';
 import '../storage/secure_storage.dart';
+import '../../services/firebase_notification_service.dart';
 
 enum AuthState {
   loading,
@@ -47,14 +48,18 @@ class AuthProvider with ChangeNotifier {
   
   Future<bool> login(String email, String password) async {
     _setLoading();
-    
+
     final result = await AuthService.login(email, password);
-    
+
     if (result.isSuccess) {
       _userRole = result.userRole;
       _userId = result.userId;
       _authState = AuthState.authenticated;
       _errorMessage = null;
+
+      // Register FCM token for push notifications
+      await _registerFcmToken();
+
       notifyListeners();
       return true;
     } else {
@@ -99,14 +104,18 @@ class AuthProvider with ChangeNotifier {
   
   Future<bool> verifyOtp(String email, String otp) async {
     _setLoading();
-    
+
     final result = await AuthService.verifyOtp(email, otp);
-    
+
     if (result.isSuccess) {
       _userRole = result.userRole;
       _userId = result.userId;
       _authState = AuthState.authenticated;
       _errorMessage = null;
+
+      // Register FCM token after successful OTP verification
+      await _registerFcmToken();
+
       notifyListeners();
       return true;
     } else {
@@ -188,6 +197,33 @@ class AuthProvider with ChangeNotifier {
         return '/delivery-partner/dashboard';
       default:
         return '/login';
+    }
+  }
+
+  Future<void> _registerFcmToken() async {
+    try {
+      // First, initialize Firebase with permissions (this will ask for notification permission)
+      await FirebaseNotificationService.initializeWithPermissions();
+
+      // Get FCM token
+      final token = await FirebaseNotificationService.getToken();
+      if (token != null) {
+        debugPrint('📱 Registering FCM token for user: $_userId with role: $_userRole');
+
+        // Subscribe to user-specific and role-based topics
+        if (_userId != null && _userRole != null) {
+          await FirebaseNotificationService.subscribeToUserTopics(_userId!, _userRole!);
+
+          // For shop owners, also subscribe to their shop-specific topic
+          if (_userRole == 'SHOP_OWNER' || _userRole == 'shop_owner') {
+            // Subscribe to shop-specific notifications
+            // The shop ID will be linked on the backend
+            await FirebaseNotificationService.subscribeToTopic('shop_owner_$_userId');
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error registering FCM token: $e');
     }
   }
 }

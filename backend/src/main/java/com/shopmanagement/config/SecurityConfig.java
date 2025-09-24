@@ -70,6 +70,7 @@ public class SecurityConfig {
                                 "/api/auth/**",
                                 "/api/public/**",
                                 "/api/version",
+                                "/api/customer/**",  // ALLOW ALL CUSTOMER ENDPOINTS WITHOUT AUTH
                                 "/api/mobile/delivery-partner/login",
                                 "/api/mobile/delivery-partner/forgot-password",
                                 "/api/mobile/delivery-partner/orders/**",

@@ -227,21 +227,36 @@ public class ProductCategoryService {
 
     public ProductCategoryResponse updateCategoryStatus(Long id, Boolean isActive) {
         log.info("Updating category status: {} - active: {}", id, isActive);
-        
+
         ProductCategory category = categoryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
-        
+
         category.setIsActive(isActive);
         category.setUpdatedBy(getCurrentUsername());
-        
+
         // If deactivating, also deactivate all subcategories
         if (!isActive) {
             deactivateSubcategories(category);
         }
-        
+
         ProductCategory updatedCategory = categoryRepository.save(category);
         log.info("Category status updated: {}", id);
-        
+
+        return productMapper.toResponse(updatedCategory);
+    }
+
+    public ProductCategoryResponse updateCategoryImage(Long id, String imageUrl) {
+        log.info("Updating category image: {} - imageUrl: {}", id, imageUrl);
+
+        ProductCategory category = categoryRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
+
+        category.setIconUrl(imageUrl);
+        category.setUpdatedBy(getCurrentUsername());
+
+        ProductCategory updatedCategory = categoryRepository.save(category);
+        log.info("Category image updated: {}", id);
+
         return productMapper.toResponse(updatedCategory);
     }
 

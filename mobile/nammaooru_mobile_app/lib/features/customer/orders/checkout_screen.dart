@@ -131,17 +131,24 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
         // Convert API addresses to SavedAddress objects
         _savedAddresses = addressList.map((addr) {
+          // Handle different field names from API
+          final firstName = addr['firstName'] ?? addr['name'] ?? '';
+          final addressLine1 = addr['addressLine1'] ?? addr['address_line1'] ?? addr['streetAddress'] ?? '';
+          final addressLine2 = addr['addressLine2'] ?? addr['address_line2'] ?? addr['area'] ?? '';
+          final phoneNumber = addr['phone'] ?? addr['mobileNumber'] ?? addr['mobile'] ?? '';
+          final postalCode = addr['pincode']?.toString() ?? addr['postalCode']?.toString() ?? addr['postal_code']?.toString() ?? '';
+
           return SavedAddress(
             id: addr['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
-            name: addr['firstName'] ?? '',
+            name: firstName,
             lastName: addr['lastName'] ?? '',
-            phone: addr['phone'] ?? '',
-            addressLine1: addr['addressLine1'] ?? '',
-            addressLine2: addr['addressLine2'] ?? addr['area'] ?? '',
+            phone: phoneNumber,
+            addressLine1: addressLine1,
+            addressLine2: addressLine2,
             landmark: addr['landmark'] ?? '',
-            city: 'Tirupattur', // Always use Tirupattur
+            city: addr['city'] ?? 'Tirupattur',
             state: addr['state'] ?? 'Tamil Nadu',
-            pincode: addr['pincode']?.toString() ?? '',
+            pincode: postalCode,
             addressType: addr['addressType'] ?? 'HOME',
             isDefault: addr['isDefault'] ?? false,
             createdAt: DateTime.now(),
@@ -206,8 +213,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     _addressLine2Controller.text = address.addressLine2;
     _landmarkController.text = address.landmark;
     _pincodeController.text = address.pincode;
-    _selectedCity = 'Tirupattur'; // Always use Tirupattur
-    _selectedState = address.state;
+
+    // Ensure city value is in the dropdown list
+    if (_cities.contains(address.city)) {
+      _selectedCity = address.city;
+    } else {
+      _selectedCity = 'Tirupattur'; // Default to Tirupattur if not found
+    }
+
+    // Ensure state value is in the dropdown list
+    if (_states.contains(address.state)) {
+      _selectedState = address.state;
+    } else {
+      _selectedState = 'Tamil Nadu'; // Default to Tamil Nadu if not found
+    }
+
     _selectedAddressType = address.addressType;
   }
 
@@ -347,45 +367,137 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Saved Addresses Section
+            // Saved Addresses Section - Now at the top with scrollbar
             if (_savedAddresses.isNotEmpty) ...[
-              const Text(
-                'Saved Addresses',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 12),
               Container(
-                height: 120,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _savedAddresses.length,
-                  itemBuilder: (context, index) {
-                    final address = _savedAddresses[index];
-                    final isSelected = _selectedSavedAddress?.id == address.id;
-
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedSavedAddress = address;
-                        });
-                        _loadAddressToFields(address);
-                      },
-                      child: Container(
-                        width: 200,
-                        margin: EdgeInsets.only(right: 12),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: isSelected ? VillageTheme.primaryGreen.withOpacity(0.1) : Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isSelected ? VillageTheme.primaryGreen : Colors.grey.shade300,
-                            width: isSelected ? 2 : 1,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: VillageTheme.primaryGreen.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: VillageTheme.primaryGreen.withOpacity(0.2),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Select Saved Address',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black,
                           ),
                         ),
+                        Text(
+                          '${_savedAddresses.length} saved',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      height: 120,
+                      child: Scrollbar(
+                        thumbVisibility: true,
+                        thickness: 4,
+                        radius: const Radius.circular(4),
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.only(bottom: 8),
+                          itemCount: _savedAddresses.length + 1, // +1 for Add New button
+                          itemBuilder: (context, index) {
+                            // Add New Address Button
+                            if (index == _savedAddresses.length) {
+                              return GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _selectedSavedAddress = null;
+                                    // Clear all fields for new address
+                                    _nameController.clear();
+                                    _lastNameController.clear();
+                                    _phoneController.clear();
+                                    _addressLine1Controller.clear();
+                                    _addressLine2Controller.clear();
+                                    _landmarkController.clear();
+                                    _pincodeController.clear();
+                                    _selectedAddressType = 'HOME';
+                                    _selectedCity = 'Tirupattur';
+                                    _selectedState = 'Tamil Nadu';
+                                  });
+                                },
+                                child: Container(
+                                  width: 150,
+                                  margin: EdgeInsets.only(right: 12),
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: VillageTheme.primaryGreen,
+                                      width: 1,
+                                      style: BorderStyle.solid,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.add_circle_outline,
+                                        size: 32,
+                                        color: VillageTheme.primaryGreen,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'Add New\nAddress',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: VillageTheme.primaryGreen,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }
+
+                            final address = _savedAddresses[index];
+                            final isSelected = _selectedSavedAddress?.id == address.id;
+
+                            return GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _selectedSavedAddress = address;
+                                });
+                                _loadAddressToFields(address);
+                              },
+                              child: Container(
+                                width: 220,
+                                margin: EdgeInsets.only(right: 12),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: isSelected ? VillageTheme.primaryGreen.withOpacity(0.1) : Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: isSelected ? VillageTheme.primaryGreen : Colors.grey.shade300,
+                                    width: isSelected ? 2 : 1,
+                                  ),
+                                  boxShadow: isSelected ? [
+                                    BoxShadow(
+                                      color: VillageTheme.primaryGreen.withOpacity(0.2),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ] : [],
+                                ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -468,11 +580,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   },
                 ),
               ),
-              const SizedBox(height: 16),
-              const Divider(),
-              const SizedBox(height: 16),
             ],
-            
+          ),
+
             // Address Type
             const Text('Address Type', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w500)),
             const SizedBox(height: 8),
@@ -639,7 +749,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: _selectedCity,
+                    value: _cities.contains(_selectedCity) ? _selectedCity : 'Tirupattur',
                     style: const TextStyle(
                       color: Colors.black,
                       fontSize: 16,
@@ -659,16 +769,24 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       );
                     }).toList(),
                     onChanged: (value) {
-                      setState(() {
-                        _selectedCity = value!;
-                      });
+                      if (value != null) {
+                        setState(() {
+                          _selectedCity = value;
+                        });
+                      }
+                    },
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please select a city';
+                      }
+                      return null;
                     },
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: _selectedState,
+                    value: _states.contains(_selectedState) ? _selectedState : 'Tamil Nadu',
                     style: const TextStyle(
                       color: Colors.black,
                       fontSize: 16,
@@ -1764,16 +1882,45 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       final address2 = _addressLine2Controller.text.trim();
       final pincode = _pincodeController.text.trim();
 
-      // Validate required fields
-      if (firstName.isEmpty || address1.isEmpty || pincode.isEmpty) {
-        Helpers.showSnackBar(context, 'Please fill in all required fields', isError: true);
+      // Detailed validation with specific error messages
+      if (firstName.isEmpty) {
+        Helpers.showSnackBar(context, 'Please enter your first name', isError: true);
+        setState(() => _isPlacingOrder = false);
+        return;
+      }
+
+      if (phone.isEmpty) {
+        Helpers.showSnackBar(context, 'Please enter your phone number', isError: true);
+        setState(() => _isPlacingOrder = false);
+        return;
+      }
+
+      if (address1.isEmpty) {
+        Helpers.showSnackBar(context, 'Please enter your street address', isError: true);
+        setState(() => _isPlacingOrder = false);
+        return;
+      }
+
+      if (pincode.isEmpty) {
+        Helpers.showSnackBar(context, 'Please enter your pincode', isError: true);
+        setState(() => _isPlacingOrder = false);
+        return;
+      }
+
+      // Get actual shop ID from cart items
+      final shopId = cartProvider.items.isNotEmpty
+          ? (int.tryParse(cartProvider.items.first.product.shopId.toString()) ?? cartProvider.items.first.product.shopId)
+          : null;
+
+      if (shopId == null) {
+        Helpers.showSnackBar(context, 'Invalid shop information', isError: true);
         setState(() => _isPlacingOrder = false);
         return;
       }
 
       // Create order request matching current backend expectation
       final orderRequest = {
-        'shopId': 2,  // Numeric Long as expected
+        'shopId': shopId,  // Dynamic shop ID from cart
         'items': cartProvider.items.map((item) => {
           'productId': int.tryParse(item.product.id.toString()) ?? item.product.id,
           'productName': item.product.name,
@@ -1796,8 +1943,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         'notes': _deliveryInstructions.isNotEmpty ? _deliveryInstructions : null,
         'customerInfo': {
           'firstName': firstName,
-          'lastName': lastName.isNotEmpty ? lastName : 'User',
-          'phone': phone.isNotEmpty ? phone : '9999999999',
+          'lastName': lastName.isNotEmpty ? lastName : '',
+          'phone': phone,
           'email': userEmail
         }
       };

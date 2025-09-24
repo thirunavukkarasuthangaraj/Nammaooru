@@ -191,49 +191,41 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF4CAF50),
-              Color(0xFF388E3C),
-              Color(0xFF2E7D32),
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: CustomScrollView(
-            slivers: [
-              _buildSliverAppBar(),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildLocationSelector(),
-                      const SizedBox(height: 20),
-                      _buildServiceCategories(),
-                    ],
-                  ),
+      backgroundColor: isDarkMode ? Colors.black : Colors.white,
+      body: SafeArea(
+        child: CustomScrollView(
+          slivers: [
+            _buildSliverAppBar(),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildLocationSelector(),
+                    const SizedBox(height: 20),
+                    _buildServiceCategories(),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildSliverAppBar() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return SliverAppBar(
       expandedHeight: 120.0,
       floating: false,
       pinned: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: isDarkMode ? Colors.grey[900] : VillageTheme.primaryGreen,
       elevation: 0,
       flexibleSpace: FlexibleSpaceBar(
         title: Consumer<AuthProvider>(
@@ -771,41 +763,72 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             ? const Center(child: LoadingWidget())
             : _recentOrders.isEmpty
                 ? Container(
-                    padding: const EdgeInsets.all(24),
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(32),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: Colors.grey.withOpacity(0.1),
+                        width: 1,
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
                     child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          Icons.shopping_bag_outlined,
-                          size: 48,
-                          color: Colors.grey[300],
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: VillageTheme.primaryGreen.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(40),
+                          ),
+                          child: Icon(
+                            Icons.receipt_long_outlined,
+                            size: 40,
+                            color: VillageTheme.primaryGreen.withOpacity(0.5),
+                          ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 16),
                         const Text(
-                          'No recent orders',
+                          'No Orders Yet',
                           style: TextStyle(
-                            fontSize: 16,
-                            color: VillageTheme.secondaryText,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: VillageTheme.primaryText,
                           ),
                         ),
                         const SizedBox(height: 8),
                         const Text(
-                          'Start shopping to see your orders here',
+                          'Your order history will appear here',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 14,
                             color: VillageTheme.hintText,
                           ),
                           textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 20),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.pushNamed(context, '/customer/shops');
+                          },
+                          icon: const Icon(Icons.shopping_cart_outlined, size: 18),
+                          label: const Text('Start Shopping'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: VillageTheme.primaryGreen,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
                         ),
                       ],
                     ),

@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "368788713881",
-    "project_id": "grocery-5ecc5",
-    "storage_bucket": "grocery-5ecc5.firebasestorage.app"
+    "project_number": "913325898379",
+    "project_id": "nammaooru-shop-management",
+    "storage_bucket": "nammaooru-shop-management.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:368788713881:android:7c1dba64bacddbfd866308",
+        "mobilesdk_app_id": "1:913325898379:android:7beca981a84f8b135b328e",
         "android_client_info": {
           "package_name": "com.nammaooru.app"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDi8HjaaCnMIHvePB0fHR5sTduKaIBVETc"
+          "current_key": "AIzaSyCwZASRn_-unR7l6ksgezzjiattZQm3ysE"
         }
       ],
       "services": {

@@ -5,6 +5,7 @@ import { MatTabChangeEvent } from '@angular/material/tabs';
 import { ShopOwnerOrderService, ShopOwnerOrder } from '../../services/shop-owner-order.service';
 import { AssignmentService } from '../../services/assignment.service';
 import { AuthService } from '../../../../core/services/auth.service';
+import { SwalService } from '../../../../core/services/swal.service';
 import { environment } from '../../../../../environments/environment';
 
 @Component({
@@ -60,6 +61,7 @@ export class OrdersManagementComponent implements OnInit {
     private assignmentService: AssignmentService,
     private authService: AuthService,
     private snackBar: MatSnackBar,
+    private swal: SwalService,
     private router: Router
   ) {}
 
@@ -112,9 +114,9 @@ export class OrdersManagementComponent implements OnInit {
 
         // Check if it's an authentication error
         if (error.status === 401 || error.status === 403) {
-          this.snackBar.open('Authentication required. Please login to view orders.', 'Close', { duration: 5000 });
+          this.swal.error('Authentication Required', 'Please login to view orders.');
         } else {
-          this.snackBar.open('Error loading orders. Please try again.', 'Close', { duration: 3000 });
+          this.swal.error('Error', 'Failed to load orders. Please try again.');
         }
       }
     });
@@ -243,6 +245,7 @@ export class OrdersManagementComponent implements OnInit {
   }
 
   acceptOrder(order: ShopOwnerOrder): void {
+    this.swal.loading('Accepting order...');
     this.orderService.acceptOrder(order.id).subscribe({
       next: (updatedOrder) => {
         const orderIndex = this.orders.findIndex(o => o.id === order.id);
@@ -251,41 +254,59 @@ export class OrdersManagementComponent implements OnInit {
           this.updateOrderLists();
           this.applyFilter();
         }
-        this.successMessage = 'Order accepted successfully';
-        setTimeout(() => this.successMessage = '', 3000);
+        this.swal.close();
+        this.swal.success('Order Accepted!', `Order #${order.orderNumber} has been accepted successfully.`);
       },
       error: (error) => {
         console.error('Error accepting order:', error);
-        this.errorMessage = 'Error accepting order';
-        setTimeout(() => this.errorMessage = '', 3000);
+        this.swal.close();
+        this.swal.error('Error', 'Failed to accept order. Please try again.');
       }
     });
   }
 
   rejectOrder(order: ShopOwnerOrder): void {
-    const reason = prompt('Please provide a reason for rejection:');
-    if (reason) {
-      this.orderService.rejectOrder(order.id, reason).subscribe({
-        next: (updatedOrder) => {
-          const orderIndex = this.orders.findIndex(o => o.id === order.id);
-          if (orderIndex !== -1) {
-            this.orders[orderIndex] = updatedOrder;
-            this.updateOrderLists();
-            this.applyFilter();
-          }
-          this.successMessage = 'Order rejected';
-          setTimeout(() => this.successMessage = '', 3000);
-        },
-        error: (error) => {
-          console.error('Error rejecting order:', error);
-          this.errorMessage = 'Error rejecting order';
-          setTimeout(() => this.errorMessage = '', 3000);
+    this.swal.custom({
+      title: 'Reject Order',
+      text: 'Please provide a reason for rejection:',
+      input: 'text',
+      inputPlaceholder: 'Enter reason...',
+      showCancelButton: true,
+      confirmButtonText: 'Reject',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#ef4444',
+      inputValidator: (value) => {
+        if (!value) {
+          return 'You need to provide a reason!';
         }
-      });
-    }
+        return null;
+      }
+    }).then((result) => {
+      if (result.isConfirmed && result.value) {
+        this.swal.loading('Rejecting order...');
+        this.orderService.rejectOrder(order.id, result.value).subscribe({
+          next: (updatedOrder) => {
+            const orderIndex = this.orders.findIndex(o => o.id === order.id);
+            if (orderIndex !== -1) {
+              this.orders[orderIndex] = updatedOrder;
+              this.updateOrderLists();
+              this.applyFilter();
+            }
+            this.swal.close();
+            this.swal.success('Order Rejected', `Order #${order.orderNumber} has been rejected.`);
+          },
+          error: (error) => {
+            console.error('Error rejecting order:', error);
+            this.swal.close();
+            this.swal.error('Error', 'Failed to reject order. Please try again.');
+          }
+        });
+      }
+    });
   }
 
   startPreparing(orderId: number): void {
+    this.swal.loading('Starting preparation...');
     this.orderService.startPreparing(orderId).subscribe({
       next: (updatedOrder) => {
         const orderIndex = this.orders.findIndex(o => o.id === orderId);
@@ -293,16 +314,19 @@ export class OrdersManagementComponent implements OnInit {
           this.orders[orderIndex] = updatedOrder;
           this.updateOrderLists();
         }
-        this.snackBar.open('Order preparation started', 'Close', { duration: 3000 });
+        this.swal.close();
+        this.swal.toast('Order preparation started', 'success');
       },
       error: (error) => {
         console.error('Error starting preparation:', error);
-        this.snackBar.open('Error starting preparation', 'Close', { duration: 3000 });
+        this.swal.close();
+        this.swal.error('Error', 'Failed to start preparation. Please try again.');
       }
     });
   }
 
   markReady(orderId: number): void {
+    this.swal.loading('Marking order as ready...');
     this.orderService.markReady(orderId).subscribe({
       next: (updatedOrder) => {
         const orderIndex = this.orders.findIndex(o => o.id === orderId);
@@ -310,11 +334,13 @@ export class OrdersManagementComponent implements OnInit {
           this.orders[orderIndex] = updatedOrder;
           this.updateOrderLists();
         }
-        this.snackBar.open('Order marked as ready for pickup and auto-assigned to delivery partner', 'Close', { duration: 5000 });
+        this.swal.close();
+        this.swal.success('Order Ready!', 'Order marked as ready and auto-assigned to delivery partner.');
       },
       error: (error) => {
         console.error('Error marking ready:', error);
-        this.snackBar.open('Error marking ready', 'Close', { duration: 3000 });
+        this.swal.close();
+        this.swal.error('Error', 'Failed to mark order as ready. Please try again.');
       }
     });
   }
@@ -327,11 +353,11 @@ export class OrdersManagementComponent implements OnInit {
           this.orders[orderIndex] = updatedOrder;
           this.updateOrderLists();
         }
-        this.snackBar.open('Order marked as delivered', 'Close', { duration: 3000 });
+        this.swal.toast('Order marked as delivered', 'success');
       },
       error: (error) => {
         console.error('Error marking delivered:', error);
-        this.snackBar.open('Error marking delivered', 'Close', { duration: 3000 });
+        this.swal.error('Error', 'Failed to mark order as delivered.');
       }
     });
   }
@@ -428,7 +454,7 @@ export class OrdersManagementComponent implements OnInit {
   printOrder(orderId: number): void {
     const order = this.orders.find(o => o.id === orderId);
     if (!order) {
-      this.snackBar.open('Order not found', 'Close', { duration: 3000 });
+      this.swal.error('Error', 'Order not found');
       return;
     }
 
@@ -445,7 +471,7 @@ export class OrdersManagementComponent implements OnInit {
       printWindow.close();
     }
 
-    this.snackBar.open(`Order #${order.orderNumber} sent to printer`, 'Close', { duration: 3000 });
+    this.swal.toast(`Order #${order.orderNumber} sent to printer`, 'success');
   }
 
   generatePrintContent(order: ShopOwnerOrder): string {
@@ -525,15 +551,15 @@ export class OrdersManagementComponent implements OnInit {
   }
 
   viewCustomer(customerId: number): void {
-    this.snackBar.open('Customer details dialog would open here', 'Close', { duration: 3000 });
+    this.swal.info('Coming Soon', 'Customer details feature is under development.');
   }
 
   refundOrder(orderId: number): void {
-    this.snackBar.open('Refund process initiated', 'Close', { duration: 3000 });
+    this.swal.info('Refund Initiated', 'Refund process has been started.');
   }
 
   reportIssue(orderId: number): void {
-    this.snackBar.open('Issue reporting dialog would open here', 'Close', { duration: 3000 });
+    this.swal.info('Coming Soon', 'Issue reporting feature is under development.');
   }
 
   assignDeliveryPartner(orderId: number): void {
@@ -555,19 +581,15 @@ export class OrdersManagementComponent implements OnInit {
             this.updateOrderLists();
           }
 
-          this.snackBar.open(
-            `Order assigned to ${response.assignment.deliveryPartner.name}`,
-            'Close',
-            { duration: 5000 }
-          );
+          this.swal.success('Order Assigned', `Order assigned to ${response.assignment.deliveryPartner.name}`);
         } else {
-          this.snackBar.open(response.message || 'Failed to assign delivery partner', 'Close', { duration: 3000 });
+          this.swal.error('Assignment Failed', response.message || 'Failed to assign delivery partner');
         }
       },
       error: (error) => {
         this.isAssigningPartner = false;
         console.error('Error assigning delivery partner:', error);
-        this.snackBar.open('Error assigning delivery partner', 'Close', { duration: 3000 });
+        this.swal.error('Error', 'Failed to assign delivery partner. Please try again.');
       }
     });
   }
@@ -578,7 +600,7 @@ export class OrdersManagementComponent implements OnInit {
 
   verifyDriver(orderId: number, verificationCode: string): void {
     if (!verificationCode || verificationCode.length < 4) {
-      this.snackBar.open('Please enter a valid verification code', 'Close', { duration: 3000 });
+      this.swal.warning('Invalid Code', 'Please enter a valid verification code');
       return;
     }
 
@@ -593,26 +615,17 @@ export class OrdersManagementComponent implements OnInit {
             this.updateOrderLists();
           }
 
-          this.snackBar.open('Driver verified successfully! Order can be handed over.', 'Close', {
-            duration: 5000,
-            panelClass: ['success-snackbar']
-          });
+          this.swal.success('Driver Verified!', 'Order can be handed over to the delivery partner.');
 
           // Clear the verification code
           delete this.verificationCodes[orderId];
         } else {
-          this.snackBar.open(response.message || 'Invalid verification code', 'Close', {
-            duration: 3000,
-            panelClass: ['error-snackbar']
-          });
+          this.swal.error('Verification Failed', response.message || 'Invalid verification code');
         }
       },
       error: (error) => {
         console.error('Error verifying driver:', error);
-        this.snackBar.open('Error verifying driver. Please try again.', 'Close', {
-          duration: 3000,
-          panelClass: ['error-snackbar']
-        });
+        this.swal.error('Error', 'Failed to verify driver. Please try again.');
       }
     });
   }
@@ -654,22 +667,25 @@ export class OrdersManagementComponent implements OnInit {
 
   generateOrderDetailsContent(order: ShopOwnerOrder): string {
     const itemsHtml = order.items.map(item => {
+      const unitPrice = item.price || item.unitPrice || 0;
+      const totalPrice = item.quantity * unitPrice;
+
       const imageHtml = (item.image || item.productImageUrl)
-        ? `<img src="${this.getImageUrl(item.image || item.productImageUrl || '')}" alt="${item.name || item.productName}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px; margin-right: 10px;">`
-        : `<div style="width: 50px; height: 50px; background: #f0f0f0; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 10px; font-size: 20px;">${this.getItemIcon(item.name || item.productName)}</div>`;
+        ? `<img src="${this.getImageUrl(item.image || item.productImageUrl || '')}" alt="${item.name || item.productName}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; margin-right: 10px;">`
+        : `<div style="width: 50px; height: 50px; background: #ecf0f1; border-radius: 4px; display: flex; align-items: center; justify-content: center; margin-right: 10px; font-size: 18px; color: #7f8c8d; font-weight: bold;">${(item.name || item.productName || 'P')[0].toUpperCase()}</div>`;
 
       return `
         <tr>
           <td style="display: flex; align-items: center; padding: 12px;">
             ${imageHtml}
             <div>
-              <div style="font-weight: 600; margin-bottom: 4px;">${item.name || item.productName}</div>
-              <div style="color: #666; font-size: 12px;">Unit Price: ₹${item.price || item.unitPrice}</div>
+              <div style="font-weight: 600; margin-bottom: 4px; color: #2c3e50;">${item.name || item.productName}</div>
+              <div style="color: #7f8c8d; font-size: 12px;">Unit Price: ₹${unitPrice}</div>
             </div>
           </td>
-          <td style="text-align: center; font-weight: 600; color: #667eea;">${item.quantity}</td>
-          <td style="text-align: center; color: #666;">${item.quantity} × ₹${item.price || item.unitPrice}</td>
-          <td style="text-align: right; font-weight: 700; color: #38a169;">₹${(item.quantity * (item.price || item.unitPrice)) | 0}</td>
+          <td style="text-align: center; font-weight: 600; color: #3498db;">${item.quantity}</td>
+          <td style="text-align: center; color: #7f8c8d;">${item.quantity} × ₹${unitPrice}</td>
+          <td style="text-align: right; font-weight: 700; color: #2c3e50;">₹${totalPrice.toFixed(0)}</td>
         </tr>
       `;
     }).join('');
@@ -683,19 +699,19 @@ export class OrdersManagementComponent implements OnInit {
           body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             padding: 20px;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            background: #f5f6fa;
             margin: 0;
           }
           .container {
             max-width: 800px;
             margin: 0 auto;
             background: white;
-            border-radius: 16px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(44, 62, 80, 0.08);
             overflow: hidden;
           }
           .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #2c3e50;
             color: white;
             padding: 24px;
             text-align: center;
@@ -703,15 +719,18 @@ export class OrdersManagementComponent implements OnInit {
           .content { padding: 24px; }
           .section {
             margin-bottom: 24px;
-            background: #f8f9fa;
+            background: #ecf0f1;
             padding: 16px;
-            border-radius: 12px;
-            border-left: 4px solid #667eea;
+            border-radius: 6px;
+            border-left: 3px solid #3498db;
           }
           .section h3 {
             margin: 0 0 12px 0;
-            color: #2d3748;
-            font-size: 18px;
+            color: #2c3e50;
+            font-size: 16px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
           }
           .info-grid {
             display: grid;
@@ -721,82 +740,89 @@ export class OrdersManagementComponent implements OnInit {
           .info-item {
             background: white;
             padding: 12px;
-            border-radius: 8px;
-            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            border: 1px solid #dfe6e9;
           }
           .info-label {
-            font-weight: 600;
-            color: #4a5568;
-            font-size: 12px;
+            font-weight: 500;
+            color: #7f8c8d;
+            font-size: 11px;
             text-transform: uppercase;
             margin-bottom: 4px;
+            letter-spacing: 0.5px;
           }
           .info-value {
-            color: #2d3748;
-            font-weight: 500;
+            color: #2c3e50;
+            font-weight: 600;
           }
           table {
             width: 100%;
             border-collapse: collapse;
             background: white;
-            border-radius: 12px;
+            border-radius: 6px;
             overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 1px 3px rgba(44, 62, 80, 0.08);
           }
           th {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #34495e;
             color: white;
-            padding: 16px;
+            padding: 12px;
             text-align: left;
-            font-weight: 600;
+            font-weight: 500;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
           }
           td {
             padding: 12px;
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 1px solid #ecf0f1;
           }
           tr:last-child td {
             border-bottom: none;
           }
           .status-badge {
             display: inline-block;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
           }
-          .status-pending { background: #fed7d7; color: #c53030; }
-          .status-confirmed { background: #bee3f8; color: #2b6cb0; }
-          .status-preparing { background: #fbb6ce; color: #b83280; }
-          .status-ready { background: #c6f6d5; color: #2f855a; }
-          .status-delivered { background: #d4edda; color: #155724; }
+          .status-pending { background: rgba(52, 152, 219, 0.15); color: #2980b9; border: 1px solid rgba(52, 152, 219, 0.3); }
+          .status-confirmed { background: rgba(52, 152, 219, 0.1); color: #3498db; border: 1px solid #3498db; }
+          .status-preparing { background: rgba(41, 128, 185, 0.1); color: #2980b9; border: 1px solid #2980b9; }
+          .status-ready { background: rgba(44, 62, 80, 0.1); color: #2c3e50; border: 1px solid #2c3e50; }
+          .status-delivered { background: #ecf0f1; color: #7f8c8d; border: 1px solid #dfe6e9; }
           .total-section {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: rgba(44, 62, 80, 0.05);
+            border: 1px solid rgba(44, 62, 80, 0.1);
+            color: #2c3e50;
             padding: 20px;
-            border-radius: 12px;
+            border-radius: 6px;
             margin-top: 20px;
           }
           .print-btn {
-            background: #6b7280;
+            background: #2c3e50;
             color: white;
             border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
+            padding: 10px 20px;
+            border-radius: 4px;
             cursor: pointer;
-            font-weight: 600;
+            font-weight: 500;
             margin-top: 20px;
+            font-size: 14px;
           }
           .print-btn:hover {
-            background: #4b5563;
+            background: #34495e;
           }
         </style>
       </head>
       <body>
         <div class="container">
           <div class="header">
-            <h1>Order Details</h1>
-            <h2>Order #${order.orderNumber}</h2>
+            <h1 style="margin: 0 0 8px 0; font-size: 20px; font-weight: 600;">Order Details</h1>
+            <h2 style="margin: 0 0 12px 0; font-size: 16px; font-weight: 400;">Order #${order.orderNumber}</h2>
             <div class="status-badge ${this.getStatusClass(order.status)}">
               ${this.getStatusLabel(order.status)}
             </div>
@@ -804,7 +830,7 @@ export class OrdersManagementComponent implements OnInit {
 
           <div class="content">
             <div class="section">
-              <h3>📋 Order Information</h3>
+              <h3>Order Information</h3>
               <div class="info-grid">
                 <div class="info-item">
                   <div class="info-label">Order Date</div>
@@ -812,7 +838,7 @@ export class OrdersManagementComponent implements OnInit {
                 </div>
                 <div class="info-item">
                   <div class="info-label">Payment Method</div>
-                  <div class="info-value">${order.paymentMethod === 'CASH_ON_DELIVERY' ? '💰 Cash on Delivery' : '💳 Paid Online'}</div>
+                  <div class="info-value">${order.paymentMethod === 'CASH_ON_DELIVERY' ? 'Cash on Delivery' : 'Online Payment'}</div>
                 </div>
                 <div class="info-item">
                   <div class="info-label">Payment Status</div>
@@ -820,13 +846,13 @@ export class OrdersManagementComponent implements OnInit {
                 </div>
                 <div class="info-item">
                   <div class="info-label">Total Amount</div>
-                  <div class="info-value" style="font-size: 18px; font-weight: 700; color: #38a169;">₹${order.totalAmount}</div>
+                  <div class="info-value" style="font-size: 18px; font-weight: 700; color: #2c3e50;">₹${order.totalAmount}</div>
                 </div>
               </div>
             </div>
 
             <div class="section">
-              <h3>👤 Customer Information</h3>
+              <h3>Customer Information</h3>
               <div class="info-grid">
                 <div class="info-item">
                   <div class="info-label">Customer Name</div>
@@ -848,7 +874,7 @@ export class OrdersManagementComponent implements OnInit {
             </div>
 
             <div class="section">
-              <h3>🛍️ Order Items (${order.items?.length || 0} items)</h3>
+              <h3>Order Items (${order.items?.length || 0})</h3>
               <table>
                 <thead>
                   <tr>
@@ -867,14 +893,14 @@ export class OrdersManagementComponent implements OnInit {
             <div class="total-section">
               <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                  <div style="font-size: 18px; font-weight: 600;">Order Total</div>
-                  <div style="opacity: 0.9; font-size: 14px;">${order.items?.length || 0} items</div>
+                  <div style="font-size: 16px; font-weight: 500; color: #7f8c8d;">Order Total</div>
+                  <div style="font-size: 12px; color: #95a5a6;">${order.items?.length || 0} items</div>
                 </div>
-                <div style="font-size: 32px; font-weight: 800;">₹${order.totalAmount}</div>
+                <div style="font-size: 24px; font-weight: 600; color: #2c3e50;">₹${order.totalAmount}</div>
               </div>
             </div>
 
-            <button class="print-btn" onclick="window.print()">🖨️ Print Order Details</button>
+            <button class="print-btn" onclick="window.print()">Print Order Details</button>
           </div>
         </div>
       </body>

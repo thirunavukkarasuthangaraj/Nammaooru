@@ -15,8 +15,25 @@ class FirebaseNotificationService {
   static final List<NotificationModel> _localNotifications = [];
   static final List<Function(NotificationModel)> _listeners = [];
 
-  /// Initialize Firebase messaging
+  /// Initialize Firebase messaging (without requesting permissions)
   static Future<void> initialize() async {
+    if (kIsWeb) {
+      debugPrint('Firebase messaging not supported on web');
+      return;
+    }
+
+    try {
+      // Setup message handlers
+      _setupMessageHandlers();
+
+      debugPrint('✅ Firebase Notification Service initialized (permissions not requested yet)');
+    } catch (e) {
+      debugPrint('❌ Firebase Notification Service initialization failed: $e');
+    }
+  }
+
+  /// Initialize with permissions (call this after login)
+  static Future<void> initializeWithPermissions() async {
     if (kIsWeb) {
       debugPrint('Firebase messaging not supported on web');
       return;
@@ -30,12 +47,9 @@ class FirebaseNotificationService {
       final token = await getToken();
       debugPrint('🔥 FCM Token: $token');
 
-      // Setup message handlers
-      _setupMessageHandlers();
-
-      debugPrint('✅ Firebase Notification Service initialized');
+      debugPrint('✅ Firebase Notification Service fully initialized with permissions');
     } catch (e) {
-      debugPrint('❌ Firebase Notification Service initialization failed: $e');
+      debugPrint('❌ Firebase Notification Service permission setup failed: $e');
     }
   }
 

@@ -12,11 +12,18 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/products/categories")
@@ -138,5 +145,86 @@ public class ProductCategoryController {
         log.info("Reordering categories: {}", categoryIds.size());
         List<ProductCategoryResponse> categories = categoryService.reorderCategories(categoryIds);
         return ResponseEntity.ok(ApiResponse.success(categories, "Categories reordered successfully"));
+    }
+
+    @PostMapping(value = "/with-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<ProductCategoryResponse>> createCategoryWithImage(
+            @RequestParam("name") String name,
+            @RequestParam(value = "description", required = false) String description,
+            @RequestParam(value = "parentId", required = false) Long parentId,
+            @RequestParam(value = "image", required = false) MultipartFile imageFile) {
+
+        log.info("Creating category with image: {}", name);
+
+        try {
+            // Create category request
+            ProductCategoryRequest request = ProductCategoryRequest.builder()
+                    .name(name)
+                    .description(description)
+                    .parentId(parentId)
+                    .isActive(true)
+                    .build();
+
+            // Handle image upload if provided
+            if (imageFile != null && !imageFile.isEmpty()) {
+                String imageUrl = saveImage(imageFile);
+                request.setIconUrl(imageUrl);
+            }
+
+            ProductCategoryResponse category = categoryService.createCategory(request);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(ApiResponse.success(category, "Category created successfully with image"));
+        } catch (IOException e) {
+            log.error("Error uploading image: ", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to upload image"));
+        }
+    }
+
+    @PostMapping("/{id}/image")
+    public ResponseEntity<ApiResponse<ProductCategoryResponse>> uploadCategoryImage(
+            @PathVariable Long id,
+            @RequestParam("image") MultipartFile imageFile) {
+
+        log.info("Uploading image for category: {}", id);
+
+        try {
+            if (imageFile.isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("Please select an image file"));
+            }
+
+            String imageUrl = saveImage(imageFile);
+            ProductCategoryResponse category = categoryService.updateCategoryImage(id, imageUrl);
+
+            return ResponseEntity.ok(ApiResponse.success(category, "Image uploaded successfully"));
+        } catch (IOException e) {
+            log.error("Error uploading image: ", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to upload image"));
+        }
+    }
+
+    private String saveImage(MultipartFile file) throws IOException {
+        // Create upload directory if it doesn't exist
+        String uploadDir = "uploads/categories";
+        Path uploadPath = Paths.get(uploadDir);
+
+        if (!Files.exists(uploadPath)) {
+            Files.createDirectories(uploadPath);
+        }
+
+        // Generate unique filename
+        String originalFilename = file.getOriginalFilename();
+        String extension = originalFilename != null ?
+                originalFilename.substring(originalFilename.lastIndexOf(".")) : ".jpg";
+        String filename = UUID.randomUUID().toString() + extension;
+
+        // Save file
+        Path filePath = uploadPath.resolve(filename);
+        Files.copy(file.getInputStream(), filePath);
+
+        // Return the URL path
+        return "/uploads/categories/" + filename;
     }
 }

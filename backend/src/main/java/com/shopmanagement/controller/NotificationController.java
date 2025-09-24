@@ -2,7 +2,13 @@ package com.shopmanagement.controller;
 
 import com.shopmanagement.dto.notification.NotificationRequest;
 import com.shopmanagement.dto.notification.NotificationResponse;
+import com.shopmanagement.dto.fcm.FcmTokenRequest;
+import com.shopmanagement.dto.ApiResponse;
 import com.shopmanagement.entity.Notification;
+import com.shopmanagement.entity.User;
+import com.shopmanagement.entity.UserFcmToken;
+import com.shopmanagement.repository.UserFcmTokenRepository;
+import com.shopmanagement.repository.UserRepository;
 import com.shopmanagement.service.NotificationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +17,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -29,8 +37,10 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Slf4j
 public class NotificationController {
-    
+
     private final NotificationService notificationService;
+    private final UserFcmTokenRepository userFcmTokenRepository;
+    private final UserRepository userRepository;
     
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN') or hasRole('SHOP_OWNER')")

@@ -3,9 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/delivery_partner_provider.dart';
 import '../../../core/models/delivery_partner.dart';
+import '../../../core/models/simple_order_model.dart';
 
 class OTPHandoverScreen extends StatefulWidget {
-  final DeliveryOrder order;
+  final OrderModel order;
 
   const OTPHandoverScreen({Key? key, required this.order}) : super(key: key);
 
@@ -73,7 +74,7 @@ class _OTPHandoverScreenState extends State<OTPHandoverScreen> {
 
     try {
       final provider = Provider.of<DeliveryPartnerProvider>(context, listen: false);
-      final success = await provider.verifyPickupOTP(widget.order.orderId, _enteredOTP);
+      final success = await provider.verifyPickupOTP(widget.order.id, _enteredOTP);
 
       if (success) {
         if (mounted) {
@@ -122,7 +123,7 @@ class _OTPHandoverScreenState extends State<OTPHandoverScreen> {
 
     try {
       final provider = Provider.of<DeliveryPartnerProvider>(context, listen: false);
-      final success = await provider.requestNewPickupOTP(widget.order.orderId);
+      final success = await provider.requestNewPickupOTP(widget.order.id);
 
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -227,7 +228,7 @@ class _OTPHandoverScreenState extends State<OTPHandoverScreen> {
                 const Icon(Icons.receipt_long, color: Colors.white, size: 24),
                 const SizedBox(width: 12),
                 Text(
-                  'Order #${widget.order.orderId}',
+                  'Order #${widget.order.id}',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 20,
@@ -239,11 +240,11 @@ class _OTPHandoverScreenState extends State<OTPHandoverScreen> {
             const SizedBox(height: 16),
             _buildOrderDetail(Icons.person, 'Customer', widget.order.customerName),
             const SizedBox(height: 8),
-            _buildOrderDetail(Icons.phone, 'Phone', widget.order.customerPhone),
+            _buildOrderDetail(Icons.phone, 'Phone', widget.order.customerPhone ?? 'No phone'),
             const SizedBox(height: 8),
             _buildOrderDetail(Icons.location_on, 'Address', widget.order.deliveryAddress),
             const SizedBox(height: 8),
-            _buildOrderDetail(Icons.monetization_on, 'Value', '₹${widget.order.orderValue.toStringAsFixed(0)}'),
+            _buildOrderDetail(Icons.monetization_on, 'Value', '₹${(widget.order.totalAmount ?? 0).toStringAsFixed(0)}'),
           ],
         ),
       ),
@@ -273,7 +274,7 @@ class _OTPHandoverScreenState extends State<OTPHandoverScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            if (widget.order.items.isNotEmpty) ...[
+            /*if (widget.order.items.isNotEmpty) ...[
               ...widget.order.items.map((item) => Container(
                 margin: const EdgeInsets.only(bottom: 8),
                 padding: const EdgeInsets.all(12),
@@ -312,7 +313,7 @@ class _OTPHandoverScreenState extends State<OTPHandoverScreen> {
                   ],
                 ),
               )).toList(),
-            ] else ...[
+            ] else*/ ...[
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(

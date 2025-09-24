@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/models/order_model.dart';
 import '../../../core/services/order_service.dart';
 import 'order_details_screen.dart';
+import '../orders/order_tracking_screen.dart';
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({Key? key}) : super(key: key);
@@ -165,6 +166,17 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
         builder: (context) => OrderDetailsScreen(orderId: order.id),
       ),
     ).then((_) => _loadOrders(refresh: true)); // Refresh when returning
+  }
+
+  void _trackOrder(Order order) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => OrderTrackingScreen(
+          orderNumber: order.orderNumber,
+        ),
+      ),
+    );
   }
 
   @override
@@ -379,11 +391,12 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                   if (order.canBeTracked)
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: () => _viewOrderDetails(order),
-                        icon: const Icon(Icons.track_changes, size: 16),
+                        onPressed: () => _trackOrder(order),
+                        icon: const Icon(Icons.location_on, size: 16),
                         label: const Text('Track'),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 8),
+                          foregroundColor: Colors.blue,
                         ),
                       ),
                     ),

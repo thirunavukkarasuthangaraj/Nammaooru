@@ -2,9 +2,11 @@ package com.shopmanagement.repository;
 
 import com.shopmanagement.entity.DeliveryPartnerLocation;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -96,4 +98,35 @@ public interface DeliveryPartnerLocationRepository extends JpaRepository<Deliver
         @Param("assignmentId") Long assignmentId,
         @Param("statuses") List<String> statuses
     );
+
+    /**
+     * Get the latest N locations for a partner (for tracking)
+     */
+    @Query(value = "SELECT * FROM delivery_partner_locations WHERE partner_id = :partnerId " +
+           "ORDER BY recorded_at DESC LIMIT :limit",
+           nativeQuery = true)
+    List<DeliveryPartnerLocation> findRecentLocationsByPartnerId(
+        @Param("partnerId") Long partnerId,
+        @Param("limit") int limit
+    );
+
+    /**
+     * Delete old locations keeping only the latest N records per partner
+     */
+    @Modifying
+    @Transactional
+    @Query(value = "DELETE FROM delivery_partner_locations WHERE id IN " +
+           "(SELECT id FROM (" +
+           "    SELECT id, ROW_NUMBER() OVER (PARTITION BY partner_id ORDER BY recorded_at DESC) as rn " +
+           "    FROM delivery_partner_locations WHERE partner_id = :partnerId" +
+           ") ranked WHERE rn > :keepCount)",
+           nativeQuery = true)
+    void deleteOldLocationsKeepingLatest(@Param("partnerId") Long partnerId, @Param("keepCount") int keepCount);
+
+    /**
+     * Get current tracking location for order
+     */
+    @Query("SELECT dpl FROM DeliveryPartnerLocation dpl WHERE dpl.assignmentId = :assignmentId " +
+           "ORDER BY dpl.recordedAt DESC")
+    Optional<DeliveryPartnerLocation> findLatestLocationByAssignmentId(@Param("assignmentId") Long assignmentId);
 }

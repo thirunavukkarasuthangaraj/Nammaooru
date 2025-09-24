@@ -1,11 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'firebase_options.dart';
 import 'core/providers/delivery_partner_provider.dart';
+import 'core/constants/app_theme.dart';
 import 'features/auth/screens/login_screen.dart';
+import 'features/dashboard/screens/dashboard_screen.dart';
+import 'services/firebase_notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase only on mobile platforms
+  if (!kIsWeb) {
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+
+      // Set up background message handler
+      FirebaseMessaging.onBackgroundMessage(FirebaseNotificationService.handleBackgroundMessage);
+
+      // Initialize Firebase notification service
+      await FirebaseNotificationService.initialize();
+
+      debugPrint('✅ Firebase and notifications initialized successfully');
+    } catch (e) {
+      debugPrint('❌ Firebase initialization failed: $e');
+    }
+  } else {
+    debugPrint('Running on web - Firebase initialization skipped');
+  }
 
   // Set preferred orientations
   await SystemChrome.setPreferredOrientations([
@@ -28,10 +56,7 @@ class DeliveryPartnerApp extends StatelessWidget {
       child: MaterialApp(
         title: 'NammaOoru Delivery Partner',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-          useMaterial3: true,
-        ),
+        theme: AppTheme.lightTheme,
         home: const LoginScreen(),
       ),
     );
@@ -75,9 +100,9 @@ class _AppInitializerState extends State<AppInitializer> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [AppColors.primary, AppColors.primaryDark],
+            colors: [Color(0xFFFFC107), Color(0xFFFFA000)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),

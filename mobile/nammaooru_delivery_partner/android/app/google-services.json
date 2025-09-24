@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "913325898379",
+    "project_id": "nammaooru-shop-management",
+    "storage_bucket": "nammaooru-shop-management.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:913325898379:android:5936c24e33877c555b328e",
+        "android_client_info": {
+          "package_name": "com.nammaooru.delivery"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCwZASRn_-unR7l6ksgezzjiattZQm3ysE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

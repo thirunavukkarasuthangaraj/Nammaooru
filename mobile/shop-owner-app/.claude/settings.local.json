@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter:*)",
+      "Read(//d/AAWS/nammaooru/shop-management-system/frontend/src/environments/**)",
+      "Read(//d/AAWS/nammaooru/shop-management-system/frontend/src/app/**)",
+      "Read(//d/AAWS/nammaooru/shop-management-system/backend/src/**)",
+      "Bash(dir app-debug.apk)",
+      "Bash(powershell:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

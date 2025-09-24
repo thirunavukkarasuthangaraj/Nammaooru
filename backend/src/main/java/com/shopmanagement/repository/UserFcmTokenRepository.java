@@ -14,8 +14,11 @@ import java.util.Optional;
 public interface UserFcmTokenRepository extends JpaRepository<UserFcmToken, Long> {
 
     // Find active tokens for a user
-    @Query("SELECT u FROM UserFcmToken u WHERE u.userId = :userId AND u.isActive = true")
+    @Query("SELECT u FROM UserFcmToken u WHERE u.userId = :userId AND u.isActive = true ORDER BY u.updatedAt DESC")
     List<UserFcmToken> findActiveTokensByUserId(@Param("userId") Long userId);
+
+    // Find active tokens for a user (using method name convention)
+    List<UserFcmToken> findByUserIdAndIsActiveTrue(Long userId);
 
     // Find by user and token
     Optional<UserFcmToken> findByUserIdAndFcmToken(Long userId, String fcmToken);

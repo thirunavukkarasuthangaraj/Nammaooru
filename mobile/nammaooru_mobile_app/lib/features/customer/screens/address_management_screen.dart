@@ -27,17 +27,39 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
 
   Future<void> _loadAddresses() async {
     try {
+      print('Loading addresses from API...');
       // First try to load from API
       final result = await AddressApiService.getUserAddresses();
-      
+      print('API result: $result');
+
       if (mounted) {
         if (result['success']) {
-          final addresses = result['data'] as List<dynamic>? ?? [];
+          final data = result['data'];
+          List<dynamic> addresses = [];
+
+          // Handle both single address and array of addresses
+          if (data is List) {
+            addresses = data;
+            print('Found ${addresses.length} addresses in list');
+          } else if (data is Map) {
+            addresses = [data];
+            print('Found 1 address in map format');
+          }
+
           setState(() {
             _addresses = addresses.map((addr) => Map<String, dynamic>.from(addr)).toList();
             _isLoading = false;
           });
+
+          print('UI updated with ${_addresses.length} addresses');
+
+          // Cache the addresses for offline access
+          if (_addresses.isNotEmpty) {
+            await LocalStorage.setList('user_addresses', _addresses);
+            print('Addresses cached successfully');
+          }
         } else {
+          print('API call failed: ${result['message']}');
           // API failed, try to load from cache
           await _loadCachedAddresses();
           if (mounted && _addresses.isEmpty) {
@@ -46,10 +68,11 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
         }
       }
     } catch (e) {
+      print('Exception loading addresses: $e');
       // Error with API, try to load from cache
       await _loadCachedAddresses();
       if (mounted && _addresses.isEmpty) {
-        Helpers.showSnackBar(context, 'Error loading addresses: $e', isError: true);
+        print('Error loading addresses: $e');
       }
     }
   }
@@ -343,6 +366,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
 
   Future<void> _addAddress(String label, String address, String details) async {
     try {
+      print('Adding address: $label - $address');
       final result = await AddressApiService.addAddress(
         label: label,
         fullAddress: address,
@@ -351,19 +375,40 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
         longitude: 80.2707 + (DateTime.now().millisecondsSinceEpoch % 100) / 10000,
         isDefault: _addresses.isEmpty,
       );
-      
+
+      print('Add address result: $result');
+
       if (mounted) {
         if (result['success']) {
-          await _loadAddresses(); // Refresh the list
-          // Update cache with the new address list
-          await LocalStorage.setList('user_addresses', _addresses);
-          Helpers.showSnackBar(context, result['message'] ?? 'Address added successfully!');
+          // Force refresh the address list from API
+          setState(() {
+            _isLoading = true;
+          });
+
+          await _loadAddresses(); // This will update _addresses and setState
+
+          // Double-check that addresses are loaded
+          if (_addresses.isNotEmpty) {
+            print('Successfully loaded ${_addresses.length} addresses after adding');
+            // Update cache with the new address list
+            await LocalStorage.setList('user_addresses', _addresses);
+            Helpers.showSnackBar(context, result['message'] ?? 'Address added successfully!');
+          } else {
+            print('No addresses found after adding - trying to reload again');
+            // Try one more time
+            await Future.delayed(const Duration(milliseconds: 500));
+            await _loadAddresses();
+          }
         } else {
           Helpers.showSnackBar(context, result['message'] ?? 'Failed to add address', isError: true);
         }
       }
     } catch (e) {
+      print('Error adding address: $e');
       if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
         Helpers.showSnackBar(context, 'Error adding address: $e', isError: true);
       }
     }
@@ -458,25 +503,40 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
   }
 
   String _buildFullAddress(Map<String, dynamic> address) {
-    // Build full address from components
-    final List<String> parts = [];
-
-    // Add address line 1 (flat/house details)
-    if (address['addressLine1'] != null && address['addressLine1'].toString().isNotEmpty) {
-      parts.add(address['addressLine1']);
-    }
-
-    // Add address line 2 (area)
-    if (address['addressLine2'] != null && address['addressLine2'].toString().isNotEmpty) {
-      parts.add(address['addressLine2']);
-    }
-
-    // If fullAddress is provided, use it
+    // If fullAddress is provided, use it directly
     if (address['fullAddress'] != null && address['fullAddress'].toString().isNotEmpty) {
       return address['fullAddress'];
     }
 
-    // Otherwise build from parts
+    // Otherwise build from available parts
+    final List<String> parts = [];
+
+    // Add flat/house details if available
+    if (address['flatHouse'] != null && address['flatHouse'].toString().isNotEmpty) {
+      parts.add(address['flatHouse']);
+    }
+
+    // Add street if available
+    if (address['street'] != null && address['street'].toString().isNotEmpty) {
+      parts.add(address['street']);
+    }
+
+    // Add area (this is the main address field from our form)
+    if (address['area'] != null && address['area'].toString().isNotEmpty) {
+      parts.add(address['area']);
+    }
+
+    // Add address line 1 (for backwards compatibility)
+    if (parts.isEmpty && address['addressLine1'] != null && address['addressLine1'].toString().isNotEmpty) {
+      parts.add(address['addressLine1']);
+    }
+
+    // Add address line 2 (for backwards compatibility)
+    if (address['addressLine2'] != null && address['addressLine2'].toString().isNotEmpty) {
+      parts.add(address['addressLine2']);
+    }
+
+    // If still empty, try to build from other fields
     if (parts.isEmpty && address['area'] != null) {
       parts.add(address['area']);
     }

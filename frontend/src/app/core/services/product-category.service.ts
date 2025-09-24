@@ -110,4 +110,17 @@ export class ProductCategoryService {
     return this.http.patch<ApiResponse<ProductCategory[]>>(`${this.API_URL}/reorder`, categoryIds)
       .pipe(map(response => response.data));
   }
+
+  createCategoryWithImage(formData: FormData): Observable<ProductCategory> {
+    return this.http.post<ApiResponse<ProductCategory>>(`${this.API_URL}/with-image`, formData)
+      .pipe(map(response => response.data));
+  }
+
+  uploadCategoryImage(id: number, imageFile: File): Observable<ProductCategory> {
+    const formData = new FormData();
+    formData.append('image', imageFile);
+
+    return this.http.post<ApiResponse<ProductCategory>>(`${this.API_URL}/${id}/image`, formData)
+      .pipe(map(response => response.data));
+  }
 }

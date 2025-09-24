@@ -29,13 +29,13 @@ public class FirebaseConfig {
                 // Build Firebase options using the mobile app's project configuration
                 FirebaseOptions options = FirebaseOptions.builder()
                         .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-                        .setProjectId("grocery-5ecc5")  // Same as mobile app
+                        .setProjectId("nammaooru-shop-management")  // Same as mobile app
                         .build();
 
                 // Initialize Firebase
                 FirebaseApp.initializeApp(options);
 
-                logger.info("✅ Firebase Admin SDK initialized successfully for project: grocery-5ecc5");
+                logger.info("✅ Firebase Admin SDK initialized successfully for project: nammaooru-shop-management");
                 logger.info("📱 Connected to same Firebase project as mobile app");
 
             } else {

@@ -1,39 +1,47 @@
 package com.shopmanagement.service;
 
+import com.google.firebase.messaging.FirebaseMessaging;
+import com.google.firebase.messaging.Message;
+import com.google.firebase.messaging.Notification;
+import com.shopmanagement.entity.Customer;
+import com.shopmanagement.repository.CustomerRepository;
+import com.shopmanagement.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class FirebaseNotificationService {
 
-    @Value("${firebase.server-key:}")
-    private String firebaseServerKey;
+    private final NotificationRepository notificationRepository;
+    private final CustomerRepository customerRepository;
 
-    @Value("${firebase.project-id:grocery-5ecc5}")
-    private String projectId;
-
-    private final RestTemplate restTemplate = new RestTemplate();
-
-    private static final String FCM_URL = "https://fcm.googleapis.com/fcm/send";
-
-    public void sendOrderNotification(String orderNumber, String status, String customerToken) {
+    public void sendOrderNotification(String orderNumber, String status, String customerToken, Long customerId) {
         try {
+            log.info("🚀 FirebaseNotificationService: Preparing notification for order {} with status {}", orderNumber, status);
+
             String title = getNotificationTitle(status);
             String body = getNotificationBody(orderNumber, status);
-            
+
+            log.info("📄 Notification details - Title: '{}', Body: '{}'", title, body);
+            log.info("🎯 Target FCM token: {}...", customerToken.substring(0, Math.min(50, customerToken.length())));
+
+            // Send push notification
             sendPushNotification(customerToken, title, body, createOrderData(orderNumber, status));
-            
+
+            // Save notification history
+            saveNotificationHistory(customerId, title, body, "ORDER_UPDATE", orderNumber);
+
+            log.info("✅ Firebase notification processing completed for order: {}", orderNumber);
+
         } catch (Exception e) {
-            log.error("Error sending Firebase notification for order: {}", orderNumber, e);
+            log.error("❌ Error sending Firebase notification for order: {}", orderNumber, e);
         }
     }
 
@@ -63,40 +71,33 @@ public class FirebaseNotificationService {
     }
 
     private void sendPushNotification(String token, String title, String body, Map<String, String> data) {
-        if (firebaseServerKey == null || firebaseServerKey.isEmpty()) {
-            log.warn("Firebase server key not configured. Notification not sent.");
-            return;
-        }
-
         try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("Authorization", "key=" + firebaseServerKey);
+            log.info("📡 Building Firebase message...");
 
-            Map<String, Object> notification = new HashMap<>();
-            notification.put("title", title);
-            notification.put("body", body);
-            notification.put("icon", "/assets/icons/notification.png");
-            notification.put("click_action", "FCM_PLUGIN_ACTIVITY");
+            // Create notification
+            Notification notification = Notification.builder()
+                    .setTitle(title)
+                    .setBody(body)
+                    .build();
 
-            Map<String, Object> payload = new HashMap<>();
-            payload.put("to", token);
-            payload.put("notification", notification);
-            payload.put("data", data);
-            payload.put("priority", "high");
+            // Create message
+            Message message = Message.builder()
+                    .setToken(token)
+                    .setNotification(notification)
+                    .putAllData(data)
+                    .build();
 
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+            log.info("📤 Sending message to Firebase Cloud Messaging...");
 
-            ResponseEntity<String> response = restTemplate.postForEntity(FCM_URL, request, String.class);
+            // Send message using Firebase Admin SDK
+            String response = FirebaseMessaging.getInstance().send(message);
 
-            if (response.getStatusCode() == HttpStatus.OK) {
-                log.info("Firebase notification sent successfully");
-            } else {
-                log.error("Failed to send Firebase notification. Response: {}", response.getBody());
-            }
+            log.info("🎉 Firebase notification sent successfully! Message ID: {}", response);
+            log.info("📱 Notification should now appear on the device");
 
         } catch (Exception e) {
-            log.error("Error sending push notification", e);
+            log.error("❌ Error sending push notification via Firebase Admin SDK", e);
+            log.error("💡 Check Firebase configuration, FCM token validity, and internet connection");
         }
     }
 
@@ -144,17 +145,38 @@ public class FirebaseNotificationService {
     // Method to test Firebase connectivity
     public boolean testFirebaseConnection() {
         try {
-            // Send a test notification to a dummy token
-            Map<String, String> testData = new HashMap<>();
-            testData.put("type", "test");
-            
-            log.info("Firebase configuration test - Server key present: {}", 
-                    firebaseServerKey != null && !firebaseServerKey.isEmpty());
-            
+            // Test Firebase Admin SDK connection
+            FirebaseMessaging messaging = FirebaseMessaging.getInstance();
+            log.info("Firebase Admin SDK connection test successful");
             return true;
         } catch (Exception e) {
-            log.error("Firebase connection test failed", e);
+            log.error("Firebase Admin SDK connection test failed", e);
             return false;
+        }
+    }
+
+    private void saveNotificationHistory(Long customerId, String title, String body, String type, String orderNumber) {
+        try {
+            log.info("💾 Saving notification history for customer {} and order {}", customerId, orderNumber);
+
+            com.shopmanagement.entity.Notification notification = com.shopmanagement.entity.Notification.builder()
+                    .title(title)
+                    .content(body)
+                    .type(com.shopmanagement.entity.Notification.NotificationType.ORDER_UPDATE)
+                    .priority(com.shopmanagement.entity.Notification.Priority.MEDIUM)
+                    .recipientId(customerId)
+                    .recipientType(com.shopmanagement.entity.Notification.RecipientType.CUSTOMER)
+                    .status(com.shopmanagement.entity.Notification.Status.SENT)
+                    .channel(com.shopmanagement.entity.Notification.Channel.PUSH)
+                    .metadata("{\"orderNumber\":\"" + orderNumber + "\",\"type\":\"" + type + "\"}")
+                    .isRead(false)
+                    .build();
+
+            notificationRepository.save(notification);
+            log.info("✅ Notification history saved successfully for customer {} and order {}", customerId, orderNumber);
+
+        } catch (Exception e) {
+            log.error("❌ Error saving notification history for customer {} and order {}", customerId, orderNumber, e);
         }
     }
 }

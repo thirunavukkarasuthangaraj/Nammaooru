@@ -21,6 +21,55 @@ import Swal from 'sweetalert2';
         <mat-card-content class="form-content">
           <form [formGroup]="categoryForm" (ngSubmit)="onSubmit()" class="category-form">
             
+            <!-- Image Upload Section -->
+            <div class="form-section">
+              <h3 class="section-title">
+                <mat-icon class="section-icon">image</mat-icon>
+                Category Image
+              </h3>
+
+              <div class="image-upload-area">
+                <input type="file"
+                       #fileInput
+                       (change)="onImageSelected($event)"
+                       accept="image/*"
+                       style="display: none;">
+
+                <div class="upload-placeholder"
+                     *ngIf="!previewImageUrl && !categoryForm.get('iconUrl')?.value"
+                     (click)="fileInput.click()"
+                     (dragover)="onDragOver($event)"
+                     (dragleave)="onDragLeave($event)"
+                     (drop)="onDrop($event)"
+                     [class.dragover]="isDragging">
+                  <mat-icon class="upload-icon">cloud_upload</mat-icon>
+                  <h3>Click to Upload Category Image</h3>
+                  <p>or drag and drop</p>
+                  <span class="file-info">PNG, JPG, GIF up to 5MB</span>
+                </div>
+
+                <div class="image-preview-container" *ngIf="previewImageUrl || categoryForm.get('iconUrl')?.value">
+                  <img [src]="previewImageUrl || categoryForm.get('iconUrl')?.value"
+                       alt="Category Preview"
+                       class="preview-image">
+                  <div class="image-actions">
+                    <button mat-icon-button
+                            type="button"
+                            (click)="fileInput.click()"
+                            matTooltip="Change Image">
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                    <button mat-icon-button
+                            type="button"
+                            (click)="removeImage()"
+                            matTooltip="Remove Image">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div class="form-section">
               <h3 class="section-title">
                 <mat-icon class="section-icon">info</mat-icon>
@@ -69,11 +118,12 @@ import Swal from 'sweetalert2';
                 <mat-icon matSuffix>description</mat-icon>
               </mat-form-field>
 
-              <mat-form-field appearance="outline" class="form-field full-width">
-                <mat-label>Icon URL</mat-label>
+              <!-- Icon URL field hidden when image is uploaded -->
+              <mat-form-field appearance="outline" class="form-field full-width" *ngIf="!selectedImageFile">
+                <mat-label>Icon URL (Optional)</mat-label>
                 <input matInput formControlName="iconUrl" placeholder="https://example.com/icon.png">
-                <mat-icon matSuffix>image</mat-icon>
-                <mat-hint>URL to category icon image</mat-hint>
+                <mat-icon matSuffix>link</mat-icon>
+                <mat-hint>Alternatively, provide a URL to category icon image</mat-hint>
               </mat-form-field>
             </div>
 
@@ -311,6 +361,92 @@ import Swal from 'sweetalert2';
       color: #667eea;
     }
 
+    /* Image Upload Styles */
+    .image-upload-area {
+      position: relative;
+      margin-top: 16px;
+    }
+
+    .upload-placeholder {
+      border: 3px dashed #cbd5e1;
+      border-radius: 12px;
+      padding: 48px 32px;
+      text-align: center;
+      cursor: pointer;
+      background: #f8fafc;
+      transition: all 0.3s ease;
+    }
+
+    .upload-placeholder:hover {
+      border-color: #667eea;
+      background: #f0f4ff;
+    }
+
+    .upload-placeholder.dragover {
+      border-color: #667eea;
+      background: #e0e7ff;
+      transform: scale(1.02);
+    }
+
+    .upload-icon {
+      font-size: 64px !important;
+      width: 64px !important;
+      height: 64px !important;
+      color: #94a3b8;
+      margin-bottom: 16px;
+    }
+
+    .upload-placeholder h3 {
+      margin: 0 0 8px 0;
+      font-size: 20px;
+      font-weight: 600;
+      color: #334155;
+    }
+
+    .upload-placeholder p {
+      margin: 0 0 8px 0;
+      color: #64748b;
+      font-size: 14px;
+    }
+
+    .file-info {
+      display: block;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    .image-preview-container {
+      position: relative;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 16px;
+      background: white;
+    }
+
+    .preview-image {
+      width: 100%;
+      max-height: 300px;
+      object-fit: contain;
+      border-radius: 8px;
+    }
+
+    .image-actions {
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      display: flex;
+      gap: 8px;
+    }
+
+    .image-actions button {
+      background: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .image-actions button mat-icon {
+      font-size: 20px;
+    }
+
     @media (max-width: 768px) {
       .form-wrapper {
         padding: 10px;
@@ -353,6 +489,9 @@ export class CategoryFormComponent implements OnInit {
   isLoading = false;
   isEditMode = false;
   categoryId?: number;
+  previewImageUrl: string | null = null;
+  selectedImageFile: File | null = null;
+  isDragging = false;
 
   constructor(
     private fb: FormBuilder,
@@ -440,8 +579,41 @@ export class CategoryFormComponent implements OnInit {
     if (this.categoryForm.invalid) return;
 
     this.isLoading = true;
+
+    // If there's an image file, upload with image
+    if (this.selectedImageFile && !this.isEditMode) {
+      const formData = new FormData();
+      formData.append('name', this.categoryForm.get('name')?.value);
+      formData.append('description', this.categoryForm.get('description')?.value || '');
+      if (this.categoryForm.get('parentId')?.value) {
+        formData.append('parentId', this.categoryForm.get('parentId')?.value);
+      }
+      formData.append('image', this.selectedImageFile);
+
+      this.categoryService.createCategoryWithImage(formData).subscribe({
+        next: () => {
+          Swal.fire({
+            icon: 'success',
+            title: 'Success!',
+            text: 'Category created successfully with image!',
+            timer: 3000
+          });
+          this.router.navigate(['/products/categories']);
+        },
+        error: (error) => {
+          this.isLoading = false;
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: error.error?.message || 'Failed to create category'
+          });
+        }
+      });
+      return;
+    }
+
     const formValue = this.categoryForm.value;
-    
+
     const request: ProductCategoryRequest = {
       name: formValue.name,
       description: formValue.description || undefined,
@@ -452,7 +624,7 @@ export class CategoryFormComponent implements OnInit {
       iconUrl: formValue.iconUrl || undefined
     };
 
-    const operation = this.isEditMode 
+    const operation = this.isEditMode
       ? this.categoryService.updateCategory(this.categoryId!, request)
       : this.categoryService.createCategory(request);
 
@@ -487,5 +659,84 @@ export class CategoryFormComponent implements OnInit {
 
   onCancel() {
     this.router.navigate(['/products/categories']);
+  }
+
+  onImageSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+      this.processImageFile(input.files[0]);
+    }
+  }
+
+  onDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragging = true;
+  }
+
+  onDragLeave(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragging = false;
+  }
+
+  onDrop(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragging = false;
+
+    const files = event.dataTransfer?.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      if (file.type.startsWith('image/')) {
+        this.processImageFile(file);
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Invalid File',
+          text: 'Please drop an image file'
+        });
+      }
+    }
+  }
+
+  private processImageFile(file: File): void {
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      Swal.fire({
+        icon: 'error',
+        title: 'File Too Large',
+        text: 'Image size should be less than 5MB'
+      });
+      return;
+    }
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid File Type',
+        text: 'Please select a valid image file (JPEG, PNG, GIF, or WebP)'
+      });
+      return;
+    }
+
+    this.selectedImageFile = file;
+
+    // Clear icon URL if image is selected
+    this.categoryForm.get('iconUrl')?.setValue('');
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      this.previewImageUrl = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  removeImage(): void {
+    this.selectedImageFile = null;
+    this.previewImageUrl = null;
   }
 }

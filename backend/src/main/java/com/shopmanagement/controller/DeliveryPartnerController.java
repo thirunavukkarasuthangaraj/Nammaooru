@@ -4,9 +4,11 @@ import com.shopmanagement.entity.User;
 import com.shopmanagement.entity.User.UserRole;
 import com.shopmanagement.entity.User.RideStatus;
 import com.shopmanagement.entity.OrderAssignment;
+import com.shopmanagement.entity.DeliveryPartnerLocation;
 import com.shopmanagement.service.UserService;
 import com.shopmanagement.service.OrderAssignmentService;
 import com.shopmanagement.service.JwtService;
+import com.shopmanagement.repository.DeliveryPartnerLocationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -17,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import lombok.extern.slf4j.Slf4j;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -45,6 +48,9 @@ public class DeliveryPartnerController {
 
     @Autowired
     private JwtService jwtService;
+
+    @Autowired
+    private DeliveryPartnerLocationRepository deliveryPartnerLocationRepository;
 
     @PostMapping("/login")
     @Transactional
@@ -511,19 +517,54 @@ public class DeliveryPartnerController {
                 return ResponseEntity.badRequest().body(response);
             }
 
-            // Update location
+            // Extract location data
             Double latitude = ((Number) request.get("latitude")).doubleValue();
             Double longitude = ((Number) request.get("longitude")).doubleValue();
+            Double accuracy = request.get("accuracy") != null ? ((Number) request.get("accuracy")).doubleValue() : null;
+            Double speed = request.get("speed") != null ? ((Number) request.get("speed")).doubleValue() : null;
+            Double heading = request.get("heading") != null ? ((Number) request.get("heading")).doubleValue() : null;
+            Double altitude = request.get("altitude") != null ? ((Number) request.get("altitude")).doubleValue() : null;
+            Integer batteryLevel = request.get("batteryLevel") != null ? ((Number) request.get("batteryLevel")).intValue() : null;
+            String networkType = (String) request.get("networkType");
+            Long assignmentId = request.get("assignmentId") != null ? ((Number) request.get("assignmentId")).longValue() : null;
+            String orderStatus = (String) request.get("orderStatus");
 
+            // Update User entity (for backward compatibility)
             user.setCurrentLatitude(latitude);
             user.setCurrentLongitude(longitude);
             user.setLastLocationUpdate(LocalDateTime.now());
             user.setLastActivity(LocalDateTime.now());
-
             userService.save(user);
+
+            // Save detailed location tracking
+            DeliveryPartnerLocation location = DeliveryPartnerLocation.builder()
+                    .partnerId(id)
+                    .latitude(BigDecimal.valueOf(latitude))
+                    .longitude(BigDecimal.valueOf(longitude))
+                    .accuracy(accuracy != null ? BigDecimal.valueOf(accuracy) : null)
+                    .speed(speed != null ? BigDecimal.valueOf(speed) : null)
+                    .heading(heading != null ? BigDecimal.valueOf(heading) : null)
+                    .altitude(altitude != null ? BigDecimal.valueOf(altitude) : null)
+                    .batteryLevel(batteryLevel)
+                    .networkType(networkType)
+                    .assignmentId(assignmentId)
+                    .orderStatus(orderStatus)
+                    .recordedAt(LocalDateTime.now())
+                    .isMoving(speed != null && speed > 1.0)
+                    .build();
+
+            deliveryPartnerLocationRepository.save(location);
+
+            // Maintain only latest 5 records per partner
+            try {
+                deliveryPartnerLocationRepository.deleteOldLocationsKeepingLatest(id, 5);
+            } catch (Exception e) {
+                log.warn("Failed to cleanup old location records for partner {}: {}", id, e.getMessage());
+            }
 
             response.put("success", true);
             response.put("message", "Location updated successfully");
+            response.put("timestamp", LocalDateTime.now().toString());
 
             return ResponseEntity.ok(response);
 
@@ -900,6 +941,120 @@ public class DeliveryPartnerController {
         } catch (Exception e) {
             response.put("success", false);
             response.put("message", "Error fetching earnings: " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    // Customer Order Tracking Endpoints
+
+    @GetMapping("/track/order/{orderNumber}")
+    public ResponseEntity<Map<String, Object>> trackOrderByOrderNumber(@PathVariable String orderNumber) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            // Find order assignment by order number
+            Optional<OrderAssignment> assignmentOpt = orderAssignmentService.findByOrderNumber(orderNumber);
+
+            if (assignmentOpt.isEmpty()) {
+                response.put("success", false);
+                response.put("message", "Order not found or not assigned to delivery partner");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            OrderAssignment assignment = assignmentOpt.get();
+
+            // Get latest location for this assignment
+            Optional<DeliveryPartnerLocation> latestLocation =
+                deliveryPartnerLocationRepository.findLatestLocationByAssignmentId(assignment.getId());
+
+            if (latestLocation.isEmpty()) {
+                response.put("success", false);
+                response.put("message", "Driver location not available");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            DeliveryPartnerLocation location = latestLocation.get();
+
+            // Build tracking response
+            Map<String, Object> trackingData = new HashMap<>();
+            trackingData.put("orderNumber", orderNumber);
+            trackingData.put("assignmentId", assignment.getId());
+            trackingData.put("deliveryStatus", assignment.getStatus().name());
+            trackingData.put("partnerId", assignment.getDeliveryPartner().getId());
+            trackingData.put("partnerName", assignment.getDeliveryPartner().getFullName());
+            trackingData.put("partnerPhone", assignment.getDeliveryPartner().getMobileNumber());
+
+            Map<String, Object> currentLocation = new HashMap<>();
+            currentLocation.put("latitude", location.getLatitude());
+            currentLocation.put("longitude", location.getLongitude());
+            currentLocation.put("accuracy", location.getAccuracy());
+            currentLocation.put("speed", location.getSpeed());
+            currentLocation.put("heading", location.getHeading());
+            currentLocation.put("isMoving", location.getIsMoving());
+            currentLocation.put("lastUpdated", location.getRecordedAt());
+
+            trackingData.put("currentLocation", currentLocation);
+
+            // Add delivery address
+            Map<String, Object> deliveryAddress = new HashMap<>();
+            deliveryAddress.put("address", assignment.getOrder().getDeliveryAddress());
+            // Add customer address coordinates if available
+            // This would need to be implemented based on your address storage
+
+            trackingData.put("deliveryAddress", deliveryAddress);
+
+            response.put("success", true);
+            response.put("tracking", trackingData);
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Error tracking order {}: {}", orderNumber, e.getMessage(), e);
+            response.put("success", false);
+            response.put("message", "Error tracking order: " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    @GetMapping("/track/assignment/{assignmentId}")
+    public ResponseEntity<Map<String, Object>> trackOrderByAssignmentId(@PathVariable Long assignmentId) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            // Get recent location history for this assignment
+            List<DeliveryPartnerLocation> locationHistory =
+                deliveryPartnerLocationRepository.findRecentLocationsByPartnerId(assignmentId, 5);
+
+            if (locationHistory.isEmpty()) {
+                response.put("success", false);
+                response.put("message", "No location history found for this delivery");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            List<Map<String, Object>> locations = locationHistory.stream()
+                .map(loc -> {
+                    Map<String, Object> locationData = new HashMap<>();
+                    locationData.put("latitude", loc.getLatitude());
+                    locationData.put("longitude", loc.getLongitude());
+                    locationData.put("accuracy", loc.getAccuracy());
+                    locationData.put("speed", loc.getSpeed());
+                    locationData.put("heading", loc.getHeading());
+                    locationData.put("isMoving", loc.getIsMoving());
+                    locationData.put("timestamp", loc.getRecordedAt());
+                    return locationData;
+                })
+                .collect(Collectors.toList());
+
+            response.put("success", true);
+            response.put("locationHistory", locations);
+            response.put("totalPoints", locations.size());
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Error getting location history for assignment {}: {}", assignmentId, e.getMessage(), e);
+            response.put("success", false);
+            response.put("message", "Error getting location history: " + e.getMessage());
             return ResponseEntity.badRequest().body(response);
         }
     }

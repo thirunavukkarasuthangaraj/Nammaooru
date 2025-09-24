@@ -17,5 +17,13 @@ export const environment = {
     enableHighAccuracy: true,
     timeout: 10000,
     maximumAge: 60000
+  },
+  firebase: {
+    apiKey: "AIzaSyBdwffRV7muLR616_cxTpSP4aSmrxxbetc",
+    authDomain: "nammaooru-shop-management.firebaseapp.com",
+    projectId: "nammaooru-shop-management",
+    storageBucket: "nammaooru-shop-management.firebasestorage.app",
+    messagingSenderId: "913325898379",
+    appId: "1:913325898379:web:9a39a270a6693e9a5b328e"
   }
 };

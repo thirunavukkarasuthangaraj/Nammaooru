@@ -1,6 +1,6 @@
 class ApiConfig {
   // Base URL for API calls (using local IP for mobile testing)
-  static const String baseUrl = 'http://192.168.1.6:8080/api';
+  static const String baseUrl = 'http://192.168.1.2:8080/api';
 
   // Web URL for Chrome testing
   static const String webBaseUrl = 'http://localhost:8080/api';
@@ -34,13 +34,13 @@ class ApiConfig {
 
   // Headers
   static Map<String, String> get defaultHeaders => {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  };
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
 
   // Authentication headers (when needed)
   static Map<String, String> getAuthHeaders(String token) => {
-    ...defaultHeaders,
-    'Authorization': 'Bearer $token',
-  };
+        ...defaultHeaders,
+        'Authorization': 'Bearer $token',
+      };
 }

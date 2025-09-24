@@ -16,6 +16,8 @@ import com.shopmanagement.repository.UserRepository;
 import com.shopmanagement.shop.repository.ShopRepository;
 import com.shopmanagement.entity.User;
 import com.shopmanagement.service.OrderAssignmentService;
+import com.shopmanagement.repository.UserFcmTokenRepository;
+import com.shopmanagement.entity.UserFcmToken;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -51,6 +53,7 @@ public class OrderService {
     private final InvoiceService invoiceService;
     private final FirebaseNotificationService firebaseNotificationService;
     private final OrderAssignmentService orderAssignmentService;
+    private final UserFcmTokenRepository userFcmTokenRepository;
     
     @Transactional
     public OrderResponse createOrder(OrderRequest request) {
@@ -246,6 +249,51 @@ public class OrderService {
         } catch (Exception e) {
             log.error("Failed to send order status update email", e);
         }
+
+        // Send push notification to customer for all status updates
+        try {
+            log.info("🔔 Starting push notification process for order: {}", order.getOrderNumber());
+
+            if (order.getCustomer() != null && order.getCustomer().getEmail() != null) {
+                String customerEmail = order.getCustomer().getEmail();
+                log.info("📧 Customer email from order: {}", customerEmail);
+
+                // Find user by customer's email
+                User customerUser = userRepository.findByEmail(customerEmail).orElse(null);
+                if (customerUser != null) {
+                    Long userId = customerUser.getId();
+                    String username = customerUser.getUsername();
+                    log.info("✅ Found user: {} (ID: {}) for customer email: {}", username, userId, customerEmail);
+
+                    // Get FCM token for the customer
+                    String fcmToken = getFcmTokenForUser(userId);
+                    log.info("🔍 FCM token lookup for user ID {}: {}", userId,
+                            fcmToken != null ? "Found token (length: " + fcmToken.length() + ")" : "No token found");
+
+                    if (fcmToken != null && !fcmToken.isEmpty()) {
+                        log.info("📱 Sending push notification to FCM token: {}...", fcmToken.substring(0, Math.min(50, fcmToken.length())));
+                        firebaseNotificationService.sendOrderNotification(
+                            order.getOrderNumber(),
+                            status.name(),
+                            fcmToken,
+                            order.getCustomer().getId()
+                        );
+                        log.info("✅ Push notification sent successfully for order status update: {} -> {} to user: {}",
+                                oldStatus.name(), status.name(), username);
+                    } else {
+                        log.warn("❌ No FCM token found for customer user ID: {} (username: {})", userId, username);
+                        log.warn("💡 User may need to login to mobile app to register FCM token");
+                    }
+                } else {
+                    log.warn("❌ No user found for customer email: {}", customerEmail);
+                    log.warn("💡 Customer email in order must match a user account email for push notifications");
+                }
+            } else {
+                log.warn("❌ Order customer or customer email is null for order: {}", order.getOrderNumber());
+            }
+        } catch (Exception e) {
+            log.error("❌ Failed to send push notification for status update", e);
+        }
         
         // Auto-send invoice when order is delivered
         if (status == Order.OrderStatus.DELIVERED) {
@@ -404,11 +452,45 @@ public class OrderService {
             log.error("Failed to send order acceptance email to customer", e);
         }
         
-        // Send push notification to customer (FCM functionality not implemented yet)
+        // Send push notification to customer
         try {
-            if (acceptedOrder.getCustomer() != null) {
-                // TODO: Implement FCM push notification functionality
-                log.info("Push notification would be sent to customer for order: {}", acceptedOrder.getOrderNumber());
+            if (acceptedOrder.getCustomer() != null && acceptedOrder.getCustomer().getEmail() != null) {
+                // Find user by customer's email
+                User customerUser = userRepository.findByEmail(acceptedOrder.getCustomer().getEmail()).orElse(null);
+                if (customerUser == null) {
+                    log.warn("No user found for customer email: {}", acceptedOrder.getCustomer().getEmail());
+                    return mapToResponse(acceptedOrder);
+                }
+                Long userId = customerUser.getId();
+
+                // Get FCM tokens for the customer (newest first)
+                List<String> fcmTokens = getFcmTokensForUser(userId);
+
+                if (!fcmTokens.isEmpty()) {
+                    boolean notificationSent = false;
+                    for (String fcmToken : fcmTokens) {
+                        try {
+                            firebaseNotificationService.sendOrderNotification(
+                                acceptedOrder.getOrderNumber(),
+                                "CONFIRMED",
+                                fcmToken
+                            );
+                            log.info("✅ Push notification sent successfully to customer for order: {}", acceptedOrder.getOrderNumber());
+                            notificationSent = true;
+                            break; // Success! No need to try other tokens
+                        } catch (Exception e) {
+                            log.warn("⚠️ Failed to send notification with token {}..., trying next token: {}",
+                                fcmToken.substring(0, Math.min(30, fcmToken.length())), e.getMessage());
+                            // Continue to next token
+                        }
+                    }
+
+                    if (!notificationSent) {
+                        log.error("❌ Failed to send push notification with all available tokens for order: {}", acceptedOrder.getOrderNumber());
+                    }
+                } else {
+                    log.warn("No FCM token found for customer user ID: {}", userId);
+                }
             }
         } catch (Exception e) {
             log.error("Failed to send push notification to customer", e);
@@ -999,5 +1081,37 @@ public class OrderService {
         }
         
         return customer;
+    }
+
+    private List<String> getFcmTokensForUser(Long userId) {
+        try {
+            log.info("🔍 Looking up FCM tokens for user ID: {}", userId);
+
+            // Get the most recent active FCM tokens for the user (ordered by updatedAt DESC)
+            List<UserFcmToken> tokens = userFcmTokenRepository.findActiveTokensByUserId(userId);
+
+            log.info("📊 Found {} active FCM tokens for user ID: {}", tokens.size(), userId);
+
+            if (!tokens.isEmpty()) {
+                List<String> fcmTokens = tokens.stream()
+                        .map(token -> {
+                            String fcmToken = token.getFcmToken();
+                            log.info("✅ Retrieved FCM token for user {}: {}... (device: {}, updated: {})",
+                                    userId,
+                                    fcmToken.substring(0, Math.min(30, fcmToken.length())),
+                                    token.getDeviceType(),
+                                    token.getUpdatedAt());
+                            return fcmToken;
+                        })
+                        .toList();
+                return fcmTokens;
+            } else {
+                log.warn("⚠️ No active FCM tokens found for user ID: {}", userId);
+            }
+        } catch (Exception e) {
+            log.error("❌ Error getting FCM tokens for user {}: {}", userId, e.getMessage(), e);
+        }
+
+        return List.of();
     }
 }

@@ -385,6 +385,34 @@ class _ProductsScreenState extends State<ProductsScreen> {
                         _buildAddToCartButton(product),
                       ],
                     ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: product.isInStock
+                            ? Colors.green[50]
+                            : Colors.red[50],
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: product.isInStock
+                              ? Colors.green[300]!
+                              : Colors.red[300]!,
+                          width: 0.5,
+                        ),
+                      ),
+                      child: Text(
+                        product.isInStock
+                            ? 'Stock: ${product.stockQuantity}'
+                            : 'Out of Stock',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          color: product.isInStock
+                              ? Colors.green[700]
+                              : Colors.red[700],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -446,6 +474,34 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     ),
                   ),
                 ],
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: product.isInStock
+                        ? Colors.green[50]
+                        : Colors.red[50],
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: product.isInStock
+                          ? Colors.green[300]!
+                          : Colors.red[300]!,
+                      width: 0.5,
+                    ),
+                  ),
+                  child: Text(
+                    product.isInStock
+                        ? 'Stock: ${product.stockQuantity}'
+                        : 'Out of Stock',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                      color: product.isInStock
+                          ? Colors.green[700]
+                          : Colors.red[700],
+                    ),
+                  ),
+                ),
               ],
             ),
           ],

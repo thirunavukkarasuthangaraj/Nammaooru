@@ -52,10 +52,10 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   void _checkAuthStatus() {
-    Future.delayed(const Duration(seconds: 3), () {
+    Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted) {
         final authProvider = Provider.of<AuthProvider>(context, listen: false);
-        
+
         switch (authProvider.authState) {
           case AuthState.authenticated:
             context.go(authProvider.getHomeRoute());

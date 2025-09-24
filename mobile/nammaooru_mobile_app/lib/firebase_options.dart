@@ -41,11 +41,11 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'your-android-api-key',
-    appId: 'your-android-app-id',
-    messagingSenderId: 'your-sender-id',
-    projectId: 'nammaooru-app',
-    storageBucket: 'nammaooru-app.appspot.com',
+    apiKey: 'AIzaSyCwZASRn_-unR7l6ksgezzjiattZQm3ysE',
+    appId: '1:913325898379:android:7beca981a84f8b135b328e',
+    messagingSenderId: '913325898379',
+    projectId: 'nammaooru-shop-management',
+    storageBucket: 'nammaooru-shop-management.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(

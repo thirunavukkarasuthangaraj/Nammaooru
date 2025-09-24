@@ -22,58 +22,7 @@ public class FirebaseController {
     @Autowired
     private JwtService jwtService;
 
-    /**
-     * Store/Update FCM Token for authenticated user
-     * Called when user logs in or app starts
-     */
-    @PostMapping("/customer/notifications/fcm-token")
-    public ResponseEntity<Map<String, Object>> updateCustomerFcmToken(
-            @RequestBody FcmTokenRequest request,
-            HttpServletRequest httpRequest) {
-
-        Map<String, Object> response = new HashMap<>();
-
-        try {
-            // Get user ID from JWT token
-            String token = httpRequest.getHeader("Authorization");
-            if (token != null && token.startsWith("Bearer ")) {
-                token = token.substring(7);
-                String username = jwtService.extractUsername(token);
-
-                // Assuming you have a method to get user ID from username
-                // Long userId = userService.getUserIdByUsername(username);
-                Long userId = 1L; // Temporary - replace with actual user lookup
-
-                // Store the FCM token
-                firebaseService.storeFcmToken(
-                    userId,
-                    request.getFcmToken(),
-                    request.getDeviceType() != null ? request.getDeviceType() : "android",
-                    request.getDeviceId()
-                );
-
-                // Subscribe user to appropriate topics
-                firebaseService.subscribeUserToTopics(userId, "CUSTOMER");
-
-                response.put("statusCode", "0000");
-                response.put("message", "FCM token stored successfully");
-                response.put("data", null);
-
-                return ResponseEntity.ok(response);
-            }
-
-            response.put("statusCode", "4001");
-            response.put("message", "Invalid authorization token");
-            response.put("data", null);
-            return ResponseEntity.status(401).body(response);
-
-        } catch (Exception e) {
-            response.put("statusCode", "5000");
-            response.put("message", "Error storing FCM token: " + e.getMessage());
-            response.put("data", null);
-            return ResponseEntity.status(500).body(response);
-        }
-    }
+    // Customer FCM token endpoint removed - handled by FcmTokenController
 
     /**
      * Store/Update FCM Token for shop owner

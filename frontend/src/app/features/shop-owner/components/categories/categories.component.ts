@@ -3,6 +3,7 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ProductCategoryService } from '@core/services/product-category.service';
+import { SwalService } from '@core/services/swal.service';
 import { finalize } from 'rxjs/operators';
 
 interface Category {
@@ -13,6 +14,8 @@ interface Category {
   isActive: boolean;
   color: string;
   icon: string;
+  iconUrl?: string;
+  imageFile?: File;
   createdAt: Date;
 }
 
@@ -127,7 +130,14 @@ interface Category {
             <div *ngFor="let category of categories" class="category-card">
               <div class="category-card-header">
                 <div class="category-icon-wrapper" [style.background-color]="category.color + '20'">
-                  <mat-icon class="category-main-icon" [style.color]="category.color">{{ category.icon }}</mat-icon>
+                  <img *ngIf="category.iconUrl"
+                       [src]="getCategoryImageUrl(category.iconUrl)"
+                       alt="{{ category.name }}"
+                       class="category-image"
+                       (error)="onImageError($event, category)">
+                  <mat-icon *ngIf="!category.iconUrl"
+                           class="category-main-icon"
+                           [style.color]="category.color">{{ category.icon }}</mat-icon>
                 </div>
                 <div class="category-badges">
                   <span class="badge" [class.active]="category.isActive" [class.inactive]="!category.isActive">
@@ -185,20 +195,71 @@ interface Category {
         </mat-card>
       </div>
 
-      <!-- Quick Add Form -->
+      <!-- Quick Add Form Modal Overlay -->
+      <div class="modal-overlay" *ngIf="showQuickAdd" (click)="closeQuickAdd()"></div>
       <mat-card class="quick-add-card" *ngIf="showQuickAdd">
         <mat-card-header>
-          <mat-card-title>Quick Add Category</mat-card-title>
+          <mat-card-title>Add New Category</mat-card-title>
           <button mat-icon-button (click)="closeQuickAdd()">
             <mat-icon>close</mat-icon>
           </button>
         </mat-card-header>
         <mat-card-content>
           <form [formGroup]="quickAddForm" (ngSubmit)="submitQuickAdd()" class="quick-form">
+            <!-- Image Upload Section (Prominent) -->
+            <div class="image-upload-section">
+              <label class="section-label">
+                <mat-icon>image</mat-icon>
+                Category Image <span class="required">*</span>
+              </label>
+              <div class="image-upload-area">
+                <input type="file"
+                       #fileInput
+                       (change)="onImageSelected($event)"
+                       accept="image/*"
+                       style="display: none;">
+
+                <div class="upload-placeholder"
+                     *ngIf="!previewImageUrl"
+                     (click)="fileInput.click()"
+                     (dragover)="onDragOver($event)"
+                     (dragleave)="onDragLeave($event)"
+                     (drop)="onDrop($event)"
+                     [class.dragover]="isDragging">
+                  <mat-icon class="upload-icon">cloud_upload</mat-icon>
+                  <h3>Click to Upload Category Image</h3>
+                  <p>or drag and drop</p>
+                  <span class="file-info">PNG, JPG, GIF up to 5MB</span>
+                </div>
+
+                <div class="image-preview-large" *ngIf="previewImageUrl">
+                  <img [src]="previewImageUrl" alt="Category Preview">
+                  <div class="image-actions">
+                    <button mat-icon-button
+                            class="change-image-btn"
+                            type="button"
+                            (click)="fileInput.click()"
+                            matTooltip="Change Image">
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                    <button mat-icon-button
+                            class="remove-image-btn"
+                            type="button"
+                            (click)="removeImage()"
+                            matTooltip="Remove Image">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Category Details -->
             <div class="form-row">
               <mat-form-field appearance="outline" class="full-width">
                 <mat-label>Category Name</mat-label>
                 <input matInput formControlName="name" placeholder="Enter category name">
+                <mat-icon matPrefix>category</mat-icon>
                 <mat-error *ngIf="quickAddForm.get('name')?.hasError('required')">
                   Category name is required
                 </mat-error>
@@ -206,18 +267,28 @@ interface Category {
             </div>
 
             <div class="form-row">
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Description</mat-label>
+                <textarea matInput formControlName="description"
+                         placeholder="Enter category description" rows="3"></textarea>
+                <mat-icon matPrefix>description</mat-icon>
+              </mat-form-field>
+            </div>
+
+            <div class="form-row">
               <mat-form-field appearance="outline" class="half-width">
-                <mat-label>Icon</mat-label>
+                <mat-label>Icon (Fallback)</mat-label>
                 <mat-select formControlName="icon">
                   <mat-option *ngFor="let icon of availableIcons" [value]="icon.value">
                     <mat-icon>{{ icon.value }}</mat-icon>
                     {{ icon.label }}
                   </mat-option>
                 </mat-select>
+                <mat-icon matPrefix>emoji_symbols</mat-icon>
               </mat-form-field>
 
               <mat-form-field appearance="outline" class="half-width">
-                <mat-label>Color</mat-label>
+                <mat-label>Theme Color</mat-label>
                 <mat-select formControlName="color">
                   <mat-option *ngFor="let color of availableColors" [value]="color.value">
                     <div class="color-option">
@@ -226,21 +297,19 @@ interface Category {
                     </div>
                   </mat-option>
                 </mat-select>
-              </mat-form-field>
-            </div>
-
-            <div class="form-row">
-              <mat-form-field appearance="outline" class="full-width">
-                <mat-label>Description</mat-label>
-                <textarea matInput formControlName="description" 
-                         placeholder="Enter category description" rows="2"></textarea>
+                <mat-icon matPrefix>palette</mat-icon>
               </mat-form-field>
             </div>
 
             <div class="form-actions">
-              <button mat-raised-button color="primary" type="submit" [disabled]="quickAddForm.invalid">
-                <mat-icon>save</mat-icon>
-                Add Category
+              <button mat-raised-button
+                      color="primary"
+                      type="submit"
+                      [disabled]="quickAddForm.invalid || loading"
+                      class="submit-btn">
+                <mat-spinner *ngIf="loading" diameter="20" class="button-spinner"></mat-spinner>
+                <mat-icon *ngIf="!loading">save</mat-icon>
+                {{ loading ? 'Creating...' : 'Create Category' }}
               </button>
               <button mat-button type="button" (click)="closeQuickAdd()">
                 Cancel
@@ -531,12 +600,20 @@ interface Category {
     }
 
     .category-icon-wrapper {
-      width: 60px;
-      height: 60px;
+      width: 80px;
+      height: 80px;
       border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .category-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
     .category-main-icon {
@@ -758,10 +835,47 @@ interface Category {
       opacity: 0.5;
     }
 
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
     .quick-add-card {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 90%;
+      max-width: 600px;
+      max-height: 90vh;
+      overflow-y: auto;
       border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      margin-bottom: 24px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      z-index: 1000;
+      background: white;
+      animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+      from {
+        transform: translate(-50%, -40%);
+        opacity: 0;
+      }
+      to {
+        transform: translate(-50%, -50%);
+        opacity: 1;
+      }
     }
 
     .quick-add-card mat-card-header {
@@ -805,6 +919,176 @@ interface Category {
       height: 20px;
       border-radius: 50%;
       border: 2px solid #e5e7eb;
+    }
+
+    /* New Image Upload Section Styles */
+    .image-upload-section {
+      margin-bottom: 24px;
+    }
+
+    .section-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 12px;
+    }
+
+    .section-label mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+      color: #667eea;
+    }
+
+    .required {
+      color: #ef4444;
+    }
+
+    .image-upload-area {
+      position: relative;
+    }
+
+    .upload-placeholder {
+      border: 3px dashed #cbd5e1;
+      border-radius: 12px;
+      padding: 48px 32px;
+      text-align: center;
+      cursor: pointer;
+      background: #f8fafc;
+      transition: all 0.3s ease;
+    }
+
+    .upload-placeholder:hover {
+      border-color: #667eea;
+      background: #f0f4ff;
+    }
+
+    .upload-placeholder.dragover {
+      border-color: #667eea;
+      background: #e0e7ff;
+      transform: scale(1.02);
+    }
+
+    .upload-icon {
+      font-size: 64px !important;
+      width: 64px !important;
+      height: 64px !important;
+      color: #94a3b8;
+      margin-bottom: 16px;
+    }
+
+    .upload-placeholder h3 {
+      margin: 0 0 8px 0;
+      font-size: 20px;
+      font-weight: 600;
+      color: #334155;
+    }
+
+    .upload-placeholder p {
+      margin: 0 0 8px 0;
+      color: #64748b;
+      font-size: 14px;
+    }
+
+    .file-info {
+      display: block;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    .image-preview-large {
+      position: relative;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 16px;
+      background: white;
+    }
+
+    .image-preview-large img {
+      width: 100%;
+      max-height: 300px;
+      object-fit: contain;
+      border-radius: 8px;
+    }
+
+    .image-actions {
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      display: flex;
+      gap: 8px;
+    }
+
+    .change-image-btn,
+    .remove-image-btn {
+      background: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .change-image-btn mat-icon {
+      color: #667eea;
+    }
+
+    .remove-image-btn mat-icon {
+      color: #ef4444;
+    }
+
+    /* Original Image Upload Styles */
+    .image-upload-label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      color: #666;
+      margin-bottom: 8px;
+    }
+
+    .image-upload-container {
+      border: 2px dashed #ddd;
+      border-radius: 8px;
+      padding: 16px;
+      text-align: center;
+      position: relative;
+      min-height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .image-preview {
+      position: relative;
+      display: inline-block;
+    }
+
+    .image-preview img {
+      max-width: 150px;
+      max-height: 100px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .remove-image-btn {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background: #f44336;
+      color: white;
+      width: 24px;
+      height: 24px;
+    }
+
+    .remove-image-btn mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+    }
+
+    .upload-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     .form-actions {
@@ -853,6 +1137,10 @@ interface Category {
   `]
 })
 export class CategoriesComponent implements OnInit {
+  previewImageUrl: string | null = null;
+  selectedImageFile: File | null = null;
+  isDragging: boolean = false;
+
   categories: Category[] = [
     {
       id: 1,
@@ -862,6 +1150,7 @@ export class CategoriesComponent implements OnInit {
       isActive: true,
       color: '#10b981',
       icon: 'shopping_basket',
+      iconUrl: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=200&h=200&fit=crop',
       createdAt: new Date('2024-01-15')
     },
     {
@@ -872,6 +1161,7 @@ export class CategoriesComponent implements OnInit {
       isActive: true,
       color: '#22c55e',
       icon: 'eco',
+      iconUrl: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=200&h=200&fit=crop',
       createdAt: new Date('2024-01-16')
     },
     {
@@ -882,6 +1172,7 @@ export class CategoriesComponent implements OnInit {
       isActive: true,
       color: '#f59e0b',
       icon: 'apple',
+      iconUrl: 'https://images.unsplash.com/photo-1619566636858-adf3ef46400b?w=200&h=200&fit=crop',
       createdAt: new Date('2024-01-17')
     },
     {
@@ -892,6 +1183,7 @@ export class CategoriesComponent implements OnInit {
       isActive: true,
       color: '#3b82f6',
       icon: 'local_drink',
+      iconUrl: 'https://images.unsplash.com/photo-1563636619-e9143da7973b?w=200&h=200&fit=crop',
       createdAt: new Date('2024-01-18')
     },
     {
@@ -902,6 +1194,7 @@ export class CategoriesComponent implements OnInit {
       isActive: true,
       color: '#8b5cf6',
       icon: 'cake',
+      iconUrl: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=200&h=200&fit=crop',
       createdAt: new Date('2024-01-19')
     },
     {
@@ -912,6 +1205,7 @@ export class CategoriesComponent implements OnInit {
       isActive: false,
       color: '#ec4899',
       icon: 'face',
+      iconUrl: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=200&h=200&fit=crop',
       createdAt: new Date('2024-01-20')
     }
   ];
@@ -951,7 +1245,8 @@ export class CategoriesComponent implements OnInit {
     private fb: FormBuilder,
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
-    private categoryService: ProductCategoryService
+    private categoryService: ProductCategoryService,
+    private swal: SwalService
   ) {
     this.quickAddForm = this.fb.group({
       name: ['', Validators.required],
@@ -983,6 +1278,7 @@ export class CategoriesComponent implements OnInit {
             isActive: cat.active !== false,
             color: this.getRandomColor(),
             icon: this.getCategoryIcon(cat.name),
+            iconUrl: cat.iconUrl || cat.imageUrl || undefined,
             createdAt: new Date(cat.createdAt || Date.now())
           }));
         },
@@ -1036,32 +1332,150 @@ export class CategoriesComponent implements OnInit {
       icon: 'shopping_basket',
       color: '#10b981'
     });
+    this.resetImageUpload();
   }
 
   submitQuickAdd(): void {
     if (this.quickAddForm.valid) {
       const formData = this.quickAddForm.value;
-      const newCategory: Category = {
-        id: this.categories.length + 1,
-        name: formData.name,
-        description: formData.description || `Products related to ${formData.name}`,
-        productCount: 0,
-        isActive: true,
-        color: formData.color,
-        icon: formData.icon,
-        createdAt: new Date()
-      };
 
-      this.categories.unshift(newCategory);
-      this.closeQuickAdd();
-      
-      this.snackBar.open('Category added successfully!', 'Close', {
-        duration: 3000,
-        horizontalPosition: 'end',
-        verticalPosition: 'top',
-        panelClass: ['success-snackbar']
-      });
+      // If there's an image, upload it first
+      if (this.selectedImageFile) {
+        this.uploadCategoryWithImage(formData);
+      } else {
+        this.createCategory(formData);
+      }
     }
+  }
+
+  private uploadCategoryWithImage(categoryData: any): void {
+    const formData = new FormData();
+    formData.append('name', categoryData.name);
+    formData.append('description', categoryData.description || '');
+    if (this.selectedImageFile) {
+      formData.append('image', this.selectedImageFile);
+    }
+
+    this.loading = true;
+    this.categoryService.createCategoryWithImage(formData).subscribe({
+      next: (response: any) => {
+        const newCategory: Category = {
+          id: response.id,
+          name: response.name,
+          description: response.description || '',
+          productCount: 0,
+          isActive: response.isActive !== false,
+          color: categoryData.color || this.getRandomColor(),
+          icon: categoryData.icon || this.getCategoryIcon(response.name),
+          iconUrl: response.iconUrl || undefined,
+          createdAt: new Date(response.createdAt || Date.now())
+        };
+
+        this.categories.unshift(newCategory);
+        this.closeQuickAdd();
+        this.resetImageUpload();
+        this.loading = false;
+
+        this.swal.success('Success!', 'Category added successfully with image!');
+      },
+      error: (error) => {
+        console.error('Error creating category with image:', error);
+        this.loading = false;
+        this.swal.error('Error', 'Failed to create category. Please try again.');
+      }
+    });
+  }
+
+  private createCategory(categoryData: any): void {
+    const newCategory: Category = {
+      id: this.categories.length + 1,
+      name: categoryData.name,
+      description: categoryData.description || `Products related to ${categoryData.name}`,
+      productCount: 0,
+      isActive: true,
+      color: categoryData.color,
+      icon: categoryData.icon,
+      createdAt: new Date()
+    };
+
+    this.categories.unshift(newCategory);
+    this.closeQuickAdd();
+
+    this.snackBar.open('Category added successfully!', 'Close', {
+      duration: 3000,
+      horizontalPosition: 'end',
+      verticalPosition: 'top',
+      panelClass: ['success-snackbar']
+    });
+  }
+
+  onImageSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+      this.processImageFile(input.files[0]);
+    }
+  }
+
+  onDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragging = true;
+  }
+
+  onDragLeave(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragging = false;
+  }
+
+  onDrop(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragging = false;
+
+    const files = event.dataTransfer?.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      if (file.type.startsWith('image/')) {
+        this.processImageFile(file);
+      } else {
+        this.swal.error('Invalid File', 'Please drop an image file');
+      }
+    }
+  }
+
+  private processImageFile(file: File): void {
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      this.swal.error('File Too Large', 'Image size should be less than 5MB');
+      return;
+    }
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      this.swal.error('Invalid File Type', 'Please select a valid image file (JPEG, PNG, GIF, or WebP)');
+      return;
+    }
+
+    this.selectedImageFile = file;
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      this.previewImageUrl = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  removeImage(): void {
+    this.previewImageUrl = null;
+    this.selectedImageFile = null;
+  }
+
+  private resetImageUpload(): void {
+    this.previewImageUrl = null;
+    this.selectedImageFile = null;
   }
 
   editCategory(category: Category): void {
@@ -1090,20 +1504,22 @@ export class CategoriesComponent implements OnInit {
   toggleCategoryStatus(category: Category): void {
     category.isActive = !category.isActive;
     const status = category.isActive ? 'activated' : 'deactivated';
-    this.snackBar.open(`Category ${status} successfully`, 'Close', { duration: 3000 });
+    this.swal.toast(`Category ${status} successfully`, 'success');
   }
 
   deleteCategory(category: Category): void {
     if (category.productCount > 0) {
-      this.snackBar.open('Cannot delete category with products', 'Close', { duration: 3000 });
+      this.swal.warning('Cannot Delete', 'This category contains products. Please remove all products first.');
       return;
     }
 
-    if (confirm(`Are you sure you want to delete "${category.name}"?`)) {
-      const index = this.categories.indexOf(category);
-      this.categories.splice(index, 1);
-      this.snackBar.open('Category deleted successfully', 'Close', { duration: 3000 });
-    }
+    this.swal.confirmDelete(category.name).then((result) => {
+      if (result.isConfirmed) {
+        const index = this.categories.indexOf(category);
+        this.categories.splice(index, 1);
+        this.swal.success('Deleted!', `Category "${category.name}" has been deleted.`);
+      }
+    });
   }
 
   getTotalCategories(): number {
@@ -1121,5 +1537,34 @@ export class CategoriesComponent implements OnInit {
   getAverageProducts(): number {
     const activeCategories = this.getActiveCategories();
     return activeCategories > 0 ? Math.round(this.getTotalProducts() / activeCategories) : 0;
+  }
+
+  getCategoryImageUrl(iconUrl: string): string {
+    if (!iconUrl) {
+      return '';
+    }
+
+    // If it's already a full URL (from sample data)
+    if (iconUrl.startsWith('http://') || iconUrl.startsWith('https://')) {
+      return iconUrl;
+    }
+
+    // If it's a relative path from our backend
+    const baseUrl = 'http://localhost:8080';
+    if (iconUrl.startsWith('/')) {
+      return baseUrl + iconUrl;
+    }
+
+    return baseUrl + '/' + iconUrl;
+  }
+
+  onImageError(event: Event, category: Category): void {
+    // Hide the broken image and show the icon fallback
+    const imgElement = event.target as HTMLImageElement;
+    if (imgElement) {
+      imgElement.style.display = 'none';
+    }
+    // Remove the iconUrl to show the icon fallback
+    category.iconUrl = undefined;
   }
 }

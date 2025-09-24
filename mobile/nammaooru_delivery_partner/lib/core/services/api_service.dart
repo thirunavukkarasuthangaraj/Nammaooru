@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  static const String _baseUrl = 'http://localhost:8090/api';
+  static const String _baseUrl = 'http://localhost:8080/api';
 
   static const String _deliveryPartnerEndpoint =
       '$_baseUrl/mobile/delivery-partner';
@@ -349,6 +349,46 @@ class ApiService {
       headers: await _getHeaders(),
       body: json.encode({
         'orderId': orderId,
+      }),
+    );
+
+    return _handleResponse(response);
+  }
+
+  // Location Tracking Methods
+  Future<Map<String, dynamic>> updateLocation({
+    required double latitude,
+    required double longitude,
+    double? accuracy,
+    double? speed,
+    double? heading,
+    double? altitude,
+    int? batteryLevel,
+    String? networkType,
+    int? assignmentId,
+    String? orderStatus,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final partnerId = prefs.getString(_partnerIdKey);
+
+    if (partnerId == null) {
+      throw ApiException('Partner ID not found', 401);
+    }
+
+    final response = await http.put(
+      Uri.parse('$_deliveryPartnerEndpoint/update-location/$partnerId'),
+      headers: await _getHeaders(),
+      body: json.encode({
+        'latitude': latitude,
+        'longitude': longitude,
+        if (accuracy != null) 'accuracy': accuracy,
+        if (speed != null) 'speed': speed,
+        if (heading != null) 'heading': heading,
+        if (altitude != null) 'altitude': altitude,
+        if (batteryLevel != null) 'batteryLevel': batteryLevel,
+        if (networkType != null) 'networkType': networkType,
+        if (assignmentId != null) 'assignmentId': assignmentId,
+        if (orderStatus != null) 'orderStatus': orderStatus,
       }),
     );
 

@@ -6,7 +6,10 @@
       "Read(//d/AAWS/nammaooru/shop-management-system/backend/**)",
       "Bash(ng build)",
       "Read(//d/AAWS/nammaooru/shop-management-system/**)",
-      "Bash(npm start)"
+      "Bash(npm start)",
+      "Bash(npm install:*)",
+      "Bash(ng build:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []
