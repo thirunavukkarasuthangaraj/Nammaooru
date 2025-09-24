@@ -1,0 +1,15 @@
+tree ac2013ae91211dca6bf7f8f024cbe4e1c803f64b
+parent 3b7197a1ad401a580b5cfaf1da54e88a958163e9
+author Thiru <thirun2394@gmail.com> 1756833664 +0530
+committer Thiru <thirun2394@gmail.com> 1756833664 +0530
+
+Fix email configuration - restore working port 465 SSL settings
+
+- Restored email configuration to working state with port 465 and SSL
+- Fixed mobile app error handling to show clean messages
+- Fixed navigation to OTP screen after registration
+- Email OTP delivery now working correctly with Hostinger SMTP
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>

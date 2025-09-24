@@ -1,0 +1,10 @@
+Fix email configuration - restore working port 465 SSL settings
+
+- Restored email configuration to working state with port 465 and SSL
+- Fixed mobile app error handling to show clean messages
+- Fixed navigation to OTP screen after registration
+- Email OTP delivery now working correctly with Hostinger SMTP
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
