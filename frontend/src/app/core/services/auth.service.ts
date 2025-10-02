@@ -262,9 +262,9 @@ export class AuthService {
   private setSession(authResponse: AuthResponse): void {
     if (isPlatformBrowser(this.platformId)) {
       localStorage.setItem(this.TOKEN_KEY, authResponse.accessToken);
-      
+
       const user: User = {
-        id: 0, // Will be updated from backend if needed
+        id: authResponse.userId || 0, // Use userId from login response
         username: authResponse.username,
         email: authResponse.email,
         role: authResponse.role as UserRole,
@@ -274,15 +274,37 @@ export class AuthService {
       };
 
       localStorage.setItem(this.USER_KEY, JSON.stringify(user));
-      
+
       // Store password status for use in components
       if (authResponse.passwordChangeRequired || authResponse.isTemporaryPassword) {
         localStorage.setItem('passwordChangeRequired', 'true');
         localStorage.setItem('isTemporaryPassword', authResponse.isTemporaryPassword ? 'true' : 'false');
       }
-      
+
+      // If user is SHOP_OWNER, get and store shop ID
+      if (authResponse.role === 'SHOP_OWNER') {
+        this.getShopIdForOwner(authResponse.accessToken);
+      }
+
       this.currentUserSubject.next(user);
     }
+  }
+
+  private getShopIdForOwner(token: string): void {
+    // Call /api/shops/my-shop to get shop ID for shop owner
+    this.http.get<any>(`${environment.apiUrl}/shops/my-shop`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    }).subscribe({
+      next: (response) => {
+        if (response.data && response.data.id) {
+          localStorage.setItem('current_shop_id', response.data.id.toString());
+          console.log('Shop ID stored for shop owner:', response.data.id);
+        }
+      },
+      error: (error) => {
+        console.error('Error getting shop ID for shop owner:', error);
+      }
+    });
   }
 
   isPasswordChangeRequired(): boolean {

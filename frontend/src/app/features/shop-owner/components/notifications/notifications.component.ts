@@ -34,136 +34,27 @@ interface ShopNotification {
 @Component({
   selector: 'app-notifications',
   template: `
-    <div class="notifications-container">
-      <!-- Header -->
+    <div class="notifications-page">
+      <!-- Clean Header -->
       <div class="page-header">
-        <div class="header-content">
-          <h1 class="page-title">Notifications</h1>
-          <p class="page-subtitle">Stay updated with your shop activities</p>
+        <div class="header-left">
+          <h1>Notifications</h1>
+          <span class="unread-badge" *ngIf="getUnreadCount() > 0">{{ getUnreadCount() }} unread</span>
         </div>
         <div class="header-actions">
-          <button mat-stroked-button (click)="markAllAsRead()" [disabled]="getUnreadCount() === 0">
+          <button mat-button [class.active]="showOnlyUnread" (click)="toggleUnreadOnly()">
+            <mat-icon>filter_list</mat-icon>
+            Unread Only
+          </button>
+          <button mat-button (click)="markAllAsRead()" [disabled]="getUnreadCount() === 0">
             <mat-icon>done_all</mat-icon>
             Mark All Read
           </button>
-          <button mat-raised-button color="primary" (click)="refreshNotifications()">
+          <button mat-icon-button (click)="refreshNotifications()">
             <mat-icon>refresh</mat-icon>
-            Refresh
           </button>
         </div>
       </div>
-
-      <!-- Summary Cards -->
-      <div class="summary-cards">
-        <mat-card class="summary-card unread">
-          <mat-card-content>
-            <div class="card-content">
-              <div class="card-icon">
-                <mat-icon>notifications</mat-icon>
-              </div>
-              <div class="card-details">
-                <h3>{{ getUnreadCount() }}</h3>
-                <p>Unread Notifications</p>
-              </div>
-            </div>
-          </mat-card-content>
-        </mat-card>
-
-        <mat-card class="summary-card urgent">
-          <mat-card-content>
-            <div class="card-content">
-              <div class="card-icon">
-                <mat-icon>priority_high</mat-icon>
-              </div>
-              <div class="card-details">
-                <h3>{{ getUrgentCount() }}</h3>
-                <p>Urgent Notifications</p>
-              </div>
-            </div>
-          </mat-card-content>
-        </mat-card>
-
-        <mat-card class="summary-card actions">
-          <mat-card-content>
-            <div class="card-content">
-              <div class="card-icon">
-                <mat-icon>assignment</mat-icon>
-              </div>
-              <div class="card-details">
-                <h3>{{ getActionRequiredCount() }}</h3>
-                <p>Action Required</p>
-              </div>
-            </div>
-          </mat-card-content>
-        </mat-card>
-
-        <mat-card class="summary-card today">
-          <mat-card-content>
-            <div class="card-content">
-              <div class="card-icon">
-                <mat-icon>today</mat-icon>
-              </div>
-              <div class="card-details">
-                <h3>{{ getTodayCount() }}</h3>
-                <p>Today's Notifications</p>
-              </div>
-            </div>
-          </mat-card-content>
-        </mat-card>
-      </div>
-
-      <!-- Filters -->
-      <mat-card class="filters-card">
-        <mat-card-content>
-          <div class="filters-section">
-            <div class="filter-group">
-              <mat-form-field appearance="outline">
-                <mat-label>Filter by Type</mat-label>
-                <mat-select [(value)]="selectedType" (selectionChange)="applyFilters()">
-                  <mat-option value="">All Types</mat-option>
-                  <mat-option value="order">Orders</mat-option>
-                  <mat-option value="customer">Customers</mat-option>
-                  <mat-option value="inventory">Inventory</mat-option>
-                  <mat-option value="system">System</mat-option>
-                  <mat-option value="info">Information</mat-option>
-                </mat-select>
-              </mat-form-field>
-
-              <mat-form-field appearance="outline">
-                <mat-label>Filter by Priority</mat-label>
-                <mat-select [(value)]="selectedPriority" (selectionChange)="applyFilters()">
-                  <mat-option value="">All Priorities</mat-option>
-                  <mat-option value="urgent">Urgent</mat-option>
-                  <mat-option value="high">High</mat-option>
-                  <mat-option value="medium">Medium</mat-option>
-                  <mat-option value="low">Low</mat-option>
-                </mat-select>
-              </mat-form-field>
-
-              <mat-form-field appearance="outline">
-                <mat-label>Filter by Status</mat-label>
-                <mat-select [(value)]="selectedStatus" (selectionChange)="applyFilters()">
-                  <mat-option value="">All Status</mat-option>
-                  <mat-option value="unread">Unread</mat-option>
-                  <mat-option value="read">Read</mat-option>
-                  <mat-option value="archived">Archived</mat-option>
-                </mat-select>
-              </mat-form-field>
-            </div>
-
-            <div class="action-group">
-              <button mat-button [class.active]="showOnlyUnread" (click)="toggleUnreadOnly()">
-                <mat-icon>visibility_off</mat-icon>
-                Unread Only
-              </button>
-              <button mat-button [class.active]="showOnlyActionRequired" (click)="toggleActionRequiredOnly()">
-                <mat-icon>assignment</mat-icon>
-                Action Required
-              </button>
-            </div>
-          </div>
-        </mat-card-content>
-      </mat-card>
 
       <!-- Loading State -->
       <div *ngIf="loading" class="loading-container">
@@ -171,97 +62,58 @@ interface ShopNotification {
         <p>Loading notifications...</p>
       </div>
 
-      <!-- Notifications List -->
-      <div class="notifications-list" *ngIf="!loading">
-        <mat-card class="notification-card" 
-                  *ngFor="let notification of getFilteredNotifications()" 
-                  [class.unread]="notification.status === 'unread'"
-                  [class.urgent]="notification.priority === 'urgent'"
-                  (click)="markAsRead(notification)">
-          <mat-card-content>
-            <div class="notification-content">
-              <div class="notification-header">
-                <div class="notification-meta">
-                  <div class="notification-type">
-                    <mat-icon [class]="'type-' + notification.type">{{ getTypeIcon(notification.type) }}</mat-icon>
-                    <span class="type-label">{{ notification.type | titlecase }}</span>
-                  </div>
-                  <div class="notification-priority">
-                    <span class="priority-badge" [class]="'priority-' + notification.priority">
-                      {{ notification.priority | titlecase }}
-                    </span>
-                  </div>
-                </div>
-                <div class="notification-actions">
-                  <button mat-icon-button *ngIf="notification.status === 'unread'" 
-                          (click)="markAsRead(notification); $event.stopPropagation()"
-                          matTooltip="Mark as read">
-                    <mat-icon>done</mat-icon>
-                  </button>
-                  <button mat-icon-button [matMenuTriggerFor]="actionMenu" 
-                          [matMenuTriggerData]="{ notification: notification }"
-                          (click)="$event.stopPropagation()">
-                    <mat-icon>more_vert</mat-icon>
-                  </button>
-                </div>
-              </div>
+      <!-- Notifications Table -->
+      <div class="notifications-table" *ngIf="!loading">
+        <div class="notification-row"
+             *ngFor="let notification of getFilteredNotifications()"
+             [class.unread]="notification.status === 'unread'"
+             [class.urgent]="notification.priority === 'urgent'"
+             (click)="markAsRead(notification)">
 
-              <div class="notification-body">
-                <h3 class="notification-title">{{ notification.title }}</h3>
-                <p class="notification-message">{{ notification.message }}</p>
-                
-                <!-- Order Items Display -->
-                <div class="order-items" *ngIf="notification.orderData && notification.orderData.orderItems && notification.orderData.orderItems.length > 0">
-                  <h4 class="items-title">Order Items:</h4>
-                  <div class="items-list">
-                    <div class="order-item" *ngFor="let item of notification.orderData.orderItems">
-                      <div class="item-image" *ngIf="item.productImageUrl">
-                        <img [src]="item.productImageUrl" [alt]="item.productName" />
-                      </div>
-                      <div class="item-details">
-                        <div class="item-name">{{ item.productName }}</div>
-                        <div class="item-quantity">Qty: {{ item.quantity }}</div>
-                        <div class="item-price">₹{{ item.totalPrice }}</div>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="order-total">
-                    <strong>Total: ₹{{ notification.orderData.totalAmount }}</strong>
-                  </div>
-                </div>
-                
-                <div class="notification-footer">
-                  <div class="notification-time">
-                    <mat-icon>schedule</mat-icon>
-                    <span>{{ notification.createdAt | date:'medium' }}</span>
-                  </div>
-                  
-                  <div class="notification-related" *ngIf="notification.relatedEntity">
-                    <mat-icon>link</mat-icon>
-                    <span>{{ notification.relatedEntity.type | titlecase }}: {{ notification.relatedEntity.name }}</span>
-                  </div>
-                </div>
+          <div class="notification-icon">
+            <mat-icon [class]="'type-' + notification.type">{{ getTypeIcon(notification.type) }}</mat-icon>
+          </div>
 
-                <div class="notification-action" *ngIf="notification.actionRequired">
-                  <button mat-raised-button color="primary" 
-                          (click)="handleAction(notification); $event.stopPropagation()"
-                          [disabled]="notification.status === 'processing'">
-                    <mat-icon *ngIf="notification.status !== 'processing'">check</mat-icon>
-                    <mat-spinner *ngIf="notification.status === 'processing'" diameter="20"></mat-spinner>
-                    {{ notification.status === 'processing' ? 'Processing...' : 'Accept Order' }}
-                  </button>
-                  <button mat-stroked-button color="warn" 
-                          (click)="rejectOrder(notification); $event.stopPropagation()"
-                          [disabled]="notification.status === 'processing'"
-                          style="margin-left: 8px;">
-                    <mat-icon>close</mat-icon>
-                    Reject
-                  </button>
-                </div>
-              </div>
+          <div class="notification-content">
+            <div class="notification-title">{{ notification.title }}</div>
+            <div class="notification-message">{{ notification.message }}</div>
+          </div>
+
+          <div class="notification-amount" *ngIf="notification.orderData">
+            <strong>₹{{ notification.orderData.totalAmount }}</strong>
+            <small>({{ notification.orderData.orderItems.length || 0 }} items)</small>
+          </div>
+
+          <div class="notification-status-column">
+            <div class="notification-time">
+              {{ notification.createdAt | date:'short':'Asia/Kolkata' }}
             </div>
-          </mat-card-content>
-        </mat-card>
+            <div class="order-status" *ngIf="notification.orderData">
+              <span class="status-badge" [class]="'status-' + getOrderStatus(notification)">
+                {{ getOrderStatus(notification) }}
+              </span>
+            </div>
+          </div>
+
+          <div class="notification-priority">
+            <span class="priority-badge" [class]="'priority-' + notification.priority">
+              {{ notification.priority }}
+            </span>
+          </div>
+
+          <div class="notification-actions" *ngIf="notification.actionRequired">
+            <button mat-raised-button color="primary" size="small"
+                    (click)="handleAction(notification); $event.stopPropagation()"
+                    [disabled]="notification.status === 'processing'">
+              {{ notification.status === 'processing' ? 'Processing...' : 'Accept' }}
+            </button>
+            <button mat-stroked-button color="warn" size="small"
+                    (click)="rejectOrder(notification); $event.stopPropagation()"
+                    [disabled]="notification.status === 'processing'">
+              Reject
+            </button>
+          </div>
+        </div>
 
         <!-- Empty State -->
         <div *ngIf="getFilteredNotifications().length === 0" class="empty-state">
@@ -272,43 +124,20 @@ interface ShopNotification {
       </div>
 
       <!-- Load More Button -->
-      <div class="load-more-section" *ngIf="hasMoreNotifications && !loading">
-        <button mat-stroked-button (click)="loadMoreNotifications()">
-          <mat-icon>expand_more</mat-icon>
-          Load More Notifications
+      <div class="load-more" *ngIf="hasMoreNotifications && !loading">
+        <button mat-button (click)="loadMoreNotifications()">
+          Load More
         </button>
       </div>
     </div>
-
-    <!-- Action Menu -->
-    <mat-menu #actionMenu="matMenu">
-      <ng-template matMenuContent let-notification="notification">
-        <button mat-menu-item (click)="markAsRead(notification)" 
-                *ngIf="notification.status === 'unread'">
-          <mat-icon>done</mat-icon>
-          <span>Mark as Read</span>
-        </button>
-        <button mat-menu-item (click)="markAsUnread(notification)" 
-                *ngIf="notification.status === 'read'">
-          <mat-icon>markunread</mat-icon>
-          <span>Mark as Unread</span>
-        </button>
-        <button mat-menu-item (click)="archiveNotification(notification)">
-          <mat-icon>archive</mat-icon>
-          <span>Archive</span>
-        </button>
-        <button mat-menu-item (click)="deleteNotification(notification)" class="warn-menu-item">
-          <mat-icon>delete</mat-icon>
-          <span>Delete</span>
-        </button>
-      </ng-template>
-    </mat-menu>
   `,
   styles: [`
-    .notifications-container {
+    .notifications-page {
       padding: 24px;
-      background-color: #f5f5f5;
-      min-height: calc(100vh - 64px);
+      max-width: 1200px;
+      margin: 0 auto;
+      background: #f8f9fa;
+      min-height: 100vh;
     }
 
     .page-header {
@@ -316,194 +145,212 @@ interface ShopNotification {
       justify-content: space-between;
       align-items: center;
       margin-bottom: 24px;
+      background: white;
+      padding: 20px 24px;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
 
-    .page-title {
-      font-size: 2rem;
-      font-weight: 600;
-      margin: 0 0 4px 0;
-      color: #1f2937;
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
 
-    .page-subtitle {
-      color: #6b7280;
+    .page-header h1 {
       margin: 0;
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+
+    .unread-badge {
+      background: #e3f2fd;
+      color: #1976d2;
+      padding: 4px 12px;
+      border-radius: 16px;
+      font-size: 0.8rem;
+      font-weight: 500;
     }
 
     .header-actions {
       display: flex;
-      gap: 12px;
-    }
-
-    .summary-cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-
-    .summary-card {
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      overflow: hidden;
-    }
-
-    .summary-card.unread { border-left: 4px solid #3b82f6; }
-    .summary-card.urgent { border-left: 4px solid #ef4444; }
-    .summary-card.actions { border-left: 4px solid #f59e0b; }
-    .summary-card.today { border-left: 4px solid #10b981; }
-
-    .card-content {
-      display: flex;
+      gap: 8px;
       align-items: center;
-      gap: 16px;
     }
 
-    .card-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    .header-actions .active {
+      background: #1976d2;
       color: white;
     }
 
-    .summary-card.unread .card-icon { background: #3b82f6; }
-    .summary-card.urgent .card-icon { background: #ef4444; }
-    .summary-card.actions .card-icon { background: #f59e0b; }
-    .summary-card.today .card-icon { background: #10b981; }
-
-    .card-details h3 {
-      font-size: 1.5rem;
-      font-weight: 600;
-      margin: 0;
-      color: #1f2937;
-    }
-
-    .card-details p {
-      font-size: 0.9rem;
-      color: #6b7280;
-      margin: 0;
-    }
-
-    .filters-card {
-      margin-bottom: 16px;
+    .notifications-table {
+      background: white;
       border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
 
-    .filters-section {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .filter-group {
-      display: flex;
+    .notification-row {
+      display: grid;
+      grid-template-columns: 50px 3fr 140px 110px 80px 200px;
       gap: 16px;
       align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid #f0f2f4;
+      cursor: pointer;
+      transition: all 0.15s ease;
     }
 
-    .action-group {
+    .notification-row:last-child {
+      border-bottom: none;
+    }
+
+    .notification-row:hover {
+      background: #f8f9fb;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .notification-row.unread {
+      background: linear-gradient(90deg, #f0f7ff 0%, #ffffff 6px);
+      border-left: 3px solid #2196f3;
+    }
+
+    .notification-row.urgent {
+      border-left: 3px solid #ff5722;
+    }
+
+    .notification-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #e3f2fd, #bbdefb);
       display: flex;
-      gap: 8px;
-    }
-
-    .action-group button.active {
-      background: #dbeafe;
-      color: #1d4ed8;
-    }
-
-    .loading-container {
-      display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
-      height: 200px;
     }
 
-    .notifications-list {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .notification-card {
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      cursor: pointer;
-      transition: all 0.2s ease;
-      border-left: 4px solid transparent;
-    }
-
-    .notification-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
-
-    .notification-card.unread {
-      background: #f8fafc;
-      border-left-color: #3b82f6;
-    }
-
-    .notification-card.urgent {
-      border-left-color: #ef4444;
-      background: #fef2f2;
+    .notification-icon mat-icon {
+      font-size: 18px;
+      color: #1976d2;
     }
 
     .notification-content {
-      padding: 4px;
+      min-width: 0;
     }
 
-    .notification-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-    }
-
-    .notification-meta {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .notification-type {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .type-label {
-      font-size: 0.8rem;
+    .notification-title {
       font-weight: 500;
-      text-transform: uppercase;
+      font-size: 0.95rem;
+      color: #1a1a1a;
+      margin-bottom: 2px;
+      line-height: 1.3;
+    }
+
+    .notification-message {
       color: #6b7280;
+      font-size: 0.85rem;
+      line-height: 1.3;
+      opacity: 0.9;
+    }
+
+    .notification-amount {
+      text-align: right;
+      font-weight: 600;
+      color: #059669;
+      font-size: 0.9rem;
+    }
+
+    .notification-amount small {
+      display: block;
+      color: #9ca3af;
+      font-weight: 400;
+      font-size: 0.75rem;
+      margin-top: 2px;
+    }
+
+    .notification-status-column {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .notification-time {
+      color: #9ca3af;
+      font-size: 0.75rem;
+      white-space: nowrap;
+    }
+
+    .order-status {
+      margin-top: 2px;
+    }
+
+    .status-badge {
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .status-badge.status-PENDING {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .status-badge.status-CONFIRMED {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status-badge.status-ACCEPTED {
+      background: #d1ecf1;
+      color: #0c5460;
+    }
+
+    .status-badge.status-PREPARING {
+      background: #e2e3e5;
+      color: #383d41;
+    }
+
+    .status-badge.status-READY {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status-badge.status-UNKNOWN {
+      background: #f8f9fa;
+      color: #6c757d;
+    }
+
+    .notification-priority {
+      text-align: center;
     }
 
     .priority-badge {
-      padding: 2px 8px;
-      border-radius: 12px;
+      padding: 4px 8px;
+      border-radius: 6px;
       font-size: 0.7rem;
-      font-weight: 600;
+      font-weight: 500;
       text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
     .priority-badge.priority-urgent {
-      background: #fee2e2;
-      color: #dc2626;
+      background: #ffebee;
+      color: #c62828;
     }
 
     .priority-badge.priority-high {
-      background: #fef3c7;
-      color: #d97706;
+      background: #fff3e0;
+      color: #e65100;
     }
 
     .priority-badge.priority-medium {
-      background: #dbeafe;
-      color: #2563eb;
+      background: #e3f2fd;
+      color: #1565c0;
     }
 
     .priority-badge.priority-low {
@@ -513,46 +360,53 @@ interface ShopNotification {
 
     .notification-actions {
       display: flex;
-      gap: 4px;
+      gap: 8px;
+      justify-content: flex-end;
     }
 
-    .notification-title {
-      font-size: 1.1rem;
-      font-weight: 600;
-      margin: 0 0 8px 0;
-      color: #1f2937;
-    }
-
-    .notification-message {
-      font-size: 0.9rem;
-      color: #4b5563;
-      margin: 0 0 12px 0;
-      line-height: 1.5;
-    }
-
-    .notification-footer {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-
-    .notification-time, .notification-related {
-      display: flex;
-      align-items: center;
-      gap: 4px;
+    .notification-actions button {
+      padding: 6px 14px;
       font-size: 0.8rem;
-      color: #6b7280;
+      border-radius: 6px;
+      font-weight: 500;
+      min-width: 70px;
+      height: 32px;
     }
 
-    .notification-time mat-icon, .notification-related mat-icon {
-      font-size: 16px;
-      width: 16px;
-      height: 16px;
+    .notification-actions button[color="primary"] {
+      background: #2196f3;
+      color: white;
+      border: none;
     }
 
-    .notification-action {
-      margin-top: 12px;
+    .notification-actions button[color="warn"] {
+      color: #f44336;
+      border: 1px solid #f44336;
+      background: transparent;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+
+    .empty-state mat-icon {
+      font-size: 3rem;
+      width: 3rem;
+      height: 3rem;
+      margin-bottom: 10px;
+      color: #ccc;
+    }
+
+    .loading-container {
+      text-align: center;
+      padding: 40px;
+    }
+
+    .load-more {
+      text-align: center;
+      margin-top: 20px;
     }
 
     .type-order { color: #10b981; }
@@ -563,158 +417,6 @@ interface ShopNotification {
     .type-success { color: #10b981; }
     .type-warning { color: #f59e0b; }
     .type-error { color: #ef4444; }
-
-    .empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 80px 20px;
-      text-align: center;
-    }
-
-    .empty-state mat-icon {
-      font-size: 64px;
-      width: 64px;
-      height: 64px;
-      color: #d1d5db;
-      margin-bottom: 16px;
-    }
-
-    .empty-state h3 {
-      font-size: 1.2rem;
-      margin: 0 0 8px 0;
-      color: #6b7280;
-    }
-
-    .empty-state p {
-      color: #9ca3af;
-      margin: 0;
-    }
-
-    .load-more-section {
-      display: flex;
-      justify-content: center;
-      margin-top: 24px;
-    }
-
-    .warn-menu-item {
-      color: #dc2626 !important;
-    }
-
-    /* Order Items Styles */
-    .order-items {
-      margin: 16px 0;
-      padding: 16px;
-      background: #f8fafc;
-      border-radius: 8px;
-      border: 1px solid #e2e8f0;
-    }
-
-    .items-title {
-      font-size: 1rem;
-      font-weight: 600;
-      margin: 0 0 12px 0;
-      color: #1f2937;
-    }
-
-    .items-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-
-    .order-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 8px;
-      background: white;
-      border-radius: 6px;
-      border: 1px solid #e5e7eb;
-    }
-
-    .item-image {
-      width: 40px;
-      height: 40px;
-      flex-shrink: 0;
-    }
-
-    .item-image img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      border-radius: 4px;
-    }
-
-    .item-details {
-      flex: 1;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .item-name {
-      font-weight: 500;
-      color: #1f2937;
-    }
-
-    .item-quantity {
-      font-size: 0.9rem;
-      color: #6b7280;
-    }
-
-    .item-price {
-      font-weight: 600;
-      color: #059669;
-    }
-
-    .order-total {
-      text-align: right;
-      padding-top: 8px;
-      border-top: 1px solid #e5e7eb;
-      color: #1f2937;
-    }
-
-    /* Mobile Responsive */
-    @media (max-width: 768px) {
-      .notifications-container {
-        padding: 16px;
-      }
-
-      .page-header {
-        flex-direction: column;
-        gap: 16px;
-        text-align: center;
-      }
-
-      .summary-cards {
-        grid-template-columns: 1fr 1fr;
-      }
-
-      .filters-section {
-        flex-direction: column;
-        align-items: stretch;
-      }
-
-      .filter-group {
-        flex-direction: column;
-        gap: 12px;
-      }
-
-      .notification-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
-      }
-
-      .notification-footer {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 4px;
-      }
-    }
   `]
 })
 export class NotificationsComponent implements OnInit, OnDestroy {
@@ -807,12 +509,13 @@ export class NotificationsComponent implements OnInit, OnDestroy {
   }
 
   private loadOrderNotifications() {
-    const currentUser = this.authService.getCurrentUser();
-    if (!currentUser?.shopId) {
-      console.error('No shop ID found for current user');
+    // Get shop ID from localStorage (same way as orders component)
+    const cachedShopId = localStorage.getItem('current_shop_id');
+    if (!cachedShopId) {
+      console.error('No shop ID found in localStorage');
       return of([]);
     }
-    const shopId = currentUser.shopId;
+    const shopId = parseInt(cachedShopId, 10);
 
     return this.orderService.getOrdersByShop(String(shopId || ''), 0, 50)
       .pipe(
@@ -1135,4 +838,26 @@ export class NotificationsComponent implements OnInit, OnDestroy {
         }
       });
   }
+
+  getOrderStatus(notification: ShopNotification): string {
+    if (notification.orderData && notification.orderData.status) {
+      return notification.orderData.status;
+    }
+
+    // Extract status from message for backward compatibility
+    if (notification.message.includes('status: CONFIRMED')) {
+      return 'CONFIRMED';
+    } else if (notification.message.includes('status: ACCEPTED')) {
+      return 'ACCEPTED';
+    } else if (notification.message.includes('status: PREPARING')) {
+      return 'PREPARING';
+    } else if (notification.message.includes('status: READY_FOR_PICKUP')) {
+      return 'READY';
+    } else if (notification.message.includes('status: PENDING')) {
+      return 'PENDING';
+    }
+
+    return 'UNKNOWN';
+  }
+
 }

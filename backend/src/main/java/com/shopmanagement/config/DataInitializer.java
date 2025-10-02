@@ -34,7 +34,8 @@ public class DataInitializer {
     private final MasterProductRepository masterProductRepository;
     private final MasterProductImageRepository masterProductImageRepository;
 
-    @Bean
+    // @Bean - Disabled data initialization
+    // Uncomment @Bean annotation above to enable automatic data initialization
     CommandLineRunner initDatabase() {
         return args -> {
             // Create admin user if it doesn't exist (check both email and username)
@@ -92,6 +93,7 @@ public class DataInitializer {
                 User delivery = User.builder()
                         .username("delivery")
                         .email("delivery@example.com")
+                        .mobileNumber("9999999991")
                         .password(passwordEncoder.encode("delivery123"))
                         .role(User.UserRole.DELIVERY_PARTNER)
                         .isActive(true)
@@ -136,19 +138,23 @@ public class DataInitializer {
             }
 
             // Create test user with your email
-            if (!userRepository.existsByEmail("thiruna2394@gmail.com") && !userRepository.existsByUsername("thiruna")) {
+            if (!userRepository.existsByEmail("thiruna2424@gmail.com") && !userRepository.existsByUsername("thiruna2424")) {
                 User testUser = User.builder()
-                        .username("thiruna")
-                        .email("thiruna2394@gmail.com")
-                        .password(passwordEncoder.encode("test123"))
-                        .role(User.UserRole.USER)
+                        .username("thiruna2424")
+                        .email("thiruna2424@gmail.com")
+                        .mobileNumber("9999999992")
+                        .password(passwordEncoder.encode("Test@123"))
+                        .role(User.UserRole.DELIVERY_PARTNER)
                         .isActive(true)
+                        .isAvailable(true)
+                        .isOnline(true)
+                        .rideStatus(User.RideStatus.AVAILABLE)
                         .passwordChangeRequired(false)
                         .isTemporaryPassword(false)
                         .build();
-                
+
                 userRepository.save(testUser);
-                log.info("Test user created with email: thiruna2394@gmail.com and password: test123");
+                log.info("Test user created with email: thiruna2424@gmail.com and password: Test@123");
             }
 
             // Create test customers for order testing

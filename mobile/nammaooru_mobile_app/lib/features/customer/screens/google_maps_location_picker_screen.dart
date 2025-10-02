@@ -36,6 +36,7 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
   final FocusNode _addressFocusNode = FocusNode();
 
   String _selectedAddress = '';
+  String _selectedStreet = '';
   String _selectedCity = '';
   String _selectedVillage = '';
   String _selectedState = '';
@@ -149,8 +150,50 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
     try {
       final address = await LocationService.instance.getAddressFromCoordinates(latitude, longitude);
       if (address != null && mounted) {
+        // Build a complete address string with proper formatting
+        String fullAddress = '';
+        List<String> addressParts = [];
+
+        // Get street components
+        String? streetNumber = address['streetNumber'];
+        String? streetName = address['streetName'];
+        String? subLocality = address['subLocality'];
+        String? locality = address['locality'];
+
+        // Build street address part
+        if (streetName?.isNotEmpty == true) {
+          if (streetNumber?.isNotEmpty == true) {
+            // Has both number and street name: "3, Greams Road"
+            addressParts.add('$streetNumber, $streetName');
+          } else {
+            // Has only street name: "Greams Road"
+            addressParts.add(streetName!);
+          }
+        }
+        // Skip street number alone - it's not useful without the street name
+
+        // Add subLocality (area/neighborhood) if different from street name
+        if (subLocality?.isNotEmpty == true &&
+            subLocality != streetName) {
+          addressParts.add(subLocality!);
+        }
+
+        // Add locality (city)
+        if (locality?.isNotEmpty == true) {
+          addressParts.add(locality!);
+        }
+
+        fullAddress = addressParts.join(', ');
+
+        print('📍 FORMATTED ADDRESS: $fullAddress');
+        print('  - Street Number: $streetNumber');
+        print('  - Street Name: $streetName');
+        print('  - SubLocality: $subLocality');
+        print('  - Locality: $locality');
+
         setState(() {
-          _selectedAddress = '${address['street']}, ${address['subLocality']}';
+          _selectedAddress = fullAddress.isNotEmpty ? fullAddress : 'Selected Location';
+          _selectedStreet = streetName ?? ''; // Store street name separately
           _selectedCity = address['locality'] ?? 'Tirupattur'; // City from locality
           _selectedVillage = address['subLocality'] ?? ''; // Village from subLocality
           _selectedState = address['administrativeArea'] ?? 'Tamil Nadu'; // State from administrativeArea
@@ -565,10 +608,14 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
               }
               // No need to skip - show all geocoding results
 
-              // Extract area/location name (different from business name)
+              // Extract street name and area
+              String streetName = placemark.street ?? '';
+
+              // Extract area/location name (different from business name and street)
               if (placemark.subLocality != null &&
                   placemark.subLocality!.isNotEmpty &&
-                  placemark.subLocality != businessName) {
+                  placemark.subLocality != businessName &&
+                  placemark.subLocality != streetName) {
                 locationArea = placemark.subLocality!;
               } else if (placemark.street != null &&
                         placemark.street!.isNotEmpty &&
@@ -576,18 +623,22 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
                 locationArea = placemark.street!;
               }
 
-              // Format display name like "Apollo Hospital - Greams Road, Chennai"
+              // Format display name with street - like "Apollo Hospital - Greams Road, Chennai"
               String displayName;
               if (businessName.toLowerCase().contains(query.toLowerCase())) {
-                // Business name matches search
-                if (locationArea.isNotEmpty && locationArea != businessName) {
+                // Business name matches search - show street if available
+                if (streetName.isNotEmpty && streetName != businessName) {
+                  displayName = '$businessName - $streetName, $cityName';
+                } else if (locationArea.isNotEmpty && locationArea != businessName) {
                   displayName = '$businessName - $locationArea, $cityName';
                 } else {
                   displayName = '$businessName - $cityName';
                 }
               } else {
-                // Show area with city
-                if (locationArea.isNotEmpty) {
+                // Show street with area/city
+                if (streetName.isNotEmpty) {
+                  displayName = '$query - $streetName, $cityName';
+                } else if (locationArea.isNotEmpty) {
                   displayName = '$query - $locationArea, $cityName';
                 } else {
                   displayName = '$query - $cityName';
@@ -626,6 +677,9 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
                 if (businessName.toLowerCase().startsWith(searchLower)) {
                   relevanceScore += 50;
                 }
+                if (streetName.toLowerCase().contains(searchLower)) {
+                  relevanceScore += 40;
+                }
                 if (locationArea.toLowerCase().contains(searchLower)) {
                   relevanceScore += 30;
                 }
@@ -636,6 +690,7 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
                   'lat': location.latitude,
                   'lng': location.longitude,
                   'placemark': placemark,
+                  'street': streetName,
                   'area': locationArea,
                   'city': cityName,
                   'distance': distance,
@@ -781,7 +836,8 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
       builder: (context) => SaveAddressDialog(
         latitude: _selectedLatitude ?? 0.0,
         longitude: _selectedLongitude ?? 0.0,
-        detectedAddress: _selectedAddress,
+        detectedAddress: _selectedVillage, // Pass area/locality as the detected address
+        detectedStreet: _selectedStreet, // Pass street name separately
         detectedCity: _selectedCity,
         detectedVillage: _selectedVillage,
         detectedState: _selectedState,
@@ -1043,7 +1099,26 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
                                   ),
                                   const SizedBox(width: 8),
                                 ],
-                                if (suggestion['area'] != null || suggestion['city'] != null) ...[
+                                if (suggestion['street'] != null && suggestion['street'].toString().isNotEmpty) ...[
+                                  Icon(
+                                    Icons.signpost,
+                                    size: 12,
+                                    color: Colors.green.shade600,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      suggestion['street'],
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.green.shade700,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ] else if (suggestion['area'] != null || suggestion['city'] != null) ...[
                                   Icon(
                                     Icons.location_city,
                                     size: 12,

@@ -23,7 +23,7 @@ public class ProductImageController {
     private final ProductImageService productImageService;
 
     @PostMapping(value = "/master/{productId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'SHOP_OWNER')")
     public ResponseEntity<ApiResponse<List<ProductImageResponse>>> uploadMasterProductImages(
             @PathVariable Long productId,
             @RequestParam("images") MultipartFile[] files,

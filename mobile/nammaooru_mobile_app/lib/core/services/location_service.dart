@@ -31,22 +31,37 @@ class LocationService {
           final result = data['results'][0];
           final addressComponents = result['address_components'] as List;
 
-          String street = '';
+          String streetNumber = '';
+          String route = '';
+          String premise = '';
+          String neighborhood = '';
           String subLocality = '';
+          String subLocalityLevel2 = '';
+          String subLocalityLevel3 = '';
           String locality = '';
           String administrativeArea = '';
           String postalCode = '';
           String country = '';
 
-          // Parse address components
+          // Parse address components with better street name extraction
           for (var component in addressComponents) {
             final types = component['types'] as List;
             final longName = component['long_name'] as String;
 
-            if (types.contains('street_number') || types.contains('route')) {
-              street = '$street ${longName}'.trim();
-            } else if (types.contains('sublocality') || types.contains('sublocality_level_1')) {
+            if (types.contains('street_number')) {
+              streetNumber = longName;
+            } else if (types.contains('route')) {
+              route = longName;
+            } else if (types.contains('premise')) {
+              premise = longName;
+            } else if (types.contains('neighborhood')) {
+              neighborhood = longName;
+            } else if (types.contains('sublocality_level_1') || types.contains('sublocality')) {
               subLocality = longName;
+            } else if (types.contains('sublocality_level_2')) {
+              subLocalityLevel2 = longName;
+            } else if (types.contains('sublocality_level_3')) {
+              subLocalityLevel3 = longName;
             } else if (types.contains('locality')) {
               locality = longName;
             } else if (types.contains('administrative_area_level_2')) {
@@ -61,17 +76,44 @@ class LocationService {
             }
           }
 
+          // Build street/road name - try multiple sources
+          String streetName = route; // This is the actual street/road name
+          String houseNumber = streetNumber;
+
+          // If no route, try to get from other sources
+          if (streetName.isEmpty) {
+            if (premise.isNotEmpty) {
+              streetName = premise;
+            } else if (neighborhood.isNotEmpty) {
+              streetName = neighborhood;
+            } else if (subLocalityLevel3.isNotEmpty) {
+              // Sometimes the street name is in sublocality level 3
+              streetName = subLocalityLevel3;
+            } else if (subLocalityLevel2.isNotEmpty && subLocalityLevel2 != subLocality) {
+              // Use sublocality level 2 if it's different from level 1
+              streetName = subLocalityLevel2;
+            }
+          }
+
           print('🏠 GOOGLE API PARSED DATA:');
-          print('  - street: $street');
+          print('  - streetNumber: $streetNumber');
+          print('  - route (street name): $route');
+          print('  - premise: $premise');
+          print('  - neighborhood: $neighborhood');
           print('  - subLocality: $subLocality');
+          print('  - subLocalityLevel2: $subLocalityLevel2');
+          print('  - subLocalityLevel3: $subLocalityLevel3');
           print('  - locality: $locality');
           print('  - administrativeArea: $administrativeArea');
           print('  - postalCode: $postalCode');
           print('  - country: $country');
+          print('  - FINAL streetName: $streetName');
           print('  - formatted_address: ${result['formatted_address']}');
 
           return {
-            'street': street,
+            'streetName': streetName,
+            'streetNumber': houseNumber,
+            'street': streetName, // Keep for backward compatibility
             'subLocality': subLocality,
             'locality': locality.isNotEmpty ? locality : 'Tirupattur',
             'administrativeArea': administrativeArea.isNotEmpty ? administrativeArea : 'Tamil Nadu',
@@ -156,6 +198,29 @@ class LocationService {
         print('  - thoroughfare: ${place.thoroughfare}');
         print('  - subThoroughfare: ${place.subThoroughfare}');
 
+        // Extract street name and number separately
+        String streetName = '';
+        String streetNumber = '';
+
+        // thoroughfare = street name, subThoroughfare = street number
+        if (place.thoroughfare?.isNotEmpty == true) {
+          streetName = place.thoroughfare!;
+        } else if (place.street?.isNotEmpty == true) {
+          streetName = place.street!;
+        }
+
+        if (place.subThoroughfare?.isNotEmpty == true) {
+          streetNumber = place.subThoroughfare!;
+        }
+
+        // If still no street name, try to use name if it's different from locality
+        if (streetName.isEmpty &&
+            place.name?.isNotEmpty == true &&
+            place.name != place.subLocality &&
+            place.name != place.locality) {
+          streetName = place.name!;
+        }
+
         // Use subAdministrativeArea (district/city) if available, otherwise locality (area/village)
         String cityName = place.subAdministrativeArea?.isNotEmpty == true
             ? place.subAdministrativeArea!
@@ -176,7 +241,9 @@ class LocationService {
         }
 
         final result = {
-          'street': place.street ?? '',
+          'streetName': streetName,
+          'streetNumber': streetNumber,
+          'street': streetName, // Keep for backward compatibility
           'subLocality': place.subLocality ?? '',
           'locality': cityName,
           'administrativeArea': place.administrativeArea ?? 'Tamil Nadu',
@@ -185,6 +252,8 @@ class LocationService {
         };
 
         print('✅ FLUTTER GEOCODING RESULT:');
+        print('  - streetNumber: ${result['streetNumber']}');
+        print('  - streetName: ${result['streetName']}');
         print('  - street: ${result['street']}');
         print('  - subLocality: ${result['subLocality']}');
         print('  - locality: ${result['locality']}');

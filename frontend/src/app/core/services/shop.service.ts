@@ -227,7 +227,7 @@ export class ShopService {
   // Approve shop (admin only)
   approveShop(id: number, notes?: string): Observable<Shop> {
     const body = notes ? { notes } : {};
-    return this.http.put<ApiResponse<any>>(`${this.API_URL}/approvals/${id}/approve`, body).pipe(
+    return this.http.put<ApiResponse<any>>(`${this.API_URL}/${id}/approve`, body).pipe(
       map(apiResponse => {
         if (ApiResponseHelper.isError(apiResponse)) {
           throw new Error(ApiResponseHelper.getErrorMessage(apiResponse));
@@ -243,7 +243,7 @@ export class ShopService {
 
   // Reject shop (admin only)
   rejectShop(id: number, reason: string): Observable<Shop> {
-    return this.http.put<ApiResponse<any>>(`${this.API_URL}/approvals/${id}/reject`, { reason }).pipe(
+    return this.http.put<ApiResponse<any>>(`${this.API_URL}/${id}/reject`, { reason }).pipe(
       map(apiResponse => {
         if (ApiResponseHelper.isError(apiResponse)) {
           throw new Error(ApiResponseHelper.getErrorMessage(apiResponse));

@@ -406,9 +406,11 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
   }
 
   private loadNotificationCount(): void {
-    const currentUser = this.authService.getCurrentUser();
-    if (currentUser?.shopId) {
-      this.orderService.getOrdersByShop(String(currentUser.shopId), 0, 50)
+    // Get shop ID from localStorage (same way as orders and notifications components)
+    const cachedShopId = localStorage.getItem('current_shop_id');
+    if (cachedShopId) {
+      const shopId = parseInt(cachedShopId, 10);
+      this.orderService.getOrdersByShop(String(shopId), 0, 50)
         .subscribe({
           next: (orderPage) => {
             if (orderPage.data?.content) {
@@ -435,6 +437,8 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
             console.error('Error loading notification count:', error);
           }
         });
+    } else {
+      console.error('No shop ID found in localStorage for notification count');
     }
   }
 

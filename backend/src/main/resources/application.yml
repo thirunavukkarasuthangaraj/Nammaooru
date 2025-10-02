@@ -4,6 +4,8 @@ server:
 spring:
   application:
     name: shop-management-system
+  jackson:
+    time-zone: Asia/Kolkata
   
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/shop_management_db}
@@ -20,7 +22,7 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
         jdbc:
-          time_zone: UTC
+          time_zone: Asia/Kolkata
     open-in-view: false
   
   sql:
@@ -91,7 +93,7 @@ app:
     dir: ${APP_UPLOAD_DIR:D:/AAWS/nammaooru/uploads}
     documents:
       path: ${DOCUMENT_UPLOAD_PATH:D:/AAWS/nammaooru/uploads/documents/shops}
-    product-images: ${PRODUCT_IMAGES_PATH:D:/AAWS/nammaooru/uploads/products}
+    product-images: ${PRODUCT_IMAGES_PATH:products}
     max-file-size: 10MB
     allowed-types: pdf,jpg,jpeg,png,docx,doc
   frontend:

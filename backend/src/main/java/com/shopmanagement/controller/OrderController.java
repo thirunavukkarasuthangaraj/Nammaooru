@@ -68,18 +68,7 @@ public class OrderController {
         log.info("Updating order status: {} to {}", id, status);
         OrderResponse response = orderService.updateOrderStatus(id, status);
 
-        // Trigger auto-assignment when order becomes ready for pickup
-        if (status == Order.OrderStatus.READY_FOR_PICKUP) {
-            try {
-                log.info("Attempting auto-assignment for order: {}", id);
-                OrderAssignment assignment = assignmentService.autoAssignOrder(id, 1L); // Using system user ID 1 as assignedBy
-                log.info("Order {} successfully auto-assigned to partner: {}", id, assignment.getDeliveryPartner().getEmail());
-            } catch (Exception e) {
-                log.warn("Auto-assignment failed for order {}: {}", id, e.getMessage());
-                // Continue with success response even if auto-assignment fails
-                // This allows manual assignment later
-            }
-        }
+        // Auto-assignment is handled in OrderService.updateOrderStatus()
 
         return ResponseUtil.success(response, "Order status updated successfully");
     }
@@ -210,16 +199,7 @@ public class OrderController {
         log.info("Marking order ready: {}", orderId);
         OrderResponse response = orderService.updateOrderStatus(orderId, Order.OrderStatus.READY_FOR_PICKUP);
 
-        // Trigger auto-assignment when order becomes ready for pickup
-        try {
-            log.info("Attempting auto-assignment for order: {}", orderId);
-            OrderAssignment assignment = assignmentService.autoAssignOrder(orderId, 1L); // Using system user ID 1 as assignedBy
-            log.info("Order {} successfully auto-assigned to partner: {}", orderId, assignment.getDeliveryPartner().getEmail());
-        } catch (Exception e) {
-            log.warn("Auto-assignment failed for order {}: {}", orderId, e.getMessage());
-            // Continue with success response even if auto-assignment fails
-            // This allows manual assignment later
-        }
+        // Auto-assignment is handled in OrderService.updateOrderStatus()
 
         return ResponseUtil.success(response, "Order marked as ready successfully");
     }

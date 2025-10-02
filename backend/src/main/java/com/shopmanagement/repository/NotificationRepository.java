@@ -140,4 +140,12 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     // Find distinct tags
     @Query("SELECT DISTINCT n.tags FROM Notification n WHERE n.tags IS NOT NULL")
     List<String> findDistinctTags();
+
+    // Find by recipient ID and type with ordering
+    List<Notification> findByRecipientIdAndRecipientTypeOrderByCreatedAtDesc(Long recipientId, Notification.RecipientType recipientType);
+
+    // Mark all as read for a specific recipient type
+    @Modifying
+    @Query("UPDATE Notification n SET n.status = 'READ', n.readAt = CURRENT_TIMESTAMP WHERE n.recipientId = :recipientId AND n.recipientType = :recipientType AND n.status = 'UNREAD'")
+    void markAllAsReadByRecipient(@Param("recipientId") Long recipientId, @Param("recipientType") Notification.RecipientType recipientType);
 }

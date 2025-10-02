@@ -4,12 +4,13 @@ import '../models/cart_model.dart';
 import '../../core/storage/local_storage.dart';
 import '../../core/services/cart_service.dart';
 import '../../core/models/cart_model.dart' as CoreCart;
+import '../../core/config/env_config.dart';
 import 'dart:convert';
 
 class CartProvider with ChangeNotifier {
   List<CartItem> _items = [];
   double _deliveryFee = 30.0;
-  double _taxRate = 0.05; // 5% tax
+  double _taxRate = 0.0; // Tax disabled for now
   String? _promoCode;
   double _promoDiscount = 0.0;
   final CartService _cartService = CartService();

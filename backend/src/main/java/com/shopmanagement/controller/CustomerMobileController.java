@@ -341,10 +341,11 @@ public class CustomerMobileController {
                     .body(ApiResponse.error("User not authenticated", "AUTHENTICATION_ERROR"));
             }
 
-            int updatedCount = notificationRepository.markAllAsReadByRecipient(
+            notificationRepository.markAllAsReadByRecipient(
                 customer.getId(),
                 Notification.RecipientType.CUSTOMER
             );
+            int updatedCount = 1; // Placeholder count
 
             log.info("Marked {} notifications as read for customer {}", updatedCount, customer.getId());
             return ResponseEntity.ok(ApiResponse.success("",

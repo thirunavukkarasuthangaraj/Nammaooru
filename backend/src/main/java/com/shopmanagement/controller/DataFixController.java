@@ -134,13 +134,13 @@ public class DataFixController {
             // Generate a new BCrypt hash for 'admin123'
             String newPassword = "admin123";
             String hashedPassword = passwordEncoder.encode(newPassword);
-            
+
             // Update admin user password
             String updateSql = "UPDATE users SET password = ? WHERE username = 'admin'";
             int updated = jdbcTemplate.update(updateSql, hashedPassword);
-            
+
             log.info("Reset password for admin user. Updated {} records", updated);
-            
+
             return ResponseEntity.ok(Map.of(
                 "status", "success",
                 "message", "Admin password reset successfully",
@@ -152,6 +152,45 @@ public class DataFixController {
             return ResponseEntity.badRequest().body(Map.of(
                 "status", "error",
                 "message", "Failed to reset admin password: " + e.getMessage()
+            ));
+        }
+    }
+
+    @PostMapping("/delivery-partner-availability")
+    public ResponseEntity<Map<String, Object>> fixDeliveryPartnerAvailability() {
+        try {
+            // Fix delivery partner availability issue - set availability to true for online delivery partners
+            String updateSql = """
+                UPDATE users
+                SET is_available = true, last_activity = CURRENT_TIMESTAMP
+                WHERE role = 'DELIVERY_PARTNER'
+                AND is_online = true
+                AND ride_status = 'AVAILABLE'
+                AND is_available = false
+                """;
+
+            int updated = jdbcTemplate.update(updateSql);
+
+            // Check current status
+            String statusSql = """
+                SELECT username, email, is_online, is_available, ride_status
+                FROM users
+                WHERE role = 'DELIVERY_PARTNER'
+                AND is_online = true
+                """;
+
+            log.info("Fixed availability for {} delivery partners", updated);
+
+            return ResponseEntity.ok(Map.of(
+                "status", "success",
+                "message", "Fixed availability for " + updated + " delivery partners",
+                "updatedCount", updated
+            ));
+        } catch (Exception e) {
+            log.error("Failed to fix delivery partner availability", e);
+            return ResponseEntity.badRequest().body(Map.of(
+                "status", "error",
+                "message", "Failed to fix delivery partner availability: " + e.getMessage()
             ));
         }
     }

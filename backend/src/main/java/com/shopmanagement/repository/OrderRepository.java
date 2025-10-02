@@ -65,15 +65,15 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query("SELECT COUNT(o) FROM Order o WHERE o.shop.id = :shopId AND o.status = :status")
     Long countOrdersByShopAndStatus(@Param("shopId") Long shopId, @Param("status") Order.OrderStatus status);
     
-    @Query("SELECT SUM(o.totalAmount) FROM Order o WHERE o.shop.id = :shopId AND o.paymentStatus = 'PAID'")
+    @Query("SELECT SUM(o.totalAmount) FROM Order o WHERE o.shop.id = :shopId AND (o.paymentStatus = 'PAID' OR o.status IN ('DELIVERED', 'COMPLETED'))")
     BigDecimal getTotalRevenueByShop(@Param("shopId") Long shopId);
-    
-    @Query("SELECT SUM(o.totalAmount) FROM Order o WHERE o.shop.id = :shopId AND o.paymentStatus = 'PAID' AND o.createdAt BETWEEN :startDate AND :endDate")
+
+    @Query("SELECT SUM(o.totalAmount) FROM Order o WHERE o.shop.id = :shopId AND o.createdAt BETWEEN :startDate AND :endDate AND (o.paymentStatus = 'PAID' OR o.status IN ('DELIVERED', 'COMPLETED'))")
     BigDecimal getRevenueByShopAndDateRange(@Param("shopId") Long shopId,
                                            @Param("startDate") LocalDateTime startDate,
                                            @Param("endDate") LocalDateTime endDate);
-    
-    @Query("SELECT AVG(o.totalAmount) FROM Order o WHERE o.shop.id = :shopId AND o.paymentStatus = 'PAID'")
+
+    @Query("SELECT AVG(o.totalAmount) FROM Order o WHERE o.shop.id = :shopId AND (o.paymentStatus = 'PAID' OR o.status IN ('DELIVERED', 'COMPLETED'))")
     BigDecimal getAverageOrderValueByShop(@Param("shopId") Long shopId);
     
     // Find pending orders for delivery
@@ -86,7 +86,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     
     // Monthly revenue
     @Query("SELECT MONTH(o.createdAt) as month, SUM(o.totalAmount) as revenue " +
-           "FROM Order o WHERE o.shop.id = :shopId AND o.paymentStatus = 'PAID' AND YEAR(o.createdAt) = :year " +
+           "FROM Order o WHERE o.shop.id = :shopId AND (o.paymentStatus = 'PAID' OR o.status IN ('DELIVERED', 'COMPLETED')) AND YEAR(o.createdAt) = :year " +
            "GROUP BY MONTH(o.createdAt) ORDER BY MONTH(o.createdAt)")
     List<Object[]> getMonthlyRevenue(@Param("shopId") Long shopId, @Param("year") int year);
     
@@ -127,4 +127,15 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
            "LOWER(o.customer.lastName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
            "LOWER(o.shop.name) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
     Page<Order> searchOrdersWithOrderItems(@Param("searchTerm") String searchTerm, Pageable pageable);
+
+    // Check if shop has orders with specific statuses
+    boolean existsByShopIdAndStatusIn(Long shopId, List<Order.OrderStatus> statuses);
+
+    // Count orders by shop and created date
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.shop.id = :shopId AND o.createdAt >= :startDate")
+    Long countByShopIdAndCreatedAtAfter(@Param("shopId") Long shopId, @Param("startDate") LocalDateTime startDate);
+
+    // Get total revenue by shop and date (includes PAID orders and DELIVERED/COMPLETED orders for COD)
+    @Query("SELECT SUM(o.totalAmount) FROM Order o WHERE o.shop.id = :shopId AND o.createdAt >= :startDate AND (o.paymentStatus = 'PAID' OR o.status IN ('DELIVERED', 'COMPLETED'))")
+    BigDecimal getTotalRevenueByShopAndDate(@Param("shopId") Long shopId, @Param("startDate") LocalDateTime startDate);
 }

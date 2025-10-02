@@ -163,9 +163,10 @@ public class CustomerOrderController {
             try {
                 if (orderRequest.getCustomerToken() != null && !orderRequest.getCustomerToken().isEmpty()) {
                     firebaseNotificationService.sendOrderNotification(
-                        order.getOrderNumber(), 
-                        "PLACED", 
-                        orderRequest.getCustomerToken()
+                        order.getOrderNumber(),
+                        "PLACED",
+                        orderRequest.getCustomerToken(),
+                        order.getCustomerId()
                     );
                 }
             } catch (Exception notificationError) {
@@ -287,9 +288,10 @@ public class CustomerOrderController {
             // Send cancellation notification
             if (customerToken != null && !customerToken.isEmpty()) {
                 firebaseNotificationService.sendOrderNotification(
-                    order.getOrderNumber(), 
-                    "CANCELLED", 
-                    customerToken
+                    order.getOrderNumber(),
+                    "CANCELLED",
+                    customerToken,
+                    order.getCustomerId()
                 );
             }
             

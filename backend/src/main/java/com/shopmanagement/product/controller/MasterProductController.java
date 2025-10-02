@@ -103,7 +103,7 @@ public class MasterProductController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'SHOP_OWNER')")
     public ResponseEntity<ApiResponse<MasterProductResponse>> createProduct(
             @Valid @RequestBody MasterProductRequest request) {
         log.info("Creating master product: {}", request.getName());
@@ -115,7 +115,7 @@ public class MasterProductController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'SHOP_OWNER')")
     public ResponseEntity<ApiResponse<MasterProductResponse>> updateProduct(
             @PathVariable Long id,
             @Valid @RequestBody MasterProductRequest request) {

@@ -14,6 +14,8 @@ class SavedAddress {
   final String addressType;
   final bool isDefault;
   final DateTime createdAt;
+  final double? latitude;
+  final double? longitude;
 
   SavedAddress({
     required this.id,
@@ -29,6 +31,8 @@ class SavedAddress {
     required this.addressType,
     this.isDefault = false,
     required this.createdAt,
+    this.latitude,
+    this.longitude,
   });
 
   String get fullName => '$name $lastName';
@@ -59,6 +63,8 @@ class SavedAddress {
       addressType: json['addressType'] ?? 'HOME',
       isDefault: json['isDefault'] ?? false,
       createdAt: DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String()),
+      latitude: json['latitude']?.toDouble(),
+      longitude: json['longitude']?.toDouble(),
     );
   }
 
@@ -77,6 +83,8 @@ class SavedAddress {
       'addressType': addressType,
       'isDefault': isDefault,
       'createdAt': createdAt.toIso8601String(),
+      'latitude': latitude,
+      'longitude': longitude,
     };
   }
 
@@ -94,6 +102,8 @@ class SavedAddress {
     String? addressType,
     bool? isDefault,
     DateTime? createdAt,
+    double? latitude,
+    double? longitude,
   }) {
     return SavedAddress(
       id: id ?? this.id,
@@ -109,6 +119,8 @@ class SavedAddress {
       addressType: addressType ?? this.addressType,
       isDefault: isDefault ?? this.isDefault,
       createdAt: createdAt ?? this.createdAt,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
     );
   }
 

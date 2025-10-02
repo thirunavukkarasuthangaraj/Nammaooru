@@ -14,8 +14,7 @@ class NammaOoruApp extends StatelessWidget {
     return MaterialApp.router(
       title: 'Namma Ooru Delivery',
       theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
+      themeMode: ThemeMode.light,
       routerConfig: AppRouter.router,
       builder: (context, child) {
         return child ?? const SizedBox.shrink();

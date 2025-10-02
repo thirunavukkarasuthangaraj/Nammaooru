@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { environment } from '../../../../../environments/environment';
@@ -32,6 +33,7 @@ interface DashboardStats {
   completedOrders: number;
   monthlyRevenue: number;
   weeklyOrders: number;
+  totalRevenue: number;
 }
 
 @Component({
@@ -45,7 +47,11 @@ export class BusinessSummaryComponent implements OnInit, OnDestroy {
   
   shopId: number | null = null;
   loading = false;
-  
+
+  // Date range filter
+  startDate: Date | null = null;
+  endDate: Date | null = null;
+
   // Dashboard Statistics
   stats: DashboardStats = {
     todayRevenue: 0,
@@ -55,7 +61,8 @@ export class BusinessSummaryComponent implements OnInit, OnDestroy {
     lowStockCount: 0,
     completedOrders: 0,
     monthlyRevenue: 0,
-    weeklyOrders: 0
+    weeklyOrders: 0,
+    totalRevenue: 0
   };
   
   recentOrders: OrderSummary[] = [];
@@ -67,6 +74,7 @@ export class BusinessSummaryComponent implements OnInit, OnDestroy {
 
   constructor(
     private http: HttpClient,
+    private router: Router,
     private shopContext: ShopContextService,
     private snackBar: MatSnackBar
   ) {}
@@ -126,16 +134,25 @@ export class BusinessSummaryComponent implements OnInit, OnDestroy {
     const thisWeekStart = new Date(now.setDate(now.getDate() - now.getDay()));
     const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
+    // Apply date range filter if set
+    let filteredOrders = orders;
+    if (this.startDate && this.endDate) {
+      filteredOrders = orders.filter(order => {
+        const orderDate = new Date(order.createdAt);
+        return orderDate >= this.startDate! && orderDate <= this.endDate!;
+      });
+    }
+
     // Filter orders by date
-    const todayOrders = orders.filter(order => 
+    const todayOrders = orders.filter(order =>
       new Date(order.createdAt).toDateString() === today
     );
-    
-    const weeklyOrders = orders.filter(order => 
+
+    const weeklyOrders = orders.filter(order =>
       new Date(order.createdAt) >= thisWeekStart
     );
-    
-    const monthlyOrders = orders.filter(order => 
+
+    const monthlyOrders = orders.filter(order =>
       new Date(order.createdAt) >= thisMonthStart
     );
 
@@ -143,8 +160,12 @@ export class BusinessSummaryComponent implements OnInit, OnDestroy {
     const todayRevenue = todayOrders
       .filter(o => o.status === 'DELIVERED')
       .reduce((sum, order) => sum + (order.totalAmount || 0), 0);
-    
+
     const monthlyRevenue = monthlyOrders
+      .filter(o => o.status === 'DELIVERED')
+      .reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+
+    const totalRevenue = orders
       .filter(o => o.status === 'DELIVERED')
       .reduce((sum, order) => sum + (order.totalAmount || 0), 0);
 
@@ -156,6 +177,7 @@ export class BusinessSummaryComponent implements OnInit, OnDestroy {
       completedOrders: orders.filter(o => o.status === 'DELIVERED').length,
       monthlyRevenue,
       weeklyOrders: weeklyOrders.length,
+      totalRevenue,
       activeProducts: 0, // Will be updated from products API
       lowStockCount: 0    // Will be updated from products API
     };
@@ -286,6 +308,13 @@ export class BusinessSummaryComponent implements OnInit, OnDestroy {
     this.snackBar.open('Dashboard refreshed', 'Close', { duration: 2000 });
   }
 
+  onDateChange(): void {
+    // Reload data when date range changes
+    if (this.startDate && this.endDate) {
+      this.loadAllDashboardData();
+    }
+  }
+
   viewOrderDetails(order: OrderSummary): void {
     // Navigate to order details or open modal
     window.open(`/shop-owner/orders-management?orderId=${order.id}`, '_blank');
@@ -339,14 +368,14 @@ export class BusinessSummaryComponent implements OnInit, OnDestroy {
 
   // Navigation methods
   goToOrders(): void {
-    window.location.href = '/shop-owner/orders-management';
+    this.router.navigate(['/shop-owner/orders-management']);
   }
 
   goToProducts(): void {
-    window.location.href = '/shop-owner/products';
+    this.router.navigate(['/shop-owner/products']);
   }
 
   goToSettings(): void {
-    window.location.href = '/shop-owner/settings';
+    this.router.navigate(['/shop-owner/settings']);
   }
 }

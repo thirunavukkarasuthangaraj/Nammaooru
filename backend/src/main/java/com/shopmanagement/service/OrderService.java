@@ -5,12 +5,14 @@ import com.shopmanagement.dto.order.OrderResponse;
 import com.shopmanagement.dto.order.CustomerOrderRequest;
 import com.shopmanagement.dto.order.OrderTrackingResponse;
 import com.shopmanagement.entity.Customer;
+import com.shopmanagement.entity.Notification;
 import com.shopmanagement.entity.Order;
 import com.shopmanagement.entity.OrderItem;
 import com.shopmanagement.shop.entity.Shop;
 import com.shopmanagement.product.entity.ShopProduct;
 import com.shopmanagement.product.repository.ShopProductRepository;
 import com.shopmanagement.repository.CustomerRepository;
+import com.shopmanagement.repository.NotificationRepository;
 import com.shopmanagement.repository.OrderRepository;
 import com.shopmanagement.repository.UserRepository;
 import com.shopmanagement.shop.repository.ShopRepository;
@@ -54,6 +56,7 @@ public class OrderService {
     private final FirebaseNotificationService firebaseNotificationService;
     private final OrderAssignmentService orderAssignmentService;
     private final UserFcmTokenRepository userFcmTokenRepository;
+    private final NotificationRepository notificationRepository;
     
     @Transactional
     public OrderResponse createOrder(OrderRequest request) {
@@ -146,7 +149,30 @@ public class OrderService {
         order.setOrderItems(orderItems);
         
         Order savedOrder = orderRepository.save(order);
-        
+
+        // Create order placed notification
+        try {
+            Notification orderPlacedNotification = Notification.builder()
+                    .title("Order Placed Successfully! 🎉")
+                    .message(String.format("Your order %s has been placed at %s. Total: ₹%.2f",
+                            savedOrder.getOrderNumber(), savedOrder.getShop().getName(), savedOrder.getTotalAmount()))
+                    .type(Notification.NotificationType.ORDER)
+                    .priority(Notification.NotificationPriority.NORMAL)
+                    .status(Notification.NotificationStatus.UNREAD)
+                    .recipientId(customer.getId())
+                    .recipientType(Notification.RecipientType.CUSTOMER)
+                    .referenceId(savedOrder.getId())
+                    .referenceType("ORDER")
+                    .category("ORDER_STATUS")
+                    .isActive(true)
+                    .isPersistent(true)
+                    .build();
+            notificationRepository.save(orderPlacedNotification);
+            log.info("✅ Order placed notification created for order: {}", savedOrder.getOrderNumber());
+        } catch (Exception e) {
+            log.error("Failed to create order placed notification", e);
+        }
+
         // Send confirmation email to customer
         try {
             emailService.sendOrderConfirmationEmail(
@@ -215,15 +241,25 @@ public class OrderService {
         }
         
         Order updatedOrder = orderRepository.save(order);
-        
+
         // Save the order status update first
         OrderResponse response = mapToResponse(updatedOrder);
+
+        // Create notification in database
+        try {
+            createOrderStatusNotification(updatedOrder, oldStatus, status);
+        } catch (Exception e) {
+            log.error("Failed to create order status notification", e);
+        }
 
         // Auto-assign delivery partner when order is ready for pickup (separate transaction)
         if (status == Order.OrderStatus.READY_FOR_PICKUP) {
             // Use a separate thread to avoid transaction rollback issues
             CompletableFuture.runAsync(() -> {
                 try {
+                    // Delay to ensure transaction commits first
+                    Thread.sleep(500);
+
                     log.info("Order {} is ready for pickup - auto-assigning delivery partner", order.getOrderNumber());
 
                     // Auto-assign to available delivery partner
@@ -266,7 +302,11 @@ public class OrderService {
                     log.info("✅ Found user: {} (ID: {}) for customer email: {}", username, userId, customerEmail);
 
                     // Get FCM token for the customer
-                    String fcmToken = getFcmTokenForUser(userId);
+                    String fcmToken = userFcmTokenRepository.findByUserIdAndIsActiveTrue(userId)
+                            .stream()
+                            .findFirst()
+                            .map(UserFcmToken::getFcmToken)
+                            .orElse(null);
                     log.info("🔍 FCM token lookup for user ID {}: {}", userId,
                             fcmToken != null ? "Found token (length: " + fcmToken.length() + ")" : "No token found");
 
@@ -473,7 +513,8 @@ public class OrderService {
                             firebaseNotificationService.sendOrderNotification(
                                 acceptedOrder.getOrderNumber(),
                                 "CONFIRMED",
-                                fcmToken
+                                fcmToken,
+                                acceptedOrder.getCustomer().getId()
                             );
                             log.info("✅ Push notification sent successfully to customer for order: {}", acceptedOrder.getOrderNumber());
                             notificationSent = true;
@@ -487,6 +528,21 @@ public class OrderService {
 
                     if (!notificationSent) {
                         log.error("❌ Failed to send push notification with all available tokens for order: {}", acceptedOrder.getOrderNumber());
+
+                        // Fallback to SMS notification when push notification fails
+                        try {
+                            if (acceptedOrder.getCustomer().getMobileNumber() != null) {
+                                log.info("📱 Attempting SMS fallback notification for order: {}", acceptedOrder.getOrderNumber());
+                                String smsMessage = String.format("Your order %s has been confirmed and is being prepared. Thank you for choosing NammaOoru!",
+                                    acceptedOrder.getOrderNumber());
+
+                                // You can uncomment this when SMS service is available
+                                // smsService.sendSms(acceptedOrder.getCustomer().getMobileNumber(), smsMessage);
+                                log.info("📲 SMS fallback notification would be sent to: {}", acceptedOrder.getCustomer().getMobileNumber());
+                            }
+                        } catch (Exception smsException) {
+                            log.error("❌ SMS fallback also failed", smsException);
+                        }
                     }
                 } else {
                     log.warn("No FCM token found for customer user ID: {}", userId);
@@ -1113,5 +1169,73 @@ public class OrderService {
         }
 
         return List.of();
+    }
+
+    private void createOrderStatusNotification(Order order, Order.OrderStatus oldStatus, Order.OrderStatus newStatus) {
+        log.info("Creating notification for order {} status change: {} -> {}", order.getOrderNumber(), oldStatus, newStatus);
+
+        String title = "";
+        String message = "";
+        Notification.NotificationType notificationType = Notification.NotificationType.ORDER;
+
+        switch (newStatus) {
+            case ACCEPTED:
+                title = "Order Accepted! 🎉";
+                message = String.format("Your order %s from %s has been accepted and is being prepared.",
+                        order.getOrderNumber(), order.getShop().getName());
+                break;
+            case PREPARING:
+                title = "Order Being Prepared 👨‍🍳";
+                message = String.format("Your order %s is being prepared by %s.",
+                        order.getOrderNumber(), order.getShop().getName());
+                break;
+            case READY_FOR_PICKUP:
+                title = "Order Ready for Pickup 📦";
+                message = String.format("Your order %s is ready and will be picked up soon for delivery.",
+                        order.getOrderNumber());
+                break;
+            case OUT_FOR_DELIVERY:
+                title = "Out for Delivery 🚚";
+                message = String.format("Your order %s is on its way! Your delivery partner will reach you soon.",
+                        order.getOrderNumber());
+                break;
+            case DELIVERED:
+                title = "Order Delivered ✅";
+                message = String.format("Your order %s has been delivered successfully. Thank you for your order!",
+                        order.getOrderNumber());
+                break;
+            case CANCELLED:
+                title = "Order Cancelled ❌";
+                message = String.format("Your order %s has been cancelled.",
+                        order.getOrderNumber());
+                break;
+            default:
+                title = "Order Status Updated 📋";
+                message = String.format("Your order %s status has been updated to %s.",
+                        order.getOrderNumber(), newStatus.name());
+                break;
+        }
+
+        try {
+            Notification notification = Notification.builder()
+                    .title(title)
+                    .message(message)
+                    .type(notificationType)
+                    .priority(Notification.NotificationPriority.NORMAL)
+                    .status(Notification.NotificationStatus.UNREAD)
+                    .recipientId(order.getCustomer().getId())
+                    .recipientType(Notification.RecipientType.CUSTOMER)
+                    .referenceId(order.getId())
+                    .referenceType("ORDER")
+                    .category("ORDER_STATUS")
+                    .isActive(true)
+                    .isPersistent(true)
+                    .build();
+
+            notificationRepository.save(notification);
+            log.info("✅ Notification created successfully for order: {}", order.getOrderNumber());
+        } catch (Exception e) {
+            log.error("❌ Failed to create notification for order {}: {}", order.getOrderNumber(), e.getMessage(), e);
+        }
     }
 }

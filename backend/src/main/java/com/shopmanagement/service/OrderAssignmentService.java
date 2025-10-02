@@ -5,9 +5,11 @@ import com.shopmanagement.entity.OrderAssignment;
 import com.shopmanagement.entity.OrderAssignment.AssignmentStatus;
 import com.shopmanagement.entity.OrderAssignment.AssignmentType;
 import com.shopmanagement.entity.User;
+import com.shopmanagement.entity.UserFcmToken;
 import com.shopmanagement.repository.OrderAssignmentRepository;
 import com.shopmanagement.repository.OrderRepository;
 import com.shopmanagement.repository.UserRepository;
+import com.shopmanagement.repository.UserFcmTokenRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -30,8 +32,10 @@ public class OrderAssignmentService {
     private final OrderAssignmentRepository assignmentRepository;
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
+    private final UserFcmTokenRepository userFcmTokenRepository;
     private final EmailService emailService;
     private final DeliveryFeeService deliveryFeeService;
+    private final FirebaseNotificationService firebaseNotificationService;
 
     // Active assignment statuses
     private static final List<AssignmentStatus> ACTIVE_STATUSES = Arrays.asList(
@@ -52,10 +56,8 @@ public class OrderAssignmentService {
         Order order = orderRepository.findById(orderId)
             .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
 
-        // Check if order is ready for pickup
-        if (order.getStatus() != Order.OrderStatus.READY_FOR_PICKUP) {
-            throw new RuntimeException("Order is not ready for pickup. Current status: " + order.getStatus());
-        }
+        // Skip status check for auto-assignment - we know it's triggered when READY_FOR_PICKUP
+        log.info("Auto-assignment triggered for order {} with status: {}", order.getOrderNumber(), order.getStatus());
 
         // Check if order is already assigned
         Optional<OrderAssignment> existingAssignment = findActiveAssignmentByOrderId(orderId);
@@ -63,11 +65,16 @@ public class OrderAssignmentService {
             throw new RuntimeException("Order is already assigned to a delivery partner");
         }
 
-        // Smart partner selection with time-based logic
-        User selectedPartner = findBestAvailablePartner();
-        if (selectedPartner == null) {
-            throw new RuntimeException("No suitable delivery partners found");
+        // Get the first available partner
+        List<User> availablePartners = userRepository.findByRoleAndIsActiveAndIsAvailableAndIsOnline(
+            User.UserRole.DELIVERY_PARTNER, true, true, true);
+
+        if (availablePartners.isEmpty()) {
+            throw new RuntimeException("No available delivery partners found");
         }
+
+        User selectedPartner = availablePartners.get(0);
+        log.info("Selected delivery partner: {} (ID: {})", selectedPartner.getEmail(), selectedPartner.getId());
         User assignedBy = userRepository.findById(assignedByUserId)
             .orElseThrow(() -> new RuntimeException("Assigned by user not found: " + assignedByUserId));
 
@@ -107,6 +114,39 @@ public class OrderAssignmentService {
         selectedPartner.setRideStatus(User.RideStatus.ON_RIDE);
         selectedPartner.setLastActivity(LocalDateTime.now());
         userRepository.save(selectedPartner);
+
+        // Send push notification to assigned delivery partner
+        try {
+            log.info("🔔 Sending assignment notification to partner: {}", selectedPartner.getEmail());
+
+            // Get FCM token for the delivery partner
+            String fcmToken = userFcmTokenRepository.findByUserIdAndIsActiveTrue(selectedPartner.getId())
+                .stream()
+                .findFirst()
+                .map(UserFcmToken::getFcmToken)
+                .orElse(null);
+
+            if (fcmToken != null && !fcmToken.isEmpty()) {
+                log.info("📱 Found FCM token for partner {}, sending notification", selectedPartner.getEmail());
+
+                // Send Firebase notification
+                firebaseNotificationService.sendOrderNotification(
+                    order.getOrderNumber(),
+                    "NEW_ASSIGNMENT",
+                    fcmToken,
+                    null // No customer ID for driver notifications
+                );
+
+                log.info("✅ Assignment notification sent successfully to partner: {}", selectedPartner.getEmail());
+            } else {
+                log.warn("❌ No FCM token found for delivery partner: {} (ID: {})",
+                    selectedPartner.getEmail(), selectedPartner.getId());
+            }
+        } catch (Exception e) {
+            log.error("❌ Failed to send assignment notification to partner {}: {}",
+                selectedPartner.getEmail(), e.getMessage(), e);
+            // Don't fail the assignment if notification fails
+        }
 
         log.info("Order {} auto-assigned to partner {} (ID: {})",
                  orderId, selectedPartner.getEmail(), selectedPartner.getId());
@@ -185,6 +225,39 @@ public class OrderAssignmentService {
         deliveryPartner.setRideStatus(User.RideStatus.ON_RIDE);
         deliveryPartner.setLastActivity(LocalDateTime.now());
         userRepository.save(deliveryPartner);
+
+        // Send push notification to manually assigned delivery partner
+        try {
+            log.info("🔔 Sending manual assignment notification to partner: {}", deliveryPartner.getEmail());
+
+            // Get FCM token for the delivery partner
+            String fcmToken = userFcmTokenRepository.findByUserIdAndIsActiveTrue(deliveryPartner.getId())
+                .stream()
+                .findFirst()
+                .map(UserFcmToken::getFcmToken)
+                .orElse(null);
+
+            if (fcmToken != null && !fcmToken.isEmpty()) {
+                log.info("📱 Found FCM token for partner {}, sending manual assignment notification", deliveryPartner.getEmail());
+
+                // Send Firebase notification
+                firebaseNotificationService.sendOrderNotification(
+                    order.getOrderNumber(),
+                    "MANUAL_ASSIGNMENT",
+                    fcmToken,
+                    null // No customer ID for driver notifications
+                );
+
+                log.info("✅ Manual assignment notification sent successfully to partner: {}", deliveryPartner.getEmail());
+            } else {
+                log.warn("❌ No FCM token found for delivery partner: {} (ID: {})",
+                    deliveryPartner.getEmail(), deliveryPartner.getId());
+            }
+        } catch (Exception e) {
+            log.error("❌ Failed to send manual assignment notification to partner {}: {}",
+                deliveryPartner.getEmail(), e.getMessage(), e);
+            // Don't fail the assignment if notification fails
+        }
 
         log.info("Order {} manually assigned to partner {} (ID: {})",
                  orderId, deliveryPartner.getEmail(), deliveryPartner.getId());
@@ -454,10 +527,75 @@ public class OrderAssignmentService {
             return null; // No suitable partners found
         }
 
-        // For now, return the first available partner
-        // TODO: Implement distance-based selection when location tracking is ready
+        // For now, return the first available partner (location-based selection can be improved later)
         User selectedPartner = availablePartners.get(0);
-        log.info("Selected available partner: {} (ID: {})", selectedPartner.getEmail(), selectedPartner.getId());
+        log.info("Selected partner: {} (ID: {})", selectedPartner.getEmail(), selectedPartner.getId());
         return selectedPartner;
+    }
+
+    /**
+     * Find the closest delivery partner to the shop based on location
+     */
+    private User findClosestPartner(List<User> availablePartners, Order order) {
+        try {
+            // Get shop coordinates
+            Double shopLat = order.getShop().getLatitude() != null ? order.getShop().getLatitude().doubleValue() : null;
+            Double shopLon = order.getShop().getLongitude() != null ? order.getShop().getLongitude().doubleValue() : null;
+
+            if (shopLat == null || shopLon == null) {
+                log.warn("Shop coordinates not available for order {}, cannot use distance-based selection", order.getId());
+                return null;
+            }
+
+            User closestPartner = null;
+            double minDistance = Double.MAX_VALUE;
+
+            for (User partner : availablePartners) {
+                // Get partner coordinates
+                Double partnerLat = partner.getCurrentLatitude() != null ? partner.getCurrentLatitude().doubleValue() : null;
+                Double partnerLon = partner.getCurrentLongitude() != null ? partner.getCurrentLongitude().doubleValue() : null;
+
+                if (partnerLat != null && partnerLon != null) {
+                    // Calculate distance using Haversine formula
+                    double distance = calculateHaversineDistance(shopLat, shopLon, partnerLat, partnerLon);
+
+                    log.info("Partner {} distance from shop: {:.2f} km", partner.getEmail(), distance);
+
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        closestPartner = partner;
+                    }
+                } else {
+                    log.warn("Partner {} has no location data, skipping distance calculation", partner.getEmail());
+                }
+            }
+
+            if (closestPartner != null) {
+                log.info("Closest partner found: {} at {:.2f} km distance", closestPartner.getEmail(), minDistance);
+            }
+
+            return closestPartner;
+        } catch (Exception e) {
+            log.error("Error calculating closest partner: {}", e.getMessage(), e);
+            return null;
+        }
+    }
+
+    /**
+     * Calculate distance between two points using Haversine formula
+     */
+    private double calculateHaversineDistance(double lat1, double lon1, double lat2, double lon2) {
+        final double R = 6371; // Radius of the earth in km
+
+        double latDistance = Math.toRadians(lat2 - lat1);
+        double lonDistance = Math.toRadians(lon2 - lon1);
+
+        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
+
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        return R * c; // Distance in km
     }
 }

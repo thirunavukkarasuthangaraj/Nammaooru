@@ -135,7 +135,8 @@ public class FcmTokenController {
                 firebaseNotificationService.sendOrderNotification(
                         "TEST-001",
                         "CONFIRMED",
-                        fcmToken.get().getFcmToken()
+                        fcmToken.get().getFcmToken(),
+                        1L // Test customer ID
                 );
                 return ResponseEntity.ok(ApiResponse.success("Test notification sent successfully", null));
             } else {

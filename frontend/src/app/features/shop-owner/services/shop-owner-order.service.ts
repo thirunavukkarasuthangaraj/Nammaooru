@@ -128,16 +128,19 @@ export class ShopOwnerOrderService {
       notes: notes
     };
 
-    return this.http.post<{data: ShopOwnerOrder}>(`${this.apiUrl}/orders/${orderId}/accept`, requestBody)
+    return this.http.post<{data: any}>(`${this.apiUrl}/orders/${orderId}/accept`, requestBody)
       .pipe(
         switchMap(response => {
+          // Transform the order to match our interface
+          const transformedOrder = this.transformOrder(response.data);
+
           // Send Firebase notification
           this.firebaseService.sendOrderNotification(
-            response.data.orderNumber,
+            transformedOrder.orderNumber,
             'CONFIRMED',
             'Your order has been accepted and is being prepared'
           );
-          return of(response.data);
+          return of(transformedOrder);
         }),
         catchError((error) => {
           console.error('Error accepting order:', error);
@@ -149,16 +152,19 @@ export class ShopOwnerOrderService {
   rejectOrder(orderId: number, reason: string): Observable<ShopOwnerOrder> {
     const requestBody = { reason: reason };
 
-    return this.http.post<{data: ShopOwnerOrder}>(`${this.apiUrl}/orders/${orderId}/reject`, requestBody)
+    return this.http.post<{data: any}>(`${this.apiUrl}/orders/${orderId}/reject`, requestBody)
       .pipe(
         switchMap(response => {
+          // Transform the order to match our interface
+          const transformedOrder = this.transformOrder(response.data);
+
           // Send Firebase notification
           this.firebaseService.sendOrderNotification(
-            response.data.orderNumber,
+            transformedOrder.orderNumber,
             'CANCELLED',
             `Order cancelled: ${reason}`
           );
-          return of(response.data);
+          return of(transformedOrder);
         }),
         catchError((error) => {
           console.error('Error rejecting order:', error);
@@ -170,9 +176,12 @@ export class ShopOwnerOrderService {
   updateOrderStatus(orderId: number, status: string): Observable<ShopOwnerOrder> {
     const params = new HttpParams().set('status', status);
 
-    return this.http.put<{data: ShopOwnerOrder}>(`${this.apiUrl}/orders/${orderId}/status`, null, { params })
+    return this.http.put<{data: any}>(`${this.apiUrl}/orders/${orderId}/status`, null, { params })
       .pipe(
         switchMap(response => {
+          // Transform the order to match our interface
+          const transformedOrder = this.transformOrder(response.data);
+
           // Send Firebase notification for status updates
           let message = '';
           switch (status) {
@@ -189,16 +198,16 @@ export class ShopOwnerOrderService {
               message = 'Your order has been delivered';
               break;
           }
-          
+
           if (message) {
             this.firebaseService.sendOrderNotification(
-              response.data.orderNumber,
+              transformedOrder.orderNumber,
               status,
               message
             );
           }
-          
-          return of(response.data);
+
+          return of(transformedOrder);
         }),
         catchError((error) => {
           console.error('Error updating order status:', error);
@@ -257,5 +266,32 @@ export class ShopOwnerOrderService {
         throw error;
       })
     );
+  }
+
+  /**
+   * Transform backend order response to match frontend interface
+   */
+  private transformOrder(order: any): ShopOwnerOrder {
+    return {
+      ...order,
+      items: (order.orderItems || order.items || []).map((item: any) => ({
+        id: item.id,
+        name: item.productName,
+        productName: item.productName,
+        quantity: item.quantity,
+        price: item.unitPrice,
+        unitPrice: item.unitPrice,
+        total: item.totalPrice,
+        totalPrice: item.totalPrice,
+        unit: 'pcs',
+        image: item.productImageUrl,
+        productImageUrl: item.productImageUrl
+      })),
+      customerName: order.customerName,
+      customerPhone: order.customerPhone || order.deliveryPhone,
+      customerEmail: order.customerEmail,
+      customerAddress: order.fullDeliveryAddress || order.deliveryAddress,
+      deliveryAddress: order.fullDeliveryAddress || order.deliveryAddress
+    };
   }
 }

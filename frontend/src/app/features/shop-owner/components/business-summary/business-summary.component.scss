@@ -5,19 +5,39 @@
 }
 
 .header-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 32px;
-  
-  .page-title {
-    font-size: 28px;
-    font-weight: 600;
-    margin: 0 0 8px 0;
-    color: #333;
+  gap: 20px;
+  flex-wrap: wrap;
+
+  .header-left {
+    flex: 1;
+    min-width: 250px;
+
+    .page-title {
+      font-size: 28px;
+      font-weight: 600;
+      margin: 0 0 8px 0;
+      color: #333;
+    }
+
+    .welcome-text {
+      color: #666;
+      font-size: 14px;
+      margin: 0;
+    }
   }
-  
-  .welcome-text {
-    color: #666;
-    font-size: 14px;
-    margin: 0;
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .date-filter {
+      min-width: 280px;
+    }
   }
 }
 
@@ -54,15 +74,23 @@
     &.revenue {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     }
-    
+
+    &.monthly {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+
+    &.total {
+      background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    }
+
     &.orders {
       background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
     }
-    
+
     &.pending {
       background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
     }
-    
+
     &.products {
       background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
     }

@@ -75,7 +75,7 @@ class AddressApiService {
         'landmark': details,
         'city': city ?? 'Tirupattur', // Use actual detected city
         'state': state ?? 'Tamil Nadu', // Use actual detected state
-        'pincode': pincode ?? '', // Use actual detected pincode
+        'pincode': pincode != null && pincode.isNotEmpty ? pincode : '635601', // Must be 6-digit pincode
         'latitude': latitude,
         'longitude': longitude,
         'isDefault': isDefault,

@@ -52,7 +52,7 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   void _checkAuthStatus() {
-    Future.delayed(const Duration(milliseconds: 300), () {
+    Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
         final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
@@ -64,6 +64,8 @@ class _SplashScreenState extends State<SplashScreen>
             context.go('/login');
             break;
           case AuthState.loading:
+            // If still loading after 2 seconds, navigate to login as fallback
+            context.go('/login');
             break;
         }
       }

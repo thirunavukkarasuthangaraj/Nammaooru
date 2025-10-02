@@ -12,14 +12,18 @@ import com.shopmanagement.service.EmailService;
 import com.shopmanagement.service.AuthService;
 import com.shopmanagement.entity.User;
 import com.shopmanagement.entity.Order;
+import com.shopmanagement.entity.OrderItem;
 import com.shopmanagement.repository.UserRepository;
 import com.shopmanagement.repository.OrderRepository;
+import com.shopmanagement.product.repository.ShopProductRepository;
+import com.shopmanagement.product.entity.ShopProduct;
 import com.shopmanagement.dto.order.OrderResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -28,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
@@ -47,6 +52,7 @@ public class ShopService {
     private final AuthService authService;
     private final UserRepository userRepository;
     private final OrderRepository orderRepository;
+    private final ShopProductRepository shopProductRepository;
 
     public ShopResponse createShop(ShopCreateRequest request) {
         log.info("Creating new shop: {}", request.getName());
@@ -246,13 +252,30 @@ public class ShopService {
     }
 
     public void deleteShop(Long id) {
-        log.info("Deleting shop with ID: {}", id);
-        
+        log.info("Soft deleting shop with ID: {}", id);
+
         Shop shop = shopRepository.findById(id)
                 .orElseThrow(() -> new ShopNotFoundException("Shop not found with id: " + id));
-        
-        shopRepository.delete(shop);
-        log.info("Shop deleted successfully: {}", shop.getShopId());
+
+        // Check if shop has active orders
+        boolean hasActiveOrders = orderRepository.existsByShopIdAndStatusIn(
+            shop.getId(),
+            List.of(Order.OrderStatus.PENDING, Order.OrderStatus.CONFIRMED,
+                   Order.OrderStatus.PREPARING, Order.OrderStatus.READY_FOR_PICKUP,
+                   Order.OrderStatus.OUT_FOR_DELIVERY)
+        );
+
+        if (hasActiveOrders) {
+            throw new RuntimeException("Cannot delete shop with active orders. Please complete or cancel all active orders first.");
+        }
+
+        // Soft delete: Set shop as inactive and status as SUSPENDED
+        shop.setIsActive(false);
+        shop.setStatus(Shop.ShopStatus.SUSPENDED);
+        shop.setUpdatedBy(getCurrentUsername());
+
+        shopRepository.save(shop);
+        log.info("Shop soft deleted successfully (marked as inactive): {}", shop.getShopId());
     }
 
     // Customer-facing methods
@@ -553,9 +576,9 @@ public class ShopService {
     public Map<String, Object> getShopDashboard(String shopId) {
         Shop shop = shopRepository.findByShopId(shopId)
                 .orElseThrow(() -> new ShopNotFoundException("Shop not found with shop ID: " + shopId));
-        
+
         Map<String, Object> dashboard = new HashMap<>();
-        
+
         // Basic shop info
         dashboard.put("shopInfo", Map.of(
             "shopId", shop.getShopId(),
@@ -567,30 +590,76 @@ public class ShopService {
             "city", shop.getCity(),
             "state", shop.getState()
         ));
-        
-        // TODO: Add real order metrics when Order entity is available
-        // For now, using mock data
+
+        // Calculate real order metrics
+        Long totalOrders = orderRepository.countOrdersByShop(shop.getId());
+        BigDecimal totalRevenue = orderRepository.getTotalRevenueByShop(shop.getId());
+        if (totalRevenue == null) totalRevenue = BigDecimal.ZERO;
+
+        BigDecimal avgOrderValue = orderRepository.getAverageOrderValueByShop(shop.getId());
+        if (avgOrderValue == null) avgOrderValue = BigDecimal.ZERO;
+
+        // Get status breakdown
+        List<Object[]> statusBreakdownData = orderRepository.getOrderStatusDistribution(shop.getId());
+        Map<String, Long> statusBreakdown = new HashMap<>();
+        statusBreakdown.put("PENDING", 0L);
+        statusBreakdown.put("CONFIRMED", 0L);
+        statusBreakdown.put("PREPARING", 0L);
+        statusBreakdown.put("READY", 0L);
+        statusBreakdown.put("OUT_FOR_DELIVERY", 0L);
+        statusBreakdown.put("DELIVERED", 0L);
+        statusBreakdown.put("CANCELLED", 0L);
+
+        long completedOrders = 0;
+        for (Object[] row : statusBreakdownData) {
+            String orderStatus = row[0].toString();
+            Long count = (Long) row[1];
+            statusBreakdown.put(orderStatus, count);
+            if ("DELIVERED".equals(orderStatus)) {
+                completedOrders += count;
+            }
+        }
+
+        // Get today's orders (requires a custom query - using approximate for now)
+        LocalDateTime todayStart = LocalDateTime.now().toLocalDate().atStartOfDay();
+        Long todayOrders = orderRepository.countByShopIdAndCreatedAtAfter(shop.getId(), todayStart);
+        if (todayOrders == null) todayOrders = 0L;
+
+        BigDecimal todayRevenue = orderRepository.getTotalRevenueByShopAndDate(shop.getId(), todayStart);
+        if (todayRevenue == null) todayRevenue = BigDecimal.ZERO;
+
+        // Get monthly revenue (last 30 days)
+        LocalDateTime monthStart = LocalDateTime.now().minusDays(30);
+        BigDecimal monthlyRevenue = orderRepository.getTotalRevenueByShopAndDate(shop.getId(), monthStart);
+        if (monthlyRevenue == null) monthlyRevenue = BigDecimal.ZERO;
+
         dashboard.put("orderMetrics", Map.of(
-            "totalOrders", 0,
-            "todayOrders", 0,
-            "pendingOrders", 0,
-            "completedOrders", 0,
-            "cancelledOrders", 0,
-            "totalRevenue", BigDecimal.ZERO,
-            "todayRevenue", BigDecimal.ZERO,
-            "monthlyRevenue", BigDecimal.ZERO,
-            "averageOrderValue", BigDecimal.ZERO
+            "totalOrders", totalOrders != null ? totalOrders.intValue() : 0,
+            "todayOrders", todayOrders.intValue(),
+            "pendingOrders", statusBreakdown.get("PENDING").intValue(),
+            "completedOrders", (int) completedOrders,
+            "cancelledOrders", statusBreakdown.get("CANCELLED").intValue(),
+            "totalRevenue", totalRevenue,
+            "todayRevenue", todayRevenue,
+            "monthlyRevenue", monthlyRevenue,
+            "averageOrderValue", avgOrderValue
         ));
-        
-        // TODO: Add real product metrics when ShopProduct entity is available
+
+        // Calculate real product metrics
+        long totalProducts = shopProductRepository.countByShop(shop);
+        long activeProducts = shopProductRepository.countAvailableProductsByShop(shop);
+        long inactiveProducts = totalProducts - activeProducts;
+        long outOfStockProducts = shopProductRepository.findOutOfStockProducts(shop).size();
+        long lowStockProducts = shopProductRepository.findLowStockProducts(shop).size();
+
         dashboard.put("productMetrics", Map.of(
-            "totalProducts", 0,
-            "activeProducts", 0,
-            "inactiveProducts", 0,
-            "outOfStockProducts", 0,
-            "lowStockProducts", 0
+            "totalProducts", (int) totalProducts,
+            "activeProducts", (int) activeProducts,
+            "inactiveProducts", (int) inactiveProducts,
+            "outOfStockProducts", (int) outOfStockProducts,
+            "lowStockProducts", (int) lowStockProducts
         ));
-        
+
         // Performance metrics
         dashboard.put("performanceMetrics", Map.of(
             "rating", shop.getRating() != null ? shop.getRating() : BigDecimal.ZERO,
@@ -599,18 +668,21 @@ public class ShopService {
             "responseTime", "N/A",
             "customerSatisfaction", 0.0
         ));
-        
+
         // Recent activity (mock data for now)
         dashboard.put("recentActivity", List.of());
-        
+
         // Quick stats for the last 30 days
+        Long monthlyOrders = orderRepository.countByShopIdAndCreatedAtAfter(shop.getId(), monthStart);
+        if (monthlyOrders == null) monthlyOrders = 0L;
+
         dashboard.put("last30Days", Map.of(
-            "newOrders", 0,
-            "revenue", BigDecimal.ZERO,
+            "newOrders", monthlyOrders.intValue(),
+            "revenue", monthlyRevenue,
             "newCustomers", 0,
-            "avgOrderValue", BigDecimal.ZERO
+            "avgOrderValue", monthlyOrders > 0 ? monthlyRevenue.divide(BigDecimal.valueOf(monthlyOrders), 2, BigDecimal.ROUND_HALF_UP) : BigDecimal.ZERO
         ));
-        
+
         return dashboard;
     }
     
@@ -746,6 +818,13 @@ public class ShopService {
     }
     
     private OrderResponse convertToOrderResponse(Order order) {
+        // Convert order items to response DTOs
+        List<OrderResponse.OrderItemResponse> orderItemResponses = order.getOrderItems() != null
+                ? order.getOrderItems().stream()
+                        .map(this::convertToOrderItemResponse)
+                        .toList()
+                : new ArrayList<>();
+
         return OrderResponse.builder()
                 .id(order.getId())
                 .orderNumber(order.getOrderNumber())
@@ -753,7 +832,7 @@ public class ShopService {
                 .paymentStatus(order.getPaymentStatus())
                 .paymentMethod(order.getPaymentMethod())
                 .customerId(order.getCustomer() != null ? order.getCustomer().getId() : null)
-                .customerName(order.getCustomer() != null ? 
+                .customerName(order.getCustomer() != null ?
                     order.getCustomer().getFirstName() + " " + order.getCustomer().getLastName() : null)
                 .customerEmail(order.getCustomer() != null ? order.getCustomer().getEmail() : null)
                 .customerPhone(order.getCustomer() != null ? order.getCustomer().getMobileNumber() : null)
@@ -775,8 +854,30 @@ public class ShopService {
                 .deliveryContactName(order.getDeliveryContactName())
                 .estimatedDeliveryTime(order.getEstimatedDeliveryTime())
                 .actualDeliveryTime(order.getActualDeliveryTime())
+                .orderItems(orderItemResponses)
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())
+                .build();
+    }
+
+    private OrderResponse.OrderItemResponse convertToOrderItemResponse(OrderItem orderItem) {
+        return OrderResponse.OrderItemResponse.builder()
+                .id(orderItem.getId())
+                .shopProductId(orderItem.getShopProduct() != null ? orderItem.getShopProduct().getId() : null)
+                .productName(orderItem.getProductName())
+                .productDescription(orderItem.getShopProduct() != null && orderItem.getShopProduct().getMasterProduct() != null
+                        ? orderItem.getShopProduct().getMasterProduct().getDescription()
+                        : null)
+                .productSku(orderItem.getShopProduct() != null && orderItem.getShopProduct().getMasterProduct() != null
+                        ? orderItem.getShopProduct().getMasterProduct().getSku()
+                        : null)
+                .productImageUrl(orderItem.getShopProduct() != null && orderItem.getShopProduct().getMasterProduct() != null
+                        ? orderItem.getShopProduct().getMasterProduct().getPrimaryImageUrl()
+                        : null)
+                .quantity(orderItem.getQuantity())
+                .unitPrice(orderItem.getUnitPrice())
+                .totalPrice(orderItem.getTotalPrice())
+                .specialInstructions(orderItem.getSpecialInstructions())
                 .build();
     }
 

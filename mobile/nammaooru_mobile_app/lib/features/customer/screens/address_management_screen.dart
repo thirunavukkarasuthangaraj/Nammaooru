@@ -321,6 +321,223 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
     );
   }
 
+  void _showEditAddressDialog(int index) {
+    final address = _addresses[index];
+    final formKey = GlobalKey<FormState>();
+    final labelController = TextEditingController(text: address['addressType'] ?? '');
+
+    // Build the address text from available fields
+    String addressText = '';
+    final List<String> addressParts = [];
+    if (address['flatHouse'] != null && address['flatHouse'].toString().isNotEmpty) {
+      addressParts.add(address['flatHouse']);
+    }
+    if (address['street'] != null && address['street'].toString().isNotEmpty) {
+      addressParts.add(address['street']);
+    }
+    if (address['area'] != null && address['area'].toString().isNotEmpty) {
+      addressParts.add(address['area']);
+    }
+    addressText = addressParts.join(', ');
+
+    final addressController = TextEditingController(text: addressText);
+    final detailsController = TextEditingController(text: address['landmark'] ?? '');
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 400),
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(Icons.edit_location, color: AppColors.primary, size: 24),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'Edit Address',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.close, color: Colors.black54),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.grey.shade100,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  TextFormField(
+                    controller: labelController,
+                    decoration: InputDecoration(
+                      labelText: 'Label (e.g., Home, Office)',
+                      labelStyle: const TextStyle(color: Colors.black54),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppColors.primary),
+                      ),
+                      prefixIcon: Icon(Icons.label_outline, color: AppColors.primary),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                    ),
+                    style: const TextStyle(color: Colors.black87),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a label';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: addressController,
+                    decoration: InputDecoration(
+                      labelText: 'Complete Address',
+                      labelStyle: const TextStyle(color: Colors.black54),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppColors.primary),
+                      ),
+                      prefixIcon: Icon(Icons.location_on_outlined, color: AppColors.primary),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                    ),
+                    style: const TextStyle(color: Colors.black87),
+                    maxLines: 2,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter the address';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: detailsController,
+                    decoration: InputDecoration(
+                      labelText: 'Additional Details (Optional)',
+                      labelStyle: const TextStyle(color: Colors.black54),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppColors.primary),
+                      ),
+                      prefixIcon: Icon(Icons.info_outline, color: AppColors.primary),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                    ),
+                    style: const TextStyle(color: Colors.black87),
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            'Cancel',
+                            style: TextStyle(color: Colors.black54, fontSize: 16),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            if (formKey.currentState!.validate()) {
+                              Navigator.of(context).pop();
+                              await _updateAddress(
+                                index,
+                                labelController.text,
+                                addressController.text,
+                                detailsController.text,
+                              );
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 2,
+                          ),
+                          child: const Text(
+                            'Update',
+                            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void _showMapPicker(TextEditingController labelController,
                       TextEditingController addressController,
                       TextEditingController detailsController) async {
@@ -424,7 +641,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
         longitude: lng,
         isDefault: _addresses.isEmpty,
       );
-      
+
       if (mounted) {
         if (result['success']) {
           await _loadAddresses(); // Refresh the list
@@ -436,6 +653,60 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
     } catch (e) {
       if (mounted) {
         Helpers.showSnackBar(context, 'Error adding address from map: $e', isError: true);
+      }
+    }
+  }
+
+  Future<void> _updateAddress(int index, String label, String address, String details) async {
+    try {
+      final addressId = _addresses[index]['id'] as int;
+      final currentAddress = _addresses[index];
+
+      print('Updating address $addressId: $label - $address');
+
+      final result = await AddressApiService.updateAddress(
+        addressId: addressId,
+        label: label,
+        fullAddress: address,
+        details: details,
+        latitude: currentAddress['latitude'] ?? 13.0827,
+        longitude: currentAddress['longitude'] ?? 80.2707,
+        isDefault: currentAddress['isDefault'] ?? false,
+      );
+
+      print('Update address result: $result');
+
+      if (mounted) {
+        if (result['success']) {
+          // Force refresh the address list from API
+          setState(() {
+            _isLoading = true;
+          });
+
+          await _loadAddresses(); // This will update _addresses and setState
+
+          if (_addresses.isNotEmpty) {
+            print('Successfully loaded ${_addresses.length} addresses after updating');
+            // Update cache with the new address list
+            await LocalStorage.setList('user_addresses', _addresses);
+            Helpers.showSnackBar(context, result['message'] ?? 'Address updated successfully!');
+          } else {
+            print('No addresses found after updating - trying to reload again');
+            // Try one more time
+            await Future.delayed(const Duration(milliseconds: 500));
+            await _loadAddresses();
+          }
+        } else {
+          Helpers.showSnackBar(context, result['message'] ?? 'Failed to update address', isError: true);
+        }
+      }
+    } catch (e) {
+      print('Error updating address: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        Helpers.showSnackBar(context, 'Error updating address: $e', isError: true);
       }
     }
   }
@@ -700,6 +971,16 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                 PopupMenuButton(
                   icon: const Icon(Icons.more_vert),
                   itemBuilder: (context) => [
+                    PopupMenuItem(
+                      onTap: () => _showEditAddressDialog(index),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.edit_outlined, color: Colors.blue),
+                          SizedBox(width: 8),
+                          Text('Edit', style: TextStyle(color: Colors.blue)),
+                        ],
+                      ),
+                    ),
                     if (!isDefault)
                       PopupMenuItem(
                         onTap: () => _setAsDefault(index),

@@ -3,11 +3,13 @@ package com.shopmanagement.controller;
 import com.shopmanagement.entity.User;
 import com.shopmanagement.entity.User.UserRole;
 import com.shopmanagement.entity.User.RideStatus;
+import com.shopmanagement.entity.Order;
 import com.shopmanagement.entity.OrderAssignment;
 import com.shopmanagement.entity.DeliveryPartnerLocation;
 import com.shopmanagement.service.UserService;
 import com.shopmanagement.service.OrderAssignmentService;
 import com.shopmanagement.service.JwtService;
+import com.shopmanagement.repository.OrderRepository;
 import com.shopmanagement.repository.DeliveryPartnerLocationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -51,6 +53,9 @@ public class DeliveryPartnerController {
 
     @Autowired
     private DeliveryPartnerLocationRepository deliveryPartnerLocationRepository;
+
+    @Autowired
+    private OrderRepository orderRepository;
 
     @PostMapping("/login")
     @Transactional
@@ -953,7 +958,14 @@ public class DeliveryPartnerController {
 
         try {
             // Find order assignment by order number
-            Optional<OrderAssignment> assignmentOpt = orderAssignmentService.findByOrderNumber(orderNumber);
+            Order order = orderRepository.findByOrderNumber(orderNumber)
+                    .orElse(null);
+            if (order == null) {
+                response.put("success", false);
+                response.put("message", "Order not found");
+                return ResponseEntity.badRequest().body(response);
+            }
+            Optional<OrderAssignment> assignmentOpt = orderAssignmentService.findActiveAssignmentByOrderId(order.getId());
 
             if (assignmentOpt.isEmpty()) {
                 response.put("success", false);

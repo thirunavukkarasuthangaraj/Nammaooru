@@ -117,6 +117,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findByRoleAndIsOnline(User.UserRole role, Boolean isOnline);
     List<User> findByRoleAndIsAvailable(User.UserRole role, Boolean isAvailable);
     List<User> findByRoleAndIsOnlineAndIsAvailable(User.UserRole role, Boolean isOnline, Boolean isAvailable);
+    List<User> findByRoleAndIsActiveAndIsAvailableAndIsOnline(User.UserRole role, Boolean isActive, Boolean isAvailable, Boolean isOnline);
     List<User> findByRoleAndRideStatus(User.UserRole role, User.RideStatus rideStatus);
 
     @Query("SELECT u FROM User u WHERE u.role = :role AND u.isOnline = true AND u.currentLatitude IS NOT NULL AND u.currentLongitude IS NOT NULL")

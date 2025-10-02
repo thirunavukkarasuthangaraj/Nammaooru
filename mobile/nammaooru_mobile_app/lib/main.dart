@@ -13,14 +13,17 @@ import 'core/api/api_service.dart';
 import 'core/services/api_service.dart' as services;
 import 'core/storage/local_storage.dart';
 import 'services/firebase_notification_service.dart';
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Initialize Firebase only on mobile platforms for now
   if (!kIsWeb) {
     try {
-      await Firebase.initializeApp();
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
 
       // Set up background message handler
       FirebaseMessaging.onBackgroundMessage(FirebaseNotificationService.handleBackgroundMessage);

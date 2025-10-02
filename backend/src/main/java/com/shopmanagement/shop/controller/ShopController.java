@@ -10,6 +10,8 @@ import com.shopmanagement.shop.dto.ShopUpdateRequest;
 import com.shopmanagement.shop.entity.Shop;
 import com.shopmanagement.shop.service.ShopService;
 import com.shopmanagement.shop.specification.ShopSpecification;
+import com.shopmanagement.service.OrderService;
+import com.shopmanagement.dto.order.OrderResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +37,7 @@ import java.util.Map;
 public class ShopController {
 
     private final ShopService shopService;
+    private final OrderService orderService;
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('SHOP_OWNER')")
@@ -277,7 +280,7 @@ public class ShopController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> deleteShop(@PathVariable Long id) {
         log.info("Deleting shop with ID: {}", id);
         shopService.deleteShop(id);
@@ -290,7 +293,7 @@ public class ShopController {
     }
 
     @PutMapping("/{id}/approve")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<ShopResponse>> approveShop(@PathVariable Long id) {
         log.info("Approving shop with ID: {}", id);
         ShopResponse response = shopService.approveShop(id);
@@ -298,7 +301,7 @@ public class ShopController {
     }
 
     @PutMapping("/{id}/reject")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<ShopResponse>> rejectShop(
             @PathVariable Long id,
             @RequestBody(required = false) Map<String, String> requestBody) {
@@ -309,7 +312,7 @@ public class ShopController {
     }
 
     @PutMapping("/{id}/suspend")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<ShopResponse>> suspendShop(@PathVariable Long id) {
         log.info("Suspending shop with ID: {}", id);
         ShopResponse response = shopService.suspendShop(id);
@@ -355,7 +358,7 @@ public class ShopController {
     }
 
     @GetMapping("/statistics")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getShopStatistics() {
         log.info("Fetching shop statistics");
         
@@ -412,9 +415,36 @@ public class ShopController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> getShopAnalytics(
             @PathVariable String shopId,
             @RequestParam(defaultValue = "30") int days) {
-        
+
         log.info("Fetching analytics for shop: {} for {} days", shopId, days);
         Map<String, Object> analytics = shopService.getShopAnalytics(shopId, days);
         return ResponseUtil.success(analytics, "Shop analytics retrieved successfully");
+    }
+
+    @PostMapping("/orders/{orderId}/accept")
+    @PreAuthorize("hasRole('SHOP_OWNER') or hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<OrderResponse>> acceptOrder(
+            @PathVariable Long orderId,
+            @RequestBody(required = false) Map<String, String> request) {
+
+        String estimatedPreparationTime = request != null ? request.get("estimatedPreparationTime") : null;
+        String notes = request != null ? request.get("notes") : null;
+
+        log.info("Shop accepting order: {} with estimated preparation time: {}", orderId, estimatedPreparationTime);
+        OrderResponse response = orderService.acceptOrder(orderId, estimatedPreparationTime, notes);
+        return ResponseUtil.success(response, "Order accepted successfully");
+    }
+
+    @PostMapping("/orders/{orderId}/reject")
+    @PreAuthorize("hasRole('SHOP_OWNER') or hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<OrderResponse>> rejectOrder(
+            @PathVariable Long orderId,
+            @RequestBody(required = false) Map<String, String> request) {
+
+        String reason = request != null ? request.get("reason") : "Order rejected by shop";
+
+        log.info("Shop rejecting order: {} with reason: {}", orderId, reason);
+        OrderResponse response = orderService.rejectOrder(orderId, reason);
+        return ResponseUtil.success(response, "Order rejected successfully");
     }
 }

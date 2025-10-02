@@ -18,14 +18,37 @@ class NotificationModel {
   });
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
+    // Handle both backend format (message/status) and Firebase format (body/isRead)
+    final String bodyText = json['body'] ?? json['message'] ?? '';
+
+    // Convert status enum to boolean (UNREAD/READ -> false/true)
+    bool isReadStatus = false;
+    if (json.containsKey('status')) {
+      final status = json['status'].toString().toUpperCase();
+      isReadStatus = status == 'READ';
+    } else if (json.containsKey('isRead')) {
+      isReadStatus = json['isRead'] ?? false;
+    }
+
+    // Convert type enum to lowercase string
+    final String typeStr = json['type']?.toString().toLowerCase() ?? 'general';
+
+    // Parse createdAt from various formats
+    DateTime createdTime;
+    try {
+      createdTime = DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String());
+    } catch (e) {
+      createdTime = DateTime.now();
+    }
+
     return NotificationModel(
-      id: json['id'] ?? '',
+      id: json['id']?.toString() ?? '',
       title: json['title'] ?? '',
-      body: json['body'] ?? '',
-      type: json['type'] ?? '',
-      createdAt: DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String()),
-      isRead: json['isRead'] ?? false,
-      data: json['data'],
+      body: bodyText,
+      type: typeStr,
+      createdAt: createdTime,
+      isRead: isReadStatus,
+      data: json['data'] is Map<String, dynamic> ? json['data'] : null,
     );
   }
 

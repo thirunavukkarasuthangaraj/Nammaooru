@@ -1,8 +1,24 @@
 <div class="business-summary-container">
   <!-- Header Section -->
   <div class="header-section">
-    <h1 class="page-title">Business Summary</h1>
-    <p class="welcome-text">Welcome back! Here's your shop performance overview</p>
+    <div class="header-left">
+      <h1 class="page-title">Business Summary</h1>
+      <p class="welcome-text">Welcome back! Here's your shop performance overview</p>
+    </div>
+    <div class="header-right">
+      <mat-form-field appearance="outline" class="date-filter">
+        <mat-label>Date Range</mat-label>
+        <mat-date-range-input [rangePicker]="picker">
+          <input matStartDate placeholder="From date" [(ngModel)]="startDate" (dateChange)="onDateChange()">
+          <input matEndDate placeholder="To date" [(ngModel)]="endDate" (dateChange)="onDateChange()">
+        </mat-date-range-input>
+        <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+        <mat-date-range-picker #picker></mat-date-range-picker>
+      </mat-form-field>
+      <button mat-icon-button (click)="refreshData()" matTooltip="Refresh">
+        <mat-icon>refresh</mat-icon>
+      </button>
+    </div>
   </div>
 
   <!-- Stats Cards -->
@@ -18,6 +34,38 @@
           <p class="stat-change positive">
             <mat-icon>trending_up</mat-icon>
             +12% from yesterday
+          </p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-icon monthly">
+          <mat-icon>calendar_month</mat-icon>
+        </div>
+        <div class="stat-details">
+          <p class="stat-label">Monthly Revenue</p>
+          <h2 class="stat-value">₹{{stats.monthlyRevenue || 0}}</h2>
+          <p class="stat-change positive">
+            <mat-icon>trending_up</mat-icon>
+            This month
+          </p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-icon total">
+          <mat-icon>payments</mat-icon>
+        </div>
+        <div class="stat-details">
+          <p class="stat-label">Total Revenue</p>
+          <h2 class="stat-value">₹{{stats.totalRevenue || 0}}</h2>
+          <p class="stat-change">
+            <mat-icon>account_balance</mat-icon>
+            All time
           </p>
         </div>
       </mat-card-content>

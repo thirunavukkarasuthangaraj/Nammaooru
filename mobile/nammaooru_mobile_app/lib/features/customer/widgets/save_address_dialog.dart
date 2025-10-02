@@ -8,6 +8,7 @@ class SaveAddressDialog extends StatefulWidget {
   final double latitude;
   final double longitude;
   final String detectedAddress;
+  final String detectedStreet;
   final String detectedCity;
   final String detectedVillage;
   final String detectedState;
@@ -18,6 +19,7 @@ class SaveAddressDialog extends StatefulWidget {
     required this.latitude,
     required this.longitude,
     required this.detectedAddress,
+    this.detectedStreet = '',
     required this.detectedCity,
     required this.detectedVillage,
     required this.detectedState,
@@ -60,6 +62,7 @@ class _SaveAddressDialogState extends State<SaveAddressDialog> {
 
   void _initializeFields() {
     // Pre-fill fields with detected data
+    _streetController.text = widget.detectedStreet;
     _areaController.text = widget.detectedAddress;
     _villageController.text = widget.detectedVillage;
     _cityController.text = widget.detectedCity;

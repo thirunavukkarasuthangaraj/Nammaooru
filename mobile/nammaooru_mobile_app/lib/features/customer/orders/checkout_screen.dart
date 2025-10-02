@@ -133,17 +133,35 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         _savedAddresses = addressList.map((addr) {
           // Handle different field names from API
           final firstName = addr['firstName'] ?? addr['name'] ?? '';
-          final addressLine1 = addr['addressLine1'] ?? addr['address_line1'] ?? addr['streetAddress'] ?? '';
-          final addressLine2 = addr['addressLine2'] ?? addr['address_line2'] ?? addr['area'] ?? '';
           final phoneNumber = addr['phone'] ?? addr['mobileNumber'] ?? addr['mobile'] ?? '';
           final postalCode = addr['pincode']?.toString() ?? addr['postalCode']?.toString() ?? addr['postal_code']?.toString() ?? '';
+
+          // Build addressLine1 from available fields (flatHouse + street)
+          List<String> addressLine1Parts = [];
+          if (addr['flatHouse'] != null && addr['flatHouse'].toString().isNotEmpty) {
+            addressLine1Parts.add(addr['flatHouse'].toString());
+          }
+          if (addr['street'] != null && addr['street'].toString().isNotEmpty) {
+            addressLine1Parts.add(addr['street'].toString());
+          }
+          // Fallback to old format if new fields not available
+          if (addressLine1Parts.isEmpty) {
+            final fallback = addr['addressLine1'] ?? addr['address_line1'] ?? addr['streetAddress'] ?? '';
+            if (fallback.isNotEmpty) addressLine1Parts.add(fallback);
+          }
+
+          // Build addressLine2 from area/village
+          String addressLine2 = addr['area']?.toString() ??
+                                addr['village']?.toString() ??
+                                addr['addressLine2']?.toString() ??
+                                addr['address_line2']?.toString() ?? '';
 
           return SavedAddress(
             id: addr['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
             name: firstName,
             lastName: addr['lastName'] ?? '',
             phone: phoneNumber,
-            addressLine1: addressLine1,
+            addressLine1: addressLine1Parts.join(', '),
             addressLine2: addressLine2,
             landmark: addr['landmark'] ?? '',
             city: addr['city'] ?? 'Tirupattur',
@@ -498,90 +516,93 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                     ),
                                   ] : [],
                                 ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  _getAddressTypeIcon(address.addressType),
-                                  size: 16,
-                                  color: isSelected ? VillageTheme.primaryGreen : Colors.black,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  address.addressType,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: isSelected ? VillageTheme.primaryGreen : Colors.black,
-                                  ),
-                                ),
-                                if (isSelected) ...[
-                                  const Spacer(),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: VillageTheme.primaryGreen,
-                                      borderRadius: BorderRadius.circular(8),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          _getAddressTypeIcon(address.addressType),
+                                          size: 16,
+                                          color: isSelected ? VillageTheme.primaryGreen : Colors.black,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          address.addressType,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: isSelected ? VillageTheme.primaryGreen : Colors.black,
+                                          ),
+                                        ),
+                                        if (isSelected) ...[
+                                          const Spacer(),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: VillageTheme.primaryGreen,
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Icon(
+                                              Icons.check,
+                                              color: Colors.white,
+                                              size: 12,
+                                            ),
+                                          ),
+                                        ],
+                                        if (address.isDefault && !isSelected) ...[
+                                          const Spacer(),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: Colors.orange,
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: const Text(
+                                              'Default',
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
                                     ),
-                                    child: Icon(
-                                      Icons.check,
-                                      color: Colors.white,
-                                      size: 12,
-                                    ),
-                                  ),
-                                ],
-                                if (address.isDefault && !isSelected) ...[
-                                  const Spacer(),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: Colors.orange,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Text(
-                                      'Default',
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      address.fullName,
                                       style: TextStyle(
-                                        fontSize: 10,
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w500,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: isSelected ? VillageTheme.primaryGreen : Colors.black,
                                       ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              address.fullName,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: isSelected ? VillageTheme.primaryGreen : Colors.black,
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      address.shortAddress,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: isSelected ? VillageTheme.primaryGreen.withOpacity(0.8) : Colors.black,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              address.shortAddress,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: isSelected ? VillageTheme.primaryGreen.withOpacity(0.8) : Colors.black,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
                     );
                   },
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
+        ),
+      ),
+    ],
 
             // Address Type
             const Text('Address Type', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w500)),
@@ -612,15 +633,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 Expanded(
                   child: TextFormField(
                     controller: _nameController,
-                    style: const TextStyle(
-                      color: Colors.black,
+                    enabled: _selectedSavedAddress == null,
+                    style: TextStyle(
+                      color: _selectedSavedAddress == null ? Colors.black : Colors.black54,
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                     ),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'First Name *',
-                      labelStyle: TextStyle(color: Colors.black87),
-                      hintStyle: TextStyle(color: Colors.black54),
+                      labelStyle: const TextStyle(color: Colors.black87),
+                      hintStyle: const TextStyle(color: Colors.black54),
+                      filled: _selectedSavedAddress != null,
+                      fillColor: _selectedSavedAddress != null ? Colors.grey.shade100 : null,
                     ),
                     validator: (value) => value?.isEmpty == true ? 'First name is required' : null,
                   ),
@@ -629,15 +653,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 Expanded(
                   child: TextFormField(
                     controller: _lastNameController,
-                    style: const TextStyle(
-                      color: Colors.black,
+                    enabled: _selectedSavedAddress == null,
+                    style: TextStyle(
+                      color: _selectedSavedAddress == null ? Colors.black : Colors.black54,
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                     ),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Last Name *',
-                      labelStyle: TextStyle(color: Colors.black87),
-                      hintStyle: TextStyle(color: Colors.black54),
+                      labelStyle: const TextStyle(color: Colors.black87),
+                      hintStyle: const TextStyle(color: Colors.black54),
+                      filled: _selectedSavedAddress != null,
+                      fillColor: _selectedSavedAddress != null ? Colors.grey.shade100 : null,
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
@@ -654,7 +681,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Phone Number
+            // Phone Number (Always Editable)
             TextFormField(
               controller: _phoneController,
               style: const TextStyle(
@@ -662,12 +689,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
               ),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Phone Number *',
-                labelStyle: TextStyle(color: Colors.black87),
+                labelStyle: const TextStyle(color: Colors.black87),
                 hintText: '10-digit mobile number',
-                hintStyle: TextStyle(color: Colors.black54),
-                prefixIcon: Icon(Icons.phone, color: Colors.black54),
+                hintStyle: const TextStyle(color: Colors.black54),
+                prefixIcon: const Icon(Icons.phone, color: Colors.black54),
+                helperText: _selectedSavedAddress != null ? 'You can update the phone number' : null,
+                helperStyle: const TextStyle(color: Colors.green, fontSize: 12),
               ),
               keyboardType: TextInputType.phone,
               maxLength: 10,
@@ -689,16 +718,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             // Address Lines
             TextFormField(
               controller: _addressLine1Controller,
-              style: const TextStyle(
-                color: Colors.black,
+              enabled: _selectedSavedAddress == null,
+              style: TextStyle(
+                color: _selectedSavedAddress == null ? Colors.black : Colors.black54,
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
               ),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Address Line 1 *',
-                labelStyle: TextStyle(color: Colors.black87),
+                labelStyle: const TextStyle(color: Colors.black87),
                 hintText: 'House/Flat/Office No, Building Name',
-                hintStyle: TextStyle(color: Colors.black54),
+                hintStyle: const TextStyle(color: Colors.black54),
+                filled: _selectedSavedAddress != null,
+                fillColor: _selectedSavedAddress != null ? Colors.grey.shade100 : null,
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -711,35 +743,41 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               },
             ),
             const SizedBox(height: 12),
-            
+
             TextFormField(
               controller: _addressLine2Controller,
-              style: const TextStyle(
-                color: Colors.black,
+              enabled: _selectedSavedAddress == null,
+              style: TextStyle(
+                color: _selectedSavedAddress == null ? Colors.black : Colors.black54,
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
               ),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Address Line 2',
-                labelStyle: TextStyle(color: Colors.black87),
+                labelStyle: const TextStyle(color: Colors.black87),
                 hintText: 'Area, Colony, Street Name',
-                hintStyle: TextStyle(color: Colors.black54),
+                hintStyle: const TextStyle(color: Colors.black54),
+                filled: _selectedSavedAddress != null,
+                fillColor: _selectedSavedAddress != null ? Colors.grey.shade100 : null,
               ),
             ),
             const SizedBox(height: 12),
             
             TextFormField(
               controller: _landmarkController,
-              style: const TextStyle(
-                color: Colors.black,
+              enabled: _selectedSavedAddress == null,
+              style: TextStyle(
+                color: _selectedSavedAddress == null ? Colors.black : Colors.black54,
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
               ),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Landmark',
-                labelStyle: TextStyle(color: Colors.black87),
+                labelStyle: const TextStyle(color: Colors.black87),
                 hintText: 'Near famous place',
-                hintStyle: TextStyle(color: Colors.black54),
+                hintStyle: const TextStyle(color: Colors.black54),
+                filled: _selectedSavedAddress != null,
+                fillColor: _selectedSavedAddress != null ? Colors.grey.shade100 : null,
               ),
             ),
             const SizedBox(height: 16),
@@ -821,15 +859,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 Expanded(
                   child: TextFormField(
                     controller: _pincodeController,
-                    style: const TextStyle(
-                      color: Colors.black,
+                    enabled: _selectedSavedAddress == null,
+                    style: TextStyle(
+                      color: _selectedSavedAddress == null ? Colors.black : Colors.black54,
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                     ),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Pincode *',
-                      labelStyle: TextStyle(color: Colors.black87),
-                      hintStyle: TextStyle(color: Colors.black54),
+                      labelStyle: const TextStyle(color: Colors.black87),
+                      hintStyle: const TextStyle(color: Colors.black54),
+                      filled: _selectedSavedAddress != null,
+                      fillColor: _selectedSavedAddress != null ? Colors.grey.shade100 : null,
                     ),
                     keyboardType: TextInputType.number,
                     maxLength: 6,

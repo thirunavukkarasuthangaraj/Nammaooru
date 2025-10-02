@@ -1,6 +1,7 @@
 package com.shopmanagement.service;
 
 import com.google.firebase.messaging.FirebaseMessaging;
+import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.Notification;
 import com.shopmanagement.entity.Customer;
@@ -70,7 +71,7 @@ public class FirebaseNotificationService {
         }
     }
 
-    private void sendPushNotification(String token, String title, String body, Map<String, String> data) {
+    private void sendPushNotification(String token, String title, String body, Map<String, String> data) throws FirebaseMessagingException {
         try {
             log.info("📡 Building Firebase message...");
 
@@ -97,7 +98,17 @@ public class FirebaseNotificationService {
 
         } catch (Exception e) {
             log.error("❌ Error sending push notification via Firebase Admin SDK", e);
-            log.error("💡 Check Firebase configuration, FCM token validity, and internet connection");
+
+            // Check if it's an UNREGISTERED token error
+            if (e.getMessage() != null && (e.getMessage().contains("UNREGISTERED") || e.getMessage().contains("Requested entity was not found"))) {
+                log.warn("🔄 FCM token is invalid/expired. Token should be refreshed when customer opens the app next time.");
+                // Note: We don't deactivate the token here as it might work later when refreshed
+            } else {
+                log.error("💡 Check Firebase configuration, FCM token validity, and internet connection");
+            }
+
+            // Re-throw as runtime exception so the caller can handle it
+            throw new RuntimeException(e);
         }
     }
 
@@ -161,15 +172,14 @@ public class FirebaseNotificationService {
 
             com.shopmanagement.entity.Notification notification = com.shopmanagement.entity.Notification.builder()
                     .title(title)
-                    .content(body)
-                    .type(com.shopmanagement.entity.Notification.NotificationType.ORDER_UPDATE)
-                    .priority(com.shopmanagement.entity.Notification.Priority.MEDIUM)
+                    .message(body)
+                    .type(com.shopmanagement.entity.Notification.NotificationType.ORDER)
+                    .priority(com.shopmanagement.entity.Notification.NotificationPriority.MEDIUM)
                     .recipientId(customerId)
                     .recipientType(com.shopmanagement.entity.Notification.RecipientType.CUSTOMER)
-                    .status(com.shopmanagement.entity.Notification.Status.SENT)
-                    .channel(com.shopmanagement.entity.Notification.Channel.PUSH)
+                    .status(com.shopmanagement.entity.Notification.NotificationStatus.UNREAD)
                     .metadata("{\"orderNumber\":\"" + orderNumber + "\",\"type\":\"" + type + "\"}")
-                    .isRead(false)
+                    .isPushSent(true)
                     .build();
 
             notificationRepository.save(notification);

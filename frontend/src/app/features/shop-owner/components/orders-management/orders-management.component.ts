@@ -1,19 +1,23 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTabChangeEvent } from '@angular/material/tabs';
 import { ShopOwnerOrderService, ShopOwnerOrder } from '../../services/shop-owner-order.service';
 import { AssignmentService } from '../../services/assignment.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { SwalService } from '../../../../core/services/swal.service';
+import { ShopContextService } from '../../services/shop-context.service';
 import { environment } from '../../../../../environments/environment';
+import { Subject } from 'rxjs';
+import { takeUntil, distinctUntilChanged } from 'rxjs/operators';
 
 @Component({
   selector: 'app-orders-management',
   templateUrl: './orders-management.component.html',
   styleUrls: ['./orders-management.component.scss']
 })
-export class OrdersManagementComponent implements OnInit {
+export class OrdersManagementComponent implements OnInit, OnDestroy {
 
   // Order data
   orders: ShopOwnerOrder[] = [];
@@ -25,8 +29,8 @@ export class OrdersManagementComponent implements OnInit {
   todayOrders: ShopOwnerOrder[] = [];
   inProgressOrders: ShopOwnerOrder[] = [];
 
-  // Shop ID - should be retrieved from auth service
-  shopId = 2; // Changed to match the shop ID in the database
+  // Shop ID - dynamically retrieved from shop context service
+  shopId: number | null = null;
 
   // Filter controls
   searchTerm = '';
@@ -56,13 +60,18 @@ export class OrdersManagementComponent implements OnInit {
   successMessage = '';
   errorMessage = '';
 
+  // Unsubscription subject
+  private destroy$ = new Subject<void>();
+
   constructor(
     private orderService: ShopOwnerOrderService,
     private assignmentService: AssignmentService,
     private authService: AuthService,
+    private shopContextService: ShopContextService,
     private snackBar: MatSnackBar,
     private swal: SwalService,
-    private router: Router
+    private router: Router,
+    private http: HttpClient
   ) {}
 
   ngOnInit(): void {
@@ -73,18 +82,41 @@ export class OrdersManagementComponent implements OnInit {
       return;
     }
 
-    // Get the current user
-    const currentUser = this.authService.getCurrentUser();
-    if (currentUser && currentUser.role === 'SHOP_OWNER') {
-      // Get shop ID from user or use default
-      // In production, this should come from the user's shop association
-      this.shopId = 2; // This should be fetched from user's actual shop
+    // Simple: Get shop ID from localStorage and load orders
+    this.loadOrdersFromCache();
+  }
+
+  ngOnDestroy(): void {
+    // Clean up subscriptions
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  loadOrdersFromCache(): void {
+    // Check cache first
+    const cachedShopId = localStorage.getItem('current_shop_id');
+    if (cachedShopId) {
+      this.shopId = parseInt(cachedShopId, 10);
+      console.log('Using cached shop ID:', this.shopId);
+      this.loadOrders();
+      return;
     }
 
-    console.log('Current user:', currentUser);
-    console.log('Loading orders for shop:', this.shopId);
-
-    this.loadDashboardData();
+    // No cache - call API to get shop ID dynamically
+    console.log('No cached shop ID - calling /api/shops/my-shop');
+    this.http.get<any>(`${environment.apiUrl}/shops/my-shop`).subscribe({
+      next: (response) => {
+        if (response.data && response.data.id) {
+          this.shopId = response.data.id;
+          localStorage.setItem('current_shop_id', response.data.id.toString());
+          console.log('Got shop ID from API:', this.shopId);
+          this.loadOrders();
+        }
+      },
+      error: (error) => {
+        console.error('Error getting shop ID:', error);
+      }
+    });
   }
 
   loadDashboardData(): void {
@@ -95,6 +127,11 @@ export class OrdersManagementComponent implements OnInit {
   }
 
   loadOrders(): void {
+    if (!this.shopId) {
+      console.log('No shop ID available, cannot load orders');
+      return;
+    }
+
     console.log('Loading orders for shop:', this.shopId);
 
     this.orderService.getShopOrders(this.shopId).subscribe({
