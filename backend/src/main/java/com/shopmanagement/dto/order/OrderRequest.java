@@ -30,32 +30,28 @@ public class OrderRequest {
     
     @NotNull(message = "Payment method is required")
     private Order.PaymentMethod paymentMethod;
-    
+
+    private String deliveryType; // SELF_PICKUP or HOME_DELIVERY
+
     @Size(max = 500, message = "Notes cannot exceed 500 characters")
     private String notes;
-    
-    // Delivery Information
-    @NotBlank(message = "Delivery address is required")
+
+    // Delivery Information (optional for SELF_PICKUP orders)
     @Size(max = 200, message = "Delivery address cannot exceed 200 characters")
     private String deliveryAddress;
     
-    @NotBlank(message = "Delivery city is required")
     @Size(max = 100, message = "Delivery city cannot exceed 100 characters")
     private String deliveryCity;
-    
-    @NotBlank(message = "Delivery state is required")
+
     @Size(max = 100, message = "Delivery state cannot exceed 100 characters")
     private String deliveryState;
-    
-    @NotBlank(message = "Delivery postal code is required")
+
     @Pattern(regexp = "^[0-9]{6}$", message = "Postal code must be 6 digits")
     private String deliveryPostalCode;
-    
-    @NotBlank(message = "Delivery phone is required")
+
     @Pattern(regexp = "^[6-9][0-9]{9}$", message = "Invalid phone number")
     private String deliveryPhone;
-    
-    @NotBlank(message = "Delivery contact name is required")
+
     @Size(max = 100, message = "Contact name cannot exceed 100 characters")
     private String deliveryContactName;
     

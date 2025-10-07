@@ -7,7 +7,10 @@ import com.shopmanagement.dto.order.OrderResponse;
 import com.shopmanagement.entity.Order;
 import com.shopmanagement.service.OrderService;
 import com.shopmanagement.service.OrderAssignmentService;
+import com.shopmanagement.service.DeliveryConfirmationService;
 import com.shopmanagement.entity.OrderAssignment;
+import com.shopmanagement.repository.OrderRepository;
+import com.shopmanagement.repository.OrderAssignmentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -25,6 +28,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -34,6 +38,9 @@ public class OrderController {
 
     private final OrderService orderService;
     private final OrderAssignmentService assignmentService;
+    private final DeliveryConfirmationService deliveryConfirmationService;
+    private final OrderRepository orderRepository;
+    private final OrderAssignmentRepository orderAssignmentRepository;
     
     @PostMapping
     @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER') or hasRole('CUSTOMER') or hasRole('USER')")
@@ -210,5 +217,167 @@ public class OrderController {
         log.info("Starting preparation for order: {}", orderId);
         OrderResponse response = orderService.updateOrderStatus(orderId, Order.OrderStatus.PREPARING);
         return ResponseUtil.success(response, "Order preparation started successfully");
+    }
+
+    @PostMapping("/{orderId}/generate-pickup-otp")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> generatePickupOTP(@PathVariable Long orderId) {
+        log.info("Generating pickup OTP for order: {}", orderId);
+        try {
+            String otp = deliveryConfirmationService.generatePickupOTP(orderId);
+
+            Map<String, Object> response = Map.of(
+                "otp", otp,
+                "orderId", orderId,
+                "message", "Pickup OTP generated successfully. Please share this with delivery partner."
+            );
+
+            return ResponseUtil.success(response, "Pickup OTP generated successfully");
+        } catch (Exception e) {
+            log.error("Error generating pickup OTP for order {}: {}", orderId, e.getMessage());
+            return ResponseUtil.error("Failed to generate pickup OTP: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/{orderId}/verify-pickup-otp")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> verifyPickupOTP(
+            @PathVariable Long orderId,
+            @RequestBody Map<String, String> request) {
+        log.info("Shop owner verifying pickup OTP for order: {}", orderId);
+
+        String enteredOtp = request.get("otp");
+        if (enteredOtp == null || enteredOtp.trim().isEmpty()) {
+            return ResponseUtil.error("OTP is required");
+        }
+
+        try {
+            // Get the order entity
+            Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
+
+            // Verify OTP matches
+            if (order.getPickupOtp() == null || !order.getPickupOtp().equals(enteredOtp.trim())) {
+                log.warn("Invalid OTP entered for order {}: expected={}, entered={}",
+                    orderId, order.getPickupOtp(), enteredOtp);
+                return ResponseUtil.error("Invalid OTP. Please check with the delivery partner.");
+            }
+
+            // OTP is valid - update order status to OUT_FOR_DELIVERY and set verified timestamp
+            order.setStatus(Order.OrderStatus.OUT_FOR_DELIVERY);
+            order.setPickupOtpVerifiedAt(java.time.LocalDateTime.now());
+            orderRepository.save(order);
+
+            // Also update the OrderAssignment status to PICKED_UP so delivery partner can see it
+            Optional<OrderAssignment> assignmentOpt = orderAssignmentRepository.findByOrderIdAndStatus(
+                orderId, OrderAssignment.AssignmentStatus.ACCEPTED);
+
+            if (assignmentOpt.isPresent()) {
+                OrderAssignment assignment = assignmentOpt.get();
+                assignment.setStatus(OrderAssignment.AssignmentStatus.PICKED_UP);
+                orderAssignmentRepository.save(assignment);
+                log.info("✅ OrderAssignment status updated to PICKED_UP for order {}", orderId);
+            }
+
+            log.info("✅ Pickup OTP verified successfully for order {}. Status updated to OUT_FOR_DELIVERY", orderId);
+
+            Map<String, Object> responseData = Map.of(
+                "orderId", orderId,
+                "message", "Order handed over to delivery partner successfully",
+                "newStatus", "OUT_FOR_DELIVERY"
+            );
+
+            return ResponseUtil.success(responseData, "Pickup verified successfully");
+        } catch (Exception e) {
+            log.error("Error verifying pickup OTP for order {}: {}", orderId, e.getMessage(), e);
+            return ResponseUtil.error("Failed to verify pickup OTP: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/{orderId}/mark-payment-collected")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('DELIVERY_PARTNER')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> markPaymentCollected(@PathVariable Long orderId) {
+        log.info("Marking payment as collected for order: {}", orderId);
+
+        try {
+            // Get the order
+            Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
+
+            // Check if payment method is COD
+            if (order.getPaymentMethod() != Order.PaymentMethod.CASH_ON_DELIVERY) {
+                return ResponseUtil.error("Payment collection is only for Cash on Delivery orders");
+            }
+
+            // Check if order is delivered
+            if (order.getStatus() != Order.OrderStatus.DELIVERED) {
+                return ResponseUtil.error("Order must be delivered before marking payment as collected");
+            }
+
+            // Mark payment as PAID
+            order.setPaymentStatus(Order.PaymentStatus.PAID);
+            orderRepository.save(order);
+
+            log.info("✅ Payment marked as collected for order {}", orderId);
+
+            Map<String, Object> responseData = Map.of(
+                "orderId", orderId,
+                "paymentStatus", "PAID",
+                "message", "Payment collected successfully"
+            );
+
+            return ResponseUtil.success(responseData, "Payment marked as collected successfully");
+        } catch (Exception e) {
+            log.error("Error marking payment as collected for order {}: {}", orderId, e.getMessage(), e);
+            return ResponseUtil.error("Failed to mark payment as collected: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/{orderId}/handover-self-pickup")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> handoverSelfPickup(@PathVariable Long orderId) {
+        log.info("Handing over self-pickup order: {}", orderId);
+
+        try {
+            // Get the order
+            Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
+
+            // Verify it's a self-pickup order
+            if (order.getDeliveryType() != Order.DeliveryType.SELF_PICKUP) {
+                return ResponseUtil.error("Order is not a self-pickup order");
+            }
+
+            // Check if order is ready for pickup
+            if (order.getStatus() != Order.OrderStatus.READY_FOR_PICKUP) {
+                return ResponseUtil.error("Order must be ready for pickup before handover. Current status: " + order.getStatus());
+            }
+
+            // Mark order as collected
+            order.setStatus(Order.OrderStatus.SELF_PICKUP_COLLECTED);
+            order.setActualDeliveryTime(java.time.LocalDateTime.now());
+
+            // Mark payment as paid (for COD orders)
+            if (order.getPaymentMethod() == Order.PaymentMethod.CASH_ON_DELIVERY) {
+                order.setPaymentStatus(Order.PaymentStatus.PAID);
+            }
+
+            orderRepository.save(order);
+
+            log.info("✅ Self-pickup order handed over successfully for order {}", orderId);
+
+            Map<String, Object> responseData = Map.of(
+                "orderId", orderId,
+                "orderNumber", order.getOrderNumber(),
+                "status", "SELF_PICKUP_COLLECTED",
+                "paymentStatus", order.getPaymentStatus().name(),
+                "message", "Order handed over successfully"
+            );
+
+            return ResponseUtil.success(responseData, "Order handed over successfully");
+        } catch (Exception e) {
+            log.error("Error handing over self-pickup order {}: {}", orderId, e.getMessage(), e);
+            return ResponseUtil.error("Failed to handover order: " + e.getMessage());
+        }
     }
 }

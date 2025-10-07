@@ -4,6 +4,9 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../models/order.dart';
 import '../../providers/order_provider.dart';
 import '../../utils/constants.dart';
+import '../../services/api_service.dart';
+import '../../widgets/pickup_otp_dialog.dart';
+import '../../widgets/verify_pickup_otp_dialog.dart';
 
 class OrderDetailsScreen extends StatelessWidget {
   final String orderId;
@@ -390,6 +393,39 @@ class OrderDetailsScreen extends StatelessWidget {
                 ),
               ),
             ],
+            if (order.status == 'READY_FOR_PICKUP') ...[
+              if (order.deliveryType == 'SELF_PICKUP') ...[
+                // Self-pickup handover button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _handoverSelfPickup(context, order, orderProvider),
+                    icon: const Icon(Icons.how_to_reg),
+                    label: const Text('Handover to Customer'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ] else if (order.assignedToDeliveryPartner == true) ...[
+                // Delivery pickup OTP verification button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _verifyPickupOTP(context, order, orderProvider),
+                    icon: const Icon(Icons.lock_open),
+                    label: const Text('Verify Pickup OTP'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
+            ],
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
@@ -429,10 +465,10 @@ class OrderDetailsScreen extends StatelessWidget {
         textColor = AppColors.primary;
         label = 'Preparing';
         break;
-      case 'READY':
+      case 'READY_FOR_PICKUP':
         backgroundColor = AppColors.success.withOpacity(0.1);
         textColor = AppColors.success;
-        label = 'Ready';
+        label = 'Ready for Pickup';
         break;
       case 'OUTFORDELIVERY':
         backgroundColor = AppColors.info.withOpacity(0.1);
@@ -540,14 +576,199 @@ class OrderDetailsScreen extends StatelessWidget {
   }
 
   void _markAsReady(BuildContext context, Order order, OrderProvider orderProvider) async {
-    final success = await orderProvider.updateOrderStatus(order.id, 'READY');
+    // First mark the order as ready
+    final success = await orderProvider.updateOrderStatus(order.id, 'READY_FOR_PICKUP');
+
     if (success && context.mounted) {
+      // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Order marked as ready for pickup'),
           backgroundColor: AppColors.success,
+          duration: Duration(seconds: 2),
         ),
       );
+
+      // Generate pickup OTP
+      final otpResponse = await ApiService.generatePickupOTP(order.id);
+
+      if (otpResponse.success && context.mounted) {
+        final String otp = otpResponse.data['otp']?.toString() ?? '';
+
+        // Show OTP dialog
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => PickupOTPDialog(
+            otp: otp,
+            orderId: order.id,
+          ),
+        );
+      } else if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to generate pickup OTP: ${otpResponse.message}'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    }
+  }
+
+  void _verifyPickupOTP(BuildContext context, Order order, OrderProvider orderProvider) async {
+    // Show the verify OTP dialog
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => VerifyPickupOTPDialog(
+        orderId: order.id,
+        onVerify: (String otp) async {
+          // Call API to verify OTP
+          final response = await ApiService.verifyPickupOTP(order.id, otp);
+
+          if (response.success) {
+            return; // Success - dialog will close
+          } else {
+            throw Exception(response.message ?? 'Invalid OTP');
+          }
+        },
+      ),
+    );
+
+    // If OTP was verified successfully
+    if (result == true && context.mounted) {
+      // Refresh the order data
+      await orderProvider.fetchOrders();
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ Order handed over to delivery partner successfully'),
+          backgroundColor: AppColors.success,
+          duration: Duration(seconds: 3),
+        ),
+      );
+
+      // Navigate back to orders list
+      Navigator.pop(context);
+    }
+  }
+
+  void _handoverSelfPickup(BuildContext context, Order order, OrderProvider orderProvider) async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Handover'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Are you ready to handover this order to the customer?'),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.withOpacity(0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Order #${order.id}',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  Text('Customer: ${order.customerName}'),
+                  const SizedBox(height: 4),
+                  Text('Total: ₹${order.totalAmount.toStringAsFixed(2)}'),
+                  if (order.paymentMethod == 'CASH_ON_DELIVERY') ...[
+                    const SizedBox(height: 8),
+                    const Text(
+                      '💰 Collect payment from customer',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Handover'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      // Show loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
+      try {
+        // Call API to mark order as handed over
+        final response = await ApiService.handoverSelfPickup(order.id);
+
+        // Close loading dialog
+        if (context.mounted) Navigator.pop(context);
+
+        if (response.success && context.mounted) {
+          // Refresh the order data
+          await orderProvider.fetchOrders();
+
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ Order handed over successfully!'),
+              backgroundColor: AppColors.success,
+              duration: Duration(seconds: 3),
+            ),
+          );
+
+          // Navigate back to orders list
+          Navigator.pop(context);
+        } else if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to handover order: ${response.message}'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      } catch (e) {
+        // Close loading dialog
+        if (context.mounted) Navigator.pop(context);
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: ${e.toString()}'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
     }
   }
 }

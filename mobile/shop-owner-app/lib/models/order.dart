@@ -37,6 +37,8 @@ class Order {
   final double totalAmount;
   final DateTime? orderDate;
   final DateTime? estimatedDelivery;
+  final String? deliveryType;
+  final bool? assignedToDeliveryPartner;
 
   Order({
     required this.id,
@@ -67,6 +69,8 @@ class Order {
     required this.totalAmount,
     this.orderDate,
     this.estimatedDelivery,
+    this.deliveryType,
+    this.assignedToDeliveryPartner,
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
@@ -104,6 +108,8 @@ class Order {
       totalAmount: (json['totalAmount'] ?? json['total'] ?? 0).toDouble(),
       orderDate: json['orderDate'] != null ? DateTime.parse(json['orderDate']) : null,
       estimatedDelivery: json['estimatedDelivery'] != null ? DateTime.parse(json['estimatedDelivery']) : null,
+      deliveryType: json['deliveryType'],
+      assignedToDeliveryPartner: json['assignedToDeliveryPartner'],
     );
   }
 
@@ -208,6 +214,8 @@ class Order {
   bool get canBePrepared => status == 'CONFIRMED';
   bool get canBeCompleted => status == 'PREPARING';
   bool get canBeCancelled => ['PENDING', 'CONFIRMED'].contains(status);
+  bool get isSelfPickup => deliveryType == 'SELF_PICKUP';
+  bool get canBeHandedOver => status == 'READY_FOR_PICKUP' && isSelfPickup;
 
   @override
   String toString() {

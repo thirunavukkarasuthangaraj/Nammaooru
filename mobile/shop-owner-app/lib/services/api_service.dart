@@ -63,7 +63,7 @@ class ApiService {
             Uri.parse('$baseUrl${ApiEndpoints.login}'),
             headers: _defaultHeaders,
             body: json.encode({
-              'email': email,
+              'identifier': email,  // Backend expects 'identifier' field
               'password': password,
             }),
           )
@@ -342,11 +342,116 @@ class ApiService {
     }
 
     try {
+      // Use specific endpoints based on status
+      String endpoint;
+      Map<String, dynamic> body = {};
+
+      if (status == 'CONFIRMED') {
+        endpoint = '$baseUrl${ApiEndpoints.orders}/$orderId/accept';
+        body = {
+          'estimatedPreparationTime': '30 minutes',
+          'notes': 'Order accepted and will be prepared shortly'
+        };
+      } else {
+        // For other status updates, use generic status endpoint with query parameter
+        endpoint = '$baseUrl${ApiEndpoints.orders}/$orderId/status?status=$status';
+        body = {}; // No body needed, status is in query parameter
+      }
+
+      print('🔄 Updating order status: $orderId to $status');
+      print('📡 API Endpoint: $endpoint');
+
       final response = await http
-          .patch(
-            Uri.parse('$baseUrl${ApiEndpoints.orders}/$orderId/status'),
+          .put(
+            Uri.parse(endpoint),
             headers: _authHeaders,
-            body: json.encode({'status': status}),
+          )
+          .timeout(timeout);
+
+      print('✅ Response status: ${response.statusCode}');
+      print('📨 Response body: ${response.body}');
+
+      return _handleResponse(response);
+    } catch (e) {
+      return ApiResponse.error('Network error: ${e.toString()}');
+    }
+  }
+
+  // Generate Pickup OTP for order
+  static Future<ApiResponse> generatePickupOTP(String orderId) async {
+    if (_useMockData) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      return ApiResponse.success({
+        'otp': '123456',
+        'orderId': orderId,
+        'message': 'Pickup OTP generated successfully. Please share this with delivery partner.'
+      });
+    }
+
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl${ApiEndpoints.orders}/$orderId/generate-pickup-otp'),
+            headers: _authHeaders,
+          )
+          .timeout(timeout);
+
+      return _handleResponse(response);
+    } catch (e) {
+      return ApiResponse.error('Network error: ${e.toString()}');
+    }
+  }
+
+  // Verify Pickup OTP for order handover
+  static Future<ApiResponse> verifyPickupOTP(String orderId, String otp) async {
+    if (_useMockData) {
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Simulate OTP validation
+      if (otp == '123456') {
+        return ApiResponse.success({
+          'orderId': orderId,
+          'message': 'Order handed over to delivery partner successfully',
+          'newStatus': 'OUT_FOR_DELIVERY'
+        });
+      } else {
+        return ApiResponse.error('Invalid OTP. Please check with the delivery partner.');
+      }
+    }
+
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl${ApiEndpoints.orders}/$orderId/verify-pickup-otp'),
+            headers: _authHeaders,
+            body: json.encode({'otp': otp}),
+          )
+          .timeout(timeout);
+
+      return _handleResponse(response);
+    } catch (e) {
+      return ApiResponse.error('Network error: ${e.toString()}');
+    }
+  }
+
+  // Handover self-pickup order to customer
+  static Future<ApiResponse> handoverSelfPickup(String orderId) async {
+    if (_useMockData) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      return ApiResponse.success({
+        'orderId': orderId,
+        'orderNumber': 'ORD$orderId',
+        'status': 'SELF_PICKUP_COLLECTED',
+        'paymentStatus': 'PAID',
+        'message': 'Order handed over successfully'
+      });
+    }
+
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl${ApiEndpoints.orders}/$orderId/handover-self-pickup'),
+            headers: _authHeaders,
           )
           .timeout(timeout);
 
@@ -490,7 +595,120 @@ class ApiService {
     }
   }
 
-  // Dashboard endpoints
+  // Shop endpoints
+  static Future<ApiResponse> getMyShop() async {
+    if (_useMockData) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final shop = MockDataService.mockShop;
+      return ApiResponse.success({'shop': shop.toJson()});
+    }
+
+    try {
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl${ApiEndpoints.myShop}'),
+            headers: _authHeaders,
+          )
+          .timeout(timeout);
+
+      return _handleResponse(response);
+    } catch (e) {
+      return ApiResponse.error('Network error: ${e.toString()}');
+    }
+  }
+
+  static Future<ApiResponse> getShopDashboard(String shopId) async {
+    if (_useMockData) {
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      final orders = MockDataService.mockOrders;
+      final analytics = MockDataService.mockAnalytics;
+
+      return ApiResponse.success({
+        'orderMetrics': analytics['dashboard_stats'],
+        'recentActivity': [],
+        'shopInfo': MockDataService.mockShop.toJson(),
+        'performanceMetrics': {
+          'rating': 4.5,
+          'totalReviews': 120,
+          'completionRate': 95.0,
+        },
+      });
+    }
+
+    try {
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl${ApiEndpoints.shopDashboard(shopId)}'),
+            headers: _authHeaders,
+          )
+          .timeout(timeout);
+
+      return _handleResponse(response);
+    } catch (e) {
+      return ApiResponse.error('Network error: ${e.toString()}');
+    }
+  }
+
+  static Future<ApiResponse> getShopOrders({
+    required String shopId,
+    int page = 0,
+    int size = 20,
+    String? status,
+    String? dateFrom,
+    String? dateTo,
+  }) async {
+    if (_useMockData) {
+      await Future.delayed(const Duration(milliseconds: 600));
+
+      final mockOrders = [
+        {
+          'id': 1, 'orderNumber': 'ORD001', 'customerName': 'Rajesh Kumar',
+          'totalAmount': 450.00, 'status': 'PENDING', 'paymentStatus': 'PAID',
+          'createdAt': DateTime.now().subtract(const Duration(minutes: 30)).toIso8601String(),
+          'items': [{'productName': 'Basmati Rice', 'quantity': 2}],
+          'address': 'Koramangala, Bangalore',
+        },
+      ];
+
+      return ApiResponse.success({
+        'orders': mockOrders,
+        'totalElements': mockOrders.length,
+        'totalPages': 1,
+        'currentPage': page,
+      });
+    }
+
+    try {
+      final queryParams = <String, String>{
+        'page': page.toString(),
+        'size': size.toString(),
+      };
+
+      if (status != null && status.isNotEmpty) {
+        queryParams['status'] = status;
+      }
+      if (dateFrom != null && dateFrom.isNotEmpty) {
+        queryParams['dateFrom'] = dateFrom;
+      }
+      if (dateTo != null && dateTo.isNotEmpty) {
+        queryParams['dateTo'] = dateTo;
+      }
+
+      final uri = Uri.parse('$baseUrl${ApiEndpoints.shopOrders(shopId)}')
+          .replace(queryParameters: queryParams);
+
+      final response = await http
+          .get(uri, headers: _authHeaders)
+          .timeout(timeout);
+
+      return _handleResponse(response);
+    } catch (e) {
+      return ApiResponse.error('Network error: ${e.toString()}');
+    }
+  }
+
+  // Dashboard endpoints (legacy - kept for backward compatibility)
   static Future<ApiResponse> getDashboardStats() async {
     if (_useMockData) {
       await Future.delayed(const Duration(milliseconds: 500));

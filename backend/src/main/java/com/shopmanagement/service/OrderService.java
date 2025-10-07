@@ -30,6 +30,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.context.annotation.Lazy;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -43,9 +44,8 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class OrderService {
-    
+
     private final OrderRepository orderRepository;
     private final CustomerRepository customerRepository;
     private final UserRepository userRepository;
@@ -57,6 +57,34 @@ public class OrderService {
     private final OrderAssignmentService orderAssignmentService;
     private final UserFcmTokenRepository userFcmTokenRepository;
     private final NotificationRepository notificationRepository;
+    private final DeliveryConfirmationService deliveryConfirmationService;
+
+    public OrderService(
+            OrderRepository orderRepository,
+            CustomerRepository customerRepository,
+            UserRepository userRepository,
+            ShopRepository shopRepository,
+            ShopProductRepository shopProductRepository,
+            EmailService emailService,
+            InvoiceService invoiceService,
+            FirebaseNotificationService firebaseNotificationService,
+            OrderAssignmentService orderAssignmentService,
+            UserFcmTokenRepository userFcmTokenRepository,
+            NotificationRepository notificationRepository,
+            @Lazy DeliveryConfirmationService deliveryConfirmationService) {
+        this.orderRepository = orderRepository;
+        this.customerRepository = customerRepository;
+        this.userRepository = userRepository;
+        this.shopRepository = shopRepository;
+        this.shopProductRepository = shopProductRepository;
+        this.emailService = emailService;
+        this.invoiceService = invoiceService;
+        this.firebaseNotificationService = firebaseNotificationService;
+        this.orderAssignmentService = orderAssignmentService;
+        this.userFcmTokenRepository = userFcmTokenRepository;
+        this.notificationRepository = notificationRepository;
+        this.deliveryConfirmationService = deliveryConfirmationService;
+    }
     
     @Transactional
     public OrderResponse createOrder(OrderRequest request) {
@@ -114,9 +142,29 @@ public class OrderService {
         subtotal = orderItems.stream()
                 .map(OrderItem::getTotalPrice)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        
+
+        // Minimum order amount validation
+        BigDecimal minimumOrderAmount = BigDecimal.valueOf(100);
+        if (subtotal.compareTo(minimumOrderAmount) < 0) {
+            throw new RuntimeException(String.format("Minimum order amount is ₹%.2f. Current order total is ₹%.2f",
+                    minimumOrderAmount, subtotal));
+        }
+
         BigDecimal taxAmount = subtotal.multiply(BigDecimal.valueOf(0.05)); // 5% tax
-        BigDecimal deliveryFee = BigDecimal.valueOf(50); // Fixed delivery fee
+
+        // Determine delivery type - default to HOME_DELIVERY if not specified
+        Order.DeliveryType deliveryType = Order.DeliveryType.HOME_DELIVERY;
+        if (request.getDeliveryType() != null && !request.getDeliveryType().trim().isEmpty()) {
+            try {
+                deliveryType = Order.DeliveryType.valueOf(request.getDeliveryType().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid delivery type: {}, defaulting to HOME_DELIVERY", request.getDeliveryType());
+            }
+        }
+
+        // Delivery fee is 0 for self-pickup, otherwise fixed fee
+        BigDecimal deliveryFee = deliveryType == Order.DeliveryType.SELF_PICKUP ? BigDecimal.ZERO : BigDecimal.valueOf(50);
+
         BigDecimal discountAmount = request.getDiscountAmount() != null ? request.getDiscountAmount() : BigDecimal.ZERO;
         BigDecimal totalAmount = subtotal.add(taxAmount).add(deliveryFee).subtract(discountAmount);
         
@@ -127,6 +175,7 @@ public class OrderService {
                 .status(Order.OrderStatus.PENDING)
                 .paymentStatus(Order.PaymentStatus.PENDING)
                 .paymentMethod(request.getPaymentMethod())
+                .deliveryType(deliveryType)
                 .subtotal(subtotal)
                 .taxAmount(taxAmount)
                 .deliveryFee(deliveryFee)
@@ -157,7 +206,7 @@ public class OrderService {
                     .message(String.format("Your order %s has been placed at %s. Total: ₹%.2f",
                             savedOrder.getOrderNumber(), savedOrder.getShop().getName(), savedOrder.getTotalAmount()))
                     .type(Notification.NotificationType.ORDER)
-                    .priority(Notification.NotificationPriority.NORMAL)
+                    .priority(Notification.NotificationPriority.MEDIUM)
                     .status(Notification.NotificationStatus.UNREAD)
                     .recipientId(customer.getId())
                     .recipientType(Notification.RecipientType.CUSTOMER)
@@ -267,6 +316,16 @@ public class OrderService {
                     orderAssignmentService.autoAssignOrder(orderId, assignedBy);
 
                     log.info("Order {} successfully auto-assigned to delivery partner", order.getOrderNumber());
+
+                    // AUTO-GENERATE PICKUP OTP after assignment
+                    try {
+                        Thread.sleep(500); // Small delay after assignment
+                        log.info("Auto-generating pickup OTP for order {}", orderId);
+                        String otp = deliveryConfirmationService.generatePickupOTP(orderId);
+                        log.info("✅ Pickup OTP generated successfully for order {}: {}", orderId, otp);
+                    } catch (Exception otpError) {
+                        log.error("Failed to auto-generate pickup OTP for order {}: {}", orderId, otpError.getMessage());
+                    }
                 } catch (Exception e) {
                     log.error("Failed to auto-assign delivery partner for order: {}", order.getOrderNumber(), e);
                 }
@@ -1179,9 +1238,9 @@ public class OrderService {
         Notification.NotificationType notificationType = Notification.NotificationType.ORDER;
 
         switch (newStatus) {
-            case ACCEPTED:
-                title = "Order Accepted! 🎉";
-                message = String.format("Your order %s from %s has been accepted and is being prepared.",
+            case CONFIRMED:
+                title = "Order Confirmed! 🎉";
+                message = String.format("Your order %s from %s has been confirmed and will be prepared soon.",
                         order.getOrderNumber(), order.getShop().getName());
                 break;
             case PREPARING:
@@ -1221,7 +1280,7 @@ public class OrderService {
                     .title(title)
                     .message(message)
                     .type(notificationType)
-                    .priority(Notification.NotificationPriority.NORMAL)
+                    .priority(Notification.NotificationPriority.MEDIUM)
                     .status(Notification.NotificationStatus.UNREAD)
                     .recipientId(order.getCustomer().getId())
                     .recipientType(Notification.RecipientType.CUSTOMER)

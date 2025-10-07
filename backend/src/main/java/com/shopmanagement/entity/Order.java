@@ -43,7 +43,11 @@ public class Order {
     
     @Enumerated(EnumType.STRING)
     private PaymentMethod paymentMethod;
-    
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private DeliveryType deliveryType = DeliveryType.HOME_DELIVERY;
+
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal subtotal;
     
@@ -86,7 +90,15 @@ public class Order {
     
     private LocalDateTime estimatedDeliveryTime;
     private LocalDateTime actualDeliveryTime;
-    
+
+    // Pickup OTP fields for delivery partner verification
+    @Column(length = 10)
+    private String pickupOtp;
+
+    private LocalDateTime pickupOtpGeneratedAt;
+
+    private LocalDateTime pickupOtpVerifiedAt;
+
     // Order Items
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<OrderItem> orderItems;
@@ -110,15 +122,19 @@ public class Order {
     
     // Enums
     public enum OrderStatus {
-        PENDING, CONFIRMED, PREPARING, READY, READY_FOR_PICKUP, OUT_FOR_DELIVERY, DELIVERED, COMPLETED, CANCELLED, REFUNDED
+        PENDING, CONFIRMED, PREPARING, READY, READY_FOR_PICKUP, OUT_FOR_DELIVERY, DELIVERED, COMPLETED, CANCELLED, REFUNDED, SELF_PICKUP_COLLECTED
     }
-    
+
     public enum PaymentStatus {
         PENDING, PAID, FAILED, REFUNDED, PARTIALLY_REFUNDED
     }
-    
+
     public enum PaymentMethod {
         CASH_ON_DELIVERY, ONLINE_PAYMENT, UPI, CARD, WALLET
+    }
+
+    public enum DeliveryType {
+        HOME_DELIVERY, SELF_PICKUP
     }
     
     // Helper methods

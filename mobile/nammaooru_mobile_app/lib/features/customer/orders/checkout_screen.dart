@@ -32,6 +32,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   bool _saveAddress = true; // Always save by default
   List<SavedAddress> _savedAddresses = [];
   SavedAddress? _selectedSavedAddress;
+  bool _preventFieldReload = false; // Flag to prevent overwriting user-entered data
 
   // Delivery Address
   final _nameController = TextEditingController();
@@ -45,6 +46,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   String _selectedAddressType = 'HOME';
   String _selectedCity = 'Tirupattur';
   String _selectedState = 'Tamil Nadu';
+
+  // Delivery Type
+  String _selectedDeliveryType = 'HOME_DELIVERY';
 
   // Payment
   String _selectedPaymentMethod = 'CASH_ON_DELIVERY';
@@ -67,6 +71,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   final List<String> _addressTypes = ['HOME', 'WORK', 'OTHER'];
   final List<String> _cities = ['Tirupattur']; // Only Tirupattur for now
   final List<String> _states = ['Tamil Nadu'];
+  final List<Map<String, String>> _deliveryTypes = [
+    {'key': 'HOME_DELIVERY', 'label': 'Home Delivery', 'icon': '🚚'},
+    {'key': 'SELF_PICKUP', 'label': 'Self Pickup', 'icon': '🏪'},
+  ];
   final List<String> _paymentMethods = ['CASH_ON_DELIVERY', 'ONLINE', 'UPI'];
   final List<Map<String, String>> _deliverySlots = [
     {'key': 'ASAP', 'label': 'ASAP (30-45 mins)'},
@@ -174,7 +182,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         }).toList();
 
         // Auto-select default address or first address
-        if (_savedAddresses.isNotEmpty) {
+        if (_savedAddresses.isNotEmpty && !_preventFieldReload) {
           final defaultAddress = _savedAddresses.firstWhere(
             (addr) => addr.isDefault,
             orElse: () => _savedAddresses.first,
@@ -183,6 +191,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           setState(() {
             _selectedSavedAddress = defaultAddress;
           });
+        } else if (_savedAddresses.isNotEmpty && _preventFieldReload) {
+          // Just update the list, don't reload fields
+          setState(() {});
         }
       } else {
         // If API fails, try local storage
@@ -191,7 +202,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           _savedAddresses = localAddresses;
         });
 
-        if (localAddresses.isNotEmpty) {
+        if (localAddresses.isNotEmpty && !_preventFieldReload) {
           final defaultAddress = localAddresses.firstWhere(
             (addr) => addr.isDefault,
             orElse: () => localAddresses.first,
@@ -200,6 +211,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           setState(() {
             _selectedSavedAddress = defaultAddress;
           });
+        } else if (localAddresses.isNotEmpty && _preventFieldReload) {
+          setState(() {});
         }
       }
     } catch (e) {
@@ -210,7 +223,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         _savedAddresses = addresses;
       });
 
-      if (addresses.isNotEmpty) {
+      if (addresses.isNotEmpty && !_preventFieldReload) {
         final defaultAddress = addresses.firstWhere(
           (addr) => addr.isDefault,
           orElse: () => addresses.first,
@@ -219,11 +232,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         setState(() {
           _selectedSavedAddress = defaultAddress;
         });
+      } else if (addresses.isNotEmpty && _preventFieldReload) {
+        setState(() {});
       }
     }
   }
 
   void _loadAddressToFields(SavedAddress address) {
+    print('🔍 Loading address to fields: name=${address.name}, lastName=${address.lastName}, phone=${address.phone}');
     _nameController.text = address.name;
     _lastNameController.text = address.lastName;
     _phoneController.text = address.phone;
@@ -250,9 +266,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Future<void> _saveCurrentAddress() async {
-    // Always save address
+    // Always save address with updated name and phone
 
     final addressId = _selectedSavedAddress?.id ?? AddressService.instance.generateAddressId();
+
+    // Preserve isDefault status if updating existing address, otherwise make first address default
+    final isDefault = _selectedSavedAddress?.isDefault ?? _savedAddresses.isEmpty;
+
     final address = SavedAddress(
       id: addressId,
       name: _nameController.text.trim(),
@@ -265,13 +285,31 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       state: _selectedState,
       pincode: _pincodeController.text.trim(),
       addressType: _selectedAddressType,
-      isDefault: _savedAddresses.isEmpty, // First address becomes default
+      isDefault: isDefault,
       createdAt: _selectedSavedAddress?.createdAt ?? DateTime.now(),
     );
 
+    print('💾 Saving address with name=${address.name}, lastName=${address.lastName}, phone=${address.phone}, isDefault=$isDefault');
+
+    // Set flag to prevent field reload from overwriting user data
+    _preventFieldReload = true;
+
     final success = await AddressService.instance.saveAddress(address);
     if (success) {
+      print('✅ Address saved successfully');
+
+      // Update the selected address reference
+      _selectedSavedAddress = address;
+
+      // Reload the addresses list in the background for the address selection UI
+      // The flag will prevent it from overwriting the form fields
       await _loadSavedAddresses();
+
+      // Reset the flag after reload completes
+      _preventFieldReload = false;
+    } else {
+      print('❌ Failed to save address');
+      _preventFieldReload = false;
     }
   }
 
@@ -376,17 +414,78 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Delivery Address',
+              'Delivery Type',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
                 color: Colors.black,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
 
-            // Saved Addresses Section - Now at the top with scrollbar
-            if (_savedAddresses.isNotEmpty) ...[
+            // Delivery Type Selection
+            Row(
+              children: _deliveryTypes.map((type) {
+                final isSelected = _selectedDeliveryType == type['key'];
+                return Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: InkWell(
+                      onTap: () {
+                        setState(() {
+                          _selectedDeliveryType = type['key']!;
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: isSelected ? VillageTheme.primaryGreen : Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isSelected ? VillageTheme.primaryGreen : Colors.grey.shade300,
+                            width: 2,
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Text(
+                              type['icon']!,
+                              style: const TextStyle(fontSize: 32),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              type['label']!,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: isSelected ? Colors.white : Colors.black87,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 24),
+
+            // Show address section only for home delivery
+            if (_selectedDeliveryType == 'HOME_DELIVERY') ...[
+              const Text(
+                'Delivery Address',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Saved Addresses Section - Now at the top with scrollbar
+              if (_savedAddresses.isNotEmpty) ...[
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -633,18 +732,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 Expanded(
                   child: TextFormField(
                     controller: _nameController,
-                    enabled: _selectedSavedAddress == null,
-                    style: TextStyle(
-                      color: _selectedSavedAddress == null ? Colors.black : Colors.black54,
+                    style: const TextStyle(
+                      color: Colors.black,
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                     ),
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       labelText: 'First Name *',
-                      labelStyle: const TextStyle(color: Colors.black87),
-                      hintStyle: const TextStyle(color: Colors.black54),
-                      filled: _selectedSavedAddress != null,
-                      fillColor: _selectedSavedAddress != null ? Colors.grey.shade100 : null,
+                      labelStyle: TextStyle(color: Colors.black87),
+                      hintStyle: TextStyle(color: Colors.black54),
                     ),
                     validator: (value) => value?.isEmpty == true ? 'First name is required' : null,
                   ),
@@ -653,18 +749,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 Expanded(
                   child: TextFormField(
                     controller: _lastNameController,
-                    enabled: _selectedSavedAddress == null,
-                    style: TextStyle(
-                      color: _selectedSavedAddress == null ? Colors.black : Colors.black54,
+                    style: const TextStyle(
+                      color: Colors.black,
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                     ),
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       labelText: 'Last Name *',
-                      labelStyle: const TextStyle(color: Colors.black87),
-                      hintStyle: const TextStyle(color: Colors.black54),
-                      filled: _selectedSavedAddress != null,
-                      fillColor: _selectedSavedAddress != null ? Colors.grey.shade100 : null,
+                      labelStyle: TextStyle(color: Colors.black87),
+                      hintStyle: TextStyle(color: Colors.black54),
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
@@ -718,19 +811,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             // Address Lines
             TextFormField(
               controller: _addressLine1Controller,
-              enabled: _selectedSavedAddress == null,
-              style: TextStyle(
-                color: _selectedSavedAddress == null ? Colors.black : Colors.black54,
+              style: const TextStyle(
+                color: Colors.black,
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
               ),
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 labelText: 'Address Line 1 *',
-                labelStyle: const TextStyle(color: Colors.black87),
+                labelStyle: TextStyle(color: Colors.black87),
                 hintText: 'House/Flat/Office No, Building Name',
-                hintStyle: const TextStyle(color: Colors.black54),
-                filled: _selectedSavedAddress != null,
-                fillColor: _selectedSavedAddress != null ? Colors.grey.shade100 : null,
+                hintStyle: TextStyle(color: Colors.black54),
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -746,38 +836,32 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
             TextFormField(
               controller: _addressLine2Controller,
-              enabled: _selectedSavedAddress == null,
-              style: TextStyle(
-                color: _selectedSavedAddress == null ? Colors.black : Colors.black54,
+              style: const TextStyle(
+                color: Colors.black,
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
               ),
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 labelText: 'Address Line 2',
-                labelStyle: const TextStyle(color: Colors.black87),
+                labelStyle: TextStyle(color: Colors.black87),
                 hintText: 'Area, Colony, Street Name',
-                hintStyle: const TextStyle(color: Colors.black54),
-                filled: _selectedSavedAddress != null,
-                fillColor: _selectedSavedAddress != null ? Colors.grey.shade100 : null,
+                hintStyle: TextStyle(color: Colors.black54),
               ),
             ),
             const SizedBox(height: 12),
             
             TextFormField(
               controller: _landmarkController,
-              enabled: _selectedSavedAddress == null,
-              style: TextStyle(
-                color: _selectedSavedAddress == null ? Colors.black : Colors.black54,
+              style: const TextStyle(
+                color: Colors.black,
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
               ),
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 labelText: 'Landmark',
-                labelStyle: const TextStyle(color: Colors.black87),
+                labelStyle: TextStyle(color: Colors.black87),
                 hintText: 'Near famous place',
-                hintStyle: const TextStyle(color: Colors.black54),
-                filled: _selectedSavedAddress != null,
-                fillColor: _selectedSavedAddress != null ? Colors.grey.shade100 : null,
+                hintStyle: TextStyle(color: Colors.black54),
               ),
             ),
             const SizedBox(height: 16),
@@ -859,18 +943,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 Expanded(
                   child: TextFormField(
                     controller: _pincodeController,
-                    enabled: _selectedSavedAddress == null,
-                    style: TextStyle(
-                      color: _selectedSavedAddress == null ? Colors.black : Colors.black54,
+                    style: const TextStyle(
+                      color: Colors.black,
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                     ),
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       labelText: 'Pincode *',
-                      labelStyle: const TextStyle(color: Colors.black87),
-                      hintStyle: const TextStyle(color: Colors.black54),
-                      filled: _selectedSavedAddress != null,
-                      fillColor: _selectedSavedAddress != null ? Colors.grey.shade100 : null,
+                      labelStyle: TextStyle(color: Colors.black87),
+                      hintStyle: TextStyle(color: Colors.black54),
                     ),
                     keyboardType: TextInputType.number,
                     maxLength: 6,
@@ -984,6 +1065,161 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 ],
               ),
             ),
+            ],
+
+            // Self Pickup Information
+            if (_selectedDeliveryType == 'SELF_PICKUP') ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.orange.withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.store,
+                          color: Colors.orange.shade700,
+                          size: 28,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Pickup from Shop',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Collect your order directly from the shop',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.schedule,
+                                size: 20,
+                                color: Colors.orange.shade700,
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Ready in 15-20 minutes',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.info_outline,
+                                size: 20,
+                                color: Colors.orange.shade700,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Shop owner will notify you when order is ready for pickup',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Customer name and phone for self-pickup
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _nameController,
+                style: const TextStyle(color: Colors.black87),
+                decoration: InputDecoration(
+                  labelText: 'Your Name*',
+                  labelStyle: TextStyle(color: Colors.grey.shade700),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: VillageTheme.primaryGreen, width: 2),
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter your name';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _phoneController,
+                style: const TextStyle(color: Colors.black87),
+                keyboardType: TextInputType.phone,
+                maxLength: 10,
+                decoration: InputDecoration(
+                  labelText: 'Phone Number*',
+                  labelStyle: TextStyle(color: Colors.grey.shade700),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: VillageTheme.primaryGreen, width: 2),
+                  ),
+                  counterText: '',
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter your phone number';
+                  }
+                  if (value.length != 10) {
+                    return 'Phone number must be 10 digits';
+                  }
+                  return null;
+                },
+              ),
+            ],
           ],
         ),
       ),
@@ -1585,6 +1821,33 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       Helpers.formatCurrency(cartProvider.total),
                       isTotal: true,
                     ),
+                    // Minimum order warning
+                    if (cartProvider.subtotal < 100)
+                      Container(
+                        margin: const EdgeInsets.only(top: 12),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.orange.shade300),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.info_outline, color: Colors.orange.shade700, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Add ₹${(100 - cartProvider.subtotal).toStringAsFixed(2)} more to meet minimum order amount of ₹100',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.orange.shade700,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -1891,7 +2154,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       if (cartProvider.items.isEmpty) {
         throw Exception('Cart is empty');
       }
-      
+
+      // Check minimum order amount (₹100)
+      const double minimumOrderAmount = 100.0;
+      if (cartProvider.subtotal < minimumOrderAmount) {
+        if (mounted) {
+          Helpers.showSnackBar(
+            context,
+            'Minimum order amount is ₹${minimumOrderAmount.toStringAsFixed(0)}. Current subtotal is ₹${cartProvider.subtotal.toStringAsFixed(2)}',
+            isError: true,
+          );
+        }
+        setState(() => _isPlacingOrder = false);
+        return;
+      }
+
       // Ensure user is authenticated before placing order
       if (!authProvider.isAuthenticated) {
         if (mounted) {
@@ -1936,16 +2213,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         return;
       }
 
-      if (address1.isEmpty) {
-        Helpers.showSnackBar(context, 'Please enter your street address', isError: true);
-        setState(() => _isPlacingOrder = false);
-        return;
-      }
+      // Only validate address fields for home delivery
+      if (_selectedDeliveryType == 'HOME_DELIVERY') {
+        if (address1.isEmpty) {
+          Helpers.showSnackBar(context, 'Please enter your street address', isError: true);
+          setState(() => _isPlacingOrder = false);
+          return;
+        }
 
-      if (pincode.isEmpty) {
-        Helpers.showSnackBar(context, 'Please enter your pincode', isError: true);
-        setState(() => _isPlacingOrder = false);
-        return;
+        if (pincode.isEmpty) {
+          Helpers.showSnackBar(context, 'Please enter your pincode', isError: true);
+          setState(() => _isPlacingOrder = false);
+          return;
+        }
       }
 
       // Get actual shop ID from cart items
@@ -1962,6 +2242,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       // Create order request matching current backend expectation
       final orderRequest = {
         'shopId': shopId,  // Dynamic shop ID from cart
+        'deliveryType': _selectedDeliveryType,
         'items': cartProvider.items.map((item) => {
           'productId': int.tryParse(item.product.id.toString()) ?? item.product.id,
           'productName': item.product.name,
@@ -1969,18 +2250,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           'quantity': item.quantity,
           'unit': 'piece'
         }).toList(),
-        'deliveryAddress': {
-          'streetAddress': address1 + (address2.isNotEmpty ? ', $address2' : ''),
-          'landmark': _landmarkController.text.trim().isNotEmpty ? _landmarkController.text.trim() : _deliveryInstructions.isNotEmpty ? _deliveryInstructions : null,
-          'city': _selectedCity,
-          'state': _selectedState,
-          'pincode': pincode
-        },
+        if (_selectedDeliveryType == 'HOME_DELIVERY')
+          'deliveryAddress': {
+            'streetAddress': address1 + (address2.isNotEmpty ? ', $address2' : ''),
+            'landmark': _landmarkController.text.trim().isNotEmpty ? _landmarkController.text.trim() : _deliveryInstructions.isNotEmpty ? _deliveryInstructions : null,
+            'city': _selectedCity,
+            'state': _selectedState,
+            'pincode': pincode
+          },
         'paymentMethod': _selectedPaymentMethod,
         'subtotal': cartProvider.subtotal,
-        'deliveryFee': cartProvider.deliveryFee,
+        'deliveryFee': _selectedDeliveryType == 'SELF_PICKUP' ? 0 : cartProvider.deliveryFee,
         'discount': cartProvider.promoDiscount,
-        'total': cartProvider.total,
+        'total': _selectedDeliveryType == 'SELF_PICKUP' ? cartProvider.subtotal - cartProvider.promoDiscount : cartProvider.total,
         'notes': _deliveryInstructions.isNotEmpty ? _deliveryInstructions : null,
         'customerInfo': {
           'firstName': firstName,
