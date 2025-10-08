@@ -16,6 +16,7 @@ import '../screens/google_maps_location_picker_screen.dart';
 import '../screens/notifications_screen.dart';
 import '../../../core/services/location_service.dart';
 import '../../../core/services/address_service.dart';
+import '../../../core/services/app_update_service.dart';
 import '../widgets/address_selection_dialog.dart';
 
 class CustomerDashboard extends StatefulWidget {
@@ -35,12 +36,21 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
 
   final _shopApi = ShopApiService();
   final _orderApi = OrderApiService();
-  
+
   @override
   void initState() {
     super.initState();
     _loadDashboardData();
     _getCurrentLocationOnStartup();
+    _checkForAppUpdates();
+  }
+
+  Future<void> _checkForAppUpdates() async {
+    // Delay the version check to let the UI load first
+    await Future.delayed(const Duration(seconds: 2));
+    if (mounted) {
+      AppUpdateService.showUpdateDialogIfNeeded(context);
+    }
   }
 
   Future<void> _getCurrentLocationOnStartup() async {

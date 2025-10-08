@@ -47,7 +47,7 @@ class _AvailableOrdersScreenState extends State<AvailableOrdersScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Order #${order.id} accepted successfully!'),
+          content: Text('Order #${order.orderNumber} accepted successfully!'),
           backgroundColor: Colors.green,
           duration: Duration(seconds: 3),
         ),
@@ -73,7 +73,7 @@ class _AvailableOrdersScreenState extends State<AvailableOrdersScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Order #${order.id} rejected'),
+          content: Text('Order #${order.orderNumber} rejected'),
           backgroundColor: Colors.orange,
           duration: Duration(seconds: 2),
         ),

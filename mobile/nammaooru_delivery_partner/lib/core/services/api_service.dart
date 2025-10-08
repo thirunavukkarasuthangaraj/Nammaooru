@@ -1,13 +1,13 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/app_config.dart';
 
 class ApiService {
-  static const String _baseUrl = 'http://localhost:8080/api';
+  static String get _baseUrl => AppConfig.apiUrl;
 
-  static const String _deliveryPartnerEndpoint =
-      '$_baseUrl/mobile/delivery-partner';
-  static const String _assignmentEndpoint = '$_baseUrl/assignments';
+  static String get _deliveryPartnerEndpoint => AppConfig.mobileApiUrl;
+  static String get _assignmentEndpoint => '${AppConfig.apiUrl}/assignments';
 
   static const String _tokenKey = 'delivery_partner_token';
   static const String _partnerIdKey = 'delivery_partner_id';
@@ -26,23 +26,41 @@ class ApiService {
 
   // Handle API response and errors
   Map<String, dynamic> _handleResponse(http.Response response) {
-    final Map<String, dynamic> data = json.decode(response.body);
-
+    // Check status code first before parsing JSON
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      return data;
+      try {
+        final Map<String, dynamic> data = json.decode(response.body);
+        return data;
+      } catch (e) {
+        throw ApiException('Invalid JSON response from server', response.statusCode);
+      }
     } else {
-      throw ApiException(
-        data['message'] ?? 'An error occurred',
-        response.statusCode,
-      );
+      // For error responses, try to parse JSON but handle plain text too
+      try {
+        final Map<String, dynamic> data = json.decode(response.body);
+        throw ApiException(
+          data['message'] ?? 'An error occurred',
+          response.statusCode,
+        );
+      } catch (e) {
+        // If response is not JSON (e.g., plain text error), use the body as message
+        throw ApiException(
+          response.body.isNotEmpty ? response.body : 'An error occurred',
+          response.statusCode,
+        );
+      }
     }
   }
 
   // Authentication Methods
   Future<Map<String, dynamic>> login(String email, String password) async {
+    // Don't send Authorization header for login (no token yet!)
     final response = await http.post(
       Uri.parse('$_deliveryPartnerEndpoint/login'),
-      headers: await _getHeaders(),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
       body: json.encode({
         'email': email,
         'password': password,

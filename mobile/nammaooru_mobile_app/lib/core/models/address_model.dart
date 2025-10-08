@@ -49,17 +49,35 @@ class SavedAddress {
   String get shortAddress => '$addressLine1, $city';
 
   factory SavedAddress.fromJson(Map<String, dynamic> json) {
+    // Handle both mobile app format and backend format
+    String firstName = json['name'] ?? '';
+    String lastName = json['lastName'] ?? '';
+    String phone = json['phone'] ?? json['contactMobileNumber'] ?? '';
+
+    // If backend format (contactPersonName), split it into first and last name
+    if (json['contactPersonName'] != null && json['contactPersonName'].toString().isNotEmpty) {
+      final fullName = json['contactPersonName'].toString().trim();
+      final nameParts = fullName.split(' ');
+      if (nameParts.length >= 2) {
+        firstName = nameParts.first;
+        lastName = nameParts.sublist(1).join(' ');
+      } else if (nameParts.length == 1) {
+        firstName = nameParts.first;
+        lastName = '';
+      }
+    }
+
     return SavedAddress(
-      id: json['id'] ?? '',
-      name: json['name'] ?? '',
-      lastName: json['lastName'] ?? '',
-      phone: json['phone'] ?? '',
+      id: (json['id'] ?? '').toString(),
+      name: firstName,
+      lastName: lastName,
+      phone: phone,
       addressLine1: json['addressLine1'] ?? '',
       addressLine2: json['addressLine2'] ?? '',
       landmark: json['landmark'] ?? '',
       city: json['city'] ?? 'Tirupattur',
       state: json['state'] ?? 'Tamil Nadu',
-      pincode: json['pincode'] ?? '',
+      pincode: json['pincode'] ?? json['postalCode'] ?? '',
       addressType: json['addressType'] ?? 'HOME',
       isDefault: json['isDefault'] ?? false,
       createdAt: DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String()),
@@ -70,6 +88,7 @@ class SavedAddress {
 
   Map<String, dynamic> toJson() {
     return {
+      // Mobile app format
       'id': id,
       'name': name,
       'lastName': lastName,
@@ -85,6 +104,10 @@ class SavedAddress {
       'createdAt': createdAt.toIso8601String(),
       'latitude': latitude,
       'longitude': longitude,
+      // Backend format (for compatibility)
+      'contactPersonName': fullName,
+      'contactMobileNumber': phone,
+      'postalCode': pincode,
     };
   }
 

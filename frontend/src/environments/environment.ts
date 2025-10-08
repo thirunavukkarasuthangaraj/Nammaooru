@@ -2,7 +2,7 @@ import packageInfo from '../../package.json';
 
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:8080/api',
+  apiUrl: 'https://api.nammaoorudelivary.in/api',
   appUrl: 'http://localhost:4200',
   googleMapsApiKey: 'AIzaSyAr_uGbaOnhebjRyz7ohU6N-hWZJVV_R3U',
   websocketUrl: 'ws://localhost:8080/ws',

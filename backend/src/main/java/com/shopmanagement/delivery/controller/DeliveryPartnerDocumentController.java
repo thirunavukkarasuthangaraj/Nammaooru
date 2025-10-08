@@ -37,14 +37,14 @@ public class DeliveryPartnerDocumentController {
     private final DeliveryPartnerDocumentService documentService;
 
     @GetMapping("/{partnerId}/documents")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('DELIVERY_PARTNER')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('DELIVERY_PARTNER')")
     public ResponseEntity<ApiResponse<List<DeliveryPartnerDocumentResponse>>> getPartnerDocuments(@PathVariable Long partnerId) {
         List<DeliveryPartnerDocumentResponse> documents = documentService.getPartnerDocuments(partnerId);
         return ResponseUtil.success(documents, "Documents retrieved successfully");
     }
 
     @PostMapping("/{partnerId}/documents/upload")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('DELIVERY_PARTNER')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('DELIVERY_PARTNER')")
     public ResponseEntity<?> uploadDocument(
             @PathVariable Long partnerId,
             @RequestParam("documentType") String documentType,
@@ -156,7 +156,7 @@ public class DeliveryPartnerDocumentController {
     }
 
     @GetMapping("/{partnerId}/documents/status")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('DELIVERY_PARTNER')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('DELIVERY_PARTNER')")
     public ResponseEntity<Map<String, Object>> getDocumentStatus(@PathVariable Long partnerId) {
         List<DeliveryPartnerDocument.DocumentType> requiredTypes = documentService.getRequiredDocumentTypes();
         boolean allUploaded = documentService.isAllDocumentsUploaded(partnerId);
@@ -171,7 +171,7 @@ public class DeliveryPartnerDocumentController {
     }
 
     @GetMapping("/documents/types")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('DELIVERY_PARTNER')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('DELIVERY_PARTNER')")
     public ResponseEntity<Map<String, Object>> getDocumentTypes() {
         return ResponseEntity.ok(Map.of(
                 "documentTypes", DeliveryPartnerDocument.DocumentType.values(),

@@ -634,4 +634,80 @@ public class EmailService {
         }
     }
 
+    /**
+     * Send alert to admin when no delivery partners available after 3 minutes
+     */
+    @Async
+    public void sendNoPartnersAvailableAlert(Long orderId, String orderNumber, String shopName,
+                                            String adminEmail, int retryAttempts) {
+        try {
+            String subject = "⚠️ URGENT: No Delivery Partners Available - Order #" + orderNumber;
+
+            String text = String.format(
+                "⚠️ URGENT ALERT: No Delivery Partners Available\n\n" +
+                "The system has been trying to assign a delivery partner for 3 minutes but no partners are available.\n\n" +
+                "Order Details:\n" +
+                "- Order ID: %d\n" +
+                "- Order Number: %s\n" +
+                "- Shop: %s\n" +
+                "- Time: %s\n" +
+                "- Retry Attempts: %d\n\n" +
+                "Current Status: READY_FOR_PICKUP (waiting for delivery partner assignment)\n\n" +
+                "⚡ ACTION REQUIRED:\n" +
+                "1. Check if delivery partners are online in the system\n" +
+                "2. Manually assign a delivery partner to this order\n" +
+                "3. Contact delivery partners to come online immediately\n" +
+                "4. Use admin panel to check partner availability\n\n" +
+                "🔗 Admin Dashboard: %s\n\n" +
+                "This is an automated alert from NammaOoru Shop Management System.\n" +
+                "Reply to this email or check the dashboard immediately.",
+                orderId,
+                orderNumber,
+                shopName,
+                java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
+                retryAttempts,
+                dashboardUrl
+            );
+
+            sendSimpleEmail(adminEmail, subject, text);
+            log.warn("⚠️  No partners available alert sent to admin {} for order: {}", adminEmail, orderNumber);
+
+        } catch (Exception e) {
+            log.error("Failed to send no partners alert email for order: {}", orderNumber, e);
+        }
+    }
+
+    /**
+     * Send notification when order is successfully assigned after retry
+     */
+    @Async
+    public void sendOrderAssignedAfterRetryNotification(String orderNumber, String partnerName,
+                                                       String adminEmail, int retryAttempts) {
+        try {
+            String subject = "✅ Order Assigned Successfully - " + orderNumber;
+
+            String text = String.format(
+                "✅ Order Successfully Assigned After Retry\n\n" +
+                "Order Details:\n" +
+                "- Order Number: %s\n" +
+                "- Assigned to: %s\n" +
+                "- Time: %s\n" +
+                "- Retry Attempts: %d\n\n" +
+                "The order has been successfully assigned to a delivery partner after %d retry attempts.\n\n" +
+                "This is an automated notification from NammaOoru Shop Management System.",
+                orderNumber,
+                partnerName,
+                java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
+                retryAttempts,
+                retryAttempts
+            );
+
+            sendSimpleEmail(adminEmail, subject, text);
+            log.info("✅ Order assigned notification sent to admin {} for order: {}", adminEmail, orderNumber);
+
+        } catch (Exception e) {
+            log.error("Failed to send order assigned notification for order: {}", orderNumber, e);
+        }
+    }
+
 }

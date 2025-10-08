@@ -78,12 +78,16 @@ public class CustomerOrderController {
                 log.error("Order items are required");
                 return ResponseUtil.error("Order items are required");
             }
-            
-            if (orderRequest.getDeliveryAddress() == null) {
-                log.error("Delivery address is required");
-                return ResponseUtil.error("Delivery address is required");
+
+            // Validate delivery address only for HOME_DELIVERY orders
+            String deliveryType = orderRequest.getDeliveryType() != null ? orderRequest.getDeliveryType() : "HOME_DELIVERY";
+            if ("HOME_DELIVERY".equals(deliveryType)) {
+                if (orderRequest.getDeliveryAddress() == null) {
+                    log.error("Delivery address is required for home delivery");
+                    return ResponseUtil.error("Delivery address is required for home delivery");
+                }
             }
-            
+
             if (orderRequest.getCustomerInfo() == null) {
                 log.error("Customer information is required");
                 return ResponseUtil.error("Customer information is required");

@@ -14,7 +14,7 @@ class OrdersScreen extends StatefulWidget {
 class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderStateMixin {
   final OrderService _orderService = OrderService();
   late TabController _tabController;
-  
+
   OrdersResponse _ordersResponse = OrdersResponse.empty();
   bool _isLoading = false;
   bool _isLoadingMore = false;
@@ -24,7 +24,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
   final ScrollController _scrollController = ScrollController();
 
   final List<Map<String, String>> _orderTabs = [
-    {'key': '', 'label': 'All Orders'},
+    {'key': '', 'label': 'All'},
     {'key': 'PENDING', 'label': 'Pending'},
     {'key': 'PREPARING', 'label': 'Preparing'},
     {'key': 'OUT_FOR_DELIVERY', 'label': 'Delivering'},
@@ -67,7 +67,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
 
   Future<void> _loadOrders({bool refresh = false}) async {
     if (!mounted) return;
-    
+
     setState(() {
       if (refresh) {
         _ordersResponse = OrdersResponse.empty();
@@ -81,7 +81,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
         page: refresh ? 0 : _ordersResponse.currentPage,
         status: _selectedStatus,
       );
-      
+
       if (mounted) {
         setState(() {
           if (refresh) {
@@ -123,7 +123,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
         page: _ordersResponse.currentPage + 1,
         status: _selectedStatus,
       );
-      
+
       if (mounted) {
         final newResponse = result['data'] as OrdersResponse;
         setState(() {
@@ -152,7 +152,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Text(message, maxLines: 2, overflow: TextOverflow.ellipsis),
         backgroundColor: color,
         duration: const Duration(seconds: 2),
       ),
@@ -165,7 +165,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
       MaterialPageRoute(
         builder: (context) => OrderDetailsScreen(orderId: order.id),
       ),
-    ).then((_) => _loadOrders(refresh: true)); // Refresh when returning
+    ).then((_) => _loadOrders(refresh: true));
   }
 
   void _trackOrder(Order order) {
@@ -183,7 +183,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Orders'),
+        title: const Text('My Orders', maxLines: 1, overflow: TextOverflow.ellipsis),
         backgroundColor: Colors.green.shade700,
         foregroundColor: Colors.white,
         bottom: TabBar(
@@ -192,6 +192,9 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white70,
           indicatorColor: Colors.white,
+          labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          unselectedLabelStyle: const TextStyle(fontSize: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 8),
           tabs: _orderTabs.map((tab) => Tab(text: tab['label'])).toList(),
         ),
       ),
@@ -209,27 +212,32 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             Icons.error_outline,
-            size: 64,
+            size: 70,
             color: Colors.red.shade400,
           ),
-          const SizedBox(height: 16),
-          Text(
+          const SizedBox(height: 12),
+          const Text(
             'Failed to load orders',
-            style: Theme.of(context).textTheme.headlineSmall,
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             _error ?? 'Please try again',
-            style: Theme.of(context).textTheme.bodyMedium,
+            style: const TextStyle(fontSize: 12, color: Colors.black54),
             textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           ElevatedButton(
             onPressed: () => _loadOrders(refresh: true),
-            child: const Text('Retry'),
+            child: const Text('Retry', style: TextStyle(fontSize: 12)),
           ),
         ],
       ),
@@ -240,37 +248,44 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             Icons.shopping_bag_outlined,
-            size: 96,
+            size: 70,
             color: Colors.grey.shade400,
           ),
-          const SizedBox(height: 16),
-          Text(
+          const SizedBox(height: 12),
+          const Text(
             'No orders yet',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: Colors.black,
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.black87,
               fontWeight: FontWeight.bold,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 8),
-          Text(
+          const SizedBox(height: 6),
+          const Text(
             'Your order history will appear here',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Colors.black,
-              fontWeight: FontWeight.w500,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.black54,
             ),
             textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           ElevatedButton.icon(
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.shopping_cart),
-            label: const Text('Start Shopping'),
+            icon: const Icon(Icons.shopping_cart, size: 16),
+            label: const Text('Start Shopping', style: TextStyle(fontSize: 12)),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.green.shade700,
               foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
           ),
         ],
@@ -281,22 +296,24 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
   Widget _buildOrdersList() {
     return RefreshIndicator(
       onRefresh: () => _loadOrders(refresh: true),
-      child: ListView.separated(
+      child: ListView.builder(
         controller: _scrollController,
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         itemCount: _ordersResponse.orders.length + (_isLoadingMore ? 1 : 0),
-        separatorBuilder: (context, index) => const SizedBox(height: 12),
         itemBuilder: (context, index) {
           if (index >= _ordersResponse.orders.length) {
             return const Center(
               child: Padding(
-                padding: EdgeInsets.all(16),
+                padding: EdgeInsets.all(12),
                 child: CircularProgressIndicator(),
               ),
             );
           }
-          
-          return _buildOrderCard(_ordersResponse.orders[index]);
+
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _buildOrderCard(_ordersResponse.orders[index]),
+          );
         },
       ),
     );
@@ -305,55 +322,68 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
   Widget _buildOrderCard(Order order) {
     return Card(
       elevation: 2,
+      shadowColor: Colors.black.withOpacity(0.1),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         onTap: () => _viewOrderDetails(order),
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Order #${order.orderNumber}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                  Expanded(
+                    child: Text(
+                      'Order #${order.orderNumber}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: Colors.black87,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  const SizedBox(width: 8),
                   _buildStatusChip(order),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
               Text(
                 _formatDate(order.orderDate),
                 style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 14,
+                  color: Colors.black54,
+                  fontSize: 11,
                   fontWeight: FontWeight.w500,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
                           '${order.items.length} item${order.items.length > 1 ? 's' : ''}',
-                          style: const TextStyle(fontSize: 14),
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 2),
                         Text(
                           order.items.take(2).map((item) => item.productName).join(', ') +
                               (order.items.length > 2 ? '...' : ''),
                           style: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
+                            color: Colors.black54,
+                            fontSize: 10,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -361,67 +391,94 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                       ],
                     ),
                   ),
+                  const SizedBox(width: 8),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         '₹${order.totalAmount.toStringAsFixed(2)}',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                          fontSize: 14,
                           color: Colors.green,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 2),
                       Text(
                         order.paymentMethod.replaceAll('_', ' '),
                         style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
+                          color: Colors.black54,
+                          fontSize: 10,
                           fontWeight: FontWeight.w500,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   if (order.canBeTracked)
                     Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _trackOrder(order),
-                        icon: const Icon(Icons.location_on, size: 16),
-                        label: const Text('Track'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          foregroundColor: Colors.blue,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: OutlinedButton.icon(
+                          onPressed: () => _trackOrder(order),
+                          icon: const Icon(Icons.location_on, size: 18),
+                          label: const Text('Track', style: TextStyle(fontSize: 12)),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.blue,
+                            side: const BorderSide(color: Colors.blue, width: 1),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  if (order.canBeTracked && order.canBeCancelled)
-                    const SizedBox(width: 8),
                   if (order.canBeCancelled)
                     Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _showCancelDialog(order),
-                        icon: const Icon(Icons.cancel_outlined, size: 16),
-                        label: const Text('Cancel'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
-                          padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: OutlinedButton.icon(
+                          onPressed: () => _showCancelDialog(order),
+                          icon: const Icon(Icons.cancel_outlined, size: 18),
+                          label: const Text('Cancel', style: TextStyle(fontSize: 12)),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.red,
+                            side: const BorderSide(color: Colors.red, width: 1),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   if (!order.canBeTracked && !order.canBeCancelled)
                     Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _reorderItems(order),
-                        icon: const Icon(Icons.refresh, size: 16),
-                        label: const Text('Reorder'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: OutlinedButton.icon(
+                          onPressed: () => _reorderItems(order),
+                          icon: const Icon(Icons.refresh, size: 18),
+                          label: const Text('Reorder', style: TextStyle(fontSize: 12)),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.grey.shade700,
+                            side: BorderSide(color: Colors.grey.shade400, width: 1),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -459,18 +516,20 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Text(
         order.statusDisplayText,
         style: TextStyle(
           color: textColor,
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
         ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }
@@ -498,23 +557,34 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
 
   void _showCancelDialog(Order order) {
     String reason = '';
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Cancel Order'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: const Text('Cancel Order', style: TextStyle(fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Are you sure you want to cancel order #${order.orderNumber}?'),
-            const SizedBox(height: 16),
+            Text(
+              'Are you sure you want to cancel order #${order.orderNumber}?',
+              style: const TextStyle(fontSize: 12),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 12),
             TextField(
               decoration: const InputDecoration(
                 labelText: 'Reason (Optional)',
+                labelStyle: TextStyle(fontSize: 11),
                 hintText: 'Why are you cancelling this order?',
+                hintStyle: TextStyle(fontSize: 11),
                 border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                isDense: true,
               ),
+              style: const TextStyle(fontSize: 12),
               maxLines: 2,
               onChanged: (value) => reason = value,
             ),
@@ -523,7 +593,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Keep Order'),
+            child: const Text('Keep Order', style: TextStyle(fontSize: 12)),
           ),
           TextButton(
             onPressed: () {
@@ -531,7 +601,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
               _cancelOrder(order.id, reason);
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Cancel Order'),
+            child: const Text('Cancel Order', style: TextStyle(fontSize: 12)),
           ),
         ],
       ),
@@ -541,7 +611,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
   Future<void> _cancelOrder(String orderId, String reason) async {
     try {
       final result = await _orderService.cancelOrder(orderId, reason);
-      
+
       if (result['success']) {
         _showSnackBar('Order cancelled successfully', Colors.orange);
         _loadOrders(refresh: true);
@@ -556,7 +626,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
   Future<void> _reorderItems(Order order) async {
     try {
       final result = await _orderService.reorderItems(order.id);
-      
+
       if (result['success']) {
         _showSnackBar('Items added to cart', Colors.green);
       } else {

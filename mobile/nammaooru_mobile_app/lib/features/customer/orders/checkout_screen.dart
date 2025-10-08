@@ -9,6 +9,8 @@ import '../../../core/utils/helpers.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/auth/auth_service.dart';
+import '../../../core/auth/jwt_helper.dart';
+import '../../../core/storage/secure_storage.dart';
 import '../../../core/services/order_service.dart';
 import '../../../core/services/location_service.dart';
 import '../../../core/services/address_service.dart';
@@ -26,7 +28,7 @@ class CheckoutScreen extends StatefulWidget {
 class _CheckoutScreenState extends State<CheckoutScreen> {
   final _formKey = GlobalKey<FormState>();
   final PageController _pageController = PageController();
-  
+
   int _currentStep = 0;
   bool _isPlacingOrder = false;
   bool _saveAddress = true; // Always save by default
@@ -42,7 +44,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   final _addressLine2Controller = TextEditingController();
   final _landmarkController = TextEditingController();
   final _pincodeController = TextEditingController();
-  
+
   String _selectedAddressType = 'HOME';
   String _selectedCity = 'Tirupattur';
   String _selectedState = 'Tamil Nadu';
@@ -75,7 +77,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     {'key': 'HOME_DELIVERY', 'label': 'Home Delivery', 'icon': '🚚'},
     {'key': 'SELF_PICKUP', 'label': 'Self Pickup', 'icon': '🏪'},
   ];
-  final List<String> _paymentMethods = ['CASH_ON_DELIVERY', 'ONLINE', 'UPI'];
+  final List<String> _paymentMethods = ['CASH_ON_DELIVERY'];
   final List<Map<String, String>> _deliverySlots = [
     {'key': 'ASAP', 'label': 'ASAP (30-45 mins)'},
     {'key': 'SLOT1', 'label': 'Today 6:00 PM - 8:00 PM'},
@@ -89,8 +91,37 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkAuthentication();
+      _loadUserData();
     });
     _loadSavedAddresses();
+  }
+
+  Future<void> _loadUserData() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (authProvider.isAuthenticated) {
+      // Get name from JWT token
+      try {
+        final token = await SecureStorage.getAuthToken();
+        if (token != null) {
+          final userName = JwtHelper.getUserName(token);
+          setState(() {
+            if (userName != null && userName.isNotEmpty) {
+              // Split name into first and last name
+              final nameParts = userName.trim().split(' ');
+              if (nameParts.length > 1) {
+                _nameController.text = nameParts.first;
+                _lastNameController.text = nameParts.sublist(1).join(' ');
+              } else {
+                _nameController.text = userName;
+                _lastNameController.text = userName; // Use same name for last name if no space
+              }
+            }
+          });
+        }
+      } catch (e) {
+        debugPrint('Error loading user data: $e');
+      }
+    }
   }
 
   void _checkAuthentication() {
@@ -316,7 +347,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.grey.shade50,
       appBar: const CustomAppBar(
         title: 'Checkout',
       ),
@@ -349,875 +380,847 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final steps = ['Address', 'Payment', 'Review'];
 
     return Container(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: List.generate(steps.length, (index) {
-          final isActive = index <= _currentStep;
-          final isCompleted = index < _currentStep;
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return Row(
+            children: List.generate(steps.length, (index) {
+              final isActive = index <= _currentStep;
+              final isCompleted = index < _currentStep;
 
-          return Expanded(
-            child: Row(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isActive ? VillageTheme.primaryGreen : Colors.grey.shade300,
-                  ),
-                  child: Center(
-                    child: isCompleted
-                        ? const Icon(Icons.check, color: Colors.white, size: 18)
-                        : Text(
-                            '${index + 1}',
-                            style: TextStyle(
-                              color: isActive ? Colors.white : Colors.black54,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Flexible(
-                  child: Text(
-                    steps[index],
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                      color: isActive ? VillageTheme.primaryGreen : Colors.black,
+              return Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isActive ? VillageTheme.primaryGreen : Colors.grey.shade300,
+                      ),
+                      child: Center(
+                        child: isCompleted
+                            ? const Icon(Icons.check, color: Colors.white, size: 16)
+                            : Text(
+                                '${index + 1}',
+                                style: TextStyle(
+                                  color: isActive ? Colors.white : Colors.black54,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
+                      ),
                     ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                if (index < steps.length - 1)
-                  Expanded(
-                    child: Container(
-                      height: 2,
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      color: isCompleted ? VillageTheme.primaryGreen : Colors.grey.shade300,
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        steps[index],
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                          color: isActive ? VillageTheme.primaryGreen : Colors.black54,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-              ],
-            ),
+                    if (index < steps.length - 1)
+                      Expanded(
+                        child: Container(
+                          height: 2,
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          color: isCompleted ? VillageTheme.primaryGreen : Colors.grey.shade300,
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            }),
           );
-        }),
+        },
       ),
     );
   }
 
   Widget _buildDeliveryAddressStep() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       child: Form(
         key: _formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Delivery Type',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
+            // Delivery Type Card
+            Card(
+              elevation: 2,
+              shadowColor: Colors.black.withOpacity(0.1),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Delivery Type',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: _deliveryTypes.map((type) {
+                        final isSelected = _selectedDeliveryType == type['key'];
+                        return Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 8.0),
+                            child: InkWell(
+                              onTap: () {
+                                setState(() {
+                                  _selectedDeliveryType = type['key']!;
+                                });
+                              },
+                              borderRadius: BorderRadius.circular(10),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                                decoration: BoxDecoration(
+                                  color: isSelected ? VillageTheme.primaryGreen : Colors.white,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: isSelected ? VillageTheme.primaryGreen : Colors.grey.shade300,
+                                    width: 2,
+                                  ),
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      type['icon']!,
+                                      style: const TextStyle(fontSize: 28),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      type['label']!,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: isSelected ? Colors.white : Colors.black87,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 12),
 
-            // Delivery Type Selection
-            Row(
-              children: _deliveryTypes.map((type) {
-                final isSelected = _selectedDeliveryType == type['key'];
-                return Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 8.0),
-                    child: InkWell(
-                      onTap: () {
-                        setState(() {
-                          _selectedDeliveryType = type['key']!;
-                        });
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: isSelected ? VillageTheme.primaryGreen : Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isSelected ? VillageTheme.primaryGreen : Colors.grey.shade300,
-                            width: 2,
-                          ),
-                        ),
-                        child: Column(
+            // Show address section only for home delivery
+            if (_selectedDeliveryType == 'HOME_DELIVERY') ...[
+              // Saved Addresses Carousel
+              if (_savedAddresses.isNotEmpty) ...[
+                Card(
+                  elevation: 2,
+                  shadowColor: Colors.black.withOpacity(0.1),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              type['icon']!,
-                              style: const TextStyle(fontSize: 32),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              type['label']!,
+                            const Text(
+                              'Select Address',
                               style: TextStyle(
                                 fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: isSelected ? Colors.white : Colors.black87,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
                               ),
-                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              '${_savedAddresses.length} saved',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey.shade600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 24),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          height: 110,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.only(bottom: 4),
+                            itemCount: _savedAddresses.length + 1,
+                            itemBuilder: (context, index) {
+                              // Add New Address Button
+                              if (index == _savedAddresses.length) {
+                                return GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedSavedAddress = null;
+                                      _nameController.clear();
+                                      _lastNameController.clear();
+                                      _phoneController.clear();
+                                      _addressLine1Controller.clear();
+                                      _addressLine2Controller.clear();
+                                      _landmarkController.clear();
+                                      _pincodeController.clear();
+                                      _selectedAddressType = 'HOME';
+                                      _selectedCity = 'Tirupattur';
+                                      _selectedState = 'Tamil Nadu';
+                                    });
+                                  },
+                                  child: Container(
+                                    width: 140,
+                                    height: 110,
+                                    margin: const EdgeInsets.only(right: 10),
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: VillageTheme.primaryGreen,
+                                        width: 1.5,
+                                        style: BorderStyle.solid,
+                                      ),
+                                    ),
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.add_circle_outline,
+                                          size: 32,
+                                          color: VillageTheme.primaryGreen,
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          'Add New\nAddress',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: VillageTheme.primaryGreen,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }
 
-            // Show address section only for home delivery
-            if (_selectedDeliveryType == 'HOME_DELIVERY') ...[
-              const Text(
-                'Delivery Address',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 16),
+                              final address = _savedAddresses[index];
+                              final isSelected = _selectedSavedAddress?.id == address.id;
 
-              // Saved Addresses Section - Now at the top with scrollbar
-              if (_savedAddresses.isNotEmpty) ...[
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: VillageTheme.primaryGreen.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: VillageTheme.primaryGreen.withOpacity(0.2),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Select Saved Address',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black,
-                          ),
-                        ),
-                        Text(
-                          '${_savedAddresses.length} saved',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      height: 120,
-                      child: Scrollbar(
-                        thumbVisibility: true,
-                        thickness: 4,
-                        radius: const Radius.circular(4),
-                        child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.only(bottom: 8),
-                          itemCount: _savedAddresses.length + 1, // +1 for Add New button
-                          itemBuilder: (context, index) {
-                            // Add New Address Button
-                            if (index == _savedAddresses.length) {
                               return GestureDetector(
                                 onTap: () {
                                   setState(() {
-                                    _selectedSavedAddress = null;
-                                    // Clear all fields for new address
-                                    _nameController.clear();
-                                    _lastNameController.clear();
-                                    _phoneController.clear();
-                                    _addressLine1Controller.clear();
-                                    _addressLine2Controller.clear();
-                                    _landmarkController.clear();
-                                    _pincodeController.clear();
-                                    _selectedAddressType = 'HOME';
-                                    _selectedCity = 'Tirupattur';
-                                    _selectedState = 'Tamil Nadu';
+                                    _selectedSavedAddress = address;
                                   });
+                                  _loadAddressToFields(address);
                                 },
                                 child: Container(
-                                  width: 150,
-                                  margin: EdgeInsets.only(right: 12),
-                                  padding: const EdgeInsets.all(12),
+                                  width: 200,
+                                  height: 110,
+                                  margin: const EdgeInsets.only(right: 10),
+                                  padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(12),
+                                    color: isSelected ? VillageTheme.primaryGreen.withOpacity(0.1) : Colors.white,
+                                    borderRadius: BorderRadius.circular(10),
                                     border: Border.all(
-                                      color: VillageTheme.primaryGreen,
-                                      width: 1,
-                                      style: BorderStyle.solid,
+                                      color: isSelected ? VillageTheme.primaryGreen : Colors.grey.shade300,
+                                      width: isSelected ? 2 : 1,
                                     ),
                                   ),
                                   child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(
-                                        Icons.add_circle_outline,
-                                        size: 32,
-                                        color: VillageTheme.primaryGreen,
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            _getAddressTypeIcon(address.addressType),
+                                            size: 14,
+                                            color: isSelected ? VillageTheme.primaryGreen : Colors.black87,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Expanded(
+                                            child: Text(
+                                              address.addressType,
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                                color: isSelected ? VillageTheme.primaryGreen : Colors.black87,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          if (isSelected)
+                                            Container(
+                                              padding: const EdgeInsets.all(3),
+                                              decoration: BoxDecoration(
+                                                color: VillageTheme.primaryGreen,
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: const Icon(
+                                                Icons.check,
+                                                color: Colors.white,
+                                                size: 10,
+                                              ),
+                                            ),
+                                        ],
                                       ),
-                                      const SizedBox(height: 8),
+                                      const SizedBox(height: 6),
                                       Text(
-                                        'Add New\nAddress',
-                                        textAlign: TextAlign.center,
+                                        address.fullName,
                                         style: TextStyle(
-                                          fontSize: 13,
+                                          fontSize: 12,
                                           fontWeight: FontWeight.w600,
-                                          color: VillageTheme.primaryGreen,
+                                          color: isSelected ? VillageTheme.primaryGreen : Colors.black87,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Expanded(
+                                        child: Text(
+                                          address.shortAddress,
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: isSelected ? VillageTheme.primaryGreen.withOpacity(0.8) : Colors.black54,
+                                            height: 1.2,
+                                          ),
+                                          maxLines: 3,
+                                          overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
                               );
-                            }
-
-                            final address = _savedAddresses[index];
-                            final isSelected = _selectedSavedAddress?.id == address.id;
-
-                            return GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _selectedSavedAddress = address;
-                                });
-                                _loadAddressToFields(address);
-                              },
-                              child: Container(
-                                width: 220,
-                                margin: EdgeInsets.only(right: 12),
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: isSelected ? VillageTheme.primaryGreen.withOpacity(0.1) : Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: isSelected ? VillageTheme.primaryGreen : Colors.grey.shade300,
-                                    width: isSelected ? 2 : 1,
-                                  ),
-                                  boxShadow: isSelected ? [
-                                    BoxShadow(
-                                      color: VillageTheme.primaryGreen.withOpacity(0.2),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ] : [],
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          _getAddressTypeIcon(address.addressType),
-                                          size: 16,
-                                          color: isSelected ? VillageTheme.primaryGreen : Colors.black,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          address.addressType,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: isSelected ? VillageTheme.primaryGreen : Colors.black,
-                                          ),
-                                        ),
-                                        if (isSelected) ...[
-                                          const Spacer(),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: VillageTheme.primaryGreen,
-                                              borderRadius: BorderRadius.circular(8),
-                                            ),
-                                            child: Icon(
-                                              Icons.check,
-                                              color: Colors.white,
-                                              size: 12,
-                                            ),
-                                          ),
-                                        ],
-                                        if (address.isDefault && !isSelected) ...[
-                                          const Spacer(),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: Colors.orange,
-                                              borderRadius: BorderRadius.circular(8),
-                                            ),
-                                            child: const Text(
-                                              'Default',
-                                              style: TextStyle(
-                                                fontSize: 10,
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      address.fullName,
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: isSelected ? VillageTheme.primaryGreen : Colors.black,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      address.shortAddress,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: isSelected ? VillageTheme.primaryGreen.withOpacity(0.8) : Colors.black,
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    ],
-
-            // Address Type
-            const Text('Address Type', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w500)),
-            const SizedBox(height: 8),
-            Row(
-              children: _addressTypes.map((type) {
-                return Expanded(
-                  child: RadioListTile<String>(
-                    title: Text(type),
-                    value: type,
-                    groupValue: _selectedAddressType,
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedAddressType = value!;
-                      });
-                    },
-                    contentPadding: EdgeInsets.zero,
-                    visualDensity: VisualDensity.compact,
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 16),
-            
-            // Name and Phone
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _nameController,
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'First Name *',
-                      labelStyle: TextStyle(color: Colors.black87),
-                      hintStyle: TextStyle(color: Colors.black54),
-                    ),
-                    validator: (value) => value?.isEmpty == true ? 'First name is required' : null,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextFormField(
-                    controller: _lastNameController,
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'Last Name *',
-                      labelStyle: TextStyle(color: Colors.black87),
-                      hintStyle: TextStyle(color: Colors.black54),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Last name is required';
-                      }
-                      if (value.trim().length < 2) {
-                        return 'Last name must be at least 2 characters';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Phone Number (Always Editable)
-            TextFormField(
-              controller: _phoneController,
-              style: const TextStyle(
-                color: Colors.black,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-              decoration: InputDecoration(
-                labelText: 'Phone Number *',
-                labelStyle: const TextStyle(color: Colors.black87),
-                hintText: '10-digit mobile number',
-                hintStyle: const TextStyle(color: Colors.black54),
-                prefixIcon: const Icon(Icons.phone, color: Colors.black54),
-                helperText: _selectedSavedAddress != null ? 'You can update the phone number' : null,
-                helperStyle: const TextStyle(color: Colors.green, fontSize: 12),
-              ),
-              keyboardType: TextInputType.phone,
-              maxLength: 10,
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Phone number is required';
-                }
-                if (value.trim().length != 10) {
-                  return 'Phone number must be 10 digits';
-                }
-                if (!RegExp(r'^[6-9]\d{9}$').hasMatch(value.trim())) {
-                  return 'Please enter valid mobile number';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 12),
-
-            // Address Lines
-            TextFormField(
-              controller: _addressLine1Controller,
-              style: const TextStyle(
-                color: Colors.black,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-              decoration: const InputDecoration(
-                labelText: 'Address Line 1 *',
-                labelStyle: TextStyle(color: Colors.black87),
-                hintText: 'House/Flat/Office No, Building Name',
-                hintStyle: TextStyle(color: Colors.black54),
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Address is required';
-                }
-                if (value.trim().length < 5) {
-                  return 'Please enter complete address';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 12),
-
-            TextFormField(
-              controller: _addressLine2Controller,
-              style: const TextStyle(
-                color: Colors.black,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-              decoration: const InputDecoration(
-                labelText: 'Address Line 2',
-                labelStyle: TextStyle(color: Colors.black87),
-                hintText: 'Area, Colony, Street Name',
-                hintStyle: TextStyle(color: Colors.black54),
-              ),
-            ),
-            const SizedBox(height: 12),
-            
-            TextFormField(
-              controller: _landmarkController,
-              style: const TextStyle(
-                color: Colors.black,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-              decoration: const InputDecoration(
-                labelText: 'Landmark',
-                labelStyle: TextStyle(color: Colors.black87),
-                hintText: 'Near famous place',
-                hintStyle: TextStyle(color: Colors.black54),
-              ),
-            ),
-            const SizedBox(height: 16),
-            
-            // City, State, Pincode
-            Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: _cities.contains(_selectedCity) ? _selectedCity : 'Tirupattur',
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'City *',
-                      labelStyle: TextStyle(color: Colors.black87),
-                    ),
-                    items: _cities.map((city) {
-                      return DropdownMenuItem(
-                        value: city,
-                        child: Text(
-                          city,
-                          style: const TextStyle(color: Colors.black),
+                            },
+                          ),
                         ),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() {
-                          _selectedCity = value;
-                        });
-                      }
-                    },
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please select a city';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: _states.contains(_selectedState) ? _selectedState : 'Tamil Nadu',
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'State *',
-                      labelStyle: TextStyle(color: Colors.black87),
-                    ),
-                    items: _states.map((state) {
-                      return DropdownMenuItem(
-                        value: state,
-                        child: Text(
-                          state,
-                          style: const TextStyle(color: Colors.black),
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedState = value!;
-                      });
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _pincodeController,
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'Pincode *',
-                      labelStyle: TextStyle(color: Colors.black87),
-                      hintStyle: TextStyle(color: Colors.black54),
-                    ),
-                    keyboardType: TextInputType.number,
-                    maxLength: 6,
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Pincode is required';
-                      }
-                      if (value.trim().length != 6) {
-                        return 'Pincode must be 6 digits';
-                      }
-                      if (!RegExp(r'^[0-9]{6}$').hasMatch(value.trim())) {
-                        return 'Please enter valid pincode';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _getCurrentLocation,
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.my_location, size: 18),
-                        SizedBox(width: 4),
-                        Text('Use Current'),
                       ],
                     ),
                   ),
                 ),
+                const SizedBox(height: 12),
               ],
-            ),
-            const SizedBox(height: 16),
-            
-            // Delivery Slot
-            const Text('Delivery Time', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w500)),
-            const SizedBox(height: 8),
-            Column(
-              children: _deliverySlots.map((slot) {
-                return RadioListTile<String>(
-                  title: Text(
-                    slot['label']!,
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  value: slot['key']!,
-                  groupValue: _selectedDeliverySlot,
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedDeliverySlot = value!;
-                    });
-                  },
-                  contentPadding: EdgeInsets.zero,
-                  activeColor: VillageTheme.primaryGreen,
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 16),
-            
-            // Delivery Instructions
-            TextFormField(
-              style: const TextStyle(
-                color: Colors.black,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-              decoration: const InputDecoration(
-                labelText: 'Delivery Instructions (Optional)',
-                labelStyle: TextStyle(color: Colors.black87),
-                hintText: 'Any specific instructions for delivery partner',
-                hintStyle: TextStyle(color: Colors.black54),
-              ),
-              maxLines: 2,
-              onChanged: (value) {
-                _deliveryInstructions = value;
-              },
-            ),
-            const SizedBox(height: 16),
 
-            // Always save address - show info instead of checkbox
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: VillageTheme.primaryGreen.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: VillageTheme.primaryGreen.withOpacity(0.3),
+              // Address Form Card
+              Card(
+                elevation: 2,
+                shadowColor: Colors.black.withOpacity(0.1),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Delivery Address',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Address Type Radio Buttons
+                      Row(
+                        children: _addressTypes.map((type) {
+                          return Expanded(
+                            child: Row(
+                              children: [
+                                Radio<String>(
+                                  value: type,
+                                  groupValue: _selectedAddressType,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectedAddressType = value!;
+                                    });
+                                  },
+                                  visualDensity: VisualDensity.compact,
+                                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    type,
+                                    style: const TextStyle(fontSize: 11),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Name Fields
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _nameController,
+                              style: const TextStyle(color: Colors.black, fontSize: 14),
+                              decoration: const InputDecoration(
+                                labelText: 'First Name *',
+                                labelStyle: TextStyle(fontSize: 12),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                                isDense: true,
+                              ),
+                              validator: (value) => value?.isEmpty == true ? 'Required' : null,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _lastNameController,
+                              style: const TextStyle(color: Colors.black, fontSize: 14),
+                              decoration: const InputDecoration(
+                                labelText: 'Last Name *',
+                                labelStyle: TextStyle(fontSize: 12),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                                isDense: true,
+                              ),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) return 'Required';
+                                if (value.trim().length < 2) return 'Min 2 chars';
+                                return null;
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Phone Number
+                      TextFormField(
+                        controller: _phoneController,
+                        style: const TextStyle(color: Colors.black, fontSize: 14),
+                        decoration: const InputDecoration(
+                          labelText: 'Phone Number *',
+                          labelStyle: TextStyle(fontSize: 12),
+                          hintText: '10-digit mobile',
+                          hintStyle: TextStyle(fontSize: 12),
+                          prefixIcon: Icon(Icons.phone, size: 18),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                          isDense: true,
+                          counterText: '',
+                        ),
+                        keyboardType: TextInputType.phone,
+                        maxLength: 10,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) return 'Required';
+                          if (value.trim().length != 10) return 'Must be 10 digits';
+                          if (!RegExp(r'^[6-9]\d{9}$').hasMatch(value.trim())) return 'Invalid number';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Address Lines
+                      TextFormField(
+                        controller: _addressLine1Controller,
+                        style: const TextStyle(color: Colors.black, fontSize: 14),
+                        decoration: const InputDecoration(
+                          labelText: 'Address Line 1 *',
+                          labelStyle: TextStyle(fontSize: 12),
+                          hintText: 'House/Flat/Office No',
+                          hintStyle: TextStyle(fontSize: 12),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                          isDense: true,
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) return 'Required';
+                          if (value.trim().length < 5) return 'Too short';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 10),
+
+                      TextFormField(
+                        controller: _addressLine2Controller,
+                        style: const TextStyle(color: Colors.black, fontSize: 14),
+                        decoration: const InputDecoration(
+                          labelText: 'Address Line 2',
+                          labelStyle: TextStyle(fontSize: 12),
+                          hintText: 'Area, Colony, Street',
+                          hintStyle: TextStyle(fontSize: 12),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                          isDense: true,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+
+                      TextFormField(
+                        controller: _landmarkController,
+                        style: const TextStyle(color: Colors.black, fontSize: 14),
+                        decoration: const InputDecoration(
+                          labelText: 'Landmark',
+                          labelStyle: TextStyle(fontSize: 12),
+                          hintText: 'Near famous place',
+                          hintStyle: TextStyle(fontSize: 12),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                          isDense: true,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // City, State, Pincode
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: _cities.contains(_selectedCity) ? _selectedCity : 'Tirupattur',
+                              style: const TextStyle(color: Colors.black, fontSize: 14),
+                              decoration: const InputDecoration(
+                                labelText: 'City *',
+                                labelStyle: TextStyle(fontSize: 12),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                                isDense: true,
+                              ),
+                              items: _cities.map((city) {
+                                return DropdownMenuItem(
+                                  value: city,
+                                  child: Text(city, style: const TextStyle(color: Colors.black, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setState(() {
+                                    _selectedCity = value;
+                                  });
+                                }
+                              },
+                              validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: _states.contains(_selectedState) ? _selectedState : 'Tamil Nadu',
+                              style: const TextStyle(color: Colors.black, fontSize: 14),
+                              decoration: const InputDecoration(
+                                labelText: 'State *',
+                                labelStyle: TextStyle(fontSize: 12),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                                isDense: true,
+                              ),
+                              items: _states.map((state) {
+                                return DropdownMenuItem(
+                                  value: state,
+                                  child: Text(state, style: const TextStyle(color: Colors.black, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                setState(() {
+                                  _selectedState = value!;
+                                });
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _pincodeController,
+                              style: const TextStyle(color: Colors.black, fontSize: 14),
+                              decoration: const InputDecoration(
+                                labelText: 'Pincode *',
+                                labelStyle: TextStyle(fontSize: 12),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                                isDense: true,
+                                counterText: '',
+                              ),
+                              keyboardType: TextInputType.number,
+                              maxLength: 6,
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) return 'Required';
+                                if (value.trim().length != 6) return '6 digits';
+                                if (!RegExp(r'^[0-9]{6}$').hasMatch(value.trim())) return 'Invalid';
+                                return null;
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: _getCurrentLocation,
+                              icon: const Icon(Icons.my_location, size: 16),
+                              label: const Text('Use GPS', style: TextStyle(fontSize: 12)),
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Delivery Slot
+                      const Text('Delivery Time', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 8),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: _deliverySlots.map((slot) {
+                          return RadioListTile<String>(
+                            title: Text(
+                              slot['label']!,
+                              style: const TextStyle(color: Colors.black87, fontSize: 12, fontWeight: FontWeight.w500),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            value: slot['key']!,
+                            groupValue: _selectedDeliverySlot,
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedDeliverySlot = value!;
+                              });
+                            },
+                            contentPadding: EdgeInsets.zero,
+                            visualDensity: VisualDensity.compact,
+                            activeColor: VillageTheme.primaryGreen,
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 10),
+
+                      // Delivery Instructions
+                      TextFormField(
+                        style: const TextStyle(color: Colors.black, fontSize: 14),
+                        decoration: const InputDecoration(
+                          labelText: 'Delivery Instructions (Optional)',
+                          labelStyle: TextStyle(fontSize: 12),
+                          hintText: 'Any specific instructions',
+                          hintStyle: TextStyle(fontSize: 12),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                          isDense: true,
+                        ),
+                        maxLines: 2,
+                        onChanged: (value) {
+                          _deliveryInstructions = value;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Save Address Info
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: VillageTheme.primaryGreen.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: VillageTheme.primaryGreen.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.check_circle,
+                              color: VillageTheme.primaryGreen,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'This address will be saved for future orders',
+                                style: TextStyle(
+                                  color: VillageTheme.primaryGreen,
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 11,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.check_circle,
-                    color: VillageTheme.primaryGreen,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'This address will be saved for future orders',
-                      style: TextStyle(
-                        color: VillageTheme.primaryGreen,
-                        fontWeight: FontWeight.w500,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
             ],
 
             // Self Pickup Information
             if (_selectedDeliveryType == 'SELF_PICKUP') ...[
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Colors.orange.withOpacity(0.3),
-                    width: 1,
+              Card(
+                elevation: 2,
+                shadowColor: Colors.black.withOpacity(0.1),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.store,
-                          color: Colors.orange.shade700,
-                          size: 28,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Pickup from Shop',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Collect your order directly from the shop',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey.shade600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
                         children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.schedule,
-                                size: 20,
-                                color: Colors.orange.shade700,
-                              ),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Ready in 15-20 minutes',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.info_outline,
-                                size: 20,
-                                color: Colors.orange.shade700,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Shop owner will notify you when order is ready for pickup',
+                          Icon(Icons.store, color: Colors.orange.shade700, size: 24),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  'Pickup from Shop',
                                   style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.grey.shade700,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
                                   ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              ),
-                            ],
+                                const SizedBox(height: 3),
+                                Text(
+                                  'Collect your order directly from the shop',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.schedule, size: 18, color: Colors.orange.shade700),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'Ready in 15-20 minutes',
+                                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(Icons.info_outline, size: 18, color: Colors.orange.shade700),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Shop owner will notify you when order is ready',
+                                    style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _nameController,
+                        style: const TextStyle(color: Colors.black87, fontSize: 14),
+                        decoration: InputDecoration(
+                          labelText: 'Your Name*',
+                          labelStyle: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                          isDense: true,
+                          filled: true,
+                          fillColor: Colors.white,
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) return 'Required';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _phoneController,
+                        style: const TextStyle(color: Colors.black87, fontSize: 14),
+                        keyboardType: TextInputType.phone,
+                        maxLength: 10,
+                        decoration: InputDecoration(
+                          labelText: 'Phone Number*',
+                          labelStyle: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                          isDense: true,
+                          filled: true,
+                          fillColor: Colors.white,
+                          counterText: '',
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) return 'Required';
+                          if (value.length != 10) return '10 digits required';
+                          return null;
+                        },
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              // Customer name and phone for self-pickup
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _nameController,
-                style: const TextStyle(color: Colors.black87),
-                decoration: InputDecoration(
-                  labelText: 'Your Name*',
-                  labelStyle: TextStyle(color: Colors.grey.shade700),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: VillageTheme.primaryGreen, width: 2),
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter your name';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _phoneController,
-                style: const TextStyle(color: Colors.black87),
-                keyboardType: TextInputType.phone,
-                maxLength: 10,
-                decoration: InputDecoration(
-                  labelText: 'Phone Number*',
-                  labelStyle: TextStyle(color: Colors.grey.shade700),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: VillageTheme.primaryGreen, width: 2),
-                  ),
-                  counterText: '',
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter your phone number';
-                  }
-                  if (value.length != 10) {
-                    return 'Phone number must be 10 digits';
-                  }
-                  return null;
-                },
               ),
             ],
           ],
@@ -1228,258 +1231,265 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Widget _buildPaymentMethodStep() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: VillageTheme.primaryGreen.withOpacity(0.2)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: VillageTheme.primaryGreen,
-                    borderRadius: BorderRadius.circular(12),
+          Card(
+            elevation: 2,
+            shadowColor: Colors.black.withOpacity(0.1),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: VillageTheme.primaryGreen,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.payment, color: Colors.white, size: 20),
                   ),
-                  child: const Icon(Icons.payment, color: Colors.white, size: 24),
-                ),
-                const SizedBox(width: 16),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Payment Method',
-                      style: VillageTheme.headingMedium.copyWith(
-                        color: VillageTheme.primaryGreen,
-                      ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Payment Method',
+                          style: VillageTheme.headingMedium.copyWith(
+                            color: VillageTheme.primaryGreen,
+                            fontSize: 15,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          'Choose your payment option',
+                          style: VillageTheme.bodySmall.copyWith(fontSize: 11),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
-                    Text(
-                      'Choose your preferred payment option',
-                      style: VillageTheme.bodySmall,
-                    ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
 
           Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               _buildModernPaymentOption(
                 'CASH_ON_DELIVERY',
                 'Cash on Delivery',
-                'Pay when your order arrives',
+                'Pay when order arrives',
                 Icons.local_shipping,
                 Colors.orange,
               ),
-              const SizedBox(height: 16),
-              _buildModernPaymentOption(
-                'ONLINE',
-                'Online Payment',
-                'Pay now with card/wallet',
-                Icons.credit_card,
-                Colors.blue,
-              ),
-              const SizedBox(height: 16),
-              _buildModernPaymentOption(
-                'UPI',
-                'UPI Payment',
-                'Pay with UPI apps',
-                Icons.account_balance_wallet,
-                VillageTheme.primaryGreen,
-              ),
+              // const SizedBox(height: 10),
+              // _buildModernPaymentOption(
+              //   'ONLINE',
+              //   'Online Payment',
+              //   'Pay now with card/wallet',
+              //   Icons.credit_card,
+              //   Colors.blue,
+              // ),
+              // const SizedBox(height: 10),
+              // _buildModernPaymentOption(
+              //   'UPI',
+              //   'UPI Payment',
+              //   'Pay with UPI apps',
+              //   Icons.account_balance_wallet,
+              //   VillageTheme.primaryGreen,
+              // ),
             ],
           ),
-          
+
           if (_selectedPaymentMethod == 'ONLINE') ...[
-            const SizedBox(height: 24),
-            const Text(
-              'Card Details',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
             const SizedBox(height: 12),
-            Form(
-              key: _cardFormKey,
-              child: Column(
-                children: [
-                  TextFormField(
-                    controller: _cardNumberController,
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'Card Number',
-                      labelStyle: TextStyle(color: Colors.black87),
-                      hintText: '1234 5678 9012 3456',
-                      hintStyle: TextStyle(color: Colors.black54),
-                      prefixIcon: Icon(Icons.credit_card, color: Colors.black54),
-                    ),
-                    keyboardType: TextInputType.number,
-                    maxLength: 19,
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Card number is required';
-                      }
-                      if (value.replaceAll(' ', '').length < 16) {
-                        return 'Please enter a valid card number';
-                      }
-                      return null;
-                    },
-                    onChanged: (value) => _formatCardNumber(value),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
+            Card(
+              elevation: 2,
+              shadowColor: Colors.black.withOpacity(0.1),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Form(
+                  key: _cardFormKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: _expiryController,
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          decoration: const InputDecoration(
-                            labelText: 'Expiry',
-                            labelStyle: TextStyle(color: Colors.black87),
-                            hintText: 'MM/YY',
-                            hintStyle: TextStyle(color: Colors.black54),
-                          ),
-                          keyboardType: TextInputType.number,
-                          maxLength: 5,
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Expiry date is required';
-                            }
-                            if (!RegExp(r'^(0[1-9]|1[0-2])\/\d{2}$').hasMatch(value)) {
-                              return 'Enter valid MM/YY format';
-                            }
-                            return null;
-                          },
-                          onChanged: (value) => _formatExpiry(value),
-                        ),
+                      const Text(
+                        'Card Details',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextFormField(
-                          controller: _cvvController,
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _cardNumberController,
+                        style: const TextStyle(color: Colors.black, fontSize: 14),
+                        decoration: const InputDecoration(
+                          labelText: 'Card Number',
+                          labelStyle: TextStyle(fontSize: 12),
+                          hintText: '1234 5678 9012 3456',
+                          hintStyle: TextStyle(fontSize: 12),
+                          prefixIcon: Icon(Icons.credit_card, size: 18),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                          isDense: true,
+                          counterText: '',
+                        ),
+                        keyboardType: TextInputType.number,
+                        maxLength: 19,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) return 'Required';
+                          if (value.replaceAll(' ', '').length < 16) return 'Invalid';
+                          return null;
+                        },
+                        onChanged: (value) => _formatCardNumber(value),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _expiryController,
+                              style: const TextStyle(color: Colors.black, fontSize: 14),
+                              decoration: const InputDecoration(
+                                labelText: 'Expiry',
+                                labelStyle: TextStyle(fontSize: 12),
+                                hintText: 'MM/YY',
+                                hintStyle: TextStyle(fontSize: 12),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                                isDense: true,
+                                counterText: '',
+                              ),
+                              keyboardType: TextInputType.number,
+                              maxLength: 5,
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) return 'Required';
+                                if (!RegExp(r'^(0[1-9]|1[0-2])\/\d{2}$').hasMatch(value)) return 'Invalid';
+                                return null;
+                              },
+                              onChanged: (value) => _formatExpiry(value),
+                            ),
                           ),
-                          decoration: const InputDecoration(
-                            labelText: 'CVV',
-                            labelStyle: TextStyle(color: Colors.black87),
-                            hintText: '123',
-                            hintStyle: TextStyle(color: Colors.black54),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _cvvController,
+                              style: const TextStyle(color: Colors.black, fontSize: 14),
+                              decoration: const InputDecoration(
+                                labelText: 'CVV',
+                                labelStyle: TextStyle(fontSize: 12),
+                                hintText: '123',
+                                hintStyle: TextStyle(fontSize: 12),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                                isDense: true,
+                                counterText: '',
+                              ),
+                              keyboardType: TextInputType.number,
+                              obscureText: true,
+                              maxLength: 3,
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) return 'Required';
+                                if (value.length < 3) return 'Invalid';
+                                return null;
+                              },
+                            ),
                           ),
-                          keyboardType: TextInputType.number,
-                          obscureText: true,
-                          maxLength: 3,
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'CVV is required';
-                            }
-                            if (value.length < 3) {
-                              return 'Enter valid CVV';
-                            }
-                            return null;
-                          },
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _cardHolderController,
+                        style: const TextStyle(color: Colors.black, fontSize: 14),
+                        decoration: const InputDecoration(
+                          labelText: 'Cardholder Name',
+                          labelStyle: TextStyle(fontSize: 12),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                          isDense: true,
+                        ),
+                        textCapitalization: TextCapitalization.words,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) return 'Required';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _validateAndSaveCardDetails,
+                          style: VillageTheme.primaryButtonStyle,
+                          child: const Text('Save Card Details', style: TextStyle(fontSize: 13)),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _cardHolderController,
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'Cardholder Name',
-                      labelStyle: TextStyle(color: Colors.black87),
-                    ),
-                    textCapitalization: TextCapitalization.words,
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Cardholder name is required';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: _validateAndSaveCardDetails,
-                    style: VillageTheme.primaryButtonStyle,
-                    child: const Text('Save Card Details'),
-                  ),
-                ],
+                ),
               ),
             ),
           ],
-          
+
           if (_selectedPaymentMethod == 'UPI') ...[
-            const SizedBox(height: 24),
-            const Text(
-              'UPI ID',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
             const SizedBox(height: 12),
-            Form(
-              key: _upiFormKey,
-              child: Column(
-                children: [
-                  TextFormField(
-                    controller: _upiIdController,
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'UPI ID',
-                      hintText: 'yourname@upi',
-                      prefixIcon: Icon(Icons.account_balance_wallet),
-                      labelStyle: TextStyle(color: Colors.black),
-                      hintStyle: TextStyle(color: Colors.black54),
-                    ),
-                    keyboardType: TextInputType.emailAddress,
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'UPI ID is required';
-                      }
-                      if (!value.contains('@')) {
-                        return 'Please enter a valid UPI ID (e.g., yourname@upi)';
-                      }
-                      if (!RegExp(r'^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+$').hasMatch(value)) {
-                        return 'Please enter a valid UPI ID format';
-                      }
-                      return null;
-                    },
+            Card(
+              elevation: 2,
+              shadowColor: Colors.black.withOpacity(0.1),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Form(
+                  key: _upiFormKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'UPI ID',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _upiIdController,
+                        style: const TextStyle(color: Colors.black, fontSize: 14),
+                        decoration: const InputDecoration(
+                          labelText: 'UPI ID',
+                          labelStyle: TextStyle(fontSize: 12),
+                          hintText: 'yourname@upi',
+                          hintStyle: TextStyle(fontSize: 12),
+                          prefixIcon: Icon(Icons.account_balance_wallet, size: 18),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                          isDense: true,
+                        ),
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) return 'Required';
+                          if (!value.contains('@')) return 'Invalid UPI ID';
+                          if (!RegExp(r'^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+$').hasMatch(value)) return 'Invalid format';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _validateAndSaveUPIDetails,
+                          style: VillageTheme.primaryButtonStyle,
+                          child: const Text('Save UPI Details', style: TextStyle(fontSize: 13)),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: _validateAndSaveUPIDetails,
-                    style: VillageTheme.primaryButtonStyle,
-                    child: const Text('Save UPI Details'),
-                  ),
-                ],
+                ),
               ),
             ),
           ],
@@ -1497,73 +1507,73 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           _selectedPaymentMethod = value;
         });
       },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: isSelected ? VillageTheme.primaryGreen.withOpacity(0.1) : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
+      child: Card(
+        elevation: 2,
+        shadowColor: isSelected ? VillageTheme.primaryGreen.withOpacity(0.3) : Colors.black.withOpacity(0.1),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
             color: isSelected ? VillageTheme.primaryGreen : Colors.grey.shade300,
             width: isSelected ? 2 : 1,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: isSelected ? VillageTheme.primaryGreen.withOpacity(0.2) : Colors.black.withOpacity(0.05),
-              blurRadius: isSelected ? 8 : 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
         ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+        color: isSelected ? VillageTheme.primaryGreen.withOpacity(0.05) : Colors.white,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: iconColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: iconColor, size: 20),
               ),
-              child: Icon(icon, color: iconColor, size: 24),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: VillageTheme.textLarge.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: isSelected ? VillageTheme.primaryGreen : VillageTheme.primaryText,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: isSelected ? VillageTheme.primaryGreen : VillageTheme.primaryText,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: VillageTheme.bodySmall.copyWith(
-                      color: isSelected ? VillageTheme.primaryGreen.withOpacity(0.8) : VillageTheme.secondaryText,
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: isSelected ? VillageTheme.primaryGreen.withOpacity(0.8) : VillageTheme.secondaryText,
+                        fontSize: 11,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ],
-              ),
-            ),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isSelected ? VillageTheme.primaryGreen : Colors.transparent,
-                border: Border.all(
-                  color: isSelected ? VillageTheme.primaryGreen : Colors.grey.shade400,
-                  width: 2,
+                  ],
                 ),
               ),
-              child: isSelected
-                  ? const Icon(Icons.check, color: Colors.white, size: 16)
-                  : null,
-            ),
-          ],
+              Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isSelected ? VillageTheme.primaryGreen : Colors.transparent,
+                  border: Border.all(
+                    color: isSelected ? VillageTheme.primaryGreen : Colors.grey.shade400,
+                    width: 2,
+                  ),
+                ),
+                child: isSelected ? const Icon(Icons.check, color: Colors.white, size: 14) : null,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1573,282 +1583,301 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     return Consumer<CartProvider>(
       builder: (context, cartProvider, child) {
         return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: VillageTheme.primaryGreen.withOpacity(0.2)),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: VillageTheme.primaryGreen,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.receipt_long, color: Colors.white, size: 24),
-                    ),
-                    const SizedBox(width: 16),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Order Summary',
-                          style: VillageTheme.headingMedium.copyWith(
-                            color: VillageTheme.primaryGreen,
-                          ),
-                        ),
-                        Text(
-                          'Review your order details',
-                          style: VillageTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              
-              // Order Items
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: VillageTheme.primaryGreen.withOpacity(0.2)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.shopping_bag, color: VillageTheme.primaryGreen, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Items',
-                          style: VillageTheme.textLarge.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: VillageTheme.primaryGreen,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    ...cartProvider.items.map((item) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              '${item.quantity}x ${item.product.name}',
-                              style: VillageTheme.bodyMedium.copyWith(
-                                color: Colors.black,
-                              ),
-                            ),
-                          ),
-                          Text(
-                            Helpers.formatCurrency(item.totalPrice),
-                            style: VillageTheme.bodyMedium.copyWith(
-                              color: Colors.black,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )).toList(),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              
-              // Delivery Address Summary
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: VillageTheme.primaryGreen.withOpacity(0.2)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.location_on, color: VillageTheme.primaryGreen, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Delivery Address',
-                          style: VillageTheme.textLarge.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: VillageTheme.primaryGreen,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${_nameController.text} ${_lastNameController.text} - ${_phoneController.text}',
-                      style: VillageTheme.bodyMedium.copyWith(
-                        color: Colors.black,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    Text(
-                      '${_addressLine1Controller.text}, ${_addressLine2Controller.text}',
-                      style: VillageTheme.bodyMedium.copyWith(
-                        color: Colors.black,
-                      ),
-                    ),
-                    Text(
-                      '${_landmarkController.text}, $_selectedCity, $_selectedState - ${_pincodeController.text}',
-                      style: VillageTheme.bodyMedium.copyWith(
-                        color: Colors.black,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              
-              // Payment Method Summary
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: VillageTheme.primaryGreen.withOpacity(0.2)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.payment, color: VillageTheme.primaryGreen, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Payment Method',
-                          style: VillageTheme.textLarge.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: VillageTheme.primaryGreen,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _selectedPaymentMethod.replaceAll('_', ' '),
-                      style: VillageTheme.bodyMedium.copyWith(
-                        color: Colors.black,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              
-              // Bill Summary
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: VillageTheme.primaryGreen.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: VillageTheme.primaryGreen.withOpacity(0.3)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: VillageTheme.primaryGreen.withOpacity(0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.receipt, color: VillageTheme.primaryGreen, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Bill Details',
-                          style: VillageTheme.textLarge.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: VillageTheme.primaryGreen,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    _buildBillRow('Subtotal', Helpers.formatCurrency(cartProvider.subtotal)),
-                    _buildBillRow('Delivery Fee', Helpers.formatCurrency(cartProvider.deliveryFee)),
-                    _buildBillRow('Tax', Helpers.formatCurrency(cartProvider.taxAmount)),
-                    if (cartProvider.promoDiscount > 0)
-                      _buildBillRow(
-                        'Discount',
-                        '-${Helpers.formatCurrency(cartProvider.promoDiscount)}',
-                        valueColor: Colors.green,
-                      ),
-                    const Divider(),
-                    _buildBillRow(
-                      'Total Amount',
-                      Helpers.formatCurrency(cartProvider.total),
-                      isTotal: true,
-                    ),
-                    // Minimum order warning
-                    if (cartProvider.subtotal < 100)
+              // Header Card
+              Card(
+                elevation: 2,
+                shadowColor: Colors.black.withOpacity(0.1),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
                       Container(
-                        margin: const EdgeInsets.only(top: 12),
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: Colors.orange.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.orange.shade300),
+                          color: VillageTheme.primaryGreen,
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Row(
+                        child: const Icon(Icons.receipt_long, color: Colors.white, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.info_outline, color: Colors.orange.shade700, size: 20),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Add ₹${(100 - cartProvider.subtotal).toStringAsFixed(2)} more to meet minimum order amount of ₹100',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.orange.shade700,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                            Text(
+                              'Order Summary',
+                              style: VillageTheme.headingMedium.copyWith(
+                                color: VillageTheme.primaryGreen,
+                                fontSize: 15,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              'Review your order details',
+                              style: VillageTheme.bodySmall.copyWith(fontSize: 11),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),
                       ),
-                  ],
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Order Items Card
+              Card(
+                elevation: 2,
+                shadowColor: Colors.black.withOpacity(0.1),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.shopping_bag, color: VillageTheme.primaryGreen, size: 16),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Items',
+                            style: VillageTheme.textLarge.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: VillageTheme.primaryGreen,
+                              fontSize: 13,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      ...cartProvider.items.map((item) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 3),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '${item.quantity}x ${item.product.name}',
+                                style: VillageTheme.bodyMedium.copyWith(
+                                  color: Colors.black,
+                                  fontSize: 12,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Text(
+                              Helpers.formatCurrency(item.totalPrice),
+                              style: VillageTheme.bodyMedium.copyWith(
+                                color: Colors.black,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      )).toList(),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // Delivery Address Card
+              Card(
+                elevation: 2,
+                shadowColor: Colors.black.withOpacity(0.1),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.location_on, color: VillageTheme.primaryGreen, size: 16),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Delivery Address',
+                            style: VillageTheme.textLarge.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: VillageTheme.primaryGreen,
+                              fontSize: 13,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${_nameController.text} ${_lastNameController.text} - ${_phoneController.text}',
+                        style: VillageTheme.bodyMedium.copyWith(
+                          color: Colors.black,
+                          fontWeight: FontWeight.w500,
+                          fontSize: 12,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        '${_addressLine1Controller.text}, ${_addressLine2Controller.text}',
+                        style: VillageTheme.bodyMedium.copyWith(
+                          color: Colors.black,
+                          fontSize: 11,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        '${_landmarkController.text}, $_selectedCity, $_selectedState - ${_pincodeController.text}',
+                        style: VillageTheme.bodyMedium.copyWith(
+                          color: Colors.black,
+                          fontSize: 11,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // Payment Method Card
+              Card(
+                elevation: 2,
+                shadowColor: Colors.black.withOpacity(0.1),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.payment, color: VillageTheme.primaryGreen, size: 16),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Payment Method',
+                            style: VillageTheme.textLarge.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: VillageTheme.primaryGreen,
+                              fontSize: 13,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _selectedPaymentMethod.replaceAll('_', ' '),
+                        style: VillageTheme.bodyMedium.copyWith(
+                          color: Colors.black,
+                          fontWeight: FontWeight.w500,
+                          fontSize: 12,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // Bill Details Card
+              Card(
+                elevation: 2,
+                shadowColor: VillageTheme.primaryGreen.withOpacity(0.2),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                color: VillageTheme.primaryGreen.withOpacity(0.05),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.receipt, color: VillageTheme.primaryGreen, size: 16),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Bill Details',
+                            style: VillageTheme.textLarge.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: VillageTheme.primaryGreen,
+                              fontSize: 13,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      _buildBillRow('Subtotal', Helpers.formatCurrency(cartProvider.subtotal)),
+                      _buildBillRow('Delivery Fee', Helpers.formatCurrency(cartProvider.deliveryFee)),
+                      _buildBillRow('Tax', Helpers.formatCurrency(cartProvider.taxAmount)),
+                      if (cartProvider.promoDiscount > 0)
+                        _buildBillRow(
+                          'Discount',
+                          '-${Helpers.formatCurrency(cartProvider.promoDiscount)}',
+                          valueColor: Colors.green,
+                        ),
+                      const Divider(height: 16),
+                      _buildBillRow(
+                        'Total Amount',
+                        Helpers.formatCurrency(cartProvider.total),
+                        isTotal: true,
+                      ),
+                      // Minimum order warning
+                      if (cartProvider.subtotal < 100)
+                        Container(
+                          margin: const EdgeInsets.only(top: 10),
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.orange.shade300),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.info_outline, color: Colors.orange.shade700, size: 16),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Add ₹${(100 - cartProvider.subtotal).toStringAsFixed(2)} more to meet minimum order of ₹100',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.orange.shade700,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -1860,25 +1889,29 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Widget _buildBillRow(String label, String value, {Color? valueColor, bool isTotal = false}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             label,
             style: TextStyle(
-              fontSize: isTotal ? 16 : 14,
+              fontSize: isTotal ? 13 : 12,
               fontWeight: isTotal ? FontWeight.bold : FontWeight.w500,
               color: Colors.black,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           Text(
             value,
             style: TextStyle(
-              fontSize: isTotal ? 16 : 14,
+              fontSize: isTotal ? 14 : 12,
               fontWeight: FontWeight.w600,
               color: valueColor ?? (isTotal ? VillageTheme.primaryGreen : Colors.black),
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -1887,13 +1920,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Widget _buildBottomBar() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
+            blurRadius: 8,
             offset: const Offset(0, -2),
           ),
         ],
@@ -1905,10 +1938,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               Expanded(
                 child: OutlinedButton(
                   onPressed: _previousStep,
-                  child: const Text('Back'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: const Text('Back', style: TextStyle(fontSize: 13)),
                 ),
               ),
-            if (_currentStep > 0) const SizedBox(width: 16),
+            if (_currentStep > 0) const SizedBox(width: 10),
             Expanded(
               flex: 2,
               child: _isPlacingOrder
@@ -1939,7 +1975,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         _showErrorMessage('First name is required');
         return;
       }
-      if (_lastNameController.text.trim().isEmpty) {
+      // Last name only required for home delivery
+      if (_selectedDeliveryType == 'HOME_DELIVERY' && _lastNameController.text.trim().isEmpty) {
         _showErrorMessage('Last name is required');
         return;
       }
@@ -1951,17 +1988,20 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         _showErrorMessage('Phone number must be 10 digits');
         return;
       }
-      if (_addressLine1Controller.text.trim().isEmpty) {
-        _showErrorMessage('Address Line 1 is required');
-        return;
-      }
-      if (_pincodeController.text.trim().isEmpty) {
-        _showErrorMessage('Pincode is required');
-        return;
-      }
-      if (_pincodeController.text.trim().length != 6) {
-        _showErrorMessage('Pincode must be 6 digits');
-        return;
+      // Address fields only required for home delivery
+      if (_selectedDeliveryType == 'HOME_DELIVERY') {
+        if (_addressLine1Controller.text.trim().isEmpty) {
+          _showErrorMessage('Address Line 1 is required');
+          return;
+        }
+        if (_pincodeController.text.trim().isEmpty) {
+          _showErrorMessage('Pincode is required');
+          return;
+        }
+        if (_pincodeController.text.trim().length != 6) {
+          _showErrorMessage('Pincode must be 6 digits');
+          return;
+        }
       }
     }
 
@@ -2028,15 +2068,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   color: Colors.white,
                   fontWeight: FontWeight.w600,
                 ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
         ),
         backgroundColor: Colors.red,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        margin: const EdgeInsets.all(12),
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 3),
       ),
@@ -2092,13 +2132,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   void _validateAndSaveUPIDetails() {
     if (_upiFormKey.currentState!.validate()) {
-      _showSuccessMessage('UPI details saved successfully! ✅');
+      _showSuccessMessage('UPI details saved successfully!');
     }
   }
 
   void _validateAndSaveCardDetails() {
     if (_cardFormKey.currentState!.validate()) {
-      _showSuccessMessage('Card details saved successfully! ✅');
+      _showSuccessMessage('Card details saved successfully!');
     }
   }
 
@@ -2116,15 +2156,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   color: Colors.white,
                   fontWeight: FontWeight.w600,
                 ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
         ),
         backgroundColor: VillageTheme.primaryGreen,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        margin: const EdgeInsets.all(12),
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 3),
       ),
@@ -2140,16 +2180,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
-
   Future<void> _placeOrder() async {
     if (!mounted) return;
-    
+
     // Get providers before async operations to avoid context issues
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    
+
     setState(() => _isPlacingOrder = true);
-    
+
     try {
       if (cartProvider.items.isEmpty) {
         throw Exception('Cart is empty');
@@ -2182,13 +2221,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         }
         return;
       }
-      
-      print('🔍 Debug - User authenticated with userId: ${authProvider.userId}'); 
+
+      print('🔍 Debug - User authenticated with userId: ${authProvider.userId}');
       print('🔍 Debug - Cart items count: ${cartProvider.items.length}');
       if (cartProvider.items.isNotEmpty) {
         print('🔍 Debug - First product shopId: ${cartProvider.items.first.product.shopId}');
       }
-      
+
       // Get user email from AuthService
       final userEmail = await AuthService.getCurrentUserEmail() ?? 'customer@example.com';
 
@@ -2215,6 +2254,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       // Only validate address fields for home delivery
       if (_selectedDeliveryType == 'HOME_DELIVERY') {
+        if (lastName.isEmpty) {
+          Helpers.showSnackBar(context, 'Please enter your last name', isError: true);
+          setState(() => _isPlacingOrder = false);
+          return;
+        }
+
         if (address1.isEmpty) {
           Helpers.showSnackBar(context, 'Please enter your street address', isError: true);
           setState(() => _isPlacingOrder = false);
@@ -2271,15 +2316,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           'email': userEmail
         }
       };
-      
+
       print('🚀 Placing order with request: ${orderRequest.toString()}');
       final result = await OrderService().placeOrder(orderRequest);
       print('📦 Order result: ${result.toString()}');
-      
+
       if (result['success']) {
         // Clear cart on success
         cartProvider.clearCart();
-        
+
         if (mounted) {
           // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
@@ -2287,12 +2332,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               content: Text(
                 result['message'] ?? 'Order placed successfully!',
                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
               backgroundColor: VillageTheme.primaryGreen,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              margin: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              margin: const EdgeInsets.all(12),
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -2305,12 +2350,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               content: Text(
                 result['message'] ?? 'Failed to place order',
                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
               backgroundColor: Colors.red,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              margin: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              margin: const EdgeInsets.all(12),
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -2366,10 +2411,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             SnackBar(
               content: const Text('Location updated successfully!'),
               backgroundColor: VillageTheme.primaryGreen,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              margin: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              margin: const EdgeInsets.all(12),
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -2380,10 +2423,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             SnackBar(
               content: const Text('Unable to get current location. Please enable location services.'),
               backgroundColor: Colors.orange,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              margin: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              margin: const EdgeInsets.all(12),
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -2398,15 +2439,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           SnackBar(
             content: Text('Error getting location: ${e.toString()}'),
             backgroundColor: Colors.red,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            margin: const EdgeInsets.all(12),
             behavior: SnackBarBehavior.floating,
           ),
         );
       }
     }
   }
-
 }

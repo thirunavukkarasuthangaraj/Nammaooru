@@ -1,7 +1,8 @@
 class EnvConfig {
   // Base API Configuration
   // DEVELOPMENT: Local development
-  static const String baseUrl = 'http://192.168.1.4:8080';
+  static const String baseUrl = 'http://192.168.1.11:8080';
+  static const String apiUrl = 'http://192.168.1.11:8080'; // Alias for compatibility
   // static const String baseUrl = 'http://10.0.2.2:8080'; // Android emulator
 
   // PRODUCTION: Use your deployed server
@@ -13,8 +14,8 @@ class EnvConfig {
   static const String fullApiUrl = '$baseUrl/api';
 
   // Google Serviceswhen
-  static const String googleMapsApiKey = 'YOUR_GOOGLE_MAPS_API_KEY';
-  static const String googlePlacesApiKey = 'YOUR_GOOGLE_PLACES_API_KEY';
+  static const String googleMapsApiKey = 'AIzaSyAr_uGbaOnhebjRyz7ohU6N-hWZJVV_R3U';
+  static const String googlePlacesApiKey = 'AIzaSyAr_uGbaOnhebjRyz7ohU6N-hWZJVV_R3U';
 
   // Payment Gateway
   static const String razorpayKey = 'YOUR_RAZORPAY_KEY';

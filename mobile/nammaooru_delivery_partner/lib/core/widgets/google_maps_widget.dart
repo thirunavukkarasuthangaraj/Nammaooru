@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:flutter_polyline_points/flutter_polyline_points.dart';
+import 'dart:async';
 import '../services/location_service.dart';
-import '../models/order.dart';
+import '../models/simple_order_model.dart';
 
 class GoogleMapsWidget extends StatefulWidget {
-  final Order? activeOrder;
+  final OrderModel? activeOrder;
   final bool showCurrentLocation;
   final bool showRoute;
   final Function(LatLng)? onMapTap;
   final double height;
+  final bool enableRealTimeTracking;
 
   const GoogleMapsWidget({
     Key? key,
@@ -18,6 +21,7 @@ class GoogleMapsWidget extends StatefulWidget {
     this.showRoute = false,
     this.onMapTap,
     this.height = 300,
+    this.enableRealTimeTracking = true,
   }) : super(key: key);
 
   @override
@@ -31,16 +35,30 @@ class _GoogleMapsWidgetState extends State<GoogleMapsWidget> {
   Set<Polyline> _polylines = {};
   LatLng? _currentLocation;
   LatLng? _destinationLocation;
+  Timer? _locationUpdateTimer;
+  StreamSubscription<Position>? _positionStreamSubscription;
+  PolylinePoints polylinePoints = PolylinePoints();
 
   @override
   void initState() {
     super.initState();
     _initializeMap();
+    if (widget.enableRealTimeTracking) {
+      _startRealTimeLocationTracking();
+    }
   }
 
   Future<void> _initializeMap() async {
     await _getCurrentLocation();
     _setupMarkersAndRoute();
+  }
+
+  void _startRealTimeLocationTracking() {
+    // Update location every 5 seconds
+    _locationUpdateTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
+      await _getCurrentLocation();
+      await _updateDriverMarker();
+    });
   }
 
   Future<void> _getCurrentLocation() async {
@@ -120,16 +138,46 @@ class _GoogleMapsWidgetState extends State<GoogleMapsWidget> {
     }
   }
 
-  void _setupRoute() {
+  Future<void> _updateDriverMarker() async {
+    if (_currentLocation == null) return;
+
+    Set<Marker> updatedMarkers = Set.from(_markers);
+    updatedMarkers.removeWhere((marker) => marker.markerId.value == 'current_location');
+
+    updatedMarkers.add(
+      Marker(
+        markerId: const MarkerId('current_location'),
+        position: _currentLocation!,
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+        infoWindow: const InfoWindow(
+          title: 'Your Location',
+          snippet: 'Driver position',
+        ),
+      ),
+    );
+
+    setState(() {
+      _markers = updatedMarkers;
+    });
+
+    // Update route if showing route
+    if (widget.showRoute && _destinationLocation != null) {
+      await _setupRoute();
+    }
+  }
+
+  Future<void> _setupRoute() async {
     if (_currentLocation == null || _destinationLocation == null) return;
 
-    // Create a simple polyline (in production, use Google Directions API)
+    // Create a simple polyline connecting current location to destination
+    // For production with Google Directions API, you would fetch waypoints here
     final polyline = Polyline(
       polylineId: const PolylineId('route'),
       points: [_currentLocation!, _destinationLocation!],
-      color: Colors.blue,
-      width: 5,
-      patterns: [PatternItem.dash(10), PatternItem.gap(5)],
+      color: const Color(0xFF2196F3), // Blue color for route
+      width: 6,
+      patterns: [PatternItem.dot, PatternItem.gap(10)],
+      geodesic: true,
     );
 
     setState(() {
@@ -238,12 +286,14 @@ class _GoogleMapsWidgetState extends State<GoogleMapsWidget> {
 
   @override
   void dispose() {
+    _locationUpdateTimer?.cancel();
+    _positionStreamSubscription?.cancel();
     _mapController?.dispose();
     super.dispose();
   }
 }
 
-// Extension for easier navigation
+// Updated extension to work with OrderModel
 extension GoogleMapsWidgetExtensions on GoogleMapsWidget {
   /// Navigate to destination using Google Maps
   static Future<void> navigateToDestination({

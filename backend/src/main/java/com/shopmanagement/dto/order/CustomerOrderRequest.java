@@ -8,6 +8,7 @@ import java.util.List;
 public class CustomerOrderRequest {
     private Long customerId;
     private Long shopId;
+    private String deliveryType; // SELF_PICKUP or HOME_DELIVERY
     private List<OrderItemRequest> items;
     private DeliveryAddressRequest deliveryAddress;
     private String paymentMethod;

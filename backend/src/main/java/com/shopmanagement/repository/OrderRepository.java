@@ -128,6 +128,12 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
            "LOWER(o.shop.name) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
     Page<Order> searchOrdersWithOrderItems(@Param("searchTerm") String searchTerm, Pageable pageable);
 
+    // Find orders by status and delivery type
+    List<Order> findByStatusAndDeliveryType(
+        Order.OrderStatus status,
+        Order.DeliveryType deliveryType
+    );
+
     // Check if shop has orders with specific statuses
     boolean existsByShopIdAndStatusIn(Long shopId, List<Order.OrderStatus> statuses);
 

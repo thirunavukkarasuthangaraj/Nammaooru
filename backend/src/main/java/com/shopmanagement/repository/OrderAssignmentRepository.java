@@ -22,9 +22,15 @@ public interface OrderAssignmentRepository extends JpaRepository<OrderAssignment
     Page<OrderAssignment> findByDeliveryPartner(User deliveryPartner, Pageable pageable);
     Long countByDeliveryPartner(User deliveryPartner);
 
+    // Count assignments by delivery partner created after a specific time (for fair distribution)
+    Long countByDeliveryPartnerAndCreatedAtAfter(User deliveryPartner, LocalDateTime createdAt);
+
     // Find assignments by delivery partner and status
     List<OrderAssignment> findByDeliveryPartnerAndStatus(User deliveryPartner, AssignmentStatus status);
     Page<OrderAssignment> findByDeliveryPartnerAndStatus(User deliveryPartner, AssignmentStatus status, Pageable pageable);
+
+    // Find assignments by delivery partner and multiple statuses
+    List<OrderAssignment> findByDeliveryPartnerAndStatusIn(User deliveryPartner, List<AssignmentStatus> statuses);
 
     // Find assignments by order
     @Query("SELECT oa FROM OrderAssignment oa JOIN FETCH oa.order o JOIN FETCH o.customer JOIN FETCH o.shop JOIN FETCH oa.deliveryPartner WHERE oa.order.id = :orderId")

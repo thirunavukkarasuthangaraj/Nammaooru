@@ -37,9 +37,9 @@ class _NavigationScreenState extends State<NavigationScreen> {
     await locationProvider.initializeLocation();
 
     // Start location tracking for this order
-    if (deliveryProvider.currentUser?.id != null) {
+    if (deliveryProvider.currentPartner?.partnerId != null) {
       await locationProvider.startLocationTracking(
-        partnerId: deliveryProvider.currentUser!.id.toString(),
+        partnerId: deliveryProvider.currentPartner!.partnerId,
         assignmentId: widget.order.assignmentId?.toString(),
         orderStatus: widget.order.status,
       );
@@ -86,9 +86,9 @@ class _NavigationScreenState extends State<NavigationScreen> {
     final locationProvider = Provider.of<LocationProvider>(context, listen: false);
     final deliveryProvider = Provider.of<DeliveryPartnerProvider>(context, listen: false);
 
-    if (deliveryProvider.currentUser?.id != null) {
+    if (deliveryProvider.currentPartner?.partnerId != null) {
       final eta = await locationProvider.getETAToDestination(
-        partnerId: deliveryProvider.currentUser!.id.toString(),
+        partnerId: deliveryProvider.currentPartner!.partnerId,
         destLat: destLat,
         destLng: destLng,
       );
@@ -160,7 +160,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Order #${widget.order.id}',
+                  'Order #${widget.order.orderNumber}',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,

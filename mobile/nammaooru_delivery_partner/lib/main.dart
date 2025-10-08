@@ -2,35 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'firebase_options.dart';
 import 'core/providers/delivery_partner_provider.dart';
 import 'core/constants/app_theme.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/dashboard/screens/dashboard_screen.dart';
-import 'services/firebase_notification_service.dart';
+
+// Conditional imports for Firebase (mobile only)
+import 'firebase_mobile_init.dart' if (dart.library.html) 'firebase_web_stub.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize Firebase only on mobile platforms
   if (!kIsWeb) {
-    try {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-
-      // Set up background message handler
-      FirebaseMessaging.onBackgroundMessage(FirebaseNotificationService.handleBackgroundMessage);
-
-      // Initialize Firebase notification service
-      await FirebaseNotificationService.initialize();
-
-      debugPrint('✅ Firebase and notifications initialized successfully');
-    } catch (e) {
-      debugPrint('❌ Firebase initialization failed: $e');
-    }
+    await initializeFirebase();
   } else {
     debugPrint('Running on web - Firebase initialization skipped');
   }
@@ -57,7 +42,7 @@ class DeliveryPartnerApp extends StatelessWidget {
         title: 'NammaOoru Delivery Partner',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
-        home: const LoginScreen(),
+        home: const AppInitializer(),
       ),
     );
   }

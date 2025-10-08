@@ -65,7 +65,7 @@ public class OrderAssignmentService {
             throw new RuntimeException("Order is already assigned to a delivery partner");
         }
 
-        // Get the first available partner
+        // Get all ONLINE and ACTIVE partners (regardless of availability - they can handle multiple orders)
         List<User> availablePartners = userRepository.findByRoleAndIsActiveAndIsAvailableAndIsOnline(
             User.UserRole.DELIVERY_PARTNER, true, true, true);
 
@@ -73,8 +73,12 @@ public class OrderAssignmentService {
             throw new RuntimeException("No available delivery partners found");
         }
 
-        User selectedPartner = availablePartners.get(0);
-        log.info("Selected delivery partner: {} (ID: {})", selectedPartner.getEmail(), selectedPartner.getId());
+        log.info("Found {} online delivery partners (allowing multiple orders per partner)", availablePartners.size());
+
+        // Select partner using FAIR DISTRIBUTION (least busy driver gets the order)
+        User selectedPartner = selectBestAvailablePartner(availablePartners);
+        log.info("Selected delivery partner: {} (ID: {}) from {} available partners",
+            selectedPartner.getEmail(), selectedPartner.getId(), availablePartners.size());
         User assignedBy = userRepository.findById(assignedByUserId)
             .orElseThrow(() -> new RuntimeException("Assigned by user not found: " + assignedByUserId));
 
@@ -92,26 +96,33 @@ public class OrderAssignmentService {
         BigDecimal partnerCommission = calculatePartnerCommission(deliveryFee);
 
         // Create assignment
+        LocalDateTime now = LocalDateTime.now();
         OrderAssignment assignment = OrderAssignment.builder()
             .order(order)
             .deliveryPartner(selectedPartner)
             .assignedBy(assignedBy)
             .status(AssignmentStatus.ASSIGNED)
             .assignmentType(AssignmentType.AUTO)
+            .assignedAt(now)
             .deliveryFee(deliveryFee)
             .partnerCommission(partnerCommission)
             .assignmentNotes("Auto-assigned to nearest available partner")
+            .createdBy("system")
+            .updatedBy("system")
             .build();
+
+        // Explicitly set timestamps (Hibernate annotations not working reliably)
+        assignment.setCreatedAt(now);
+        assignment.setUpdatedAt(now);
 
         assignment = assignmentRepository.save(assignment);
 
-        // Update order status
-        order.setStatus(Order.OrderStatus.OUT_FOR_DELIVERY);
-        orderRepository.save(order);
+        // DON'T update order status yet - driver needs to accept first
+        // Order stays as READY_FOR_PICKUP until driver accepts
+        log.info("Order {} assigned to driver, waiting for driver acceptance", order.getOrderNumber());
 
-        // Update partner availability (make them busy)
-        selectedPartner.setIsAvailable(false);
-        selectedPartner.setRideStatus(User.RideStatus.ON_RIDE);
+        // DON'T make partner unavailable yet - they need to accept first
+        // Partner availability will be updated when they accept the order
         selectedPartner.setLastActivity(LocalDateTime.now());
         userRepository.save(selectedPartner);
 
@@ -284,8 +295,38 @@ public class OrderAssignmentService {
         assignment.accept();
         assignment = assignmentRepository.save(assignment);
 
-        log.info("Assignment {} accepted by partner {}", assignmentId, partnerId);
+        // Update order status to OUT_FOR_DELIVERY (driver accepted and will pick up)
+        Order order = assignment.getOrder();
+        // Keep order as READY_FOR_PICKUP until driver actually picks up
+        // order.setStatus(Order.OrderStatus.OUT_FOR_DELIVERY);
+        orderRepository.save(order);
+
+        // Generate pickup OTP for shop owner verification
+        if (order.getPickupOtp() == null || order.getPickupOtp().isEmpty()) {
+            String otp = generatePickupOTP();
+            order.setPickupOtp(otp);
+            order.setPickupOtpGeneratedAt(LocalDateTime.now());
+            orderRepository.save(order);
+            log.info("✅ Generated pickup OTP for order {}: {}", order.getId(), otp);
+        }
+
+        // Update partner status to ON_RIDE but keep them AVAILABLE for accepting more orders
+        User partner = assignment.getDeliveryPartner();
+        partner.setIsAvailable(true); // KEEP AVAILABLE - they can accept multiple orders
+        partner.setRideStatus(User.RideStatus.ON_RIDE);
+        partner.setLastActivity(LocalDateTime.now());
+        userRepository.save(partner);
+
+        log.info("✅ Assignment {} accepted by partner {}. Order status: ACCEPTED, Partner: AVAILABLE FOR MORE ORDERS",
+            assignmentId, partnerId);
         return assignment;
+    }
+
+    /**
+     * Generate a 4-digit OTP for pickup verification
+     */
+    private String generatePickupOTP() {
+        return String.format("%04d", (int) (Math.random() * 10000));
     }
 
     /**
@@ -378,10 +419,23 @@ public class OrderAssignmentService {
         order.setActualDeliveryTime(LocalDateTime.now());
         orderRepository.save(order);
 
-        // Make partner available again
+        // Check if partner has other active assignments
         User partner = assignment.getDeliveryPartner();
-        partner.setIsAvailable(true);
-        partner.setRideStatus(User.RideStatus.AVAILABLE);
+        List<OrderAssignment> activeAssignments = assignmentRepository.findByDeliveryPartnerAndStatusIn(
+            partner, ACTIVE_STATUSES);
+
+        // If no more active orders, mark partner as AVAILABLE with status AVAILABLE
+        // If still has active orders, keep them ON_RIDE but AVAILABLE to accept more
+        if (activeAssignments.isEmpty() || (activeAssignments.size() == 1 && activeAssignments.get(0).getId().equals(assignmentId))) {
+            partner.setIsAvailable(true);
+            partner.setRideStatus(User.RideStatus.AVAILABLE);
+            log.info("Partner {} has no more active orders. Status: AVAILABLE", partnerId);
+        } else {
+            partner.setIsAvailable(true); // Keep available for more orders
+            partner.setRideStatus(User.RideStatus.ON_RIDE);
+            log.info("Partner {} still has {} active orders. Status: ON_RIDE but AVAILABLE",
+                partnerId, activeAssignments.size() - 1);
+        }
         partner.setLastActivity(LocalDateTime.now());
         userRepository.save(partner);
 
@@ -597,5 +651,45 @@ public class OrderAssignmentService {
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
         return R * c; // Distance in km
+    }
+
+    /**
+     * Select best available partner using FAIR DISTRIBUTION
+     * Strategy: Pick the partner with LEAST active/completed orders today
+     * This ensures equal workload distribution among all drivers
+     */
+    private User selectBestAvailablePartner(List<User> availablePartners) {
+        log.info("Selecting best partner from {} available partners", availablePartners.size());
+
+        // If only one partner, return immediately
+        if (availablePartners.size() == 1) {
+            return availablePartners.get(0);
+        }
+
+        // Count today's orders for each partner
+        LocalDateTime todayStart = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);
+
+        User selectedPartner = null;
+        long minOrderCount = Long.MAX_VALUE;
+
+        for (User partner : availablePartners) {
+            // Count assignments for this partner today
+            long orderCount = assignmentRepository.countByDeliveryPartnerAndCreatedAtAfter(
+                partner, todayStart);
+
+            log.info("Partner {} ({}) has {} orders today",
+                partner.getEmail(), partner.getId(), orderCount);
+
+            // Select partner with fewest orders
+            if (orderCount < minOrderCount) {
+                minOrderCount = orderCount;
+                selectedPartner = partner;
+            }
+        }
+
+        log.info("✅ Selected partner: {} with {} orders today (FAIR DISTRIBUTION)",
+            selectedPartner.getEmail(), minOrderCount);
+
+        return selectedPartner;
     }
 }

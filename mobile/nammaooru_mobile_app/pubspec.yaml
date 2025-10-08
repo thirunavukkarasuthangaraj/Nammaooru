@@ -74,12 +74,13 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-flutter_native_splash:
-  color: "#4CAF50"
-  fullscreen: true
-  android_12:
-    color: "#4CAF50"
-    fullscreen: true
+# Disabled native splash - using custom splash screen only
+# flutter_native_splash:
+#   color: "#4CAF50"
+#   fullscreen: true
+#   android_12:
+#     color: "#4CAF50"
+#     fullscreen: true
 
 dependency_overrides:
   flutter_plugin_android_lifecycle: 2.0.17

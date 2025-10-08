@@ -927,14 +927,25 @@ public class CustomerService {
     }
     
     /**
-     * Get customer orders
+     * Get customer orders with optional status filter
      */
-    public Map<String, Object> getCustomerOrders(int page, int size) {
+    public Map<String, Object> getCustomerOrders(int page, int size, String status) {
         Long customerId = getCurrentCustomerId();
-        
+
+        log.info("Getting orders for customer ID: {} with status filter: {}", customerId, status);
+
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<Order> orders = orderRepository.findByCustomerId(customerId, pageable);
-        
+        Page<Order> orders;
+
+        if (status != null && !status.isEmpty()) {
+            Order.OrderStatus orderStatus = Order.OrderStatus.valueOf(status.toUpperCase());
+            orders = orderRepository.findByCustomerIdAndStatus(customerId, orderStatus, pageable);
+            log.info("Found {} orders with status {}", orders.getTotalElements(), status);
+        } else {
+            orders = orderRepository.findByCustomerId(customerId, pageable);
+            log.info("Found {} total orders", orders.getTotalElements());
+        }
+
         return Map.of(
             "success", true,
             "orders", orders.getContent(),
@@ -953,11 +964,38 @@ public class CustomerService {
     public Map<String, Object> placeOrder(CustomerOrderRequest request) {
         try {
             Long customerId = getCurrentCustomerId();
-            
+
+            // Validate delivery address is required for HOME_DELIVERY orders
+            String deliveryType = request.getDeliveryType() != null ? request.getDeliveryType() : "HOME_DELIVERY";
+            if ("HOME_DELIVERY".equals(deliveryType)) {
+                if (request.getDeliveryAddress() == null || request.getDeliveryAddress().trim().isEmpty()) {
+                    return Map.of(
+                        "success", false,
+                        "message", "Delivery address is required for home delivery orders",
+                        "errorCode", "E001"
+                    );
+                }
+                if (request.getDeliveryContactName() == null || request.getDeliveryContactName().trim().isEmpty()) {
+                    return Map.of(
+                        "success", false,
+                        "message", "Delivery contact name is required for home delivery orders",
+                        "errorCode", "E002"
+                    );
+                }
+                if (request.getDeliveryPhone() == null || request.getDeliveryPhone().trim().isEmpty()) {
+                    return Map.of(
+                        "success", false,
+                        "message", "Delivery phone is required for home delivery orders",
+                        "errorCode", "E003"
+                    );
+                }
+            }
+
             // Convert CustomerOrderRequest to OrderRequest
             OrderRequest orderRequest = OrderRequest.builder()
                     .customerId(customerId)
                     .shopId(request.getShopId())
+                    .deliveryType(deliveryType)
                     .orderItems(request.getItems().stream()
                             .map(item -> {
                                 OrderRequest.OrderItemRequest orderItem = new OrderRequest.OrderItemRequest();
@@ -978,15 +1016,15 @@ public class CustomerService {
                     .estimatedDeliveryTime(request.getEstimatedDeliveryTime())
                     .discountAmount(request.getDiscountAmount())
                     .build();
-            
+
             OrderResponse orderResponse = orderService.createOrder(orderRequest);
-            
+
             return Map.of(
                 "success", true,
                 "message", "Order placed successfully",
                 "order", orderResponse
             );
-            
+
         } catch (Exception e) {
             log.error("Error placing customer order", e);
             return Map.of(

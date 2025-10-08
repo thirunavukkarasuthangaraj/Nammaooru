@@ -1,6 +1,7 @@
 package com.shopmanagement.service;
 
 import com.shopmanagement.entity.Order;
+import com.shopmanagement.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ public class DeliveryConfirmationService {
     private final FileUploadService fileUploadService;
     private final NotificationService notificationService;
     private final EmailService emailService;
+    private final OrderRepository orderRepository;
 
     // In-memory OTP storage (in production, use Redis or database)
     private final Map<String, OTPData> otpStorage = new ConcurrentHashMap<>();
@@ -29,9 +31,10 @@ public class DeliveryConfirmationService {
     /**
      * Generate OTP for pickup confirmation
      */
+    @Transactional
     public String generatePickupOTP(Long orderId) {
         try {
-            String otp = String.format("%06d", random.nextInt(1000000));
+            String otp = String.format("%04d", random.nextInt(10000));
             String otpKey = "pickup_" + orderId;
 
             OTPData otpData = OTPData.builder()
@@ -44,6 +47,13 @@ public class DeliveryConfirmationService {
                 .build();
 
             otpStorage.put(otpKey, otpData);
+
+            // SAVE OTP TO DATABASE
+            Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
+            order.setPickupOtp(otp);
+            order.setPickupOtpGeneratedAt(LocalDateTime.now());
+            orderRepository.saveAndFlush(order);
 
             log.info("Generated pickup OTP for order {}: {}", orderId, otp);
 
@@ -62,7 +72,7 @@ public class DeliveryConfirmationService {
      */
     public String generateDeliveryOTP(Long orderId) {
         try {
-            String otp = String.format("%06d", random.nextInt(1000000));
+            String otp = String.format("%04d", random.nextInt(10000));
             String otpKey = "delivery_" + orderId;
 
             OTPData otpData = OTPData.builder()

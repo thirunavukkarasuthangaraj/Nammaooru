@@ -15,6 +15,8 @@ This documentation covers everything you need to know about the NammaOoru Shop M
 | [📧 Email Configuration](EMAIL_CONFIGURATION.md) | SMTP setup, OTP emails, Hostinger config | When email isn't working |
 | [🚀 Deployment Guide](DEPLOYMENT_GUIDE.md) | Server setup, Docker, why we faced issues | When deploying or rebuilding |
 | [📱 Mobile App Guide](MOBILE_APP_GUIDE.md) | Flutter app, API integration, build process | When working on mobile app |
+| [🏪 Shop Owner App Architecture](SHOP_OWNER_APP_ARCHITECTURE.md) | Complete shop owner Flutter app with flow diagrams, API calls, state management | Understanding shop owner mobile app |
+| [🚚 Delivery Partner App Architecture](DELIVERY_PARTNER_APP_ARCHITECTURE.md) | Complete delivery partner Flutter app with GPS tracking, maps, order flows | Understanding delivery partner mobile app |
 | [🔧 Troubleshooting Guide](TROUBLESHOOTING_GUIDE.md) | Common issues, solutions, emergency fixes | When things break |
 
 ## 🎯 Why This Documentation Exists

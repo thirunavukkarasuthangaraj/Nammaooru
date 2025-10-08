@@ -132,16 +132,37 @@ public class CustomerController {
         return ResponseEntity.ok(ApiResponse.success(response, "Shops fetched successfully"));
     }
 
+    @GetMapping("/orders")
+    @PreAuthorize("hasRole('CUSTOMER') or hasRole('USER')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getMyOrders(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String status) {
+
+        try {
+            log.info("Fetching customer orders - page: {}, size: {}, status: {}", page, size, status);
+
+            Map<String, Object> response = customerService.getCustomerOrders(page, size, status);
+
+            return ResponseEntity.ok(ApiResponse.success(response, "Orders fetched successfully"));
+
+        } catch (Exception e) {
+            log.error("Error fetching customer orders", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to fetch orders. Please try again.", "FETCH_ORDERS_ERROR"));
+        }
+    }
+
     @PostMapping("/orders")
     @PreAuthorize("hasRole('CUSTOMER') or hasRole('USER')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> placeOrder(
             @Valid @RequestBody CustomerOrderRequest request) {
-        
+
         try {
             log.info("Customer placing order for shop: {}", request.getShopId());
-            
+
             Map<String, Object> response = customerService.placeOrder(request);
-            
+
             if ((Boolean) response.get("success")) {
                 return ResponseEntity.status(HttpStatus.CREATED)
                         .body(ApiResponse.success(response, "Order placed successfully"));
@@ -149,7 +170,7 @@ public class CustomerController {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body(ApiResponse.error(response.get("message").toString(), "ORDER_CREATION_FAILED"));
             }
-            
+
         } catch (Exception e) {
             log.error("Error placing customer order", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

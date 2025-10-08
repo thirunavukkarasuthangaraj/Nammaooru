@@ -60,9 +60,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Color(0xFF8B5A96),
-              Color(0xFF6B4F72),
-              Color(0xFF5D4E75),
+              Color(0xFF1B5E20),  // Dark green
+              Color(0xFF2E7D32),  // Medium dark green
+              Color(0xFF388E3C),  // Lighter dark green
             ],
           ),
         ),
@@ -342,24 +342,19 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           width: 80,
           height: 80,
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF2196F3), Color(0xFF1976D2)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(40),
+            color: const Color(0xFF4CAF50),
+            borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF2196F3).withOpacity(0.3),
-                spreadRadius: 0,
-                blurRadius: 12,
+                color: const Color(0xFF4CAF50).withOpacity(0.3),
+                blurRadius: 8,
                 offset: const Offset(0, 4),
               ),
             ],
           ),
           child: Icon(
             icon,
-            size: 36,
+            size: 40,
             color: Colors.white,
           ),
         ),
@@ -418,9 +413,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           color: Color(0xFF999999),
           fontSize: 16,
         ),
-        prefixIcon: const Icon(Icons.email_outlined, 
-          color: Color(0xFF2196F3), 
-          size: 22,
+        prefixIcon: const Icon(Icons.email_outlined,
+          color: Colors.black54,
+          size: 20,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -432,7 +427,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF2196F3), width: 2.5),
+          borderSide: const BorderSide(color: Color(0xFF4CAF50), width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -488,7 +483,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           letterSpacing: 8,
         ),
         prefixIcon: const Icon(Icons.pin_outlined, 
-          color: Color(0xFF2196F3), 
+          color: Colors.black54, 
           size: 22,
         ),
         border: OutlineInputBorder(
@@ -501,7 +496,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF2196F3), width: 2.5),
+          borderSide: const BorderSide(color: Color(0xFF4CAF50), width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -551,7 +546,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           fontSize: 16,
         ),
         prefixIcon: const Icon(Icons.lock_outlined, 
-          color: Color(0xFF2196F3), 
+          color: Colors.black54, 
           size: 22,
         ),
         suffixIcon: IconButton(
@@ -576,7 +571,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF2196F3), width: 2.5),
+          borderSide: const BorderSide(color: Color(0xFF4CAF50), width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -626,7 +621,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           fontSize: 16,
         ),
         prefixIcon: const Icon(Icons.lock_outlined, 
-          color: Color(0xFF2196F3), 
+          color: Colors.black54, 
           size: 22,
         ),
         suffixIcon: IconButton(
@@ -651,7 +646,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF2196F3), width: 2.5),
+          borderSide: const BorderSide(color: Color(0xFF4CAF50), width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -675,42 +670,32 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     required IconData icon,
   }) {
     return Container(
+      width: double.infinity,
       decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
         gradient: const LinearGradient(
-          colors: [Color(0xFF2196F3), Color(0xFF1976D2)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          colors: [Color(0xFF4CAF50), Color(0xFF45A049)],
         ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF2196F3).withOpacity(0.3),
-            spreadRadius: 0,
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
-      child: ElevatedButton.icon(
+      child: ElevatedButton(
         onPressed: onPressed,
-        icon: Icon(icon, size: 20),
-        label: Text(
-          text,
-          style: const TextStyle(
-            fontSize: 18, 
-            fontWeight: FontWeight.bold,
-            letterSpacing: 0.5,
-          ),
-        ),
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
           foregroundColor: Colors.white,
           shadowColor: Colors.transparent,
-          padding: const EdgeInsets.symmetric(vertical: 18),
+          padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(12),
           ),
           elevation: 0,
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
         ),
       ),
     );

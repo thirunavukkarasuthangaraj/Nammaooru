@@ -427,30 +427,30 @@ class _DashboardScreenState extends State<DashboardScreen>
     final selectedTime = await _showTimeSelectionDialog();
     if (selectedTime != null) {
       final orderProvider = Provider.of<OrderProvider>(context, listen: false);
-      await orderProvider.acceptOrder(order.id, selectedTime);
-      
+      await orderProvider.acceptOrder(order.orderNumber, selectedTime);
+
       _showSuccessMessage('✅ Order ${order.orderNumber} accepted! Prep time: $selectedTime');
     }
   }
 
   Future<void> _rejectOrder(Order order) async {
     final orderProvider = Provider.of<OrderProvider>(context, listen: false);
-    await orderProvider.rejectOrder(order.id);
-    
+    await orderProvider.rejectOrder(order.orderNumber);
+
     _showMessage('❌ Order ${order.orderNumber} rejected!', AppColors.error);
   }
 
   Future<void> _markPickedUp(Order order) async {
     final orderProvider = Provider.of<OrderProvider>(context, listen: false);
-    await orderProvider.markOrderPickedUp(order.id);
-    
+    await orderProvider.markOrderPickedUp(order.orderNumber);
+
     _showSuccessMessage('📦 Order ${order.orderNumber} picked up! Navigate to delivery location.');
   }
 
   Future<void> _markDelivered(Order order) async {
     final orderProvider = Provider.of<OrderProvider>(context, listen: false);
-    await orderProvider.markOrderDelivered(order.id);
-    
+    await orderProvider.markOrderDelivered(order.orderNumber);
+
     _showSuccessMessage('✅ Order ${order.orderNumber} delivered successfully! Payment received.');
   }
 

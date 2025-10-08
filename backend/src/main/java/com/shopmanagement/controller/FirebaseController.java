@@ -1,8 +1,11 @@
 package com.shopmanagement.controller;
 
 import com.shopmanagement.dto.fcm.FcmTokenRequest;
+import com.shopmanagement.entity.User;
+import com.shopmanagement.repository.UserRepository;
 import com.shopmanagement.service.FirebaseService;
 import com.shopmanagement.service.JwtService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +17,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api")
 @CrossOrigin(origins = "*")
+@Slf4j
 public class FirebaseController {
 
     @Autowired
@@ -21,6 +25,9 @@ public class FirebaseController {
 
     @Autowired
     private JwtService jwtService;
+
+    @Autowired
+    private UserRepository userRepository;
 
     // Customer FCM token endpoint removed - handled by FcmTokenController
 
@@ -41,7 +48,12 @@ public class FirebaseController {
                 token = token.substring(7);
                 String username = jwtService.extractUsername(token);
 
-                Long userId = 1L; // Replace with actual user lookup
+                // Look up user by username
+                User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new RuntimeException("User not found: " + username));
+
+                Long userId = user.getId();
+                log.info("📝 Registering FCM token for shop owner: {} (ID: {})", username, userId);
 
                 firebaseService.storeFcmToken(
                     userId,
@@ -52,6 +64,8 @@ public class FirebaseController {
 
                 // Subscribe to shop owner topics
                 firebaseService.subscribeUserToTopics(userId, "SHOP_OWNER");
+
+                log.info("✅ FCM token registered successfully for shop owner: {} (ID: {})", username, userId);
 
                 response.put("statusCode", "0000");
                 response.put("message", "FCM token stored successfully");
@@ -90,7 +104,12 @@ public class FirebaseController {
                 token = token.substring(7);
                 String username = jwtService.extractUsername(token);
 
-                Long userId = 1L; // Replace with actual user lookup
+                // Look up user by username
+                User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new RuntimeException("User not found: " + username));
+
+                Long userId = user.getId();
+                log.info("📝 Registering FCM token for delivery partner: {} (ID: {})", username, userId);
 
                 firebaseService.storeFcmToken(
                     userId,
@@ -101,6 +120,8 @@ public class FirebaseController {
 
                 // Subscribe to delivery partner topics
                 firebaseService.subscribeUserToTopics(userId, "DELIVERY_PARTNER");
+
+                log.info("✅ FCM token registered successfully for delivery partner: {} (ID: {})", username, userId);
 
                 response.put("statusCode", "0000");
                 response.put("message", "FCM token stored successfully");

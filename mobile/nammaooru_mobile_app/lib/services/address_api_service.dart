@@ -63,6 +63,8 @@ class AddressApiService {
     String? floor,
     String? street,
     String? village,
+    String? contactPersonName,
+    String? contactMobileNumber,
   }) async {
     try {
       final requestData = {
@@ -79,6 +81,8 @@ class AddressApiService {
         'latitude': latitude,
         'longitude': longitude,
         'isDefault': isDefault,
+        'contactPersonName': contactPersonName,
+        'contactMobileNumber': contactMobileNumber,
       };
 
       print('Sending address request: $requestData');

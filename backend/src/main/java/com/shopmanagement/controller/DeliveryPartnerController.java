@@ -58,7 +58,6 @@ public class DeliveryPartnerController {
     private OrderRepository orderRepository;
 
     @PostMapping("/login")
-    @Transactional
     public ResponseEntity<Map<String, Object>> login(@RequestBody Map<String, String> request) {
         String email = request.get("email");
         String password = request.get("password");
@@ -193,7 +192,6 @@ public class DeliveryPartnerController {
     }
     
     @GetMapping("/orders/{partnerId}/available")
-    @Transactional(readOnly = true)
     public ResponseEntity<Map<String, Object>> getAvailableOrders(@PathVariable String partnerId) {
         Map<String, Object> response = new HashMap<>();
 
@@ -221,6 +219,7 @@ public class DeliveryPartnerController {
                     orderData.put("shopAddress", assignment.getOrder().getShop().getAddressLine1());
                     orderData.put("paymentMethod", assignment.getOrder().getPaymentMethod().name());
                     orderData.put("paymentStatus", assignment.getOrder().getPaymentStatus().name());
+                    orderData.put("pickupOtp", assignment.getOrder().getPickupOtp());
                     orders.add(orderData);
                 }
             }
@@ -243,7 +242,6 @@ public class DeliveryPartnerController {
     }
 
     @GetMapping("/orders/{partnerId}/active")
-    @Transactional(readOnly = true)
     public ResponseEntity<Map<String, Object>> getActiveOrders(@PathVariable String partnerId) {
         Map<String, Object> response = new HashMap<>();
 
@@ -275,6 +273,7 @@ public class DeliveryPartnerController {
                     orderData.put("shopAddress", assignment.getOrder().getShop().getAddressLine1());
                     orderData.put("paymentMethod", assignment.getOrder().getPaymentMethod().name());
                     orderData.put("paymentStatus", assignment.getOrder().getPaymentStatus().name());
+                    orderData.put("pickupOtp", assignment.getOrder().getPickupOtp());
                     orders.add(orderData);
                 }
             }
@@ -729,7 +728,6 @@ public class DeliveryPartnerController {
 
     // Order Accept/Reject endpoints for mobile app
     @PostMapping("/orders/{orderId}/accept")
-    @Transactional
     public ResponseEntity<Map<String, Object>> acceptOrder(@PathVariable String orderId, @RequestBody Map<String, Object> request) {
         Map<String, Object> response = new HashMap<>();
 
@@ -751,6 +749,7 @@ public class DeliveryPartnerController {
             response.put("message", "Order accepted successfully");
             response.put("assignmentId", acceptedAssignment.getId());
             response.put("orderNumber", acceptedAssignment.getOrder().getOrderNumber());
+            response.put("pickupOtp", acceptedAssignment.getOrder().getPickupOtp());
 
             return ResponseEntity.ok(response);
 
@@ -762,7 +761,6 @@ public class DeliveryPartnerController {
     }
 
     @PostMapping("/orders/{orderId}/reject")
-    @Transactional
     public ResponseEntity<Map<String, Object>> rejectOrder(@PathVariable String orderId, @RequestBody Map<String, Object> request) {
         Map<String, Object> response = new HashMap<>();
 
@@ -794,7 +792,6 @@ public class DeliveryPartnerController {
     }
 
     @PostMapping("/orders/{orderId}/pickup")
-    @Transactional
     public ResponseEntity<Map<String, Object>> markOrderPickedUp(@PathVariable String orderId, @RequestBody Map<String, Object> request) {
         Map<String, Object> response = new HashMap<>();
 
@@ -825,7 +822,6 @@ public class DeliveryPartnerController {
     }
 
     @PostMapping("/orders/{orderId}/deliver")
-    @Transactional
     public ResponseEntity<Map<String, Object>> markOrderDelivered(@PathVariable String orderId, @RequestBody Map<String, Object> request) {
         Map<String, Object> response = new HashMap<>();
 
@@ -858,7 +854,6 @@ public class DeliveryPartnerController {
     }
 
     @GetMapping("/orders/{partnerId}/history")
-    @Transactional(readOnly = true)
     public ResponseEntity<Map<String, Object>> getOrderHistory(@PathVariable String partnerId) {
         Map<String, Object> response = new HashMap<>();
 
@@ -906,7 +901,6 @@ public class DeliveryPartnerController {
     }
 
     @GetMapping("/earnings/{partnerId}")
-    @Transactional(readOnly = true)
     public ResponseEntity<Map<String, Object>> getEarnings(@PathVariable String partnerId, @RequestParam(required = false) String period) {
         Map<String, Object> response = new HashMap<>();
 
@@ -1067,6 +1061,126 @@ public class DeliveryPartnerController {
             log.error("Error getting location history for assignment {}: {}", assignmentId, e.getMessage(), e);
             response.put("success", false);
             response.put("message", "Error getting location history: " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    // Admin endpoint to manually set partner availability for testing
+    @PostMapping("/admin/partners/{partnerId}/set-available")
+    public ResponseEntity<Map<String, Object>> setPartnerAvailable(
+        @PathVariable Long partnerId,
+        @RequestParam boolean available,
+        @RequestParam boolean online
+    ) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            Optional<User> userOpt = userService.findById(partnerId);
+
+            if (userOpt.isEmpty()) {
+                response.put("success", false);
+                response.put("message", "Partner not found");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            User partner = userOpt.get();
+
+            if (partner.getRole() != User.UserRole.DELIVERY_PARTNER) {
+                response.put("success", false);
+                response.put("message", "User is not a delivery partner");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            partner.setIsAvailable(available);
+            partner.setIsOnline(online);
+            partner.setIsActive(true);
+
+            if (online && available) {
+                partner.setRideStatus(User.RideStatus.AVAILABLE);
+                partner.setLastActivity(LocalDateTime.now());
+            } else if (online && !available) {
+                partner.setRideStatus(User.RideStatus.BUSY);
+            } else {
+                partner.setRideStatus(User.RideStatus.OFFLINE);
+            }
+
+            User updated = userService.save(partner);
+
+            log.info("Partner {} status updated - Online: {}, Available: {}, RideStatus: {}",
+                partner.getEmail(), online, available, updated.getRideStatus());
+
+            Map<String, Object> partnerData = new HashMap<>();
+            partnerData.put("partnerId", updated.getId());
+            partnerData.put("email", updated.getEmail());
+            partnerData.put("name", updated.getFullName());
+            partnerData.put("isActive", updated.getIsActive());
+            partnerData.put("isOnline", updated.getIsOnline());
+            partnerData.put("isAvailable", updated.getIsAvailable());
+            partnerData.put("rideStatus", updated.getRideStatus().name());
+
+            response.put("success", true);
+            response.put("message", "Partner status updated successfully");
+            response.put("partner", partnerData);
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Error updating partner status: {}", e.getMessage(), e);
+            response.put("success", false);
+            response.put("message", "Error updating partner status: " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    // Admin endpoint to get all delivery partners with their status
+    @GetMapping("/admin/partners")
+    public ResponseEntity<Map<String, Object>> getAllDeliveryPartners() {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            List<User> allPartners = userService.findByRole(UserRole.DELIVERY_PARTNER);
+
+            List<Map<String, Object>> partnersList = allPartners.stream()
+                .map(partner -> {
+                    Map<String, Object> partnerInfo = new HashMap<>();
+                    partnerInfo.put("partnerId", partner.getId());
+                    partnerInfo.put("name", partner.getFullName());
+                    partnerInfo.put("email", partner.getEmail());
+                    partnerInfo.put("phone", partner.getMobileNumber());
+                    partnerInfo.put("isActive", partner.getIsActive());
+                    partnerInfo.put("isOnline", partner.getIsOnline());
+                    partnerInfo.put("isAvailable", partner.getIsAvailable());
+                    partnerInfo.put("rideStatus", partner.getRideStatus() != null ? partner.getRideStatus().name() : "OFFLINE");
+                    partnerInfo.put("lastActivity", partner.getLastActivity());
+                    partnerInfo.put("lastLogin", partner.getLastLogin());
+                    // FCM token not stored in User entity
+                    return partnerInfo;
+                })
+                .collect(Collectors.toList());
+
+            // Statistics
+            long onlineCount = partnersList.stream().filter(p -> Boolean.TRUE.equals(p.get("isOnline"))).count();
+            long availableCount = partnersList.stream().filter(p -> Boolean.TRUE.equals(p.get("isAvailable"))).count();
+            long activeCount = partnersList.stream().filter(p -> Boolean.TRUE.equals(p.get("isActive"))).count();
+
+            Map<String, Object> statistics = new HashMap<>();
+            statistics.put("total", partnersList.size());
+            statistics.put("active", activeCount);
+            statistics.put("online", onlineCount);
+            statistics.put("available", availableCount);
+            statistics.put("offline", partnersList.size() - onlineCount);
+
+            response.put("success", true);
+            response.put("partners", partnersList);
+            response.put("statistics", statistics);
+            response.put("message", partnersList.isEmpty() ? "No delivery partners found" : "Partners retrieved successfully");
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Error fetching delivery partners: {}", e.getMessage(), e);
+            response.put("success", false);
+            response.put("message", "Error fetching delivery partners: " + e.getMessage());
             return ResponseEntity.badRequest().body(response);
         }
     }

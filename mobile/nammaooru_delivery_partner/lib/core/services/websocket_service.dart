@@ -4,9 +4,10 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/status.dart' as status;
 import 'package:flutter/foundation.dart';
 import '../models/delivery_partner.dart';
+import '../config/app_config.dart';
 
 class WebSocketService {
-  static const String _baseUrl = 'ws://localhost:8080'; // Change for production
+  static String get _baseUrl => AppConfig.wsBaseUrl;
   static const int _reconnectInterval = 5; // seconds
   static const int _maxReconnectAttempts = 10;
 

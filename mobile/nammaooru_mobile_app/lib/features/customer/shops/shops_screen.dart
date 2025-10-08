@@ -338,22 +338,46 @@ class _ShopsScreenState extends State<ShopsScreen> {
       );
     }
 
-    return GridView.builder(
-      controller: _scrollController,
-      padding: const EdgeInsets.all(VillageTheme.spacingM),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 1,
-        childAspectRatio: 1.2,
-        mainAxisSpacing: VillageTheme.spacingM,
-      ),
-      itemCount: _filteredShops.length,
-      itemBuilder: (context, index) {
-        return _buildVillageShopCard(_filteredShops[index]);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Responsive column count based on screen width
+        int crossAxisCount = 2; // Default for mobile
+        double childAspectRatio = 0.75; // Taller cards
+
+        if (constraints.maxWidth > 1200) {
+          crossAxisCount = 4; // Desktop
+          childAspectRatio = 0.8;
+        } else if (constraints.maxWidth > 800) {
+          crossAxisCount = 3; // Tablet
+          childAspectRatio = 0.78;
+        } else if (constraints.maxWidth > 600) {
+          crossAxisCount = 2; // Large phone
+          childAspectRatio = 0.75;
+        }
+
+        return RefreshIndicator(
+          onRefresh: () async => _loadShops(),
+          color: VillageTheme.primaryGreen,
+          child: GridView.builder(
+            controller: _scrollController,
+            padding: const EdgeInsets.all(VillageTheme.spacingM),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              childAspectRatio: childAspectRatio,
+              mainAxisSpacing: VillageTheme.spacingM,
+              crossAxisSpacing: VillageTheme.spacingM,
+            ),
+            itemCount: _filteredShops.length,
+            itemBuilder: (context, index) {
+              return _buildModernShopCard(_filteredShops[index]);
+            },
+          ),
+        );
       },
     );
   }
 
-  Widget _buildVillageShopCard(Map<String, dynamic> shop) {
+  Widget _buildModernShopCard(Map<String, dynamic> shop) {
     final shopName = shop['name']?.toString() ?? 'Shop';
     final shopDescription = shop['description']?.toString() ?? 'No description available';
     final businessType = shop['businessType']?.toString() ?? 'Store';
@@ -388,187 +412,177 @@ class _ShopsScreenState extends State<ShopsScreen> {
       }
     }
     
-    return Container(
-      decoration: VillageTheme.elevatedCardDecoration,
+    return Card(
+      elevation: 2,
+      shadowColor: Colors.black.withOpacity(0.1),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(VillageTheme.cardRadius),
+        borderRadius: BorderRadius.circular(12),
         onTap: () => _navigateToShop(shop),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Large Shop Image with Status Overlay
-            Expanded(
-              flex: 3,
+            // Compact Shop Image with Status Overlay
+            ClipRRect(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
               child: Container(
+                height: 140, // Fixed height for consistency
                 width: double.infinity,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(VillageTheme.cardRadius),
-                  ),
-                ),
                 child: Stack(
+                  fit: StackFit.expand,
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(VillageTheme.cardRadius),
-                      ),
-                      child: CachedNetworkImage(
-                        imageUrl: shop['images'] != null && (shop['images'] as List).isNotEmpty 
-                            ? shop['images'][0] 
-                            : 'https://via.placeholder.com/400x200',
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                        height: double.infinity,
-                        placeholder: (context, url) => Container(
-                          color: VillageTheme.surfaceColor,
-                          child: Center(
-                            child: Text(getBusinessEmoji(businessType), style: TextStyle(fontSize: 60)),
-                          ),
+                    CachedNetworkImage(
+                      imageUrl: shop['images'] != null && (shop['images'] as List).isNotEmpty
+                          ? shop['images'][0]
+                          : 'https://via.placeholder.com/400x200',
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(
+                        color: VillageTheme.primaryGreen.withOpacity(0.1),
+                        child: Center(
+                          child: Text(getBusinessEmoji(businessType), style: TextStyle(fontSize: 40)),
                         ),
-                        errorWidget: (context, url, error) => Container(
-                          color: VillageTheme.surfaceColor,
-                          child: Center(
-                            child: Text(getBusinessEmoji(businessType), style: TextStyle(fontSize: 60)),
-                          ),
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        color: VillageTheme.primaryGreen.withOpacity(0.1),
+                        child: Center(
+                          child: Text(getBusinessEmoji(businessType), style: TextStyle(fontSize: 40)),
                         ),
                       ),
                     ),
-                    // Status Badge
+                    // Compact Status & Rating Row
                     Positioned(
-                      top: VillageTheme.spacingS,
-                      right: VillageTheme.spacingS,
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: VillageTheme.spacingS,
-                          vertical: VillageTheme.spacingXS,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isActive ? VillageTheme.successGreen : VillageTheme.errorRed,
-                          borderRadius: BorderRadius.circular(VillageTheme.chipRadius),
-                          boxShadow: VillageTheme.cardShadow,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              isActive ? '✅' : '❌',
-                              style: TextStyle(fontSize: 12),
+                      top: 8,
+                      left: 8,
+                      right: 8,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          // Rating Badge
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.7),
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                            SizedBox(width: 2),
-                            Text(
-                              isActive ? 'திறந்து' : 'மூடியது',
-                              style: VillageTheme.bodySmall.copyWith(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text('⭐', style: TextStyle(fontSize: 10)),
+                                SizedBox(width: 4),
+                                Text(
+                                  rating.toStringAsFixed(1),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Status Badge
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: isActive ? Color(0xFF4CAF50) : Colors.red,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              isActive ? 'திறந்து' : 'மூடி',
+                              style: TextStyle(
                                 color: Colors.white,
+                                fontSize: 10,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    // Rating Badge
-                    Positioned(
-                      top: VillageTheme.spacingS,
-                      left: VillageTheme.spacingS,
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: VillageTheme.spacingS,
-                          vertical: VillageTheme.spacingXS,
-                        ),
-                        decoration: BoxDecoration(
-                          color: VillageTheme.warningOrange,
-                          borderRadius: BorderRadius.circular(VillageTheme.chipRadius),
-                          boxShadow: VillageTheme.cardShadow,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text('⭐', style: TextStyle(fontSize: 12)),
-                            SizedBox(width: 2),
-                            Text(
-                              rating.toStringAsFixed(1),
-                              style: VillageTheme.bodySmall.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-            
-            // Shop Details
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(VillageTheme.spacingM),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Shop Name with Emoji
-                    Row(
-                      children: [
-                        Text(
-                          '${getBusinessEmoji(businessType)} ',
-                          style: TextStyle(fontSize: 20),
-                        ),
-                        Expanded(
-                          child: Text(
-                            shopName,
-                            style: VillageTheme.headingSmall,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: VillageTheme.spacingXS),
-                    
-                    // Business Type
-                    Text(
-                      businessType,
-                      style: VillageTheme.bodyMedium.copyWith(
-                        color: VillageTheme.accentOrange,
-                        fontWeight: FontWeight.w600,
+
+            // Compact Shop Details Section
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Shop Name with Emoji (Single Line)
+                  Row(
+                    children: [
+                      Text(
+                        getBusinessEmoji(businessType),
+                        style: TextStyle(fontSize: 18),
                       ),
-                    ),
-                    SizedBox(height: VillageTheme.spacingXS),
-                    
-                    // Description
-                    Text(
-                      shopDescription,
-                      style: VillageTheme.bodySmall.copyWith(
-                        color: VillageTheme.secondaryText,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    
-                    Spacer(),
-                    
-                    // Location Row
-                    Row(
-                      children: [
-                        Text('📍 ', style: TextStyle(fontSize: 16)),
-                        Expanded(
-                          child: Text(
-                            fullAddress,
-                            style: VillageTheme.bodySmall.copyWith(
-                              color: VillageTheme.primaryText,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                      SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          shopName,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: VillageTheme.primaryText,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ],
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 4),
+
+                  // Business Type (Single Line)
+                  Text(
+                    businessType,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: VillageTheme.accentOrange,
+                      fontWeight: FontWeight.w600,
                     ),
-                  ],
-                ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: 4),
+
+                  // Description (2 Lines Max)
+                  Text(
+                    shopDescription,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: VillageTheme.secondaryText,
+                      height: 1.3,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: 6),
+
+                  // Location Row (Single Line)
+                  Row(
+                    children: [
+                      Text('📍', style: TextStyle(fontSize: 12)),
+                      SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          fullAddress,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: VillageTheme.primaryText,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],

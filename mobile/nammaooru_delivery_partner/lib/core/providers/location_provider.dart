@@ -136,7 +136,7 @@ class LocationProvider with ChangeNotifier {
 
       await _apiService.post(
         '/api/location/partners/$partnerId/update',
-        data: locationData,
+        locationData,
       );
     } catch (e) {
       print('Failed to send location update: $e');
@@ -187,7 +187,7 @@ class LocationProvider with ChangeNotifier {
     try {
       final response = await _apiService.post(
         '/api/location/partners/$partnerId/eta',
-        data: {
+        {
           'latitude': destLat,
           'longitude': destLng,
         },
@@ -210,12 +210,10 @@ class LocationProvider with ChangeNotifier {
     required DateTime endTime,
   }) async {
     try {
+      final startTimeParam = Uri.encodeComponent(startTime.toIso8601String());
+      final endTimeParam = Uri.encodeComponent(endTime.toIso8601String());
       final response = await _apiService.get(
-        '/api/location/partners/$partnerId/history',
-        queryParams: {
-          'startTime': startTime.toIso8601String(),
-          'endTime': endTime.toIso8601String(),
-        },
+        '/api/location/partners/$partnerId/history?startTime=$startTimeParam&endTime=$endTimeParam',
       );
 
       if (response['success'] == true) {
@@ -235,8 +233,7 @@ class LocationProvider with ChangeNotifier {
   }) async {
     try {
       final response = await _apiService.get(
-        '/api/location/assignments/$assignmentId/route',
-        queryParams: {'partnerId': partnerId},
+        '/api/location/assignments/$assignmentId/route?partnerId=$partnerId',
       );
 
       if (response['success'] == true) {

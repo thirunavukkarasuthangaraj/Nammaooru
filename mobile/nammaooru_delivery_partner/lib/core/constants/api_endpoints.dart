@@ -1,11 +1,13 @@
+import '../config/app_config.dart';
+
 class ApiEndpoints {
-  // Base URL - Update this to match your backend
-  static const String baseUrl = 'http://localhost:8090/api';
-  static const String mobileBaseUrl = '$baseUrl/mobile/delivery-partner';
+  // Base URL - Uses centralized AppConfig
+  static String get baseUrl => AppConfig.apiUrl;
+  static String get mobileBaseUrl => AppConfig.mobileApiUrl;
   
   // Authentication endpoints
-  static const String login = '$mobileBaseUrl/login';
-  static const String verifyOtp = '$mobileBaseUrl/verify-otp';
+  static String get login => '$mobileBaseUrl/login';
+  static String get verifyOtp => '$mobileBaseUrl/verify-otp';
   
   // Profile endpoints
   static String profile(String partnerId) => '$mobileBaseUrl/profile/$partnerId';
@@ -36,7 +38,7 @@ class ApiEndpoints {
   
   // Analytics endpoints
   static String stats(String partnerId) => '$mobileBaseUrl/stats/$partnerId';
-  static const String leaderboard = '$mobileBaseUrl/leaderboard';
+  static String get leaderboard => '$mobileBaseUrl/leaderboard';
   
   // Location endpoints
   static String updateLocation(String partnerId) => '$mobileBaseUrl/location/$partnerId/update';

@@ -45,7 +45,7 @@ class OrderCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      'Order #${order.id}',
+                      'Order #${order.orderNumber}',
                       style: const TextStyle(
                         color: Color(0xFF2196F3),
                         fontWeight: FontWeight.bold,

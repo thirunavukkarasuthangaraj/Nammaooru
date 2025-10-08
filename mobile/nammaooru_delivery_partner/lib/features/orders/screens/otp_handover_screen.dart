@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
-import '../../../core/providers/delivery_partner_provider.dart';
-import '../../../core/models/delivery_partner.dart';
 import '../../../core/models/simple_order_model.dart';
 
 class OTPHandoverScreen extends StatefulWidget {
@@ -15,147 +12,43 @@ class OTPHandoverScreen extends StatefulWidget {
 }
 
 class _OTPHandoverScreenState extends State<OTPHandoverScreen> {
-  final List<TextEditingController> _otpControllers = List.generate(4, (index) => TextEditingController());
-  final List<FocusNode> _focusNodes = List.generate(4, (index) => FocusNode());
-  bool _isVerifying = false;
-  String _errorMessage = '';
+  bool _otpCopied = false;
 
-  @override
-  void dispose() {
-    for (var controller in _otpControllers) {
-      controller.dispose();
-    }
-    for (var focusNode in _focusNodes) {
-      focusNode.dispose();
-    }
-    super.dispose();
-  }
-
-  String get _enteredOTP {
-    return _otpControllers.map((controller) => controller.text).join();
-  }
-
-  bool get _isOTPComplete {
-    return _enteredOTP.length == 4 && _enteredOTP.isNotEmpty;
-  }
-
-  void _onOTPChanged(String value, int index) {
-    setState(() {
-      _errorMessage = '';
-    });
-
-    if (value.isNotEmpty && index < 3) {
-      _focusNodes[index + 1].requestFocus();
-    }
-
-    if (_isOTPComplete) {
-      _verifyOTP();
-    }
-  }
-
-  void _onBackspace(int index) {
-    if (_otpControllers[index].text.isEmpty && index > 0) {
-      _focusNodes[index - 1].requestFocus();
-    }
-  }
-
-  void _verifyOTP() async {
-    if (!_isOTPComplete) {
+  void _copyOTP() {
+    if (widget.order.pickupOtp != null) {
+      Clipboard.setData(ClipboardData(text: widget.order.pickupOtp!));
       setState(() {
-        _errorMessage = 'Please enter complete OTP';
+        _otpCopied = true;
       });
-      return;
-    }
 
-    setState(() {
-      _isVerifying = true;
-      _errorMessage = '';
-    });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('OTP copied to clipboard'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
 
-    try {
-      final provider = Provider.of<DeliveryPartnerProvider>(context, listen: false);
-      final success = await provider.verifyPickupOTP(widget.order.id, _enteredOTP);
-
-      if (success) {
+      // Reset the copied state after 2 seconds
+      Future.delayed(const Duration(seconds: 2), () {
         if (mounted) {
-          // Show success message
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Order verified successfully! You can now pick up the order.'),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 3),
-            ),
-          );
-
-          // Navigate back to dashboard
-          Navigator.of(context).pop(true);
+          setState(() {
+            _otpCopied = false;
+          });
         }
-      } else {
-        setState(() {
-          _errorMessage = 'Invalid OTP. Please check with the shop owner.';
-          _clearOTP();
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Verification failed. Please try again.';
-        _clearOTP();
-      });
-    } finally {
-      setState(() {
-        _isVerifying = false;
-      });
-    }
-  }
-
-  void _clearOTP() {
-    for (var controller in _otpControllers) {
-      controller.clear();
-    }
-    _focusNodes[0].requestFocus();
-  }
-
-  void _requestNewOTP() async {
-    setState(() {
-      _isVerifying = true;
-      _errorMessage = '';
-    });
-
-    try {
-      final provider = Provider.of<DeliveryPartnerProvider>(context, listen: false);
-      final success = await provider.requestNewPickupOTP(widget.order.id);
-
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('New OTP requested. Please check with the shop owner.'),
-            backgroundColor: Colors.blue,
-          ),
-        );
-        _clearOTP();
-      } else {
-        setState(() {
-          _errorMessage = 'Failed to request new OTP. Please try again.';
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Failed to request new OTP. Please try again.';
-      });
-    } finally {
-      setState(() {
-        _isVerifying = false;
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final otp = widget.order.pickupOtp ?? 'N/A';
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: const Text(
-          'Verify Pickup',
+          'Pickup OTP',
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.w600,
@@ -171,30 +64,20 @@ class _OTPHandoverScreenState extends State<OTPHandoverScreen> {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // Order Info Card
             _buildOrderInfoCard(),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
 
-            // Items Card
-            _buildItemsCard(),
+            // OTP Display Card
+            _buildOTPDisplayCard(otp),
 
             const SizedBox(height: 32),
 
             // Instructions Card
             _buildInstructionsCard(),
-
-            const SizedBox(height: 32),
-
-            // OTP Input Section
-            _buildOTPInputSection(),
-
-            const SizedBox(height: 24),
-
-            // Error Message
-            if (_errorMessage.isNotEmpty) _buildErrorMessage(),
 
             const SizedBox(height: 32),
 
@@ -228,7 +111,7 @@ class _OTPHandoverScreenState extends State<OTPHandoverScreen> {
                 const Icon(Icons.receipt_long, color: Colors.white, size: 24),
                 const SizedBox(width: 12),
                 Text(
-                  'Order #${widget.order.id}',
+                  'Order #${widget.order.orderNumber}',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 20,
@@ -238,103 +121,11 @@ class _OTPHandoverScreenState extends State<OTPHandoverScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            _buildOrderDetail(Icons.person, 'Customer', widget.order.customerName),
-            const SizedBox(height: 8),
-            _buildOrderDetail(Icons.phone, 'Phone', widget.order.customerPhone ?? 'No phone'),
+            _buildOrderDetail(Icons.store, 'Shop', widget.order.shopName ?? 'Unknown Shop'),
             const SizedBox(height: 8),
             _buildOrderDetail(Icons.location_on, 'Address', widget.order.deliveryAddress),
             const SizedBox(height: 8),
             _buildOrderDetail(Icons.monetization_on, 'Value', '₹${(widget.order.totalAmount ?? 0).toStringAsFixed(0)}'),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildItemsCard() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.shopping_bag_outlined, color: Colors.orange[600], size: 24),
-                const SizedBox(width: 12),
-                const Text(
-                  'Order Items',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            /*if (widget.order.items.isNotEmpty) ...[
-              ...widget.order.items.map((item) => Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey[50],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey[200]!),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        item.name,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      '${item.quantity}x',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF2196F3),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      '₹${item.price.toStringAsFixed(0)}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: Colors.green,
-                      ),
-                    ),
-                  ],
-                ),
-              )).toList(),
-            ] else*/ ...[
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline, color: Colors.grey[600], size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      'No items information available',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
           ],
         ),
       ),
@@ -369,6 +160,87 @@ class _OTPHandoverScreenState extends State<OTPHandoverScreen> {
     );
   }
 
+  Widget _buildOTPDisplayCard(String otp) {
+    return Card(
+      elevation: 8,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(
+            colors: [Colors.green[400]!, Colors.green[600]!],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Column(
+          children: [
+            const Icon(
+              Icons.lock_open,
+              color: Colors.white,
+              size: 48,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Show this OTP to Shop Owner',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            // OTP Display
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                otp,
+                style: const TextStyle(
+                  fontSize: 48,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 16,
+                  color: Color(0xFF2196F3),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Copy Button
+            TextButton.icon(
+              onPressed: _copyOTP,
+              icon: Icon(
+                _otpCopied ? Icons.check : Icons.content_copy,
+                color: Colors.white,
+                size: 18,
+              ),
+              label: Text(
+                _otpCopied ? 'Copied!' : 'Copy OTP',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.white.withOpacity(0.2),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildInstructionsCard() {
     return Card(
       elevation: 2,
@@ -392,10 +264,11 @@ class _OTPHandoverScreenState extends State<OTPHandoverScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            _buildInstructionStep(1, 'Visit the shop and confirm your identity'),
-            _buildInstructionStep(2, 'Ask the shop owner for the 4-digit pickup OTP'),
-            _buildInstructionStep(3, 'Enter the OTP below to verify'),
+            _buildInstructionStep(1, 'Visit the shop at the pickup location'),
+            _buildInstructionStep(2, 'Show this OTP to the shop owner'),
+            _buildInstructionStep(3, 'Shop owner will enter the OTP in their app'),
             _buildInstructionStep(4, 'Collect the order after verification'),
+            _buildInstructionStep(5, 'Navigate to delivery address'),
           ],
         ),
       ),
@@ -442,122 +315,25 @@ class _OTPHandoverScreenState extends State<OTPHandoverScreen> {
     );
   }
 
-  Widget _buildOTPInputSection() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Enter Pickup OTP',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Ask the shop owner for the 4-digit verification code',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-              ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: List.generate(4, (index) => _buildOTPField(index)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOTPField(int index) {
-    return Container(
-      width: 60,
-      height: 60,
-      decoration: BoxDecoration(
-        border: Border.all(
-          color: _errorMessage.isNotEmpty ? Colors.red : Colors.grey[300]!,
-          width: 2,
-        ),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: TextField(
-        controller: _otpControllers[index],
-        focusNode: _focusNodes[index],
-        keyboardType: TextInputType.number,
-        textAlign: TextAlign.center,
-        maxLength: 1,
-        style: const TextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.bold,
-        ),
-        decoration: const InputDecoration(
-          counterText: '',
-          border: InputBorder.none,
-        ),
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        onChanged: (value) => _onOTPChanged(value, index),
-        onTap: () {
-          _otpControllers[index].selection = TextSelection.fromPosition(
-            TextPosition(offset: _otpControllers[index].text.length),
-          );
-        },
-        onEditingComplete: () {
-          if (index < 3 && _otpControllers[index].text.isNotEmpty) {
-            _focusNodes[index + 1].requestFocus();
-          }
-        },
-        onSubmitted: (value) {
-          if (_isOTPComplete) {
-            _verifyOTP();
-          }
-        },
-      ),
-    );
-  }
-
-  Widget _buildErrorMessage() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.red[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.red[200]!),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.error_outline, color: Colors.red[600], size: 20),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              _errorMessage,
-              style: TextStyle(
-                color: Colors.red[700],
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildActionButtons() {
     return Column(
       children: [
         SizedBox(
           width: double.infinity,
           height: 56,
-          child: ElevatedButton(
-            onPressed: _isVerifying || !_isOTPComplete ? null : _verifyOTP,
+          child: ElevatedButton.icon(
+            onPressed: () {
+              // Return true to trigger dashboard refresh
+              Navigator.of(context).pop(true);
+            },
+            icon: const Icon(Icons.check_circle_outline),
+            label: const Text(
+              'Done - Return to Dashboard',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF2196F3),
               foregroundColor: Colors.white,
@@ -566,39 +342,17 @@ class _OTPHandoverScreenState extends State<OTPHandoverScreen> {
               ),
               elevation: 2,
             ),
-            child: _isVerifying
-                ? const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      ),
-                      SizedBox(width: 12),
-                      Text('Verifying...'),
-                    ],
-                  )
-                : const Text(
-                    'Verify & Pickup',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
           ),
         ),
         const SizedBox(height: 16),
-        TextButton.icon(
-          onPressed: _isVerifying ? null : _requestNewOTP,
-          icon: const Icon(Icons.refresh),
-          label: const Text('Request New OTP'),
-          style: TextButton.styleFrom(
-            foregroundColor: const Color(0xFF2196F3),
+        Text(
+          'Keep this screen open while at the shop',
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[600],
+            fontStyle: FontStyle.italic,
           ),
+          textAlign: TextAlign.center,
         ),
       ],
     );

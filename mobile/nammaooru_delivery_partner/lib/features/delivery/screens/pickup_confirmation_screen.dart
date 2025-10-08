@@ -261,7 +261,7 @@ class _PickupConfirmationScreenState extends State<PickupConfirmationScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Order #${widget.order.id}',
+                        'Order #${widget.order.orderNumber}',
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,

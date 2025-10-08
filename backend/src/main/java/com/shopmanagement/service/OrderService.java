@@ -917,11 +917,15 @@ public class OrderService {
         if (request.getItems() == null || request.getItems().isEmpty()) {
             throw new IllegalArgumentException("Order items are required");
         }
-        
-        if (request.getDeliveryAddress() == null) {
-            throw new IllegalArgumentException("Delivery address is required");
+
+        // Validate delivery address only for HOME_DELIVERY orders
+        String deliveryType = request.getDeliveryType() != null ? request.getDeliveryType() : "HOME_DELIVERY";
+        if ("HOME_DELIVERY".equals(deliveryType)) {
+            if (request.getDeliveryAddress() == null) {
+                throw new IllegalArgumentException("Delivery address is required for home delivery");
+            }
         }
-        
+
         if (request.getCustomerInfo() == null) {
             throw new IllegalArgumentException("Customer information is required");
         }
@@ -1031,10 +1035,11 @@ public class OrderService {
                 .discountAmount(request.getDiscount())
                 .totalAmount(request.getTotal())
                 .notes(request.getNotes())
-                .deliveryAddress(request.getDeliveryAddress().getStreetAddress())
-                .deliveryCity(request.getDeliveryAddress().getCity())
-                .deliveryState(request.getDeliveryAddress().getState())
-                .deliveryPostalCode(request.getDeliveryAddress().getPincode())
+                .deliveryType(Order.DeliveryType.valueOf(deliveryType))
+                .deliveryAddress(request.getDeliveryAddress() != null ? request.getDeliveryAddress().getStreetAddress() : null)
+                .deliveryCity(request.getDeliveryAddress() != null ? request.getDeliveryAddress().getCity() : null)
+                .deliveryState(request.getDeliveryAddress() != null ? request.getDeliveryAddress().getState() : null)
+                .deliveryPostalCode(request.getDeliveryAddress() != null ? request.getDeliveryAddress().getPincode() : null)
                 .deliveryPhone(request.getCustomerInfo().getPhone())
                 .deliveryContactName(request.getCustomerInfo().getFirstName() + " " + request.getCustomerInfo().getLastName())
                 .estimatedDeliveryTime(LocalDateTime.now().plusMinutes(30))

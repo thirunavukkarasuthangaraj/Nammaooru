@@ -97,8 +97,9 @@ class _LoginScreenState extends State<LoginScreen> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Color(0xFF43E97B),  // Light green matching web app
-              Color(0xFF38F9D7),  // Cyan-green matching web app
+              Color(0xFF1B5E20),  // Dark green
+              Color(0xFF2E7D32),  // Medium dark green
+              Color(0xFF388E3C),  // Lighter dark green
             ],
           ),
         ),
@@ -296,40 +297,54 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _buildRememberMeAndForgotPassword() {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Row(
-          children: [
-            Checkbox(
-              value: _rememberMe,
-              onChanged: (value) {
-                setState(() {
-                  _rememberMe = value ?? false;
-                });
-              },
-              activeColor: VillageTheme.primaryGreen,
-              checkColor: Colors.white,
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        Flexible(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Checkbox(
+                value: _rememberMe,
+                onChanged: (value) {
+                  setState(() {
+                    _rememberMe = value ?? false;
+                  });
+                },
+                activeColor: VillageTheme.primaryGreen,
+                checkColor: Colors.white,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              const Flexible(
+                child: Text(
+                  'Remember me',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF7F8C8D),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Flexible(
+          child: TextButton(
+            onPressed: () {
+              context.push('/forgot-password');
+            },
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
-            const Text(
-              'Remember me',
+            child: const Text(
+              'Forgot Password?',
               style: TextStyle(
                 fontSize: 14,
-                color: Color(0xFF7F8C8D),
+                color: VillageTheme.primaryGreen,
+                fontWeight: FontWeight.w600,
               ),
-            ),
-          ],
-        ),
-        const Spacer(),
-        TextButton(
-          onPressed: () {
-            context.push('/forgot-password');
-          },
-          child: const Text(
-            'Forgot Password?',
-            style: TextStyle(
-              fontSize: 14,
-              color: VillageTheme.primaryGreen,
-              fontWeight: FontWeight.w600,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ),
@@ -340,7 +355,6 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildLoginButton() {
     return Container(
       width: double.infinity,
-      height: 52,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         gradient: const LinearGradient(
@@ -352,6 +366,7 @@ class _LoginScreenState extends State<LoginScreen> {
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
+          padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),

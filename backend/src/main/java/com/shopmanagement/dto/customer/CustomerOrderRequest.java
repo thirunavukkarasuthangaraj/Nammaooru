@@ -29,28 +29,26 @@ public class CustomerOrderRequest {
     @Pattern(regexp = "CASH_ON_DELIVERY|ONLINE|UPI|CARD", message = "Payment method must be CASH_ON_DELIVERY, ONLINE, UPI, or CARD")
     private String paymentMethod;
 
-    // Delivery Information
-    @NotBlank(message = "Delivery address is required")
+    // Delivery Type
+    @Pattern(regexp = "SELF_PICKUP|HOME_DELIVERY", message = "Delivery type must be SELF_PICKUP or HOME_DELIVERY")
+    private String deliveryType;
+
+    // Delivery Information (optional for SELF_PICKUP orders)
     @Size(max = 500, message = "Delivery address cannot exceed 500 characters")
     private String deliveryAddress;
 
-    @NotBlank(message = "Delivery contact name is required")
     @Size(max = 100, message = "Delivery contact name cannot exceed 100 characters")
     private String deliveryContactName;
 
-    @NotBlank(message = "Delivery phone is required")
     @Pattern(regexp = "^[+]?[0-9]{10,15}$", message = "Please provide a valid delivery phone number")
     private String deliveryPhone;
 
-    @NotBlank(message = "Delivery city is required")
     @Size(max = 100, message = "Delivery city cannot exceed 100 characters")
     private String deliveryCity;
 
-    @NotBlank(message = "Delivery state is required")
     @Size(max = 100, message = "Delivery state cannot exceed 100 characters")
     private String deliveryState;
 
-    @NotBlank(message = "Delivery postal code is required")
     @Size(max = 20, message = "Delivery postal code cannot exceed 20 characters")
     private String deliveryPostalCode;
 

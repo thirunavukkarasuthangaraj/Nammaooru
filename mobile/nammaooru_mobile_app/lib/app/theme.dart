@@ -8,7 +8,6 @@ class AppTheme {
       useMaterial3: true,
       primaryColor: VillageTheme.primaryGreen,
       scaffoldBackgroundColor: VillageTheme.lightBackground,
-      fontFamily: 'Inter',
       
       // Color scheme for Material 3 with Village colors
       colorScheme: ColorScheme.light(
@@ -238,7 +237,6 @@ class AppTheme {
       brightness: Brightness.dark,
       primaryColor: VillageTheme.primaryGreen,
       scaffoldBackgroundColor: const Color(0xFF121212),
-      fontFamily: 'Inter',
       
       colorScheme: ColorScheme.dark(
         primary: VillageTheme.primaryGreen,

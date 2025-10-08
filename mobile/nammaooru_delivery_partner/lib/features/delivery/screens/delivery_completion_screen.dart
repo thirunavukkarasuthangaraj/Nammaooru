@@ -279,11 +279,18 @@ class _DeliveryCompletionScreenState extends State<DeliveryCompletionScreen> {
         final provider = Provider.of<DeliveryPartnerProvider>(context, listen: false);
         await provider.updateOrderStatus(widget.order.id, 'DELIVERED');
 
-        // Navigate back to dashboard
-        Navigator.of(context).pushNamedAndRemoveUntil(
-          '/dashboard',
-          (route) => false,
-        );
+        // Check if COD payment needs to be collected
+        if (widget.order.paymentMethod == 'CASH_ON_DELIVERY' &&
+            widget.order.paymentStatus != 'PAID') {
+          // Show payment collection confirmation
+          _showPaymentCollectionDialog();
+        } else {
+          // Navigate back to dashboard
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            '/dashboard',
+            (route) => false,
+          );
+        }
       } else {
         setState(() {
           _errorMessage = response['message'] ?? 'Failed to complete delivery';
@@ -310,6 +317,124 @@ class _DeliveryCompletionScreenState extends State<DeliveryCompletionScreen> {
     );
   }
 
+  void _showPaymentCollectionDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.payments, color: Colors.green[700], size: 28),
+            const SizedBox(width: 12),
+            const Text('Collect Payment'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Cash on Delivery',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.green[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.green[300]!, width: 2),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Amount to Collect:',
+                    style: TextStyle(fontSize: 14),
+                  ),
+                  Text(
+                    '₹${(widget.order.totalAmount ?? 0).toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Have you collected the payment from the customer?',
+              style: TextStyle(fontSize: 14),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // Navigate to dashboard without marking as paid
+              Navigator.of(context).pushNamedAndRemoveUntil(
+                '/dashboard',
+                (route) => false,
+              );
+            },
+            child: const Text('Not Yet'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await _markPaymentAsCollected();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Yes, Collected'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _markPaymentAsCollected() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Call backend API to mark payment as collected
+      final response = await _confirmationService.markPaymentCollected(widget.order.id);
+
+      if (response['success'] == true) {
+        _showSnackBar('Payment marked as collected successfully!', Colors.green);
+
+        // Navigate back to dashboard
+        Future.delayed(const Duration(seconds: 1), () {
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            '/dashboard',
+            (route) => false,
+          );
+        });
+      } else {
+        _showSnackBar(
+          response['message'] ?? 'Failed to mark payment as collected',
+          Colors.red,
+        );
+      }
+    } catch (e) {
+      _showSnackBar('Error marking payment: $e', Colors.red);
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -332,7 +457,7 @@ class _DeliveryCompletionScreenState extends State<DeliveryCompletionScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Order #${widget.order.id}',
+                        'Order #${widget.order.orderNumber}',
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,

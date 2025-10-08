@@ -19,12 +19,7 @@ class ApiClient {
     ));
 
     if (kDebugMode) {
-      _dio.interceptors.add(LogInterceptor(
-        requestBody: true,
-        responseBody: true,
-        error: true,
-        logPrint: (obj) => debugPrint(obj.toString()),
-      ));
+      _dio.interceptors.add(_CustomLogInterceptor());
     }
   }
 
@@ -140,5 +135,70 @@ class ApiClient {
         print('ApiClient: Stack trace: ${StackTrace.current}');
       }
     }
+  }
+}
+
+class _CustomLogInterceptor extends Interceptor {
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    print('\n');
+    print('╔════════════════════════════════════════════════════════════════════════');
+    print('║ 🚀 API REQUEST');
+    print('╠════════════════════════════════════════════════════════════════════════');
+    print('║ Method: ${options.method}');
+    print('║ URL: ${options.baseUrl}${options.path}');
+    if (options.queryParameters.isNotEmpty) {
+      print('║ Query Parameters: ${options.queryParameters}');
+    }
+    print('║ Headers:');
+    options.headers.forEach((key, value) {
+      if (key.toLowerCase() == 'authorization' && value.toString().startsWith('Bearer ')) {
+        print('║   $key: Bearer ${value.toString().substring(7, 27)}...');
+      } else {
+        print('║   $key: $value');
+      }
+    });
+    if (options.data != null) {
+      print('║ Request Body:');
+      print('║ ${options.data}');
+    }
+    print('╚════════════════════════════════════════════════════════════════════════');
+    super.onRequest(options, handler);
+  }
+
+  @override
+  void onResponse(Response response, ResponseInterceptorHandler handler) {
+    print('\n');
+    print('╔════════════════════════════════════════════════════════════════════════');
+    print('║ ✅ API RESPONSE');
+    print('╠════════════════════════════════════════════════════════════════════════');
+    print('║ Status Code: ${response.statusCode}');
+    print('║ URL: ${response.requestOptions.baseUrl}${response.requestOptions.path}');
+    print('║ Response Data:');
+    print('║ ${response.data}');
+    print('╚════════════════════════════════════════════════════════════════════════');
+    print('\n');
+    super.onResponse(response, handler);
+  }
+
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) {
+    print('\n');
+    print('╔════════════════════════════════════════════════════════════════════════');
+    print('║ ❌ API ERROR');
+    print('╠════════════════════════════════════════════════════════════════════════');
+    print('║ Error Type: ${err.type}');
+    print('║ URL: ${err.requestOptions.baseUrl}${err.requestOptions.path}');
+    print('║ Method: ${err.requestOptions.method}');
+    if (err.response != null) {
+      print('║ Status Code: ${err.response?.statusCode}');
+      print('║ Error Response:');
+      print('║ ${err.response?.data}');
+    } else {
+      print('║ Error Message: ${err.message}');
+    }
+    print('╚════════════════════════════════════════════════════════════════════════');
+    print('\n');
+    super.onError(err, handler);
   }
 }

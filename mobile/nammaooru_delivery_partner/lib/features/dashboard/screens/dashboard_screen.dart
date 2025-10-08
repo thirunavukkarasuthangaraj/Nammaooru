@@ -491,7 +491,7 @@ class HomeTab extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Order #${order.id}',
+                  'Order #${order.orderNumber}',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
@@ -636,10 +636,12 @@ class HomeTab extends StatelessWidget {
                         child: const Text('Pick Up'),
                       ),
                     ],
-                    if (order.status.toLowerCase() == 'picked_up' || order.status.toLowerCase() == 'in_transit') ...[
+                    if (order.status.toLowerCase() == 'picked_up' ||
+                        order.status.toLowerCase() == 'in_transit' ||
+                        order.status.toLowerCase() == 'out_for_delivery') ...[
                       ElevatedButton(
                         onPressed: () async {
-                          final success = await provider.updateOrderStatus(order.id, 'DELIVERED');
+                          final success = await provider.updateOrderStatus(order.orderNumber, 'DELIVERED');
                           if (success) {
                             ScaffoldMessenger.of(parentContext).showSnackBar(
                               const SnackBar(
@@ -683,7 +685,7 @@ class HomeTab extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Order #${order.id}',
+                  'Order #${order.orderNumber}',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
@@ -802,7 +804,7 @@ class HomeTab extends StatelessWidget {
                 ),
                 ElevatedButton(
                   onPressed: () async {
-                    final success = await provider.acceptOrder(order.id);
+                    final success = await provider.acceptOrder(order.orderNumber);
                     if (success) {
                       ScaffoldMessenger.of(parentContext).showSnackBar(
                         const SnackBar(
@@ -884,7 +886,7 @@ class OrderHistoryTab extends StatelessWidget {
                         color: Colors.white,
                       ),
                     ),
-                    title: Text('Order #${order.id}'),
+                    title: Text('Order #${order.orderNumber}'),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:battery_plus/battery_plus.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+// Note: battery_plus and connectivity_plus don't support web
+// import 'package:battery_plus/battery_plus.dart';
+// import 'package:connectivity_plus/connectivity_plus.dart';
 import 'api_service.dart';
 
 class LocationService {
@@ -13,7 +15,7 @@ class LocationService {
   Timer? _serverUpdateTimer;
   Position? _currentPosition;
   final ApiService _apiService = ApiService();
-  final Battery _battery = Battery();
+  // final Battery _battery = Battery(); // Not supported on web
 
   int? _currentAssignmentId;
   String? _currentOrderStatus;
@@ -194,22 +196,20 @@ class LocationService {
     }
 
     try {
-      // Get battery level
+      // Get battery level (not available on web)
       int? batteryLevel;
-      try {
-        batteryLevel = await _battery.batteryLevel;
-      } catch (e) {
-        print('Could not get battery level: $e');
+      if (!kIsWeb) {
+        // Battery is only available on mobile platforms
+        batteryLevel = null; // Would use _battery.batteryLevel if available
       }
 
-      // Get network type
+      // Get network type (not available on web)
       String? networkType;
-      try {
-        final connectivityResult = await Connectivity().checkConnectivity();
-        networkType = connectivityResult.name.toUpperCase();
-      } catch (e) {
-        print('Could not get network type: $e');
-        networkType = 'UNKNOWN';
+      if (!kIsWeb) {
+        // Connectivity is only available on mobile platforms
+        networkType = null; // Would use Connectivity().checkConnectivity() if available
+      } else {
+        networkType = 'WEB';
       }
 
       // Send location update to server

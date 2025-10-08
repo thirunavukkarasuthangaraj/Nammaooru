@@ -5,6 +5,9 @@ import '../../../core/providers/delivery_partner_provider.dart';
 import '../../../core/models/simple_order_model.dart';
 import '../widgets/order_card.dart';
 import '../widgets/order_details_bottom_sheet.dart';
+import 'otp_handover_screen.dart';
+import 'navigation_screen.dart';
+import '../../delivery/screens/simple_delivery_completion_screen.dart';
 
 class ActiveOrdersScreen extends StatefulWidget {
   const ActiveOrdersScreen({Key? key}) : super(key: key);
@@ -67,29 +70,16 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
   }
 
   void _markAsDelivered(OrderModel order) async {
-    final provider = Provider.of<DeliveryPartnerProvider>(context, listen: false);
-
-    try {
-      await provider.updateOrderStatus(order.id, 'delivered');
-      Navigator.pop(context);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Order #${order.id} delivered successfully! 🎉'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 3),
-        ),
-      );
-
+    // Navigate to simple delivery completion screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SimpleDeliveryCompletionScreen(order: order),
+      ),
+    ).then((_) {
+      // Reload orders when returning from completion screen
       _loadActiveOrders();
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to mark as delivered: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+    });
   }
 
   void _callCustomer(String? phoneNumber) async {
@@ -121,11 +111,10 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
   }
 
   void _startNavigation(OrderModel order) {
-    // TODO: Implement navigation to customer location
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Navigation feature coming soon!'),
-        backgroundColor: Colors.blue,
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => NavigationScreen(order: order),
       ),
     );
   }
@@ -287,7 +276,7 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      'Order #${order.id}',
+                      'Order #${order.orderNumber}',
                       style: const TextStyle(
                         color: Color(0xFF2196F3),
                         fontWeight: FontWeight.bold,
@@ -315,6 +304,13 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
               ),
 
               const SizedBox(height: 12),
+
+              // Show OTP prominently if status is ACCEPTED
+              if (order.status.toLowerCase() == 'accepted' && order.pickupOtp != null && order.pickupOtp!.isNotEmpty)
+                _buildOTPDisplay(order.pickupOtp!),
+
+              if (order.status.toLowerCase() == 'accepted' && order.pickupOtp != null && order.pickupOtp!.isNotEmpty)
+                const SizedBox(height: 12),
 
               // Customer info
               Row(
@@ -461,6 +457,87 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOTPDisplay(String otp) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFFFC107), Color(0xFFFF9800)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0xFFFFC107).withOpacity(0.3),
+            blurRadius: 8,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(Icons.lock_outlined, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text(
+                'PICKUP OTP',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 12),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ...otp.split('').map((digit) => Container(
+                  margin: EdgeInsets.symmetric(horizontal: 6),
+                  child: Text(
+                    digit,
+                    style: TextStyle(
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFFF9800),
+                      letterSpacing: 2,
+                    ),
+                  ),
+                )).toList(),
+              ],
+            ),
+          ),
+          SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.info_outline, color: Colors.white70, size: 14),
+              SizedBox(width: 6),
+              Text(
+                'Show this OTP to shop owner for pickup',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
           ),
         ],
       ),

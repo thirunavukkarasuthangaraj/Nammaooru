@@ -263,4 +263,31 @@ class DeliveryConfirmationService {
       };
     }
   }
+
+  /// Mark payment as collected (for COD orders)
+  Future<Map<String, dynamic>> markPaymentCollected(String orderId) async {
+    try {
+      final response = await _apiService.post(
+        '/api/orders/$orderId/mark-payment-collected',
+        {},
+      );
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'message': 'Payment marked as collected successfully',
+        };
+      } else {
+        return {
+          'success': false,
+          'message': 'Failed to mark payment as collected',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Error: $e',
+      };
+    }
+  }
 }

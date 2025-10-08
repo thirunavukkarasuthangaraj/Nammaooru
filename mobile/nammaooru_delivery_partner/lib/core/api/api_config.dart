@@ -1,9 +1,10 @@
-class ApiConfig {
-  // Local development
-  static const String baseUrl = 'http://192.168.1.2:8080'; // Updated IP
+import '../config/app_config.dart';
 
-  // Production URL
-  // static const String baseUrl = 'https://api.nammaooru.com';
+class ApiConfig {
+  // Use centralized config - DO NOT hardcode URLs here
+  static String get baseUrl => AppConfig.baseUrl;
+
+  // Legacy support - all URLs come from AppConfig now
 
   // API Endpoints
   static const String login = '/api/auth/login';

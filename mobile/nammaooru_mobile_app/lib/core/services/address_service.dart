@@ -18,23 +18,17 @@ class AddressService {
       if (apiResult['success'] == true && apiResult['data'] is List) {
         final List<dynamic> apiAddresses = apiResult['data'];
 
-        // Convert API addresses to SavedAddress objects
+        print('🔍 API returned ${apiAddresses.length} addresses');
+        if (apiAddresses.isNotEmpty) {
+          print('🔍 First address data: ${apiAddresses.first}');
+        }
+
+        // Convert API addresses to SavedAddress objects using fromJson which handles backend format
         final List<SavedAddress> addresses = apiAddresses.map((addr) {
-          return SavedAddress(
-            id: addr['id']?.toString() ?? '',
-            name: 'User', // API doesn't provide name
-            lastName: '', // API doesn't provide lastName
-            phone: '', // API doesn't provide phone
-            addressLine1: addr['area'] ?? addr['address_line1'] ?? '',
-            addressLine2: '${addr['flatHouse'] ?? ''} ${addr['street'] ?? ''}'.trim(),
-            landmark: addr['landmark'] ?? '',
-            city: addr['city'] ?? 'Tirupattur',
-            state: addr['state'] ?? 'Tamil Nadu',
-            pincode: addr['pincode'] ?? addr['postalCode'] ?? '',
-            addressType: addr['addressType'] ?? addr['address_type'] ?? 'HOME',
-            isDefault: addr['isDefault'] == true || addr['is_default'] == true,
-            createdAt: DateTime.now(), // API doesn't return creation time
-          );
+          // Use fromJson to properly handle contactPersonName and contactMobileNumber from backend
+          final savedAddr = SavedAddress.fromJson(addr);
+          print('🔍 Parsed address: name=${savedAddr.name}, lastName=${savedAddr.lastName}, phone=${savedAddr.phone}');
+          return savedAddr;
         }).toList();
 
         // Sort: default first, then alphabetically

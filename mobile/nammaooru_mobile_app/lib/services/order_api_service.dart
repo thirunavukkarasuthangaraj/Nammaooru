@@ -211,9 +211,9 @@ class OrderApiService {
   }) async {
     try {
       Logger.order('Cancelling order: $orderId, reason: $reason');
-      
+
       final response = await _apiService.post(
-        '/orders/$orderId/cancel',
+        '/customer/orders/$orderId/cancel',
         data: {
           'reason': reason,
         },

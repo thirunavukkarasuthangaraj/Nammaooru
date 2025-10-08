@@ -45,7 +45,7 @@ public class Order {
     private PaymentMethod paymentMethod;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = true)  // Temporarily nullable for initial migration
     private DeliveryType deliveryType = DeliveryType.HOME_DELIVERY;
 
     @Column(nullable = false, precision = 10, scale = 2)
