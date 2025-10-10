@@ -34,15 +34,8 @@ public class WebConfig implements WebMvcConfigurer {
         return new RestTemplate();
     }
 
-@Override
-public void addCorsMappings(CorsRegistry registry) {
-    registry.addMapping("/**")
-            .allowedOriginPatterns("http://localhost:[0-9]{4}", "https://nammaoorudelivary.in", "https://www.nammaoorudelivary.in")
-            .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
-            .allowedHeaders("*")
-            .allowCredentials(true)
-            .maxAge(3600);
-}
+// CORS is now handled by SecurityConfig.corsConfigurationSource()
+// Removed duplicate CORS configuration to avoid conflicts
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         // Create upload directory if it doesn't exist

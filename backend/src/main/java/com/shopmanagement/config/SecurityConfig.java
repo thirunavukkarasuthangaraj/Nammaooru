@@ -113,14 +113,18 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Allow all origins - simpler approach for development
-        configuration.setAllowedOriginPatterns(List.of("*"));
+        // Allow specific origins for production
+        configuration.setAllowedOriginPatterns(Arrays.asList(
+            "https://nammaoorudelivary.in",
+            "https://www.nammaoorudelivary.in",
+            "http://localhost:[0-9]{4}"
+        ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Total-Count"));
 
-        // Allow credentials only for same-origin and localhost requests
-        // Mobile apps typically don't need credentials for API calls
-        configuration.setAllowCredentials(false);
+        // Enable credentials for authenticated requests
+        configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
