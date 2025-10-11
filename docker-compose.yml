@@ -43,7 +43,7 @@ services:
       dockerfile: Dockerfile
     container_name: nammaooru-frontend
     ports:
-      - "80:80"
+      - "8080:80"
     networks:
       - shop-network
     depends_on:
