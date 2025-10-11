@@ -29,7 +29,7 @@ export class AuthService {
   login(credentials: LoginRequest): Observable<AuthResponse> {
     // Clear any existing auth data first to avoid role conflicts
     this.clearStoredAuth();
-    return this.http.post<ApiResponse<AuthResponse>>(`${this.API_URL}/login`, credentials)
+    return this.http.post<ApiResponse<AuthResponse>>(`${this.API_URL}/login`, credentials, { withCredentials: true })
       .pipe(
         map(response => {
           // Use ApiResponseHelper to check if response is successful
@@ -53,7 +53,7 @@ export class AuthService {
   }
 
   register(userData: RegisterRequest): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.API_URL}/register`, userData)
+    return this.http.post<AuthResponse>(`${this.API_URL}/register`, userData, { withCredentials: true })
       .pipe(
         tap(response => this.setSession(response)),
         catchError(error => {
@@ -65,7 +65,7 @@ export class AuthService {
 
   // OTP-based forgot password methods
   sendPasswordResetOtp(email: string): Observable<any> {
-    return this.http.post<ApiResponse<any>>(`${this.API_URL}/forgot-password/send-otp`, { email })
+    return this.http.post<ApiResponse<any>>(`${this.API_URL}/forgot-password/send-otp`, { email }, { withCredentials: true })
       .pipe(
         tap(response => {
           if (ApiResponseHelper.isError(response)) {
@@ -81,7 +81,7 @@ export class AuthService {
   }
 
   verifyPasswordResetOtp(email: string, otp: string): Observable<any> {
-    return this.http.post<ApiResponse<any>>(`${this.API_URL}/forgot-password/verify-otp`, { email, otp })
+    return this.http.post<ApiResponse<any>>(`${this.API_URL}/forgot-password/verify-otp`, { email, otp }, { withCredentials: true })
       .pipe(
         tap(response => {
           if (ApiResponseHelper.isError(response)) {
@@ -97,9 +97,9 @@ export class AuthService {
   }
 
   resetPasswordWithOtp(email: string, otp: string, newPassword: string): Observable<any> {
-    return this.http.post<ApiResponse<any>>(`${this.API_URL}/forgot-password/reset-password`, { 
-      email, otp, newPassword 
-    })
+    return this.http.post<ApiResponse<any>>(`${this.API_URL}/forgot-password/reset-password`, {
+      email, otp, newPassword
+    }, { withCredentials: true })
       .pipe(
         tap(response => {
           if (ApiResponseHelper.isError(response)) {
@@ -115,7 +115,7 @@ export class AuthService {
   }
 
   resendPasswordResetOtp(email: string): Observable<any> {
-    return this.http.post<ApiResponse<any>>(`${this.API_URL}/forgot-password/resend-otp`, { email })
+    return this.http.post<ApiResponse<any>>(`${this.API_URL}/forgot-password/resend-otp`, { email }, { withCredentials: true })
       .pipe(
         tap(response => {
           if (ApiResponseHelper.isError(response)) {
@@ -132,7 +132,7 @@ export class AuthService {
 
   // Legacy method (keep for backward compatibility)
   forgotPassword(usernameOrEmail: string): Observable<any> {
-    return this.http.post(`${this.API_URL}/password/forgot`, { usernameOrEmail })
+    return this.http.post(`${this.API_URL}/password/forgot`, { usernameOrEmail }, { withCredentials: true })
       .pipe(
         catchError(error => {
           this.handleAuthError(error);
@@ -143,10 +143,10 @@ export class AuthService {
 
   logout(): void {
     const token = this.getToken();
-    
+
     // Call logout API if token exists
     if (token) {
-      this.http.post(`${this.API_URL}/logout`, {}).subscribe({
+      this.http.post(`${this.API_URL}/logout`, {}, { withCredentials: true }).subscribe({
         next: () => {
           console.log('Logout successful');
         },
@@ -233,7 +233,7 @@ export class AuthService {
   }
 
   changePassword(request: { currentPassword: string; newPassword: string; confirmPassword: string }): Observable<any> {
-    return this.http.post(`${this.API_URL}/change-password`, request)
+    return this.http.post(`${this.API_URL}/change-password`, request, { withCredentials: true })
       .pipe(
         tap(() => {
           // Clear password status after successful change
@@ -250,7 +250,7 @@ export class AuthService {
   }
 
   getPasswordStatus(): Observable<{ isTemporaryPassword: boolean; passwordChangeRequired: boolean; lastPasswordChange?: Date }> {
-    return this.http.get<{ isTemporaryPassword: boolean; passwordChangeRequired: boolean; lastPasswordChange?: Date }>(`${this.API_URL}/password-status`)
+    return this.http.get<{ isTemporaryPassword: boolean; passwordChangeRequired: boolean; lastPasswordChange?: Date }>(`${this.API_URL}/password-status`, { withCredentials: true })
       .pipe(
         catchError(error => {
           this.handleAuthError(error);
@@ -293,7 +293,8 @@ export class AuthService {
   private getShopIdForOwner(token: string): void {
     // Call /api/shops/my-shop to get shop ID for shop owner
     this.http.get<any>(`${environment.apiUrl}/shops/my-shop`, {
-      headers: { 'Authorization': `Bearer ${token}` }
+      headers: { 'Authorization': `Bearer ${token}` },
+      withCredentials: true
     }).subscribe({
       next: (response) => {
         if (response.data && response.data.id) {

@@ -46,6 +46,7 @@ import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 
 // Core
+import { CredentialsInterceptor } from './core/interceptors/credentials.interceptor';
 import { AuthInterceptor } from './core/interceptors/auth.interceptor';
 import { ErrorInterceptor } from './core/interceptors/error.interceptor';
 import { ResponseInterceptor } from './core/interceptors/response.interceptor';
@@ -141,6 +142,11 @@ import { ShopModule } from './features/shop/shop.module';
     AngularFireMessagingModule
   ],
   providers: [
+    {
+      provide: HTTP_INTERCEPTORS,
+      useClass: CredentialsInterceptor,
+      multi: true
+    },
     {
       provide: HTTP_INTERCEPTORS,
       useClass: AuthInterceptor,
