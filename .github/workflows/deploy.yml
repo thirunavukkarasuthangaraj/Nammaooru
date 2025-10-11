@@ -96,19 +96,21 @@ jobs:
           docker-compose build --no-cache --pull frontend 2>&1 | tail -20
           
           echo "=== STEP 7: Start containers ==="
-          # Stop nginx to avoid port 80 conflicts
-          systemctl stop nginx 2>/dev/null || true
-          
           # Clean up containers
-          docker rm -f nammaooru-frontend 2>/dev/null || true
-          docker-compose rm -f frontend 2>/dev/null || true
-          
-          # Start fresh - frontend will use port 80 directly
+          docker rm -f nammaooru-frontend nammaooru-backend 2>/dev/null || true
+          docker-compose rm -f frontend backend 2>/dev/null || true
+
+          # Start containers (frontend on port 8080, nginx remains on port 80)
           docker-compose down
           docker-compose up -d
           sleep 15
           echo "Container status after start:"
           docker ps -a
+
+          # Ensure nginx is running for reverse proxy
+          echo "Ensuring nginx is running..."
+          systemctl start nginx 2>/dev/null || true
+          systemctl status nginx --no-pager | head -10
           
           # Clean up old/unused images
           docker image prune -af
@@ -136,13 +138,7 @@ jobs:
           echo "Deployment summary:"
           echo "Frontend version: $(cat shop-management-system/frontend/package.json | grep version | head -1 | cut -d '"' -f 4)"
           echo "Backend version: $(cat shop-management-system/backend/pom.xml | grep -m1 '<version>' | sed 's/.*<version>\(.*\)<\/version>.*/\1/')"
-          
-          # Start nginx for API subdomain HTTPS
-          echo "Starting nginx for API subdomain..."
-          systemctl start nginx
-          sleep 5
-          systemctl status nginx
-          
+
           echo "=== DEPLOYMENT COMPLETE - Check logs above for issues ==="
           
     - name: Verify deployment
