@@ -113,11 +113,12 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Allow specific origins for production
+        // Allow specific origins for production and localhost (any port)
         configuration.setAllowedOriginPatterns(Arrays.asList(
             "https://nammaoorudelivary.in",
             "https://www.nammaoorudelivary.in",
-            "http://localhost:[0-9]{4}"
+            "http://localhost:*",
+            "http://localhost"
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("*"));

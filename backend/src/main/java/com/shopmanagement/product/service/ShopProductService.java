@@ -415,7 +415,27 @@ public class ShopProductService {
         spec = spec.and((root, query, cb) -> cb.equal(root.get("status"), MasterProduct.ProductStatus.ACTIVE));
         
         Page<MasterProduct> masterProducts = masterProductRepository.findAll(spec, pageable);
-        
+
+        // Fetch images for all products to avoid lazy loading issues
+        List<Long> productIds = masterProducts.getContent().stream()
+                .map(MasterProduct::getId)
+                .toList();
+
+        if (!productIds.isEmpty()) {
+            // Load products with images
+            List<MasterProduct> productsWithImages = masterProductRepository.findAllWithImages(productIds);
+            java.util.Map<Long, MasterProduct> imageMap = productsWithImages.stream()
+                    .collect(java.util.stream.Collectors.toMap(MasterProduct::getId, p -> p));
+
+            // Enrich products with images
+            masterProducts.getContent().forEach(product -> {
+                MasterProduct productWithImages = imageMap.get(product.getId());
+                if (productWithImages != null && productWithImages.getImages() != null) {
+                    product.setImages(productWithImages.getImages());
+                }
+            });
+        }
+
         // Convert to MasterProductResponse using ProductMapper
         return masterProducts.map(productMapper::toResponse);
     }
