@@ -28,7 +28,10 @@ export class AuthInterceptor implements HttpInterceptor {
       console.log('Added Authorization header');
     }
 
-    const modifiedRequest = request.clone({ headers });
+    const modifiedRequest = request.clone({
+      headers,
+      withCredentials: request.withCredentials // Preserve withCredentials from CredentialsInterceptor
+    });
     return next.handle(modifiedRequest);
   }
 }
