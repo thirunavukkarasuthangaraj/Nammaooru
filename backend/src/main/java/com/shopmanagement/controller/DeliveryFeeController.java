@@ -17,7 +17,6 @@ import java.util.Map;
 @RequestMapping("/api/delivery-fees")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*")
 public class DeliveryFeeController {
 
     private final DeliveryFeeService deliveryFeeService;

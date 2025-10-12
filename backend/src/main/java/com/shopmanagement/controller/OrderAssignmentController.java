@@ -20,7 +20,6 @@ import java.util.Optional;
 @RequestMapping("/api/assignments")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*")
 public class OrderAssignmentController {
 
     private final OrderAssignmentService assignmentService;

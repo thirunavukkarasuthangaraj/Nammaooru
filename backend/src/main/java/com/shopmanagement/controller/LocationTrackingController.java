@@ -19,7 +19,6 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/location")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class LocationTrackingController {
 
     private final LocationTrackingService locationTrackingService;

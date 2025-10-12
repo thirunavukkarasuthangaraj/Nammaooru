@@ -32,7 +32,6 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/mobile/delivery-partner")
-@CrossOrigin(origins = "*")
 @Slf4j
 public class DeliveryPartnerController {
 

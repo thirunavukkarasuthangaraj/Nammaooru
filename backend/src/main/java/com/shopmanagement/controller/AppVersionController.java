@@ -12,7 +12,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/app-version")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class AppVersionController {
 
     private final AppVersionRepository appVersionRepository;
