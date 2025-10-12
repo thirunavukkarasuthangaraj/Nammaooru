@@ -16,19 +16,7 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Value("${app.upload.dir:./uploads}")
     private String uploadDir;
-    
-    @Value("${app.cors.allowed-origins}")
-    private String allowedOrigins;
-    
-    @Value("${app.cors.allowed-methods}")
-    private String allowedMethods;
-    
-    @Value("${app.cors.allowed-headers}")
-    private String allowedHeaders;
-    
-    @Value("${app.cors.allow-credentials}")
-    private boolean allowCredentials;
-    
+
     @Bean
     public RestTemplate restTemplate() {
         return new RestTemplate();
