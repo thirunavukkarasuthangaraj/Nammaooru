@@ -26,7 +26,8 @@ services:
     ports:
       - "0.0.0.0:8082:8080"
     volumes:
-      - uploads_data:/app/uploads
+      # Mount host directory for persistent file storage (production)
+      - /opt/shop-management/uploads:/app/uploads
       # Mount firebase-config directory (read-only for security)
       - ./firebase-config:/app/firebase-config:ro
     networks:
@@ -55,9 +56,8 @@ services:
       - backend
     restart: unless-stopped
 
-volumes:
-  uploads_data:
-    driver: local
+# Note: Using host directory mount (/opt/shop-management/uploads) instead of Docker volume
+# This allows nginx to serve uploaded files directly
 
 networks:
   shop-network:
