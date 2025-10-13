@@ -57,13 +57,22 @@ jobs:
           # Update nginx configuration (auto-deploy)
           echo "=== STEP 3.1: Update nginx configuration ==="
           if [ -f "nginx/nammaoorudelivary.conf" ]; then
-            echo "Deploying nginx config..."
+            echo "Deploying nammaoorudelivary.conf..."
             cp nginx/nammaoorudelivary.conf /etc/nginx/sites-available/
-            nginx -t && systemctl reload nginx
-            echo "Nginx configuration updated and reloaded!"
           else
-            echo "Warning: nginx config not found, skipping nginx update"
+            echo "Warning: nammaoorudelivary.conf not found"
           fi
+
+          if [ -f "nginx/api.nammaoorudelivary.in" ]; then
+            echo "Deploying api.nammaoorudelivary.in..."
+            cp nginx/api.nammaoorudelivary.in /etc/nginx/sites-available/
+          else
+            echo "Warning: api.nammaoorudelivary.in not found"
+          fi
+
+          echo "Testing nginx configuration..."
+          nginx -t && systemctl reload nginx
+          echo "Nginx configurations updated and reloaded!"
 
           echo "Files copied. Verifying latest code versions:"
           echo "Backend version from copied files:"
