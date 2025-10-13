@@ -1,0 +1,18 @@
+# Firebase Configuration Files - NEVER COMMIT!
+# These contain sensitive API keys and credentials
+
+# Backend service account
+firebase-service-account.json
+
+# Android
+google-services.json
+
+# iOS
+GoogleService-Info.plist
+
+# Web/Frontend
+firebase-web-config.json
+
+# Any JSON files in this directory (except .template files)
+*.json
+!*.json.template

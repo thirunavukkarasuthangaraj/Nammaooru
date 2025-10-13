@@ -16,6 +16,8 @@ services:
       - APP_UPLOAD_DIR=/app/uploads
       - DOCUMENT_UPLOAD_PATH=/app/uploads/documents
       - PRODUCT_IMAGES_PATH=products
+      # Firebase configuration path (mounted from host)
+      - FIREBASE_SERVICE_ACCOUNT=/app/firebase-config/firebase-service-account.json
       # CORS is configured in SecurityConfig.java - DO NOT set env vars here
       # - APP_CORS_ALLOWED_ORIGINS=https://nammaoorudelivary.in,https://www.nammaoorudelivary.in
       # - APP_CORS_ALLOWED_METHODS=GET,POST,PUT,DELETE,OPTIONS
@@ -25,6 +27,8 @@ services:
       - "0.0.0.0:8082:8080"
     volumes:
       - uploads_data:/app/uploads
+      # Mount firebase-config directory (read-only for security)
+      - ./firebase-config:/app/firebase-config:ro
     networks:
       - shop-network
     extra_hosts:

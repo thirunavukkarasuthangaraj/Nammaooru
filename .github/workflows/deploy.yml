@@ -54,6 +54,22 @@ jobs:
           cp shop-management-system/docker-compose.yml ./
           cp -r shop-management-system/nginx ./
 
+          # Check Firebase configuration (DO NOT overwrite existing files)
+          echo "=== STEP 3.2: Check Firebase configuration ==="
+          if [ ! -d "firebase-config" ]; then
+            echo "Creating firebase-config directory..."
+            mkdir -p firebase-config
+            chmod 700 firebase-config
+          fi
+
+          if [ ! -f "firebase-config/firebase-service-account.json" ]; then
+            echo "⚠️  WARNING: firebase-service-account.json NOT FOUND!"
+            echo "   Backend may fail if Firebase is required."
+            echo "   Upload: scp /path/to/firebase-service-account.json root@65.21.4.236:/opt/shop-management/firebase-config/"
+          else
+            echo "✅ Firebase service account found"
+          fi
+
           # Update nginx configuration (auto-deploy)
           echo "=== STEP 3.1: Update nginx configuration ==="
           if [ -f "nginx/nammaoorudelivary.conf" ]; then
