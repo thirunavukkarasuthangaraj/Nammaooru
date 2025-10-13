@@ -83,13 +83,14 @@ app:
     
   frontend:
     base-url: ${FRONTEND_BASE_URL:https://nammaoorudelivary.in}
-    
-  cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:https://nammaoorudelivary.in,https://www.nammaoorudelivary.in,https://api.nammaoorudelivary.in,http://localhost:4200,http://localhost:80}
-    allowed-methods: GET,POST,PUT,DELETE,OPTIONS,PATCH,HEAD
-    allowed-headers: "*"
-    allow-credentials: true
-    exposed-headers: Authorization,Content-Type,X-Total-Count
+
+  # CORS is configured in SecurityConfig.java - DO NOT configure here to avoid duplicate headers
+  # cors:
+  #   allowed-origins: ${CORS_ALLOWED_ORIGINS:https://nammaoorudelivary.in,https://www.nammaoorudelivary.in,https://api.nammaoorudelivary.in,http://localhost:4200,http://localhost:80}
+  #   allowed-methods: GET,POST,PUT,DELETE,OPTIONS,PATCH,HEAD
+  #   allowed-headers: "*"
+  #   allow-credentials: true
+  #   exposed-headers: Authorization,Content-Type,X-Total-Count
 
 jwt:
   secret: ${JWT_SECRET}
