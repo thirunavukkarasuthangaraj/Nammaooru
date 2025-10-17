@@ -241,6 +241,7 @@ public class DeliveryPartnerController {
     }
 
     @GetMapping("/orders/{partnerId}/active")
+    @Transactional
     public ResponseEntity<Map<String, Object>> getActiveOrders(@PathVariable String partnerId) {
         Map<String, Object> response = new HashMap<>();
 
