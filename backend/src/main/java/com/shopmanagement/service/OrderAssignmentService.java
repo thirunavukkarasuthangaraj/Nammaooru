@@ -482,6 +482,10 @@ public class OrderAssignmentService {
         return assignmentRepository.findByDeliveryPartner(partner, pageable);
     }
 
+    public List<OrderAssignment> findAssignmentsByPartnerAndStatuses(User partner, List<OrderAssignment.AssignmentStatus> statuses) {
+        return assignmentRepository.findByDeliveryPartnerAndStatusIn(partner, statuses);
+    }
+
     public List<OrderAssignment> findAssignmentsByOrderId(Long orderId) {
         return assignmentRepository.findByOrderId(orderId);
     }

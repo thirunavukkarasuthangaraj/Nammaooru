@@ -247,34 +247,43 @@ public class DeliveryPartnerController {
         try {
             Long id = Long.parseLong(partnerId);
 
-            // Get current active assignment for this partner
-            Optional<OrderAssignment> currentAssignment = orderAssignmentService.findCurrentAssignmentByPartnerId(id);
+            // Get ALL active assignments for this partner (ACCEPTED, PICKED_UP, IN_TRANSIT)
+            Optional<User> partnerOpt = userService.findById(id);
+            if (partnerOpt.isEmpty()) {
+                response.put("orders", new ArrayList<>());
+                response.put("totalCount", 0);
+                response.put("success", false);
+                response.put("message", "Delivery partner not found");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            User partner = partnerOpt.get();
+            List<OrderAssignment.AssignmentStatus> activeStatuses = List.of(
+                OrderAssignment.AssignmentStatus.ACCEPTED,
+                OrderAssignment.AssignmentStatus.PICKED_UP,
+                OrderAssignment.AssignmentStatus.IN_TRANSIT
+            );
+
+            List<OrderAssignment> activeAssignments = orderAssignmentService.findAssignmentsByPartnerAndStatuses(partner, activeStatuses);
 
             List<Map<String, Object>> orders = new ArrayList<>();
-            if (currentAssignment.isPresent()) {
-                OrderAssignment assignment = currentAssignment.get();
-                // Only show if status is ACCEPTED, PICKED_UP, or IN_TRANSIT
-                if (assignment.getStatus() == OrderAssignment.AssignmentStatus.ACCEPTED ||
-                    assignment.getStatus() == OrderAssignment.AssignmentStatus.PICKED_UP ||
-                    assignment.getStatus() == OrderAssignment.AssignmentStatus.IN_TRANSIT) {
-
-                    Map<String, Object> orderData = new HashMap<>();
-                    orderData.put("id", assignment.getId().toString());
-                    orderData.put("orderNumber", assignment.getOrder().getOrderNumber());
-                    orderData.put("totalAmount", assignment.getOrder().getTotalAmount());
-                    orderData.put("deliveryFee", assignment.getDeliveryFee());
-                    orderData.put("status", assignment.getStatus().name());
-                    orderData.put("createdAt", assignment.getCreatedAt().toString());
-                    orderData.put("deliveryAddress", assignment.getOrder().getDeliveryAddress());
-                    orderData.put("customerName", assignment.getOrder().getCustomer().getFirstName() + " " + assignment.getOrder().getCustomer().getLastName());
-                    orderData.put("customerPhone", assignment.getOrder().getCustomer().getMobileNumber());
-                    orderData.put("shopName", assignment.getOrder().getShop().getName());
-                    orderData.put("shopAddress", assignment.getOrder().getShop().getAddressLine1());
-                    orderData.put("paymentMethod", assignment.getOrder().getPaymentMethod().name());
-                    orderData.put("paymentStatus", assignment.getOrder().getPaymentStatus().name());
-                    orderData.put("pickupOtp", assignment.getOrder().getPickupOtp());
-                    orders.add(orderData);
-                }
+            for (OrderAssignment assignment : activeAssignments) {
+                Map<String, Object> orderData = new HashMap<>();
+                orderData.put("id", assignment.getId().toString());
+                orderData.put("orderNumber", assignment.getOrder().getOrderNumber());
+                orderData.put("totalAmount", assignment.getOrder().getTotalAmount());
+                orderData.put("deliveryFee", assignment.getDeliveryFee());
+                orderData.put("status", assignment.getStatus().name().toLowerCase()); // lowercase for mobile app
+                orderData.put("createdAt", assignment.getCreatedAt().toString());
+                orderData.put("deliveryAddress", assignment.getOrder().getDeliveryAddress());
+                orderData.put("customerName", assignment.getOrder().getCustomer().getFirstName() + " " + assignment.getOrder().getCustomer().getLastName());
+                orderData.put("customerPhone", assignment.getOrder().getCustomer().getMobileNumber());
+                orderData.put("shopName", assignment.getOrder().getShop().getName());
+                orderData.put("shopAddress", assignment.getOrder().getShop().getAddressLine1());
+                orderData.put("paymentMethod", assignment.getOrder().getPaymentMethod().name());
+                orderData.put("paymentStatus", assignment.getOrder().getPaymentStatus().name());
+                orderData.put("pickupOtp", assignment.getOrder().getPickupOtp());
+                orders.add(orderData);
             }
 
             response.put("orders", orders);
