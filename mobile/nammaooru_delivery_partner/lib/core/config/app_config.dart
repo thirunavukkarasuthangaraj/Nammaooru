@@ -2,20 +2,20 @@ class AppConfig {
   // ============================================
   // SINGLE SOURCE OF TRUTH - CHANGE ONLY HERE!
   // ============================================
-  static const String _devBaseUrl = 'http://192.168.1.11:8080';
-  static const String _prodBaseUrl = 'https://api.nammaooru.com';
+  static const String _devBaseUrl = 'http://192.168.1.10:8080';
+  static const String _prodBaseUrl = 'https://nammaoorudelivary.in';
 
-  static const bool _isProduction = false; // Set to true for production
+  static const bool _isProduction = true; // Using PRODUCTION backend
 
   // All URLs derived from single source
   static String get baseUrl => _isProduction ? _prodBaseUrl : _devBaseUrl;
   static String get apiUrl => '$baseUrl/api';
-  static String get wsUrl => 'ws://${baseUrl.replaceAll('http://', '').replaceAll('https://', '')}/ws';
   static String get mobileApiUrl => '$apiUrl/mobile/delivery-partner';
 
   // WebSocket Configuration
   static String get wsBaseUrl => baseUrl.replaceAll('http://', 'ws://').replaceAll('https://', 'wss://');
   static String get wsApiBaseUrl => '$wsBaseUrl/ws';
+  static String get wsUrl => wsApiBaseUrl; // Alias for backward compatibility
 
   // Real-time Configuration
   static const Duration pingInterval = Duration(seconds: 30);
