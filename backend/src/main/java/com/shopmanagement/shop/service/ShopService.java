@@ -690,9 +690,17 @@ public class ShopService {
     public Map<String, Object> getShopOrders(String shopId, Pageable pageable, String status, String dateFrom, String dateTo) {
         Shop shop = shopRepository.findByShopId(shopId)
                 .orElseThrow(() -> new ShopNotFoundException("Shop not found with shop ID: " + shopId));
-        
-        // Fetch orders from the database using the shop's internal ID
-        Page<Order> orderPage = orderRepository.findByShopIdWithOrderItems(shop.getId(), pageable);
+
+        // Fetch orders from the database using the shop's internal ID with status filter
+        Page<Order> orderPage;
+        if (status != null && !status.isEmpty()) {
+            // Filter by status with order items eagerly loaded
+            Order.OrderStatus orderStatus = Order.OrderStatus.valueOf(status.toUpperCase());
+            orderPage = orderRepository.findByShopIdAndStatusWithOrderItems(shop.getId(), orderStatus, pageable);
+        } else {
+            // Get all orders with order items eagerly loaded
+            orderPage = orderRepository.findByShopIdWithOrderItems(shop.getId(), pageable);
+        }
         
         // Convert to response DTOs
         List<OrderResponse> orderResponses = orderPage.getContent().stream()
