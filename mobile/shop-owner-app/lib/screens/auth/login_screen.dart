@@ -32,18 +32,32 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (response.isSuccess && response.data != null) {
         final data = response.data!;
+
+        // Extract token - backend returns 'accessToken' field
+        final token = data['data']?['accessToken'] ?? data['data']?['token'] ?? data['accessToken'] ?? data['token'] ?? '';
+        final username = data['data']?['username'] ?? data['username'] ?? 'Shop Owner';
+
+        print('Token from response: $token');
+        print('Token type: ${token.runtimeType}');
+        print('Login successful, navigating to dashboard...');
+        print('Token to save: $token');
+        print('Token length: ${token.length}');
+
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('auth_token', data['token'] ?? '');
-        await prefs.setString('user_data', data['user'].toString());
+        await prefs.setString('auth_token', token);
+        await prefs.setString('user_data', response.data.toString());
+
+        print('Token saved to storage: ${await prefs.getString('auth_token')}');
 
         if (!mounted) return;
 
+        print('Navigating to MainNavigation with token: $token');
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
             builder: (context) => MainNavigation(
-              userName: data['user']?['name'] ?? 'Shop Owner',
-              token: data['token'] ?? '',
+              userName: username,
+              token: token,
             ),
           ),
         );

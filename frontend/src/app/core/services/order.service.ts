@@ -163,4 +163,29 @@ export class OrderService {
   markOrderAsPreparing(orderId: number): Observable<OrderResponse> {
     return this.http.post<OrderResponse>(`${this.apiUrl}/${orderId}/prepare`, {});
   }
+
+  /**
+   * Hand over self-pickup order to customer
+   * This marks the order as DELIVERED and payment as PAID
+   */
+  handoverSelfPickup(orderId: number): Observable<OrderResponse> {
+    return this.http.post<OrderResponse>(`${this.apiUrl}/${orderId}/handover-self-pickup`, {});
+  }
+
+  /**
+   * Verify pickup OTP for home delivery order
+   * This marks the order as OUT_FOR_DELIVERY
+   */
+  verifyPickupOTP(orderId: number, otp: string): Observable<OrderResponse> {
+    const body = { otp: otp };
+    return this.http.post<OrderResponse>(`${this.apiUrl}/${orderId}/verify-pickup-otp`, body);
+  }
+
+  /**
+   * Get shop analytics data
+   */
+  getShopAnalytics(shopId: number, period: string = 'today'): Observable<any> {
+    const params = new HttpParams().set('period', period);
+    return this.http.get<any>(`${environment.apiUrl}/shops/${shopId}/analytics`, { params });
+  }
 }

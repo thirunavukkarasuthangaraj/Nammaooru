@@ -3,9 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'core/providers/delivery_partner_provider.dart';
+import 'core/providers/location_provider.dart';
 import 'core/constants/app_theme.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/dashboard/screens/dashboard_screen.dart';
+import 'features/orders/screens/available_orders_screen.dart';
+import 'features/orders/screens/active_orders_screen.dart';
+import 'features/orders/screens/order_history_screen.dart';
+import 'features/earnings/screens/earnings_screen.dart';
 
 // Conditional imports for Firebase (mobile only)
 import 'firebase_mobile_init.dart' if (dart.library.html) 'firebase_web_stub.dart';
@@ -37,12 +42,21 @@ class DeliveryPartnerApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => DeliveryPartnerProvider()),
+        ChangeNotifierProvider(create: (context) => LocationProvider()),
       ],
       child: MaterialApp(
         title: 'NammaOoru Delivery Partner',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         home: const AppInitializer(),
+        routes: {
+          '/login': (context) => const LoginScreen(),
+          '/dashboard': (context) => const DashboardScreen(),
+          '/available-orders': (context) => const AvailableOrdersScreen(),
+          '/active-orders': (context) => const ActiveOrdersScreen(),
+          '/order-history': (context) => const OrderHistoryScreen(),
+          '/earnings': (context) => const EarningsScreen(),
+        },
       ),
     );
   }

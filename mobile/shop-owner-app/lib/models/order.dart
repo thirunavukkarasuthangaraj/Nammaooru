@@ -143,6 +143,8 @@ class Order {
       'totalAmount': totalAmount,
       'orderDate': orderDate?.toIso8601String(),
       'estimatedDelivery': estimatedDelivery?.toIso8601String(),
+      'deliveryType': deliveryType,
+      'assignedToDeliveryPartner': assignedToDeliveryPartner,
     };
   }
 
@@ -175,6 +177,8 @@ class Order {
     double? totalAmount,
     DateTime? orderDate,
     DateTime? estimatedDelivery,
+    String? deliveryType,
+    bool? assignedToDeliveryPartner,
   }) {
     return Order(
       id: id ?? this.id,
@@ -205,6 +209,8 @@ class Order {
       totalAmount: totalAmount ?? this.totalAmount,
       orderDate: orderDate ?? this.orderDate,
       estimatedDelivery: estimatedDelivery ?? this.estimatedDelivery,
+      deliveryType: deliveryType ?? this.deliveryType,
+      assignedToDeliveryPartner: assignedToDeliveryPartner ?? this.assignedToDeliveryPartner,
     );
   }
 

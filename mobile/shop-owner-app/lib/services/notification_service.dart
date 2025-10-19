@@ -241,10 +241,11 @@ class NotificationService {
         contextual: action.style == 'SECONDARY',
         showsUserInterface: true,
       )).toList(),
-      autoCancel: !notification.requiresAction,
-      ongoing: notification.requiresAction,
+      autoCancel: false,  // Don't auto-cancel, keep notification visible
+      ongoing: notification.type == NotificationTypes.newOrder,  // New orders stay in notification tray
       category: AndroidNotificationCategory.message,
-      fullScreenIntent: notification.isHighPriority && notification.requiresAction,
+      fullScreenIntent: notification.isHighPriority && notification.type == NotificationTypes.newOrder,
+      timeoutAfter: null,  // No timeout
     );
 
     const iosDetails = DarwinNotificationDetails(

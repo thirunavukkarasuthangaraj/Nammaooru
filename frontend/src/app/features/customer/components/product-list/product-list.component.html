@@ -11,9 +11,10 @@
           Back to Shops
         </button>
         <div class="shop-info">
-          <img [src]="shop.image || '/assets/images/shop-placeholder.svg'" 
-               class="shop-logo" 
-               [alt]="shop.name">
+          <img [src]="shop.image || '/assets/images/shop-placeholder.jpg'"
+               class="shop-logo"
+               [alt]="shop.name"
+               (error)="onShopImageError($event)">
           <div class="shop-details">
             <h2 class="shop-name">{{shop.name}}</h2>
             <p class="shop-description">{{shop.description || 'Premium electronics and gadgets store'}}</p>
@@ -133,8 +134,9 @@
           <div class="products-list" *ngIf="!loading && products.length > 0">
             <div class="product-list-item" *ngFor="let product of products">
               <div class="product-image">
-                <img [src]="product.image || '/assets/images/product-placeholder.svg'" 
-                     [alt]="product.name">
+                <img [src]="getProductImageUrl(product)"
+                     [alt]="product.name"
+                     (error)="onImageError($event)">
                 <span class="discount-badge" *ngIf="product.discount">
                   {{product.discount}}% OFF
                 </span>

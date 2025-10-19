@@ -5,6 +5,7 @@ import '../../models/order.dart';
 import '../../providers/order_provider.dart';
 import '../../utils/constants.dart';
 import '../../services/api_service.dart';
+import '../../services/storage_service.dart';
 import '../../widgets/pickup_otp_dialog.dart';
 import '../../widgets/verify_pickup_otp_dialog.dart';
 
@@ -29,11 +30,21 @@ class OrderDetailsScreen extends StatelessWidget {
             (o) => o.id == orderId,
             orElse: () => Order(
               id: orderId,
+              customerId: '',
               customerName: 'Unknown',
               customerPhone: '',
               items: [],
+              subtotal: 0,
+              tax: 0,
+              deliveryFee: 0,
+              discount: 0,
+              total: 0,
               totalAmount: 0,
               status: 'PENDING',
+              paymentStatus: 'PENDING',
+              paymentMethod: 'CASH_ON_DELIVERY',
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
               address: '',
             ),
           );
@@ -333,8 +344,27 @@ class OrderDetailsScreen extends StatelessWidget {
               'Actions',
               style: AppTextStyles.heading3,
             ),
+            const SizedBox(height: 8),
+            // Debug info - remove after testing
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.grey.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Debug Info:', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                  Text('Status: ${order.status}', style: TextStyle(fontSize: 10)),
+                  Text('Delivery Type: ${order.deliveryType ?? "null"}', style: TextStyle(fontSize: 10)),
+                  Text('Is Self Pickup: ${order.isSelfPickup}', style: TextStyle(fontSize: 10)),
+                ],
+              ),
+            ),
             const SizedBox(height: 16),
-            if (order.status == OrderStatus.pending) ...[
+            // Debug: Show current order status and delivery type
+            if (order.status == 'PENDING') ...[
               Row(
                 children: [
                   Expanded(
@@ -369,24 +399,11 @@ class OrderDetailsScreen extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () => _markAsPreparing(context, order, orderProvider),
-                  icon: const Icon(Icons.restaurant),
-                  label: const Text('Start Preparing'),
+                  onPressed: () => _markAsPacked(context, order, orderProvider),
+                  icon: const Icon(Icons.inventory_2),
+                  label: const Text('Mark as Packed'),
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                ),
-              ),
-            ],
-            if (order.status == 'PREPARING') ...[
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => _markAsReady(context, order, orderProvider),
-                  icon: const Icon(Icons.done_all),
-                  label: const Text('Mark as Ready'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.warning,
+                    backgroundColor: Colors.orange,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
@@ -485,6 +502,16 @@ class OrderDetailsScreen extends StatelessWidget {
         textColor = AppColors.error;
         label = 'Cancelled';
         break;
+      case 'SELF_PICKUP_COLLECTED':
+        backgroundColor = AppColors.success.withOpacity(0.2);
+        textColor = AppColors.success;
+        label = 'Collected';
+        break;
+      default:
+        backgroundColor = Colors.grey.withOpacity(0.1);
+        textColor = Colors.grey;
+        label = status;
+        break;
     }
 
     return Container(
@@ -563,54 +590,105 @@ class OrderDetailsScreen extends StatelessWidget {
     );
   }
 
-  void _markAsPreparing(BuildContext context, Order order, OrderProvider orderProvider) async {
-    final success = await orderProvider.updateOrderStatus(order.id, 'PREPARING');
-    if (success && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Order marked as preparing'),
-          backgroundColor: AppColors.info,
-        ),
-      );
-    }
-  }
+  void _markAsPacked(BuildContext context, Order order, OrderProvider orderProvider) async {
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
 
-  void _markAsReady(BuildContext context, Order order, OrderProvider orderProvider) async {
-    // First mark the order as ready
+    // Directly mark the order as ready for pickup (skip PREPARING status)
     final success = await orderProvider.updateOrderStatus(order.id, 'READY_FOR_PICKUP');
 
+    // Close loading dialog
+    if (context.mounted) Navigator.pop(context);
+
     if (success && context.mounted) {
-      // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Order marked as ready for pickup'),
+          content: Text('✅ Order marked as packed and ready for pickup'),
           backgroundColor: AppColors.success,
           duration: Duration(seconds: 2),
         ),
       );
 
-      // Generate pickup OTP
-      final otpResponse = await ApiService.generatePickupOTP(order.id);
-
-      if (otpResponse.success && context.mounted) {
-        final String otp = otpResponse.data['otp']?.toString() ?? '';
-
-        // Show OTP dialog
+      // For home delivery orders, auto-assign to delivery partner
+      if (order.deliveryType != 'SELF_PICKUP') {
+        // Show loading dialog for assignment
         showDialog(
           context: context,
           barrierDismissible: false,
-          builder: (context) => PickupOTPDialog(
-            otp: otp,
-            orderId: order.id,
+          builder: (context) => const Center(
+            child: CircularProgressIndicator(),
           ),
         );
-      } else if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to generate pickup OTP: ${otpResponse.message}'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+
+        try {
+          // Get current user ID from storage
+          final userJson = await StorageService.getUser();
+          final userId = userJson?['userId']?.toString() ?? userJson?['id']?.toString() ?? '1';
+
+          // Auto-assign the order to an available delivery partner
+          final assignResponse = await ApiService.autoAssignOrder(order.id, userId);
+
+          // Close loading dialog
+          if (context.mounted) Navigator.pop(context);
+
+          if (assignResponse.success && context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('✅ Order assigned to delivery partner'),
+                backgroundColor: AppColors.success,
+                duration: Duration(seconds: 2),
+              ),
+            );
+
+            // Generate pickup OTP for delivery partner
+            final otpResponse = await ApiService.generatePickupOTP(order.id);
+
+            if (otpResponse.success && context.mounted) {
+              final String otp = otpResponse.data['otp']?.toString() ?? '';
+
+              // Show OTP dialog
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => PickupOTPDialog(
+                  otp: otp,
+                  orderId: order.id,
+                ),
+              );
+            }
+
+            // Refresh orders to get updated assignment status
+            await orderProvider.loadOrders();
+          } else if (context.mounted) {
+            // Assignment failed, but order is still READY_FOR_PICKUP
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('⚠️ ${assignResponse.error ?? "Could not assign delivery partner. Please assign manually."}'),
+                backgroundColor: AppColors.warning,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        } catch (e) {
+          // Close loading dialog
+          if (context.mounted) Navigator.pop(context);
+
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('⚠️ Error assigning delivery partner: ${e.toString()}'),
+                backgroundColor: AppColors.warning,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        }
       }
     }
   }
@@ -629,7 +707,7 @@ class OrderDetailsScreen extends StatelessWidget {
           if (response.success) {
             return; // Success - dialog will close
           } else {
-            throw Exception(response.message ?? 'Invalid OTP');
+            throw Exception(response.error ?? 'Invalid OTP');
           }
         },
       ),
@@ -638,7 +716,7 @@ class OrderDetailsScreen extends StatelessWidget {
     // If OTP was verified successfully
     if (result == true && context.mounted) {
       // Refresh the order data
-      await orderProvider.fetchOrders();
+      await orderProvider.loadOrders();
 
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
@@ -735,7 +813,7 @@ class OrderDetailsScreen extends StatelessWidget {
 
         if (response.success && context.mounted) {
           // Refresh the order data
-          await orderProvider.fetchOrders();
+          await orderProvider.loadOrders();
 
           // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
@@ -751,7 +829,7 @@ class OrderDetailsScreen extends StatelessWidget {
         } else if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Failed to handover order: ${response.message}'),
+              content: Text('Failed to handover order: ${response.error ?? "Unknown error"}'),
               backgroundColor: AppColors.error,
             ),
           );

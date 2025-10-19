@@ -261,4 +261,120 @@ export class CheckoutService {
       })
     );
   }
+
+  /**
+   * Place order with delivery type (HOME_DELIVERY or SELF_PICKUP)
+   */
+  placeOrderWithDeliveryType(
+    deliveryType: 'HOME_DELIVERY' | 'SELF_PICKUP',
+    deliveryAddress: DeliveryAddress | null,
+    paymentMethod: string,
+    notes?: string
+  ): Observable<OrderResponse> {
+    const cart = this.cartService.getCart();
+
+    if (cart.items.length === 0) {
+      Swal.fire('Error', 'Your cart is empty', 'error');
+      return of(null as any);
+    }
+
+    let customerId = this.getCustomerId();
+    if (!customerId) {
+      Swal.fire('Error', 'Please login to place an order', 'error');
+      this.router.navigate(['/auth/login']);
+      return of(null as any);
+    }
+
+    // Calculate delivery fee based on delivery type
+    const deliveryFee = deliveryType === 'SELF_PICKUP' ? 0 : 50;
+    const discountAmount = cart.discount || 0;
+
+    // For self-pickup, use minimal address info
+    const orderRequest: any = {
+      customerId: customerId,
+      shopId: cart.shopId!,
+      deliveryType: deliveryType,
+      orderItems: cart.items.map(item => ({
+        shopProductId: item.productId,
+        quantity: item.quantity,
+        specialInstructions: ''
+      })),
+      paymentMethod: paymentMethod,
+      notes: notes || '',
+      discountAmount: discountAmount,
+      deliveryFee: deliveryFee
+    };
+
+    // Add delivery address only for HOME_DELIVERY
+    if (deliveryType === 'HOME_DELIVERY' && deliveryAddress) {
+      orderRequest.deliveryAddress = deliveryAddress.address;
+      orderRequest.deliveryCity = deliveryAddress.city;
+      orderRequest.deliveryState = deliveryAddress.state;
+      orderRequest.deliveryPostalCode = deliveryAddress.postalCode;
+      orderRequest.deliveryPhone = deliveryAddress.phone;
+      orderRequest.deliveryContactName = deliveryAddress.contactName;
+    } else if (deliveryType === 'SELF_PICKUP') {
+      // For self-pickup, set minimal address info
+      orderRequest.deliveryAddress = 'SELF_PICKUP';
+      orderRequest.deliveryCity = 'N/A';
+      orderRequest.deliveryState = 'N/A';
+      orderRequest.deliveryPostalCode = '000000';
+      orderRequest.deliveryPhone = deliveryAddress?.phone || '';
+      orderRequest.deliveryContactName = deliveryAddress?.contactName || '';
+    }
+
+    console.log('Placing order with delivery type:', deliveryType);
+    console.log('Order request:', orderRequest);
+
+    return this.http.post<ApiResponse<OrderResponse>>(`${this.apiUrl}/orders`, orderRequest).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          const errorMessage = ApiResponseHelper.getErrorMessage(response);
+          throw new Error(errorMessage);
+        }
+        return response.data;
+      }),
+      tap(response => {
+        if (response && response.id) {
+          // Clear cart after successful order
+          this.cartService.clearCart();
+
+          // Show success message based on delivery type
+          const message = deliveryType === 'SELF_PICKUP'
+            ? `Your order #${response.orderNumber} is ready! Come to the shop to collect it.`
+            : `Your order #${response.orderNumber} will be delivered to your address.`;
+
+          Swal.fire({
+            title: 'Order Placed Successfully!',
+            text: message,
+            icon: 'success',
+            confirmButtonText: 'View Orders'
+          }).then((result) => {
+            if (result.isConfirmed) {
+              this.router.navigate(['/customer/orders']);
+            } else {
+              this.router.navigate(['/customer/shops']);
+            }
+          });
+        }
+      }),
+      catchError(error => {
+        console.error('Error placing order:', error);
+        let errorMessage = 'Failed to place order. Please try again.';
+
+        if (error.error && error.error.message) {
+          errorMessage = error.error.message;
+        } else if (error.status === 400) {
+          errorMessage = 'Invalid order data. Please check your cart and try again.';
+        } else if (error.status === 401) {
+          errorMessage = 'Please login to place an order.';
+        } else if (error.status === 500) {
+          errorMessage = 'Server error. Please try again later.';
+        }
+
+        Swal.fire('Error', errorMessage, 'error');
+        return of(null as any);
+      })
+    );
+  }
 }

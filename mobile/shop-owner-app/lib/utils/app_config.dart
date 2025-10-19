@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 class AppConfig {
   // Environment configuration
   static const bool kIsProduction = bool.fromEnvironment('dart.vm.product');
 
   // API configuration
-  static const bool useMockData = !kIsProduction; // Use mock data in debug mode
+  static const bool useMockData = false; // Use real API
   static const bool enableApiLogging = !kIsProduction; // Enable API logging in debug mode
 
   // Feature flags
@@ -69,11 +71,51 @@ class AppConfig {
   static String get buildMode => kIsProduction ? 'Production' : 'Development';
 
   static String get apiBaseUrl {
-    if (kIsProduction) {
-      return 'https://api.nammaooru.com';
-    } else {
-      return 'https://dev-api.nammaooru.com';
+    // Production deployment
+    // return 'https://nammaoorudelivary.in/api';
+
+    // For local testing:
+    // Use localhost for web, network IP for mobile devices
+    if (kIsWeb) {
+      return 'http://localhost:8080/api';
     }
+    return 'http://192.168.1.10:8080/api';
+  }
+
+  static String get serverBaseUrl {
+    // Production deployment
+    // return 'https://nammaoorudelivary.in';
+
+    // For local testing:
+    // Use localhost for web, network IP for mobile devices
+    if (kIsWeb) {
+      return 'http://localhost:8080';
+    }
+    return 'http://192.168.1.10:8080';
+  }
+
+  static String get webSocketUrl {
+    // Production deployment
+    // return 'wss://nammaoorudelivary.in/ws';
+
+    // For local testing:
+    // Use localhost for web, network IP for mobile devices
+    if (kIsWeb) {
+      return 'ws://localhost:8080/ws';
+    }
+    return 'ws://192.168.1.10:8080/ws';
+  }
+
+  static String getImageUrl(String? imagePath) {
+    if (imagePath == null || imagePath.isEmpty) {
+      return '';
+    }
+    // If it's already a full URL, return as is
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      return imagePath;
+    }
+    // Otherwise, prepend the server base URL
+    return '$serverBaseUrl$imagePath';
   }
 
   // Configuration validation

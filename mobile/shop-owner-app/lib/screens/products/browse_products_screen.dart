@@ -50,7 +50,7 @@ class _BrowseProductsScreenState extends State<BrowseProductsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<ProductProvider>(context, listen: false).loadProducts();
+      Provider.of<ProductProvider>(context, listen: false).loadMasterProducts();
     });
   }
 
@@ -198,7 +198,7 @@ class _BrowseProductsScreenState extends State<BrowseProductsScreen> {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final filteredProducts = _getFilteredProducts(productProvider.products);
+        final filteredProducts = _getFilteredProducts(productProvider.masterProducts);
 
         if (filteredProducts.isEmpty) {
           return _buildEmptyState();
@@ -206,7 +206,7 @@ class _BrowseProductsScreenState extends State<BrowseProductsScreen> {
 
         return RefreshIndicator(
           onRefresh: () async {
-            await productProvider.loadProducts();
+            await productProvider.loadMasterProducts();
           },
           child: _isGridView
               ? _buildGridView(filteredProducts)

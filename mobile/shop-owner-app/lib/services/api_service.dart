@@ -9,7 +9,7 @@ import 'storage_service.dart';
 import 'mock_data_service.dart';
 
 class ApiService {
-  static const String baseUrl = ApiEndpoints.baseUrl;
+  static String get baseUrl => AppConfig.apiBaseUrl;
   static const Duration timeout = Duration(seconds: 30);
 
   // Mock mode configuration - uses AppConfig
@@ -457,6 +457,51 @@ class ApiService {
 
       return _handleResponse(response);
     } catch (e) {
+      return ApiResponse.error('Network error: ${e.toString()}');
+    }
+  }
+
+  // Auto-assign order to available delivery partner
+  static Future<ApiResponse> autoAssignOrder(String orderId, String assignedBy) async {
+    if (_useMockData) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      return ApiResponse.success({
+        'success': true,
+        'message': 'Order successfully assigned to delivery partner',
+        'assignment': {
+          'id': 1,
+          'orderId': orderId,
+          'deliveryPartner': {
+            'id': 1,
+            'name': 'Mock Delivery Partner',
+            'phone': '1234567890'
+          },
+          'status': 'ASSIGNED'
+        }
+      });
+    }
+
+    try {
+      final uri = Uri.parse('$baseUrl/assignments/orders/$orderId/auto-assign').replace(
+        queryParameters: {'assignedBy': assignedBy},
+      );
+
+      print('🚀 Auto-assigning order: $orderId');
+      print('📡 API Endpoint: $uri');
+
+      final response = await http
+          .post(
+            uri,
+            headers: _authHeaders,
+          )
+          .timeout(timeout);
+
+      print('✅ Auto-assign response status: ${response.statusCode}');
+      print('📨 Auto-assign response body: ${response.body}');
+
+      return _handleResponse(response);
+    } catch (e) {
+      print('❌ Auto-assign error: ${e.toString()}');
       return ApiResponse.error('Network error: ${e.toString()}');
     }
   }

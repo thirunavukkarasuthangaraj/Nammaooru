@@ -1,0 +1,72 @@
+<h2 mat-dialog-title>
+  <mat-icon>payment</mat-icon>
+  Confirm Payment Settlement
+</h2>
+
+<mat-dialog-content>
+  <div class="payment-summary">
+    <div class="partner-info">
+      <h3>{{ data.partnerName }}</h3>
+      <p>{{ data.partnerPhone }}</p>
+    </div>
+
+    <div class="amount-breakdown">
+      <div class="breakdown-row">
+        <span>Cash Collected (COD):</span>
+        <strong class="amount-collected">{{ formatCurrency(data.cashCollected) }}</strong>
+      </div>
+      <div class="breakdown-row">
+        <span>Commission Owed:</span>
+        <strong class="amount-commission">-{{ formatCurrency(data.commissionEarned) }}</strong>
+      </div>
+      <div class="breakdown-divider"></div>
+      <div class="breakdown-row total-row">
+        <span>Net Amount:</span>
+        <strong [class]="data.netAmount > 0 ? 'amount-positive' : 'amount-negative'">
+          {{ formatCurrency(data.netAmount) }}
+        </strong>
+      </div>
+      <div class="payment-direction">
+        <mat-icon>{{ data.netAmount > 0 ? 'arrow_downward' : 'arrow_upward' }}</mat-icon>
+        <span *ngIf="data.netAmount > 0">
+          Partner {{ getPaymentDirection() }} partner
+        </span>
+        <span *ngIf="data.netAmount < 0">
+          You will pay {{ getPaymentDirection() }} partner
+        </span>
+      </div>
+    </div>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Payment Method</mat-label>
+      <mat-select [(ngModel)]="paymentMethod">
+        <mat-option value="CASH">Cash</mat-option>
+        <mat-option value="BANK_TRANSFER">Bank Transfer</mat-option>
+        <mat-option value="UPI">UPI</mat-option>
+        <mat-option value="CHEQUE">Cheque</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Notes (Optional)</mat-label>
+      <textarea
+        matInput
+        [(ngModel)]="notes"
+        placeholder="Add any notes about this payment..."
+        rows="3"></textarea>
+    </mat-form-field>
+
+    <div class="warning-box">
+      <mat-icon>info</mat-icon>
+      <p>This action will mark the payment as settled. Make sure you have {{ data.netAmount > 0 ? 'received' : 'paid' }} the amount offline before confirming.</p>
+    </div>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()">Cancel</button>
+  <button mat-raised-button color="primary" (click)="onConfirm()">
+    <mat-icon>check_circle</mat-icon>
+    Confirm Payment
+  </button>
+</mat-dialog-actions>

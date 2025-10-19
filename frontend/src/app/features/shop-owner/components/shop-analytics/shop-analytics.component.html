@@ -1,0 +1,257 @@
+<div class="shop-analytics">
+  <!-- Header Section -->
+  <div class="analytics-header">
+    <div class="header-content">
+      <div class="title-section">
+        <h1>
+          <mat-icon>analytics</mat-icon>
+          Shop Analytics
+        </h1>
+        <p>Track your shop's performance and insights</p>
+      </div>
+
+      <div class="header-actions">
+        <mat-form-field appearance="outline" class="date-picker">
+          <mat-label>Date Range</mat-label>
+          <mat-date-range-input [rangePicker]="picker">
+            <input matStartDate [(ngModel)]="dateRange.start" placeholder="Start date">
+            <input matEndDate [(ngModel)]="dateRange.end" placeholder="End date">
+          </mat-date-range-input>
+          <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+          <mat-date-range-picker #picker></mat-date-range-picker>
+        </mat-form-field>
+
+        <button mat-raised-button color="primary" (click)="refreshData()">
+          <mat-icon>refresh</mat-icon>
+          Refresh
+        </button>
+
+        <button mat-raised-button (click)="exportReport()">
+          <mat-icon>download</mat-icon>
+          Export
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-overlay" *ngIf="isLoading">
+    <mat-spinner diameter="50"></mat-spinner>
+    <p>Loading analytics...</p>
+  </div>
+
+  <!-- Analytics Content -->
+  <div class="analytics-content" *ngIf="!isLoading">
+    <!-- Metrics Grid - Now Clickable! -->
+    <div class="metrics-grid">
+      <div class="metric-card clickable"
+           *ngFor="let metric of metrics"
+           [ngClass]="metric.colorClass"
+           (click)="viewMetricDetails(metric)"
+           matTooltip="Click to view details"
+           matTooltipPosition="above">
+        <div class="metric-header">
+          <mat-icon>{{ metric.icon }}</mat-icon>
+          <span class="metric-title">{{ metric.title }}</span>
+        </div>
+        <div class="metric-value">{{ metric.value }}</div>
+        <div class="metric-trend" [ngClass]="metric.trend >= 0 ? 'positive' : 'negative'">
+          <mat-icon>{{ metric.trend >= 0 ? 'trending_up' : 'trending_down' }}</mat-icon>
+          <span>{{ metric.trend >= 0 ? '+' : '' }}{{ metric.trend }}%</span>
+          <span class="trend-label">{{ metric.trendLabel }}</span>
+        </div>
+        <mat-icon class="detail-icon">chevron_right</mat-icon>
+      </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="charts-section">
+      <!-- Revenue Chart -->
+      <mat-card class="chart-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>show_chart</mat-icon>
+            Revenue Trends
+          </mat-card-title>
+          <mat-card-subtitle>Last 30 days revenue performance</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="chart-placeholder">
+            <mat-icon>insights</mat-icon>
+            <p>Revenue chart will display here</p>
+            <div class="quick-stats">
+              <div class="stat-item">
+                <span class="label">Highest Day</span>
+                <span class="value">₹2,450</span>
+              </div>
+              <div class="stat-item">
+                <span class="label">Lowest Day</span>
+                <span class="value">₹890</span>
+              </div>
+              <div class="stat-item">
+                <span class="label">Average</span>
+                <span class="value">₹1,509</span>
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Orders Chart -->
+      <mat-card class="chart-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>shopping_bag</mat-icon>
+            Order Statistics
+          </mat-card-title>
+          <mat-card-subtitle>Daily order volume analysis</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="chart-placeholder">
+            <mat-icon>bar_chart</mat-icon>
+            <p>Order statistics chart will display here</p>
+            <div class="quick-stats">
+              <div class="stat-item">
+                <span class="label">Peak Day</span>
+                <span class="value">24 orders</span>
+              </div>
+              <div class="stat-item">
+                <span class="label">Avg Orders</span>
+                <span class="value">11.4/day</span>
+              </div>
+              <div class="stat-item">
+                <span class="label">Total Orders</span>
+                <span class="value">342</span>
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Top Products Table -->
+    <mat-card class="data-card">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon>star</mat-icon>
+          Top Performing Products
+        </mat-card-title>
+        <mat-card-subtitle>Your best-selling products this month</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <table class="products-table">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Revenue</th>
+              <th>Orders</th>
+              <th>Trend</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let product of topProducts; let i = index"
+                class="clickable-row"
+                (click)="viewProductDetails(product)"
+                matTooltip="Click to view product details">
+              <td>
+                <div class="product-info">
+                  <div class="rank-badge">{{ i + 1 }}</div>
+                  <div class="product-details">
+                    <span class="product-name">{{ product.name }}</span>
+                    <span class="product-category">{{ product.category }}</span>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="revenue-value">{{ formatCurrency(product.revenue) }}</span>
+              </td>
+              <td>
+                <span class="orders-value">{{ product.orders }} orders</span>
+              </td>
+              <td>
+                <div class="trend-indicator" [ngClass]="product.trend >= 0 ? 'up' : 'down'">
+                  <mat-icon>{{ product.trend >= 0 ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
+                  <span>{{ product.trend >= 0 ? '+' : '' }}{{ product.trend }}%</span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Recent Orders Table -->
+    <mat-card class="data-card">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon>receipt_long</mat-icon>
+          Recent Orders
+        </mat-card-title>
+        <mat-card-subtitle>Latest customer orders and their status</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <table mat-table [dataSource]="recentOrders" class="orders-table">
+          <!-- Order ID Column -->
+          <ng-container matColumnDef="orderId">
+            <th mat-header-cell *matHeaderCellDef>Order ID</th>
+            <td mat-cell *matCellDef="let order">
+              <span class="order-id">{{ order.id }}</span>
+            </td>
+          </ng-container>
+
+          <!-- Customer Column -->
+          <ng-container matColumnDef="customer">
+            <th mat-header-cell *matHeaderCellDef>Customer</th>
+            <td mat-cell *matCellDef="let order">
+              <div class="customer-info">
+                <mat-icon class="customer-icon">person</mat-icon>
+                <span>{{ order.customerName }}</span>
+              </div>
+            </td>
+          </ng-container>
+
+          <!-- Items Column -->
+          <ng-container matColumnDef="items">
+            <th mat-header-cell *matHeaderCellDef>Items</th>
+            <td mat-cell *matCellDef="let order">
+              <span class="items-count">{{ order.items }} items</span>
+            </td>
+          </ng-container>
+
+          <!-- Amount Column -->
+          <ng-container matColumnDef="amount">
+            <th mat-header-cell *matHeaderCellDef>Amount</th>
+            <td mat-cell *matCellDef="let order">
+              <span class="amount-value">{{ formatCurrency(order.amount) }}</span>
+            </td>
+          </ng-container>
+
+          <!-- Status Column -->
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef>Status</th>
+            <td mat-cell *matCellDef="let order">
+              <mat-chip [ngClass]="getStatusClass(order.status)">
+                {{ order.status }}
+              </mat-chip>
+            </td>
+          </ng-container>
+
+          <!-- Date Column -->
+          <ng-container matColumnDef="date">
+            <th mat-header-cell *matHeaderCellDef>Date</th>
+            <td mat-cell *matCellDef="let order">
+              <span class="date-value">{{ formatDate(order.date) }}</span>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="orderColumns"></tr>
+          <tr mat-row
+              *matRowDef="let row; columns: orderColumns;"
+              class="clickable-row"
+              (click)="viewOrderDetails(row)"
+              matTooltip="Click to view order details"></tr>
+        </table>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

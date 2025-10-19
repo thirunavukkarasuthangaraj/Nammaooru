@@ -275,7 +275,7 @@ class _OrderCompletionScreenState extends State<OrderCompletionScreen>
       };
 
       // Update order status to delivered
-      final success = await provider.updateOrderStatus(widget.order.id.toString(), 'DELIVERED');
+      final success = await provider.updateOrderStatus(widget.order.orderNumber ?? widget.order.id.toString(), 'DELIVERED');
 
       if (success) {
         // Stop navigation if active

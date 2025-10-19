@@ -1,0 +1,317 @@
+<div class="order-management-container">
+  <!-- Animated Background -->
+  <div class="animated-bg">
+    <div class="shape shape-1"></div>
+    <div class="shape shape-2"></div>
+    <div class="shape shape-3"></div>
+  </div>
+
+  <!-- Header -->
+  <div class="orders-header">
+    <div class="header-content">
+      <div class="title-section">
+        <h1>
+          <mat-icon>receipt_long</mat-icon>
+          Order Management
+        </h1>
+        <p>Manage your shop orders efficiently</p>
+      </div>
+
+      <div class="header-actions">
+        <button mat-raised-button (click)="refreshOrders()">
+          <mat-icon>refresh</mat-icon>
+          Refresh
+        </button>
+        <button mat-raised-button color="primary" (click)="toggleAutoRefresh()">
+          <mat-icon>{{ autoRefreshEnabled ? 'notifications_active' : 'notifications_off' }}</mat-icon>
+          Auto-Refresh: {{ autoRefreshEnabled ? 'ON' : 'OFF' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Today's Stats -->
+    <div class="stats-grid">
+      <div class="stat-card revenue">
+        <mat-icon>attach_money</mat-icon>
+        <div class="stat-content">
+          <span class="stat-value">₹{{ todayStats.revenue | number:'1.0-0' }}</span>
+          <span class="stat-label">Today's Revenue</span>
+        </div>
+      </div>
+
+      <div class="stat-card orders">
+        <mat-icon>shopping_cart</mat-icon>
+        <div class="stat-content">
+          <span class="stat-value">{{ todayStats.totalOrders }}</span>
+          <span class="stat-label">Total Orders</span>
+        </div>
+      </div>
+
+      <div class="stat-card pending">
+        <mat-icon>schedule</mat-icon>
+        <div class="stat-content">
+          <span class="stat-value">{{ todayStats.pendingOrders }}</span>
+          <span class="stat-label">Pending</span>
+        </div>
+      </div>
+
+      <div class="stat-card completed">
+        <mat-icon>verified</mat-icon>
+        <div class="stat-content">
+          <span class="stat-value">{{ todayStats.completedOrders }}</span>
+          <span class="stat-label">Completed</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-overlay" *ngIf="loading">
+    <mat-spinner diameter="50"></mat-spinner>
+    <p>Loading orders...</p>
+  </div>
+
+  <!-- Orders Content -->
+  <div class="orders-content" *ngIf="!loading">
+    <!-- Tabs -->
+    <mat-tab-group [(selectedIndex)]="selectedTab" class="orders-tabs">
+      <!-- Pending Orders Tab -->
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <mat-icon>schedule</mat-icon>
+          Pending ({{ pendingOrders.length }})
+        </ng-template>
+
+        <div class="orders-list" *ngIf="pendingOrders.length > 0">
+          <mat-card class="order-card" *ngFor="let order of pendingOrders">
+            <div class="order-header">
+              <div class="order-info">
+                <h3>{{ order.orderNumber }}</h3>
+                <span class="order-time">{{ formatDate(order.createdAt) }}</span>
+              </div>
+              <mat-chip class="status-chip pending">
+                <mat-icon>schedule</mat-icon>
+                Pending
+              </mat-chip>
+            </div>
+
+            <div class="order-body">
+              <!-- Customer Info -->
+              <div class="customer-section">
+                <mat-icon>person</mat-icon>
+                <div>
+                  <strong>{{ order.customerName }}</strong>
+                  <p>{{ order.customerPhone }}</p>
+                </div>
+              </div>
+
+              <!-- Delivery Type Badge -->
+              <div class="delivery-type-badge" [class.self-pickup]="order.deliveryType === 'SELF_PICKUP'">
+                <mat-icon>{{ order.deliveryType === 'SELF_PICKUP' ? 'storefront' : 'delivery_dining' }}</mat-icon>
+                <span>{{ order.deliveryType === 'SELF_PICKUP' ? 'Self Pickup' : 'Home Delivery' }}</span>
+              </div>
+
+              <!-- Order Items -->
+              <div class="order-items">
+                <div class="item" *ngFor="let item of order.orderItems">
+                  <span>{{ item.productName || item.name }}</span>
+                  <span class="item-quantity">× {{ item.quantity }}</span>
+                  <span class="item-price">₹{{ item.totalPrice || (item.price * item.quantity) }}</span>
+                </div>
+              </div>
+
+              <!-- Total Amount -->
+              <div class="order-total">
+                <span>Total Amount</span>
+                <strong>₹{{ order.totalAmount }}</strong>
+              </div>
+            </div>
+
+            <div class="order-actions">
+              <button mat-raised-button color="warn" (click)="rejectOrder(order)">
+                <mat-icon>close</mat-icon>
+                Reject
+              </button>
+              <button mat-raised-button color="primary" (click)="acceptOrder(order)">
+                <mat-icon>check</mat-icon>
+                Accept Order
+              </button>
+            </div>
+          </mat-card>
+        </div>
+
+        <div class="empty-state" *ngIf="pendingOrders.length === 0">
+          <mat-icon>inbox</mat-icon>
+          <h3>No Pending Orders</h3>
+          <p>New orders will appear here</p>
+        </div>
+      </mat-tab>
+
+      <!-- Active Orders Tab -->
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <mat-icon>restaurant</mat-icon>
+          Active ({{ activeOrders.length }})
+        </ng-template>
+
+        <div class="orders-list" *ngIf="activeOrders.length > 0">
+          <mat-card class="order-card" *ngFor="let order of activeOrders">
+            <div class="order-header">
+              <div class="order-info">
+                <h3>{{ order.orderNumber }}</h3>
+                <span class="order-time">{{ formatDate(order.createdAt) }}</span>
+              </div>
+              <mat-chip [class]="getStatusClass(order.status)">
+                <mat-icon>{{ getStatusIcon(order.status) }}</mat-icon>
+                {{ getStatusLabel(order.status) }}
+              </mat-chip>
+            </div>
+
+            <div class="order-body">
+              <!-- Customer Info -->
+              <div class="customer-section">
+                <mat-icon>person</mat-icon>
+                <div>
+                  <strong>{{ order.customerName }}</strong>
+                  <p>{{ order.customerPhone }}</p>
+                </div>
+              </div>
+
+              <!-- Delivery Type Badge -->
+              <div class="delivery-type-badge" [class.self-pickup]="order.deliveryType === 'SELF_PICKUP'">
+                <mat-icon>{{ order.deliveryType === 'SELF_PICKUP' ? 'storefront' : 'delivery_dining' }}</mat-icon>
+                <span>{{ order.deliveryType === 'SELF_PICKUP' ? 'Self Pickup' : 'Home Delivery' }}</span>
+              </div>
+
+              <!-- Order Items -->
+              <div class="order-items">
+                <div class="item" *ngFor="let item of order.orderItems">
+                  <span>{{ item.productName || item.name }}</span>
+                  <span class="item-quantity">× {{ item.quantity }}</span>
+                  <span class="item-price">₹{{ item.totalPrice || (item.price * item.quantity) }}</span>
+                </div>
+              </div>
+
+              <!-- Total Amount -->
+              <div class="order-total">
+                <span>Total Amount</span>
+                <strong>₹{{ order.totalAmount }}</strong>
+              </div>
+            </div>
+
+            <div class="order-actions">
+              <!-- Actions based on status -->
+              <button mat-raised-button
+                      color="primary"
+                      *ngIf="order.status === 'CONFIRMED'"
+                      (click)="markAsPreparing(order)">
+                <mat-icon>restaurant</mat-icon>
+                Start Preparing
+              </button>
+
+              <button mat-raised-button
+                      color="primary"
+                      *ngIf="order.status === 'PREPARING'"
+                      (click)="markAsReady(order)">
+                <mat-icon>done_all</mat-icon>
+                Mark as Ready
+              </button>
+
+              <!-- SELF-PICKUP: Green Handover Button -->
+              <button mat-raised-button
+                      class="handover-btn"
+                      *ngIf="order.status === 'READY_FOR_PICKUP' && order.deliveryType === 'SELF_PICKUP'"
+                      (click)="handoverSelfPickup(order)">
+                <mat-icon>how_to_reg</mat-icon>
+                Handover to Customer
+              </button>
+
+              <!-- HOME_DELIVERY: Orange Verify OTP Button -->
+              <button mat-raised-button
+                      class="verify-otp-btn"
+                      *ngIf="order.status === 'READY_FOR_PICKUP' && order.deliveryType === 'HOME_DELIVERY'"
+                      (click)="verifyPickupOTP(order)">
+                <mat-icon>verified</mat-icon>
+                Verify Pickup OTP
+              </button>
+
+              <button mat-stroked-button (click)="viewOrderDetails(order)">
+                <mat-icon>visibility</mat-icon>
+                View Details
+              </button>
+            </div>
+          </mat-card>
+        </div>
+
+        <div class="empty-state" *ngIf="activeOrders.length === 0">
+          <mat-icon>shopping_bag</mat-icon>
+          <h3>No Active Orders</h3>
+          <p>Orders being prepared will appear here</p>
+        </div>
+      </mat-tab>
+
+      <!-- Completed Orders Tab -->
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <mat-icon>verified</mat-icon>
+          Completed ({{ completedOrders.length }})
+        </ng-template>
+
+        <div class="orders-list" *ngIf="completedOrders.length > 0">
+          <mat-card class="order-card completed" *ngFor="let order of completedOrders">
+            <div class="order-header">
+              <div class="order-info">
+                <h3>{{ order.orderNumber }}</h3>
+                <span class="order-time">{{ formatDate(order.createdAt) }}</span>
+              </div>
+              <mat-chip [class]="getStatusClass(order.status)">
+                <mat-icon>{{ getStatusIcon(order.status) }}</mat-icon>
+                {{ getStatusLabel(order.status) }}
+              </mat-chip>
+            </div>
+
+            <div class="order-body">
+              <!-- Customer Info -->
+              <div class="customer-section">
+                <mat-icon>person</mat-icon>
+                <div>
+                  <strong>{{ order.customerName }}</strong>
+                  <p>{{ order.customerPhone }}</p>
+                </div>
+              </div>
+
+              <!-- Delivery Type Badge -->
+              <div class="delivery-type-badge completed" [class.self-pickup]="order.deliveryType === 'SELF_PICKUP'">
+                <mat-icon>{{ order.deliveryType === 'SELF_PICKUP' ? 'storefront' : 'delivery_dining' }}</mat-icon>
+                <span>{{ order.deliveryType === 'SELF_PICKUP' ? 'Self Pickup' : 'Home Delivery' }}</span>
+              </div>
+
+              <!-- Total Amount -->
+              <div class="order-total">
+                <span>Total Amount</span>
+                <strong>₹{{ order.totalAmount }}</strong>
+              </div>
+            </div>
+
+            <div class="order-actions">
+              <button mat-stroked-button (click)="viewOrderDetails(order)">
+                <mat-icon>visibility</mat-icon>
+                View Details
+              </button>
+              <button mat-stroked-button (click)="printOrder(order)">
+                <mat-icon>print</mat-icon>
+                Print Receipt
+              </button>
+            </div>
+          </mat-card>
+        </div>
+
+        <div class="empty-state" *ngIf="completedOrders.length === 0">
+          <mat-icon>check_circle</mat-icon>
+          <h3>No Completed Orders</h3>
+          <p>Delivered and cancelled orders will appear here</p>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+  </div>
+</div>

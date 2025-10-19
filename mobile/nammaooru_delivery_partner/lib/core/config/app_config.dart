@@ -2,10 +2,10 @@ class AppConfig {
   // ============================================
   // SINGLE SOURCE OF TRUTH - CHANGE ONLY HERE!
   // ============================================
-  static const String _devBaseUrl = 'http://192.168.1.10:8080';
+  static const String _devBaseUrl = 'http://192.168.1.10:8080'; // Local network IP for Chrome/Web
   static const String _prodBaseUrl = 'https://nammaoorudelivary.in';
 
-  static const bool _isProduction = true; // Using PRODUCTION backend
+  static const bool _isProduction = false; // Using LOCAL backend for testing
 
   // All URLs derived from single source
   static String get baseUrl => _isProduction ? _prodBaseUrl : _devBaseUrl;

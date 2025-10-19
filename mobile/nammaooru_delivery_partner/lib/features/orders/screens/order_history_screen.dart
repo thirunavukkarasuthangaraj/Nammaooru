@@ -13,6 +13,9 @@ class OrderHistoryScreen extends StatefulWidget {
 }
 
 class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
+  DateTime? _startDate;
+  DateTime? _endDate;
+
   @override
   void initState() {
     super.initState();
@@ -22,6 +25,54 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   void _loadOrderHistory() {
     final provider = Provider.of<DeliveryPartnerProvider>(context, listen: false);
     provider.loadOrderHistory();
+  }
+
+  Future<void> _selectDateRange() async {
+    final DateTimeRange? picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      initialDateRange: _startDate != null && _endDate != null
+        ? DateTimeRange(start: _startDate!, end: _endDate!)
+        : null,
+    );
+
+    if (picked != null) {
+      setState(() {
+        _startDate = picked.start;
+        _endDate = picked.end;
+      });
+    }
+  }
+
+  void _clearDateFilter() {
+    setState(() {
+      _startDate = null;
+      _endDate = null;
+    });
+  }
+
+  List<OrderModel> _getFilteredOrders(List<OrderModel> orders) {
+    if (_startDate == null && _endDate == null) {
+      return orders;
+    }
+
+    return orders.where((order) {
+      if (order.createdAt == null) return false;
+
+      if (_startDate != null) {
+        final startDateOnly = DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
+        final orderDateOnly = DateTime(order.createdAt!.year, order.createdAt!.month, order.createdAt!.day);
+        if (orderDateOnly.isBefore(startDateOnly)) return false;
+      }
+
+      if (_endDate != null) {
+        final endDateOnly = DateTime(_endDate!.year, _endDate!.month, _endDate!.day, 23, 59, 59);
+        if (order.createdAt!.isAfter(endDateOnly)) return false;
+      }
+
+      return true;
+    }).toList();
   }
 
   @override
@@ -34,6 +85,22 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
         ),
         backgroundColor: const Color(0xFF2196F3),
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: Icon(
+              _startDate != null || _endDate != null ? Icons.filter_alt : Icons.filter_alt_outlined,
+              color: Colors.white,
+            ),
+            onPressed: _selectDateRange,
+            tooltip: 'Filter by date',
+          ),
+          if (_startDate != null || _endDate != null)
+            IconButton(
+              icon: const Icon(Icons.clear, color: Colors.white),
+              onPressed: _clearDateFilter,
+              tooltip: 'Clear filter',
+            ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: () async => _loadOrderHistory(),
@@ -99,13 +166,120 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
               );
             }
 
-            return ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: provider.orderHistory.length,
-              itemBuilder: (context, index) {
-                final order = provider.orderHistory[index];
-                return _buildOrderCard(order);
-              },
+            final filteredOrders = _getFilteredOrders(provider.orderHistory);
+
+            // Calculate total earnings from filtered orders
+            double totalEarnings = 0;
+            int totalOrders = filteredOrders.length;
+
+            for (var order in filteredOrders) {
+              totalEarnings += (order.commission ?? order.deliveryFee ?? 0);
+            }
+
+            return Column(
+              children: [
+                // Summary Card
+                if (filteredOrders.isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF2196F3), Color(0xFF1976D2)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF2196F3).withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        if (_startDate != null && _endDate != null)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Text(
+                              '${DateFormat('dd MMM yyyy').format(_startDate!)} - ${DateFormat('dd MMM yyyy').format(_endDate!)}',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            _buildSummaryItem(
+                              'Total Orders',
+                              totalOrders.toString(),
+                              Icons.receipt_long,
+                            ),
+                            Container(
+                              width: 1,
+                              height: 40,
+                              color: Colors.white24,
+                            ),
+                            _buildSummaryItem(
+                              'Total Earnings',
+                              '₹${totalEarnings.toStringAsFixed(0)}',
+                              Icons.account_balance_wallet,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                // Orders List
+                Expanded(
+                  child: filteredOrders.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.calendar_today,
+                                size: 64,
+                                color: Colors.grey[400],
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'No orders found',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                _startDate != null && _endDate != null
+                                    ? 'No orders in selected date range'
+                                    : 'Complete deliveries to see them here',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[500],
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+                          itemCount: filteredOrders.length,
+                          itemBuilder: (context, index) {
+                            final order = filteredOrders[index];
+                            return _buildOrderCard(order);
+                          },
+                        ),
+                ),
+              ],
             );
           },
         ),
@@ -275,6 +449,36 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildSummaryItem(String label, String value, IconData icon) {
+    return Column(
+      children: [
+        Icon(
+          icon,
+          color: Colors.white,
+          size: 28,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
     );
   }
 

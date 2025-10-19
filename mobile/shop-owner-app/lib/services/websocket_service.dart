@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/io.dart';
+import 'package:flutter/material.dart';
 import '../utils/constants.dart';
+import '../utils/app_config.dart';
 import 'storage_service.dart';
 
 enum WebSocketState {
@@ -60,7 +62,7 @@ class WebSocketService {
         throw Exception('No authentication token found');
       }
 
-      final uri = Uri.parse('${ApiEndpoints.websocket}?token=$token');
+      final uri = Uri.parse('${AppConfig.webSocketUrl}?token=$token');
       _channel = IOWebSocketChannel.connect(
         uri,
         headers: {

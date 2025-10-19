@@ -122,6 +122,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       category: 'Financial Management',
       items: [
         { title: 'Revenue Overview', icon: 'payments', route: '/finance/revenue', badge: null },
+        { title: 'Partner Payments', icon: 'account_balance_wallet', route: '/delivery/partner-payments', badge: null },
         { title: 'Partner Payouts', icon: 'account_balance', route: '/finance/payouts', badge: null },
         { title: 'Commission Settings', icon: 'percent', route: '/finance/commission', badge: null },
         { title: 'Financial Reports', icon: 'assessment', route: '/finance/reports', badge: null }

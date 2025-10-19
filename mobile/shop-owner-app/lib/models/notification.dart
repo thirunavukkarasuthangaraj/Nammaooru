@@ -88,4 +88,76 @@ class NotificationModel {
   int get hashCode {
     return id.hashCode;
   }
+
+  // Helper methods for notification provider
+  bool get requiresAction => type == 'order' || type == 'payment' || type == 'alert';
+  bool get isHighPriority => priority == 'high' || priority == 'urgent';
+}
+
+// Type alias for backward compatibility
+typedef AppNotification = NotificationModel;
+
+class NotificationSettings {
+  final bool enableSound;
+  final bool enableVibration;
+  final bool enableBanner;
+  final Map<String, bool> typeSettings;
+
+  NotificationSettings({
+    this.enableSound = true,
+    this.enableVibration = true,
+    this.enableBanner = true,
+    Map<String, bool>? typeSettings,
+  }) : typeSettings = typeSettings ?? {
+    'order': true,
+    'payment': true,
+    'alert': true,
+    'general': true,
+  };
+
+  NotificationSettings copyWith({
+    bool? enableSound,
+    bool? enableVibration,
+    bool? enableBanner,
+    Map<String, bool>? typeSettings,
+  }) {
+    return NotificationSettings(
+      enableSound: enableSound ?? this.enableSound,
+      enableVibration: enableVibration ?? this.enableVibration,
+      enableBanner: enableBanner ?? this.enableBanner,
+      typeSettings: typeSettings ?? this.typeSettings,
+    );
+  }
+
+  factory NotificationSettings.fromJson(Map<String, dynamic> json) {
+    return NotificationSettings(
+      enableSound: json['enableSound'] ?? true,
+      enableVibration: json['enableVibration'] ?? true,
+      enableBanner: json['enableBanner'] ?? true,
+      typeSettings: json['typeSettings'] != null
+          ? Map<String, bool>.from(json['typeSettings'])
+          : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'enableSound': enableSound,
+      'enableVibration': enableVibration,
+      'enableBanner': enableBanner,
+      'typeSettings': typeSettings,
+    };
+  }
+}
+
+class NotificationAction {
+  final String id;
+  final String label;
+  final String action;
+
+  NotificationAction({
+    required this.id,
+    required this.label,
+    required this.action,
+  });
 }

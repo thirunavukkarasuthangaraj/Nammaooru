@@ -11,6 +11,7 @@ import { PartnerOrdersComponent } from './components/partner-orders/partner-orde
 import { DeliveryAnalyticsComponent } from './components/delivery-analytics/delivery-analytics.component';
 import { SimpleDocumentViewerComponent } from './components/simple-document-viewer/simple-document-viewer.component';
 import { OrderAssignmentsComponent } from './components/order-assignments/order-assignments.component';
+import { PartnerPaymentsComponent } from './components/partner-payments/partner-payments.component';
 
 const routes: Routes = [
   {
@@ -84,9 +85,18 @@ const routes: Routes = [
     path: 'admin/tracking',
     component: OrderTrackingComponent, // Live tracking view for admins
     canActivate: [AuthGuard, RoleGuard],
-    data: { 
+    data: {
       expectedRoles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER'],
       title: 'Live Tracking Dashboard'
+    }
+  },
+  {
+    path: 'partner-payments',
+    component: PartnerPaymentsComponent,
+    canActivate: [AuthGuard, RoleGuard],
+    data: {
+      expectedRoles: ['SUPER_ADMIN', 'ADMIN'],
+      title: 'Partner Payments'
     }
   },
   {

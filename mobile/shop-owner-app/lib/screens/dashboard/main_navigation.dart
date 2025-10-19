@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dashboard_screen.dart';
 import '../products/products_screen.dart';
 import '../orders/orders_screen.dart';
+import '../notifications/notifications_screen.dart';
 import '../profile/profile_screen.dart';
 
 class MainNavigation extends StatefulWidget {
@@ -33,6 +34,7 @@ class _MainNavigationState extends State<MainNavigation> {
       ),
       ProductsScreen(token: widget.token),
       OrdersScreen(token: widget.token),
+      NotificationsScreen(token: widget.token),
       ProfileScreen(
         userName: widget.userName,
         token: widget.token,
@@ -59,6 +61,8 @@ class _MainNavigationState extends State<MainNavigation> {
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Theme.of(context).primaryColor,
         unselectedItemColor: Colors.grey,
+        selectedFontSize: 12,
+        unselectedFontSize: 11,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.dashboard),
@@ -71,6 +75,10 @@ class _MainNavigationState extends State<MainNavigation> {
           BottomNavigationBarItem(
             icon: Icon(Icons.receipt_long),
             label: 'Orders',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.notifications),
+            label: 'Notifications',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person),

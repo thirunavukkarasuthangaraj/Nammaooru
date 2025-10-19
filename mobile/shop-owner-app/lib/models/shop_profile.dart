@@ -379,7 +379,7 @@ class DayHours {
           ? _parseTimeOfDay(json['closeTime'])
           : null,
       breaks: (json['breaks'] as List<dynamic>?)
-              ?.map((break) => TimeSlot.fromJson(break))
+              ?.map((breakSlot) => TimeSlot.fromJson(breakSlot))
               .toList() ??
           [],
     );
@@ -390,7 +390,7 @@ class DayHours {
       'isOpen': isOpen,
       'openTime': openTime != null ? _formatTimeOfDay(openTime!) : null,
       'closeTime': closeTime != null ? _formatTimeOfDay(closeTime!) : null,
-      'breaks': breaks.map((break) => break.toJson()).toList(),
+      'breaks': breaks.map((breakSlot) => breakSlot.toJson()).toList(),
     };
   }
 

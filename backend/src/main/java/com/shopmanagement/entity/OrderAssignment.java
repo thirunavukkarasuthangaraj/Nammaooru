@@ -90,6 +90,18 @@ public class OrderAssignment {
     @Column(length = 500)
     private String customerFeedback;
 
+    // Settlement information
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "settlement_id")
+    private PaymentSettlement paymentSettlement;
+
+    @Column(name = "is_settled")
+    @Builder.Default
+    private Boolean isSettled = false;
+
+    @Column(name = "settled_at")
+    private LocalDateTime settledAt;
+
     // Audit fields
     @Column(nullable = false, length = 100)
     @Builder.Default

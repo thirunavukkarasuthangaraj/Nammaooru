@@ -206,7 +206,7 @@ class _PickupConfirmationScreenState extends State<PickupConfirmationScreen> {
 
         // Update order status in provider
         final provider = Provider.of<DeliveryPartnerProvider>(context, listen: false);
-        await provider.updateOrderStatus(widget.order.id, 'PICKED_UP');
+        await provider.updateOrderStatus(widget.order.orderNumber ?? widget.order.id.toString(), 'PICKED_UP');
 
         // Navigate back to dashboard
         Navigator.of(context).pushNamedAndRemoveUntil(

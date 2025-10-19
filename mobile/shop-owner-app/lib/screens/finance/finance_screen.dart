@@ -3,9 +3,11 @@ import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../providers/finance_provider.dart';
 import '../../providers/order_provider.dart';
-import '../../utils/constants.dart';
+import '../../utils/app_theme.dart';
 import '../../utils/helpers.dart';
 import '../../models/transaction.dart';
+import '../../widgets/modern_button.dart';
+import '../../widgets/modern_card.dart';
 
 class FinanceScreen extends StatefulWidget {
   const FinanceScreen({super.key});
@@ -60,10 +62,10 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
         title: const Text('Finance'),
-        backgroundColor: AppColors.primary,
+        backgroundColor: AppTheme.primary,
         foregroundColor: Colors.white,
         bottom: TabBar(
           controller: _tabController,
@@ -209,8 +211,8 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              AppColors.primary.withOpacity(0.1),
-              AppColors.primary.withOpacity(0.05),
+              AppTheme.primary.withOpacity(0.1),
+              AppTheme.primary.withOpacity(0.05),
             ],
           ),
         ),
@@ -222,28 +224,28 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
               children: [
                 Text(
                   'Revenue Overview',
-                  style: AppTextStyles.heading3,
+                  style: AppTheme.h3,
                 ),
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppColors.success.withOpacity(0.1),
+                    color: AppTheme.success.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
                     Icons.trending_up,
-                    color: AppColors.success,
+                    color: AppTheme.success,
                     size: 20,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 20),
-            _buildRevenueMetric('Gross Revenue', totalRevenue, AppColors.primary),
+            _buildRevenueMetric('Gross Revenue', totalRevenue, AppTheme.primary),
             const SizedBox(height: 12),
-            _buildRevenueMetric('Total Refunds', totalRefunds, AppColors.error),
+            _buildRevenueMetric('Total Refunds', totalRefunds, AppTheme.error),
             const SizedBox(height: 12),
-            _buildRevenueMetric('Net Income', netIncome, AppColors.success),
+            _buildRevenueMetric('Net Income', netIncome, AppTheme.success),
           ],
         ),
       ),
@@ -256,13 +258,13 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
       children: [
         Text(
           label,
-          style: AppTextStyles.body.copyWith(
-            color: AppColors.textSecondary,
+          style: AppTheme.bodyMedium.copyWith(
+            color: AppTheme.textSecondary,
           ),
         ),
         Text(
           AppHelpers.formatCurrency(amount),
-          style: AppTextStyles.body.copyWith(
+          style: AppTheme.bodyMedium.copyWith(
             fontWeight: FontWeight.w600,
             color: color,
           ),
@@ -288,7 +290,7 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
       children: [
         const Text(
           'Key Metrics',
-          style: AppTextStyles.heading3,
+          style: AppTheme.h3,
         ),
         const SizedBox(height: 16),
         Row(
@@ -298,7 +300,7 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
                 'Avg Order Value',
                 AppHelpers.formatCurrency(avgOrderValue),
                 Icons.shopping_cart,
-                AppColors.info,
+                AppTheme.accent,
               ),
             ),
             const SizedBox(width: 12),
@@ -320,7 +322,7 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
                 'Transactions',
                 totalTransactions.toString(),
                 Icons.payment,
-                AppColors.warning,
+                AppTheme.warning,
               ),
             ),
             const SizedBox(width: 12),
@@ -329,7 +331,7 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
                 'Conversion',
                 '${conversionRate.toStringAsFixed(1)}%',
                 Icons.trending_up,
-                AppColors.success,
+                AppTheme.success,
               ),
             ),
           ],
@@ -351,7 +353,7 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
                 Icon(icon, color: color, size: 24),
                 Text(
                   value,
-                  style: AppTextStyles.heading3.copyWith(
+                  style: AppTheme.h3.copyWith(
                     color: color,
                   ),
                 ),
@@ -360,8 +362,8 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
             const SizedBox(height: 8),
             Text(
               title,
-              style: AppTextStyles.caption.copyWith(
-                color: AppColors.textSecondary,
+              style: AppTheme.caption.copyWith(
+                color: AppTheme.textSecondary,
               ),
             ),
           ],
@@ -379,7 +381,7 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
           children: [
             const Text(
               'Recent Transactions',
-              style: AppTextStyles.heading3,
+              style: AppTheme.h3,
             ),
             TextButton(
               onPressed: () => _tabController.animateTo(2),
@@ -398,13 +400,13 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
                   Icon(
                     Icons.account_balance_wallet_outlined,
                     size: 48,
-                    color: AppColors.textSecondary.withOpacity(0.5),
+                    color: AppTheme.textSecondary.withOpacity(0.5),
                   ),
                   const SizedBox(height: 16),
                   Text(
                     'No transactions yet',
-                    style: AppTextStyles.body.copyWith(
-                      color: AppColors.textSecondary,
+                    style: AppTheme.bodyMedium.copyWith(
+                      color: AppTheme.textSecondary,
                     ),
                   ),
                 ],
@@ -423,19 +425,19 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
 
     switch (transaction.type) {
       case 'Sale':
-        typeColor = AppColors.success;
+        typeColor = AppTheme.success;
         typeIcon = Icons.arrow_upward;
         break;
       case 'Refund':
-        typeColor = AppColors.error;
+        typeColor = AppTheme.error;
         typeIcon = Icons.arrow_downward;
         break;
       case 'Commission':
-        typeColor = AppColors.warning;
+        typeColor = AppTheme.warning;
         typeIcon = Icons.remove;
         break;
       default:
-        typeColor = AppColors.info;
+        typeColor = AppTheme.accent;
         typeIcon = Icons.payment;
     }
 
@@ -464,23 +466,23 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
                 children: [
                   Text(
                     transaction.description,
-                    style: AppTextStyles.body.copyWith(
+                    style: AppTheme.bodyMedium.copyWith(
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     AppHelpers.formatDate(transaction.date),
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.textSecondary,
+                    style: AppTheme.caption.copyWith(
+                      color: AppTheme.textSecondary,
                     ),
                   ),
                   if (transaction.orderId != null) ...[
                     const SizedBox(height: 4),
                     Text(
                       'Order #${transaction.orderId}',
-                      style: AppTextStyles.caption.copyWith(
-                        color: AppColors.primary,
+                      style: AppTheme.caption.copyWith(
+                        color: AppTheme.primary,
                       ),
                     ),
                   ],
@@ -492,7 +494,7 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
               children: [
                 Text(
                   '${transaction.type == 'Refund' || transaction.type == 'Commission' ? '-' : '+'}${AppHelpers.formatCurrency(transaction.amount)}',
-                  style: AppTextStyles.body.copyWith(
+                  style: AppTheme.bodyMedium.copyWith(
                     fontWeight: FontWeight.w600,
                     color: typeColor,
                   ),
@@ -506,7 +508,7 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
                   ),
                   child: Text(
                     transaction.type,
-                    style: AppTextStyles.caption.copyWith(
+                    style: AppTheme.caption.copyWith(
                       color: typeColor,
                       fontSize: 10,
                     ),
@@ -543,7 +545,7 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
           children: [
             const Text(
               'Revenue Trend',
-              style: AppTextStyles.heading3,
+              style: AppTheme.h3,
             ),
             const SizedBox(height: 20),
             SizedBox(
@@ -557,12 +559,12 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
                     LineChartBarData(
                       spots: _getChartSpots(salesTransactions),
                       isCurved: true,
-                      color: AppColors.primary,
+                      color: AppTheme.primary,
                       barWidth: 3,
                       dotData: FlDotData(show: false),
                       belowBarData: BarAreaData(
                         show: true,
-                        color: AppColors.primary.withOpacity(0.1),
+                        color: AppTheme.primary.withOpacity(0.1),
                       ),
                     ),
                   ],
@@ -600,7 +602,7 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
           children: [
             const Text(
               'Transaction Types',
-              style: AppTextStyles.heading3,
+              style: AppTheme.h3,
             ),
             const SizedBox(height: 20),
             SizedBox(
@@ -612,7 +614,7 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
                       PieChartSectionData(
                         value: saleCount.toDouble(),
                         title: 'Sales\n$saleCount',
-                        color: AppColors.success,
+                        color: AppTheme.success,
                         radius: 80,
                         titleStyle: const TextStyle(
                           fontSize: 12,
@@ -624,7 +626,7 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
                       PieChartSectionData(
                         value: refundCount.toDouble(),
                         title: 'Refunds\n$refundCount',
-                        color: AppColors.error,
+                        color: AppTheme.error,
                         radius: 80,
                         titleStyle: const TextStyle(
                           fontSize: 12,
@@ -636,7 +638,7 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
                       PieChartSectionData(
                         value: commissionCount.toDouble(),
                         title: 'Commission\n$commissionCount',
-                        color: AppColors.warning,
+                        color: AppTheme.warning,
                         radius: 80,
                         titleStyle: const TextStyle(
                           fontSize: 12,
@@ -679,7 +681,7 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
           children: [
             const Text(
               'Daily Revenue',
-              style: AppTextStyles.heading3,
+              style: AppTheme.h3,
             ),
             const SizedBox(height: 20),
             SizedBox(
@@ -695,7 +697,7 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
                       barRods: [
                         BarChartRodData(
                           toY: entry.value,
-                          color: AppColors.primary,
+                          color: AppTheme.primary,
                           width: 16,
                           borderRadius: BorderRadius.circular(4),
                         ),

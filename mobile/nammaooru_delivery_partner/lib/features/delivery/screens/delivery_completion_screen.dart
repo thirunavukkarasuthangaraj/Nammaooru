@@ -277,7 +277,7 @@ class _DeliveryCompletionScreenState extends State<DeliveryCompletionScreen> {
 
         // Update order status in provider
         final provider = Provider.of<DeliveryPartnerProvider>(context, listen: false);
-        await provider.updateOrderStatus(widget.order.id, 'DELIVERED');
+        await provider.updateOrderStatus(widget.order.orderNumber ?? widget.order.id.toString(), 'DELIVERED');
 
         // Check if COD payment needs to be collected
         if (widget.order.paymentMethod == 'CASH_ON_DELIVERY' &&

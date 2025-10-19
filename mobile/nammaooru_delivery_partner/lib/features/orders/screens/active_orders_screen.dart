@@ -47,7 +47,7 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
     final provider = Provider.of<DeliveryPartnerProvider>(context, listen: false);
 
     try {
-      await provider.updateOrderStatus(order.id, 'picked_up');
+      await provider.updateOrderStatus(order.orderNumber ?? order.id.toString(), 'picked_up');
       Navigator.pop(context);
 
       ScaffoldMessenger.of(context).showSnackBar(

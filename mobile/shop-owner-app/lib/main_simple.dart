@@ -39,8 +39,8 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
 
   // API configuration
-  static const String baseUrl = 'http://10.0.2.2:8080/api'; // For Android emulator
-  // static const String baseUrl = 'http://localhost:8080/api'; // For iOS simulator
+  static const String baseUrl = 'http://192.168.1.4:8080/api'; // For mobile devices
+  // static const String baseUrl = 'http://10.0.2.2:8080/api'; // For Android emulator
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;

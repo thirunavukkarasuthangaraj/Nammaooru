@@ -379,15 +379,22 @@ class AppStrings {
 }
 
 class ApiEndpoints {
-  static const String baseUrl = 'https://api.nammaooru.com';
+  static const String baseUrl = 'http://192.168.1.10:8080/api';
   static const String login = '/auth/login';
   static const String logout = '/auth/logout';
   static const String shopProfile = '/shop/profile';
+  static const String myShop = '/shops/my-shop';
+  static const String shops = '/shops';
   static const String products = '/products';
   static const String orders = '/orders';
   static const String finance = '/finance';
   static const String notifications = '/notifications';
-  static const String websocket = 'wss://api.nammaooru.com/ws';
+  static const String websocket = 'ws://192.168.1.10:8080/ws';
+
+  // Shop-specific endpoints (require shopId parameter)
+  static String shopDashboard(String shopId) => '/shops/$shopId/dashboard';
+  static String shopOrders(String shopId) => '/shops/$shopId/orders';
+  static String shopAnalytics(String shopId) => '/shops/$shopId/analytics';
 }
 
 class NotificationTypes {
@@ -579,7 +586,7 @@ class AppThemes {
   );
 
   // Bottom navigation bar theme
-  static BottomNavigationBarTheme bottomNavigationBarTheme = BottomNavigationBarTheme(
+  static BottomNavigationBarThemeData bottomNavigationBarTheme = BottomNavigationBarThemeData(
     selectedItemColor: AppColors.primary,
     unselectedItemColor: AppColors.textSecondary,
     type: BottomNavigationBarType.fixed,

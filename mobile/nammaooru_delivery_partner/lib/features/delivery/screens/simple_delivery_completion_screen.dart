@@ -21,10 +21,13 @@ class _SimpleDeliveryCompletionScreenState extends State<SimpleDeliveryCompletio
   bool _paymentCollected = false;
 
   Future<void> _completeDelivery() async {
+    bool dialogPaymentCollected = false;
+
     // Show confirmation dialog
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
         title: Row(
           children: [
             Icon(Icons.check_circle, color: Colors.green, size: 28),
@@ -93,10 +96,10 @@ class _SimpleDeliveryCompletionScreenState extends State<SimpleDeliveryCompletio
               ),
               SizedBox(height: 12),
               CheckboxListTile(
-                value: _paymentCollected,
+                value: dialogPaymentCollected,
                 onChanged: (value) {
                   setState(() {
-                    _paymentCollected = value ?? false;
+                    dialogPaymentCollected = value ?? false;
                   });
                 },
                 title: Text('I have collected the payment'),
@@ -118,7 +121,7 @@ class _SimpleDeliveryCompletionScreenState extends State<SimpleDeliveryCompletio
             child: Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: (widget.order.paymentMethod == 'CASH_ON_DELIVERY' && !_paymentCollected)
+            onPressed: (widget.order.paymentMethod == 'CASH_ON_DELIVERY' && !dialogPaymentCollected)
                 ? null
                 : () => Navigator.of(context).pop(true),
             style: ElevatedButton.styleFrom(
@@ -129,6 +132,7 @@ class _SimpleDeliveryCompletionScreenState extends State<SimpleDeliveryCompletio
           ),
         ],
       ),
+        ),
     );
 
     if (confirmed != true) return;
@@ -141,7 +145,10 @@ class _SimpleDeliveryCompletionScreenState extends State<SimpleDeliveryCompletio
       final provider = Provider.of<DeliveryPartnerProvider>(context, listen: false);
 
       // Update order status to DELIVERED
-      await provider.updateOrderStatus(widget.order.id, 'DELIVERED');
+      await provider.updateOrderStatus(widget.order.orderNumber ?? widget.order.id.toString(), 'DELIVERED');
+
+      // Store payment collected status for later use
+      _paymentCollected = dialogPaymentCollected;
 
       // If COD and payment collected, mark payment as collected
       if (widget.order.paymentMethod == 'CASH_ON_DELIVERY' && _paymentCollected) {

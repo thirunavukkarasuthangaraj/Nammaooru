@@ -157,4 +157,44 @@ export class ProductListComponent implements OnInit, OnDestroy {
   goBack(): void {
     this.location.back();
   }
+
+  /**
+   * Get product image URL with proper fallback
+   */
+  getProductImageUrl(product: Product): string {
+    if (!product.image || product.image === '') {
+      return '/assets/images/product-placeholder.jpg';
+    }
+
+    // If image is already a full URL, return as is
+    if (product.image.startsWith('http://') || product.image.startsWith('https://')) {
+      return product.image;
+    }
+
+    // If image starts with /assets, return as is (local asset)
+    if (product.image.startsWith('/assets')) {
+      return product.image;
+    }
+
+    // If it's a relative path from the API, construct full URL
+    // Assuming images are served from the API
+    const apiUrl = 'http://localhost:8080/api'; // Use environment.apiUrl in production
+    return `${apiUrl}${product.image.startsWith('/') ? '' : '/'}${product.image}`;
+  }
+
+  /**
+   * Handle image load error - fallback to placeholder
+   */
+  onImageError(event: Event): void {
+    const imgElement = event.target as HTMLImageElement;
+    imgElement.src = '/assets/images/product-placeholder.jpg';
+  }
+
+  /**
+   * Handle shop image load error - fallback to placeholder
+   */
+  onShopImageError(event: Event): void {
+    const imgElement = event.target as HTMLImageElement;
+    imgElement.src = '/assets/images/shop-placeholder.jpg';
+  }
 }

@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../auth/login_screen.dart';
+import '../settings/business_hours_screen.dart';
+import '../../utils/app_config.dart';
+import '../../utils/app_theme.dart';
+import '../../widgets/modern_button.dart';
+import '../../widgets/modern_card.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String userName;
@@ -27,15 +34,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadProfileData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final userDataString = prefs.getString('user_data');
-      if (userDataString != null) {
-        // In a real app, you'd parse the JSON and extract user data
-        setState(() {
-          _shopName = widget.userName;
-          _email = 'shopowner@nammaooru.com';
-          _phoneNumber = '+91 98765 43210';
-          _shopAddress = 'Koramangala, Bangalore - 560034';
-        });
+      final token = prefs.getString('auth_token') ?? widget.token;
+
+      final response = await http.get(
+        Uri.parse('${AppConfig.apiBaseUrl}/shops/my-shop'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final shopData = jsonDecode(response.body);
+
+        if (shopData['statusCode'] == '0000' && shopData['data'] != null) {
+          final shop = shopData['data'];
+
+          setState(() {
+            _shopName = shop['name'] ?? widget.userName;
+            _email = shop['email'] ?? shop['owner']?['email'] ?? 'N/A';
+            _phoneNumber = shop['phone'] ?? shop['phoneNumber'] ?? 'N/A';
+            _shopAddress = '${shop['address'] ?? ''}, ${shop['city'] ?? ''} - ${shop['pincode'] ?? ''}';
+          });
+        }
       }
     } catch (e) {
       print('Error loading profile data: $e');
@@ -46,14 +67,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Confirm Logout'),
-        content: const Text('Are you sure you want to logout?'),
+        shape: RoundedRectangleBorder(borderRadius: AppTheme.roundedLarge),
+        title: Row(
+          children: [
+            Icon(Icons.logout, color: AppTheme.error),
+            const SizedBox(width: AppTheme.space8),
+            Text('Confirm Logout', style: AppTheme.h5),
+          ],
+        ),
+        content: Text('Are you sure you want to logout?', style: AppTheme.bodyMedium),
         actions: [
-          TextButton(
+          ModernButton(
+            text: 'Cancel',
+            variant: ButtonVariant.outline,
+            size: ButtonSize.medium,
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
           ),
-          ElevatedButton(
+          ModernButton(
+            text: 'Logout',
+            icon: Icons.logout,
+            variant: ButtonVariant.error,
+            size: ButtonSize.medium,
             onPressed: () async {
               final prefs = await SharedPreferences.getInstance();
               await prefs.clear();
@@ -64,8 +98,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 (route) => false,
               );
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Logout'),
           ),
         ],
       ),
@@ -81,249 +113,170 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: const Text('Profile'),
-        backgroundColor: Theme.of(context).primaryColor,
-        foregroundColor: Colors.white,
+        automaticallyImplyLeading: false,
+        title: Text('Profile', style: AppTheme.h4.copyWith(fontWeight: FontWeight.w600)),
+        backgroundColor: AppTheme.surface,
+        elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.edit),
-            onPressed: () => _showComingSoon('Edit Profile'),
+            icon: Icon(Icons.settings_outlined, color: AppTheme.textPrimary),
+            onPressed: () => _showComingSoon('Settings'),
           ),
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
         child: Column(
           children: [
             // Profile Header
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    CircleAvatar(
-                      radius: 50,
-                      backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
-                      child: Icon(
-                        Icons.store,
-                        size: 50,
-                        color: Theme.of(context).primaryColor,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      _shopName,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.green),
-                      ),
-                      child: const Text(
-                        'Active',
-                        style: TextStyle(
-                          color: Colors.green,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: AppTheme.surface,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: Offset(0, 2),
+                  ),
+                ],
               ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // Shop Information
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Shop Information',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildInfoRow(Icons.email, 'Email', _email),
-                    const SizedBox(height: 12),
-                    _buildInfoRow(Icons.phone, 'Phone', _phoneNumber),
-                    const SizedBox(height: 12),
-                    _buildInfoRow(Icons.location_on, 'Address', _shopAddress),
-                    const SizedBox(height: 12),
-                    _buildInfoRow(Icons.access_time, 'Hours', 'Mon-Sun: 9:00 AM - 10:00 PM'),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // Settings & Options
-            Card(
+              padding: const EdgeInsets.all(AppTheme.space24),
               child: Column(
                 children: [
-                  _buildMenuTile(
-                    Icons.notifications,
-                    'Notifications',
-                    'Manage notification preferences',
-                    () => _showComingSoon('Notifications Settings'),
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppTheme.primary.withOpacity(0.1),
+                    ),
+                    child: const Icon(Icons.store, size: 40, color: AppTheme.primary),
                   ),
-                  const Divider(height: 1),
-                  _buildMenuTile(
-                    Icons.payment,
-                    'Payment Settings',
-                    'Bank account and payment details',
-                    () => _showComingSoon('Payment Settings'),
+                  const SizedBox(height: AppTheme.space16),
+                  Text(
+                    _shopName,
+                    style: AppTheme.h3.copyWith(fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
                   ),
-                  const Divider(height: 1),
-                  _buildMenuTile(
-                    Icons.inventory,
-                    'Inventory Settings',
-                    'Stock alerts and inventory management',
-                    () => _showComingSoon('Inventory Settings'),
-                  ),
-                  const Divider(height: 1),
-                  _buildMenuTile(
-                    Icons.analytics,
-                    'Business Analytics',
-                    'Detailed sales and performance reports',
-                    () => _showComingSoon('Business Analytics'),
-                  ),
-                  const Divider(height: 1),
-                  _buildMenuTile(
-                    Icons.support_agent,
-                    'Support & Help',
-                    'Get help and contact support',
-                    () => _showComingSoon('Support Center'),
+                  const SizedBox(height: AppTheme.space8),
+                  Text(
+                    _email,
+                    style: AppTheme.bodyMedium.copyWith(color: AppTheme.textSecondary),
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: AppTheme.space16),
 
-            // App Information
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'App Information',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildInfoRow(Icons.info, 'Version', '1.0.0'),
-                    const SizedBox(height: 12),
-                    _buildInfoRow(Icons.update, 'Last Updated', 'Today'),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        TextButton.icon(
-                          onPressed: () => _showComingSoon('Privacy Policy'),
-                          icon: const Icon(Icons.privacy_tip),
-                          label: const Text('Privacy Policy'),
-                        ),
-                        TextButton.icon(
-                          onPressed: () => _showComingSoon('Terms of Service'),
-                          icon: const Icon(Icons.description),
-                          label: const Text('Terms of Service'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+            // Contact Information
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: AppTheme.space16),
+              decoration: BoxDecoration(
+                color: AppTheme.surface,
+                borderRadius: AppTheme.roundedLarge,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  _buildModernInfoTile(Icons.phone, 'Phone', _phoneNumber),
+                  Divider(height: 1, color: AppTheme.borderLight),
+                  _buildModernInfoTile(Icons.location_on, 'Address', _shopAddress),
+                ],
               ),
             ),
 
-            const SizedBox(height: 30),
+            const SizedBox(height: AppTheme.space16),
+
+            // Settings & Options
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: AppTheme.space16),
+              decoration: BoxDecoration(
+                color: AppTheme.surface,
+                borderRadius: AppTheme.roundedLarge,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  _buildMenuTile(Icons.access_time, 'Business Hours', () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => BusinessHoursScreen(token: widget.token)),
+                    );
+                  }),
+                  Divider(height: 1, color: AppTheme.borderLight),
+                  _buildMenuTile(Icons.payment, 'Payment Settings', () => _showComingSoon('Payment Settings')),
+                  Divider(height: 1, color: AppTheme.borderLight),
+                  _buildMenuTile(Icons.inventory_2, 'Inventory', () => _showComingSoon('Inventory')),
+                  Divider(height: 1, color: AppTheme.borderLight),
+                  _buildMenuTile(Icons.analytics, 'Analytics', () => _showComingSoon('Analytics')),
+                  Divider(height: 1, color: AppTheme.borderLight),
+                  _buildMenuTile(Icons.help_outline, 'Support', () => _showComingSoon('Support')),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: AppTheme.space24),
 
             // Logout Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppTheme.space16),
+              child: ModernButton(
+                text: 'Logout',
+                icon: Icons.logout,
+                variant: ButtonVariant.error,
+                size: ButtonSize.large,
+                fullWidth: true,
                 onPressed: _logout,
-                icon: const Icon(Icons.logout),
-                label: const Text('Logout'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: AppTheme.space20),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: Colors.grey[600]),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
+  Widget _buildModernInfoTile(IconData icon, String label, String value) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: AppTheme.space20, vertical: AppTheme.space8),
+      leading: Container(
+        padding: const EdgeInsets.all(AppTheme.space12),
+        decoration: BoxDecoration(
+          color: AppTheme.primary.withOpacity(0.1),
+          borderRadius: AppTheme.roundedMedium,
         ),
-      ],
+        child: Icon(icon, color: AppTheme.primary, size: 20),
+      ),
+      title: Text(label, style: AppTheme.caption.copyWith(color: AppTheme.textSecondary)),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Text(value, style: AppTheme.bodyMedium.copyWith(fontWeight: FontWeight.w500)),
+      ),
     );
   }
 
-  Widget _buildMenuTile(IconData icon, String title, String subtitle, VoidCallback onTap) {
+  Widget _buildMenuTile(IconData icon, String title, VoidCallback onTap) {
     return ListTile(
-      leading: Icon(icon, color: Theme.of(context).primaryColor),
-      title: Text(
-        title,
-        style: const TextStyle(fontWeight: FontWeight.w500),
-      ),
-      subtitle: Text(
-        subtitle,
-        style: TextStyle(
-          fontSize: 12,
-          color: Colors.grey[600],
-        ),
-      ),
-      trailing: const Icon(Icons.chevron_right),
+      contentPadding: const EdgeInsets.symmetric(horizontal: AppTheme.space20, vertical: AppTheme.space12),
+      leading: Icon(icon, color: AppTheme.primary, size: 24),
+      title: Text(title, style: AppTheme.bodyMedium.copyWith(fontWeight: FontWeight.w500)),
+      trailing: Icon(Icons.chevron_right, color: AppTheme.textHint, size: 20),
       onTap: onTap,
     );
   }

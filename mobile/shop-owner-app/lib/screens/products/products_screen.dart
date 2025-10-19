@@ -1,5 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service_simple.dart';
+import '../../utils/app_config.dart';
+import '../../utils/app_theme.dart';
+import '../../widgets/modern_card.dart';
+import '../../widgets/modern_button.dart';
+import 'product_form_screen.dart';
+import 'add_product_from_catalog_screen.dart';
+import 'browse_products_screen.dart';
+import 'create_product_screen.dart';
+import 'categories_screen.dart';
 
 class ProductsScreen extends StatefulWidget {
   final String token;
@@ -16,36 +25,107 @@ class ProductsScreen extends StatefulWidget {
 class _ProductsScreenState extends State<ProductsScreen> {
   List<dynamic> _products = [];
   bool _isLoading = true;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+  int _currentPage = 0;
+  final int _pageSize = 20;
+  late ScrollController _scrollController;
   String _searchQuery = '';
+  String _selectedCategory = 'All';
   final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    _scrollController = ScrollController()..addListener(_onScroll);
     _fetchProducts();
   }
 
+  void _onScroll() {
+    if (_isLoadingMore || !_hasMore) return;
+
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      _loadMore();
+    }
+  }
+
   Future<void> _fetchProducts() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _currentPage = 0;
+      _hasMore = true;
+    });
 
     try {
-      final response = await ApiService.getProducts(
-        shopId: '1',
+      final response = await ApiService.getMyProducts(
         page: 0,
-        size: 50,
+        size: _pageSize,
       );
 
+      print('My Products API response: ${response.isSuccess}');
+
       if (response.isSuccess && response.data != null) {
+        final data = response.data;
+
+        // Handle nested data structure: {statusCode, message, data: {content: [...]}}
+        final productsData = data['data'] ?? data;
+        final content = productsData['content'] ?? productsData ?? [];
+
+        print('Products count: ${content.length}');
+
         setState(() {
-          _products = response.data['content'] ?? response.data ?? [];
+          _products = content;
+          _hasMore = content.length >= _pageSize;
+          _currentPage = 0;
           _isLoading = false;
         });
       } else {
+        print('API error: ${response.error}');
         _setMockData();
       }
     } catch (e) {
       print('Error fetching products: $e');
       _setMockData();
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_isLoadingMore || !_hasMore) return;
+
+    setState(() => _isLoadingMore = true);
+
+    try {
+      final nextPage = _currentPage + 1;
+      final response = await ApiService.getMyProducts(
+        page: nextPage,
+        size: _pageSize,
+      );
+
+      if (response.isSuccess && response.data != null) {
+        final data = response.data;
+        final productsData = data['data'] ?? data;
+        final content = productsData['content'] ?? productsData ?? [];
+
+        setState(() {
+          _products.addAll(content);
+          _hasMore = content.length >= _pageSize;
+          _currentPage = nextPage;
+          _isLoadingMore = false;
+        });
+
+        print('Loaded page $nextPage with ${content.length} products');
+      } else {
+        setState(() {
+          _hasMore = false;
+          _isLoadingMore = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading more products: $e');
+      setState(() {
+        _hasMore = false;
+        _isLoadingMore = false;
+      });
     }
   }
 
@@ -97,57 +177,107 @@ class _ProductsScreenState extends State<ProductsScreen> {
     });
   }
 
-  List<dynamic> get _filteredProducts {
-    if (_searchQuery.isEmpty) return _products;
-    return _products.where((product) =>
-        product['name'].toString().toLowerCase().contains(_searchQuery.toLowerCase()) ||
-        product['category'].toString().toLowerCase().contains(_searchQuery.toLowerCase())
-    ).toList();
+  List<String> get _categories {
+    final categories = <String>{'All'};
+    for (var product in _products) {
+      final category = product['masterProduct']?['category']?['name'] ?? product['category'];
+      if (category != null) {
+        categories.add(category.toString());
+      }
+    }
+    return categories.toList();
   }
 
-  Color _getStockColor(String? status, int stock) {
-    if (status == 'OUT_OF_STOCK' || stock == 0) return Colors.red;
-    if (status == 'LOW_STOCK' || stock < 10) return Colors.orange;
+  List<dynamic> get _filteredProducts {
+    return _products.where((product) {
+      final name = (product['displayName'] ?? product['name'] ?? '').toString().toLowerCase();
+      final category = (product['masterProduct']?['category']?['name'] ?? product['category'] ?? '').toString();
+
+      final matchesSearch = _searchQuery.isEmpty ||
+        name.contains(_searchQuery.toLowerCase()) ||
+        category.toLowerCase().contains(_searchQuery.toLowerCase());
+
+      final matchesCategory = _selectedCategory == 'All' || category == _selectedCategory;
+
+      return matchesSearch && matchesCategory;
+    }).toList();
+  }
+
+  Color _getStockColor(dynamic product) {
+    final stock = product['stockQuantity'] ?? product['stock'] ?? 0;
+    final inStock = product['inStock'] ?? true;
+    final lowStock = product['lowStock'] ?? false;
+
+    if (!inStock || stock == 0) return Colors.red;
+    if (lowStock || stock < 10) return Colors.orange;
     return Colors.green;
   }
 
-  String _getStockText(String? status, int stock) {
-    if (stock == 0) return 'Out of Stock';
-    if (stock < 10) return 'Low Stock ($stock)';
+  String _getStockText(dynamic product) {
+    final stock = product['stockQuantity'] ?? product['stock'] ?? 0;
+    final inStock = product['inStock'] ?? true;
+    final lowStock = product['lowStock'] ?? false;
+
+    if (!inStock || stock == 0) return 'Out of Stock';
+    if (lowStock || stock < 10) return 'Low Stock ($stock)';
     return 'In Stock ($stock)';
   }
 
   @override
   Widget build(BuildContext context) {
+    final gridColumns = ResponsiveLayout.getGridColumns(context);
+    final padding = ResponsiveLayout.getResponsivePadding(context);
+
     return Scaffold(
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: const Text('Products'),
-        backgroundColor: Theme.of(context).primaryColor,
-        foregroundColor: Colors.white,
+        title: Text('Products', style: AppTheme.h5),
+        elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Add Product feature coming soon!')),
+          ModernIconButton(
+            icon: Icons.category,
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const CategoriesScreen(),
+                ),
               );
+              _fetchProducts();
             },
+            size: 48,
           ),
+          const SizedBox(width: AppTheme.space8),
+          ModernIconButton(
+            icon: Icons.add,
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AddProductFromCatalogScreen(),
+                ),
+              );
+
+              if (result == true) {
+                _fetchProducts();
+              }
+            },
+            size: 48,
+          ),
+          const SizedBox(width: AppTheme.space8),
         ],
       ),
       body: Column(
         children: [
           // Search Bar
-          Padding(
-            padding: const EdgeInsets.all(16),
+          Container(
+            padding: padding,
+            color: AppTheme.surface,
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
                 hintText: 'Search products...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                prefixIcon: const Icon(Icons.search, color: AppTheme.primary),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear),
@@ -164,120 +294,433 @@ class _ProductsScreenState extends State<ProductsScreen> {
             ),
           ),
 
-          // Products List
+          // Category Filter Chips
+          if (_categories.isNotEmpty)
+            Container(
+              height: 60,
+              padding: const EdgeInsets.symmetric(horizontal: AppTheme.space16),
+              color: AppTheme.surface,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: _categories.length,
+                itemBuilder: (context, index) {
+                  final category = _categories[index];
+                  final isSelected = _selectedCategory == category;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: AppTheme.space8),
+                    child: ModernChip(
+                      label: category,
+                      selected: isSelected,
+                      icon: isSelected ? Icons.check : null,
+                      onTap: () {
+                        setState(() {
+                          _selectedCategory = category;
+                        });
+                      },
+                    ),
+                  );
+                },
+              ),
+            ),
+
+          const SizedBox(height: AppTheme.space8),
+
+          // Products Grid
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _filteredProducts.isEmpty
-                    ? const Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.inventory_2, size: 64, color: Colors.grey),
-                            SizedBox(height: 16),
-                            Text('No products found', style: TextStyle(fontSize: 18, color: Colors.grey)),
-                          ],
+                    ? Center(
+                        child: Padding(
+                          padding: padding,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.inventory_2_outlined,
+                                size: 80,
+                                color: AppTheme.textHint,
+                              ),
+                              const SizedBox(height: AppTheme.space16),
+                              Text(
+                                'No products found',
+                                style: AppTheme.h4.copyWith(color: AppTheme.textSecondary),
+                              ),
+                              const SizedBox(height: AppTheme.space8),
+                              Text(
+                                'Add your first product to get started',
+                                style: AppTheme.bodyMedium.copyWith(color: AppTheme.textHint),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: AppTheme.space24),
+                              ModernButton(
+                                text: 'Add Product',
+                                icon: Icons.add,
+                                variant: ButtonVariant.primary,
+                                size: ButtonSize.large,
+                                useGradient: true,
+                                onPressed: () => _showAddProductMenu(context),
+                              ),
+                            ],
+                          ),
                         ),
                       )
                     : RefreshIndicator(
                         onRefresh: _fetchProducts,
-                        child: ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: _filteredProducts.length,
+                        child: GridView.builder(
+                          controller: _scrollController,
+                          padding: padding,
+                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: gridColumns > 3 ? 3 : 2,
+                            crossAxisSpacing: AppTheme.space16,
+                            mainAxisSpacing: AppTheme.space16,
+                            childAspectRatio: 0.7,
+                          ),
+                          itemCount: _filteredProducts.length + (_isLoadingMore ? 1 : 0),
                           itemBuilder: (context, index) {
+                            if (index == _filteredProducts.length) {
+                              return const Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(AppTheme.space16),
+                                  child: CircularProgressIndicator(),
+                                ),
+                              );
+                            }
                             final product = _filteredProducts[index];
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              child: ListTile(
-                                contentPadding: const EdgeInsets.all(16),
-                                leading: CircleAvatar(
-                                  backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
-                                  child: product['image'] != null
-                                      ? ClipOval(child: Image.network(product['image'], fit: BoxFit.cover))
-                                      : Icon(Icons.inventory, color: Theme.of(context).primaryColor),
-                                ),
-                                title: Text(
-                                  product['name'] ?? 'Unknown Product',
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const SizedBox(height: 4),
-                                    Text(product['description'] ?? 'No description'),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Category: ${product['category'] ?? 'Uncategorized'}',
-                                      style: TextStyle(color: Colors.grey[600]),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Row(
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: _getStockColor(product['status'], product['stock'] ?? 0).withOpacity(0.1),
-                                            borderRadius: BorderRadius.circular(12),
-                                            border: Border.all(
-                                              color: _getStockColor(product['status'], product['stock'] ?? 0),
-                                            ),
-                                          ),
-                                          child: Text(
-                                            _getStockText(product['status'], product['stock'] ?? 0),
-                                            style: TextStyle(
-                                              color: _getStockColor(product['status'], product['stock'] ?? 0),
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                                trailing: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text(
-                                      '₹${product['price'] ?? 0}',
-                                      style: const TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.green,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Icon(Icons.edit, color: Colors.grey[600]),
-                                  ],
-                                ),
-                                onTap: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Edit ${product['name']} feature coming soon!')),
-                                  );
-                                },
-                              ),
-                            );
+                            return _buildProductCard(product);
                           },
                         ),
                       ),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Add new product feature coming soon!')),
-          );
-        },
-        child: const Icon(Icons.add),
+      floatingActionButton: ModernFAB(
+        icon: Icons.add,
+        label: 'Add Product',
+        onPressed: () => _showAddProductMenu(context),
+        useGradient: true,
       ),
     );
+  }
+
+  Widget _buildProductCard(dynamic product) {
+    final primaryImageUrl = product['primaryImageUrl'] ?? product['image'];
+    final productName = product['displayName'] ?? product['name'] ?? 'Unknown Product';
+    final category = product['masterProduct']?['category']?['name'] ?? product['category'] ?? 'Uncategorized';
+    final price = product['price'] ?? 0;
+    final stock = product['stockQuantity'] ?? product['stock'] ?? 0;
+    final imageUrl = AppConfig.getImageUrl(primaryImageUrl);
+    final inStock = product['inStock'] ?? true;
+    final lowStock = product['lowStock'] ?? (stock < 10);
+
+    return ProductCard(
+      name: productName,
+      category: category,
+      price: price.toDouble(),
+      stock: stock,
+      imageUrl: imageUrl.isNotEmpty ? imageUrl : null,
+      onTap: () => _showEditProductDialog(product),
+      onEdit: () => _showEditProductDialog(product),
+      onDelete: () async {
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Remove Product'),
+            content: Text(
+              'Are you sure you want to remove "$productName" from your shop?\n\nNote: Product can only be removed if all orders are completed.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              ModernButton(
+                text: 'Remove',
+                variant: ButtonVariant.error,
+                size: ButtonSize.small,
+                onPressed: () => Navigator.pop(context, true),
+              ),
+            ],
+          ),
+        );
+
+        if (confirmed == true) {
+          final deleteResult = await ApiService.removeProductFromShop(
+            productId: product['id'],
+          );
+
+          if (deleteResult.isSuccess) {
+            _fetchProducts();
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Product removed from shop successfully'),
+                backgroundColor: AppTheme.success,
+              ),
+            );
+          } else {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Error: ${deleteResult.error ?? "Cannot remove product with pending orders"}',
+                ),
+                backgroundColor: AppTheme.error,
+              ),
+            );
+          }
+        }
+      },
+    );
+  }
+
+  void _showAddProductMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusXLarge)),
+      ),
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(AppTheme.radiusXLarge)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: AppTheme.space12),
+              decoration: BoxDecoration(
+                color: AppTheme.borderLight,
+                borderRadius: AppTheme.roundedRound,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(AppTheme.space16),
+              child: Text('Add Product to Shop', style: AppTheme.h4),
+            ),
+            InfoCard(
+              title: '',
+              child: ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(AppTheme.space12),
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.secondaryGradient,
+                    borderRadius: AppTheme.roundedMedium,
+                  ),
+                  child: const Icon(Icons.library_add, color: AppTheme.textWhite),
+                ),
+                title: Text('Browse Master Catalog', style: AppTheme.h6),
+                subtitle: Text(
+                  'Browse existing products and add with custom price',
+                  style: AppTheme.bodySmall,
+                ),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AddProductFromCatalogScreen(),
+                    ),
+                  );
+                  if (result == true) {
+                    _fetchProducts();
+                  }
+                },
+              ),
+            ),
+            const SizedBox(height: AppTheme.space12),
+            InfoCard(
+              title: '',
+              child: ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(AppTheme.space12),
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.primaryGradient,
+                    borderRadius: AppTheme.roundedMedium,
+                  ),
+                  child: const Icon(Icons.add_box, color: AppTheme.textWhite),
+                ),
+                title: Text('Create New Product', style: AppTheme.h6),
+                subtitle: Text(
+                  'Create a new product and add to catalog',
+                  style: AppTheme.bodySmall,
+                ),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const CreateProductScreen(),
+                    ),
+                  );
+                  if (result == true) {
+                    _fetchProducts();
+                  }
+                },
+              ),
+            ),
+            const SizedBox(height: AppTheme.space24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showEditProductDialog(dynamic product) async {
+    final priceController = TextEditingController(text: product['price'].toString());
+    final stockController = TextEditingController(text: (product['stockQuantity'] ?? product['stock'] ?? 0).toString());
+    final minStockController = TextEditingController(text: (product['minStockLevel'] ?? 5).toString());
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Edit ${product['displayName'] ?? product['name']}'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: priceController,
+                decoration: const InputDecoration(
+                  labelText: 'Price (₹)',
+                  border: OutlineInputBorder(),
+                  prefixText: '₹',
+                ),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: stockController,
+                decoration: const InputDecoration(
+                  labelText: 'Stock Quantity',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: minStockController,
+                decoration: const InputDecoration(
+                  labelText: 'Min Stock Level',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              // Show confirmation dialog
+              final confirmDelete = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Remove Product'),
+                  content: Text('Are you sure you want to remove "${product['displayName'] ?? product['name']}" from your shop?\n\nNote: Product can only be removed if all orders are completed.'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: TextButton.styleFrom(foregroundColor: Colors.red),
+                      child: const Text('Remove'),
+                    ),
+                  ],
+                ),
+              );
+
+              if (confirmDelete == true) {
+                final deleteResult = await ApiService.removeProductFromShop(
+                  productId: product['id'],
+                );
+
+                if (deleteResult.isSuccess) {
+                  Navigator.pop(context, true);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Product removed from shop successfully'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error: ${deleteResult.error ?? "Cannot remove product with pending orders"}'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Remove from Shop'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final price = double.tryParse(priceController.text);
+              final stock = int.tryParse(stockController.text);
+              final minStock = int.tryParse(minStockController.text);
+
+              if (price == null || stock == null || minStock == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please enter valid numbers')),
+                );
+                return;
+              }
+
+              // Update product
+              final updateResult = await ApiService.updateShopProduct(
+                productId: product['id'],
+                price: price,
+                stockQuantity: stock,
+                minStockLevel: minStock,
+              );
+
+              if (updateResult.isSuccess) {
+                Navigator.pop(context, true);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Product updated successfully'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error: ${updateResult.error}'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      _fetchProducts(); // Refresh the list
+    }
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 }

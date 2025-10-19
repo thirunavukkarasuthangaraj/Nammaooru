@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/order.dart';
 import '../services/api_service.dart';
+import '../services/storage_service.dart';
 
 class OrderProvider extends ChangeNotifier {
   List<Order> _orders = [];
@@ -46,7 +47,7 @@ class OrderProvider extends ChangeNotifier {
     'PENDING',
     'CONFIRMED',
     'PREPARING',
-    'READY',
+    'READY_FOR_PICKUP',
     'DELIVERED',
     'CANCELLED'
   ];
@@ -65,12 +66,55 @@ class OrderProvider extends ChangeNotifier {
       _setLoading(true);
       _clearError();
 
-      // Load from API or use mock data
-      await _loadMockOrders();
+      // Get shop ID from storage
+      final shopData = await StorageService.getShop();
+      if (shopData == null) {
+        print('⚠️ No shop data found in storage');
+        _orders = [];
+        _applyFilters();
+        _setLoading(false);
+        return;
+      }
+
+      final shopId = shopData['shopId'] ?? shopData['id']?.toString();
+      if (shopId == null) {
+        print('⚠️ No shop ID found');
+        _orders = [];
+        _applyFilters();
+        _setLoading(false);
+        return;
+      }
+
+      print('📡 Loading orders for shop: $shopId');
+
+      // Call API to load orders
+      final response = await ApiService.getShopOrders(
+        shopId: shopId,
+        page: page - 1, // Backend uses 0-based pagination
+        size: limit,
+        status: _selectedStatus.isNotEmpty ? _selectedStatus : null,
+        dateFrom: _selectedStartDate?.toIso8601String(),
+        dateTo: _selectedEndDate?.toIso8601String(),
+      );
+
+      if (response.isSuccess) {
+        final data = response.data;
+        print('✅ Orders loaded successfully: ${data}');
+
+        // Parse orders from response
+        final ordersData = data['data'] ?? data['orders'] ?? data['content'] ?? [];
+        _orders = (ordersData as List).map((orderJson) => Order.fromJson(orderJson)).toList();
+
+        print('📦 Parsed ${_orders.length} orders');
+      } else {
+        print('❌ Failed to load orders: ${response.error}');
+        _setError(response.error ?? 'Failed to load orders');
+      }
 
       _applyFilters();
       _setLoading(false);
     } catch (e) {
+      print('❌ Error loading orders: $e');
       _setError('Failed to load orders: ${e.toString()}');
       _setLoading(false);
     }
@@ -218,7 +262,7 @@ class OrderProvider extends ChangeNotifier {
 
   // Mark order as ready
   Future<bool> markOrderReady(String orderId) async {
-    return await updateOrderStatus(orderId, 'READY');
+    return await updateOrderStatus(orderId, 'READY_FOR_PICKUP');
   }
 
   // Mark order as delivered

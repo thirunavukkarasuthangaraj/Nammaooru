@@ -8,22 +8,22 @@
 /* Define Professional Theme */
 @include mat.core();
 
-// Professional Color Palette - Modern Business Theme
+// Professional Color Palette - Purple Theme (matching register screen)
 $professional-primary: mat.define-palette((
-  50: #f0f9ff,
-  100: #e0f2fe,
-  200: #bae6fd,
-  300: #7dd3fc,
-  400: #38bdf8,
-  500: #0ea5e9,
-  600: #0284c7,
-  700: #0369a1,
-  800: #075985,
-  900: #0c4a6e,
-  A100: #87ceeb,
-  A200: #4da6d9,
-  A400: #1976d2,
-  A700: #1565c0,
+  50: #f5f3ff,
+  100: #ede9fe,
+  200: #ddd6fe,
+  300: #c4b5fd,
+  400: #a78bfa,
+  500: #667eea,
+  600: #764ba2,
+  700: #6d28d9,
+  800: #5b21b6,
+  900: #4c1d95,
+  A100: #c4b5fd,
+  A200: #a78bfa,
+  A400: #667eea,
+  A700: #764ba2,
   contrast: (
     50: #000000,
     100: #000000,
@@ -179,19 +179,19 @@ $professional-density-theme: mat.define-light-theme((
 @include mat.all-component-typographies($professional-typography-theme);
 @include mat.all-component-densities($professional-density-theme);
 
-/* Professional CSS Variables - Modern Business Color System */
+/* Professional CSS Variables - Purple Theme Color System */
 :root {
-  // Primary Brand Colors
-  --primary-50: #f0f9ff;
-  --primary-100: #e0f2fe;
-  --primary-200: #bae6fd;
-  --primary-300: #7dd3fc;
-  --primary-400: #38bdf8;
-  --primary-500: #0ea5e9;
-  --primary-600: #0284c7;
-  --primary-700: #0369a1;
-  --primary-800: #075985;
-  --primary-900: #0c4a6e;
+  // Primary Brand Colors (Purple Gradient)
+  --primary-50: #f5f3ff;
+  --primary-100: #ede9fe;
+  --primary-200: #ddd6fe;
+  --primary-300: #c4b5fd;
+  --primary-400: #a78bfa;
+  --primary-500: #667eea;
+  --primary-600: #764ba2;
+  --primary-700: #6d28d9;
+  --primary-800: #5b21b6;
+  --primary-900: #4c1d95;
   
   // Secondary Colors
   --secondary-50: #f8fafc;
@@ -463,7 +463,7 @@ body {
 
 /* Professional Button Variants */
 .btn-primary {
-  background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
   padding: var(--spacing-sm) var(--spacing-lg);
@@ -472,14 +472,14 @@ body {
   font-weight: var(--font-weight-medium);
   font-size: var(--font-size-sm);
   cursor: pointer;
-  transition: all 0.2s ease-in-out;
+  transition: all 0.3s ease;
   box-shadow: 0 1px 3px var(--shadow);
 }
 
 .btn-primary:hover {
-  background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%);
-  box-shadow: 0 4px 12px var(--shadow-hover);
-  transform: translateY(-1px);
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+  transform: translateY(-2px);
 }
 
 .btn-secondary {

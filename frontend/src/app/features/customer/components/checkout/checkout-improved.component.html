@@ -1,0 +1,327 @@
+<div class="checkout-container">
+  <!-- Animated Background -->
+  <div class="animated-bg">
+    <div class="shape shape-1"></div>
+    <div class="shape shape-2"></div>
+    <div class="shape shape-3"></div>
+  </div>
+
+  <!-- Header -->
+  <div class="checkout-header">
+    <button mat-icon-button class="back-button" (click)="goBackToCart()">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <h1>
+      <mat-icon>shopping_cart</mat-icon>
+      Checkout
+    </h1>
+    <p>Complete your order</p>
+  </div>
+
+  <!-- Main Content -->
+  <div class="checkout-content" *ngIf="!orderPlaced">
+    <!-- Delivery Type Selection -->
+    <mat-card class="section-card delivery-type-card">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon>local_shipping</mat-icon>
+          Choose Delivery Method
+        </mat-card-title>
+        <mat-card-subtitle>Select how you want to receive your order</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="delivery-options">
+          <!-- Home Delivery Option -->
+          <div class="delivery-option"
+               [class.selected]="selectedDeliveryType === 'HOME_DELIVERY'"
+               (click)="selectDeliveryType('HOME_DELIVERY')">
+            <div class="option-icon">
+              <mat-icon>delivery_dining</mat-icon>
+            </div>
+            <div class="option-content">
+              <h3>Home Delivery</h3>
+              <p>Get it delivered to your doorstep</p>
+              <div class="option-details">
+                <span class="delivery-time">
+                  <mat-icon>schedule</mat-icon>
+                  30-45 mins
+                </span>
+                <span class="delivery-fee">₹50</span>
+              </div>
+            </div>
+            <div class="option-check" *ngIf="selectedDeliveryType === 'HOME_DELIVERY'">
+              <mat-icon>check_circle</mat-icon>
+            </div>
+          </div>
+
+          <!-- Self Pickup Option -->
+          <div class="delivery-option"
+               [class.selected]="selectedDeliveryType === 'SELF_PICKUP'"
+               (click)="selectDeliveryType('SELF_PICKUP')">
+            <div class="option-icon">
+              <mat-icon>storefront</mat-icon>
+            </div>
+            <div class="option-content">
+              <h3>Self Pickup</h3>
+              <p>Collect from shop yourself</p>
+              <div class="option-details">
+                <span class="delivery-time">
+                  <mat-icon>schedule</mat-icon>
+                  20-30 mins
+                </span>
+                <span class="delivery-fee free">FREE</span>
+              </div>
+            </div>
+            <div class="option-check" *ngIf="selectedDeliveryType === 'SELF_PICKUP'">
+              <mat-icon>check_circle</mat-icon>
+            </div>
+          </div>
+        </div>
+
+        <!-- Shop Location (for self-pickup) -->
+        <div class="shop-location" *ngIf="selectedDeliveryType === 'SELF_PICKUP'">
+          <mat-icon>location_on</mat-icon>
+          <div>
+            <h4>{{ cart.shopName }}</h4>
+            <p>{{ shopAddress }}</p>
+            <button mat-stroked-button color="primary" (click)="openMaps()">
+              <mat-icon>directions</mat-icon>
+              Get Directions
+            </button>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Delivery Address Form (Only for Home Delivery) -->
+    <mat-card class="section-card address-card" *ngIf="selectedDeliveryType === 'HOME_DELIVERY'">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon>location_on</mat-icon>
+          Delivery Address
+        </mat-card-title>
+        <mat-card-subtitle>Where should we deliver your order?</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <form [formGroup]="checkoutForm" class="checkout-form">
+          <!-- Name Row -->
+          <div class="form-row">
+            <mat-form-field appearance="outline" class="half-width">
+              <mat-label>First Name</mat-label>
+              <mat-icon matPrefix>person</mat-icon>
+              <input matInput formControlName="firstName" placeholder="John">
+              <mat-error *ngIf="checkoutForm.get('firstName')?.hasError('required')">
+                First name is required
+              </mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="half-width">
+              <mat-label>Last Name</mat-label>
+              <mat-icon matPrefix>person</mat-icon>
+              <input matInput formControlName="lastName" placeholder="Doe">
+              <mat-error *ngIf="checkoutForm.get('lastName')?.hasError('required')">
+                Last name is required
+              </mat-error>
+            </mat-form-field>
+          </div>
+
+          <!-- Contact Row -->
+          <div class="form-row">
+            <mat-form-field appearance="outline" class="half-width">
+              <mat-label>Phone Number</mat-label>
+              <mat-icon matPrefix>phone</mat-icon>
+              <input matInput formControlName="phone" placeholder="9876543210">
+              <mat-error *ngIf="checkoutForm.get('phone')?.hasError('required')">
+                Phone is required
+              </mat-error>
+              <mat-error *ngIf="checkoutForm.get('phone')?.hasError('pattern')">
+                Enter valid 10-digit number
+              </mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="half-width">
+              <mat-label>Email</mat-label>
+              <mat-icon matPrefix>email</mat-icon>
+              <input matInput formControlName="email" placeholder="john@example.com">
+              <mat-error *ngIf="checkoutForm.get('email')?.hasError('required')">
+                Email is required
+              </mat-error>
+              <mat-error *ngIf="checkoutForm.get('email')?.hasError('email')">
+                Enter valid email
+              </mat-error>
+            </mat-form-field>
+          </div>
+
+          <!-- Address Fields -->
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Street Address</mat-label>
+            <mat-icon matPrefix>home</mat-icon>
+            <textarea matInput formControlName="streetAddress" rows="2" placeholder="House/Flat No, Street Name"></textarea>
+            <mat-error *ngIf="checkoutForm.get('streetAddress')?.hasError('required')">
+              Street address is required
+            </mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Landmark (Optional)</mat-label>
+            <mat-icon matPrefix>place</mat-icon>
+            <input matInput formControlName="landmark" placeholder="Near XYZ Mall">
+          </mat-form-field>
+
+          <div class="form-row">
+            <mat-form-field appearance="outline" class="third-width">
+              <mat-label>Pincode</mat-label>
+              <mat-icon matPrefix>pin</mat-icon>
+              <input matInput formControlName="pincode" placeholder="600001">
+              <mat-error *ngIf="checkoutForm.get('pincode')?.hasError('required')">
+                Pincode is required
+              </mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="third-width">
+              <mat-label>City</mat-label>
+              <mat-icon matPrefix>location_city</mat-icon>
+              <input matInput formControlName="city" placeholder="Chennai">
+              <mat-error *ngIf="checkoutForm.get('city')?.hasError('required')">
+                City is required
+              </mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="third-width">
+              <mat-label>State</mat-label>
+              <mat-icon matPrefix>map</mat-icon>
+              <input matInput formControlName="state" placeholder="Tamil Nadu">
+              <mat-error *ngIf="checkoutForm.get('state')?.hasError('required')">
+                State is required
+              </mat-error>
+            </mat-form-field>
+          </div>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Delivery Instructions (Optional)</mat-label>
+            <mat-icon matPrefix>note</mat-icon>
+            <textarea matInput formControlName="notes" rows="2" placeholder="Any special instructions"></textarea>
+          </mat-form-field>
+        </form>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Payment Method -->
+    <mat-card class="section-card payment-card">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon>payment</mat-icon>
+          Payment Method
+        </mat-card-title>
+        <mat-card-subtitle>Choose your payment option</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <mat-radio-group [(ngModel)]="selectedPaymentMethod" class="payment-methods">
+          <mat-radio-button *ngFor="let method of paymentMethods" [value]="method.value" class="payment-option">
+            <div class="payment-option-content">
+              <mat-icon>{{ method.icon }}</mat-icon>
+              <span>{{ method.label }}</span>
+            </div>
+          </mat-radio-button>
+        </mat-radio-group>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Order Summary -->
+    <mat-card class="section-card summary-card">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon>receipt</mat-icon>
+          Order Summary
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <!-- Cart Items -->
+        <div class="cart-items">
+          <div class="cart-item" *ngFor="let item of cart.items">
+            <div class="item-info">
+              <span class="item-name">{{ item.name }}</span>
+              <span class="item-quantity">× {{ item.quantity }}</span>
+            </div>
+            <span class="item-price">₹{{ item.price * item.quantity }}</span>
+          </div>
+        </div>
+
+        <mat-divider></mat-divider>
+
+        <!-- Price Breakdown -->
+        <div class="price-breakdown">
+          <div class="price-row">
+            <span>Subtotal</span>
+            <span>₹{{ cart.subtotal }}</span>
+          </div>
+          <div class="price-row" *ngIf="cart.discount > 0">
+            <span class="discount">Discount</span>
+            <span class="discount">-₹{{ cart.discount }}</span>
+          </div>
+          <div class="price-row">
+            <span>Delivery Fee</span>
+            <span [class.free]="selectedDeliveryType === 'SELF_PICKUP'">
+              {{ selectedDeliveryType === 'SELF_PICKUP' ? 'FREE' : '₹' + cart.deliveryFee }}
+            </span>
+          </div>
+          <mat-divider></mat-divider>
+          <div class="price-row total">
+            <span>Total Amount</span>
+            <span>₹{{ calculateTotal() }}</span>
+          </div>
+        </div>
+
+        <!-- Place Order Button -->
+        <button mat-raised-button
+                color="primary"
+                class="place-order-btn"
+                [disabled]="placingOrder || !isFormValid()"
+                (click)="placeOrder()">
+          <mat-spinner *ngIf="placingOrder" diameter="20"></mat-spinner>
+          <mat-icon *ngIf="!placingOrder">check_circle</mat-icon>
+          <span>{{ placingOrder ? 'Placing Order...' : 'Place Order' }}</span>
+        </button>
+
+        <!-- Terms -->
+        <div class="terms">
+          <mat-checkbox formControlName="agreeToTerms" color="primary">
+            I agree to the <a href="/terms">Terms & Conditions</a>
+          </mat-checkbox>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Order Success -->
+  <div class="order-success" *ngIf="orderPlaced">
+    <mat-card class="success-card">
+      <div class="success-animation">
+        <mat-icon class="success-icon">check_circle</mat-icon>
+      </div>
+      <h2>Order Placed Successfully!</h2>
+      <p class="order-number">Order #{{ orderResponse?.orderNumber }}</p>
+
+      <div class="success-message">
+        <mat-icon>{{ selectedDeliveryType === 'SELF_PICKUP' ? 'storefront' : 'delivery_dining' }}</mat-icon>
+        <p *ngIf="selectedDeliveryType === 'SELF_PICKUP'">
+          Your order will be ready for pickup in {{ estimatedDeliveryTime }}
+        </p>
+        <p *ngIf="selectedDeliveryType === 'HOME_DELIVERY'">
+          Your order will be delivered in {{ estimatedDeliveryTime }}
+        </p>
+      </div>
+
+      <div class="success-actions">
+        <button mat-raised-button color="primary" (click)="trackOrder()">
+          <mat-icon>location_searching</mat-icon>
+          Track Order
+        </button>
+        <button mat-stroked-button (click)="continueShopping()">
+          <mat-icon>shopping_bag</mat-icon>
+          Continue Shopping
+        </button>
+      </div>
+    </mat-card>
+  </div>
+</div>

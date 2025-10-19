@@ -1,0 +1,86 @@
+<div class="payment-dashboard">
+  <!-- Summary Cards -->
+  <div class="summary-section">
+    <div class="summary-card">
+      <div class="card-icon partners">👥</div>
+      <div class="card-content">
+        <div class="card-label">Total Partners</div>
+        <div class="card-value">{{ totalPartners }}</div>
+      </div>
+    </div>
+
+    <div class="summary-card">
+      <div class="card-icon pending">⏳</div>
+      <div class="card-content">
+        <div class="card-label">Pending Payments</div>
+        <div class="card-value">{{ payments.length }}</div>
+      </div>
+    </div>
+
+    <div class="summary-card">
+      <div class="card-icon cash">💵</div>
+      <div class="card-content">
+        <div class="card-label">Cash with Partners (COD)</div>
+        <div class="card-value">{{ formatCurrency(getTotalCash()) }}</div>
+      </div>
+    </div>
+
+    <div class="summary-card">
+      <div class="card-icon commission">💰</div>
+      <div class="card-content">
+        <div class="card-label">Total Commission (All Orders)</div>
+        <div class="card-value">{{ formatCurrency(getTotalCommission()) }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Partner Payment List -->
+  <div class="partners-section">
+    <h2>Delivery Partner Payments</h2>
+
+    <div *ngIf="loading" class="loading">
+      <mat-spinner></mat-spinner>
+    </div>
+
+    <div *ngIf="!loading && payments.length === 0" class="no-data">
+      <p>✓ All payments settled</p>
+    </div>
+
+    <div *ngIf="!loading && payments.length > 0" class="partner-list">
+      <div *ngFor="let payment of payments" class="partner-card" (click)="viewDetails(payment)">
+        <div class="partner-header">
+          <div class="partner-info">
+            <div class="partner-name">{{ payment.partnerName }}</div>
+            <div class="partner-contact">📱 {{ payment.partnerPhone }}</div>
+          </div>
+          <div class="partner-orders">
+            <span class="orders-badge">{{ payment.totalOrders }} orders</span>
+          </div>
+        </div>
+
+        <div class="partner-amounts">
+          <div class="amount-item">
+            <span class="label">Cash Collected (COD only):</span>
+            <span class="value">{{ formatCurrency(payment.cashCollected) }}</span>
+          </div>
+          <div class="amount-item">
+            <span class="label">Commission Earned (All):</span>
+            <span class="value commission">{{ formatCurrency(payment.commissionEarned) }}</span>
+          </div>
+          <div class="amount-item total">
+            <span class="label">{{ payment.netAmount >= 0 ? 'To Deposit to Office:' : 'Office Owes Partner:' }}</span>
+            <span [class]="payment.netAmount >= 0 ? 'value positive' : 'value negative'">
+              {{ formatCurrency(Math.abs(payment.netAmount)) }}
+            </span>
+          </div>
+        </div>
+
+        <div class="partner-actions">
+          <button mat-raised-button color="primary" (click)="markAsPaid(payment); $event.stopPropagation()">
+            💳 Settle Payment
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

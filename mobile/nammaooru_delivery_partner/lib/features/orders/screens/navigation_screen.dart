@@ -59,22 +59,20 @@ class _NavigationScreenState extends State<NavigationScreen> {
       // Calculate distance to destination
       double? destLat, destLng;
 
-      if (widget.order.status == 'accepted' &&
-          widget.order.shopLatitude != null &&
-          widget.order.shopLongitude != null) {
+      if (widget.order.status == 'accepted') {
         // Navigate to shop for pickup
-        destLat = widget.order.shopLatitude!;
-        destLng = widget.order.shopLongitude!;
-      } else if ((widget.order.status == 'picked_up' || widget.order.status == 'in_transit') &&
-                 widget.order.customerLatitude != null &&
-                 widget.order.customerLongitude != null) {
+        destLat = widget.order.shopLatitude;
+        destLng = widget.order.shopLongitude;
+      } else if (widget.order.status == 'picked_up' || widget.order.status == 'in_transit') {
         // Navigate to customer for delivery
-        destLat = widget.order.customerLatitude!;
-        destLng = widget.order.customerLongitude!;
+        destLat = widget.order.customerLatitude;
+        destLng = widget.order.customerLongitude;
       }
 
-      if (destLat != null && destLng != null) {
-        _distanceToDestination = locationProvider.calculateDistanceToDestination(destLat, destLng);
+      if (destLat != null && destLng != null && destLat != 0 && destLng != 0) {
+        setState(() {
+          _distanceToDestination = locationProvider.calculateDistanceToDestination(destLat!, destLng!);
+        });
 
         // Get ETA
         _getETA(destLat, destLng);
@@ -278,25 +276,24 @@ class _NavigationScreenState extends State<NavigationScreen> {
 
     double? destLat, destLng;
 
-    if (widget.order.status == 'accepted' &&
-        widget.order.shopLatitude != null &&
-        widget.order.shopLongitude != null) {
-      destLat = widget.order.shopLatitude!;
-      destLng = widget.order.shopLongitude!;
-    } else if ((widget.order.status == 'picked_up' || widget.order.status == 'in_transit') &&
-               widget.order.customerLatitude != null &&
-               widget.order.customerLongitude != null) {
-      destLat = widget.order.customerLatitude!;
-      destLng = widget.order.customerLongitude!;
+    if (widget.order.status == 'accepted') {
+      // Navigate to shop for pickup
+      destLat = widget.order.shopLatitude;
+      destLng = widget.order.shopLongitude;
+    } else if (widget.order.status == 'picked_up' || widget.order.status == 'in_transit') {
+      // Navigate to customer for delivery
+      destLat = widget.order.customerLatitude;
+      destLng = widget.order.customerLongitude;
     }
 
-    if (destLat != null && destLng != null) {
+    if (destLat != null && destLng != null && destLat != 0 && destLng != 0) {
       await locationProvider.openNavigation(destLat, destLng);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Destination coordinates not available'),
-          backgroundColor: Colors.red,
+        SnackBar(
+          content: Text('Destination coordinates not available. Shop: ${widget.order.shopName}'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 3),
         ),
       );
     }

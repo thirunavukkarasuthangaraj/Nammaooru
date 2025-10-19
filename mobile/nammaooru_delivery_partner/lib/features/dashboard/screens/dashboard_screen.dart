@@ -9,6 +9,8 @@ import '../../orders/screens/order_history_screen.dart';
 import '../../orders/screens/available_orders_screen.dart';
 import '../../orders/screens/active_orders_screen.dart';
 import '../../orders/screens/otp_handover_screen.dart';
+import '../../orders/screens/navigation_screen.dart';
+import '../../orders/widgets/order_details_bottom_sheet.dart';
 import '../../earnings/screens/earnings_screen.dart';
 import '../../auth/screens/login_screen.dart';
 
@@ -482,11 +484,24 @@ class HomeTab extends StatelessWidget {
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      child: InkWell(
+        onTap: () {
+          showModalBottomSheet(
+            context: parentContext,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) => OrderDetailsBottomSheet(
+              order: order,
+              showActions: true,
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -611,6 +626,25 @@ class HomeTab extends StatelessWidget {
                 Row(
                   children: [
                     if (order.status.toLowerCase() == 'accepted') ...[
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.of(parentContext).push(
+                            MaterialPageRoute(
+                              builder: (context) => NavigationScreen(order: order),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.navigation, size: 16),
+                        label: const Text('Navigate'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       ElevatedButton(
                         onPressed: () async {
                           // Navigate to OTP handover screen
@@ -639,33 +673,31 @@ class HomeTab extends StatelessWidget {
                     if (order.status.toLowerCase() == 'picked_up' ||
                         order.status.toLowerCase() == 'in_transit' ||
                         order.status.toLowerCase() == 'out_for_delivery') ...[
-                      ElevatedButton(
-                        onPressed: () async {
-                          final success = await provider.updateOrderStatus(order.orderNumber, 'DELIVERED');
-                          if (success) {
-                            ScaffoldMessenger.of(parentContext).showSnackBar(
-                              const SnackBar(
-                                content: Text('Order delivered successfully!'),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
-                          }
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.of(parentContext).push(
+                            MaterialPageRoute(
+                              builder: (context) => NavigationScreen(order: order),
+                            ),
+                          );
                         },
+                        icon: const Icon(Icons.map, size: 16),
+                        label: const Text('Track Order'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
+                          backgroundColor: Colors.blue,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        child: const Text('Deliver'),
                       ),
                     ],
                   ],
                 ),
               ],
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );

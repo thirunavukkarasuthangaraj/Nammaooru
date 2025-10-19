@@ -17,7 +17,10 @@ class _AvailableOrdersScreenState extends State<AvailableOrdersScreen> {
   @override
   void initState() {
     super.initState();
-    _loadAvailableOrders();
+    // Load orders after build completes to avoid setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadAvailableOrders();
+    });
   }
 
   void _loadAvailableOrders() {
@@ -52,6 +55,9 @@ class _AvailableOrdersScreenState extends State<AvailableOrdersScreen> {
           duration: Duration(seconds: 3),
         ),
       );
+
+      // Navigate to Active Orders screen to show the accepted order
+      Navigator.pushReplacementNamed(context, '/active-orders');
 
       _loadAvailableOrders(); // Refresh the list
     } catch (e) {
