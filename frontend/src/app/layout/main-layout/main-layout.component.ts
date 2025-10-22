@@ -129,6 +129,12 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       ]
     },
     {
+      category: 'Marketing & Promotions',
+      items: [
+        { title: 'Promo Codes', icon: 'local_offer', route: '/admin/promo-codes', badge: null }
+      ]
+    },
+    {
       category: 'System Administration',
       items: [
         { title: 'System Settings', icon: 'settings', route: '/settings', badge: null },
