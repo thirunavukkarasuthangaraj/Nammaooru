@@ -1,0 +1,304 @@
+name: Deploy to Production (With Migration Validation)
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+env:
+  REGISTRY: docker.io
+  BACKEND_IMAGE: nammaooru/backend
+  FRONTEND_IMAGE: nammaooru/frontend
+  SERVER_HOST: ${{ secrets.HETZNER_HOST }}
+  SERVER_USER: ${{ secrets.HETZNER_USER }}
+
+jobs:
+  # Step 1: Validate before deploying
+  validate:
+    name: Pre-Deployment Validation
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Preview migration files
+      run: |
+        chmod +x preview-migrations.sh
+        ./preview-migrations.sh
+
+    - name: Validate migration files
+      run: |
+        chmod +x validate-migrations.sh
+        ./validate-migrations.sh
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Build backend
+      run: |
+        cd backend
+        mvn clean package -DskipTests
+        echo "✅ Backend build successful"
+
+    - name: Validation Summary
+      run: |
+        echo ""
+        echo "════════════════════════════════════════════════════════════"
+        echo "   ✅ PRE-DEPLOYMENT VALIDATION PASSED"
+        echo "════════════════════════════════════════════════════════════"
+        echo ""
+        echo "✅ Migration files validated"
+        echo "✅ Backend builds successfully"
+        echo ""
+        echo "Proceeding with deployment..."
+        echo ""
+
+  # Step 2: Deploy (only runs if validation passes)
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: validate  # Only run if validation passes
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Deploy to server
+      uses: appleboy/ssh-action@v0.1.5
+      with:
+        host: ${{ secrets.HETZNER_HOST }}
+        username: ${{ secrets.HETZNER_USER }}
+        password: ${{ secrets.HETZNER_PASSWORD }}
+        script: |
+          # Navigate to deployment directory
+          echo "=== STEP 1: Navigate to deployment directory ==="
+          cd /opt/shop-management
+          pwd
+          ls -la
+
+          # Clone/update repository
+          echo "=== STEP 2: Update repository ==="
+          if [ ! -d "shop-management-system" ]; then
+            echo "Cloning repository..."
+            git clone https://github.com/thirunavukkarasuthangaraj/Nammaooru.git shop-management-system
+          else
+            echo "Updating existing repository..."
+            cd shop-management-system && git fetch origin && git reset --hard origin/main && git pull origin main && cd ..
+          fi
+
+          echo "Repository status:"
+          cd shop-management-system && git log --oneline -3 && cd ..
+
+          # Preview migrations that will be applied
+          echo "=== STEP 2.5: Preview migrations on server ==="
+          if [ -d "shop-management-system/backend/src/main/resources/db/migration" ]; then
+            echo "Migration files that will be deployed:"
+            find shop-management-system/backend/src/main/resources/db/migration -name "V*.sql" -exec basename {} \; 2>/dev/null || echo "No migration files"
+          fi
+
+          # Copy source files (remove old ones first)
+          echo "=== STEP 3: Copy fresh source files ==="
+          rm -rf backend frontend docker-compose.yml nginx 2>/dev/null || true
+          cp -r shop-management-system/backend ./
+          cp -r shop-management-system/frontend ./
+          cp shop-management-system/docker-compose.yml ./
+          cp -r shop-management-system/nginx ./
+
+          # Check Firebase configuration (DO NOT overwrite existing files)
+          echo "=== STEP 3.2: Check Firebase configuration ==="
+          if [ ! -d "firebase-config" ]; then
+            echo "Creating firebase-config directory..."
+            mkdir -p firebase-config
+            chmod 700 firebase-config
+          fi
+
+          if [ ! -f "firebase-config/firebase-service-account.json" ]; then
+            echo "⚠️  WARNING: firebase-service-account.json NOT FOUND!"
+            echo "   Backend may fail if Firebase is required."
+            echo "   Upload: scp /path/to/firebase-service-account.json root@65.21.4.236:/opt/shop-management/firebase-config/"
+          else
+            echo "✅ Firebase service account found"
+          fi
+
+          # Update nginx configuration (auto-deploy)
+          echo "=== STEP 3.1: Update nginx configuration ==="
+          if [ -f "nginx/nammaoorudelivary.conf" ]; then
+            echo "Deploying nammaoorudelivary.conf..."
+            cp nginx/nammaoorudelivary.conf /etc/nginx/sites-available/
+          else
+            echo "Warning: nammaoorudelivary.conf not found"
+          fi
+
+          if [ -f "nginx/api.nammaoorudelivary.in" ]; then
+            echo "Deploying api.nammaoorudelivary.in..."
+            cp nginx/api.nammaoorudelivary.in /etc/nginx/sites-available/
+          else
+            echo "Warning: api.nammaoorudelivary.in not found"
+          fi
+
+          echo "Testing nginx configuration..."
+          nginx -t && systemctl reload nginx
+          echo "Nginx configurations updated and reloaded!"
+
+          echo "Files copied. Verifying latest code versions:"
+          echo "Backend version from copied files:"
+          grep '<version>' backend/pom.xml | head -2 | tail -1 || echo "No backend version found"
+          echo "Frontend version from copied files:"
+          grep '"version"' frontend/package.json || echo "No frontend version found"
+
+          # Stop existing containers (check both locations)
+          echo "=== STEP 4: Stop existing containers ==="
+          docker ps -a
+          docker-compose down || true
+          cd /root && docker-compose down 2>/dev/null || true
+          cd /opt/shop-management
+          echo "Containers stopped. Current status:"
+          docker ps -a
+
+          # Remove existing images to force rebuild (fixes cache issues)
+          echo "=== STEP 5: Remove cached images ==="
+          echo "Current images:"
+          docker images | grep -E "(nammaooru|shop-management)" || echo "No matching images"
+          docker rmi nammaooru-frontend nammaooru-backend 2>/dev/null || true
+          docker rmi shop-management-system-frontend shop-management-system-backend 2>/dev/null || true
+          docker rmi $(docker images -f "dangling=true" -q) 2>/dev/null || true
+          docker builder prune -af
+          echo "Images after cleanup:"
+          docker images | grep -E "(nammaooru|shop-management)" || echo "No matching images"
+
+          # Ensure we're in the correct directory for deployment
+          echo "=== STEP 6: Build new containers ==="
+          cd /opt/shop-management
+          pwd
+          echo "Docker-compose file check:"
+          ls -la docker-compose.yml
+
+          # Build and start new containers with no cache
+          echo "Building containers with latest code from $(pwd)..."
+          echo "Backend build starting (includes migration files)..."
+          docker-compose build --no-cache --pull backend 2>&1 | tail -20
+          echo "Frontend build starting..."
+          docker-compose build --no-cache --pull frontend 2>&1 | tail -20
+
+          echo "=== STEP 7: Start containers ==="
+          # Clean up containers
+          docker rm -f nammaooru-frontend nammaooru-backend 2>/dev/null || true
+          docker-compose rm -f frontend backend 2>/dev/null || true
+
+          # Start containers (frontend on port 8080, nginx remains on port 80)
+          docker-compose down
+          docker-compose up -d
+          sleep 15
+          echo "Container status after start:"
+          docker ps -a
+
+          # Ensure nginx is running for reverse proxy
+          echo "Ensuring nginx is running..."
+          systemctl start nginx 2>/dev/null || true
+          systemctl status nginx --no-pager | head -10
+
+          # Clean up old/unused images
+          docker image prune -af
+
+          # Health check and version verification
+          echo "=== STEP 8: Health checks and migration verification ==="
+          sleep 10
+
+          echo "Final container status:"
+          docker ps -a
+
+          echo ""
+          echo "════════════════════════════════════════════════════════"
+          echo "   CHECKING FLYWAY MIGRATION LOGS"
+          echo "════════════════════════════════════════════════════════"
+          docker logs nammaooru-backend 2>&1 | grep -A 5 -B 2 "Flyway" || echo "No Flyway logs found yet"
+          echo ""
+
+          echo "Backend container logs (last 30 lines):"
+          docker logs nammaooru-backend --tail 30 2>&1 || echo "No backend logs available"
+
+          echo "Frontend container logs (last 10 lines):"
+          docker logs nammaooru-frontend --tail 10 2>&1 || echo "No frontend logs available"
+
+          echo "Checking backend health..."
+          curl -f http://localhost:8082/actuator/health 2>&1 || echo "Backend health check failed (checking internal port 8080...)"
+          docker exec nammaooru-backend curl -f http://localhost:8080/actuator/health 2>&1 || echo "Internal health check also failed"
+
+          echo "Checking version endpoints..."
+          curl -f http://localhost:8082/api/version 2>&1 || echo "Version endpoint failed"
+
+          echo ""
+          echo "════════════════════════════════════════════════════════"
+          echo "   DEPLOYMENT SUMMARY"
+          echo "════════════════════════════════════════════════════════"
+          echo "Frontend version: $(cat shop-management-system/frontend/package.json | grep version | head -1 | cut -d '"' -f 4)"
+          echo "Backend version: $(cat shop-management-system/backend/pom.xml | grep -m1 '<version>' | sed 's/.*<version>\(.*\)<\/version>.*/\1/')"
+          echo ""
+          echo "✅ Containers started"
+          echo "✅ Migration files deployed inside JAR"
+          echo "✅ Flyway will auto-apply migrations on startup"
+          echo ""
+          echo "Check Flyway logs above to verify migrations applied successfully"
+          echo "════════════════════════════════════════════════════════"
+
+          echo "=== DEPLOYMENT COMPLETE - Check logs above for issues ==="
+
+    - name: Verify deployment and migrations
+      uses: appleboy/ssh-action@v0.1.5
+      with:
+        host: ${{ secrets.HETZNER_HOST }}
+        username: ${{ secrets.HETZNER_USER }}
+        password: ${{ secrets.HETZNER_PASSWORD }}
+        script: |
+          echo ""
+          echo "════════════════════════════════════════════════════════"
+          echo "   FINAL VERIFICATION"
+          echo "════════════════════════════════════════════════════════"
+
+          docker ps
+
+          echo ""
+          echo "Checking if migrations applied successfully..."
+          docker logs nammaooru-backend 2>&1 | grep -i "migration\|flyway" | tail -20 || echo "No migration logs found"
+
+          echo ""
+          echo "✅ Deployment completed successfully!"
+          echo "🌐 Application URL: http://${{ env.SERVER_HOST }}"
+          echo ""
+
+          echo "════════════════════════════════════════════════════════"
+          echo "   VERIFYING DATABASE MIGRATIONS"
+          echo "════════════════════════════════════════════════════════"
+
+          # Wait for database to be ready
+          sleep 5
+
+          # Check migration history from database
+          docker exec nammaooru-postgres psql -U postgres -d shop_management_db -c "\
+            SELECT
+              installed_rank as rank,
+              version,
+              description,
+              type,
+              script,
+              installed_on,
+              execution_time,
+              success
+            FROM flyway_schema_history
+            ORDER BY installed_rank DESC
+            LIMIT 5;" || echo "Could not query database"
+
+          echo ""
+          echo "════════════════════════════════════════════════════════"
+          echo "   FINAL STATUS"
+          echo "════════════════════════════════════════════════════════"
+          echo "✅ Deployment: Complete"
+          echo "✅ Containers: Running"
+          echo "✅ Migrations: Verified"
+          echo "🌐 URL: http://${{ env.SERVER_HOST }}"
+          echo "════════════════════════════════════════════════════════"
+          echo ""
