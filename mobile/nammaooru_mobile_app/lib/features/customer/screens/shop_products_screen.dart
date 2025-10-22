@@ -23,7 +23,28 @@ class ShopProductsScreen extends StatefulWidget {
 
 class _ShopProductsScreenState extends State<ShopProductsScreen> {
   late String _selectedCategory;
-  final List<String> _categories = ['All', 'Grocery', 'Medicine', 'Dairy', 'Snacks'];
+  final List<Map<String, dynamic>> _categories = [
+    {
+      'name': 'All',
+      'imageUrl': 'https://images.unsplash.com/photo-1543168256-8133d1f3d731?w=400',
+    },
+    {
+      'name': 'Grocery',
+      'imageUrl': 'https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=400',
+    },
+    {
+      'name': 'Medicine',
+      'imageUrl': 'https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=400',
+    },
+    {
+      'name': 'Milk',
+      'imageUrl': 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=400',
+    },
+    {
+      'name': 'Snacks',
+      'imageUrl': 'https://images.unsplash.com/photo-1621939514649-280e2ee25f60?w=400',
+    },
+  ];
 
   // Track quantities for each product
   final Map<int, int> _productQuantities = {};
@@ -68,7 +89,9 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
     if (_selectedCategory == 'All') {
       return _allProducts;
     }
-    return _allProducts.where((p) => p['category'] == _selectedCategory).toList();
+    // Handle 'Milk' category mapping to 'Dairy'
+    final categoryToFilter = _selectedCategory == 'Milk' ? 'Dairy' : _selectedCategory;
+    return _allProducts.where((p) => p['category'] == categoryToFilter).toList();
   }
 
   void _updateQuantity(int productId, int change, int maxStock) {
@@ -162,16 +185,17 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
               itemCount: _categories.length,
               itemBuilder: (context, index) {
                 final category = _categories[index];
-                final isSelected = _selectedCategory == category;
+                final categoryName = category['name'];
+                final isSelected = _selectedCategory == categoryName;
 
                 return InkWell(
                   onTap: () {
                     setState(() {
-                      _selectedCategory = category;
+                      _selectedCategory = categoryName;
                     });
                   },
                   child: Container(
-                    padding: EdgeInsets.symmetric(vertical: 16),
+                    padding: EdgeInsets.symmetric(vertical: 12, horizontal: 4),
                     decoration: BoxDecoration(
                       color: isSelected ? Colors.green.withOpacity(0.1) : Colors.white,
                       border: Border(
@@ -183,14 +207,36 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                     ),
                     child: Column(
                       children: [
-                        Icon(
-                          _getCategoryIcon(category),
-                          color: isSelected ? Colors.green : Colors.grey,
-                          size: 24,
+                        // Category Image
+                        SizedBox(
+                          width: 80,
+                          height: 70,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              category['imageUrl'] ?? '',
+                              width: 80,
+                              height: 70,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Container(
+                                width: 80,
+                                height: 70,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[300],
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  _getCategoryIcon(categoryName),
+                                  color: Colors.grey[600],
+                                  size: 36,
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
-                        SizedBox(height: 4),
+                        SizedBox(height: 6),
                         Text(
-                          category,
+                          categoryName,
                           style: TextStyle(
                             fontSize: 11,
                             color: isSelected ? Colors.green : Colors.grey[700],

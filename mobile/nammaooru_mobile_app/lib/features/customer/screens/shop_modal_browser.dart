@@ -56,6 +56,7 @@ class _ShopModalBrowserState extends State<ShopModalBrowser> {
           'productCount': cat['productCount'] ?? 0,
           'icon': cat['icon'] ?? 'shopping_bag',
           'color': cat['color'] ?? '#4CAF50',
+          'imageUrl': cat['imageUrl'] ?? cat['image'] ?? '',
         }).toList();
 
         if (_categories.isEmpty) {
@@ -291,9 +292,9 @@ class _ShopModalBrowserState extends State<ShopModalBrowser> {
       children: [
         // Categories sidebar
         Container(
-          width: 120,
+          width: 100,
           decoration: BoxDecoration(
-            color: Colors.grey[100],
+            color: Colors.white,
             border: Border(right: BorderSide(color: Colors.grey[300]!)),
           ),
           child: ListView.builder(
@@ -305,9 +306,9 @@ class _ShopModalBrowserState extends State<ShopModalBrowser> {
               return GestureDetector(
                 onTap: () => _loadProducts(category['name'], category['id']?.toString() ?? ''),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
                   decoration: BoxDecoration(
-                    color: isSelected ? VillageTheme.primaryGreen.withOpacity(0.1) : null,
+                    color: isSelected ? VillageTheme.primaryGreen.withOpacity(0.1) : Colors.white,
                     border: Border(
                       left: BorderSide(
                         color: isSelected ? VillageTheme.primaryGreen : Colors.transparent,
@@ -316,23 +317,37 @@ class _ShopModalBrowserState extends State<ShopModalBrowser> {
                     ),
                   ),
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        category['icon'] is IconData ? category['icon'] : Icons.shopping_bag,
-                        color: isSelected ? VillageTheme.primaryGreen : Colors.grey[600],
-                        size: 24,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        category['name'],
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: isSelected ? VillageTheme.primaryGreen : Colors.grey[700],
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      // Category image
+                      Container(
+                        width: 80,
+                        height: 60,
+                        margin: const EdgeInsets.only(bottom: 4),
+                        decoration: BoxDecoration(
+                          color: (isSelected ? VillageTheme.primaryGreen : Colors.grey[300])!.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                        child: Icon(
+                          category['icon'] is IconData ? category['icon'] : Icons.shopping_bag,
+                          color: isSelected ? VillageTheme.primaryGreen : Colors.grey[600],
+                          size: 36,
+                        ),
+                      ),
+                      // Category name
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 2),
+                        child: Text(
+                          category['name'],
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: isSelected ? VillageTheme.primaryGreen : Colors.grey[700],
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),
@@ -427,7 +442,40 @@ class _ShopModalBrowserState extends State<ShopModalBrowser> {
   }
 
   Widget _buildProductCard(Map<String, dynamic> product) {
-    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+    return Consumer<CartProvider>(
+      builder: (context, cartProvider, child) {
+        // Get current quantity in cart for this product
+        final productId = product['id'].toString();
+        final cartItem = cartProvider.items.firstWhere(
+          (item) => item.product.id == productId,
+          orElse: () => CartItem(
+            product: ProductModel(
+              id: productId,
+              name: '',
+              price: 0,
+              description: '',
+              category: '',
+              shopId: '',
+              shopName: '',
+              images: [],
+              unit: '',
+              stockQuantity: 0,
+              isAvailable: true,
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            ),
+            quantity: 0,
+          ),
+        );
+        final currentQuantity = cartItem.quantity;
+        final stockQuantity = product['stockQuantity'] ?? 0;
+
+        return _buildProductCardUI(product, cartProvider, currentQuantity, stockQuantity);
+      },
+    );
+  }
+
+  Widget _buildProductCardUI(Map<String, dynamic> product, CartProvider cartProvider, int currentQuantity, int stockQuantity) {
 
     return Container(
       decoration: BoxDecoration(
@@ -533,39 +581,135 @@ class _ShopModalBrowserState extends State<ShopModalBrowser> {
                         ],
                       ),
 
-                      GestureDetector(
-                        onTap: () {
-                          final productModel = ProductModel(
-                            id: product['id'].toString(),
-                            name: product['name'],
-                            price: product['price'],
-                            description: product['description'] ?? '',
-                            category: _selectedCategoryName,
-                            shopId: widget.shopId,
-                            shopName: widget.shopName,
-                            images: product['imageUrl'] != null ? [product['imageUrl']] : [],
-                            unit: product['unit'] ?? 'piece',
-                            stockQuantity: product['stockQuantity'] ?? 0,
-                            isAvailable: product['isAvailable'] ?? true,
-                            createdAt: DateTime.now(),
-                            updatedAt: DateTime.now(),
-                          );
-                          cartProvider.addToCart(productModel);
-                          Helpers.showSnackBar(context, '${product['name']} added to cart');
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: VillageTheme.primaryGreen,
-                            borderRadius: BorderRadius.circular(6),
+                      // Quantity controls or ADD button
+                      currentQuantity > 0
+                        ? Container(
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: VillageTheme.primaryGreen.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: VillageTheme.primaryGreen, width: 1),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Decrease button
+                                GestureDetector(
+                                  onTap: () {
+                                    if (currentQuantity > 1) {
+                                      cartProvider.decreaseQuantity(product['id'].toString());
+                                    } else {
+                                      cartProvider.removeFromCart(product['id'].toString());
+                                    }
+                                  },
+                                  child: Container(
+                                    width: 24,
+                                    height: 28,
+                                    decoration: BoxDecoration(
+                                      color: VillageTheme.primaryGreen,
+                                      borderRadius: const BorderRadius.only(
+                                        topLeft: Radius.circular(5),
+                                        bottomLeft: Radius.circular(5),
+                                      ),
+                                    ),
+                                    child: const Icon(
+                                      Icons.remove,
+                                      color: Colors.white,
+                                      size: 14,
+                                    ),
+                                  ),
+                                ),
+                                // Quantity display
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                                  child: Text(
+                                    '$currentQuantity',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: VillageTheme.primaryGreen,
+                                    ),
+                                  ),
+                                ),
+                                // Increase button
+                                GestureDetector(
+                                  onTap: currentQuantity < stockQuantity
+                                    ? () {
+                                        final productModel = ProductModel(
+                                          id: product['id'].toString(),
+                                          name: product['name'],
+                                          price: product['price'],
+                                          description: product['description'] ?? '',
+                                          category: _selectedCategoryName,
+                                          shopId: widget.shopId,
+                                          shopName: widget.shopName,
+                                          images: product['imageUrl'] != null ? [product['imageUrl']] : [],
+                                          unit: product['unit'] ?? 'piece',
+                                          stockQuantity: stockQuantity,
+                                          isAvailable: product['isAvailable'] ?? true,
+                                          createdAt: DateTime.now(),
+                                          updatedAt: DateTime.now(),
+                                        );
+                                        cartProvider.increaseQuantity(product['id'].toString());
+                                      }
+                                    : null,
+                                  child: Container(
+                                    width: 24,
+                                    height: 28,
+                                    decoration: BoxDecoration(
+                                      color: currentQuantity < stockQuantity
+                                          ? VillageTheme.primaryGreen
+                                          : Colors.grey[300],
+                                      borderRadius: const BorderRadius.only(
+                                        topRight: Radius.circular(5),
+                                        bottomRight: Radius.circular(5),
+                                      ),
+                                    ),
+                                    child: Icon(
+                                      Icons.add,
+                                      color: currentQuantity < stockQuantity ? Colors.white : Colors.grey[500],
+                                      size: 14,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : GestureDetector(
+                            onTap: stockQuantity > 0
+                              ? () {
+                                  final productModel = ProductModel(
+                                    id: product['id'].toString(),
+                                    name: product['name'],
+                                    price: product['price'],
+                                    description: product['description'] ?? '',
+                                    category: _selectedCategoryName,
+                                    shopId: widget.shopId,
+                                    shopName: widget.shopName,
+                                    images: product['imageUrl'] != null ? [product['imageUrl']] : [],
+                                    unit: product['unit'] ?? 'piece',
+                                    stockQuantity: stockQuantity,
+                                    isAvailable: product['isAvailable'] ?? true,
+                                    createdAt: DateTime.now(),
+                                    updatedAt: DateTime.now(),
+                                  );
+                                  cartProvider.addToCart(productModel);
+                                  Helpers.showSnackBar(context, '${product['name']} added to cart');
+                                }
+                              : null,
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: stockQuantity > 0 ? VillageTheme.primaryGreen : Colors.grey[300],
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Icon(
+                                Icons.add,
+                                color: stockQuantity > 0 ? Colors.white : Colors.grey[500],
+                                size: 16,
+                              ),
+                            ),
                           ),
-                          child: const Icon(
-                            Icons.add,
-                            color: Colors.white,
-                            size: 16,
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                 ],
