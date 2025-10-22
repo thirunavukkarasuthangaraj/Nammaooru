@@ -13,6 +13,8 @@ services:
       - JWT_SECRET=${JWT_SECRET:-mySecretKey123456789012345678901234567890}
       - JWT_EXPIRATION=${JWT_EXPIRATION:-86400000}
       - FILE_UPLOAD_PATH=/app/uploads
+      - APP_UPLOAD_DIR=/app/uploads
+      - PRODUCT_IMAGES_PATH=products
       - MAIL_HOST=${MAIL_HOST:-smtp.gmail.com}
       - MAIL_PORT=${MAIL_PORT:-587}
       - MAIL_USERNAME=${MAIL_USERNAME:-noreplaynammaoorudelivery@gmail.com}
@@ -24,7 +26,7 @@ services:
     ports:
       - "0.0.0.0:8082:8080"
     volumes:
-      - uploads_data:/app/uploads
+      - D:/AAWS/nammaooru/uploads:/app/uploads
     networks:
       - shop-network
     extra_hosts:
@@ -50,10 +52,6 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
-
-volumes:
-  uploads_data:
-    driver: local
 
 networks:
   shop-network:

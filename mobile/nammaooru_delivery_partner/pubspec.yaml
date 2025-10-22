@@ -29,21 +29,21 @@ dependencies:
   # Maps & Location
   google_maps_flutter: ^2.5.0
   google_maps_flutter_web: ^0.5.4
-  geolocator: ^10.1.0
-  geolocator_web: ^2.2.0
-  geocoding: ^2.1.1
+  geocoding: ^3.0.0
   permission_handler: ^11.1.0
   flutter_polyline_points: ^2.0.0
+  geolocator: 10.1.0
+  geolocator_web: 2.2.0
 
-  # Push Notifications & Real-time Communication (disabled for web)
-  # firebase_core: ^2.24.2
-  # firebase_messaging: ^14.7.10
-  # flutter_local_notifications: ^16.3.2
-  # web_socket_channel: ^2.4.0
+  # Push Notifications & Real-time Communication
+  firebase_core: ^2.24.2
+  firebase_messaging: ^14.7.10
+  flutter_local_notifications: ^17.2.3
+  web_socket_channel: ^2.4.0
 
-  # Camera & Image Processing (temporarily disabled for build)
-  # image_picker: ^1.0.4
-  # signature: ^5.4.0
+  # Camera & Image Processing
+  image_picker: ^1.0.4
+  signature: ^5.4.0
   
 dev_dependencies:
   flutter_test:

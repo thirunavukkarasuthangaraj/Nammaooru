@@ -53,7 +53,7 @@ dependencies:
   # Localization
   flutter_localizations:
     sdk: flutter
-  intl: ^0.19.0
+  intl: 0.20.2
   
   # JWT
   jwt_decode: ^0.3.1
@@ -64,6 +64,7 @@ dependencies:
   flutter_rating_bar: ^4.0.1
   expandable: ^5.0.1
   image_cropper: ^9.1.0
+  flutter_plugin_android_lifecycle: 2.0.32
 
 dev_dependencies:
   flutter_test:
@@ -82,5 +83,5 @@ flutter:
 #     color: "#4CAF50"
 #     fullscreen: true
 
-dependency_overrides:
-  flutter_plugin_android_lifecycle: 2.0.17
+# dependency_overrides:
+#   flutter_plugin_android_lifecycle: 2.0.17

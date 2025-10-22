@@ -59,7 +59,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       );
 
       if (mounted && response['statusCode'] == '0000' && response['data'] != null) {
-        final notificationsData = response['data']['content'] ?? response['data'];
+        // response['data'] is now the actual notifications list from backend
+        final notificationsData = response['data'];
 
         if (notificationsData is List) {
           setState(() {
@@ -99,57 +100,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   void _loadDemoNotifications() {
-    // Demo data for testing when API is not available
-    _notifications = [
-      NotificationModel(
-        id: '1',
-        title: 'Order Confirmed! 🎉',
-        body: 'Your order from Village Store has been confirmed and is being prepared.',
-        type: 'order',
-        createdAt: DateTime.now().subtract(const Duration(minutes: 5)),
-        isRead: false,
-        data: {'orderId': '12345', 'shopName': 'Village Store'},
-      ),
-      NotificationModel(
-        id: '2',
-        title: 'New Shop Available! 🏪',
-        body: 'Fresh Vegetables Corner is now delivering in your area. Check it out!',
-        type: 'shop',
-        createdAt: DateTime.now().subtract(const Duration(hours: 2)),
-        isRead: false,
-        data: {'shopId': '67890', 'shopName': 'Fresh Vegetables Corner'},
-      ),
-      NotificationModel(
-        id: '3',
-        title: 'Order Delivered ✅',
-        body: 'Your order from Raj Medical Store has been delivered successfully.',
-        type: 'delivery',
-        createdAt: DateTime.now().subtract(const Duration(hours: 4)),
-        isRead: true,
-        data: {'orderId': '11111', 'shopName': 'Raj Medical Store'},
-      ),
-      NotificationModel(
-        id: '4',
-        title: 'Special Offer! 💥',
-        body: '20% off on all groceries this weekend. Limited time offer!',
-        type: 'promotion',
-        createdAt: DateTime.now().subtract(const Duration(days: 1)),
-        isRead: true,
-        data: {'offerCode': 'WEEKEND20'},
-      ),
-      NotificationModel(
-        id: '5',
-        title: 'Welcome to Namma Ooru! 🙏',
-        body: 'Thank you for joining our village delivery network. Start exploring local shops now!',
-        type: 'welcome',
-        createdAt: DateTime.now().subtract(const Duration(days: 3)),
-        isRead: true,
-        data: {},
-      ),
-    ];
-
-    // Sort by newest first (already sorted in demo data but ensuring)
-    _notifications.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    // Show only Firebase local notifications, no demo data
+    final firebaseNotifications = FirebaseNotificationService.getLocalNotifications();
+    setState(() {
+      _notifications = firebaseNotifications;
+      // Sort by newest first
+      _notifications.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    });
   }
 
   Future<void> _markAsRead(NotificationModel notification) async {

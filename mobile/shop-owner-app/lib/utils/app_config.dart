@@ -72,38 +72,38 @@ class AppConfig {
 
   static String get apiBaseUrl {
     // Production deployment
-    // return 'https://nammaoorudelivary.in/api';
+    return 'https://nammaoorudelivary.in/api';
 
     // For local testing:
     // Use localhost for web, network IP for mobile devices
-    if (kIsWeb) {
-      return 'http://localhost:8080/api';
-    }
-    return 'http://192.168.1.10:8080/api';
+    // if (kIsWeb) {
+    //   return 'http://localhost:8080/api';
+    // }
+    // return 'http://192.168.1.10:8080/api';
   }
 
   static String get serverBaseUrl {
     // Production deployment
-    // return 'https://nammaoorudelivary.in';
+    return 'https://nammaoorudelivary.in';
 
     // For local testing:
     // Use localhost for web, network IP for mobile devices
-    if (kIsWeb) {
-      return 'http://localhost:8080';
-    }
-    return 'http://192.168.1.10:8080';
+    // if (kIsWeb) {
+    //   return 'http://localhost:8080';
+    // }
+    // return 'http://192.168.1.10:8080';
   }
 
   static String get webSocketUrl {
     // Production deployment
-    // return 'wss://nammaoorudelivary.in/ws';
+    return 'wss://nammaoorudelivary.in/ws';
 
     // For local testing:
     // Use localhost for web, network IP for mobile devices
-    if (kIsWeb) {
-      return 'ws://localhost:8080/ws';
-    }
-    return 'ws://192.168.1.10:8080/ws';
+    // if (kIsWeb) {
+    //   return 'ws://localhost:8080/ws';
+    // }
+    // return 'ws://192.168.1.10:8080/ws';
   }
 
   static String getImageUrl(String? imagePath) {

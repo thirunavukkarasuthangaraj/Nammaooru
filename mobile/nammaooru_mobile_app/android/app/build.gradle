@@ -6,21 +6,21 @@ plugins {
 }
 
 android {
-    namespace "com.nammaooru.app" 
-    compileSdk 34
+    namespace "com.nammaooru.app"
+    compileSdk 36
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_11
         targetCompatibility JavaVersion.VERSION_11
     }
-    
+
     kotlinOptions {
         jvmTarget = '11'
     }
 
     defaultConfig {
         applicationId "com.nammaooru.app"
-        minSdkVersion 21
+        minSdkVersion flutter.minSdkVersion
         targetSdkVersion 34
         versionCode 1
         versionName "1.0"

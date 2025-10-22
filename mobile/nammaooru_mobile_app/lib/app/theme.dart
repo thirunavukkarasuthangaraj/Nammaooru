@@ -47,7 +47,7 @@ class AppTheme {
       ),
 
       // Card Theme with Village styling
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: VillageTheme.cardBackground,
         elevation: 2,
         shadowColor: Colors.black.withOpacity(0.1),
@@ -113,7 +113,7 @@ class AppTheme {
       ),
 
       // Tab Bar Theme
-      tabBarTheme: TabBarTheme(
+      tabBarTheme: TabBarThemeData(
         labelColor: VillageTheme.primaryGreen,
         unselectedLabelColor: Colors.black87,
         indicator: UnderlineTabIndicator(
@@ -164,7 +164,7 @@ class AppTheme {
       ),
 
       // Dialog Theme with Village styling
-      dialogTheme: DialogTheme(
+      dialogTheme: DialogThemeData(
         backgroundColor: VillageTheme.cardBackground,
         surfaceTintColor: VillageTheme.cardBackground,
         shape: RoundedRectangleBorder(
@@ -269,7 +269,7 @@ class AppTheme {
         ),
       ),
 
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: const Color(0xFF1E1E1E),
         elevation: 2,
         shadowColor: Colors.black26,

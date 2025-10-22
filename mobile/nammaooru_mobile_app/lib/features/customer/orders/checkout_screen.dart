@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../../../shared/widgets/custom_app_bar.dart';
 import '../../../shared/widgets/common_buttons.dart';
 import '../../../shared/widgets/loading_widget.dart';
@@ -135,7 +136,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         ),
       );
       // Navigate to login screen using GoRouter
-      Navigator.pushNamed(context, '/login');
+      context.go('/login');
     }
   }
 

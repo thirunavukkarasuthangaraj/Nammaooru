@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/helpers.dart';
@@ -40,6 +41,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   @override
   void initState() {
     super.initState();
+    print('🔵 CustomerDashboard initState called');
     _loadDashboardData();
     _getCurrentLocationOnStartup();
     _checkForAppUpdates();
@@ -55,18 +57,28 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
 
   Future<void> _getCurrentLocationOnStartup() async {
     try {
-      // First try to load default saved address
-      final savedAddresses = await AddressService.instance.getSavedAddresses();
-      final defaultAddress = savedAddresses.where((addr) => addr.isDefault).firstOrNull;
+      // Check if user is authenticated before loading saved addresses
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-      if (defaultAddress != null && mounted) {
-        setState(() {
-          _selectedLocation = '${defaultAddress.addressLine1}, ${defaultAddress.city}';
-        });
-        return;
+      if (authProvider.isAuthenticated) {
+        // Try to load default saved address for logged-in users
+        try {
+          final savedAddresses = await AddressService.instance.getSavedAddresses();
+          final defaultAddress = savedAddresses.where((addr) => addr.isDefault).firstOrNull;
+
+          if (defaultAddress != null && mounted) {
+            setState(() {
+              _selectedLocation = '${defaultAddress.addressLine1}, ${defaultAddress.city}';
+            });
+            return;
+          }
+        } catch (e) {
+          print('Error loading saved addresses: $e');
+          // Continue to get current location
+        }
       }
 
-      // If no default address, try to get current location
+      // For guest users or if no saved address, try to get current location
       final position = await LocationService.instance.getCurrentPosition();
       if (position != null && position.latitude != null && position.longitude != null) {
         final address = await LocationService.instance.getAddressFromCoordinates(
@@ -97,6 +109,19 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     _isLocationPickerOpen = true;
 
     try {
+      // Check if user is authenticated
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+      if (!authProvider.isAuthenticated) {
+        // Show login prompt for guests
+        final shouldLogin = await _showLocationLoginPrompt();
+        if (shouldLogin == true) {
+          context.go('/login');
+        }
+        return;
+      }
+
+      // User is logged in - proceed with location picker
       // First check if user has saved addresses
       final savedAddresses = await AddressService.instance.getSavedAddresses();
 
@@ -179,8 +204,23 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   
   Future<void> _loadRecentOrders() async {
     setState(() => _isLoadingOrders = true);
-    
+
     try {
+      // Check if user is authenticated before loading orders
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+      if (!authProvider.isAuthenticated) {
+        // Guest user - skip loading orders
+        if (mounted) {
+          setState(() {
+            _recentOrders = [];
+            _isLoadingOrders = false;
+          });
+        }
+        return;
+      }
+
+      // User is logged in - load orders
       final response = await _orderApi.getCustomerOrders(page: 0, size: 3);
       if (mounted && response['success'] == true && response['data'] != null) {
         setState(() {
@@ -201,6 +241,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   
   @override
   Widget build(BuildContext context) {
+    print('🔵 CustomerDashboard build called');
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -232,47 +273,23 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return SliverAppBar(
-      expandedHeight: 120.0,
+      expandedHeight: 80.0,
       floating: false,
       pinned: true,
       backgroundColor: isDarkMode ? Colors.grey[900] : VillageTheme.primaryGreen,
       elevation: 0,
-      flexibleSpace: FlexibleSpaceBar(
-        title: Consumer<AuthProvider>(
-          builder: (context, authProvider, child) {
-            return Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Welcome! 🙏',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  'What would you like to order?',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            );
-          },
+      flexibleSpace: const FlexibleSpaceBar(
+        title: Text(
+          'Welcome! 🙏',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        titlePadding: const EdgeInsets.only(left: 16, bottom: 16),
+        titlePadding: EdgeInsets.only(left: 16, bottom: 12),
       ),
       actions: [
-        IconButton(
-          icon: const Icon(Icons.search, color: Colors.white),
-          onPressed: () {
-            // TODO: Implement search
-          },
-        ),
         IconButton(
           icon: Stack(
             children: [
@@ -377,6 +394,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     final categories = [
       {'name': 'Grocery', 'icon': Icons.local_grocery_store, 'color': Colors.green},
       {'name': 'Food', 'icon': Icons.restaurant, 'color': Colors.orange},
+      {'name': 'Medicine', 'icon': Icons.local_pharmacy, 'color': Colors.red},
       {'name': 'Parcel', 'icon': Icons.local_shipping, 'color': Colors.blue},
     ];
 
@@ -386,29 +404,20 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         const Text(
           'What do you need?',
           style: TextStyle(
-            fontSize: 24,
+            fontSize: 20,
             fontWeight: FontWeight.bold,
             color: VillageTheme.primaryText,
           ),
         ),
-        const SizedBox(height: 4),
-        const Text(
-          'What do you need?',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w500,
-            color: VillageTheme.secondaryText,
-          ),
-        ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
-            childAspectRatio: 1.2,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
+            childAspectRatio: 1.1,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
           ),
           itemCount: categories.length,
           itemBuilder: (context, index) {
@@ -428,19 +437,19 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(20),
           onTap: () {
             Navigator.push(
               context,
@@ -452,23 +461,30 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               ),
             );
           },
-          child: Padding(
-            padding: const EdgeInsets.all(20),
+          child: Container(
+            padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  icon,
-                  size: 48,
-                  color: color,
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(
+                    icon,
+                    size: 40,
+                    color: color,
+                  ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 Text(
                   name,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: color,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: VillageTheme.primaryText,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -1063,6 +1079,72 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<bool?> _showLocationLoginPrompt() {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.location_on, color: VillageTheme.primaryGreen, size: 24),
+            const SizedBox(width: 8),
+            const Text(
+              'Login Required',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Please login to save and manage your delivery addresses.',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: VillageTheme.primaryGreen.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: VillageTheme.primaryGreen.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: VillageTheme.primaryGreen, size: 16),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'You can still browse with your current location',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel', style: TextStyle(fontSize: 14)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: VillageTheme.primaryGreen,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text('Login / Sign Up', style: TextStyle(fontSize: 14)),
           ),
         ],
       ),

@@ -87,7 +87,13 @@ public class Order {
     
     @Column(length = 100)
     private String deliveryContactName;
-    
+
+    @Column(precision = 10, scale = 6)
+    private java.math.BigDecimal deliveryLatitude;
+
+    @Column(precision = 10, scale = 6)
+    private java.math.BigDecimal deliveryLongitude;
+
     private LocalDateTime estimatedDeliveryTime;
     private LocalDateTime actualDeliveryTime;
 
@@ -102,6 +108,10 @@ public class Order {
     // Order Items
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<OrderItem> orderItems;
+
+    // Order Assignments (relationship to delivery partners)
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<OrderAssignment> orderAssignments;
     
     // Audit fields
     @Column(nullable = false, length = 100)
@@ -159,5 +169,19 @@ public class Order {
     
     public boolean isPaid() {
         return paymentStatus == PaymentStatus.PAID;
+    }
+
+    @Transient
+    public Boolean getAssignedToDeliveryPartner() {
+        if (orderAssignments == null || orderAssignments.isEmpty()) {
+            return false;
+        }
+        return orderAssignments.stream()
+                .anyMatch(assignment ->
+                    assignment.getStatus() == OrderAssignment.AssignmentStatus.ASSIGNED ||
+                    assignment.getStatus() == OrderAssignment.AssignmentStatus.ACCEPTED ||
+                    assignment.getStatus() == OrderAssignment.AssignmentStatus.PICKED_UP ||
+                    assignment.getStatus() == OrderAssignment.AssignmentStatus.IN_TRANSIT
+                );
     }
 }

@@ -13,8 +13,10 @@ import com.shopmanagement.service.AuthService;
 import com.shopmanagement.entity.User;
 import com.shopmanagement.entity.Order;
 import com.shopmanagement.entity.OrderItem;
+import com.shopmanagement.entity.OrderAssignment;
 import com.shopmanagement.repository.UserRepository;
 import com.shopmanagement.repository.OrderRepository;
+import com.shopmanagement.repository.OrderAssignmentRepository;
 import com.shopmanagement.product.repository.ShopProductRepository;
 import com.shopmanagement.product.entity.ShopProduct;
 import com.shopmanagement.dto.order.OrderResponse;
@@ -37,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.UUID;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -52,6 +55,7 @@ public class ShopService {
     private final AuthService authService;
     private final UserRepository userRepository;
     private final OrderRepository orderRepository;
+    private final OrderAssignmentRepository orderAssignmentRepository;
     private final ShopProductRepository shopProductRepository;
 
     public ShopResponse createShop(ShopCreateRequest request) {
@@ -701,10 +705,29 @@ public class ShopService {
             // Get all orders with order items eagerly loaded
             orderPage = orderRepository.findByShopIdWithOrderItems(shop.getId(), pageable);
         }
-        
-        // Convert to response DTOs
+
+        // Query for active assignments for all orders
+        List<Long> orderIds = orderPage.getContent().stream()
+                .map(Order::getId)
+                .collect(Collectors.toList());
+
+        List<OrderAssignment.AssignmentStatus> activeStatuses = List.of(
+                OrderAssignment.AssignmentStatus.ASSIGNED,
+                OrderAssignment.AssignmentStatus.ACCEPTED,
+                OrderAssignment.AssignmentStatus.PICKED_UP,
+                OrderAssignment.AssignmentStatus.IN_TRANSIT
+        );
+
+        Map<Long, Boolean> orderAssignmentMap = new HashMap<>();
+        for (Long orderId : orderIds) {
+            Optional<OrderAssignment> activeAssignment = orderAssignmentRepository
+                    .findActiveAssignmentByOrderId(orderId, activeStatuses);
+            orderAssignmentMap.put(orderId, activeAssignment.isPresent());
+        }
+
+        // Convert to response DTOs with assignment info
         List<OrderResponse> orderResponses = orderPage.getContent().stream()
-                .map(this::convertToOrderResponse)
+                .map(order -> convertToOrderResponse(order, orderAssignmentMap.get(order.getId())))
                 .toList();
         
         // Calculate summary statistics
@@ -826,12 +849,21 @@ public class ShopService {
     }
     
     private OrderResponse convertToOrderResponse(Order order) {
+        return convertToOrderResponse(order, null);
+    }
+
+    private OrderResponse convertToOrderResponse(Order order, Boolean assignedToDeliveryPartner) {
         // Convert order items to response DTOs
         List<OrderResponse.OrderItemResponse> orderItemResponses = order.getOrderItems() != null
                 ? order.getOrderItems().stream()
                         .map(this::convertToOrderItemResponse)
                         .toList()
                 : new ArrayList<>();
+
+        // Use the provided assignedToDeliveryPartner value if available, otherwise try to get from order
+        Boolean isAssigned = assignedToDeliveryPartner != null ?
+                assignedToDeliveryPartner :
+                order.getAssignedToDeliveryPartner();
 
         return OrderResponse.builder()
                 .id(order.getId())
@@ -863,6 +895,7 @@ public class ShopService {
                 .estimatedDeliveryTime(order.getEstimatedDeliveryTime())
                 .actualDeliveryTime(order.getActualDeliveryTime())
                 .orderItems(orderItemResponses)
+                .assignedToDeliveryPartner(isAssigned)
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())
                 .build();

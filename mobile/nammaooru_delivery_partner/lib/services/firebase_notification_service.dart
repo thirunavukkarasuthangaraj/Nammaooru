@@ -1,2 +1,2 @@
-// Conditional export - temporarily use web stub for both until Firebase is configured
-export 'firebase_notification_service_web.dart';
+// Conditional export - use mobile implementation for production
+export 'firebase_notification_service_mobile.dart';

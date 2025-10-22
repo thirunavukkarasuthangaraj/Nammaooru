@@ -216,6 +216,11 @@ public class DeliveryPartnerController {
                     orderData.put("customerPhone", assignment.getOrder().getCustomer().getMobileNumber());
                     orderData.put("shopName", assignment.getOrder().getShop().getName());
                     orderData.put("shopAddress", assignment.getOrder().getShop().getAddressLine1());
+                    orderData.put("shopLatitude", assignment.getOrder().getShop().getLatitude());
+                    orderData.put("shopLongitude", assignment.getOrder().getShop().getLongitude());
+                    // Use actual delivery coordinates from the order
+                    orderData.put("customerLatitude", assignment.getOrder().getDeliveryLatitude());
+                    orderData.put("customerLongitude", assignment.getOrder().getDeliveryLongitude());
                     orderData.put("paymentMethod", assignment.getOrder().getPaymentMethod().name());
                     orderData.put("paymentStatus", assignment.getOrder().getPaymentStatus().name());
                     orderData.put("pickupOtp", assignment.getOrder().getPickupOtp());
@@ -281,6 +286,11 @@ public class DeliveryPartnerController {
                 orderData.put("customerPhone", assignment.getOrder().getCustomer().getMobileNumber());
                 orderData.put("shopName", assignment.getOrder().getShop().getName());
                 orderData.put("shopAddress", assignment.getOrder().getShop().getAddressLine1());
+                orderData.put("shopLatitude", assignment.getOrder().getShop().getLatitude());
+                orderData.put("shopLongitude", assignment.getOrder().getShop().getLongitude());
+                // Use actual delivery coordinates from the order
+                orderData.put("customerLatitude", assignment.getOrder().getDeliveryLatitude());
+                orderData.put("customerLongitude", assignment.getOrder().getDeliveryLongitude());
                 orderData.put("paymentMethod", assignment.getOrder().getPaymentMethod().name());
                 orderData.put("paymentStatus", assignment.getOrder().getPaymentStatus().name());
                 orderData.put("pickupOtp", assignment.getOrder().getPickupOtp());
@@ -863,17 +873,24 @@ public class DeliveryPartnerController {
     }
 
     @GetMapping("/orders/{partnerId}/history")
+    @Transactional
     public ResponseEntity<Map<String, Object>> getOrderHistory(@PathVariable String partnerId) {
         Map<String, Object> response = new HashMap<>();
 
         try {
             Long id = Long.parseLong(partnerId);
 
-            // Get completed assignments for this partner (DELIVERED status)
+            // Get all assignments for this partner (not just active ones)
+            // Show all orders that were assigned to this partner, regardless of current status
             List<OrderAssignment> completedAssignments = orderAssignmentService.findAssignmentsByPartnerId(id,
                 org.springframework.data.domain.Pageable.unpaged()).getContent()
                 .stream()
-                .filter(assignment -> assignment.getStatus() == OrderAssignment.AssignmentStatus.DELIVERED)
+                .filter(assignment ->
+                    assignment.getStatus() == OrderAssignment.AssignmentStatus.DELIVERED ||
+                    assignment.getStatus() == OrderAssignment.AssignmentStatus.CANCELLED ||
+                    assignment.getStatus() == OrderAssignment.AssignmentStatus.PICKED_UP ||
+                    assignment.getStatus() == OrderAssignment.AssignmentStatus.IN_TRANSIT
+                )
                 .collect(Collectors.toList());
 
             List<Map<String, Object>> orders = new ArrayList<>();

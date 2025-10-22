@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/models/order_model.dart';
 import '../../../core/services/order_service.dart';
+import '../../../core/auth/auth_provider.dart';
+import '../../../core/theme/village_theme.dart';
 import 'order_details_screen.dart';
 import '../orders/order_tracking_screen.dart';
 
@@ -181,6 +185,20 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+
+    // Show login prompt for guest users
+    if (!authProvider.isAuthenticated) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('My Orders', maxLines: 1, overflow: TextOverflow.ellipsis),
+          backgroundColor: Colors.green.shade700,
+          foregroundColor: Colors.white,
+        ),
+        body: _buildLoginPrompt(),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Orders', maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -205,6 +223,59 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
               : _ordersResponse.orders.isEmpty
                   ? _buildEmptyOrdersWidget()
                   : _buildOrdersList(),
+    );
+  }
+
+  Widget _buildLoginPrompt() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.shopping_bag_outlined, size: 100, color: Colors.grey.shade300),
+            const SizedBox(height: 24),
+            const Text(
+              'Login to View Orders',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Please log in to view your order history and track your deliveries',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey.shade600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  context.go('/login');
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: VillageTheme.primaryGreen,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'Login / Sign Up',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

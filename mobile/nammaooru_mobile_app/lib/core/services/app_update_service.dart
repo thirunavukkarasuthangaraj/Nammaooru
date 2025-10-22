@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -12,7 +12,13 @@ class AppUpdateService {
   /// Check if app update is available
   static Future<Map<String, dynamic>?> checkForUpdate() async {
     try {
-      final platform = Platform.isAndroid ? 'ANDROID' : 'IOS';
+      // Skip version check on web platform
+      if (kIsWeb) {
+        print('App update check skipped on web platform');
+        return null;
+      }
+
+      final platform = defaultTargetPlatform == TargetPlatform.android ? 'ANDROID' : 'IOS';
       final url = Uri.parse(
         '${EnvConfig.apiUrl}/api/app-version/check?appName=$APP_NAME&platform=$platform&currentVersion=$APP_VERSION'
       );

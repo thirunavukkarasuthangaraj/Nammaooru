@@ -19,7 +19,9 @@ import com.shopmanagement.shop.repository.ShopRepository;
 import com.shopmanagement.entity.User;
 import com.shopmanagement.service.OrderAssignmentService;
 import com.shopmanagement.repository.UserFcmTokenRepository;
+import com.shopmanagement.repository.OrderAssignmentRepository;
 import com.shopmanagement.entity.UserFcmToken;
+import com.shopmanagement.entity.OrderAssignment;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -39,6 +41,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -58,6 +61,7 @@ public class OrderService {
     private final UserFcmTokenRepository userFcmTokenRepository;
     private final NotificationRepository notificationRepository;
     private final DeliveryConfirmationService deliveryConfirmationService;
+    private final OrderAssignmentRepository orderAssignmentRepository;
 
     public OrderService(
             OrderRepository orderRepository,
@@ -71,6 +75,7 @@ public class OrderService {
             OrderAssignmentService orderAssignmentService,
             UserFcmTokenRepository userFcmTokenRepository,
             NotificationRepository notificationRepository,
+            OrderAssignmentRepository orderAssignmentRepository,
             @Lazy DeliveryConfirmationService deliveryConfirmationService) {
         this.orderRepository = orderRepository;
         this.customerRepository = customerRepository;
@@ -83,6 +88,7 @@ public class OrderService {
         this.orderAssignmentService = orderAssignmentService;
         this.userFcmTokenRepository = userFcmTokenRepository;
         this.notificationRepository = notificationRepository;
+        this.orderAssignmentRepository = orderAssignmentRepository;
         this.deliveryConfirmationService = deliveryConfirmationService;
     }
     
@@ -440,7 +446,36 @@ public class OrderService {
     public Page<OrderResponse> getOrdersByShop(Long shopId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Order> orders = orderRepository.findByShopIdWithOrderItems(shopId, pageable);
-        return orders.map(this::mapToResponse);
+
+        // Get all order IDs to check for active assignments
+        List<Long> orderIds = orders.getContent().stream()
+                .map(Order::getId)
+                .collect(Collectors.toList());
+
+        // Query for all active assignments for these orders
+        List<OrderAssignment.AssignmentStatus> activeStatuses = List.of(
+                OrderAssignment.AssignmentStatus.ASSIGNED,
+                OrderAssignment.AssignmentStatus.ACCEPTED,
+                OrderAssignment.AssignmentStatus.PICKED_UP,
+                OrderAssignment.AssignmentStatus.IN_TRANSIT
+        );
+
+        // Collect order IDs that have active assignments
+        Map<Long, Boolean> orderAssignmentMap = new HashMap<>();
+        log.info("🔍 Checking assignments for {} orders. Active statuses: {}", orderIds.size(), activeStatuses);
+        for (Long orderId : orderIds) {
+            Optional<OrderAssignment> activeAssignment = orderAssignmentRepository
+                    .findActiveAssignmentByOrderId(orderId, activeStatuses);
+            boolean hasAssignment = activeAssignment.isPresent();
+            log.info("Order {}: Assignment found = {}", orderId, hasAssignment);
+            if (hasAssignment) {
+                log.info("Order {}: Assignment status = {}", orderId, activeAssignment.get().getStatus());
+            }
+            orderAssignmentMap.put(orderId, hasAssignment);
+        }
+
+        // Map orders to responses with assignment status
+        return orders.map(order -> mapToResponse(order, orderAssignmentMap.get(order.getId())));
     }
     
     @Transactional(readOnly = true)
@@ -834,6 +869,10 @@ public class OrderService {
     }
     
     private OrderResponse mapToResponse(Order order) {
+        return mapToResponse(order, null);
+    }
+
+    private OrderResponse mapToResponse(Order order, Boolean assignedToDeliveryPartner) {
         List<OrderResponse.OrderItemResponse> itemResponses = order.getOrderItems().stream()
                 .map(item -> OrderResponse.OrderItemResponse.builder()
                         .id(item.getId())
@@ -848,18 +887,27 @@ public class OrderService {
                         .specialInstructions(item.getSpecialInstructions())
                         .build())
                 .collect(Collectors.toList());
-        
+
         String fullDeliveryAddress = String.format("%s, %s, %s - %s",
                 order.getDeliveryAddress(),
                 order.getDeliveryCity(),
                 order.getDeliveryState(),
                 order.getDeliveryPostalCode());
-        
+
         long daysBetween = ChronoUnit.DAYS.between(order.getCreatedAt(), LocalDateTime.now());
         String orderAge = daysBetween == 0 ? "Today" :
                          daysBetween == 1 ? "1 day ago" :
                          daysBetween + " days ago";
-        
+
+        // Use provided assignedToDeliveryPartner if available, otherwise try to get from order
+        Boolean isAssigned = assignedToDeliveryPartner != null ?
+                assignedToDeliveryPartner :
+                order.getAssignedToDeliveryPartner();
+
+        log.info("📦 Mapping order {}: assignedToDeliveryPartner param={}, from order={}, final={}",
+                order.getOrderNumber(), assignedToDeliveryPartner,
+                order.getAssignedToDeliveryPartner(), isAssigned);
+
         return OrderResponse.builder()
                 .id(order.getId())
                 .orderNumber(order.getOrderNumber())
@@ -900,6 +948,7 @@ public class OrderService {
                 .canBeCancelled(order.canBeCancelled())
                 .isDelivered(order.isDelivered())
                 .isPaid(order.isPaid())
+                .assignedToDeliveryPartner(isAssigned)
                 .orderAge(orderAge)
                 .itemCount(order.getOrderItems().size())
                 .build();

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:go_router/go_router.dart';
 import '../../../shared/widgets/custom_app_bar.dart';
 import '../../../shared/widgets/common_buttons.dart';
 import '../../../shared/widgets/error_widget.dart';
@@ -9,6 +10,7 @@ import '../../../shared/models/cart_model.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/helpers.dart';
+import '../../../core/auth/auth_provider.dart';
 import '../orders/checkout_screen.dart';
 
 class CartScreen extends StatefulWidget {
@@ -776,11 +778,93 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
-  void _proceedToCheckout() {
+  Future<void> _proceedToCheckout() async {
+    // Check if user is logged in
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    if (!authProvider.isAuthenticated) {
+      // Show login dialog
+      final shouldLogin = await _showLoginPrompt();
+      if (shouldLogin != true) return;
+
+      // Navigate to login screen
+      if (mounted) {
+        context.go('/login');
+      }
+      return;
+    }
+
+    // User is logged in, proceed to checkout
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => const CheckoutScreen(),
+      ),
+    );
+  }
+
+  Future<bool?> _showLoginPrompt() {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.login, color: VillageTheme.primaryGreen, size: 24),
+            const SizedBox(width: 8),
+            const Text(
+              'Login Required',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'You need to login or create an account to place an order.',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: VillageTheme.primaryGreen.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: VillageTheme.primaryGreen.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.check_circle, color: VillageTheme.primaryGreen, size: 16),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Your cart items will be saved',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel', style: TextStyle(fontSize: 14)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: VillageTheme.primaryGreen,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text('Login / Sign Up', style: TextStyle(fontSize: 14)),
+          ),
+        ],
       ),
     );
   }

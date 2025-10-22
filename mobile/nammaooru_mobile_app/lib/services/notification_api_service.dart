@@ -47,12 +47,23 @@ class NotificationApiService {
       final response = await http.get(uri, headers: headers);
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return {
-          'statusCode': '0000',
-          'message': 'Success',
-          'data': data,
-        };
+        final apiResponse = json.decode(response.body);
+
+        // Backend returns ApiResponse { success, message, data }
+        // Extract the actual notifications from apiResponse['data']
+        if (apiResponse['success'] == true && apiResponse['data'] != null) {
+          return {
+            'statusCode': '0000',
+            'message': apiResponse['message'] ?? 'Success',
+            'data': apiResponse['data'], // This is the actual notifications list
+          };
+        } else {
+          return {
+            'statusCode': '9998',
+            'message': apiResponse['message'] ?? 'Failed to load notifications',
+            'data': null,
+          };
+        }
       } else {
         return {
           'statusCode': response.statusCode.toString(),
@@ -74,15 +85,16 @@ class NotificationApiService {
     try {
       final headers = await _getHeaders();
 
-      final response = await http.put(
-        Uri.parse('$_baseUrl/customer/notifications/$notificationId/read'),
+      final response = await http.post(
+        Uri.parse('$_baseUrl/customer/notifications/$notificationId/mark-read'),
         headers: headers,
       );
 
       if (response.statusCode == 200) {
+        final apiResponse = json.decode(response.body);
         return {
           'statusCode': '0000',
-          'message': 'Notification marked as read',
+          'message': apiResponse['message'] ?? 'Notification marked as read',
           'data': null,
         };
       } else {
@@ -106,15 +118,16 @@ class NotificationApiService {
     try {
       final headers = await _getHeaders();
 
-      final response = await http.put(
+      final response = await http.post(
         Uri.parse('$_baseUrl/customer/notifications/mark-all-read'),
         headers: headers,
       );
 
       if (response.statusCode == 200) {
+        final apiResponse = json.decode(response.body);
         return {
           'statusCode': '0000',
-          'message': 'All notifications marked as read',
+          'message': apiResponse['message'] ?? 'All notifications marked as read',
           'data': null,
         };
       } else {

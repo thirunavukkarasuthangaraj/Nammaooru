@@ -19,9 +19,9 @@ class BuildConfig {
           : 'debug';
 
   // API Configuration
-  static const String productionApiUrl = 'https://api.nammaooru.com';
+  static const String productionApiUrl = 'https://nammaoorudelivary.in/api';
   static const String stagingApiUrl = 'https://staging-api.nammaooru.com';
-  static const String developmentApiUrl = 'https://dev-api.nammaooru.com';
+  static const String developmentApiUrl = 'http://192.168.1.10:8080/api';
 
   static String get apiUrl {
     if (kIsProduction) {

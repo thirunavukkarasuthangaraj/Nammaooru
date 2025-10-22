@@ -61,11 +61,12 @@ class _SplashScreenState extends State<SplashScreen>
             context.go(authProvider.getHomeRoute());
             break;
           case AuthState.unauthenticated:
-            context.go('/login');
+            // Guests go directly to customer dashboard for browsing
+            context.go('/customer/dashboard');
             break;
           case AuthState.loading:
-            // If still loading after 2 seconds, navigate to login as fallback
-            context.go('/login');
+            // If still loading after 3 seconds, navigate to dashboard as fallback
+            context.go('/customer/dashboard');
             break;
         }
       }

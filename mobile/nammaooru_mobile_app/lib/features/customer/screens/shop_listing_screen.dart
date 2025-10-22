@@ -56,7 +56,7 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
         page: 0,
         size: 20,
         sortBy: _sortBy,
-        // category: widget.category, // Temporarily remove category filtering
+        category: widget.category, // Filter by category
         city: 'Chennai',
       );
 

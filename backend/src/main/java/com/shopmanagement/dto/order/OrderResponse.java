@@ -70,6 +70,7 @@ public class OrderResponse {
     private boolean canBeCancelled;
     private boolean isDelivered;
     private boolean isPaid;
+    private Boolean assignedToDeliveryPartner;
     private String orderAge;
     private Integer itemCount;
     

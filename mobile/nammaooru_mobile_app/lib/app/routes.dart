@@ -180,11 +180,9 @@ class _CustomerShellState extends State<CustomerShell> {
 
   @override
   Widget build(BuildContext context) {
-    if (_userRole == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
+    // Show content immediately, use 'CUSTOMER' as default role for guests
+    final role = _userRole ?? 'CUSTOMER';
+    print('🔵 CustomerShell build - role: $role, child: ${widget.child.runtimeType}');
 
     return Scaffold(
       body: widget.child,
@@ -196,7 +194,7 @@ class _CustomerShellState extends State<CustomerShell> {
           });
           _navigateToCustomerRoute(index, context);
         },
-        items: RoleGuard.getRoleBasedNavItems(_userRole),
+        items: RoleGuard.getRoleBasedNavItems(role),
         type: BottomNavigationBarType.fixed,
       ),
     );
