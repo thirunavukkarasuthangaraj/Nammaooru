@@ -143,6 +143,186 @@ public class PromotionController {
     }
 
     /**
+     * Get promotion by ID (Admin only)
+     */
+    @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<Map<String, Object>> getPromotionById(@PathVariable Long id) {
+        Promotion promotion = promotionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Promotion not found with id: " + id));
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("statusCode", "0000");
+        response.put("message", "Promotion retrieved successfully");
+        response.put("data", promotion);
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Create new promotion (Admin only)
+     */
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<Map<String, Object>> createPromotion(@Valid @RequestBody CreatePromotionRequest request) {
+        log.info("Creating new promotion: {}", request.getCode());
+
+        Promotion promotion = new Promotion();
+        promotion.setCode(request.getCode().toUpperCase());
+        promotion.setTitle(request.getTitle());
+        promotion.setDescription(request.getDescription());
+        promotion.setType(Promotion.PromotionType.valueOf(request.getType()));
+        promotion.setDiscountValue(request.getDiscountValue());
+        promotion.setMinimumOrderAmount(request.getMinimumOrderAmount());
+        promotion.setMaximumDiscountAmount(request.getMaximumDiscountAmount());
+        promotion.setStartDate(request.getStartDate());
+        promotion.setEndDate(request.getEndDate());
+        promotion.setStatus(Promotion.PromotionStatus.valueOf(request.getStatus()));
+        promotion.setUsageLimit(request.getUsageLimit());
+        promotion.setUsageLimitPerCustomer(request.getUsageLimitPerCustomer());
+        promotion.setFirstTimeOnly(request.isFirstTimeOnly());
+        promotion.setApplicableToAllShops(request.isApplicableToAllShops());
+        promotion.setImageUrl(request.getImageUrl());
+
+        Promotion savedPromotion = promotionRepository.save(promotion);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("statusCode", "0000");
+        response.put("message", "Promotion created successfully");
+        response.put("data", savedPromotion);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * Update existing promotion (Admin only)
+     */
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<Map<String, Object>> updatePromotion(
+            @PathVariable Long id,
+            @Valid @RequestBody CreatePromotionRequest request) {
+        log.info("Updating promotion: {}", id);
+
+        Promotion promotion = promotionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Promotion not found with id: " + id));
+
+        // Update fields - code cannot be changed
+        promotion.setTitle(request.getTitle());
+        promotion.setDescription(request.getDescription());
+        promotion.setType(Promotion.PromotionType.valueOf(request.getType()));
+        promotion.setDiscountValue(request.getDiscountValue());
+        promotion.setMinimumOrderAmount(request.getMinimumOrderAmount());
+        promotion.setMaximumDiscountAmount(request.getMaximumDiscountAmount());
+        promotion.setStartDate(request.getStartDate());
+        promotion.setEndDate(request.getEndDate());
+        promotion.setStatus(Promotion.PromotionStatus.valueOf(request.getStatus()));
+        promotion.setUsageLimit(request.getUsageLimit());
+        promotion.setUsageLimitPerCustomer(request.getUsageLimitPerCustomer());
+        promotion.setFirstTimeOnly(request.isFirstTimeOnly());
+        promotion.setApplicableToAllShops(request.isApplicableToAllShops());
+        promotion.setImageUrl(request.getImageUrl());
+
+        Promotion updatedPromotion = promotionRepository.save(promotion);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("statusCode", "0000");
+        response.put("message", "Promotion updated successfully");
+        response.put("data", updatedPromotion);
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Delete promotion (Admin only)
+     */
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<Map<String, Object>> deletePromotion(@PathVariable Long id) {
+        log.info("Deleting promotion: {}", id);
+
+        Promotion promotion = promotionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Promotion not found with id: " + id));
+
+        promotionRepository.delete(promotion);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("statusCode", "0000");
+        response.put("message", "Promotion deleted successfully");
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Activate promotion (Admin only)
+     */
+    @PatchMapping("/{id}/activate")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<Map<String, Object>> activatePromotion(@PathVariable Long id) {
+        log.info("Activating promotion: {}", id);
+
+        Promotion promotion = promotionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Promotion not found with id: " + id));
+
+        promotion.setStatus(Promotion.PromotionStatus.ACTIVE);
+        Promotion updatedPromotion = promotionRepository.save(promotion);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("statusCode", "0000");
+        response.put("message", "Promotion activated successfully");
+        response.put("data", updatedPromotion);
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Deactivate promotion (Admin only)
+     */
+    @PatchMapping("/{id}/deactivate")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<Map<String, Object>> deactivatePromotion(@PathVariable Long id) {
+        log.info("Deactivating promotion: {}", id);
+
+        Promotion promotion = promotionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Promotion not found with id: " + id));
+
+        promotion.setStatus(Promotion.PromotionStatus.INACTIVE);
+        Promotion updatedPromotion = promotionRepository.save(promotion);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("statusCode", "0000");
+        response.put("message", "Promotion deactivated successfully");
+        response.put("data", updatedPromotion);
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Get promotion usage history with pagination (Admin only)
+     */
+    @GetMapping("/{promotionId}/usage")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<Map<String, Object>> getPromotionUsageHistory(
+            @PathVariable Long promotionId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "usedAt"));
+        Page<PromotionUsage> usages = promotionService.getPromotionUsageHistory(promotionId, pageable);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("statusCode", "0000");
+        response.put("message", "Usage history retrieved successfully");
+        response.put("data", Map.of(
+                "content", usages.getContent(),
+                "totalElements", usages.getTotalElements(),
+                "totalPages", usages.getTotalPages()
+        ));
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * Request DTO for promo code validation
      */
     @Data
@@ -169,5 +349,54 @@ public class PromotionController {
 
         // Shop ID (for shop-specific promotions)
         private Long shopId;
+    }
+
+    /**
+     * Request DTO for creating/updating promotions
+     */
+    @Data
+    public static class CreatePromotionRequest {
+        @NotBlank(message = "Code is required")
+        @Size(min = 4, max = 20, message = "Code must be between 4 and 20 characters")
+        @Pattern(regexp = "^[A-Z0-9]+$", message = "Code must contain only uppercase letters and numbers")
+        private String code;
+
+        @NotBlank(message = "Title is required")
+        @Size(max = 100, message = "Title cannot exceed 100 characters")
+        private String title;
+
+        @Size(max = 500, message = "Description cannot exceed 500 characters")
+        private String description;
+
+        @NotBlank(message = "Type is required")
+        private String type; // PERCENTAGE, FIXED_AMOUNT, FREE_SHIPPING
+
+        @NotNull(message = "Discount value is required")
+        @DecimalMin(value = "0.0", message = "Discount value must be positive")
+        private BigDecimal discountValue;
+
+        @DecimalMin(value = "0.0", message = "Minimum order amount must be positive")
+        private BigDecimal minimumOrderAmount;
+
+        private BigDecimal maximumDiscountAmount;
+
+        @NotNull(message = "Start date is required")
+        private java.time.LocalDateTime startDate;
+
+        @NotNull(message = "End date is required")
+        private java.time.LocalDateTime endDate;
+
+        @NotBlank(message = "Status is required")
+        private String status; // ACTIVE, INACTIVE
+
+        private Integer usageLimit;
+
+        private Integer usageLimitPerCustomer;
+
+        private boolean firstTimeOnly;
+
+        private boolean applicableToAllShops = true;
+
+        private String imageUrl;
     }
 }

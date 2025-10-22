@@ -46,6 +46,10 @@ dependencies:
   google_maps_flutter: ^2.9.0
   location: ^6.0.2
   google_places_flutter: ^2.0.9
+
+  # Device Info & Promo Codes
+  device_info_plus: ^10.1.0
+  uuid: ^4.2.1
   
   # Navigation
   go_router: ^12.1.3

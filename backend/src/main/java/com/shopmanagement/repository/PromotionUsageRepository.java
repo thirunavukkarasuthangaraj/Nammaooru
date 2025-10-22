@@ -1,6 +1,8 @@
 package com.shopmanagement.repository;
 
 import com.shopmanagement.entity.PromotionUsage;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -52,6 +54,12 @@ public interface PromotionUsageRepository extends JpaRepository<PromotionUsage, 
      */
     @Query("SELECT pu FROM PromotionUsage pu WHERE pu.promotion.id = :promotionId ORDER BY pu.usedAt DESC")
     List<PromotionUsage> findByPromotionId(@Param("promotionId") Long promotionId);
+
+    /**
+     * Get all usages of a specific promotion with pagination
+     */
+    @Query("SELECT pu FROM PromotionUsage pu WHERE pu.promotion.id = :promotionId")
+    Page<PromotionUsage> findByPromotionId(@Param("promotionId") Long promotionId, Pageable pageable);
 
     /**
      * Check if this is customer's first order (for first-time-only promotions)

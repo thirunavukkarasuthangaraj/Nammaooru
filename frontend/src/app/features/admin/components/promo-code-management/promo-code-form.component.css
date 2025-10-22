@@ -1,0 +1,154 @@
+.dialog-container {
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+}
+
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.dialog-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+}
+
+.header-icon {
+  color: #4CAF50;
+  font-size: 28px;
+  width: 28px;
+  height: 28px;
+}
+
+.dialog-content {
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.promo-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.form-section {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  border-left: 4px solid #4CAF50;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 16px 0;
+}
+
+.section-title mat-icon {
+  color: #4CAF50;
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.form-row:last-child {
+  margin-bottom: 0;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.half-width {
+  flex: 1;
+}
+
+mat-form-field {
+  font-size: 14px;
+}
+
+.status-group {
+  display: flex;
+  gap: 24px;
+}
+
+.dialog-actions {
+  padding: 16px 24px;
+  border-top: 1px solid #e0e0e0;
+  gap: 12px;
+}
+
+.button-spinner {
+  display: inline-block;
+  margin-right: 8px;
+}
+
+/* Checkbox styling */
+mat-checkbox {
+  font-size: 14px;
+}
+
+/* Make sure mat-prefix and mat-suffix align properly */
+::ng-deep .mat-form-field-prefix,
+::ng-deep .mat-form-field-suffix {
+  align-self: center;
+}
+
+/* Style for mat-option with icon */
+::ng-deep .mat-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+::ng-deep .mat-option mat-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .form-row {
+    flex-direction: column;
+  }
+
+  .half-width {
+    width: 100%;
+  }
+
+  .status-group {
+    flex-direction: column;
+    gap: 12px;
+  }
+}
+
+/* Snackbar styles */
+::ng-deep .snackbar-success {
+  background-color: #4CAF50 !important;
+  color: white !important;
+}
+
+::ng-deep .snackbar-error {
+  background-color: #f44336 !important;
+  color: white !important;
+}

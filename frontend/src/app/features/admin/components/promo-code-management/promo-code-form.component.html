@@ -1,0 +1,219 @@
+<div class="dialog-container">
+  <div class="dialog-header">
+    <h2 mat-dialog-title>
+      <mat-icon class="header-icon">{{ isEditMode ? 'edit' : 'add_circle' }}</mat-icon>
+      {{ isEditMode ? 'Edit Promo Code' : 'Create New Promo Code' }}
+    </h2>
+    <button mat-icon-button mat-dialog-close>
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <mat-dialog-content class="dialog-content">
+    <form [formGroup]="promoForm" class="promo-form">
+
+      <!-- Basic Information Section -->
+      <div class="form-section">
+        <h3 class="section-title">
+          <mat-icon>info</mat-icon>
+          Basic Information
+        </h3>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Promo Code *</mat-label>
+            <input matInput formControlName="code" placeholder="e.g., WELCOME50"
+                   [readonly]="isEditMode" style="text-transform: uppercase;">
+            <button mat-icon-button matSuffix (click)="generateRandomCode()"
+                    [disabled]="isEditMode" type="button"
+                    matTooltip="Generate random code">
+              <mat-icon>casino</mat-icon>
+            </button>
+            <mat-hint>Uppercase letters and numbers only</mat-hint>
+            <mat-error *ngIf="promoForm.get('code')?.touched">
+              {{ getErrorMessage('code') }}
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Title *</mat-label>
+            <input matInput formControlName="title" placeholder="e.g., Welcome Offer">
+            <mat-error *ngIf="promoForm.get('title')?.touched">
+              {{ getErrorMessage('title') }}
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Description</mat-label>
+            <textarea matInput formControlName="description" rows="3"
+                      placeholder="Brief description of the offer"></textarea>
+            <mat-hint align="end">
+              {{ promoForm.get('description')?.value?.length || 0 }}/500
+            </mat-hint>
+          </mat-form-field>
+        </div>
+      </div>
+
+      <!-- Discount Settings Section -->
+      <div class="form-section">
+        <h3 class="section-title">
+          <mat-icon>discount</mat-icon>
+          Discount Settings
+        </h3>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Discount Type *</mat-label>
+            <mat-select formControlName="type">
+              <mat-option *ngFor="let type of discountTypes" [value]="type.value">
+                <mat-icon>{{ type.icon }}</mat-icon>
+                {{ type.label }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="half-width">
+            <mat-label>Discount Value *</mat-label>
+            <input matInput type="number" formControlName="discountValue" min="0">
+            <span matPrefix *ngIf="promoForm.get('type')?.value === 'FIXED_AMOUNT'">₹&nbsp;</span>
+            <span matSuffix *ngIf="promoForm.get('type')?.value === 'PERCENTAGE'">%</span>
+            <mat-error *ngIf="promoForm.get('discountValue')?.touched">
+              {{ getErrorMessage('discountValue') }}
+            </mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="half-width">
+            <mat-label>Minimum Order Amount</mat-label>
+            <input matInput type="number" formControlName="minimumOrderAmount" min="0">
+            <span matPrefix>₹&nbsp;</span>
+            <mat-hint>Orders below this won't qualify</mat-hint>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row" *ngIf="promoForm.get('type')?.value === 'PERCENTAGE'">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Maximum Discount Amount</mat-label>
+            <input matInput type="number" formControlName="maximumDiscountAmount" min="0">
+            <span matPrefix>₹&nbsp;</span>
+            <mat-hint>Cap the discount at this amount (optional)</mat-hint>
+          </mat-form-field>
+        </div>
+      </div>
+
+      <!-- Usage Limits Section -->
+      <div class="form-section">
+        <h3 class="section-title">
+          <mat-icon>people</mat-icon>
+          Usage Limits
+        </h3>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="half-width">
+            <mat-label>Total Usage Limit</mat-label>
+            <input matInput type="number" formControlName="usageLimit" min="1">
+            <mat-hint>Total times this code can be used</mat-hint>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="half-width">
+            <mat-label>Per Customer Limit</mat-label>
+            <input matInput type="number" formControlName="usageLimitPerCustomer" min="1">
+            <mat-hint>Times each customer can use this</mat-hint>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-checkbox formControlName="firstTimeOnly" color="primary">
+            First-time customers only
+          </mat-checkbox>
+        </div>
+
+        <div class="form-row">
+          <mat-checkbox formControlName="applicableToAllShops" color="primary">
+            Applicable to all shops
+          </mat-checkbox>
+        </div>
+      </div>
+
+      <!-- Validity Period Section -->
+      <div class="form-section">
+        <h3 class="section-title">
+          <mat-icon>calendar_today</mat-icon>
+          Validity Period
+        </h3>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="half-width">
+            <mat-label>Start Date *</mat-label>
+            <input matInput [matDatepicker]="startPicker" formControlName="startDate">
+            <mat-datepicker-toggle matSuffix [for]="startPicker"></mat-datepicker-toggle>
+            <mat-datepicker #startPicker></mat-datepicker>
+            <mat-error *ngIf="promoForm.get('startDate')?.touched">
+              {{ getErrorMessage('startDate') }}
+            </mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="half-width">
+            <mat-label>End Date *</mat-label>
+            <input matInput [matDatepicker]="endPicker" formControlName="endDate">
+            <mat-datepicker-toggle matSuffix [for]="endPicker"></mat-datepicker-toggle>
+            <mat-datepicker #endPicker></mat-datepicker>
+            <mat-error *ngIf="promoForm.get('endDate')?.touched">
+              {{ getErrorMessage('endDate') }}
+            </mat-error>
+          </mat-form-field>
+        </div>
+      </div>
+
+      <!-- Status Section -->
+      <div class="form-section">
+        <h3 class="section-title">
+          <mat-icon>toggle_on</mat-icon>
+          Status
+        </h3>
+
+        <div class="form-row">
+          <mat-radio-group formControlName="status" class="status-group">
+            <mat-radio-button *ngFor="let status of statusOptions"
+                              [value]="status.value"
+                              [color]="status.color">
+              {{ status.label }}
+            </mat-radio-button>
+          </mat-radio-group>
+        </div>
+      </div>
+
+      <!-- Optional Image URL -->
+      <div class="form-section">
+        <h3 class="section-title">
+          <mat-icon>image</mat-icon>
+          Promotional Image (Optional)
+        </h3>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Image URL</mat-label>
+            <input matInput formControlName="imageUrl" placeholder="https://...">
+            <mat-icon matPrefix>link</mat-icon>
+          </mat-form-field>
+        </div>
+      </div>
+
+    </form>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end" class="dialog-actions">
+    <button mat-button (click)="onCancel()" [disabled]="isLoading">
+      Cancel
+    </button>
+    <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="isLoading || promoForm.invalid">
+      <mat-spinner diameter="20" *ngIf="isLoading" class="button-spinner"></mat-spinner>
+      <span *ngIf="!isLoading">{{ isEditMode ? 'Update' : 'Create' }}</span>
+    </button>
+  </mat-dialog-actions>
+</div>

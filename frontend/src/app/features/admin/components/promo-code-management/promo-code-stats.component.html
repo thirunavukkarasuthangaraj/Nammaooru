@@ -1,0 +1,210 @@
+<div class="stats-dialog">
+  <div class="dialog-header">
+    <h2 mat-dialog-title>
+      <mat-icon class="header-icon">bar_chart</mat-icon>
+      Promo Code Statistics: {{ data.promoCode.code }}
+    </h2>
+    <button mat-icon-button mat-dialog-close>
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <mat-dialog-content class="dialog-content">
+    <div *ngIf="isLoading" class="loading-container">
+      <mat-spinner></mat-spinner>
+    </div>
+
+    <div *ngIf="!isLoading && stats" class="stats-container">
+      <!-- Promo Code Info Card -->
+      <mat-card class="promo-info-card">
+        <mat-card-content>
+          <div class="promo-header">
+            <div class="promo-code-badge">{{ data.promoCode.code }}</div>
+            <mat-chip [color]="promoCodeService.getStatusBadgeColor(data.promoCode.status)">
+              {{ data.promoCode.status }}
+            </mat-chip>
+          </div>
+          <h3>{{ data.promoCode.title }}</h3>
+          <p class="promo-description" *ngIf="data.promoCode.description">
+            {{ data.promoCode.description }}
+          </p>
+          <div class="promo-details">
+            <div class="detail-item">
+              <mat-icon>discount</mat-icon>
+              <span>{{ getFormattedDiscount() }}</span>
+            </div>
+            <div class="detail-item">
+              <mat-icon>calendar_today</mat-icon>
+              <span>{{ formatDate(data.promoCode.startDate) }} - {{ formatDate(data.promoCode.endDate) }}</span>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Statistics Cards Grid -->
+      <div class="stats-grid">
+        <!-- Total Usage Card -->
+        <mat-card class="stat-card">
+          <mat-card-content>
+            <div class="stat-icon total-usage">
+              <mat-icon>receipt</mat-icon>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ stats.totalUsage }}</div>
+              <div class="stat-label">Total Usage</div>
+              <div class="stat-sublabel" *ngIf="data.promoCode.usageLimit">
+                of {{ data.promoCode.usageLimit }} limit
+              </div>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Unique Customers Card -->
+        <mat-card class="stat-card">
+          <mat-card-content>
+            <div class="stat-icon unique-customers">
+              <mat-icon>people</mat-icon>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ stats.uniqueCustomers }}</div>
+              <div class="stat-label">Unique Customers</div>
+              <div class="stat-sublabel">customers used this code</div>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Total Discount Card -->
+        <mat-card class="stat-card">
+          <mat-card-content>
+            <div class="stat-icon total-discount">
+              <mat-icon>money_off</mat-icon>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ formatCurrency(stats.totalDiscountGiven) }}</div>
+              <div class="stat-label">Total Discount</div>
+              <div class="stat-sublabel">discount amount given</div>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Average Order Value Card -->
+        <mat-card class="stat-card">
+          <mat-card-content>
+            <div class="stat-icon avg-order">
+              <mat-icon>shopping_cart</mat-icon>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ formatCurrency(stats.averageOrderValue) }}</div>
+              <div class="stat-label">Avg Order Value</div>
+              <div class="stat-sublabel">average per order</div>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+
+      <!-- Usage Progress Bar -->
+      <mat-card class="progress-card" *ngIf="data.promoCode.usageLimit">
+        <mat-card-content>
+          <div class="progress-header">
+            <h4>Usage Progress</h4>
+            <span class="remaining-uses">
+              {{ getRemainingUses() }} uses remaining
+            </span>
+          </div>
+          <mat-progress-bar
+            mode="determinate"
+            [value]="getUsagePercentage()"
+            [color]="getUsagePercentage() > 80 ? 'warn' : 'primary'">
+          </mat-progress-bar>
+          <div class="progress-footer">
+            <span>{{ stats.totalUsage }} / {{ data.promoCode.usageLimit }}</span>
+            <span>{{ getUsagePercentage().toFixed(1) }}%</span>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Usage History Table -->
+      <mat-card class="history-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>history</mat-icon>
+            Usage History
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="table-container">
+            <table mat-table [dataSource]="dataSource" class="usage-table">
+              <!-- Customer Column -->
+              <ng-container matColumnDef="customer">
+                <th mat-header-cell *matHeaderCellDef>Customer</th>
+                <td mat-cell *matCellDef="let usage">
+                  <div class="customer-info">
+                    <mat-icon>person</mat-icon>
+                    <div>
+                      <div class="customer-name">{{ usage.customer.name }}</div>
+                      <div class="customer-email">{{ usage.customer.email }}</div>
+                    </div>
+                  </div>
+                </td>
+              </ng-container>
+
+              <!-- Order Column -->
+              <ng-container matColumnDef="order">
+                <th mat-header-cell *matHeaderCellDef>Order</th>
+                <td mat-cell *matCellDef="let usage">
+                  <div class="order-number">{{ usage.order.orderNumber }}</div>
+                </td>
+              </ng-container>
+
+              <!-- Discount Column -->
+              <ng-container matColumnDef="discount">
+                <th mat-header-cell *matHeaderCellDef>Discount</th>
+                <td mat-cell *matCellDef="let usage">
+                  <span class="discount-amount">{{ formatCurrency(usage.discountApplied) }}</span>
+                </td>
+              </ng-container>
+
+              <!-- Order Amount Column -->
+              <ng-container matColumnDef="orderAmount">
+                <th mat-header-cell *matHeaderCellDef>Order Amount</th>
+                <td mat-cell *matCellDef="let usage">
+                  {{ formatCurrency(usage.orderAmount) }}
+                </td>
+              </ng-container>
+
+              <!-- Used At Column -->
+              <ng-container matColumnDef="usedAt">
+                <th mat-header-cell *matHeaderCellDef>Used At</th>
+                <td mat-cell *matCellDef="let usage">
+                  <div class="date-time">{{ formatDate(usage.usedAt) }}</div>
+                </td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+
+              <!-- No Data Row -->
+              <tr class="mat-row" *matNoDataRow>
+                <td class="mat-cell no-data" colspan="5">
+                  <mat-icon>inbox</mat-icon>
+                  <p>No usage history yet</p>
+                </td>
+              </tr>
+            </table>
+          </div>
+
+          <mat-paginator
+            [pageSizeOptions]="[10, 25, 50]"
+            showFirstLastButtons>
+          </mat-paginator>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-raised-button mat-dialog-close color="primary">
+      Close
+    </button>
+  </mat-dialog-actions>
+</div>

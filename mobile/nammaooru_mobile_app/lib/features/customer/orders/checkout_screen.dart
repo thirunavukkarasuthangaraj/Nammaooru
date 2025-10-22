@@ -17,6 +17,9 @@ import '../../../core/services/location_service.dart';
 import '../../../core/services/address_service.dart';
 import '../../../core/models/address_model.dart';
 import '../../../services/address_api_service.dart';
+import '../../../core/services/promo_code_service.dart';
+import '../../../core/services/device_info_service.dart';
+import '../widgets/promo_code_widget.dart';
 // import 'order_confirmation_screen.dart'; // Temporarily commented
 
 class CheckoutScreen extends StatefulWidget {
@@ -70,6 +73,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   // Delivery
   String _selectedDeliverySlot = 'ASAP';
   String _deliveryInstructions = '';
+
+  // Promo Code
+  PromoCodeValidationResult? _appliedPromo;
+  String? _appliedPromoCode;
 
   final List<String> _addressTypes = ['HOME', 'WORK', 'OTHER'];
   final List<String> _cities = ['Tirupattur']; // Only Tirupattur for now
@@ -1665,20 +1672,54 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       ),
                       const SizedBox(height: 8),
                       ...cartProvider.items.map((item) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 3),
+                        padding: const EdgeInsets.symmetric(vertical: 4),
                         child: Row(
                           children: [
                             Expanded(
-                              child: Text(
-                                '${item.quantity}x ${item.product.name}',
-                                style: VillageTheme.bodyMedium.copyWith(
-                                  color: Colors.black,
-                                  fontSize: 12,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                              child: Row(
+                                children: [
+                                  Text(
+                                    '${item.quantity}x ',
+                                    style: VillageTheme.bodyMedium.copyWith(
+                                      color: VillageTheme.primaryGreen,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Flexible(
+                                    child: Text(
+                                      item.product.name,
+                                      style: VillageTheme.bodyMedium.copyWith(
+                                        color: Colors.black,
+                                        fontSize: 12,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  if (item.product.unit.isNotEmpty && item.product.unit != 'piece') ...[
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green.shade50,
+                                        borderRadius: BorderRadius.circular(3),
+                                        border: Border.all(color: Colors.green.shade200, width: 0.5),
+                                      ),
+                                      child: Text(
+                                        item.product.unit,
+                                        style: TextStyle(
+                                          color: Colors.green.shade700,
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ),
+                            const SizedBox(width: 8),
                             Text(
                               Helpers.formatCurrency(item.totalPrice),
                               style: VillageTheme.bodyMedium.copyWith(
@@ -1801,6 +1842,33 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     ],
                   ),
                 ),
+              ),
+              const SizedBox(height: 10),
+
+              // Promo Code Widget
+              PromoCodeWidget(
+                orderAmount: cartProvider.subtotal,
+                shopId: cartProvider.items.isNotEmpty
+                    ? cartProvider.items.first.product.shopId.toString()
+                    : null,
+                customerId: Provider.of<AuthProvider>(context, listen: false).userId?.toString(),
+                customerPhone: _phoneController.text.isNotEmpty ? _phoneController.text : null,
+                onPromoApplied: (result) {
+                  setState(() {
+                    _appliedPromo = result;
+                    _appliedPromoCode = result.promotionTitle;
+                  });
+                  // Update cart provider with discount
+                  cartProvider.applyPromoDiscount(result.discountAmount);
+                },
+                onPromoRemoved: () {
+                  setState(() {
+                    _appliedPromo = null;
+                    _appliedPromoCode = null;
+                  });
+                  // Remove discount from cart
+                  cartProvider.applyPromoDiscount(0);
+                },
               ),
               const SizedBox(height: 10),
 
@@ -2285,6 +2353,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         return;
       }
 
+      // Get device UUID for promo code tracking
+      final deviceUuid = await DeviceInfoService().getDeviceUuid();
+
       // Create order request matching current backend expectation
       final orderRequest = {
         'shopId': shopId,  // Dynamic shop ID from cart
@@ -2296,6 +2367,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           'quantity': item.quantity,
           'unit': 'piece'
         }).toList(),
+        // Include promo code if applied
+        if (_appliedPromo != null && _appliedPromo!.promotionId != null) ...{
+          'couponCode': _appliedPromoCode,
+          'promotionId': _appliedPromo!.promotionId,
+          'deviceUuid': deviceUuid,
+        },
         if (_selectedDeliveryType == 'HOME_DELIVERY')
           'deliveryAddress': {
             'streetAddress': address1 + (address2.isNotEmpty ? ', $address2' : ''),

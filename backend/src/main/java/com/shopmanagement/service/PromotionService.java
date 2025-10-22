@@ -221,24 +221,43 @@ public class PromotionService {
     public Map<String, Object> getPromotionStats(Long promotionId) {
         List<PromotionUsage> usages = promotionUsageRepository.findByPromotionId(promotionId);
 
-        Map<String, Object> stats = new HashMap<>();
-        stats.put("totalUsageCount", usages.size());
-        stats.put("uniqueCustomers", usages.stream()
+        // Calculate total usage
+        long totalUsage = usages.size();
+
+        // Calculate unique customers
+        long uniqueCustomers = usages.stream()
                 .filter(u -> u.getCustomer() != null)
                 .map(u -> u.getCustomer().getId())
                 .distinct()
-                .count());
-        stats.put("uniqueDevices", usages.stream()
-                .filter(u -> u.getDeviceUuid() != null)
-                .map(PromotionUsage::getDeviceUuid)
-                .distinct()
-                .count());
-        stats.put("totalDiscountGiven", usages.stream()
+                .count();
+
+        // Calculate total discount given
+        BigDecimal totalDiscountGiven = usages.stream()
                 .map(PromotionUsage::getDiscountApplied)
-                .reduce(BigDecimal.ZERO, BigDecimal::add));
-        stats.put("recentUsages", usages.stream().limit(10).toList());
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Calculate average order value
+        BigDecimal averageOrderValue = usages.isEmpty() ? BigDecimal.ZERO :
+                usages.stream()
+                        .map(PromotionUsage::getOrderAmount)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add)
+                        .divide(BigDecimal.valueOf(usages.size()), 2, BigDecimal.ROUND_HALF_UP);
+
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("totalUsage", totalUsage);
+        stats.put("uniqueCustomers", uniqueCustomers);
+        stats.put("totalDiscountGiven", totalDiscountGiven);
+        stats.put("averageOrderValue", averageOrderValue);
 
         return stats;
+    }
+
+    /**
+     * Get promotion usage history with pagination
+     */
+    @Transactional(readOnly = true)
+    public Page<PromotionUsage> getPromotionUsageHistory(Long promotionId, Pageable pageable) {
+        return promotionUsageRepository.findByPromotionId(promotionId, pageable);
     }
 
     /**

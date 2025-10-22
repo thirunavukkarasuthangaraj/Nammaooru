@@ -20,18 +20,29 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatRadioModule } from '@angular/material/radio';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatDividerModule } from '@angular/material/divider';
 
 import { CustomerListComponent } from './components/customer-list/customer-list.component';
 import { CustomerFormComponent } from './components/customer-form/customer-form.component';
 import { CustomerDetailComponent } from './components/customer-detail/customer-detail.component';
 import { DeliveryFeeManagementComponent } from './components/delivery-fee-management/delivery-fee-management.component';
+import { PromoCodeListComponent } from './components/promo-code-management/promo-code-list.component';
+import { PromoCodeFormComponent } from './components/promo-code-management/promo-code-form.component';
+import { PromoCodeStatsComponent } from './components/promo-code-management/promo-code-stats.component';
 
 @NgModule({
   declarations: [
     CustomerListComponent,
     CustomerFormComponent,
     CustomerDetailComponent,
-    DeliveryFeeManagementComponent
+    DeliveryFeeManagementComponent,
+    PromoCodeListComponent,
+    PromoCodeFormComponent,
+    PromoCodeStatsComponent
   ],
   imports: [
     CommonModule,
@@ -55,6 +66,11 @@ import { DeliveryFeeManagementComponent } from './components/delivery-fee-manage
     MatProgressSpinnerModule,
     MatSnackBarModule,
     MatSlideToggleModule,
+    MatButtonToggleModule,
+    MatMenuModule,
+    MatRadioModule,
+    MatProgressBarModule,
+    MatDividerModule,
     RouterModule.forChild([
       {
         path: '',
@@ -80,6 +96,10 @@ import { DeliveryFeeManagementComponent } from './components/delivery-fee-manage
       {
         path: 'delivery-fees',
         component: DeliveryFeeManagementComponent
+      },
+      {
+        path: 'promo-codes',
+        component: PromoCodeListComponent
       },
       {
         path: 'shops',

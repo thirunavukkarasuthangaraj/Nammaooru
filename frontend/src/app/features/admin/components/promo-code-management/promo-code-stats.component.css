@@ -1,0 +1,322 @@
+.stats-dialog {
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+}
+
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.dialog-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+}
+
+.header-icon {
+  color: #4CAF50;
+  font-size: 28px;
+  width: 28px;
+  height: 28px;
+}
+
+.dialog-content {
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 48px;
+}
+
+.stats-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Promo Info Card */
+.promo-info-card {
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  color: white;
+}
+
+.promo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.promo-code-badge {
+  display: inline-block;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: 1px;
+}
+
+.promo-info-card h3 {
+  margin: 0 0 8px 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.promo-description {
+  margin: 0 0 16px 0;
+  opacity: 0.9;
+}
+
+.promo-details {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.detail-item mat-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+}
+
+/* Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+.stat-card {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.stat-card mat-card-content {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 20px;
+}
+
+.stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+}
+
+.stat-icon mat-icon {
+  font-size: 32px;
+  width: 32px;
+  height: 32px;
+  color: white;
+}
+
+.stat-icon.total-usage {
+  background: linear-gradient(135deg, #2196F3, #1976D2);
+}
+
+.stat-icon.unique-customers {
+  background: linear-gradient(135deg, #9C27B0, #7B1FA2);
+}
+
+.stat-icon.total-discount {
+  background: linear-gradient(135deg, #F44336, #D32F2F);
+}
+
+.stat-icon.avg-order {
+  background: linear-gradient(135deg, #FF9800, #F57C00);
+}
+
+.stat-content {
+  flex: 1;
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #333;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.stat-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.stat-sublabel {
+  font-size: 12px;
+  color: #999;
+}
+
+/* Progress Card */
+.progress-card {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.progress-header h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.remaining-uses {
+  font-size: 14px;
+  font-weight: 600;
+  color: #4CAF50;
+}
+
+mat-progress-bar {
+  height: 12px;
+  border-radius: 6px;
+}
+
+.progress-footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #666;
+}
+
+/* History Card */
+.history-card {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.history-card mat-card-header {
+  padding: 16px 0;
+}
+
+.history-card mat-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.table-container {
+  overflow-x: auto;
+  margin-top: 16px;
+}
+
+.usage-table {
+  width: 100%;
+  background: white;
+}
+
+.customer-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.customer-info mat-icon {
+  color: #4CAF50;
+  font-size: 24px;
+  width: 24px;
+  height: 24px;
+}
+
+.customer-name {
+  font-weight: 600;
+  color: #333;
+}
+
+.customer-email {
+  font-size: 12px;
+  color: #999;
+}
+
+.order-number {
+  font-family: monospace;
+  font-weight: 600;
+  color: #2196F3;
+}
+
+.discount-amount {
+  color: #4CAF50;
+  font-weight: 700;
+}
+
+.date-time {
+  font-size: 13px;
+  color: #666;
+}
+
+.no-data {
+  text-align: center;
+  padding: 48px;
+  color: #999;
+}
+
+.no-data mat-icon {
+  font-size: 48px;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 16px;
+}
+
+.no-data p {
+  margin: 0;
+  font-size: 14px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .promo-details {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .progress-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}
