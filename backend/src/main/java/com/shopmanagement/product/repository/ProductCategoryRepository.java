@@ -70,9 +70,11 @@ public interface ProductCategoryRepository extends JpaRepository<ProductCategory
     boolean hasSubcategories(@Param("parentId") Long parentId);
 
     @Query(value = "WITH RECURSIVE category_tree AS (" +
-           "SELECT id, parent_id, name FROM product_categories WHERE id = :categoryId " +
+           "SELECT id, parent_id, name, description, slug, is_active, sort_order, icon_url, created_by, updated_by, created_at, updated_at " +
+           "FROM product_categories WHERE id = :categoryId " +
            "UNION ALL " +
-           "SELECT c.id, c.parent_id, c.name FROM product_categories c " +
+           "SELECT c.id, c.parent_id, c.name, c.description, c.slug, c.is_active, c.sort_order, c.icon_url, c.created_by, c.updated_by, c.created_at, c.updated_at " +
+           "FROM product_categories c " +
            "JOIN category_tree ct ON c.parent_id = ct.id) " +
            "SELECT * FROM category_tree WHERE id != :categoryId", nativeQuery = true)
     List<ProductCategory> findAllDescendants(@Param("categoryId") Long categoryId);
