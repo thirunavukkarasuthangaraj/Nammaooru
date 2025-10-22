@@ -3,6 +3,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { ProductCategoryService } from '../../../../core/services/product-category.service';
 import { ProductCategory } from '../../../../core/models/product.model';
 import Swal from 'sweetalert2';
+import { environment } from '../../../../../environments/environment';
 
 @Component({
   selector: 'app-category-list',
@@ -122,8 +123,14 @@ import Swal from 'sweetalert2';
           <div *ngIf="!loading && categories.length > 0" class="categories-grid">
             <div *ngFor="let category of categories" class="category-card">
               <div class="category-card-header">
-                <div class="category-icon-wrapper">
-                  <mat-icon class="category-main-icon">folder</mat-icon>
+                <div class="category-icon-wrapper" [class.has-image]="category.iconUrl">
+                  <img *ngIf="category.iconUrl && isImageUrl(category.iconUrl)"
+                       [src]="getCategoryImageUrl(category.iconUrl)"
+                       [alt]="category.name"
+                       class="category-image"
+                       (error)="onImageError($event)">
+                  <span *ngIf="category.iconUrl && !isImageUrl(category.iconUrl)" class="category-emoji">{{ category.iconUrl }}</span>
+                  <mat-icon *ngIf="!category.iconUrl" class="category-main-icon">folder</mat-icon>
                 </div>
                 <div class="category-badges">
                   <span class="badge" [class.active]="category.isActive" [class.inactive]="!category.isActive">
@@ -470,6 +477,24 @@ import Swal from 'sweetalert2';
       display: flex;
       align-items: center;
       justify-content: center;
+      overflow: hidden;
+    }
+
+    .category-icon-wrapper.has-image {
+      background: #f8f9fa;
+      padding: 0;
+    }
+
+    .category-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 12px;
+    }
+
+    .category-emoji {
+      font-size: 32px;
+      line-height: 1;
     }
 
     .category-main-icon {
@@ -845,5 +870,48 @@ export class CategoryListComponent implements OnInit {
 
   collapseAll() {
     // Implementation for collapsing all categories if using mat-expansion-panel
+  }
+
+  isImageUrl(url: string): boolean {
+    if (!url) return false;
+
+    // Check if it's a URL (http/https) or a relative path
+    const isUrl = url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/');
+
+    // Check if it has an image extension
+    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'];
+    const hasImageExtension = imageExtensions.some(ext => url.toLowerCase().endsWith(ext));
+
+    return isUrl && hasImageExtension;
+  }
+
+  getCategoryImageUrl(iconUrl: string): string {
+    if (!iconUrl) return '';
+
+    // If it's already a full URL, return it
+    if (iconUrl.startsWith('http://') || iconUrl.startsWith('https://')) {
+      return iconUrl;
+    }
+
+    // If it's a relative URL starting with /, assume it's from the backend
+    if (iconUrl.startsWith('/')) {
+      return `${this.getApiBaseUrl()}${iconUrl}`;
+    }
+
+    return iconUrl;
+  }
+
+  private getApiBaseUrl(): string {
+    // Remove '/api' from the apiUrl to get the base URL
+    return environment.apiUrl.replace('/api', '');
+  }
+
+  onImageError(event: Event): void {
+    // Handle image load errors by showing a placeholder icon
+    const img = event.target as HTMLImageElement;
+    img.style.display = 'none';
+
+    // Optionally, you can replace with a default image
+    // img.src = '/assets/images/default-category.png';
   }
 }

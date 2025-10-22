@@ -580,38 +580,110 @@ export class CategoryFormComponent implements OnInit {
 
     this.isLoading = true;
 
-    // If there's an image file, upload with image
-    if (this.selectedImageFile && !this.isEditMode) {
-      const formData = new FormData();
-      formData.append('name', this.categoryForm.get('name')?.value);
-      formData.append('description', this.categoryForm.get('description')?.value || '');
-      if (this.categoryForm.get('parentId')?.value) {
-        formData.append('parentId', this.categoryForm.get('parentId')?.value);
+    // If there's an image file selected
+    if (this.selectedImageFile) {
+      if (this.isEditMode) {
+        // In edit mode, first update the category, then upload the image
+        this.updateCategoryThenUploadImage();
+      } else {
+        // In create mode, create category with image
+        this.createCategoryWithImage();
       }
-      formData.append('image', this.selectedImageFile);
-
-      this.categoryService.createCategoryWithImage(formData).subscribe({
-        next: () => {
-          Swal.fire({
-            icon: 'success',
-            title: 'Success!',
-            text: 'Category created successfully with image!',
-            timer: 3000
-          });
-          this.router.navigate(['/products/categories']);
-        },
-        error: (error) => {
-          this.isLoading = false;
-          Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: error.error?.message || 'Failed to create category'
-          });
-        }
-      });
       return;
     }
 
+    // No image file selected, proceed with normal create/update
+    this.saveCategory();
+  }
+
+  private createCategoryWithImage() {
+    const formData = new FormData();
+    formData.append('name', this.categoryForm.get('name')?.value);
+    formData.append('description', this.categoryForm.get('description')?.value || '');
+    formData.append('slug', this.categoryForm.get('slug')?.value || '');
+    formData.append('isActive', this.categoryForm.get('isActive')?.value.toString());
+    formData.append('sortOrder', this.categoryForm.get('sortOrder')?.value.toString());
+
+    if (this.categoryForm.get('parentId')?.value) {
+      formData.append('parentId', this.categoryForm.get('parentId')?.value);
+    }
+
+    formData.append('image', this.selectedImageFile!);
+
+    this.categoryService.createCategoryWithImage(formData).subscribe({
+      next: () => {
+        this.isLoading = false;
+        Swal.fire({
+          icon: 'success',
+          title: 'Success!',
+          text: 'Category created successfully with image!',
+          timer: 2000,
+          showConfirmButton: false
+        });
+        this.router.navigate(['/products/categories']);
+      },
+      error: (error) => {
+        this.isLoading = false;
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: error.error?.message || 'Failed to create category'
+        });
+      }
+    });
+  }
+
+  private updateCategoryThenUploadImage() {
+    const formValue = this.categoryForm.value;
+    const request: ProductCategoryRequest = {
+      name: formValue.name,
+      description: formValue.description || undefined,
+      slug: formValue.slug || undefined,
+      parentId: formValue.parentId || undefined,
+      isActive: formValue.isActive,
+      sortOrder: formValue.sortOrder || undefined,
+      iconUrl: formValue.iconUrl || undefined
+    };
+
+    this.categoryService.updateCategory(this.categoryId!, request).subscribe({
+      next: (category) => {
+        // Now upload the image
+        this.categoryService.uploadCategoryImage(this.categoryId!, this.selectedImageFile!).subscribe({
+          next: () => {
+            this.isLoading = false;
+            Swal.fire({
+              title: 'Success!',
+              text: 'Category updated successfully with image!',
+              icon: 'success',
+              timer: 2000,
+              showConfirmButton: false
+            });
+            this.router.navigate(['/products/categories']);
+          },
+          error: (error) => {
+            this.isLoading = false;
+            Swal.fire({
+              title: 'Partial Success',
+              text: 'Category updated but failed to upload image',
+              icon: 'warning',
+              confirmButtonText: 'OK'
+            });
+          }
+        });
+      },
+      error: (error) => {
+        this.isLoading = false;
+        Swal.fire({
+          title: 'Error!',
+          text: error.error?.message || 'Failed to update category',
+          icon: 'error',
+          confirmButtonText: 'OK'
+        });
+      }
+    });
+  }
+
+  private saveCategory() {
     const formValue = this.categoryForm.value;
 
     const request: ProductCategoryRequest = {
@@ -634,10 +706,10 @@ export class CategoryFormComponent implements OnInit {
           title: 'Success!',
           text: `Category ${this.isEditMode ? 'updated' : 'created'} successfully!`,
           icon: 'success',
-          confirmButtonText: 'OK'
-        }).then(() => {
-          this.router.navigate(['/products/categories']);
+          timer: 2000,
+          showConfirmButton: false
         });
+        this.router.navigate(['/products/categories']);
         this.isLoading = false;
       },
       error: (error) => {
