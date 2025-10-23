@@ -59,6 +59,9 @@ class AppConfig {
   static const bool enableNotificationVibration = true;
   static const int notificationRetentionDays = 30;
 
+  // Timezone configuration
+  static const String defaultTimezone = 'Asia/Kolkata'; // Indian Standard Time
+
   // Security configuration
   static const int sessionTimeoutMinutes = kIsProduction ? 60 : 1440; // 1 hour in prod, 24 hours in dev
   static const bool enableBiometricAuth = true;

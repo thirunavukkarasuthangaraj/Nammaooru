@@ -8,6 +8,7 @@ export const environment = {
   websocketUrl: 'ws://localhost:8080/ws',
   version: packageInfo.version,
   buildDate: new Date().toISOString(),
+  timezone: 'Asia/Kolkata', // Indian Standard Time
   defaultMapCenter: {
     lat: 12.9716, // Bangalore coordinates
     lng: 77.5946

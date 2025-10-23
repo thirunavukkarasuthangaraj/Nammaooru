@@ -8,6 +8,7 @@ export const environment = {
   websocketUrl: 'wss://nammaoorudelivary.in/ws',
   version: packageInfo.version,
   buildDate: new Date().toISOString(), // Dynamic build date
+  timezone: 'Asia/Kolkata', // Indian Standard Time
   defaultMapCenter: {
     lat: 12.9716, // Bangalore coordinates
     lng: 77.5946
