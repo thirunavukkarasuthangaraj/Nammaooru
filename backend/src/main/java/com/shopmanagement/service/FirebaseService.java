@@ -314,4 +314,28 @@ public class FirebaseService {
             logger.error("Error subscribing to topic {}: {}", topic, e.getMessage());
         }
     }
+
+    /**
+     * Delete all FCM tokens for a specific user
+     */
+    @Transactional
+    public void deleteFcmTokensByUserId(Long userId) {
+        try {
+            List<UserFcmToken> userTokens = fcmTokenRepository.findByUserIdAndIsActiveTrue(userId);
+
+            if (userTokens.isEmpty()) {
+                logger.info("No active FCM tokens found for user: {}", userId);
+                return;
+            }
+
+            // Deactivate all tokens for this user
+            userTokens.forEach(token -> token.setIsActive(false));
+            fcmTokenRepository.saveAll(userTokens);
+
+            logger.info("Deleted {} FCM tokens for user: {}", userTokens.size(), userId);
+
+        } catch (Exception e) {
+            logger.error("Error deleting FCM tokens for user {}: {}", userId, e.getMessage());
+        }
+    }
 }
