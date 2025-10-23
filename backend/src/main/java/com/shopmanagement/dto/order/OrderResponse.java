@@ -39,6 +39,7 @@ public class OrderResponse {
     private BigDecimal deliveryFee;
     private BigDecimal discountAmount;
     private BigDecimal totalAmount;
+    private String couponCode;
     
     private String notes;
     private String cancellationReason;
@@ -85,6 +86,9 @@ public class OrderResponse {
         private String productDescription;
         private String productSku;
         private String productImageUrl;
+        private String unit;
+        private Long shopId;
+        private String shopName;
         private Integer quantity;
         private BigDecimal unitPrice;
         private BigDecimal totalPrice;

@@ -20,6 +20,7 @@
     <uses-permission android:name="android.permission.CALL_PHONE" />
     
     <!-- Notification permissions -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
     
@@ -77,7 +78,22 @@
         <!-- Google Maps API Key -->
         <meta-data android:name="com.google.android.geo.API_KEY"
                    android:value="AIzaSyAr_uGbaOnhebjRyz7ohU6N-hWZJVV_R3U"/>
-        
+
+        <!-- Firebase Cloud Messaging Notification Icon -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@mipmap/ic_launcher" />
+
+        <!-- Firebase Cloud Messaging Notification Color -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@android:color/holo_green_dark" />
+
+        <!-- Firebase Cloud Messaging Channel -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="nammaooru_notifications" />
+
         <!-- Firebase Cloud Messaging - Disabled for now -->
         <!-- TODO: Create MessagingService class when Firebase is properly configured
         <service

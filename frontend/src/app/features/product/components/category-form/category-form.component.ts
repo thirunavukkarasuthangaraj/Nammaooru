@@ -116,15 +116,7 @@ import Swal from 'sweetalert2';
                 <mat-label>Description</mat-label>
                 <textarea matInput formControlName="description" rows="3" placeholder="Category description..."></textarea>
                 <mat-icon matSuffix>description</mat-icon>
-              </mat-form-field>
-
-              <!-- Icon URL field hidden when image is uploaded -->
-              <mat-form-field appearance="outline" class="form-field full-width" *ngIf="!selectedImageFile">
-                <mat-label>Icon URL (Optional)</mat-label>
-                <input matInput formControlName="iconUrl" placeholder="https://example.com/icon.png">
-                <mat-icon matSuffix>link</mat-icon>
-                <mat-hint>Alternatively, provide a URL to category icon image</mat-hint>
-              </mat-form-field>
+              </mat-form-field>           
             </div>
 
             <div class="form-section">

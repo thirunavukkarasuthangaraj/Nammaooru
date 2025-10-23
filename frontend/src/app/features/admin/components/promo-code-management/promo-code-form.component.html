@@ -180,8 +180,7 @@
         <div class="form-row">
           <mat-radio-group formControlName="status" class="status-group">
             <mat-radio-button *ngFor="let status of statusOptions"
-                              [value]="status.value"
-                              [color]="status.color">
+                              [value]="status.value">
               {{ status.label }}
             </mat-radio-button>
           </mat-radio-group>

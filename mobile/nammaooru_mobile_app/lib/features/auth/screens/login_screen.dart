@@ -60,9 +60,16 @@ class _LoginScreenState extends State<LoginScreen> {
           
           await authProvider.refreshAuthState();
           final isNowLoggedIn = authProvider.isAuthenticated;
-          
+
           if (isNowLoggedIn) {
-            context.go('/customer/dashboard');
+            // Check if we can go back (user came from another page)
+            if (Navigator.of(context).canPop()) {
+              // Return to previous page with success result
+              Navigator.of(context).pop(true);
+            } else {
+              // No previous page, go to dashboard
+              context.go('/customer/dashboard');
+            }
           } else {
             Helpers.showSnackBar(
               context,

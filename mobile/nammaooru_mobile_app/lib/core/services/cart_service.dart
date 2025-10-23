@@ -291,21 +291,53 @@ class CartService {
   Future<void> syncOfflineCart() async {
     try {
       final offlineItems = await LocalStorage.getList('offline_cart');
-      
+
       if (offlineItems.isEmpty) return;
-      
+
       for (final item in offlineItems) {
         final request = AddToCartRequest(
           shopProductId: item['shopProductId'],
           quantity: item['quantity'],
         );
-        
+
         await addToCart(request);
       }
-      
+
       await LocalStorage.setList('offline_cart', []);
     } catch (e) {
       print('Error syncing offline cart: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>?> validatePromoCode({
+    required String promoCode,
+    required double orderAmount,
+    int? customerId,
+    String? deviceUuid,
+    String? phone,
+    int? shopId,
+  }) async {
+    try {
+      final response = await ApiClient.post(
+        '/promotions/validate',
+        data: {
+          'promoCode': promoCode,
+          'orderAmount': orderAmount,
+          if (customerId != null) 'customerId': customerId,
+          if (deviceUuid != null) 'deviceUuid': deviceUuid,
+          if (phone != null) 'phone': phone,
+          if (shopId != null) 'shopId': shopId,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return response.data as Map<String, dynamic>?;
+      }
+
+      return null;
+    } catch (e) {
+      print('Error validating promo code: $e');
+      return null;
     }
   }
 }

@@ -24,6 +24,8 @@ export interface ShopOwnerOrder {
   notes?: string;
   customerId: number;
   shopId: number;
+  couponCode?: string;
+  discountAmount?: number;
   assignedDriver?: {
     id: number;
     name: string;

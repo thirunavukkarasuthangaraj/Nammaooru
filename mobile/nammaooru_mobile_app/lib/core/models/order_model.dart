@@ -125,6 +125,7 @@ class OrderItem {
   final String productImage;
   final double price;
   final int quantity;
+  final String unit;
   final double totalPrice;
   final String shopId;
   final String shopName;
@@ -136,6 +137,7 @@ class OrderItem {
     required this.productImage,
     required this.price,
     required this.quantity,
+    required this.unit,
     required this.totalPrice,
     required this.shopId,
     required this.shopName,
@@ -144,11 +146,12 @@ class OrderItem {
   factory OrderItem.fromJson(Map<String, dynamic> json) {
     return OrderItem(
       id: json['id']?.toString() ?? '',
-      productId: json['productId']?.toString() ?? '',
+      productId: json['productId']?.toString() ?? json['shopProductId']?.toString() ?? '',
       productName: json['productName'] ?? '',
-      productImage: json['productImage'] ?? '',
-      price: (json['price'] ?? 0).toDouble(),
+      productImage: json['productImage'] ?? json['productImageUrl'] ?? '',
+      price: (json['price'] ?? json['unitPrice'] ?? 0).toDouble(),
       quantity: json['quantity'] ?? 0,
+      unit: json['unit'] ?? 'piece',
       totalPrice: (json['totalPrice'] ?? 0).toDouble(),
       shopId: json['shopId']?.toString() ?? '',
       shopName: json['shopName'] ?? '',

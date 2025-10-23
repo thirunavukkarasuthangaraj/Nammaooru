@@ -75,11 +75,18 @@ public class FirebaseNotificationService {
         try {
             log.info("📡 Building Firebase message...");
 
-            // Create notification
+            // Determine sound file based on notification type
+            String soundFile = determineSoundFile(data.get("type"), data.get("status"));
+
+            // Create notification with sound
             Notification notification = Notification.builder()
                     .setTitle(title)
                     .setBody(body)
                     .build();
+
+            // Add sound to data payload for Flutter to handle
+            data.put("sound", soundFile);
+            data.put("playSound", "true");
 
             // Create message
             Message message = Message.builder()
@@ -164,6 +171,29 @@ public class FirebaseNotificationService {
             log.error("Firebase Admin SDK connection test failed", e);
             return false;
         }
+    }
+
+    private String determineSoundFile(String type, String status) {
+        // Determine which sound file to play based on notification type
+        if (type == null) return "default";
+
+        return switch (type) {
+            case "order_update" -> {
+                if (status != null) {
+                    yield switch (status.toLowerCase()) {
+                        case "confirmed", "pending" -> "new_order.mp3";
+                        case "cancelled" -> "order_cancelled.mp3";
+                        case "delivered" -> "success_chime.mp3";
+                        default -> "message_received.mp3";
+                    };
+                }
+                yield "new_order.mp3";
+            }
+            case "delivery_update" -> "message_received.mp3";
+            case "payment" -> "payment_received.mp3";
+            case "promotion" -> "message_received.mp3";
+            default -> "default";
+        };
     }
 
     private void saveNotificationHistory(Long customerId, String title, String body, String type, String orderNumber) {

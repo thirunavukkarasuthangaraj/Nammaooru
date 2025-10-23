@@ -10,6 +10,7 @@ import com.shopmanagement.entity.Order;
 import com.shopmanagement.entity.OrderItem;
 import com.shopmanagement.shop.entity.Shop;
 import com.shopmanagement.product.entity.ShopProduct;
+import com.shopmanagement.product.entity.MasterProduct;
 import com.shopmanagement.product.repository.ShopProductRepository;
 import com.shopmanagement.repository.CustomerRepository;
 import com.shopmanagement.repository.NotificationRepository;
@@ -244,12 +245,12 @@ public class OrderService {
         // Send new order notification to shop owner
         try {
             String itemsSummary = orderItems.stream()
-                .map(item -> String.format("%s x%d (₹%.2f)", 
-                    item.getProductName(), 
-                    item.getQuantity(), 
+                .map(item -> String.format("%s x%d (₹%.2f)",
+                    item.getProductName(),
+                    item.getQuantity(),
                     item.getTotalPrice()))
                 .collect(Collectors.joining(", "));
-                
+
             emailService.sendOrderPlacedNotificationToShop(
                 shop.getOwnerEmail(),
                 shop.getOwnerName(),
@@ -260,6 +261,46 @@ public class OrderService {
             );
         } catch (Exception e) {
             log.error("Failed to send order notification to shop owner", e);
+        }
+
+        // Send FCM push notification to shop owner
+        try {
+            log.info("🔔 Attempting to send FCM notification to shop owner: {}", shop.getOwnerEmail());
+
+            // Find shop owner's user record
+            Optional<User> shopOwnerOpt = userRepository.findByEmail(shop.getOwnerEmail());
+            if (shopOwnerOpt.isPresent()) {
+                User shopOwner = shopOwnerOpt.get();
+                log.info("✅ Found shop owner user: ID={}, Role={}", shopOwner.getId(), shopOwner.getRole());
+
+                // Get all active FCM tokens for shop owner
+                List<UserFcmToken> fcmTokens = userFcmTokenRepository.findActiveTokensByUserId(shopOwner.getId());
+                log.info("📱 Found {} active FCM token(s) for shop owner", fcmTokens.size());
+
+                if (!fcmTokens.isEmpty()) {
+                    // Send notification to all active devices
+                    for (UserFcmToken fcmToken : fcmTokens) {
+                        try {
+                            log.info("📤 Sending FCM to device: {}", fcmToken.getDeviceType());
+                            firebaseNotificationService.sendOrderNotification(
+                                savedOrder.getOrderNumber(),
+                                "PENDING",
+                                fcmToken.getFcmToken(),
+                                shopOwner.getId()
+                            );
+                            log.info("✅ FCM notification sent successfully to shop owner's device");
+                        } catch (Exception e) {
+                            log.error("❌ Failed to send FCM to device {}: {}", fcmToken.getDeviceType(), e.getMessage());
+                        }
+                    }
+                } else {
+                    log.warn("⚠️ No active FCM tokens found for shop owner {}", shop.getOwnerEmail());
+                }
+            } else {
+                log.warn("⚠️ Shop owner user not found for email: {}", shop.getOwnerEmail());
+            }
+        } catch (Exception e) {
+            log.error("❌ Failed to send FCM notification to shop owner", e);
         }
         
         log.info("Order created successfully: {}", savedOrder.getOrderNumber());
@@ -874,18 +915,35 @@ public class OrderService {
 
     private OrderResponse mapToResponse(Order order, Boolean assignedToDeliveryPartner) {
         List<OrderResponse.OrderItemResponse> itemResponses = order.getOrderItems().stream()
-                .map(item -> OrderResponse.OrderItemResponse.builder()
-                        .id(item.getId())
-                        .shopProductId(item.getShopProduct().getId())
-                        .productName(item.getProductName())
-                        .productDescription(item.getProductDescription())
-                        .productSku(item.getProductSku())
-                        .productImageUrl(item.getProductImageUrl())
-                        .quantity(item.getQuantity())
-                        .unitPrice(item.getUnitPrice())
-                        .totalPrice(item.getTotalPrice())
-                        .specialInstructions(item.getSpecialInstructions())
-                        .build())
+                .map(item -> {
+                    ShopProduct shopProduct = item.getShopProduct();
+                    MasterProduct masterProduct = shopProduct.getMasterProduct();
+                    Shop shop = shopProduct.getShop();
+
+                    // Get product image - fallback to master product images if order item doesn't have one
+                    String productImageUrl = item.getProductImageUrl();
+                    if (productImageUrl == null || productImageUrl.isEmpty()) {
+                        if (masterProduct.getImages() != null && !masterProduct.getImages().isEmpty()) {
+                            productImageUrl = masterProduct.getImages().iterator().next().getImageUrl();
+                        }
+                    }
+
+                    return OrderResponse.OrderItemResponse.builder()
+                            .id(item.getId())
+                            .shopProductId(shopProduct.getId())
+                            .productName(item.getProductName())
+                            .productDescription(item.getProductDescription())
+                            .productSku(item.getProductSku())
+                            .productImageUrl(productImageUrl)
+                            .unit(masterProduct.getBaseUnit())
+                            .shopId(shop.getId())
+                            .shopName(shop.getName())
+                            .quantity(item.getQuantity())
+                            .unitPrice(item.getUnitPrice())
+                            .totalPrice(item.getTotalPrice())
+                            .specialInstructions(item.getSpecialInstructions())
+                            .build();
+                })
                 .collect(Collectors.toList());
 
         String fullDeliveryAddress = String.format("%s, %s, %s - %s",
@@ -1099,9 +1157,49 @@ public class OrderService {
         // Set order reference in items
         orderItems.forEach(item -> item.setOrder(order));
         order.setOrderItems(orderItems);
-        
+
         Order savedOrder = orderRepository.save(order);
-        
+
+        // Send FCM push notification to shop owner
+        try {
+            log.info("🔔 Attempting to send FCM notification to shop owner: {}", shop.getOwnerEmail());
+
+            // Find shop owner's user record
+            Optional<User> shopOwnerOpt = userRepository.findByEmail(shop.getOwnerEmail());
+            if (shopOwnerOpt.isPresent()) {
+                User shopOwner = shopOwnerOpt.get();
+                log.info("✅ Found shop owner user: ID={}, Role={}", shopOwner.getId(), shopOwner.getRole());
+
+                // Get all active FCM tokens for shop owner
+                List<UserFcmToken> fcmTokens = userFcmTokenRepository.findActiveTokensByUserId(shopOwner.getId());
+                log.info("📱 Found {} active FCM token(s) for shop owner", fcmTokens.size());
+
+                if (!fcmTokens.isEmpty()) {
+                    // Send notification to all active devices
+                    for (UserFcmToken fcmToken : fcmTokens) {
+                        try {
+                            log.info("📤 Sending FCM to device: {}", fcmToken.getDeviceType());
+                            firebaseNotificationService.sendOrderNotification(
+                                savedOrder.getOrderNumber(),
+                                "PENDING",
+                                fcmToken.getFcmToken(),
+                                shopOwner.getId()
+                            );
+                            log.info("✅ FCM notification sent successfully to shop owner's device");
+                        } catch (Exception e) {
+                            log.error("❌ Failed to send FCM to device {}: {}", fcmToken.getDeviceType(), e.getMessage());
+                        }
+                    }
+                } else {
+                    log.warn("⚠️ No active FCM tokens found for shop owner {}", shop.getOwnerEmail());
+                }
+            } else {
+                log.warn("⚠️ Shop owner user not found for email: {}", shop.getOwnerEmail());
+            }
+        } catch (Exception e) {
+            log.error("❌ Failed to send FCM notification to shop owner", e);
+        }
+
         log.info("Customer order created successfully: {}", savedOrder.getOrderNumber());
         return mapToResponse(savedOrder);
     }

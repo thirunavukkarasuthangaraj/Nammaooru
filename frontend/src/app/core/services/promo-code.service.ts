@@ -16,7 +16,7 @@ import {
   providedIn: 'root'
 })
 export class PromoCodeService {
-  private apiUrl = `${environment.apiUrl}/api/promotions`;
+  private apiUrl = `${environment.apiUrl}/promotions`;
 
   constructor(private http: HttpClient) {}
 
@@ -39,7 +39,7 @@ export class PromoCodeService {
     }
 
     return this.http.get<any>(this.apiUrl, { params }).pipe(
-      map(response => response.data || response)
+      map(response => response.content || response.data || response)
     );
   }
 

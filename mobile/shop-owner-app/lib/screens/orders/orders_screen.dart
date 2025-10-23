@@ -522,15 +522,124 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                   ),
                   const SizedBox(height: 4),
                   Text('Customer: ${order['customerName']}'),
-                  const SizedBox(height: 4),
-                  Text('Total: ₹${order['totalAmount']?.toStringAsFixed(2) ?? '0.00'}'),
-                  if (order['paymentMethod'] == 'CASH_ON_DELIVERY') ...[
+                  const SizedBox(height: 8),
+
+                  // Promo Code Info (if applied)
+                  if (order['couponCode'] != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue, style: BorderStyle.solid, width: 2),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.local_offer, color: Colors.blue, size: 18),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  'Platform Promo: ${order['couponCode']}',
+                                  style: const TextStyle(
+                                    color: Colors.blue,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Order Amount:', style: TextStyle(fontSize: 13)),
+                              Text(
+                                '₹${((order['totalAmount'] ?? 0) + (order['discountAmount'] ?? 0)).toStringAsFixed(0)}',
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade50,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: Colors.orange.shade200),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Row(
+                                  children: [
+                                    Icon(Icons.info_outline, size: 14, color: Colors.orange),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Platform Discount:',
+                                      style: TextStyle(fontSize: 12, color: Colors.orange, fontWeight: FontWeight.w600),
+                                    ),
+                                  ],
+                                ),
+                                Text(
+                                  '- ₹${(order['discountAmount'] ?? 0).toStringAsFixed(0)}',
+                                  style: const TextStyle(fontSize: 13, color: Colors.orange, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Divider(height: 8, thickness: 2, color: Colors.blue),
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade50,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text(
+                                      '💰 Collect from Customer:',
+                                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.green),
+                                    ),
+                                    Text(
+                                      '₹${(order['totalAmount'] ?? 0).toStringAsFixed(0)}',
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.green),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  '✓ You receive full ₹${((order['totalAmount'] ?? 0) + (order['discountAmount'] ?? 0)).toStringAsFixed(0)} (Platform covers ₹${(order['discountAmount'] ?? 0).toStringAsFixed(0)})',
+                                  style: const TextStyle(fontSize: 11, color: Colors.black54, fontStyle: FontStyle.italic),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     const SizedBox(height: 8),
+                  ] else ...[
+                    Text('Total: ₹${order['totalAmount']?.toStringAsFixed(2) ?? '0.00'}'),
+                    const SizedBox(height: 4),
+                  ],
+
+                  if (order['paymentMethod'] == 'CASH_ON_DELIVERY' && order['couponCode'] == null) ...[
+                    const SizedBox(height: 4),
                     const Text(
                       '💰 Collect payment from customer',
                       style: TextStyle(
                         color: Colors.red,
                         fontWeight: FontWeight.w600,
+                        fontSize: 14,
                       ),
                     ),
                   ],

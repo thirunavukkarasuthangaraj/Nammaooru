@@ -71,8 +71,11 @@ class AppConfig {
   static String get buildMode => kIsProduction ? 'Production' : 'Development';
 
   static String get apiBaseUrl {
+    // Local development - pointing to local backend
+    return 'http://10.187.95.46:8080/api';
+
     // Production deployment
-    return 'https://nammaoorudelivary.in/api';
+    // return 'https://nammaoorudelivary.in/api';
 
     // For local testing:
     // Use localhost for web, network IP for mobile devices
@@ -83,8 +86,11 @@ class AppConfig {
   }
 
   static String get serverBaseUrl {
+    // Local development
+    return 'http://10.187.95.46:8080';
+
     // Production deployment
-    return 'https://nammaoorudelivary.in';
+    // return 'https://nammaoorudelivary.in';
 
     // For local testing:
     // Use localhost for web, network IP for mobile devices

@@ -3,6 +3,7 @@ import '../models/product_model.dart';
 import '../models/cart_model.dart';
 import '../../core/storage/local_storage.dart';
 import '../../core/services/cart_service.dart';
+import '../../core/services/device_info_service.dart';
 import '../../core/models/cart_model.dart' as CoreCart;
 import '../../core/config/env_config.dart';
 import 'dart:convert';
@@ -185,35 +186,51 @@ class CartProvider with ChangeNotifier {
   }
 
   Future<bool> applyPromoCode(String code) async {
-    // TODO: Implement API call to validate promo code
-    await Future.delayed(const Duration(seconds: 1)); // Simulate API call
-    
-    // Sample promo codes
-    switch (code.toUpperCase()) {
-      case 'SAVE10':
-        _promoCode = code;
-        _promoDiscount = subtotal * 0.1; // 10% discount
-        break;
-      case 'SAVE50':
-        _promoCode = code;
-        _promoDiscount = 50.0; // Flat ₹50 discount
-        break;
-      case 'FREESHIP':
-        _promoCode = code;
-        _promoDiscount = deliveryFee; // Free shipping
-        break;
-      default:
-        return false;
+    try {
+      // Get device UUID for tracking
+      final deviceUuid = await DeviceInfoService().getDeviceUuid();
+
+      if (kDebugMode) {
+        print('🎟️ Validating promo code: $code');
+        print('🎟️ Device UUID: $deviceUuid');
+        print('🎟️ Order amount: $subtotal');
+      }
+
+      // Call backend API to validate promo code
+      final response = await _cartService.validatePromoCode(
+        promoCode: code.toUpperCase(),
+        orderAmount: subtotal,
+        deviceUuid: deviceUuid,
+      );
+
+      if (kDebugMode) {
+        print('🎟️ Promo validation response: $response');
+      }
+
+      if (response != null && response['valid'] == true) {
+        _promoCode = code.toUpperCase();
+        _promoDiscount = (response['discountAmount'] as num?)?.toDouble() ?? 0.0;
+        _saveCartToStorage();
+        notifyListeners();
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      debugPrint('Error applying promo code: $e');
+      return false;
     }
-    
-    _saveCartToStorage();
-    notifyListeners();
-    return true;
   }
 
   void removePromoCode() {
     _promoCode = null;
     _promoDiscount = 0.0;
+    _saveCartToStorage();
+    notifyListeners();
+  }
+
+  void applyPromoDiscount(double discount) {
+    _promoDiscount = discount;
     _saveCartToStorage();
     notifyListeners();
   }

@@ -57,6 +57,7 @@ public class ShopService {
     private final OrderRepository orderRepository;
     private final OrderAssignmentRepository orderAssignmentRepository;
     private final ShopProductRepository shopProductRepository;
+    private final com.shopmanagement.service.BusinessHoursService businessHoursService;
 
     public ShopResponse createShop(ShopCreateRequest request) {
         log.info("Creating new shop: {}", request.getName());
@@ -285,14 +286,14 @@ public class ShopService {
     // Customer-facing methods
     public Page<ShopResponse> getActiveShops(Pageable pageable, String search, String category) {
         log.info("Fetching active shops for customers - search: {}, category: {}", search, category);
-        
+
         Specification<Shop> spec = Specification.where(
             (root, query, cb) -> cb.and(
                 cb.equal(root.get("status"), Shop.ShopStatus.APPROVED),
                 cb.equal(root.get("isActive"), true)
             )
         );
-        
+
         if (search != null && !search.isEmpty()) {
             String searchPattern = "%" + search.toLowerCase() + "%";
             spec = spec.and((root, query, cb) -> cb.or(
@@ -301,15 +302,28 @@ public class ShopService {
                 cb.like(cb.lower(root.get("description")), searchPattern)
             ));
         }
-        
+
         if (category != null && !category.isEmpty()) {
-            spec = spec.and((root, query, cb) -> 
+            spec = spec.and((root, query, cb) ->
                 cb.equal(root.get("businessType"), Shop.BusinessType.valueOf(category.toUpperCase()))
             );
         }
-        
+
         Page<Shop> shops = shopRepository.findAll(spec, pageable);
-        return shops.map(shopMapper::toResponse);
+        return shops.map(shop -> {
+            ShopResponse response = shopMapper.toResponse(shop);
+            // Calculate real-time business hours status
+            try {
+                boolean isOpenNow = businessHoursService.isShopOpenNow(shop.getId());
+                response.setIsOpenNow(isOpenNow);
+                log.debug("Shop {} ({}) - isOpenNow: {}", shop.getName(), shop.getId(), isOpenNow);
+            } catch (Exception e) {
+                log.warn("Failed to check business hours for shop {}: {}", shop.getId(), e.getMessage());
+                // Fallback to isActive if business hours check fails
+                response.setIsOpenNow(shop.getIsActive());
+            }
+            return response;
+        });
     }
 
     public ShopResponse approveShop(Long id) {

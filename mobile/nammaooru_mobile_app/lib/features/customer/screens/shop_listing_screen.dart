@@ -86,14 +86,15 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
         final shopDescription = shop['description']?.toString().toLowerCase() ?? '';
         final shopCategory = shop['businessType']?.toString().toLowerCase() ?? '';
         final shopRating = (shop['rating'] ?? 0).toDouble();
-        final shopIsActive = shop['isActive'] ?? true;
+        // Use isOpenNow from business hours API, fallback to isActive if not available
+        final shopIsOpenNow = shop['isOpenNow'] ?? shop['isActive'] ?? false;
 
         final matchesSearch = shopName.contains(query) ||
             shopDescription.contains(query) ||
             shopCategory.contains(query);
 
         final matchesRating = shopRating >= _minRating;
-        final matchesOpenNow = !_openNowOnly || shopIsActive;
+        final matchesOpenNow = !_openNowOnly || shopIsOpenNow;
 
         return matchesSearch && matchesRating && matchesOpenNow;
       }).toList();
@@ -323,7 +324,8 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
     final shopDescription = shop['description']?.toString() ?? '';
     final businessType = shop['businessType']?.toString() ?? 'Store';
     final rating = double.tryParse(shop['averageRating']?.toString() ?? '0.0') ?? 0.0;
-    final isActive = shop['isActive'] ?? true;
+    // Use isOpenNow from business hours API for real-time status
+    final isOpenNow = shop['isOpenNow'] ?? shop['isActive'] ?? false;
     final address = shop['addressLine1']?.toString() ?? '';
     final city = shop['city']?.toString() ?? '';
     final fullAddress = 'Test Address, Chennai';
@@ -466,11 +468,11 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          // Status Indicator
+                          // Status Indicator - Real-time Business Hours
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: isActive
+                              color: isOpenNow
                                 ? const Color(0xFF4CAF50)
                                 : const Color(0xFFFF5252),
                               borderRadius: BorderRadius.circular(12),
@@ -488,7 +490,7 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  isActive ? 'திறந்து' : 'மூடியது',
+                                  isOpenNow ? 'திறந்து' : 'மூடியது',
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 10,
@@ -613,68 +615,163 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) {
           return Container(
             padding: const EdgeInsets.all(24),
             decoration: const BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header
+                // Header with drag handle
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
                 Row(
                   children: [
-                    const Text('🔍 ', style: TextStyle(fontSize: 24)),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2E7D32).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.filter_list,
+                        color: Color(0xFF2E7D32),
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
                     const Text(
                       'ஆப்ஷன்கள் / Filters',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1B5E20),
+                      ),
                     ),
                     const Spacer(),
                     IconButton(
                       onPressed: () => Navigator.pop(context),
                       icon: const Icon(Icons.close),
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.grey[100],
+                        padding: const EdgeInsets.all(8),
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 24),
-                
-                // Open Now Filter
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.black26),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: CheckboxListTile(
-                    title: const Row(
-                      children: [
-                        Text('✅ ', style: TextStyle(fontSize: 18)),
-                        Text(
-                          'இப்போது திறந்து உள்ளது / Open Now',
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    value: _openNowOnly,
-                    onChanged: (value) {
+
+                // Open Now Filter - Improved Design
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
                       setModalState(() {
-                        _openNowOnly = value ?? false;
+                        _openNowOnly = !_openNowOnly;
                       });
                     },
-                    activeColor: const Color(0xFF2E7D32),
-                    contentPadding: EdgeInsets.zero,
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: _openNowOnly
+                            ? const Color(0xFF2E7D32).withOpacity(0.08)
+                            : Colors.grey[50],
+                        border: Border.all(
+                          color: _openNowOnly
+                              ? const Color(0xFF2E7D32)
+                              : Colors.grey[300]!,
+                          width: 2,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: _openNowOnly
+                                  ? const Color(0xFF4CAF50)
+                                  : Colors.grey[300],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              _openNowOnly ? Icons.store : Icons.store_outlined,
+                              color: Colors.white,
+                              size: 28,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'இப்போது திறந்து உள்ளது',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF1B5E20),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Open Now',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: _openNowOnly
+                                    ? const Color(0xFF2E7D32)
+                                    : Colors.grey[400]!,
+                                width: 2,
+                              ),
+                              color: _openNowOnly
+                                  ? const Color(0xFF2E7D32)
+                                  : Colors.transparent,
+                            ),
+                            child: _openNowOnly
+                                ? const Icon(
+                                    Icons.check,
+                                    color: Colors.white,
+                                    size: 18,
+                                  )
+                                : null,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 32),
-                
-                // Apply Button
+
+                // Apply Button - Enhanced
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -685,21 +782,38 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF2E7D32),
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      padding: const EdgeInsets.symmetric(vertical: 18),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      elevation: 4,
+                      elevation: 0,
+                      shadowColor: Colors.transparent,
                     ),
-                    child: const Text(
-                      'ஆப்ஷன்களை பயன்படுத்து / Apply Filters',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          'ஆப்ஷன்களை பயன்படுத்து / Apply Filters',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Icon(Icons.arrow_forward, size: 18),
+                        ),
+                      ],
                     ),
                   ),
                 ),
+                const SizedBox(height: 8),
               ],
             ),
           );

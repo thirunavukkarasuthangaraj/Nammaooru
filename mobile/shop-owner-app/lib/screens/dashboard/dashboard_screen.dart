@@ -7,6 +7,7 @@ import '../../services/api_service_simple.dart';
 import '../notifications/notifications_screen.dart';
 import '../orders/orders_screen.dart';
 import '../payments/payments_screen.dart';
+import '../promo_codes/promo_codes_screen.dart';
 import '../../utils/app_config.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/modern_card.dart';
@@ -456,6 +457,70 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                                 ),
                               ),
                               const Icon(Icons.arrow_forward_ios, color: AppTheme.success),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: AppTheme.space24),
+
+                    // Promo Codes Card
+                    InfoCard(
+                      title: '',
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const PromoCodesScreen(),
+                            ),
+                          );
+                        },
+                        borderRadius: AppTheme.roundedLarge,
+                        child: Padding(
+                          padding: const EdgeInsets.all(AppTheme.space20),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(AppTheme.space16),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFFFF6F00), Color(0xFFFFB74D)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: AppTheme.roundedMedium,
+                                  boxShadow: AppTheme.shadowSmall,
+                                ),
+                                child: const Icon(
+                                  Icons.local_offer,
+                                  color: AppTheme.textWhite,
+                                  size: 32,
+                                ),
+                              ),
+                              const SizedBox(width: AppTheme.space16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Promo Codes',
+                                      style: AppTheme.h6,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: AppTheme.space4),
+                                    Text(
+                                      'Create and manage promotional offers for your shop',
+                                      style: AppTheme.bodySmall,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(Icons.arrow_forward_ios, color: Color(0xFFFF6F00)),
                             ],
                           ),
                         ),

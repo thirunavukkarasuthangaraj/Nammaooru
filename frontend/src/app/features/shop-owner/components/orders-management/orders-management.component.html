@@ -174,10 +174,45 @@
 
       <!-- Total Section -->
       <div class="total-section">
-        <div class="total-amount">
+        <!-- Promo Code Info (if applied) -->
+        <div class="promo-info" *ngIf="order.couponCode" style="background: #e3f2fd; padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 2px solid #2196f3;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+            <i class="fas fa-tag" style="color: #2196f3; font-size: 16px;"></i>
+            <strong style="color: #1976d2; font-size: 14px;">Platform Promo: {{ order.couponCode }}</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 13px; color: #555; margin-bottom: 6px;">
+            <span>Order Amount:</span>
+            <span style="font-weight: 500;">₹{{ (order.totalAmount + (order.discountAmount || 0)) | number:'1.0-0' }}</span>
+          </div>
+          <div style="background: #fff3e0; padding: 8px; border-radius: 6px; margin-bottom: 8px; border: 1px solid #ffb74d;">
+            <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 4px;">
+              <i class="fas fa-info-circle" style="color: #f57c00; font-size: 12px;"></i>
+              <span style="font-size: 12px; color: #e65100; font-weight: 600;">Platform Discount:</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="font-size: 13px; color: #f57c00;">Discount Amount:</span>
+              <span style="font-size: 14px; color: #f57c00; font-weight: bold;">- ₹{{ order.discountAmount | number:'1.0-0' }}</span>
+            </div>
+          </div>
+          <div style="border-top: 2px solid #2196f3; padding-top: 8px; margin-top: 8px;">
+            <div style="background: #e8f5e9; padding: 10px; border-radius: 6px;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                <span style="font-weight: bold; color: #2e7d32; font-size: 13px;">💰 Collect from Customer:</span>
+                <span style="font-weight: bold; color: #2e7d32; font-size: 16px;">₹{{ order.totalAmount | number:'1.0-0' }}</span>
+              </div>
+              <div style="font-size: 11px; color: #555; font-style: italic;">
+                ✓ You receive full ₹{{ (order.totalAmount + (order.discountAmount || 0)) | number:'1.0-0' }} (Platform covers ₹{{ order.discountAmount | number:'1.0-0' }})
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Regular Total (no promo) -->
+        <div class="total-amount" *ngIf="!order.couponCode">
           <div class="total-label">Order Total</div>
           <div class="total-price">₹{{ order.totalAmount | number:'1.0-0' }}</div>
         </div>
+
         <div class="payment-info">
           <span class="payment-text">{{ order.paymentMethod === 'CASH_ON_DELIVERY' ? 'Cash on Delivery' : 'Online Payment' }}</span>
         </div>

@@ -516,40 +516,27 @@ class _SaveAddressDialogState extends State<SaveAddressDialog> {
           ),
         ),
         const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.shade300),
+        TextFormField(
+          controller: _areaController,
+          style: const TextStyle(color: Colors.black),
+          decoration: InputDecoration(
+            hintText: 'Enter area/locality',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: VillageTheme.primaryGreen),
+            ),
+            contentPadding: const EdgeInsets.all(12),
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  _areaController.text.isNotEmpty
-                      ? _areaController.text
-                      : 'Krishna Nagar, Palavakkam, Chennai',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.black,
-                  ),
-                ),
-              ),
-              TextButton(
-                onPressed: () {
-                  // TODO: Implement area change
-                },
-                child: Text(
-                  'Change',
-                  style: TextStyle(
-                    color: VillageTheme.primaryGreen,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
-          ),
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'Area is required';
+            }
+            return null;
+          },
         ),
       ],
     );

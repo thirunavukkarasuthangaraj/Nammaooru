@@ -17,6 +17,7 @@ public interface ProductCategoryRepository extends JpaRepository<ProductCategory
 
     // Find by basic properties
     Optional<ProductCategory> findBySlug(String slug);
+    Optional<ProductCategory> findByName(String name);
     List<ProductCategory> findByIsActiveTrue();
     List<ProductCategory> findByIsActiveTrueOrderBySortOrder();
 

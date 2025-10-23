@@ -15,4 +15,5 @@ public class CategoryResponse {
     private int productCount;
     private String icon;
     private String color;
+    private String imageUrl; // Category image URL
 }

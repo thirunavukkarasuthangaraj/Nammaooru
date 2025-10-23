@@ -19,7 +19,7 @@ export class PromoCodeStatsComponent implements OnInit {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
 
   constructor(
-    private promoCodeService: PromoCodeService,
+    public promoCodeService: PromoCodeService,
     @Inject(MAT_DIALOG_DATA) public data: { promoCode: PromoCode }
   ) {
     this.dataSource = new MatTableDataSource<PromoCodeUsage>([]);

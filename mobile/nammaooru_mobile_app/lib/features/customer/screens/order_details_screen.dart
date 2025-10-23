@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/models/order_model.dart';
 import '../../../core/services/order_service.dart';
+import '../../../core/utils/image_url_helper.dart';
 
 class OrderDetailsScreen extends StatefulWidget {
   final String orderId;
@@ -388,7 +389,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
               ),
               child: item.productImage.isNotEmpty
                   ? Image.network(
-                      item.productImage,
+                      ImageUrlHelper.getFullImageUrl(item.productImage),
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) =>
                           Icon(Icons.image, color: Colors.grey.shade400),
@@ -410,20 +411,44 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  'From ${item.shopName}',
-                  style: TextStyle(
-                    color: Colors.grey.shade600,
-                    fontSize: 12,
+                if (item.shopName.isNotEmpty)
+                  Text(
+                    'From ${item.shopName}',
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 12,
+                    ),
                   ),
-                ),
                 const SizedBox(height: 4),
-                Text(
-                  'Qty: ${item.quantity} × ₹${item.price.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    color: Colors.grey.shade600,
-                    fontSize: 14,
-                  ),
+                Row(
+                  children: [
+                    if (item.unit.isNotEmpty && item.unit != 'piece') ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: Colors.green.shade200),
+                        ),
+                        child: Text(
+                          item.unit,
+                          style: TextStyle(
+                            color: Colors.green.shade700,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    Text(
+                      'Qty: ${item.quantity} × ₹${item.price.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

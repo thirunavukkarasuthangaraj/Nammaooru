@@ -4,7 +4,7 @@ import '../config/env_config.dart';
 import '../storage/secure_storage.dart';
 
 class PromoCodeService {
-  static const String _baseUrl = EnvConfig.apiBaseUrl;
+  static const String _baseUrl = EnvConfig.baseUrl;
 
   /// Validate a promo code
   /// Returns validation result with discount amount
@@ -88,7 +88,7 @@ class PromoCodeService {
   /// Get customer's promo code usage history
   Future<List<PromoUsage>> getMyUsageHistory(String customerId) async {
     try {
-      final token = await SecureStorage.getToken();
+      final token = await SecureStorage.getAuthToken();
       final url =
           Uri.parse('$_baseUrl/api/promotions/my-usage?customerId=$customerId');
 

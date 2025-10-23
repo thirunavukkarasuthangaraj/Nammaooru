@@ -10,6 +10,7 @@ import '../../../shared/models/cart_model.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/helpers.dart';
+import '../../../core/utils/image_url_helper.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../orders/checkout_screen.dart';
 
@@ -191,7 +192,7 @@ class _CartScreenState extends State<CartScreen> {
             borderRadius: BorderRadius.circular(8),
             child: CachedNetworkImage(
               imageUrl: item.product.images.isNotEmpty
-                  ? item.product.images.first
+                  ? ImageUrlHelper.getFullImageUrl(item.product.images.first)
                   : 'https://via.placeholder.com/85x85',
               width: 85,
               height: 85,
@@ -216,15 +217,40 @@ class _CartScreenState extends State<CartScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  item.product.name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                    color: Colors.black87,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        item.product.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: Colors.black87,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (item.product.unit.isNotEmpty && item.product.unit != 'piece') ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: Colors.green.shade200, width: 0.5),
+                        ),
+                        child: Text(
+                          item.product.unit,
+                          style: TextStyle(
+                            color: Colors.green.shade700,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 3),
                 Row(
@@ -763,6 +789,38 @@ class _CartScreenState extends State<CartScreen> {
 
   Future<void> _applyPromoCode() async {
     if (_promoController.text.trim().isEmpty) return;
+
+    // Check if user is logged in
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (!authProvider.isAuthenticated) {
+      final shouldLogin = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Login Required'),
+          content: const Text('Please login to apply promo codes'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Login'),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldLogin == true) {
+        // Navigate to login and return to cart after login
+        final loggedIn = await context.push('/login');
+        if (loggedIn == true) {
+          // User logged in successfully, try applying promo code again
+          _applyPromoCode();
+        }
+      }
+      return;
+    }
 
     setState(() => _isApplyingPromo = true);
 

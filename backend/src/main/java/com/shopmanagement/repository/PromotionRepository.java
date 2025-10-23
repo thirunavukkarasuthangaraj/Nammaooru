@@ -1,6 +1,8 @@
 package com.shopmanagement.repository;
 
 import com.shopmanagement.entity.Promotion;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -44,4 +46,10 @@ public interface PromotionRepository extends JpaRepository<Promotion, Long> {
            "AND p.startDate <= :now AND p.endDate >= :now " +
            "AND (p.usageLimit IS NULL OR p.usedCount < p.usageLimit)")
     List<Promotion> findAllPublicActive(@Param("now") LocalDateTime now);
+
+    /**
+     * Find all promotions for a specific shop with pagination
+     */
+    @Query("SELECT p FROM Promotion p WHERE p.shopId = :shopId")
+    Page<Promotion> findByShopId(@Param("shopId") Long shopId, Pageable pageable);
 }

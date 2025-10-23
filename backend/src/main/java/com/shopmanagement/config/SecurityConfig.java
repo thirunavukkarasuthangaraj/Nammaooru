@@ -71,6 +71,8 @@ public class SecurityConfig {
                                 "/api/public/**",
                                 "/api/version",
                                 "/api/customer/**",  // ALLOW ALL CUSTOMER ENDPOINTS WITHOUT AUTH
+                                "/api/promotions/active",  // Public: Get active promo codes
+                                "/api/promotions/validate",  // Public: Validate promo code for customers
                                 "/api/mobile/delivery-partner/login",
                                 "/api/mobile/delivery-partner/forgot-password",
                                 "/api/mobile/delivery-partner/orders/**",

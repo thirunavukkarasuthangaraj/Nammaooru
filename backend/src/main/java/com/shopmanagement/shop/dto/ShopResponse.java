@@ -47,6 +47,7 @@ public class ShopResponse {
     private Boolean isActive;
     private Boolean isVerified;
     private Boolean isFeatured;
+    private Boolean isOpenNow;  // Real-time business hours status
     
     private BigDecimal rating;
     private Integer totalOrders;

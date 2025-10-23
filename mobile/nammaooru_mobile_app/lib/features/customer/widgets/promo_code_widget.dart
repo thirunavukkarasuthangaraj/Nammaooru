@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/services/promo_code_service.dart';
 import '../../../core/services/device_info_service.dart';
 import '../../../core/theme/village_theme.dart';
+import '../../../core/auth/auth_provider.dart';
 
 class PromoCodeWidget extends StatefulWidget {
   final double orderAmount;
@@ -9,7 +12,7 @@ class PromoCodeWidget extends StatefulWidget {
   final String? customerId;
   final String? customerPhone;
   final Function(PromoCodeValidationResult) onPromoApplied;
-  final Function() on PromoRemoved;
+  final Function() onPromoRemoved;
 
   const PromoCodeWidget({
     super.key,
@@ -66,6 +69,41 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
   Future<void> _validatePromoCode(String code) async {
     if (code.trim().isEmpty) {
       _showMessage('Please enter a promo code', isError: true);
+      return;
+    }
+
+    // Check if user is logged in
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (!authProvider.isAuthenticated) {
+      final shouldLogin = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Login Required'),
+          content: const Text('Please login to apply promo codes'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: VillageTheme.primaryGreen,
+              ),
+              child: const Text('Login', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldLogin == true && mounted) {
+        // Navigate to login
+        final loggedIn = await context.push('/login');
+        if (loggedIn == true) {
+          // User logged in successfully, try applying promo code again
+          _validatePromoCode(code);
+        }
+      }
       return;
     }
 
