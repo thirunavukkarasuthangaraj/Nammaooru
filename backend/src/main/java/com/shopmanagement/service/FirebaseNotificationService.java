@@ -72,6 +72,38 @@ public class FirebaseNotificationService {
     }
 
     /**
+     * Send order assignment notification to delivery partner
+     */
+    public void sendOrderAssignmentNotificationToDriver(String orderNumber, String driverToken, Long driverId, String shopName, String deliveryAddress, Double deliveryFee) {
+        try {
+            log.info("🚀 Preparing order assignment notification for delivery partner. Order: {}", orderNumber);
+
+            String title = "New Delivery Assigned! 🚚";
+            String body = String.format("Order %s from %s - Delivery Fee: ₹%.2f",
+                orderNumber, shopName, deliveryFee);
+
+            log.info("📄 Driver Notification - Title: '{}', Body: '{}'", title, body);
+            log.info("🎯 Target FCM token: {}...", driverToken.substring(0, Math.min(50, driverToken.length())));
+
+            Map<String, String> data = new HashMap<>();
+            data.put("type", "order_assignment");
+            data.put("orderNumber", orderNumber);
+            data.put("shopName", shopName);
+            data.put("deliveryAddress", deliveryAddress);
+            data.put("deliveryFee", String.valueOf(deliveryFee));
+            data.put("timestamp", String.valueOf(System.currentTimeMillis()));
+
+            // Send push notification
+            sendPushNotification(driverToken, title, body, data);
+
+            log.info("✅ Order assignment notification sent successfully to driver for order: {}", orderNumber);
+
+        } catch (Exception e) {
+            log.error("❌ Error sending order assignment notification to driver for order: {}", orderNumber, e);
+        }
+    }
+
+    /**
      * Send new order notification to shop owner
      */
     public void sendNewOrderNotificationToShopOwner(String orderNumber, String shopOwnerToken, Long shopOwnerId, String customerName, Double totalAmount, int itemCount) {
@@ -211,6 +243,7 @@ public class FirebaseNotificationService {
 
         return switch (type) {
             case "new_order" -> "new_order.mp3";  // For shop owners receiving new orders
+            case "order_assignment" -> "new_order.mp3";  // For delivery partners receiving assignment
             case "order_update" -> {
                 if (status != null) {
                     yield switch (status.toLowerCase()) {

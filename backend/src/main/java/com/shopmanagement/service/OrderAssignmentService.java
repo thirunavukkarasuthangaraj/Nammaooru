@@ -140,12 +140,14 @@ public class OrderAssignmentService {
             if (fcmToken != null && !fcmToken.isEmpty()) {
                 log.info("📱 Found FCM token for partner {}, sending notification", selectedPartner.getEmail());
 
-                // Send Firebase notification
-                firebaseNotificationService.sendOrderNotification(
+                // Send Firebase notification to driver with proper title, sound, and details
+                firebaseNotificationService.sendOrderAssignmentNotificationToDriver(
                     order.getOrderNumber(),
-                    "NEW_ASSIGNMENT",
                     fcmToken,
-                    null // No customer ID for driver notifications
+                    selectedPartner.getId(),
+                    order.getShop().getName(),
+                    order.getDeliveryAddress(),
+                    deliveryFee.doubleValue()
                 );
 
                 log.info("✅ Assignment notification sent successfully to partner: {}", selectedPartner.getEmail());
