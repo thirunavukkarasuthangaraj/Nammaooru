@@ -281,14 +281,16 @@ public class OrderService {
                     // Send notification to all active devices
                     for (UserFcmToken fcmToken : fcmTokens) {
                         try {
-                            log.info("📤 Sending FCM to device: {}", fcmToken.getDeviceType());
-                            firebaseNotificationService.sendOrderNotification(
+                            log.info("📤 Sending new order FCM to shop owner device: {}", fcmToken.getDeviceType());
+                            firebaseNotificationService.sendNewOrderNotificationToShopOwner(
                                 savedOrder.getOrderNumber(),
-                                "PENDING",
                                 fcmToken.getFcmToken(),
-                                shopOwner.getId()
+                                shopOwner.getId(),
+                                customer.getFullName(),
+                                savedOrder.getTotalAmount().doubleValue(),
+                                orderItems.size()
                             );
-                            log.info("✅ FCM notification sent successfully to shop owner's device");
+                            log.info("✅ New order FCM notification sent successfully to shop owner's device");
                         } catch (Exception e) {
                             log.error("❌ Failed to send FCM to device {}: {}", fcmToken.getDeviceType(), e.getMessage());
                         }
@@ -1178,14 +1180,16 @@ public class OrderService {
                     // Send notification to all active devices
                     for (UserFcmToken fcmToken : fcmTokens) {
                         try {
-                            log.info("📤 Sending FCM to device: {}", fcmToken.getDeviceType());
-                            firebaseNotificationService.sendOrderNotification(
+                            log.info("📤 Sending new order FCM to shop owner device: {}", fcmToken.getDeviceType());
+                            firebaseNotificationService.sendNewOrderNotificationToShopOwner(
                                 savedOrder.getOrderNumber(),
-                                "PENDING",
                                 fcmToken.getFcmToken(),
-                                shopOwner.getId()
+                                shopOwner.getId(),
+                                customer.getFullName(),
+                                savedOrder.getTotalAmount().doubleValue(),
+                                orderItems.size()
                             );
-                            log.info("✅ FCM notification sent successfully to shop owner's device");
+                            log.info("✅ New order FCM notification sent successfully to shop owner's device");
                         } catch (Exception e) {
                             log.error("❌ Failed to send FCM to device {}: {}", fcmToken.getDeviceType(), e.getMessage());
                         }

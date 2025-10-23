@@ -68,34 +68,46 @@ void main() async {
 
       // Handle foreground messages
       FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-        print('Got a message whilst in the foreground!');
-        print('Message data: ${message.data}');
+        print('🔔 Got a message whilst in the foreground!');
+        print('📦 Message data: ${message.data}');
 
         if (message.notification != null) {
-          print(
-              'Message also contained a notification: ${message.notification}');
+          print('📬 Notification: ${message.notification!.title} - ${message.notification!.body}');
 
-          // Play notification sound
-          await audioPlayer.play(AssetSource('sounds/new_order.mp3'));
+          try {
+            // Play notification sound
+            print('🔊 Attempting to play notification sound...');
+            await audioPlayer.stop(); // Stop any currently playing sound
+            await audioPlayer.play(AssetSource('sounds/new_order.mp3'));
+            print('✅ Sound played successfully');
+          } catch (e) {
+            print('❌ Error playing sound: $e');
+          }
 
-          // Show local notification
-          await flutterLocalNotificationsPlugin.show(
-            message.hashCode,
-            message.notification!.title,
-            message.notification!.body,
-            NotificationDetails(
-              android: AndroidNotificationDetails(
-                channel.id,
-                channel.name,
-                channelDescription: channel.description,
-                importance: Importance.max,
-                priority: Priority.high,
-                sound: const RawResourceAndroidNotificationSound('new_order'),
-                playSound: true,
-                icon: '@mipmap/ic_launcher',
+          try {
+            // Show local notification
+            print('📱 Showing local notification...');
+            await flutterLocalNotificationsPlugin.show(
+              message.hashCode,
+              message.notification!.title,
+              message.notification!.body,
+              NotificationDetails(
+                android: AndroidNotificationDetails(
+                  channel.id,
+                  channel.name,
+                  channelDescription: channel.description,
+                  importance: Importance.max,
+                  priority: Priority.high,
+                  sound: const RawResourceAndroidNotificationSound('new_order'),
+                  playSound: true,
+                  icon: '@mipmap/ic_launcher',
+                ),
               ),
-            ),
-          );
+            );
+            print('✅ Local notification shown successfully');
+          } catch (e) {
+            print('❌ Error showing notification: $e');
+          }
         }
       });
 

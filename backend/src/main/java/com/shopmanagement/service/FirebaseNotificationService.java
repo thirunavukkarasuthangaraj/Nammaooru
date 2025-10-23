@@ -63,11 +63,43 @@ public class FirebaseNotificationService {
             Map<String, String> data = new HashMap<>();
             data.put("type", "promotion");
             data.put("timestamp", String.valueOf(System.currentTimeMillis()));
-            
+
             sendPushNotification(customerToken, title, message, data);
-            
+
         } catch (Exception e) {
             log.error("Error sending promotional notification", e);
+        }
+    }
+
+    /**
+     * Send new order notification to shop owner
+     */
+    public void sendNewOrderNotificationToShopOwner(String orderNumber, String shopOwnerToken, Long shopOwnerId, String customerName, Double totalAmount, int itemCount) {
+        try {
+            log.info("🚀 Preparing new order notification for shop owner. Order: {}", orderNumber);
+
+            String title = "New Order Received! 🔔";
+            String body = String.format("Order %s from %s - %d items - ₹%.2f",
+                orderNumber, customerName, itemCount, totalAmount);
+
+            log.info("📄 Shop Owner Notification - Title: '{}', Body: '{}'", title, body);
+            log.info("🎯 Target FCM token: {}...", shopOwnerToken.substring(0, Math.min(50, shopOwnerToken.length())));
+
+            Map<String, String> data = new HashMap<>();
+            data.put("type", "new_order");
+            data.put("orderNumber", orderNumber);
+            data.put("customerName", customerName);
+            data.put("totalAmount", String.valueOf(totalAmount));
+            data.put("itemCount", String.valueOf(itemCount));
+            data.put("timestamp", String.valueOf(System.currentTimeMillis()));
+
+            // Send push notification
+            sendPushNotification(shopOwnerToken, title, body, data);
+
+            log.info("✅ New order notification sent successfully to shop owner for order: {}", orderNumber);
+
+        } catch (Exception e) {
+            log.error("❌ Error sending new order notification to shop owner for order: {}", orderNumber, e);
         }
     }
 
@@ -178,6 +210,7 @@ public class FirebaseNotificationService {
         if (type == null) return "default";
 
         return switch (type) {
+            case "new_order" -> "new_order.mp3";  // For shop owners receiving new orders
             case "order_update" -> {
                 if (status != null) {
                     yield switch (status.toLowerCase()) {
