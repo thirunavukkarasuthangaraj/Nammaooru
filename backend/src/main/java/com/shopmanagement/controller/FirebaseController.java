@@ -93,6 +93,53 @@ public class FirebaseController {
     }
 
     /**
+     * Delete FCM Token for shop owner (on logout)
+     */
+    @DeleteMapping("/shop-owner/notifications/fcm-token")
+    public ResponseEntity<Map<String, Object>> deleteShopOwnerFcmToken(
+            HttpServletRequest httpRequest) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            // Get user ID from JWT token
+            String token = httpRequest.getHeader("Authorization");
+            if (token != null && token.startsWith("Bearer ")) {
+                token = token.substring(7);
+                String username = jwtService.extractUsername(token);
+
+                // Look up user by username
+                User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new RuntimeException("User not found: " + username));
+
+                Long userId = user.getId();
+                log.info("🗑️ Deleting FCM tokens for shop owner: {} (ID: {})", username, userId);
+
+                firebaseService.deleteFcmTokensByUserId(userId);
+
+                log.info("✅ FCM tokens deleted successfully for shop owner: {} (ID: {})", username, userId);
+
+                response.put("statusCode", "0000");
+                response.put("message", "FCM tokens deleted successfully");
+                response.put("data", null);
+
+                return ResponseEntity.ok(response);
+            }
+
+            response.put("statusCode", "4001");
+            response.put("message", "Invalid authorization token");
+            response.put("data", null);
+            return ResponseEntity.status(401).body(response);
+
+        } catch (Exception e) {
+            response.put("statusCode", "5000");
+            response.put("message", "Error deleting FCM tokens: " + e.getMessage());
+            response.put("data", null);
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    /**
      * Store/Update FCM Token for delivery partner
      */
     @PostMapping("/delivery-partner/notifications/fcm-token")

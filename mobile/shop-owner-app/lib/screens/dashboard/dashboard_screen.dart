@@ -211,6 +211,26 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
   }
 
   Future<void> _logout() async {
+    try {
+      // Delete FCM token from backend
+      final response = await http.delete(
+        Uri.parse('${AppConfig.apiBaseUrl}/shop-owner/notifications/fcm-token'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${widget.token}',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        print('✅ FCM token deleted from backend');
+      } else {
+        print('⚠️ Failed to delete FCM token: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ Error deleting FCM token: $e');
+    }
+
+    // Clear local storage
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
 
