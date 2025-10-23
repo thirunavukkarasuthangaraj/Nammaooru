@@ -1,36 +1,26 @@
 {
   "project_info": {
-    "project_number": "123456789000",
-    "project_id": "nammaooru-shop-owner",
-    "storage_bucket": "nammaooru-shop-owner.appspot.com"
+    "project_number": "913325898379",
+    "project_id": "nammaooru-shop-management",
+    "storage_bucket": "nammaooru-shop-management.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:123456789000:android:abcdef123456789",
+        "mobilesdk_app_id": "1:913325898379:android:8ceda891b95f9c235b328e",
         "android_client_info": {
           "package_name": "com.nammaooru.shop_owner_app"
         }
       },
-      "oauth_client": [
-        {
-          "client_id": "123456789000-abcdefghijklmnopqrstuvwxyz123456.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
+      "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAbCdEfGhIjKlMnOpQrStUvWxYz123456789"
+          "current_key": "AIzaSyCwZASRn_-unR7l6ksgezzjiattZQm3ysE"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "123456789000-abcdefghijklmnopqrstuvwxyz123456.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
+          "other_platform_oauth_client": []
         }
       }
     }

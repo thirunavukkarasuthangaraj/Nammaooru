@@ -37,8 +37,8 @@ class AuthService {
         
         // Try to get role from response first, fallback to JWT
         final userRole = authData['role'] ?? JwtHelper.getUserRole(token);
-        // Try to get userId from JWT using 'sub' field or from response as username
-        final userId = JwtHelper.getUserId(token) ?? authData['username'];
+        // Try to get userId from response first (numeric), fallback to JWT, then username
+        final userId = authData['userId']?.toString() ?? JwtHelper.getUserId(token) ?? authData['username'];
         
         if (userRole != null && userId != null) {
           await SecureStorage.saveUserRole(userRole);
@@ -136,8 +136,8 @@ class AuthService {
         
         // Try to get role from response first, fallback to JWT
         final userRole = authData['role'] ?? JwtHelper.getUserRole(token);
-        // Try to get userId from JWT using 'sub' field or from response as username
-        final userId = JwtHelper.getUserId(token) ?? authData['username'];
+        // Try to get userId from response first (numeric), fallback to JWT, then username
+        final userId = authData['userId']?.toString() ?? JwtHelper.getUserId(token) ?? authData['username'];
         
         if (userRole != null && userId != null) {
           await SecureStorage.saveUserRole(userRole);

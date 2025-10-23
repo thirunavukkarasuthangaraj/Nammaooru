@@ -61,10 +61,16 @@ public class FirebaseController {
                     request.getDeviceId()
                 );
 
-                // Subscribe to shop owner topics
-                firebaseService.subscribeUserToTopics(userId, "SHOP_OWNER");
-
                 log.info("✅ FCM token registered successfully for shop owner: {} (ID: {})", username, userId);
+
+                // Subscribe to shop owner topics (do this after token is saved)
+                try {
+                    firebaseService.subscribeUserToTopics(userId, "SHOP_OWNER");
+                    log.info("✅ Subscribed shop owner to FCM topics");
+                } catch (Exception e) {
+                    log.warn("⚠️ Failed to subscribe to topics (non-critical): {}", e.getMessage());
+                    // Don't fail the registration if topic subscription fails
+                }
 
                 response.put("statusCode", "0000");
                 response.put("message", "FCM token stored successfully");
@@ -117,10 +123,16 @@ public class FirebaseController {
                     request.getDeviceId()
                 );
 
-                // Subscribe to delivery partner topics
-                firebaseService.subscribeUserToTopics(userId, "DELIVERY_PARTNER");
-
                 log.info("✅ FCM token registered successfully for delivery partner: {} (ID: {})", username, userId);
+
+                // Subscribe to delivery partner topics (do this after token is saved)
+                try {
+                    firebaseService.subscribeUserToTopics(userId, "DELIVERY_PARTNER");
+                    log.info("✅ Subscribed delivery partner to FCM topics");
+                } catch (Exception e) {
+                    log.warn("⚠️ Failed to subscribe to topics (non-critical): {}", e.getMessage());
+                    // Don't fail the registration if topic subscription fails
+                }
 
                 response.put("statusCode", "0000");
                 response.put("message", "FCM token stored successfully");

@@ -179,8 +179,9 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
         children: [
           // Left - Categories
           Container(
-            width: 100,
+            width: 130,
             color: Colors.white,
+            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
             child: ListView.builder(
               itemCount: _categories.length,
               itemBuilder: (context, index) {
@@ -209,36 +210,36 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                       children: [
                         // Category Image
                         SizedBox(
-                          width: 80,
-                          height: 70,
+                          width: 100,
+                          height: 90,
                           child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(12),
                             child: Image.network(
                               category['imageUrl'] ?? '',
-                              width: 80,
-                              height: 70,
+                              width: 100,
+                              height: 90,
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stackTrace) => Container(
-                                width: 80,
-                                height: 70,
+                                width: 100,
+                                height: 90,
                                 decoration: BoxDecoration(
                                   color: Colors.grey[300],
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Icon(
                                   _getCategoryIcon(categoryName),
                                   color: Colors.grey[600],
-                                  size: 36,
+                                  size: 48,
                                 ),
                               ),
                             ),
                           ),
                         ),
-                        SizedBox(height: 6),
+                        SizedBox(height: 8),
                         Text(
                           categoryName,
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 13,
                             color: isSelected ? Colors.green : Colors.grey[700],
                             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                           ),

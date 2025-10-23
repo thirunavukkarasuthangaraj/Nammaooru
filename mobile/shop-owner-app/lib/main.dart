@@ -30,10 +30,12 @@ void main() async {
   // Initialize Firebase only on mobile platforms
   if (!kIsWeb) {
     try {
-      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+      await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform);
 
       // Set up background message handler
-      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      FirebaseMessaging.onBackgroundMessage(
+          _firebaseMessagingBackgroundHandler);
 
       // Initialize local notifications
       const AndroidInitializationSettings initializationSettingsAndroid =
@@ -52,7 +54,8 @@ void main() async {
         playSound: true,
       );
       await flutterLocalNotificationsPlugin
-          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
           ?.createNotificationChannel(channel);
 
       // Request notification permissions
@@ -69,7 +72,8 @@ void main() async {
         print('Message data: ${message.data}');
 
         if (message.notification != null) {
-          print('Message also contained a notification: ${message.notification}');
+          print(
+              'Message also contained a notification: ${message.notification}');
 
           // Play notification sound
           await audioPlayer.play(AssetSource('sounds/new_order.mp3'));
@@ -116,7 +120,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'NammaOoru Shop Owner',
+      title: 'Shop Owner',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       home: const LoginScreen(),
@@ -203,10 +207,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final data = jsonDecode(response.body);
       print('Login response: $data');
-      print('Status code check: ${response.statusCode} == 200 && ${data['statusCode']} == 0000');
+      print(
+          'Status code check: ${response.statusCode} == 200 && ${data['statusCode']} == 0000');
 
       // Backend returns accessToken, not token
-      final token = data['data']?['accessToken']?.toString() ?? data['data']?['token']?.toString() ?? '';
+      final token = data['data']?['accessToken']?.toString() ??
+          data['data']?['token']?.toString() ??
+          '';
       print('Token from response: $token');
       print('Token type: ${token.runtimeType}');
 
@@ -221,6 +228,18 @@ class _LoginScreenState extends State<LoginScreen> {
         await prefs.setString('user_data', jsonEncode(data['data']));
 
         print('Token saved to storage: ${await prefs.getString('auth_token')}');
+
+        // Register FCM token with backend
+        try {
+          String? fcmToken = await FirebaseMessaging.instance.getToken();
+          if (fcmToken != null) {
+            print('📱 Registering FCM token: ${fcmToken.substring(0, 20)}...');
+            await _registerFCMToken(fcmToken, token);
+          }
+        } catch (e) {
+          print('⚠️ Error registering FCM token: $e');
+          // Don't block login if FCM registration fails
+        }
 
         if (!mounted) {
           print('Widget not mounted, cannot navigate');
@@ -249,6 +268,35 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _registerFCMToken(String fcmToken, String authToken) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/shop-owner/notifications/fcm-token'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+        body: jsonEncode({
+          'fcmToken': fcmToken,
+          'deviceType': 'android',
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['statusCode'] == '0000') {
+          print('✅ FCM token registered successfully with backend');
+        } else {
+          print('⚠️ FCM token registration failed: ${data['message']}');
+        }
+      } else {
+        print('⚠️ FCM token registration HTTP error: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ Error registering FCM token: $e');
     }
   }
 
@@ -287,7 +335,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     height: 120,
                     decoration: BoxDecoration(
                       gradient: AppTheme.primaryGradient,
-                      borderRadius: BorderRadius.circular(AppTheme.radiusXLarge),
+                      borderRadius:
+                          BorderRadius.circular(AppTheme.radiusXLarge),
                       boxShadow: AppTheme.shadowLarge,
                     ),
                     child: const Icon(
@@ -301,7 +350,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: AppTheme.space8),
                   Text(
                     'Manage your shop efficiently',
-                    style: AppTheme.bodyLarge.copyWith(color: AppTheme.textSecondary),
+                    style: AppTheme.bodyLarge
+                        .copyWith(color: AppTheme.textSecondary),
                   ),
                   const SizedBox(height: AppTheme.space48),
 
@@ -311,7 +361,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     decoration: InputDecoration(
                       labelText: 'Username',
                       hintText: 'Enter your username',
-                      prefixIcon: const Icon(Icons.person, color: AppTheme.primary),
+                      prefixIcon:
+                          const Icon(Icons.person, color: AppTheme.primary),
                       filled: true,
                       fillColor: AppTheme.surface,
                     ),
@@ -331,12 +382,15 @@ class _LoginScreenState extends State<LoginScreen> {
                     decoration: InputDecoration(
                       labelText: 'Password',
                       hintText: 'Enter your password',
-                      prefixIcon: const Icon(Icons.lock, color: AppTheme.primary),
+                      prefixIcon:
+                          const Icon(Icons.lock, color: AppTheme.primary),
                       filled: true,
                       fillColor: AppTheme.surface,
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                          _obscurePassword
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
                           color: AppTheme.textSecondary,
                         ),
                         onPressed: () {
@@ -401,16 +455,19 @@ class _LoginScreenState extends State<LoginScreen> {
                                 decoration: BoxDecoration(
                                   color: AppTheme.warning.withOpacity(0.1),
                                   borderRadius: AppTheme.roundedMedium,
-                                  border: Border.all(color: AppTheme.warning.withOpacity(0.3)),
+                                  border: Border.all(
+                                      color: AppTheme.warning.withOpacity(0.3)),
                                 ),
                                 child: Row(
                                   children: [
-                                    Icon(Icons.info, color: AppTheme.warning, size: 20),
+                                    Icon(Icons.info,
+                                        color: AppTheme.warning, size: 20),
                                     const SizedBox(width: AppTheme.space8),
                                     Expanded(
                                       child: Text(
                                         'Make sure backend is running on port 8080',
-                                        style: AppTheme.bodySmall.copyWith(color: AppTheme.warning),
+                                        style: AppTheme.bodySmall
+                                            .copyWith(color: AppTheme.warning),
                                       ),
                                     ),
                                   ],

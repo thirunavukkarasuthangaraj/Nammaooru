@@ -180,8 +180,8 @@ public class PromotionController {
         promotion.setStatus(Promotion.PromotionStatus.valueOf(request.getStatus()));
         promotion.setUsageLimit(request.getUsageLimit());
         promotion.setUsageLimitPerCustomer(request.getUsageLimitPerCustomer());
-        promotion.setFirstTimeOnly(request.isFirstTimeOnly());
-        promotion.setApplicableToAllShops(request.isApplicableToAllShops());
+        promotion.setIsFirstTimeOnly(request.isFirstTimeOnly());
+        promotion.setIsPublic(request.isApplicableToAllShops());
         promotion.setImageUrl(request.getImageUrl());
 
         Promotion savedPromotion = promotionRepository.save(promotion);
@@ -219,8 +219,8 @@ public class PromotionController {
         promotion.setStatus(Promotion.PromotionStatus.valueOf(request.getStatus()));
         promotion.setUsageLimit(request.getUsageLimit());
         promotion.setUsageLimitPerCustomer(request.getUsageLimitPerCustomer());
-        promotion.setFirstTimeOnly(request.isFirstTimeOnly());
-        promotion.setApplicableToAllShops(request.isApplicableToAllShops());
+        promotion.setIsFirstTimeOnly(request.isFirstTimeOnly());
+        promotion.setIsPublic(request.isApplicableToAllShops());
         promotion.setImageUrl(request.getImageUrl());
 
         Promotion updatedPromotion = promotionRepository.save(promotion);
