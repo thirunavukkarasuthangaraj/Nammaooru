@@ -1394,8 +1394,13 @@ public class OrderService {
         Notification.NotificationType notificationType = Notification.NotificationType.ORDER;
 
         switch (newStatus) {
+            case PENDING:
+                title = "Order Placed Successfully! 🎉";
+                message = String.format("Your order %s has been placed at %s and is awaiting confirmation.",
+                        order.getOrderNumber(), order.getShop().getName());
+                break;
             case CONFIRMED:
-                title = "Order Confirmed! 🎉";
+                title = "Order Confirmed! ✅";
                 message = String.format("Your order %s from %s has been confirmed and will be prepared soon.",
                         order.getOrderNumber(), order.getShop().getName());
                 break;
@@ -1404,25 +1409,45 @@ public class OrderService {
                 message = String.format("Your order %s is being prepared by %s.",
                         order.getOrderNumber(), order.getShop().getName());
                 break;
+            case READY:
+                title = "Order Ready! 📦";
+                message = String.format("Your order %s is ready at %s.",
+                        order.getOrderNumber(), order.getShop().getName());
+                break;
             case READY_FOR_PICKUP:
                 title = "Order Ready for Pickup 📦";
-                message = String.format("Your order %s is ready and will be picked up soon for delivery.",
+                message = String.format("Your order %s is ready and a delivery partner has been assigned.",
                         order.getOrderNumber());
                 break;
             case OUT_FOR_DELIVERY:
-                title = "Out for Delivery 🚚";
-                message = String.format("Your order %s is on its way! Your delivery partner will reach you soon.",
+                title = "Out for Delivery! 🚚";
+                message = String.format("Your order %s has been picked up and is on its way to you!",
                         order.getOrderNumber());
                 break;
             case DELIVERED:
-                title = "Order Delivered ✅";
+                title = "Order Delivered! ✅";
                 message = String.format("Your order %s has been delivered successfully. Thank you for your order!",
+                        order.getOrderNumber());
+                break;
+            case COMPLETED:
+                title = "Order Completed! 🎊";
+                message = String.format("Your order %s has been completed. Thank you for choosing us!",
                         order.getOrderNumber());
                 break;
             case CANCELLED:
                 title = "Order Cancelled ❌";
                 message = String.format("Your order %s has been cancelled.",
                         order.getOrderNumber());
+                break;
+            case REFUNDED:
+                title = "Order Refunded 💰";
+                message = String.format("Your order %s has been refunded. The amount will be credited shortly.",
+                        order.getOrderNumber());
+                break;
+            case SELF_PICKUP_COLLECTED:
+                title = "Order Collected! 📦";
+                message = String.format("You have collected your order %s from %s. Enjoy!",
+                        order.getOrderNumber(), order.getShop().getName());
                 break;
             default:
                 title = "Order Status Updated 📋";

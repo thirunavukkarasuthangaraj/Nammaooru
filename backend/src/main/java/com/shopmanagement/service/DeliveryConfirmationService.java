@@ -120,6 +120,7 @@ public class DeliveryConfirmationService {
             }
 
             // Update order status to OUT_FOR_DELIVERY
+            // This will automatically trigger FCM notification through OrderService.updateOrderStatus()
             orderService.updateOrderStatus(orderId, Order.OrderStatus.OUT_FOR_DELIVERY);
 
             // Save pickup confirmation details
@@ -128,12 +129,7 @@ public class DeliveryConfirmationService {
             // Remove OTP from storage
             otpStorage.remove(otpKey);
 
-            // Send notifications
-            // TODO: Fix notification service method
-            // notificationService.notifyOrderStatusChange(orderId, "ACCEPTED", "PICKED_UP",
-            //     Map.of("pickupPhotoUrl", photoUrl));
-
-            log.info("Pickup confirmed for order {}", orderId);
+            log.info("✅ Pickup confirmed for order {} - FCM notification sent automatically through status update", orderId);
 
             return DeliveryConfirmationResponse.builder()
                 .success(true)
