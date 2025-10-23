@@ -5,6 +5,13 @@ plugins {
     id "com.google.gms.google-services"
 }
 
+// Load keystore properties
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('key.properties')
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace "com.nammaooru.app"
     compileSdk 36
@@ -26,6 +33,17 @@ android {
         versionName "1.0"
     }
 
+    signingConfigs {
+        release {
+            if (keystorePropertiesFile.exists()) {
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+            }
+        }
+    }
+
     buildTypes {
         debug {
             minifyEnabled false
@@ -33,9 +51,12 @@ android {
             debuggable true
         }
         release {
+            // Disable minify to avoid build issues
             minifyEnabled false
             shrinkResources false
-            signingConfig signingConfigs.debug
+
+            // Use release signing config if available, otherwise debug
+            signingConfig keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug
         }
     }
 }

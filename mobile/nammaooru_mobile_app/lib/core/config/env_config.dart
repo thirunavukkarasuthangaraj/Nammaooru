@@ -1,13 +1,13 @@
 class EnvConfig {
   // Base API Configuration
   // PRODUCTION: Use your deployed server
-  // static const String baseUrl = 'https://nammaoorudelivary.in';
-  // static const String apiUrl =
-  //     'https://nammaoorudelivary.in'; // Alias for compatibility
+  static const String baseUrl = 'https://nammaoorudelivary.in';
+  static const String apiUrl =
+      'https://nammaoorudelivary.in'; // Alias for compatibility
 
   // DEVELOPMENT: Local development
-  static const String baseUrl = 'http://10.187.95.46:8080';
-  static const String apiUrl = 'http://10.187.95.46:8080'; // Alias for compatibility
+  // static const String baseUrl = 'http://10.187.95.46:8080';
+  // static const String apiUrl = 'http://10.187.95.46:8080'; // Alias for compatibility
   // static const String baseUrl = 'http://10.0.2.2:8080'; // Android emulator
   // static const String baseUrl = 'http://192.168.1.100:8080'; // Local Network IP
 
