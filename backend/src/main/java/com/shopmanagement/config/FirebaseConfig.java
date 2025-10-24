@@ -26,9 +26,13 @@ public class FirebaseConfig {
 
     @PostConstruct
     public void initializeFirebase() {
+        logger.info("🔥 FirebaseConfig @PostConstruct method CALLED!");
+        logger.info("🔥 firebase.service-account-path value: {}", firebaseServiceAccountPath);
         try {
             // Check if Firebase app is already initialized
+            logger.info("🔥 Checking if Firebase apps exist...");
             if (FirebaseApp.getApps().isEmpty()) {
+                logger.info("🔥 Firebase apps list is empty, initializing...");
                 InputStream serviceAccount = getFirebaseServiceAccountStream();
 
                 // Build Firebase options using the mobile app's project configuration
