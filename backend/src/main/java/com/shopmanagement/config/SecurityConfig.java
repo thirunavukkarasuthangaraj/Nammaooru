@@ -81,6 +81,7 @@ public class SecurityConfig {
                                 "/api/delivery-fees/**",
                                 "/api/delivery/confirmation/**",  // Allow OTP verification
                                 "/api/customer/shops/**",
+                                "/api/mobile/delivery-partner/track/**",  // Allow public order tracking for customers
                                 "/uploads/**",
                                 "/shops/**",
                                 "/delivery-partners/**",
