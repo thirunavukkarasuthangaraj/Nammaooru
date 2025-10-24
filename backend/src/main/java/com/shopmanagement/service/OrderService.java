@@ -121,16 +121,45 @@ public class OrderService {
         Shop shop = shopRepository.findById(request.getShopId())
                 .orElseThrow(() -> new RuntimeException("Shop not found"));
         
-        // Calculate order totals
+        // Calculate order totals and validate stock
         BigDecimal subtotal = BigDecimal.ZERO;
         List<OrderItem> orderItems = request.getOrderItems().stream()
                 .map(itemRequest -> {
                     ShopProduct shopProduct = shopProductRepository.findById(itemRequest.getShopProductId())
                             .orElseThrow(() -> new RuntimeException("Product not found"));
-                    
+
+                    // Validate stock availability if inventory tracking is enabled
+                    if (shopProduct.getTrackInventory()) {
+                        Integer currentStock = shopProduct.getStockQuantity() != null ? shopProduct.getStockQuantity() : 0;
+                        if (currentStock < itemRequest.getQuantity()) {
+                            throw new RuntimeException(String.format(
+                                "Insufficient stock for product '%s'. Available: %d, Requested: %d",
+                                shopProduct.getMasterProduct().getName(),
+                                currentStock,
+                                itemRequest.getQuantity()
+                            ));
+                        }
+
+                        // Reduce stock
+                        int newStock = currentStock - itemRequest.getQuantity();
+                        shopProduct.setStockQuantity(newStock);
+
+                        // Update product status if out of stock
+                        if (newStock == 0) {
+                            shopProduct.setStatus(ShopProduct.ShopProductStatus.OUT_OF_STOCK);
+                            shopProduct.setIsAvailable(false);
+                        }
+
+                        // Save the updated product
+                        shopProductRepository.save(shopProduct);
+
+                        log.info("Stock reduced for product {}: {} -> {}",
+                            shopProduct.getId(), currentStock, newStock);
+                    }
+
                     BigDecimal itemTotal = shopProduct.getPrice()
                             .multiply(BigDecimal.valueOf(itemRequest.getQuantity()));
-                    
+
                     return OrderItem.builder()
                             .shopProduct(shopProduct)
                             .quantity(itemRequest.getQuantity())
@@ -1109,15 +1138,44 @@ public class OrderService {
         Shop shop = shopRepository.findById(request.getShopId())
                 .orElseThrow(() -> new RuntimeException("Shop not found"));
         
-        // Create order items
+        // Create order items and validate/reduce stock
         List<OrderItem> orderItems = request.getItems().stream()
                 .map(itemRequest -> {
                     ShopProduct shopProduct = shopProductRepository.findById(itemRequest.getProductId())
                             .orElseThrow(() -> new RuntimeException("Product not found"));
-                    
+
+                    // Validate stock availability if inventory tracking is enabled
+                    if (shopProduct.getTrackInventory()) {
+                        Integer currentStock = shopProduct.getStockQuantity() != null ? shopProduct.getStockQuantity() : 0;
+                        if (currentStock < itemRequest.getQuantity()) {
+                            throw new RuntimeException(String.format(
+                                "Insufficient stock for product '%s'. Available: %d, Requested: %d",
+                                shopProduct.getMasterProduct().getName(),
+                                currentStock,
+                                itemRequest.getQuantity()
+                            ));
+                        }
+
+                        // Reduce stock
+                        int newStock = currentStock - itemRequest.getQuantity();
+                        shopProduct.setStockQuantity(newStock);
+
+                        // Update product status if out of stock
+                        if (newStock == 0) {
+                            shopProduct.setStatus(ShopProduct.ShopProductStatus.OUT_OF_STOCK);
+                            shopProduct.setIsAvailable(false);
+                        }
+
+                        // Save the updated product
+                        shopProductRepository.save(shopProduct);
+
+                        log.info("Stock reduced for product {}: {} -> {}",
+                            shopProduct.getId(), currentStock, newStock);
+                    }
+
                     BigDecimal itemTotal = itemRequest.getPrice()
                             .multiply(BigDecimal.valueOf(itemRequest.getQuantity()));
-                    
+
                     return OrderItem.builder()
                             .shopProduct(shopProduct)
                             .quantity(itemRequest.getQuantity())
