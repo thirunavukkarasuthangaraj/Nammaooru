@@ -314,8 +314,15 @@ public class OrderAssignmentService {
 
         // Send notification to shop owner that driver accepted the order
         try {
-            if (order.getShop() != null && order.getShop().getOwner() != null) {
-                Long shopOwnerId = order.getShop().getOwner().getId();
+            if (order.getShop() != null && order.getShop().getOwnerEmail() != null) {
+                // Find shop owner user by email
+                Optional<User> shopOwnerOpt = userRepository.findByEmail(order.getShop().getOwnerEmail());
+                if (shopOwnerOpt.isEmpty()) {
+                    log.warn("Shop owner user not found for email: {}", order.getShop().getOwnerEmail());
+                    return assignment;
+                }
+
+                Long shopOwnerId = shopOwnerOpt.get().getId();
                 User partner = assignment.getDeliveryPartner();
 
                 // Get FCM tokens for the shop owner
