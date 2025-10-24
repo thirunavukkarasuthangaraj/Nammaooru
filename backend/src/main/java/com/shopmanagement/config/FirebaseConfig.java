@@ -21,11 +21,21 @@ public class FirebaseConfig {
 
     private static final Logger logger = LoggerFactory.getLogger(FirebaseConfig.class);
 
+    static {
+        System.out.println("🔥🔥🔥 FirebaseConfig CLASS LOADING - Static block executed!");
+    }
+
     @Value("${firebase.service-account-path:}")
     private String firebaseServiceAccountPath;
 
+    public FirebaseConfig() {
+        System.out.println("🔥🔥🔥 FirebaseConfig CONSTRUCTOR called!");
+        logger.info("🔥🔥🔥 FirebaseConfig bean being created!");
+    }
+
     @PostConstruct
     public void initializeFirebase() {
+        System.out.println("🔥🔥🔥 FirebaseConfig @PostConstruct method CALLED!");
         logger.info("🔥 FirebaseConfig @PostConstruct method CALLED!");
         logger.info("🔥 firebase.service-account-path value: {}", firebaseServiceAccountPath);
         try {
