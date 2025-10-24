@@ -21,7 +21,7 @@ public class FirebaseConfig {
 
     private static final Logger logger = LoggerFactory.getLogger(FirebaseConfig.class);
 
-    @Value("${FIREBASE_SERVICE_ACCOUNT:}")
+    @Value("${firebase.service-account-path:}")
     private String firebaseServiceAccountPath;
 
     @PostConstruct
