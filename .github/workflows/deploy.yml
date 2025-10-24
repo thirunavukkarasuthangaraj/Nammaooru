@@ -128,9 +128,17 @@ jobs:
           # Build and start new containers with no cache
           echo "Building containers with latest code from $(pwd)..."
           echo "Backend build starting..."
-          docker-compose build --no-cache --pull backend 2>&1 | tail -20
+          if ! docker-compose build --no-cache --pull backend; then
+            echo "ERROR: Backend build failed!"
+            docker-compose logs backend
+            exit 1
+          fi
           echo "Frontend build starting..."
-          docker-compose build --no-cache --pull frontend 2>&1 | tail -20
+          if ! docker-compose build --no-cache --pull frontend; then
+            echo "ERROR: Frontend build failed!"
+            docker-compose logs frontend
+            exit 1
+          fi
           
           echo "=== STEP 7: Start containers ==="
           # Clean up containers
