@@ -98,68 +98,40 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF1B5E20),  // Dark green
-              Color(0xFF2E7D32),  // Medium dark green
-              Color(0xFF388E3C),  // Lighter dark green
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Consumer2<AuthProvider, LanguageProvider>(
-            builder: (context, authProvider, languageProvider, child) {
-              return LoadingOverlay(
-                isLoading: authProvider.authState == AuthState.loading,
-                loadingMessage: 'Logging in...',
-                child: Center(
-                  child: SingleChildScrollView(
-                    child: Container(
-                      margin: const EdgeInsets.all(24.0),
-                      padding: const EdgeInsets.all(32.0),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 20,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
-                      ),
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _buildHeader(),
-                            const SizedBox(height: 32),
-                            _buildTabButtons(),
-                            const SizedBox(height: 24),
-                            _buildEmailField(),
-                            const SizedBox(height: 16),
-                            _buildPasswordField(),
-                            const SizedBox(height: 12),
-                            _buildRememberMeAndForgotPassword(),
-                            const SizedBox(height: 24),
-                            _buildLoginButton(),
-                            const SizedBox(height: 16),
-                            _buildSignUpLink(),
-                          ],
-                        ),
-                      ),
-                    ),
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Consumer2<AuthProvider, LanguageProvider>(
+          builder: (context, authProvider, languageProvider, child) {
+            return LoadingOverlay(
+              isLoading: authProvider.authState == AuthState.loading,
+              loadingMessage: 'Logging in...',
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24.0),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: 40),
+                      _buildHeader(),
+                      const SizedBox(height: 32),
+                      _buildTabButtons(),
+                      const SizedBox(height: 24),
+                      _buildEmailField(),
+                      const SizedBox(height: 16),
+                      _buildPasswordField(),
+                      const SizedBox(height: 12),
+                      _buildRememberMeAndForgotPassword(),
+                      const SizedBox(height: 24),
+                      _buildLoginButton(),
+                      const SizedBox(height: 16),
+                      _buildSignUpLink(),
+                    ],
                   ),
                 ),
-              );
-            },
-          ),
+              ),
+            );
+          },
         ),
       ),
     );
