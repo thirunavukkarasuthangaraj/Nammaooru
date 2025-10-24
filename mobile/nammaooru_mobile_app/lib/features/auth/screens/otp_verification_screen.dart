@@ -310,66 +310,60 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   }
 
   Widget _buildOtpFields() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: List.generate(6, (index) {
-          return AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeInOut,
-            width: 48,
-            height: 64,
+          final bool isFilled = _otpControllers[index].text.isNotEmpty;
+          final bool isFocused = _focusNodes[index].hasFocus;
+
+          return Container(
+            width: 50,
+            height: 56,
             decoration: BoxDecoration(
+              color: const Color(0xFFF8F9FA),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: _focusNodes[index].hasFocus
+                color: isFocused
                     ? AppColors.primary
-                    : _otpControllers[index].text.isNotEmpty
-                        ? AppColors.primary.withOpacity(0.3)
-                        : const Color(0xFFE0E0E0),
-                width: _focusNodes[index].hasFocus ? 2 : 1.5,
+                    : isFilled
+                        ? AppColors.primary.withOpacity(0.4)
+                        : const Color(0xFFE8E8E8),
+                width: isFocused ? 2.5 : 1.5,
               ),
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: _focusNodes[index].hasFocus
-                      ? AppColors.primary.withOpacity(0.1)
-                      : Colors.black.withOpacity(0.03),
-                  blurRadius: _focusNodes[index].hasFocus ? 8 : 4,
-                  offset: const Offset(0, 2),
-                )
-              ],
             ),
-            child: TextFormField(
-              controller: _otpControllers[index],
-              focusNode: _focusNodes[index],
-              keyboardType: TextInputType.number,
-              textAlign: TextAlign.center,
-              maxLength: 1,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: _otpControllers[index].text.isNotEmpty
-                    ? AppColors.primary
-                    : Colors.black87,
+            child: Center(
+              child: TextFormField(
+                controller: _otpControllers[index],
+                focusNode: _focusNodes[index],
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                maxLength: 1,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w600,
+                  color: isFilled ? AppColors.primary : Colors.black87,
+                  letterSpacing: 0,
+                ),
+                decoration: const InputDecoration(
+                  counterText: '',
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                ],
+                onChanged: (value) => _onOtpChanged(value, index),
+                onTap: () {
+                  if (_otpControllers[index].text.isNotEmpty) {
+                    _otpControllers[index].clear();
+                  }
+                },
+                validator: (value) => null,
               ),
-              decoration: const InputDecoration(
-                counterText: '',
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.zero,
-              ),
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-              ],
-              onChanged: (value) => _onOtpChanged(value, index),
-              onTap: () {
-                // Clear and focus for smooth experience
-                if (_otpControllers[index].text.isNotEmpty) {
-                  _otpControllers[index].clear();
-                }
-              },
-              validator: (value) => null, // Remove validation errors
             ),
           );
         }),
