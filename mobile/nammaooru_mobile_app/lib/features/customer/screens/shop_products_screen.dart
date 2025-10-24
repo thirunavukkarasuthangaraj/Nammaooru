@@ -219,19 +219,40 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                               width: 100,
                               height: 90,
                               fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => Container(
-                                width: 100,
-                                height: 90,
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[300],
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Icon(
-                                  _getCategoryIcon(categoryName),
-                                  color: Colors.grey[600],
-                                  size: 48,
-                                ),
-                              ),
+                              loadingBuilder: (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return Container(
+                                  width: 100,
+                                  height: 90,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[200],
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Center(
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+                                    ),
+                                  ),
+                                );
+                              },
+                              errorBuilder: (context, error, stackTrace) {
+                                // Log the error
+                                print('Error loading category image for $categoryName: $error');
+                                return Container(
+                                  width: 100,
+                                  height: 90,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[300],
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(
+                                    _getCategoryIcon(categoryName),
+                                    color: Colors.grey[600],
+                                    size: 48,
+                                  ),
+                                );
+                              },
                             ),
                           ),
                         ),
