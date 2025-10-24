@@ -219,40 +219,19 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                               width: 100,
                               height: 90,
                               fit: BoxFit.cover,
-                              loadingBuilder: (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return Container(
-                                  width: 100,
-                                  height: 90,
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[200],
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Center(
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
-                                    ),
-                                  ),
-                                );
-                              },
-                              errorBuilder: (context, error, stackTrace) {
-                                // Log the error
-                                print('Error loading category image for $categoryName: $error');
-                                return Container(
-                                  width: 100,
-                                  height: 90,
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[300],
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Icon(
-                                    _getCategoryIcon(categoryName),
-                                    color: Colors.grey[600],
-                                    size: 48,
-                                  ),
-                                );
-                              },
+                              errorBuilder: (context, error, stackTrace) => Container(
+                                width: 100,
+                                height: 90,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[300],
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  _getCategoryIcon(categoryName),
+                                  color: Colors.grey[600],
+                                  size: 48,
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -337,16 +316,29 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                                     flex: 3,
                                     child: Stack(
                                       children: [
-                                        Container(
-                                          decoration: BoxDecoration(
-                                            color: isOutOfStock ? Colors.grey[300] : Colors.grey[200],
-                                            borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
-                                          ),
-                                          child: Center(
-                                            child: Icon(
-                                              _getCategoryIcon(product['category']),
-                                              size: 40,
-                                              color: isOutOfStock ? Colors.grey[500] : Colors.grey[400],
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+                                          child: Image.network(
+                                            product['primaryImageUrl'] != null && product['primaryImageUrl'].toString().isNotEmpty
+                                                ? (product['primaryImageUrl'].toString().startsWith('http')
+                                                    ? product['primaryImageUrl']
+                                                    : '${EnvConfig.baseUrl}${product['primaryImageUrl']}')
+                                                : '',
+                                            width: double.infinity,
+                                            height: double.infinity,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (context, error, stackTrace) => Container(
+                                              decoration: BoxDecoration(
+                                                color: isOutOfStock ? Colors.grey[300] : Colors.grey[200],
+                                                borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+                                              ),
+                                              child: Center(
+                                                child: Icon(
+                                                  _getCategoryIcon(product['category']),
+                                                  size: 40,
+                                                  color: isOutOfStock ? Colors.grey[500] : Colors.grey[400],
+                                                ),
+                                              ),
                                             ),
                                           ),
                                         ),
