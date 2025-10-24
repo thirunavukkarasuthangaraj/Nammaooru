@@ -184,26 +184,38 @@ public class FirebaseNotificationService {
     }
 
     private String getNotificationTitle(String status) {
-        return switch (status.toLowerCase()) {
-            case "confirmed" -> "Order Confirmed! 🎉";
-            case "preparing" -> "Order Being Prepared 👨‍🍳";
-            case "ready_for_pickup" -> "Order Ready! 📦";
-            case "out_for_delivery" -> "Out for Delivery! 🚚";
-            case "delivered" -> "Order Delivered! ✅";
-            case "cancelled" -> "Order Cancelled ❌";
-            default -> "Order Update";
+        return switch (status.toUpperCase()) {
+            case "PENDING" -> "Order Placed Successfully! 🎉";
+            case "CONFIRMED" -> "Order Confirmed! ✅";
+            case "PREPARING" -> "Order Being Prepared 👨‍🍳";
+            case "READY" -> "Order Ready! 📦";
+            case "READY_FOR_PICKUP" -> "Ready for Pickup! 🚚";
+            case "OUT_FOR_DELIVERY" -> "Out for Delivery! 🛵";
+            case "DELIVERED" -> "Order Delivered! ✅";
+            case "COMPLETED" -> "Order Completed! 🎊";
+            case "CANCELLED" -> "Order Cancelled ❌";
+            case "REFUNDED" -> "Order Refunded 💰";
+            case "SELF_PICKUP_COLLECTED" -> "Order Collected! 📦";
+            case "DRIVER_ACCEPTED" -> "Driver Accepted! 🚚";
+            default -> "Order Update 📋";
         };
     }
 
     private String getNotificationBody(String orderNumber, String status) {
-        return switch (status.toLowerCase()) {
-            case "confirmed" -> String.format("Your order %s has been confirmed and is being prepared.", orderNumber);
-            case "preparing" -> String.format("Your order %s is being prepared by the restaurant.", orderNumber);
-            case "ready_for_pickup" -> String.format("Your order %s is ready for pickup!", orderNumber);
-            case "out_for_delivery" -> String.format("Your order %s is on its way to you!", orderNumber);
-            case "delivered" -> String.format("Your order %s has been delivered successfully!", orderNumber);
-            case "cancelled" -> String.format("Your order %s has been cancelled.", orderNumber);
-            default -> String.format("Update for your order %s", orderNumber);
+        return switch (status.toUpperCase()) {
+            case "PENDING" -> String.format("Your order %s has been placed successfully and is awaiting shop confirmation.", orderNumber);
+            case "CONFIRMED" -> String.format("Your order %s has been confirmed and will be prepared soon.", orderNumber);
+            case "PREPARING" -> String.format("Your order %s is being prepared by the restaurant.", orderNumber);
+            case "READY" -> String.format("Your order %s is ready at the shop!", orderNumber);
+            case "READY_FOR_PICKUP" -> String.format("Your order %s is ready and a delivery partner has been assigned!", orderNumber);
+            case "OUT_FOR_DELIVERY" -> String.format("Your order %s is on its way to you!", orderNumber);
+            case "DELIVERED" -> String.format("Your order %s has been delivered successfully! Enjoy your meal!", orderNumber);
+            case "COMPLETED" -> String.format("Your order %s is now completed. Thank you for choosing us!", orderNumber);
+            case "CANCELLED" -> String.format("Your order %s has been cancelled.", orderNumber);
+            case "REFUNDED" -> String.format("Your order %s has been refunded. The amount will be credited to your account shortly.", orderNumber);
+            case "SELF_PICKUP_COLLECTED" -> String.format("You have collected your order %s. Enjoy your meal!", orderNumber);
+            case "DRIVER_ACCEPTED" -> String.format("A delivery partner has accepted your order %s and will pick it up soon!", orderNumber);
+            default -> String.format("Status update for your order %s", orderNumber);
         };
     }
 
@@ -246,10 +258,12 @@ public class FirebaseNotificationService {
             case "order_assignment" -> "new_order.mp3";  // For delivery partners receiving assignment
             case "order_update" -> {
                 if (status != null) {
-                    yield switch (status.toLowerCase()) {
-                        case "confirmed", "pending" -> "new_order.mp3";
-                        case "cancelled" -> "order_cancelled.mp3";
-                        case "delivered" -> "success_chime.mp3";
+                    yield switch (status.toUpperCase()) {
+                        case "PENDING", "CONFIRMED", "DRIVER_ACCEPTED" -> "new_order.mp3";
+                        case "PREPARING", "READY", "READY_FOR_PICKUP" -> "message_received.mp3";
+                        case "OUT_FOR_DELIVERY" -> "new_order.mp3";
+                        case "DELIVERED", "COMPLETED", "SELF_PICKUP_COLLECTED" -> "success_chime.mp3";
+                        case "CANCELLED", "REFUNDED" -> "order_cancelled.mp3";
                         default -> "message_received.mp3";
                     };
                 }
