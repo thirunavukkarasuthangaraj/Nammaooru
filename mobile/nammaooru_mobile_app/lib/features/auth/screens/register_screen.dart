@@ -91,91 +91,63 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF1B5E20),  // Dark green
-              Color(0xFF2E7D32),  // Medium dark green
-              Color(0xFF388E3C),  // Lighter dark green
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Consumer<AuthProvider>(
-            builder: (context, authProvider, child) {
-              if (authProvider.authState == AuthState.loading) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CircularProgressIndicator(
-                        color: VillageTheme.primaryGreen,
-                        strokeWidth: 3,
-                      ),
-                      const SizedBox(height: VillageTheme.spacingM),
-                      Text(
-                        'Creating Account...',
-                        style: VillageTheme.bodyLarge.copyWith(
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }
-
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Consumer<AuthProvider>(
+          builder: (context, authProvider, child) {
+            if (authProvider.authState == AuthState.loading) {
               return Center(
-                child: SingleChildScrollView(
-                  child: Container(
-                    margin: const EdgeInsets.all(24.0),
-                    padding: const EdgeInsets.all(32.0),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      color: VillageTheme.primaryGreen,
+                      strokeWidth: 3,
                     ),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _buildHeader(),
-                          const SizedBox(height: 32),
-                          _buildTabButtons(),
-                          const SizedBox(height: 24),
-                          _buildNameField(),
-                          const SizedBox(height: 16),
-                          _buildEmailField(),
-                          const SizedBox(height: 16),
-                          _buildPhoneField(),
-                          const SizedBox(height: 16),
-                          _buildPasswordField(),
-                          const SizedBox(height: 16),
-                          _buildConfirmPasswordField(),
-                          const SizedBox(height: 16),
-                          _buildTermsAndConditions(),
-                          const SizedBox(height: 24),
-                          _buildRegisterButton(),
-                          const SizedBox(height: 16),
-                          _buildLoginLink(),
-                        ],
+                    const SizedBox(height: VillageTheme.spacingM),
+                    Text(
+                      'Creating Account...',
+                      style: VillageTheme.bodyLarge.copyWith(
+                        color: VillageTheme.primaryGreen,
                       ),
                     ),
-                  ),
+                  ],
                 ),
               );
-            },
-          ),
+            }
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 40),
+                    _buildHeader(),
+                    const SizedBox(height: 32),
+                    _buildTabButtons(),
+                    const SizedBox(height: 24),
+                    _buildNameField(),
+                    const SizedBox(height: 16),
+                    _buildEmailField(),
+                    const SizedBox(height: 16),
+                    _buildPhoneField(),
+                    const SizedBox(height: 16),
+                    _buildPasswordField(),
+                    const SizedBox(height: 16),
+                    _buildConfirmPasswordField(),
+                    const SizedBox(height: 16),
+                    _buildTermsAndConditions(),
+                    const SizedBox(height: 24),
+                    _buildRegisterButton(),
+                    const SizedBox(height: 16),
+                    _buildLoginLink(),
+                  ],
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
