@@ -312,6 +312,55 @@ public class OrderAssignmentService {
             log.info("✅ Generated pickup OTP for order {}: {}", order.getId(), otp);
         }
 
+        // Send notification to shop owner that driver accepted the order
+        try {
+            if (order.getShop() != null && order.getShop().getOwner() != null) {
+                Long shopOwnerId = order.getShop().getOwner().getId();
+                User partner = assignment.getDeliveryPartner();
+
+                // Get FCM tokens for the shop owner
+                List<UserFcmToken> tokens = userFcmTokenRepository.findActiveTokensByUserId(shopOwnerId);
+                log.info("📊 Found {} active FCM tokens for shop owner (user ID: {}) for driver accept notification",
+                    tokens.size(), shopOwnerId);
+
+                if (!tokens.isEmpty()) {
+                    boolean notificationSent = false;
+                    for (UserFcmToken tokenEntity : tokens) {
+                        String fcmToken = tokenEntity.getFcmToken();
+                        try {
+                            firebaseNotificationService.sendOrderNotification(
+                                order.getOrderNumber(),
+                                "DRIVER_ACCEPTED",
+                                fcmToken,
+                                shopOwnerId
+                            );
+                            log.info("✅ Driver accept notification sent to shop owner for order: {}", order.getOrderNumber());
+                            notificationSent = true;
+                            break; // Success! No need to try other tokens
+                        } catch (Exception e) {
+                            log.warn("⚠️ Failed to send driver accept notification with token {}..., trying next token: {}",
+                                fcmToken.substring(0, Math.min(30, fcmToken.length())), e.getMessage());
+                            // Continue to next token
+                        }
+                    }
+
+                    if (!notificationSent) {
+                        log.error("❌ Failed to send driver accept notification with all available tokens for order: {}",
+                            order.getOrderNumber());
+                    }
+                } else {
+                    log.warn("⚠️ No active FCM tokens found for shop owner (user ID: {}). Driver accept notification not sent for order: {}",
+                        shopOwnerId, order.getOrderNumber());
+                }
+            } else {
+                log.warn("⚠️ Shop or shop owner is null for order: {}. Driver accept notification not sent.",
+                    order.getOrderNumber());
+            }
+        } catch (Exception e) {
+            log.error("❌ Failed to send driver accept notification for order: {}", order.getOrderNumber(), e);
+            // Don't fail the accept operation if notification fails
+        }
+
         // Update partner status to ON_RIDE but keep them AVAILABLE for accepting more orders
         User partner = assignment.getDeliveryPartner();
         partner.setIsAvailable(true); // KEEP AVAILABLE - they can accept multiple orders

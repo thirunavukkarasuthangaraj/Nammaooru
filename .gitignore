@@ -1,1 +1,45 @@
 backend/src/main/resources/firebase-service-account.json
+
+# Root level documentation and temporary files
+/*.md
+/*.txt
+/*.py
+/*.sh
+/*.bat
+/*.png
+/*.json
+/*.conf
+nul
+
+# Build artifacts and temp folders
+NammaOoru_Customer_Release/
+NammaOoru_Shop_Owner_Release/
+NammaOoru_Production_APKs_*/
+PlayStore_Release/
+production_apks/
+
+# Backend temp files
+backend/*.md
+backend/*.java
+backend/*.class
+backend/*.sql
+backend/*.py
+backend/*.sh
+backend/*.bat
+
+# Mobile build artifacts
+mobile/**/.dart_tool/
+mobile/**/build/
+mobile/**/ios/Flutter/ephemeral/
+mobile/**/android/.gradle/
+mobile/**/android/.kotlin/
+mobile/**/*.jks
+mobile/**/key.properties
+
+# Frontend temp docs
+frontend/*.md
+
+# Documentation temp files
+documentation/*.md
+!documentation/firebase-setup/*.md
+!documentation/README.md
