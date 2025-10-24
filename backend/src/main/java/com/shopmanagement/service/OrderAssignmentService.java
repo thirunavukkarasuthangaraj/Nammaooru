@@ -391,6 +391,57 @@ public class OrderAssignmentService {
         order.setStatus(Order.OrderStatus.OUT_FOR_DELIVERY);
         orderRepository.save(order);
 
+        // Send push notification to customer
+        try {
+            if (order.getCustomer() != null && order.getCustomer().getEmail() != null) {
+                // Find user by customer's email
+                User customerUser = userRepository.findByEmail(order.getCustomer().getEmail()).orElse(null);
+                if (customerUser != null) {
+                    Long userId = customerUser.getId();
+
+                    // Get FCM tokens for the customer (newest first)
+                    List<UserFcmToken> tokens = userFcmTokenRepository.findActiveTokensByUserId(userId);
+                    log.info("📊 Found {} active FCM tokens for customer (user ID: {}) for pickup notification", tokens.size(), userId);
+
+                    if (!tokens.isEmpty()) {
+                        boolean notificationSent = false;
+                        for (UserFcmToken tokenEntity : tokens) {
+                            String fcmToken = tokenEntity.getFcmToken();
+                            try {
+                                firebaseNotificationService.sendOrderNotification(
+                                    order.getOrderNumber(),
+                                    "OUT_FOR_DELIVERY",
+                                    fcmToken,
+                                    order.getCustomer().getId()
+                                );
+                                log.info("✅ Pickup notification sent successfully to customer for order: {}", order.getOrderNumber());
+                                notificationSent = true;
+                                break; // Success! No need to try other tokens
+                            } catch (Exception e) {
+                                log.warn("⚠️ Failed to send pickup notification with token {}..., trying next token: {}",
+                                    fcmToken.substring(0, Math.min(30, fcmToken.length())), e.getMessage());
+                                // Continue to next token
+                            }
+                        }
+
+                        if (!notificationSent) {
+                            log.error("❌ Failed to send pickup notification with all available tokens for order: {}", order.getOrderNumber());
+                        }
+                    } else {
+                        log.warn("⚠️ No active FCM tokens found for customer (user ID: {}). Pickup notification not sent for order: {}",
+                            userId, order.getOrderNumber());
+                    }
+                } else {
+                    log.warn("⚠️ No user found for customer email: {}. Pickup notification not sent.", order.getCustomer().getEmail());
+                }
+            } else {
+                log.warn("⚠️ Customer or email is null for order: {}. Pickup notification not sent.", order.getOrderNumber());
+            }
+        } catch (Exception e) {
+            log.error("❌ Failed to send pickup push notification for order: {}", order.getOrderNumber(), e);
+            // Don't fail the pickup operation if notification fails
+        }
+
         log.info("Assignment {} marked as picked up and in transit by partner {}", assignmentId, partnerId);
         return assignment;
     }
