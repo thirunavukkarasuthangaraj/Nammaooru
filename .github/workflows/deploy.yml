@@ -128,7 +128,10 @@ jobs:
           # Build and start new containers with no cache
           echo "Building containers with latest code from $(pwd)..."
           echo "Backend build starting..."
-          if ! docker-compose build --no-cache --pull backend 2>&1 | tee /tmp/backend-build.log; then
+          set -o pipefail
+          docker-compose build --no-cache --pull backend 2>&1 | tee /tmp/backend-build.log
+          BACKEND_EXIT=$?
+          if [ $BACKEND_EXIT -ne 0 ]; then
             echo "================================"
             echo "❌ ERROR: Backend build failed!"
             echo "================================"
@@ -148,7 +151,9 @@ jobs:
           echo "✅ Backend build succeeded"
           echo ""
           echo "Frontend build starting..."
-          if ! docker-compose build --no-cache --pull frontend 2>&1 | tee /tmp/frontend-build.log; then
+          docker-compose build --no-cache --pull frontend 2>&1 | tee /tmp/frontend-build.log
+          FRONTEND_EXIT=$?
+          if [ $FRONTEND_EXIT -ne 0 ]; then
             echo "================================"
             echo "❌ ERROR: Frontend build failed!"
             echo "================================"
