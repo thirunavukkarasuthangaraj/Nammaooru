@@ -87,12 +87,12 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen>
       });
 
       final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/mobile/delivery-partner/track/order/${widget.orderNumber}'),
+        Uri.parse('${ApiConfig.apiUrl}/mobile/delivery-partner/track/order/${widget.orderNumber}'),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-      );
+      ).timeout(ApiConfig.requestTimeout);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -106,11 +106,22 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen>
           throw Exception(data['message'] ?? 'Failed to load tracking data');
         }
       } else {
-        throw Exception('Server error: ${response.statusCode}');
+        throw Exception('Unable to connect to server. Please check your internet connection.');
       }
     } catch (e) {
       setState(() {
-        _errorMessage = e.toString();
+        // Clean error message - don't expose technical details
+        String cleanError = e.toString();
+        if (cleanError.contains('TimeoutException')) {
+          _errorMessage = 'Connection timeout. Please check your internet connection and try again.';
+        } else if (cleanError.contains('SocketException') || cleanError.contains('Failed host lookup')) {
+          _errorMessage = 'Cannot connect to server. Please check your internet connection.';
+        } else if (cleanError.contains('http://') || cleanError.contains('https://')) {
+          // Remove URL from error message
+          _errorMessage = 'Unable to load tracking information. Please try again.';
+        } else {
+          _errorMessage = cleanError.replaceAll('Exception: ', '');
+        }
         _isLoading = false;
       });
     }
