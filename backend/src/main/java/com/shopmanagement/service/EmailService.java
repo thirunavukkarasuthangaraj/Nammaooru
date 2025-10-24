@@ -612,21 +612,16 @@ public class EmailService {
     public void sendDeliveryNotificationEmail(String customerEmail, String customerName,
                                             String orderNumber, String deliveryPartnerName, String shopName) {
         try {
-            String subject = "Order Delivered Successfully - " + orderNumber;
-            String text = String.format(
-                "Dear %s,\n\n" +
-                "Your order %s has been successfully delivered by %s.\n\n" +
-                "Order Details:\n" +
-                "- Order Number: %s\n" +
-                "- Shop: %s\n" +
-                "- Delivered by: %s\n\n" +
-                "Thank you for choosing NammaOoru!\n\n" +
-                "Best regards,\n" +
-                "The NammaOoru Team",
-                customerName, orderNumber, deliveryPartnerName, orderNumber, shopName, deliveryPartnerName
+            Map<String, Object> variables = Map.of(
+                "customerName", customerName,
+                "orderNumber", orderNumber,
+                "deliveryPartnerName", deliveryPartnerName,
+                "shopName", shopName,
+                "supportEmail", emailProperties.getFrom()
             );
 
-            sendSimpleEmail(customerEmail, subject, text);
+            String subject = "Order Delivered Successfully - " + orderNumber;
+            sendHtmlEmail(customerEmail, subject, "order-delivered", variables);
             log.info("Delivery notification email sent to: {} for order: {}", customerEmail, orderNumber);
 
         } catch (Exception e) {
