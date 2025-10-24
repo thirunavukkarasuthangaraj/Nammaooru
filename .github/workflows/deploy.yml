@@ -128,17 +128,44 @@ jobs:
           # Build and start new containers with no cache
           echo "Building containers with latest code from $(pwd)..."
           echo "Backend build starting..."
-          if ! docker-compose build --no-cache --pull backend; then
-            echo "ERROR: Backend build failed!"
-            docker-compose logs backend
+          if ! docker-compose build --no-cache --pull backend 2>&1 | tee /tmp/backend-build.log; then
+            echo "================================"
+            echo "❌ ERROR: Backend build failed!"
+            echo "================================"
+            echo ""
+            echo "📋 Build logs (last 100 lines):"
+            tail -100 /tmp/backend-build.log
+            echo ""
+            echo "🔍 Searching for compilation errors:"
+            grep -i "error" /tmp/backend-build.log | head -20 || echo "No specific errors found"
+            echo ""
+            echo "💡 Common issues:"
+            echo "  - Check for compilation errors in Java code"
+            echo "  - Verify all dependencies are available"
+            echo "  - Check Maven logs above for details"
             exit 1
           fi
+          echo "✅ Backend build succeeded"
+          echo ""
           echo "Frontend build starting..."
-          if ! docker-compose build --no-cache --pull frontend; then
-            echo "ERROR: Frontend build failed!"
-            docker-compose logs frontend
+          if ! docker-compose build --no-cache --pull frontend 2>&1 | tee /tmp/frontend-build.log; then
+            echo "================================"
+            echo "❌ ERROR: Frontend build failed!"
+            echo "================================"
+            echo ""
+            echo "📋 Build logs (last 100 lines):"
+            tail -100 /tmp/frontend-build.log
+            echo ""
+            echo "🔍 Searching for compilation errors:"
+            grep -i "error" /tmp/frontend-build.log | head -20 || echo "No specific errors found"
+            echo ""
+            echo "💡 Common issues:"
+            echo "  - Check for TypeScript compilation errors"
+            echo "  - Verify npm dependencies are correct"
+            echo "  - Check Angular build logs above for details"
             exit 1
           fi
+          echo "✅ Frontend build succeeded"
           
           echo "=== STEP 7: Start containers ==="
           # Clean up containers
