@@ -206,76 +206,48 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF8B5A96),
-              Color(0xFF6B4F72),
-              Color(0xFF5D4E75),
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Consumer<AuthProvider>(
-            builder: (context, authProvider, child) {
-              return LoadingOverlay(
-                isLoading: authProvider.authState == AuthState.loading,
-                loadingMessage: 'Verifying OTP...',
-                child: Center(
-                  child: SingleChildScrollView(
-                    child: Container(
-                      margin: const EdgeInsets.all(24.0),
-                      padding: const EdgeInsets.all(32.0),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 20,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
-                      ),
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _buildHeader(),
-                            const SizedBox(height: 40),
-                    const Text(
-                      'Enter 6-digit code',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.black,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildOtpFields(),
-                    const SizedBox(height: 30),
-                    _buildTimer(),
-                    const SizedBox(height: 30),
-                    _buildVerifyButton(),
-                    const SizedBox(height: 20),
-                    _buildResendButton(),
-                    const SizedBox(height: 30),
-                    _buildChangeEmailButton(),
-                          ],
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Consumer<AuthProvider>(
+          builder: (context, authProvider, child) {
+            return LoadingOverlay(
+              isLoading: authProvider.authState == AuthState.loading,
+              loadingMessage: 'Verifying OTP...',
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24.0),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: 40),
+                      _buildHeader(),
+                      const SizedBox(height: 40),
+                      const Text(
+                        'Enter 6-digit code',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.black,
+                          fontWeight: FontWeight.w500,
                         ),
+                        textAlign: TextAlign.center,
                       ),
-                    ),
+                      const SizedBox(height: 16),
+                      _buildOtpFields(),
+                      const SizedBox(height: 30),
+                      _buildTimer(),
+                      const SizedBox(height: 30),
+                      _buildVerifyButton(),
+                      const SizedBox(height: 20),
+                      _buildResendButton(),
+                      const SizedBox(height: 30),
+                      _buildChangeEmailButton(),
+                    ],
                   ),
                 ),
-              );
-            },
-          ),
+              ),
+            );
+          },
         ),
       ),
     );
@@ -339,7 +311,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
   Widget _buildOtpFields() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: List.generate(6, (index) {
@@ -349,27 +321,25 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
             width: 48,
             height: 64,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: _focusNodes[index].hasFocus 
-                    ? AppColors.primary 
-                    : _otpControllers[index].text.isNotEmpty 
-                        ? AppColors.primary.withOpacity(0.5)
-                        : AppColors.divider,
-                width: _focusNodes[index].hasFocus ? 2.5 : 1.5,
+                color: _focusNodes[index].hasFocus
+                    ? AppColors.primary
+                    : _otpControllers[index].text.isNotEmpty
+                        ? AppColors.primary.withOpacity(0.3)
+                        : const Color(0xFFE0E0E0),
+                width: _focusNodes[index].hasFocus ? 2 : 1.5,
               ),
-              color: _focusNodes[index].hasFocus 
-                  ? AppColors.primary.withOpacity(0.05)
-                  : Colors.grey[50],
-              boxShadow: _focusNodes[index].hasFocus 
-                  ? [
-                      BoxShadow(
-                        color: AppColors.primary.withOpacity(0.15),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      )
-                    ]
-                  : null,
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: _focusNodes[index].hasFocus
+                      ? AppColors.primary.withOpacity(0.1)
+                      : Colors.black.withOpacity(0.03),
+                  blurRadius: _focusNodes[index].hasFocus ? 8 : 4,
+                  offset: const Offset(0, 2),
+                )
+              ],
             ),
             child: TextFormField(
               controller: _otpControllers[index],
@@ -378,11 +348,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               textAlign: TextAlign.center,
               maxLength: 1,
               style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w600,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
                 color: _otpControllers[index].text.isNotEmpty
                     ? AppColors.primary
-                    : Colors.black,
+                    : Colors.black87,
               ),
               decoration: const InputDecoration(
                 counterText: '',
