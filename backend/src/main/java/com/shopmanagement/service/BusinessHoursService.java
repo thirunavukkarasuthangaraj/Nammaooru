@@ -100,11 +100,13 @@ public class BusinessHoursService {
     public boolean isShopOpenNow(Long shopId, ZoneId timeZone) {
         LocalDateTime now = LocalDateTime.now(timeZone);
         DayOfWeek currentDay = now.getDayOfWeek();
-        
+
         Optional<BusinessHours> businessHours = businessHoursRepository
             .findOpenHoursByShopIdAndDay(shopId, currentDay);
-        
-        return businessHours.map(hours -> isCurrentlyOpen(hours, now.toLocalTime())).orElse(false);
+
+        // If no business hours configured, default to OPEN (available)
+        // This allows shops without configured hours to be available
+        return businessHours.map(hours -> isCurrentlyOpen(hours, now.toLocalTime())).orElse(true);
     }
     
     public Map<String, Object> getShopOpenStatus(Long shopId) {

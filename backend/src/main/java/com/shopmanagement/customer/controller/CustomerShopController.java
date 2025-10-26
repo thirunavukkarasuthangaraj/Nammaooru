@@ -3,6 +3,8 @@ package com.shopmanagement.customer.controller;
 import com.shopmanagement.common.dto.ApiResponse;
 import com.shopmanagement.dto.customer.CategoryResponse;
 import com.shopmanagement.product.dto.ShopProductResponse;
+import com.shopmanagement.product.entity.ProductCategory;
+import com.shopmanagement.product.repository.ProductCategoryRepository;
 import com.shopmanagement.product.service.ShopProductService;
 import com.shopmanagement.shop.dto.ShopResponse;
 import com.shopmanagement.shop.service.ShopService;
@@ -16,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController("customerShopControllerUnique")
 @RequestMapping("/api/customer")
@@ -25,6 +28,7 @@ public class CustomerShopController {
 
     private final ShopService shopService;
     private final ShopProductService shopProductService;
+    private final ProductCategoryRepository categoryRepository;
 
     @GetMapping("/shops")
     public ResponseEntity<ApiResponse<Page<ShopResponse>>> getAllShops(
@@ -95,6 +99,9 @@ public class CustomerShopController {
         category.setId(String.valueOf(categoryName.hashCode())); // Simple ID generation
         category.setName(categoryName);
 
+        // Fetch actual category from database to get iconUrl
+        Optional<ProductCategory> categoryEntity = categoryRepository.findByName(categoryName);
+
         // Add Tamil translations for common categories
         String displayName = getCategoryDisplayName(categoryName);
         category.setDisplayName(displayName);
@@ -106,6 +113,13 @@ public class CustomerShopController {
 
         category.setIcon(getCategoryIcon(categoryName));
         category.setColor(getCategoryColor(categoryName));
+
+        // Set imageUrl from database if available
+        categoryEntity.ifPresent(cat -> {
+            if (cat.getIconUrl() != null && !cat.getIconUrl().isEmpty()) {
+                category.setImageUrl(cat.getIconUrl());
+            }
+        });
 
         return category;
     }

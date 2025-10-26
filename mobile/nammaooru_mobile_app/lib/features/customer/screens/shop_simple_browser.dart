@@ -27,7 +27,7 @@ class _ShopSimpleBrowserState extends State<ShopSimpleBrowser> {
   List<Map<String, dynamic>> _allProducts = [];
   List<Map<String, dynamic>> _filteredProducts = [];
   List<Map<String, dynamic>> _categories = [
-    {'name': 'All', 'image': null}
+    {'name': 'All', 'displayName': 'All', 'image': null, 'color': '#4CAF50'}
   ];
   Map<String, String?> _categoryImages = {}; // Store category name -> image URL
   bool _isLoading = true;
@@ -35,7 +35,43 @@ class _ShopSimpleBrowserState extends State<ShopSimpleBrowser> {
   @override
   void initState() {
     super.initState();
+    _loadCategories();
     _loadProducts();
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final shopIdInt = int.tryParse(widget.shopId) ?? 0;
+      final response = await _shopApi.getShopCategories(shopIdInt);
+
+      if (response['statusCode'] == '0000' && response['data'] != null) {
+        final categoriesData = List<Map<String, dynamic>>.from(response['data'] ?? []);
+
+        // Build categories list with 'All' at the beginning
+        final List<Map<String, dynamic>> categoriesList = [
+          {'name': 'All', 'displayName': 'All', 'image': null, 'color': '#4CAF50'}
+        ];
+
+        for (var category in categoriesData) {
+          categoriesList.add({
+            'name': category['name']?.toString() ?? 'Unknown',
+            'displayName': category['displayName']?.toString() ?? category['name']?.toString() ?? 'Unknown',
+            'image': category['imageUrl']?.toString(),
+            'color': category['color']?.toString() ?? '#4CAF50',
+            'icon': category['icon']?.toString(),
+          });
+        }
+
+        setState(() {
+          _categories = categoriesList;
+        });
+
+        print('Loaded ${categoriesList.length} categories from API');
+      }
+    } catch (e) {
+      print('Error loading categories: $e');
+      // Keep default categories on error
+    }
   }
 
   Future<void> _loadProducts() async {
@@ -48,50 +84,13 @@ class _ShopSimpleBrowserState extends State<ShopSimpleBrowser> {
       if (response['statusCode'] == '0000' && response['data'] != null) {
         final products = List<Map<String, dynamic>>.from(response['data']['content'] ?? []);
 
-        // Extract unique categories with images from masterProduct.category
-        final Map<String, String?> categoryMap = {};
-        for (var product in products) {
-          final categoryObj = product['masterProduct']?['category'];
-          if (categoryObj != null) {
-            // DEBUG: Print the entire category object to see what fields are available
-            print('Category Object: $categoryObj');
-
-            final categoryName = categoryObj['name']?.toString() ?? 'Other';
-            // Try multiple field names for category image
-            final categoryImage = categoryObj['imageUrl']?.toString() ??
-                                 categoryObj['image']?.toString() ??
-                                 categoryObj['categoryImage']?.toString() ??
-                                 categoryObj['iconUrl']?.toString();
-
-            print('Category: $categoryName, Image: $categoryImage');
-
-            // Store the image URL for this category
-            if (!categoryMap.containsKey(categoryName)) {
-              categoryMap[categoryName] = categoryImage;
-            }
-          }
-        }
-
-        // Build categories list with 'All' at the beginning
-        final List<Map<String, dynamic>> categoriesList = [
-          {'name': 'All', 'image': null}
-        ];
-
-        final sortedKeys = categoryMap.keys.toList()..sort();
-        for (var categoryName in sortedKeys) {
-          categoriesList.add({
-            'name': categoryName,
-            'image': categoryMap[categoryName],
-          });
-        }
-
         setState(() {
           _allProducts = products;
           _filteredProducts = products;
-          _categories = categoriesList;
-          _categoryImages = categoryMap;
           _isLoading = false;
         });
+
+        print('Loaded ${products.length} products');
       } else {
         // Use sample data if API fails
         _useSampleData();
@@ -242,7 +241,9 @@ class _ShopSimpleBrowserState extends State<ShopSimpleBrowser> {
                     itemBuilder: (context, index) {
                       final categoryObj = _categories[index];
                       final categoryName = categoryObj['name']?.toString() ?? 'Unknown';
+                      final displayName = categoryObj['displayName']?.toString() ?? categoryName;
                       final categoryImage = categoryObj['image']?.toString();
+                      final categoryColor = categoryObj['color']?.toString() ?? '#4CAF50';
                       final isSelected = categoryName == _selectedCategory;
 
                       return InkWell(
@@ -272,13 +273,13 @@ class _ShopSimpleBrowserState extends State<ShopSimpleBrowser> {
                           child: Column(
                             children: [
                               // Category Image or Icon
-                              _buildCategoryImageOrIcon(categoryName, categoryImage, isSelected),
-                              const SizedBox(height: 4),
+                              _buildCategoryBox(displayName, categoryImage, categoryColor, isSelected),
+                              const SizedBox(height: 6),
                               // Category Name
                               Text(
-                                categoryName,
+                                displayName,
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 11,
                                   fontWeight: isSelected
                                       ? FontWeight.w600
                                       : FontWeight.normal,
@@ -711,26 +712,41 @@ class _ShopSimpleBrowserState extends State<ShopSimpleBrowser> {
     );
   }
 
-  Widget _buildCategoryImageOrIcon(String categoryName, String? imageUrl, bool isSelected) {
-    // Check if imageUrl is an actual URL (not an emoji)
-    final bool isActualImage = imageUrl != null &&
-                               imageUrl.isNotEmpty &&
-                               (imageUrl.startsWith('http') || imageUrl.startsWith('/uploads'));
+  Widget _buildCategoryBox(String displayName, String? imageUrl, String colorHex, bool isSelected) {
+    // Debug logging
+    print('🖼️ buildCategoryBox: $displayName, imageUrl: $imageUrl');
 
-    // If category has a real image from API, display it
-    if (isActualImage) {
+    // Parse color from hex
+    Color categoryColor;
+    try {
+      categoryColor = Color(int.parse(colorHex.replaceFirst('#', '0xFF')));
+    } catch (e) {
+      categoryColor = const Color(0xFF4CAF50);
+    }
+
+    // Check if imageUrl is valid
+    final bool hasImage = imageUrl != null &&
+                          imageUrl.isNotEmpty &&
+                          (imageUrl.startsWith('http') || imageUrl.startsWith('/uploads'));
+
+    print('🖼️ hasImage: $hasImage for $displayName');
+
+    // If category has an image, display it
+    if (hasImage) {
       String fullImageUrl = imageUrl!;
       if (!imageUrl.startsWith('http')) {
         fullImageUrl = '${EnvConfig.baseUrl}$imageUrl';
       }
 
+      print('🌐 FULL IMAGE URL: $fullImageUrl for $displayName');
+
       return Container(
-        width: 40,
-        height: 40,
+        width: 60,
+        height: 60,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected ? const Color(0xFF4CAF50) : Colors.grey.shade300,
+            color: isSelected ? categoryColor : Colors.grey.shade300,
             width: 2,
           ),
         ),
@@ -738,37 +754,30 @@ class _ShopSimpleBrowserState extends State<ShopSimpleBrowser> {
           borderRadius: BorderRadius.circular(6),
           child: Image.network(
             fullImageUrl,
-            width: 40,
-            height: 40,
+            width: 60,
+            height: 60,
             fit: BoxFit.cover,
             errorBuilder: (context, error, stackTrace) {
-              // Fallback to icon if image fails to load
-              return Container(
-                color: isSelected
-                    ? const Color(0xFF4CAF50).withOpacity(0.1)
-                    : Colors.grey.shade100,
-                child: Icon(
-                  _getCategoryIcon(categoryName),
-                  size: 20,
-                  color: isSelected
-                      ? const Color(0xFF4CAF50)
-                      : Colors.grey.shade600,
-                ),
-              );
+              print('❌ IMAGE LOAD ERROR for $displayName: $error');
+              print('Stack trace: $stackTrace');
+              // Fallback to gradient box if image fails
+              return _buildGradientCategoryBox(displayName, categoryColor, isSelected);
             },
             loadingBuilder: (context, child, loadingProgress) {
-              if (loadingProgress == null) return child;
+              if (loadingProgress == null) {
+                print('✅ IMAGE LOADED SUCCESSFULLY for $displayName');
+                return child;
+              }
+              print('⏳ Loading image for $displayName: ${loadingProgress.cumulativeBytesLoaded}/${loadingProgress.expectedTotalBytes}');
               return Container(
                 color: Colors.grey.shade100,
                 child: Center(
                   child: SizedBox(
-                    width: 16,
-                    height: 16,
+                    width: 20,
+                    height: 20,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        isSelected ? const Color(0xFF4CAF50) : Colors.grey.shade400,
-                      ),
+                      valueColor: AlwaysStoppedAnimation<Color>(categoryColor),
                     ),
                   ),
                 ),
@@ -779,13 +788,41 @@ class _ShopSimpleBrowserState extends State<ShopSimpleBrowser> {
       );
     }
 
-    // Fallback to icon if no image URL
-    return Icon(
-      _getCategoryIcon(categoryName),
-      size: 24,
-      color: isSelected
-          ? const Color(0xFF4CAF50)
-          : Colors.grey.shade600,
+    // Fallback to gradient box with first letter
+    return _buildGradientCategoryBox(displayName, categoryColor, isSelected);
+  }
+
+  Widget _buildGradientCategoryBox(String displayName, Color baseColor, bool isSelected) {
+    // Get first letter (handle bilingual names like "மளிகை / Grocery")
+    final firstLetter = displayName.isNotEmpty ? displayName.trim()[0].toUpperCase() : '?';
+
+    return Container(
+      width: 60,
+      height: 60,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            baseColor.withOpacity(0.8),
+            baseColor.withOpacity(0.5),
+          ],
+        ),
+        border: isSelected
+            ? Border.all(color: baseColor, width: 2)
+            : null,
+      ),
+      child: Center(
+        child: Text(
+          firstLetter,
+          style: const TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      ),
     );
   }
 
