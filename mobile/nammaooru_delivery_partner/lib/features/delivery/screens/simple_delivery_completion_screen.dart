@@ -143,6 +143,7 @@ class _SimpleDeliveryCompletionScreenState extends State<SimpleDeliveryCompletio
 
     try {
       final provider = Provider.of<DeliveryPartnerProvider>(context, listen: false);
+      final locationProvider = Provider.of<LocationProvider>(context, listen: false);
 
       // Update order status to DELIVERED
       await provider.updateOrderStatus(widget.order.orderNumber ?? widget.order.id.toString(), 'DELIVERED');
@@ -162,6 +163,18 @@ class _SimpleDeliveryCompletionScreenState extends State<SimpleDeliveryCompletio
           print('Warning: Failed to mark payment as collected: $e');
           // Continue even if payment marking fails
         }
+      }
+
+      // Stop location tracking for this assignment
+      if (widget.order.assignmentId != null) {
+        locationProvider.removeAssignment(widget.order.assignmentId!);
+        print('✅ Stopped location tracking for assignment: ${widget.order.assignmentId}');
+      }
+
+      // If no more active assignments, stop location tracking completely
+      if (locationProvider.activeAssignments.isEmpty) {
+        locationProvider.stopLocationTracking();
+        print('✅ All deliveries completed - location tracking stopped');
       }
 
       // Show success message

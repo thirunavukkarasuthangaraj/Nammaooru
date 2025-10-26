@@ -294,6 +294,7 @@ public class DeliveryPartnerController {
                 orderData.put("paymentMethod", assignment.getOrder().getPaymentMethod().name());
                 orderData.put("paymentStatus", assignment.getOrder().getPaymentStatus().name());
                 orderData.put("pickupOtp", assignment.getOrder().getPickupOtp());
+                orderData.put("assignmentId", assignment.getId().toString()); // Include assignmentId for location tracking
                 orders.add(orderData);
             }
 
@@ -549,7 +550,22 @@ public class DeliveryPartnerController {
             Double altitude = request.get("altitude") != null ? ((Number) request.get("altitude")).doubleValue() : null;
             Integer batteryLevel = request.get("batteryLevel") != null ? ((Number) request.get("batteryLevel")).intValue() : null;
             String networkType = (String) request.get("networkType");
-            Long assignmentId = request.get("assignmentId") != null ? ((Number) request.get("assignmentId")).longValue() : null;
+
+            // Handle assignmentId as both String and Number
+            Long assignmentId = null;
+            if (request.get("assignmentId") != null) {
+                Object assignmentIdObj = request.get("assignmentId");
+                if (assignmentIdObj instanceof Number) {
+                    assignmentId = ((Number) assignmentIdObj).longValue();
+                } else if (assignmentIdObj instanceof String) {
+                    try {
+                        assignmentId = Long.parseLong((String) assignmentIdObj);
+                    } catch (NumberFormatException e) {
+                        log.warn("Invalid assignmentId format: {}", assignmentIdObj);
+                    }
+                }
+            }
+
             String orderStatus = (String) request.get("orderStatus");
 
             // Update User entity (for backward compatibility)
@@ -596,8 +612,10 @@ public class DeliveryPartnerController {
             response.put("message", "Invalid partner ID or coordinates");
             return ResponseEntity.badRequest().body(response);
         } catch (Exception e) {
+            log.error("Error updating location for partner {}: {}", partnerId, e.getMessage(), e);
             response.put("success", false);
             response.put("message", "An error occurred while updating location");
+            response.put("error", e.getMessage());
             return ResponseEntity.badRequest().body(response);
         }
     }
@@ -868,6 +886,52 @@ public class DeliveryPartnerController {
         } catch (Exception e) {
             response.put("success", false);
             response.put("message", "Error marking order as delivered: " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    @PostMapping("/orders/{orderId}/collect-payment")
+    public ResponseEntity<Map<String, Object>> collectPayment(@PathVariable String orderId) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            log.info("Collecting payment for order: {}", orderId);
+
+            // Find the order by order number
+            Order order = orderRepository.findByOrderNumber(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
+
+            // Validate payment method is COD
+            if (order.getPaymentMethod() != Order.PaymentMethod.CASH_ON_DELIVERY) {
+                response.put("success", false);
+                response.put("message", "Payment collection is only for Cash on Delivery orders");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            // Validate order is delivered
+            if (order.getStatus() != Order.OrderStatus.DELIVERED) {
+                response.put("success", false);
+                response.put("message", "Order must be delivered before collecting payment");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            // Mark payment as collected
+            order.setPaymentStatus(Order.PaymentStatus.PAID);
+            orderRepository.save(order);
+
+            log.info("✅ Payment collected successfully for order: {}", orderId);
+
+            response.put("success", true);
+            response.put("message", "Payment collected successfully");
+            response.put("orderId", orderId);
+            response.put("paymentStatus", "PAID");
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Error collecting payment for order {}: {}", orderId, e.getMessage(), e);
+            response.put("success", false);
+            response.put("message", "Error collecting payment: " + e.getMessage());
             return ResponseEntity.badRequest().body(response);
         }
     }
