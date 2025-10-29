@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/app_config.dart';
 
 class PromoCodeService {
-  static const String baseUrl = 'http://10.187.95.46:8080/api/shop-owner/promotions';
+  static String get baseUrl => '${AppConfig.apiBaseUrl}/shop-owner/promotions';
 
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();

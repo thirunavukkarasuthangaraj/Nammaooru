@@ -6,6 +6,7 @@ import com.shopmanagement.shop.entity.Shop;
 import com.shopmanagement.repository.PromotionRepository;
 import com.shopmanagement.shop.repository.ShopRepository;
 import com.shopmanagement.service.PromotionService;
+import com.shopmanagement.shop.service.ShopService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.Data;
@@ -36,6 +37,7 @@ public class ShopOwnerPromotionController {
     private final PromotionRepository promotionRepository;
     private final ShopRepository shopRepository;
     private final PromotionService promotionService;
+    private final ShopService shopService;
 
     /**
      * Get all promotions for the shop owner's shop
@@ -50,9 +52,11 @@ public class ShopOwnerPromotionController {
             @RequestParam(defaultValue = "desc") String sortDirection) {
 
         // Get shop owner's shop
-        String email = authentication.getName();
-        Shop shop = shopRepository.findByOwnerEmail(email)
-                .orElseThrow(() -> new RuntimeException("Shop not found for owner: " + email));
+        String username = authentication.getName();
+        Shop shop = shopService.getShopByOwner(username);
+        if (shop == null) {
+            throw new RuntimeException("Shop not found for owner: " + username);
+        }
 
         Sort.Direction direction = sortDirection.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
@@ -82,9 +86,11 @@ public class ShopOwnerPromotionController {
             @Valid @RequestBody CreateShopPromotionRequest request) {
 
         // Get shop owner's shop
-        String email = authentication.getName();
-        Shop shop = shopRepository.findByOwnerEmail(email)
-                .orElseThrow(() -> new RuntimeException("Shop not found for owner: " + email));
+        String username = authentication.getName();
+        Shop shop = shopService.getShopByOwner(username);
+        if (shop == null) {
+            throw new RuntimeException("Shop not found for owner: " + username);
+        }
 
         log.info("Creating new shop promotion: {} for shop: {}", request.getCode(), shop.getName());
 
@@ -112,7 +118,7 @@ public class ShopOwnerPromotionController {
                 .isFirstTimeOnly(request.isFirstTimeOnly())
                 .isPublic(true)
                 .shopId(shop.getId())  // Set shop ID so promo is shop-specific
-                .createdBy(email)
+                .createdBy(username)
                 .usedCount(0)
                 .build();
 
@@ -137,9 +143,11 @@ public class ShopOwnerPromotionController {
             @Valid @RequestBody CreateShopPromotionRequest request) {
 
         // Get shop owner's shop
-        String email = authentication.getName();
-        Shop shop = shopRepository.findByOwnerEmail(email)
-                .orElseThrow(() -> new RuntimeException("Shop not found for owner: " + email));
+        String username = authentication.getName();
+        Shop shop = shopService.getShopByOwner(username);
+        if (shop == null) {
+            throw new RuntimeException("Shop not found for owner: " + username);
+        }
 
         log.info("Updating shop promotion: {} for shop: {}", id, shop.getName());
 
@@ -166,7 +174,7 @@ public class ShopOwnerPromotionController {
         promotion.setUsageLimit(request.getUsageLimit());
         promotion.setUsageLimitPerCustomer(request.getUsageLimitPerCustomer());
         promotion.setIsFirstTimeOnly(request.isFirstTimeOnly());
-        promotion.setUpdatedBy(email);
+        promotion.setUpdatedBy(username);
 
         Promotion updatedPromotion = promotionRepository.save(promotion);
 
@@ -188,9 +196,11 @@ public class ShopOwnerPromotionController {
             @PathVariable Long id) {
 
         // Get shop owner's shop
-        String email = authentication.getName();
-        Shop shop = shopRepository.findByOwnerEmail(email)
-                .orElseThrow(() -> new RuntimeException("Shop not found for owner: " + email));
+        String username = authentication.getName();
+        Shop shop = shopService.getShopByOwner(username);
+        if (shop == null) {
+            throw new RuntimeException("Shop not found for owner: " + username);
+        }
 
         log.info("Deleting shop promotion: {} for shop: {}", id, shop.getName());
 
@@ -225,9 +235,11 @@ public class ShopOwnerPromotionController {
             @RequestParam String status) {
 
         // Get shop owner's shop
-        String email = authentication.getName();
-        Shop shop = shopRepository.findByOwnerEmail(email)
-                .orElseThrow(() -> new RuntimeException("Shop not found for owner: " + email));
+        String username = authentication.getName();
+        Shop shop = shopService.getShopByOwner(username);
+        if (shop == null) {
+            throw new RuntimeException("Shop not found for owner: " + username);
+        }
 
         log.info("Toggling promotion status: {} to {} for shop: {}", id, status, shop.getName());
 
@@ -263,9 +275,11 @@ public class ShopOwnerPromotionController {
             @PathVariable Long id) {
 
         // Get shop owner's shop
-        String email = authentication.getName();
-        Shop shop = shopRepository.findByOwnerEmail(email)
-                .orElseThrow(() -> new RuntimeException("Shop not found for owner: " + email));
+        String username = authentication.getName();
+        Shop shop = shopService.getShopByOwner(username);
+        if (shop == null) {
+            throw new RuntimeException("Shop not found for owner: " + username);
+        }
 
         Promotion promotion = promotionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Promotion not found with id: " + id));
@@ -300,9 +314,11 @@ public class ShopOwnerPromotionController {
             @RequestParam(defaultValue = "20") int size) {
 
         // Get shop owner's shop
-        String email = authentication.getName();
-        Shop shop = shopRepository.findByOwnerEmail(email)
-                .orElseThrow(() -> new RuntimeException("Shop not found for owner: " + email));
+        String username = authentication.getName();
+        Shop shop = shopService.getShopByOwner(username);
+        if (shop == null) {
+            throw new RuntimeException("Shop not found for owner: " + username);
+        }
 
         Promotion promotion = promotionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Promotion not found with id: " + id));

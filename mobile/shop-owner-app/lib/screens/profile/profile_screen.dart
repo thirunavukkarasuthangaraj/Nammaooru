@@ -4,6 +4,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../auth/login_screen.dart';
 import '../settings/business_hours_screen.dart';
+import '../inventory/inventory_screen.dart';
+import '../promo_codes/promo_codes_screen.dart';
 import '../../utils/app_config.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/modern_button.dart';
@@ -221,7 +223,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Divider(height: 1, color: AppTheme.borderLight),
                   _buildMenuTile(Icons.payment, 'Payment Settings', () => _showComingSoon('Payment Settings')),
                   Divider(height: 1, color: AppTheme.borderLight),
-                  _buildMenuTile(Icons.inventory_2, 'Inventory', () => _showComingSoon('Inventory')),
+                  _buildMenuTile(Icons.inventory_2, 'Inventory', () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => InventoryScreen(token: widget.token)),
+                    );
+                  }),
+                  Divider(height: 1, color: AppTheme.borderLight),
+                  _buildMenuTile(Icons.local_offer, 'Promo Codes', () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const PromoCodesScreen()),
+                    );
+                  }),
                   Divider(height: 1, color: AppTheme.borderLight),
                   _buildMenuTile(Icons.analytics, 'Analytics', () => _showComingSoon('Analytics')),
                   Divider(height: 1, color: AppTheme.borderLight),
