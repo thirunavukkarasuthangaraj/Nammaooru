@@ -191,8 +191,28 @@ public class AuthService {
     public User findUserByEmail(String email) {
         return userRepository.findByEmail(email).orElse(null);
     }
-    
+
+    public User findUserByMobileNumber(String mobileNumber) {
+        return userRepository.findByMobileNumber(mobileNumber).orElse(null);
+    }
+
     public String generateTokenForUser(User user) {
         return jwtService.generateToken(user);
+    }
+
+    public User upgradeUserToShopOwner(String email, String temporaryPassword) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User with email " + email + " not found"));
+
+        // Upgrade to SHOP_OWNER role
+        user.setRole(User.UserRole.SHOP_OWNER);
+        user.setPassword(passwordEncoder.encode(temporaryPassword));
+        user.setIsTemporaryPassword(true);
+        user.setPasswordChangeRequired(true);
+
+        // Don't update mobile number - user already has it
+        // Updating it causes unique constraint violation even if it's the same value
+
+        return userRepository.save(user);
     }
 }

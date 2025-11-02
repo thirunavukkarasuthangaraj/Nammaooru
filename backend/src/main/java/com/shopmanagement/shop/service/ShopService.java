@@ -369,19 +369,25 @@ public class ShopService {
                 String username = generateUsername(shop.getOwnerName());
                 String temporaryPassword = generateTemporaryPassword();
                 log.info("Generated credentials - Username: {}, Password length: {}", username, temporaryPassword.length());
-                
-                // Check if user already exists
-                boolean userExists = authService.userExistsByUsernameOrEmail(username, shop.getOwnerEmail());
-                if (userExists) {
-                    log.warn("User already exists with username: {} or email: {}", username, shop.getOwnerEmail());
-                    // Try with different username
-                    username = generateUsername(shop.getOwnerName() + System.currentTimeMillis());
-                    log.info("Generated new username: {}", username);
+
+                // Check if user with this email or mobile number already exists
+                User existingUser = authService.findUserByEmail(shop.getOwnerEmail());
+                if (existingUser == null && shop.getOwnerPhone() != null) {
+                    existingUser = authService.findUserByMobileNumber(shop.getOwnerPhone());
                 }
-                
-                // Create user account
-                User shopOwnerUser = authService.createShopOwnerUser(username, shop.getOwnerEmail(), shop.getOwnerPhone(), temporaryPassword);
-                log.info("Successfully created shop owner user: {} for shop: {}", username, shop.getName());
+                User shopOwnerUser;
+
+                if (existingUser != null) {
+                    log.info("User already exists with email/mobile: {} - upgrading to SHOP_OWNER role", shop.getOwnerEmail());
+                    // Upgrade existing user to SHOP_OWNER role (don't update email or mobile number)
+                    shopOwnerUser = authService.upgradeUserToShopOwner(existingUser.getEmail(), temporaryPassword);
+                    username = shopOwnerUser.getUsername();  // Use existing username
+                    log.info("Successfully upgraded user: {} to SHOP_OWNER for shop: {}", username, shop.getName());
+                } else {
+                    // Create new SHOP_OWNER user
+                    shopOwnerUser = authService.createShopOwnerUser(username, shop.getOwnerEmail(), shop.getOwnerPhone(), temporaryPassword);
+                    log.info("Successfully created shop owner user: {} for shop: {}", username, shop.getName());
+                }
                 
                 // Update shop to be owned by the newly created user
                 shop.setCreatedBy(username);
