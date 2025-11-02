@@ -58,6 +58,7 @@ public class ShopService {
     private final OrderAssignmentRepository orderAssignmentRepository;
     private final ShopProductRepository shopProductRepository;
     private final com.shopmanagement.service.BusinessHoursService businessHoursService;
+    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     public ShopResponse createShop(ShopCreateRequest request) {
         log.info("Creating new shop: {}", request.getName());

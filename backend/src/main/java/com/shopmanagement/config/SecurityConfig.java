@@ -94,10 +94,10 @@ public class SecurityConfig {
                         ).permitAll()
                         .requestMatchers("/api/delivery/partners/*/documents/upload").hasAnyRole("SUPER_ADMIN", "ADMIN", "DELIVERY_PARTNER")
                         .requestMatchers("/api/products/**").permitAll() // TEMPORARY: Allow all product operations without auth for testing
+                        .requestMatchers("/api/shops/**").permitAll() // TEMPORARY: Allow all shop operations without auth for testing
                         .requestMatchers("/api/super-admin/**").hasRole("SUPER_ADMIN")
                         .requestMatchers("/api/admin/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
                         .requestMatchers("/api/shops/approvals/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
-                        .requestMatchers("/api/shops/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "SHOP_OWNER")
                         .requestMatchers("/api/shop-owner/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "SHOP_OWNER")
                         .requestMatchers("/api/orders/**").permitAll() // TEMPORARY: Allow all for testing
                         .requestMatchers("/api/mobile/delivery-partner/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "DELIVERY_PARTNER")

@@ -6,7 +6,8 @@ class AppConfig {
 
   // API configuration
   static const bool useMockData = false; // Use real API
-  static const bool enableApiLogging = !kIsProduction; // Enable API logging in debug mode
+  static const bool enableApiLogging =
+      !kIsProduction; // Enable API logging in debug mode
 
   // Feature flags
   static const bool enableWebSocket = true;
@@ -63,7 +64,8 @@ class AppConfig {
   static const String defaultTimezone = 'Asia/Kolkata'; // Indian Standard Time
 
   // Security configuration
-  static const int sessionTimeoutMinutes = kIsProduction ? 60 : 1440; // 1 hour in prod, 24 hours in dev
+  static const int sessionTimeoutMinutes =
+      kIsProduction ? 60 : 1440; // 1 hour in prod, 24 hours in dev
   static const bool enableBiometricAuth = true;
   static const bool requirePinForOrders = false;
 
@@ -73,38 +75,49 @@ class AppConfig {
 
   static String get buildMode => kIsProduction ? 'Production' : 'Development';
 
-  static String get apiBaseUrl {
-    // For local testing: Use localhost for web, network IP for mobile devices
-    if (kIsWeb) {
-      return 'http://localhost:8080/api';
-    }
-    return 'http://192.168.1.3:8080/api';
+  // Environment Label (Optional)
+  static String get environmentLabel => kIsProduction ? 'PROD' : 'DEV';
 
-    // Production deployment
-    // return 'https://nammaoorudelivary.in/api';
+  // ============================
+  //   Environment-Aware URLs
+  // ============================
+
+  static String get apiBaseUrl {
+    if (kIsWeb) {
+      return kIsProduction
+          ? 'https://nammaoorudelivary.in/api'
+          : 'http://localhost:8080/api';
+    }
+    return kIsProduction
+        ? 'https://nammaoorudelivary.in/api'
+        : 'http://192.168.1.3:8080/api'; // your LAN IP for mobile testing
   }
 
   static String get serverBaseUrl {
-    // For local testing: Use localhost for web, network IP for mobile devices
     if (kIsWeb) {
-      return 'http://localhost:8080';
+      return kIsProduction
+          ? 'https://nammaoorudelivary.in'
+          : 'http://localhost:8080';
     }
-    return 'http://192.168.1.3:8080';
-
-    // Production deployment
-    // return 'https://nammaoorudelivary.in';
+    return kIsProduction
+        ? 'https://nammaoorudelivary.in'
+        : 'http://192.168.1.3:8080';
   }
 
   static String get webSocketUrl {
-    // For local testing: Use localhost for web, network IP for mobile devices
     if (kIsWeb) {
-      return 'ws://localhost:8080/ws';
+      return kIsProduction
+          ? 'wss://nammaoorudelivary.in/ws'
+          : 'ws://localhost:8080/ws';
     }
-    return 'ws://192.168.1.3:8080/ws';
-
-    // Production deployment
-    // return 'wss://nammaoorudelivary.in/ws';
+    return kIsProduction
+        ? 'wss://nammaoorudelivary.in/ws'
+        : 'ws://192.168.1.3:8080/ws';
   }
+
+  // ============================
+  //   Helper Functions
+  // ============================
 
   static String getImageUrl(String? imagePath) {
     if (imagePath == null || imagePath.isEmpty) {
@@ -127,13 +140,18 @@ class AppConfig {
   // Print configuration summary for debugging
   static void printConfiguration() {
     if (!kIsProduction) {
-      print('=== App Configuration ===');
-      print('Build Mode: $buildMode');
-      print('Use Mock Data: $useMockData');
-      print('Enable API Logging: $enableApiLogging');
-      print('API Base URL: $apiBaseUrl');
-      print('Session Timeout: ${sessionTimeoutMinutes}min');
-      print('========================');
+      print('''
+=== App Configuration ===
+Build Mode: $buildMode
+Environment: $environmentLabel
+Use Mock Data: $useMockData
+Enable API Logging: $enableApiLogging
+API Base URL: $apiBaseUrl
+Server Base URL: $serverBaseUrl
+WebSocket URL: $webSocketUrl
+Session Timeout: ${sessionTimeoutMinutes} min
+========================
+''');
     }
   }
 }
