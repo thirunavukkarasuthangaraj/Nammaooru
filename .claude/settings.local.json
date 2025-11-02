@@ -35,7 +35,8 @@
       "Bash(.mvnw.cmd spring-boot:run:*)",
       "Bash(flutter pub:*)",
       "Bash(\"C:\\Users\\MVNLA\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe\" -s 192.168.1.12:37039 install -r mobile/nammaooru_mobile_app/build/app/outputs/flutter-apk/app-release.apk)",
-      "Bash(flutter devices:*)"
+      "Bash(flutter devices:*)",
+      "Bash(mvn clean compile spring-boot:run:*)"
     ],
     "deny": [],
     "ask": [],
