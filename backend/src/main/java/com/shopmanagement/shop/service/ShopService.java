@@ -380,7 +380,7 @@ public class ShopService {
                 }
                 
                 // Create user account
-                User shopOwnerUser = authService.createShopOwnerUser(username, shop.getOwnerEmail(), temporaryPassword);
+                User shopOwnerUser = authService.createShopOwnerUser(username, shop.getOwnerEmail(), shop.getOwnerPhone(), temporaryPassword);
                 log.info("Successfully created shop owner user: {} for shop: {}", username, shop.getName());
                 
                 // Update shop to be owned by the newly created user
@@ -423,10 +423,15 @@ public class ShopService {
     
     private String generateUsername(String ownerName) {
         // Generate username from owner name
-        String baseUsername = ownerName.toLowerCase()
-                .replaceAll("[^a-z0-9]", "")
-                .substring(0, Math.min(ownerName.length(), 10));
-        
+        String cleanedName = ownerName.toLowerCase().replaceAll("[^a-z0-9]", "");
+
+        // Handle empty cleaned name
+        if (cleanedName.isEmpty()) {
+            cleanedName = "user";
+        }
+
+        String baseUsername = cleanedName.substring(0, Math.min(cleanedName.length(), 10));
+
         // Add random numbers to ensure uniqueness
         String randomSuffix = String.valueOf((int)(Math.random() * 1000));
         return baseUsername + randomSuffix;

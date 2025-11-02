@@ -168,22 +168,23 @@ public class AuthService {
         return userRepository.existsByUsername(username) || userRepository.existsByEmail(email);
     }
     
-    public User createShopOwnerUser(String username, String email, String temporaryPassword) {
+    public User createShopOwnerUser(String username, String email, String mobileNumber, String temporaryPassword) {
         // Check if user already exists
         if (userRepository.existsByUsername(username) || userRepository.existsByEmail(email)) {
             throw new RuntimeException("User with this username or email already exists");
         }
-        
+
         User user = User.builder()
                 .username(username)
                 .email(email)
+                .mobileNumber(mobileNumber)
                 .password(passwordEncoder.encode(temporaryPassword))
                 .role(User.UserRole.SHOP_OWNER)
                 .isActive(true)
                 .isTemporaryPassword(true)
                 .passwordChangeRequired(true)
                 .build();
-        
+
         return userRepository.save(user);
     }
     
