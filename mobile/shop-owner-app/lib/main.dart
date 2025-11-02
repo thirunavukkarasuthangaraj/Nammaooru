@@ -7,11 +7,16 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:provider/provider.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'firebase_options.dart';
 import 'screens/dashboard/main_navigation.dart';
 import 'utils/app_theme.dart';
 import 'utils/app_config.dart';
 import 'widgets/modern_button.dart';
+import 'widgets/update_dialog.dart';
+import 'providers/product_provider.dart';
+import 'services/version_service.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
@@ -72,7 +77,8 @@ void main() async {
         print('📦 Message data: ${message.data}');
 
         if (message.notification != null) {
-          print('📬 Notification: ${message.notification!.title} - ${message.notification!.body}');
+          print(
+              '📬 Notification: ${message.notification!.title} - ${message.notification!.body}');
 
           try {
             // Play notification sound
@@ -126,16 +132,76 @@ void main() async {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    _checkAppVersion();
+  }
+
+  Future<void> _checkAppVersion() async {
+    try {
+      // Wait a bit for the app to fully initialize
+      await Future.delayed(const Duration(seconds: 2));
+
+      // Get current app version
+      final packageInfo = await PackageInfo.fromPlatform();
+      final currentVersion = packageInfo.version;
+
+      // Check for updates
+      final versionInfo = await VersionService.checkVersion(currentVersion);
+
+      if (versionInfo != null && mounted) {
+        // Show update dialog if context is available
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _showUpdateDialog(versionInfo, currentVersion);
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error checking app version: $e');
+    }
+  }
+
+  void _showUpdateDialog(Map<String, dynamic> versionInfo, String currentVersion) {
+    final context = this.context;
+    if (!context.mounted) return;
+
+    final bool updateRequired = versionInfo['updateRequired'] ?? false;
+    final bool isMandatory = versionInfo['isMandatory'] ?? false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: !isMandatory,
+      builder: (context) => UpdateDialog(
+        currentVersion: currentVersion,
+        newVersion: versionInfo['currentVersion'] ?? 'Unknown',
+        releaseNotes: versionInfo['releaseNotes'] ?? '',
+        updateUrl: versionInfo['updateUrl'] ?? '',
+        isMandatory: isMandatory,
+        updateRequired: updateRequired,
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Shop Owner',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      home: const LoginScreen(),
+    return ChangeNotifierProvider(
+      create: (_) => ProductProvider(),
+      child: MaterialApp(
+        title: 'Shop Owner',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        home: const LoginScreen(),
+      ),
     );
   }
 }
@@ -433,84 +499,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: _isLoading ? null : _login,
                   ),
                   const SizedBox(height: AppTheme.space16),
-
-                  // Demo credentials button
-                  ModernButton(
-                    text: 'View Demo Credentials',
-                    icon: Icons.info_outline,
-                    variant: ButtonVariant.text,
-                    size: ButtonSize.medium,
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: AppTheme.roundedLarge,
-                          ),
-                          title: Row(
-                            children: [
-                              Icon(Icons.key, color: AppTheme.primary),
-                              const SizedBox(width: AppTheme.space8),
-                              Text('Demo Credentials', style: AppTheme.h5),
-                            ],
-                          ),
-                          content: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildCredentialRow('Username', 'shopowner'),
-                              const SizedBox(height: AppTheme.space8),
-                              _buildCredentialRow('Password', 'password123'),
-                              const SizedBox(height: AppTheme.space16),
-                              Container(
-                                padding: const EdgeInsets.all(AppTheme.space12),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.warning.withOpacity(0.1),
-                                  borderRadius: AppTheme.roundedMedium,
-                                  border: Border.all(
-                                      color: AppTheme.warning.withOpacity(0.3)),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.info,
-                                        color: AppTheme.warning, size: 20),
-                                    const SizedBox(width: AppTheme.space8),
-                                    Expanded(
-                                      child: Text(
-                                        'Make sure backend is running on port 8080',
-                                        style: AppTheme.bodySmall
-                                            .copyWith(color: AppTheme.warning),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          actions: [
-                            ModernButton(
-                              text: 'Cancel',
-                              variant: ButtonVariant.outline,
-                              size: ButtonSize.small,
-                              onPressed: () => Navigator.pop(context),
-                            ),
-                            ModernButton(
-                              text: 'Use Demo',
-                              icon: Icons.check,
-                              variant: ButtonVariant.primary,
-                              size: ButtonSize.small,
-                              useGradient: true,
-                              onPressed: () {
-                                Navigator.pop(context);
-                                _usernameController.text = 'shopowner';
-                                _passwordController.text = 'password123';
-                              },
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
                 ],
               ),
             ),

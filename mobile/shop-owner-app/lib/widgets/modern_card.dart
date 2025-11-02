@@ -136,8 +136,11 @@ class ProductCard extends StatelessWidget {
   final String name;
   final String? imageUrl;
   final double price;
+  final double? originalPrice;
   final int stock;
   final String? category;
+  final String? unit;
+  final double? weight;
   final VoidCallback? onTap;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
@@ -147,8 +150,11 @@ class ProductCard extends StatelessWidget {
     required this.name,
     this.imageUrl,
     required this.price,
+    this.originalPrice,
     required this.stock,
     this.category,
+    this.unit,
+    this.weight,
     this.onTap,
     this.onEdit,
     this.onDelete,
@@ -157,66 +163,131 @@ class ProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool lowStock = stock < 10;
+    final bool hasDiscount = originalPrice != null && originalPrice! > price;
+    final double discountPercentage = hasDiscount
+        ? ((originalPrice! - price) / originalPrice!) * 100
+        : 0;
 
     return Card(
-      elevation: 2,
+      elevation: 3,
+      margin: const EdgeInsets.all(8),
       shape: RoundedRectangleBorder(
-        borderRadius: AppTheme.roundedLarge,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: AppTheme.roundedLarge,
+        borderRadius: BorderRadius.circular(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Product Image
+            // Product Image with Badges
             Stack(
               children: [
-                Container(
-                  height: 140,
-                  decoration: BoxDecoration(
-                    color: AppTheme.borderLight,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(AppTheme.radiusLarge),
-                      topRight: Radius.circular(AppTheme.radiusLarge),
-                    ),
-                    image: imageUrl != null
-                        ? DecorationImage(
-                            image: NetworkImage(imageUrl!),
-                            fit: BoxFit.cover,
-                          )
-                        : null,
+                ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(12),
+                    topRight: Radius.circular(12),
                   ),
-                  child: imageUrl == null
-                      ? const Center(
-                          child: Icon(
-                            Icons.image_outlined,
-                            size: 48,
-                            color: AppTheme.textHint,
+                  child: Container(
+                    height: 150,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.grey[50]!,
+                          Colors.grey[100]!,
+                        ],
+                      ),
+                    ),
+                    child: imageUrl != null
+                        ? Image.network(
+                            imageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Center(
+                              child: Icon(
+                                Icons.shopping_bag_outlined,
+                                size: 56,
+                                color: Colors.grey[300],
+                              ),
+                            ),
+                          )
+                        : Center(
+                            child: Icon(
+                              Icons.shopping_bag_outlined,
+                              size: 56,
+                              color: Colors.grey[300],
+                            ),
                           ),
-                        )
-                      : null,
+                  ),
                 ),
+                // Discount Badge
+                if (hasDiscount)
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.red[700]!, Colors.red[500]!],
+                        ),
+                        borderRadius: BorderRadius.circular(6),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.red.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        '${discountPercentage.toStringAsFixed(0)}% OFF',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  ),
                 // Stock Badge
                 Positioned(
-                  top: AppTheme.space8,
-                  right: AppTheme.space8,
+                  top: 8,
+                  right: 8,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppTheme.space8,
-                      vertical: AppTheme.space4,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: lowStock ? AppTheme.error : AppTheme.success,
-                      borderRadius: AppTheme.roundedSmall,
+                      color: lowStock ? Colors.orange[600] : Colors.green[600],
+                      borderRadius: BorderRadius.circular(6),
+                      boxShadow: [
+                        BoxShadow(
+                          color: (lowStock ? Colors.orange : Colors.green).withOpacity(0.3),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
-                    child: Text(
-                      'Stock: $stock',
-                      style: const TextStyle(
-                        color: AppTheme.textWhite,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          lowStock ? Icons.warning_amber_rounded : Icons.check_circle,
+                          color: Colors.white,
+                          size: 12,
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          '$stock',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -224,94 +295,151 @@ class ProductCard extends StatelessWidget {
             ),
 
             // Product Info
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(AppTheme.space12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (category != null)
-                          Text(
-                            category!.toUpperCase(),
-                            style: AppTheme.overline.copyWith(
-                              color: AppTheme.primary,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        const SizedBox(height: AppTheme.space4),
-                        Text(
-                          name,
-                          style: AppTheme.bodyMedium.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Product Name
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                      height: 1.3,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Weight/Unit Info - More Prominent
+                  if (weight != null && unit != null && unit!.isNotEmpty)
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Flexible(
-                          child: Text(
-                            '₹${price.toStringAsFixed(2)}',
-                            style: AppTheme.h6.copyWith(
-                              color: AppTheme.primary,
-                              fontWeight: FontWeight.bold,
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: AppTheme.primary.withOpacity(0.3),
+                              width: 1,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                        const SizedBox(width: AppTheme.space8),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (onEdit != null)
-                              InkWell(
-                                onTap: onEdit,
-                                child: Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.secondary.withOpacity(0.1),
-                                    borderRadius: AppTheme.roundedSmall,
-                                  ),
-                                  child: const Icon(
-                                    Icons.edit_outlined,
-                                    size: 16,
-                                    color: AppTheme.secondary,
-                                  ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.scale_outlined,
+                                size: 14,
+                                color: AppTheme.primary,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${weight!.toStringAsFixed(weight! % 1 == 0 ? 0 : 1)} ',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey[900],
                                 ),
                               ),
-                            if (onDelete != null) ...[
-                              const SizedBox(width: AppTheme.space4),
-                              InkWell(
-                                onTap: onDelete,
-                                child: Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.error.withOpacity(0.1),
-                                    borderRadius: AppTheme.roundedSmall,
-                                  ),
-                                  child: const Icon(
-                                    Icons.delete_outline,
-                                    size: 16,
-                                    color: AppTheme.error,
-                                  ),
+                              Text(
+                                unit!,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey[700],
                                 ),
                               ),
                             ],
-                          ],
+                          ),
                         ),
                       ],
                     ),
-                  ],
-                ),
+                  const SizedBox(height: 10),
+
+                  // Price Row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      // Price Section
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (hasDiscount) ...[
+                              Text(
+                                '₹${originalPrice!.toStringAsFixed(0)}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[500],
+                                  decoration: TextDecoration.lineThrough,
+                                  decorationThickness: 2,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                            ],
+                            Text(
+                              '₹${price.toStringAsFixed(0)}',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: hasDiscount ? Colors.green[700] : AppTheme.primary,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Action Buttons
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (onEdit != null)
+                            Material(
+                              color: Colors.blue[50],
+                              borderRadius: BorderRadius.circular(8),
+                              child: InkWell(
+                                onTap: onEdit,
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  child: Icon(
+                                    Icons.edit_outlined,
+                                    size: 18,
+                                    color: Colors.blue[700],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          if (onDelete != null) ...[
+                            const SizedBox(width: 6),
+                            Material(
+                              color: Colors.red[50],
+                              borderRadius: BorderRadius.circular(8),
+                              child: InkWell(
+                                onTap: onDelete,
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  child: Icon(
+                                    Icons.delete_outline,
+                                    size: 18,
+                                    color: Colors.red[700],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],

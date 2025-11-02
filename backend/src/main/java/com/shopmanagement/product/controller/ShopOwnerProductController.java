@@ -3,6 +3,7 @@ package com.shopmanagement.product.controller;
 import com.shopmanagement.common.dto.ApiResponse;
 import com.shopmanagement.product.dto.ShopProductRequest;
 import com.shopmanagement.product.dto.ShopProductResponse;
+import com.shopmanagement.product.entity.ShopProduct;
 import com.shopmanagement.product.service.ShopProductService;
 import com.shopmanagement.shop.entity.Shop;
 import com.shopmanagement.shop.service.ShopService;
@@ -13,6 +14,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -59,8 +61,12 @@ public class ShopOwnerProductController {
             
             Sort.Direction direction = sortDirection.equalsIgnoreCase("ASC") ? Sort.Direction.ASC : Sort.Direction.DESC;
             Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
-            
-            Page<ShopProductResponse> products = shopProductService.getShopProducts(currentShop.getId(), null, pageable);
+
+            // Filter out INACTIVE (soft-deleted) products
+            Specification<ShopProduct> spec = (root, query, cb) ->
+                cb.notEqual(root.get("status"), ShopProduct.ShopProductStatus.INACTIVE);
+
+            Page<ShopProductResponse> products = shopProductService.getShopProducts(currentShop.getId(), spec, pageable);
             
             log.info("Found {} products for shop: {} (owner: {})", products.getTotalElements(), currentShop.getId(), currentUsername);
             

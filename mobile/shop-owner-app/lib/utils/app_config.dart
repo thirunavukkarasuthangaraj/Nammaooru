@@ -74,45 +74,36 @@ class AppConfig {
   static String get buildMode => kIsProduction ? 'Production' : 'Development';
 
   static String get apiBaseUrl {
-    // Local development - pointing to local backend
-    // return 'http://10.187.95.46:8080/api';
+    // For local testing: Use localhost for web, network IP for mobile devices
+    if (kIsWeb) {
+      return 'http://localhost:8080/api';
+    }
+    return 'http://192.168.1.3:8080/api';
 
     // Production deployment
-    return 'https://nammaoorudelivary.in/api';
-
-    // For local testing:
-    // Use localhost for web, network IP for mobile devices
-    // if (kIsWeb) {
-    //   return 'http://localhost:8080/api';
-    // }
-    // return 'http://192.168.1.10:8080/api';
+    // return 'https://nammaoorudelivary.in/api';
   }
 
   static String get serverBaseUrl {
-    // Local development
-    // return 'http://10.187.95.46:8080';
+    // For local testing: Use localhost for web, network IP for mobile devices
+    if (kIsWeb) {
+      return 'http://localhost:8080';
+    }
+    return 'http://192.168.1.3:8080';
 
     // Production deployment
-    return 'https://nammaoorudelivary.in';
-
-    // For local testing:
-    // Use localhost for web, network IP for mobile devices
-    // if (kIsWeb) {
-    //   return 'http://localhost:8080';
-    // }
-    // return 'http://192.168.1.10:8080';
+    // return 'https://nammaoorudelivary.in';
   }
 
   static String get webSocketUrl {
-    // Production deployment
-    return 'wss://nammaoorudelivary.in/ws';
+    // For local testing: Use localhost for web, network IP for mobile devices
+    if (kIsWeb) {
+      return 'ws://localhost:8080/ws';
+    }
+    return 'ws://192.168.1.3:8080/ws';
 
-    // For local testing:
-    // Use localhost for web, network IP for mobile devices
-    // if (kIsWeb) {
-    //   return 'ws://localhost:8080/ws';
-    // }
-    // return 'ws://192.168.1.10:8080/ws';
+    // Production deployment
+    // return 'wss://nammaoorudelivary.in/ws';
   }
 
   static String getImageUrl(String? imagePath) {

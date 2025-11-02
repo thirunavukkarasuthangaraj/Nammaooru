@@ -94,6 +94,14 @@ public class ShopProduct {
     @Column(name = "custom_attributes", length = 2000)
     private String customAttributes; // JSON for shop-specific attributes
 
+    // Shop-specific unit override (if null, uses master product's unit)
+    @Column(name = "base_weight")
+    private Double baseWeight;
+
+    @Size(max = 50)
+    @Column(name = "base_unit", length = 50)
+    private String baseUnit;
+
     // SEO and Display
     @Column(name = "display_order")
     private Integer displayOrder;

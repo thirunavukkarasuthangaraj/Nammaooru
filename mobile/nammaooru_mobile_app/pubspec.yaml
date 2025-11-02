@@ -50,6 +50,7 @@ dependencies:
   # Device Info & Promo Codes
   device_info_plus: ^10.1.0
   uuid: ^4.2.1
+  package_info_plus: ^8.0.0
   
   # Navigation
   go_router: ^12.1.3

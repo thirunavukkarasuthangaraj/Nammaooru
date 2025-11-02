@@ -70,6 +70,7 @@ public class SecurityConfig {
                                 "/api/auth/**",
                                 "/api/public/**",
                                 "/api/version",
+                                "/api/app-version/**",  // Allow app version check without authentication
                                 "/api/customer/**",  // ALLOW ALL CUSTOMER ENDPOINTS WITHOUT AUTH
                                 "/api/promotions/active",  // Public: Get active promo codes
                                 "/api/promotions/validate",  // Public: Validate promo code for customers

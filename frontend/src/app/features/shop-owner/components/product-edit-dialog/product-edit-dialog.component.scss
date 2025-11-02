@@ -60,6 +60,40 @@
     padding: 16px 0;
   }
 
+  .discount-info {
+    display: flex;
+    gap: 24px;
+    padding: 12px;
+    background: #fff3e0;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    border: 1px solid #ffb74d;
+
+    .discount-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .label {
+        color: #666;
+        font-size: 0.875rem;
+      }
+
+      .value {
+        font-weight: 600;
+        font-size: 1rem;
+
+        &.discount {
+          color: #ff6f00;
+        }
+
+        &.discount-percent {
+          color: #f57c00;
+        }
+      }
+    }
+  }
+
   .profit-info {
     display: flex;
     gap: 24px;

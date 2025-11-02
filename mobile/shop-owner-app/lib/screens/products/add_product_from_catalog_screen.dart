@@ -48,7 +48,7 @@ class _AddProductFromCatalogScreenState extends State<AddProductFromCatalogScree
     setState(() => _isLoading = true);
 
     try {
-      final response = await ApiService.getMasterProducts(
+      final response = await ApiService.getAvailableMasterProducts(
         page: 0,
         size: 100,
         categoryId: categoryId,
@@ -281,6 +281,8 @@ class _AddProductFromCatalogScreenState extends State<AddProductFromCatalogScree
     final priceController = TextEditingController(
       text: (masterProduct['suggestedPrice'] ?? 0).toString(),
     );
+    final originalPriceController = TextEditingController();
+    final costPriceController = TextEditingController();
     final stockController = TextEditingController(text: '10');
     final minStockController = TextEditingController(text: '5');
 
@@ -301,10 +303,32 @@ class _AddProductFromCatalogScreenState extends State<AddProductFromCatalogScree
               TextField(
                 controller: priceController,
                 decoration: const InputDecoration(
-                  labelText: 'Your Price *',
+                  labelText: 'Selling Price *',
                   prefixText: '₹',
                   border: OutlineInputBorder(),
-                  helperText: 'Set your custom selling price',
+                  helperText: 'Price customers will pay',
+                ),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: originalPriceController,
+                decoration: const InputDecoration(
+                  labelText: 'Original Price / MRP (Optional)',
+                  prefixText: '₹',
+                  border: OutlineInputBorder(),
+                  helperText: 'For showing discount (set higher than selling price)',
+                ),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: costPriceController,
+                decoration: const InputDecoration(
+                  labelText: 'Cost Price (Optional)',
+                  prefixText: '₹',
+                  border: OutlineInputBorder(),
+                  helperText: 'Your purchase/supplier cost',
                 ),
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
               ),
@@ -339,6 +363,12 @@ class _AddProductFromCatalogScreenState extends State<AddProductFromCatalogScree
           ElevatedButton(
             onPressed: () async {
               final price = double.tryParse(priceController.text);
+              final originalPrice = originalPriceController.text.isEmpty
+                  ? null
+                  : double.tryParse(originalPriceController.text);
+              final costPrice = costPriceController.text.isEmpty
+                  ? null
+                  : double.tryParse(costPriceController.text);
               final stock = int.tryParse(stockController.text);
               final minStock = int.tryParse(minStockController.text);
 
@@ -357,7 +387,14 @@ class _AddProductFromCatalogScreenState extends State<AddProductFromCatalogScree
               }
 
               Navigator.pop(context);
-              await _addProductToShop(masterProduct, price, stock, minStock ?? 5);
+              await _addProductToShop(
+                masterProduct,
+                price,
+                originalPrice,
+                costPrice,
+                stock,
+                minStock ?? 5,
+              );
             },
             child: const Text('Add to My Shop'),
           ),
@@ -366,11 +403,20 @@ class _AddProductFromCatalogScreenState extends State<AddProductFromCatalogScree
     );
   }
 
-  Future<void> _addProductToShop(dynamic masterProduct, double price, int stock, int minStock) async {
+  Future<void> _addProductToShop(
+    dynamic masterProduct,
+    double price,
+    double? originalPrice,
+    double? costPrice,
+    int stock,
+    int minStock,
+  ) async {
     try {
       final response = await ApiService.createShopProduct(
         masterProductId: masterProduct['id'],
         price: price,
+        originalPrice: originalPrice,
+        costPrice: costPrice,
         stockQuantity: stock,
         minStockLevel: minStock,
       );

@@ -2,7 +2,7 @@ class AppConfig {
   // ============================================
   // SINGLE SOURCE OF TRUTH - CHANGE ONLY HERE!
   // ============================================
-  static const String _devBaseUrl = 'http://192.168.1.10:8080'; // Local network IP for Chrome/Web
+  static const String _devBaseUrl = 'http://192.168.1.7:8080'; // Local network IP for mobile device testing
   static const String _prodBaseUrl = 'https://nammaoorudelivary.in';
 
   static const bool _isProduction = true; // PRODUCTION MODE

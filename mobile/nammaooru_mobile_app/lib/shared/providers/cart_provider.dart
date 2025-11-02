@@ -41,7 +41,7 @@ class CartProvider with ChangeNotifier {
     if (kDebugMode) {
       print('🛒 CartProvider: Adding ${product.name} (qty: $quantity) to cart');
     }
-    
+
     // Check if cart has items from different shop
     if (_items.isNotEmpty && !clearCartConfirmed) {
       final currentShopId = _items.first.product.shopId;
@@ -52,22 +52,41 @@ class CartProvider with ChangeNotifier {
         return false; // Return false to indicate shop conflict
       }
     }
-    
+
     _isLoading = true;
     notifyListeners();
-    
+
     try {
       // ALWAYS add to local storage first for immediate UI feedback
       final existingIndex = _items.indexWhere((item) => item.product.id == product.id);
-      
+
       if (existingIndex >= 0) {
+        // Check stock limit before adding more
+        final newQuantity = _items[existingIndex].quantity + quantity;
+        if (newQuantity > product.stockQuantity) {
+          if (kDebugMode) {
+            print('🛒 Stock limit reached. Available: ${product.stockQuantity}, Requested: $newQuantity');
+          }
+          _isLoading = false;
+          notifyListeners();
+          return false; // Stock limit exceeded
+        }
         _items[existingIndex] = _items[existingIndex].copyWith(
-          quantity: _items[existingIndex].quantity + quantity,
+          quantity: newQuantity,
         );
         if (kDebugMode) {
           print('🛒 Updated existing item, new qty: ${_items[existingIndex].quantity}');
         }
       } else {
+        // Check stock for new item
+        if (quantity > product.stockQuantity) {
+          if (kDebugMode) {
+            print('🛒 Stock limit exceeded. Available: ${product.stockQuantity}, Requested: $quantity');
+          }
+          _isLoading = false;
+          notifyListeners();
+          return false; // Stock limit exceeded
+        }
         _items.add(CartItem(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           product: product,

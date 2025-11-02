@@ -23,9 +23,8 @@ public class MasterProductRequest {
     @Size(max = 2000, message = "Description must be less than 2000 characters")
     private String description;
 
-    @NotBlank(message = "SKU is required")
     @Size(max = 100, message = "SKU must be less than 100 characters")
-    private String sku;
+    private String sku; // Optional - will be auto-generated if not provided
 
     @Size(max = 100, message = "Barcode must be less than 100 characters")
     private String barcode;

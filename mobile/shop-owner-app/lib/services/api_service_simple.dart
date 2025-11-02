@@ -540,26 +540,34 @@ class ApiService {
   // Update Shop Product
   static Future<ApiResponse> updateShopProduct({
     required int productId,
+    required int masterProductId,
     required double price,
+    double? originalPrice,
     int? stockQuantity,
     int? minStockLevel,
     String? customName,
     String? customDescription,
+    double? baseWeight,
+    String? baseUnit,
   }) async {
     try {
       final headers = await _getAuthHeaders();
       final body = <String, dynamic>{
+        'masterProductId': masterProductId,
         'price': price,
       };
 
+      if (originalPrice != null) body['originalPrice'] = originalPrice;
       if (stockQuantity != null) body['stockQuantity'] = stockQuantity;
       if (minStockLevel != null) body['minStockLevel'] = minStockLevel;
       if (customName != null) body['customName'] = customName;
       if (customDescription != null) body['customDescription'] = customDescription;
+      if (baseWeight != null) body['baseWeight'] = baseWeight;
+      if (baseUnit != null) body['baseUnit'] = baseUnit;
 
       final response = await http
           .put(
-            Uri.parse('$baseUrl/shop-products/update/$productId'),
+            Uri.parse('$baseUrl/shop-products/$productId'),
             headers: headers,
             body: json.encode(body),
           )

@@ -128,38 +128,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('Login', style: TextStyle(fontSize: 16)),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  TextButton(
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          title: const Text('Demo Credentials'),
-                          content: const Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Username: shopowner'),
-                              Text('Password: password123'),
-                              SizedBox(height: 8),
-                              Text('Note: Make sure backend is running on port 8080'),
-                            ],
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () {
-                                Navigator.pop(context);
-                                _usernameController.text = 'shopowner';
-                                _passwordController.text = 'password123';
-                              },
-                              child: const Text('Use Demo'),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                    child: const Text('View Demo Credentials'),
-                  ),
                 ],
               ),
             ),

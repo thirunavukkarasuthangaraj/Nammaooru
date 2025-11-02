@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/providers/delivery_partner_provider.dart';
+import '../../../core/providers/location_provider.dart';
 import '../../../core/models/simple_order_model.dart';
 import '../widgets/order_card.dart';
 import '../widgets/order_details_bottom_sheet.dart';
@@ -45,9 +46,26 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
 
   void _markAsPickedUp(OrderModel order) async {
     final provider = Provider.of<DeliveryPartnerProvider>(context, listen: false);
+    final locationProvider = Provider.of<LocationProvider>(context, listen: false);
 
     try {
       await provider.updateOrderStatus(order.orderNumber ?? order.id.toString(), 'picked_up');
+
+      // Update location tracking context with assignmentId
+      locationProvider.updateOrderContext(
+        assignmentId: order.assignmentId,
+        orderStatus: 'picked_up',
+      );
+
+      // Start location tracking if not already active
+      if (!locationProvider.isLocationTrackingActive && provider.currentPartner != null) {
+        await locationProvider.startLocationTracking(
+          partnerId: provider.currentPartner!.partnerId,
+          assignmentId: order.assignmentId,
+          orderStatus: 'picked_up',
+        );
+      }
+
       Navigator.pop(context);
 
       ScaffoldMessenger.of(context).showSnackBar(

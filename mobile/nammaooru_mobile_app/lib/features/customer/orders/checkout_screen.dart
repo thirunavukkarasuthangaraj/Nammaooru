@@ -1849,7 +1849,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               PromoCodeWidget(
                 orderAmount: cartProvider.subtotal,
                 shopId: cartProvider.items.isNotEmpty
-                    ? cartProvider.items.first.product.shopId.toString()
+                    ? cartProvider.items.first.product.shopDatabaseId?.toString()
                     : null,
                 customerId: Provider.of<AuthProvider>(context, listen: false).userId?.toString(),
                 customerPhone: _phoneController.text.isNotEmpty ? _phoneController.text : null,
@@ -2342,13 +2342,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         }
       }
 
-      // Get actual shop ID from cart items
+      // Get actual shop database ID from cart items
       final shopId = cartProvider.items.isNotEmpty
-          ? (int.tryParse(cartProvider.items.first.product.shopId.toString()) ?? cartProvider.items.first.product.shopId)
+          ? cartProvider.items.first.product.shopDatabaseId
           : null;
 
       if (shopId == null) {
-        Helpers.showSnackBar(context, 'Invalid shop information', isError: true);
+        Helpers.showSnackBar(context, 'Invalid shop information. Please try adding items again.', isError: true);
         setState(() => _isPlacingOrder = false);
         return;
       }
@@ -2404,6 +2404,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         cartProvider.clearCart();
 
         if (mounted) {
+          // Clear the cart after successful order
+          cartProvider.clearCart();
+
           // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -2417,9 +2420,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               margin: const EdgeInsets.all(12),
               behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 3),
             ),
           );
-          Navigator.of(context).popUntil((route) => route.isFirst);
+
+          // Redirect to dashboard after a short delay to show the success message
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) {
+              context.go('/customer/dashboard');
+            }
+          });
         }
       } else {
         if (mounted) {

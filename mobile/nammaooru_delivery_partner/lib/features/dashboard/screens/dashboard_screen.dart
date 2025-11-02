@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -836,8 +837,8 @@ class HomeTab extends StatelessWidget {
                 ),
                 ElevatedButton(
                   onPressed: () async {
-                    final success = await provider.acceptOrder(order.orderNumber);
-                    if (success) {
+                    final response = await provider.acceptOrder(order.orderNumber);
+                    if (response?['success'] == true) {
                       ScaffoldMessenger.of(parentContext).showSnackBar(
                         const SnackBar(
                           content: Text('Order accepted successfully!'),
@@ -1095,6 +1096,15 @@ class ProfileTab extends StatelessWidget {
               child: Column(
                 children: [
                   _buildProfileOption(
+                    Icons.stop_circle,
+                    'Stop Local Server',
+                    () {
+                      _showStopServerDialog(context);
+                    },
+                    color: Colors.red,
+                  ),
+                  const Divider(height: 1),
+                  _buildProfileOption(
                     Icons.settings,
                     'Settings',
                     () {},
@@ -1142,12 +1152,88 @@ class ProfileTab extends StatelessWidget {
     );
   }
 
-  Widget _buildProfileOption(IconData icon, String title, VoidCallback onTap) {
+  Widget _buildProfileOption(IconData icon, String title, VoidCallback onTap, {Color? color}) {
     return ListTile(
-      leading: Icon(icon),
-      title: Text(title),
+      leading: Icon(icon, color: color),
+      title: Text(title, style: color != null ? TextStyle(color: color) : null),
       trailing: const Icon(Icons.arrow_forward_ios),
       onTap: onTap,
+    );
+  }
+
+  void _showStopServerDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.stop_circle, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Stop Local Server'),
+          ],
+        ),
+        content: const Text('This will stop the local Spring Boot backend server. Are you sure?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+
+              // Show loading indicator
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => const Center(
+                  child: Card(
+                    child: Padding(
+                      padding: EdgeInsets.all(20),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(height: 16),
+                          Text('Stopping server...'),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+
+              try {
+                // Kill all Java processes running Spring Boot
+                await Process.run('taskkill', ['/F', '/IM', 'java.exe']);
+
+                if (context.mounted) {
+                  Navigator.pop(context); // Close loading dialog
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('✅ Local server stopped successfully!'),
+                      backgroundColor: Colors.green,
+                      duration: Duration(seconds: 3),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  Navigator.pop(context); // Close loading dialog
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('❌ Error stopping server: $e'),
+                      backgroundColor: Colors.red,
+                      duration: const Duration(seconds: 3),
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Stop Server', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
     );
   }
 

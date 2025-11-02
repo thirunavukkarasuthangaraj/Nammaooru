@@ -22,6 +22,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   final _brandController = TextEditingController();
   final _skuController = TextEditingController();
   final _priceController = TextEditingController();
+  final _originalPriceController = TextEditingController();
   final _costPriceController = TextEditingController();
   final _stockController = TextEditingController(text: '0');
   final _minStockController = TextEditingController(text: '5');
@@ -160,6 +161,9 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       final shopProductResponse = await ApiService.createShopProduct(
         masterProductId: masterProductId,
         price: double.parse(_priceController.text),
+        originalPrice: _originalPriceController.text.isNotEmpty
+            ? double.parse(_originalPriceController.text)
+            : null,
         stockQuantity: int.parse(_stockController.text),
         minStockLevel: int.parse(_minStockController.text),
         costPrice: _costPriceController.text.isNotEmpty
@@ -284,9 +288,9 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                     TextFormField(
                       controller: _skuController,
                       decoration: const InputDecoration(
-                        labelText: 'SKU',
+                        labelText: 'SKU (Optional)',
                         border: OutlineInputBorder(),
-                        helperText: 'Auto-generated from product name',
+                        helperText: 'Leave empty to auto-generate from category, brand, and product name',
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -471,12 +475,34 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                         labelText: 'Selling Price (₹) *',
                         border: OutlineInputBorder(),
                         prefixText: '₹',
+                        helperText: 'Price customer pays',
                       ),
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       validator: (value) {
                         if (value == null || value.isEmpty) return 'Price is required';
                         final price = double.tryParse(value);
                         if (price == null || price <= 0) return 'Enter a valid price';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _originalPriceController,
+                      decoration: const InputDecoration(
+                        labelText: 'Original Price / MRP (₹)',
+                        border: OutlineInputBorder(),
+                        prefixText: '₹',
+                        helperText: 'For showing discount (optional)',
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      validator: (value) {
+                        if (value != null && value.isNotEmpty) {
+                          final originalPrice = double.tryParse(value);
+                          final sellingPrice = double.tryParse(_priceController.text);
+                          if (originalPrice != null && sellingPrice != null && originalPrice <= sellingPrice) {
+                            return 'Original price must be greater than selling price';
+                          }
+                        }
                         return null;
                       },
                     ),

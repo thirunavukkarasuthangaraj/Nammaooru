@@ -27,7 +27,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     
     // Find orders by status
     Page<Order> findByStatus(Order.OrderStatus status, Pageable pageable);
-    
+    List<Order> findByStatus(Order.OrderStatus status);
+
     // Find orders by payment status
     Page<Order> findByPaymentStatus(Order.PaymentStatus paymentStatus, Pageable pageable);
     

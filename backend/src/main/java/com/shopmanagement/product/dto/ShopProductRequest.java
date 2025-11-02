@@ -66,4 +66,10 @@ public class ShopProductRequest {
     private String tags;
 
     private List<String> shopImageUrls;
+
+    // Master product fields (for updating master product properties)
+    private Double baseWeight;
+
+    @Size(max = 50, message = "Base unit must be less than 50 characters")
+    private String baseUnit;
 }

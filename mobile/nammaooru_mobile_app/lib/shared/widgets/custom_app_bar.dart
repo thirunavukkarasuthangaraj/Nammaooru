@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/constants/colors.dart';
 import '../../core/theme/village_theme.dart';
 
@@ -45,11 +46,19 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
   
   Widget? _buildBackButton(BuildContext context) {
-    if (!Navigator.of(context).canPop()) return null;
-    
+    // Always show back button if showBackButton is true
     return IconButton(
       icon: const Icon(Icons.arrow_back_ios),
-      onPressed: () => Navigator.of(context).pop(),
+      onPressed: () {
+        // Check if we can pop before attempting to pop
+        final router = GoRouter.of(context);
+        if (router.canPop()) {
+          router.pop();
+        } else {
+          // No pages to pop, navigate to dashboard
+          context.go('/customer/dashboard');
+        }
+      },
     );
   }
   

@@ -68,19 +68,26 @@ public class MasterProductService {
 
     public MasterProductResponse createProduct(MasterProductRequest request) {
         log.info("Creating master product: {}", request.getName());
-        
-        // Validate unique constraints
-        validateUniqueFields(request.getSku(), request.getBarcode(), null);
-        
+
         // Get category
         ProductCategory category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + request.getCategoryId()));
-        
+
+        // Auto-generate SKU if not provided
+        String sku = request.getSku();
+        if (sku == null || sku.trim().isEmpty()) {
+            sku = generateSku(category, request.getName(), request.getBrand());
+            log.info("Auto-generated SKU: {}", sku);
+        }
+
+        // Validate unique constraints
+        validateUniqueFields(sku, request.getBarcode(), null);
+
         // Create master product
         MasterProduct product = MasterProduct.builder()
                 .name(request.getName())
                 .description(request.getDescription())
-                .sku(request.getSku())
+                .sku(sku)
                 .barcode(request.getBarcode())
                 .category(category)
                 .brand(request.getBrand())
@@ -205,20 +212,74 @@ public class MasterProductService {
         return masterProductRepository.findAllBrands();
     }
 
+    /**
+     * Generate a unique SKU based on category, product name, and brand
+     * Format: CAT-BRAND-NAME-UNIQUEID
+     * Example: GRO-AMUL-MILK-001
+     */
+    private String generateSku(ProductCategory category, String productName, String brand) {
+        // Extract category prefix (first 3 letters, uppercase)
+        String categoryPrefix = category.getName()
+                .replaceAll("[^a-zA-Z]", "")
+                .substring(0, Math.min(3, category.getName().length()))
+                .toUpperCase();
+
+        // Extract brand prefix (first 3-4 letters, uppercase)
+        String brandPrefix = "";
+        if (brand != null && !brand.trim().isEmpty()) {
+            brandPrefix = brand
+                    .replaceAll("[^a-zA-Z]", "")
+                    .substring(0, Math.min(4, brand.length()))
+                    .toUpperCase();
+        }
+
+        // Extract product name prefix (first 3-4 letters, uppercase)
+        String namePrefix = productName
+                .replaceAll("[^a-zA-Z]", "")
+                .substring(0, Math.min(4, productName.length()))
+                .toUpperCase();
+
+        // Generate unique counter
+        String baseSku = categoryPrefix + "-" + (brandPrefix.isEmpty() ? "" : brandPrefix + "-") + namePrefix;
+
+        // Find unique SKU by appending counter
+        String sku = baseSku;
+        int counter = 1;
+        while (masterProductRepository.existsBySku(sku)) {
+            sku = baseSku + "-" + String.format("%03d", counter);
+            counter++;
+            if (counter > 999) {
+                // Fallback to timestamp if counter exceeds 999
+                sku = baseSku + "-" + System.currentTimeMillis();
+                break;
+            }
+        }
+
+        return sku;
+    }
+
     private void validateUniqueFields(String sku, String barcode, Long excludeId) {
-        if (excludeId == null) {
-            if (masterProductRepository.existsBySku(sku)) {
-                throw new RuntimeException("SKU already exists: " + sku);
+        if (sku != null && !sku.trim().isEmpty()) {
+            if (excludeId == null) {
+                if (masterProductRepository.existsBySku(sku)) {
+                    throw new RuntimeException("SKU already exists: " + sku);
+                }
+            } else {
+                if (masterProductRepository.existsBySkuAndIdNot(sku, excludeId)) {
+                    throw new RuntimeException("SKU already exists: " + sku);
+                }
             }
-            if (barcode != null && masterProductRepository.existsByBarcode(barcode)) {
-                throw new RuntimeException("Barcode already exists: " + barcode);
-            }
-        } else {
-            if (masterProductRepository.existsBySkuAndIdNot(sku, excludeId)) {
-                throw new RuntimeException("SKU already exists: " + sku);
-            }
-            if (barcode != null && masterProductRepository.existsByBarcodeAndIdNot(barcode, excludeId)) {
-                throw new RuntimeException("Barcode already exists: " + barcode);
+        }
+
+        if (barcode != null && !barcode.trim().isEmpty()) {
+            if (excludeId == null) {
+                if (masterProductRepository.existsByBarcode(barcode)) {
+                    throw new RuntimeException("Barcode already exists: " + barcode);
+                }
+            } else {
+                if (masterProductRepository.existsByBarcodeAndIdNot(barcode, excludeId)) {
+                    throw new RuntimeException("Barcode already exists: " + barcode);
+                }
             }
         }
     }

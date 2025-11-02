@@ -181,25 +181,35 @@ class DeliveryPartnerProvider extends ChangeNotifier {
     await loadCurrentOrders();
   }
   
-  Future<bool> acceptOrder(String orderId) async {
+  Future<Map<String, dynamic>?> acceptOrder(String orderId) async {
     try {
       _setError(null);
-      
+
       final response = await _apiService.acceptOrder(orderId);
-      
+
       if (response['success'] == true) {
+        // Extract assignmentId from response
+        final assignmentId = response['assignmentId']?.toString();
+
         // Remove from available orders and refresh both available and active orders
         await loadAvailableOrders();
         await loadCurrentOrders();
         await loadOrderHistory();
-        return true;
+
+        // Return the response data including assignmentId
+        return {
+          'success': true,
+          'assignmentId': assignmentId,
+          'orderNumber': response['orderNumber'],
+          'pickupOtp': response['pickupOtp'],
+        };
       } else {
         _setError(response['message'] ?? 'Failed to accept order');
-        return false;
+        return {'success': false};
       }
     } catch (e) {
       _setError(e.toString());
-      return false;
+      return {'success': false};
     }
   }
   

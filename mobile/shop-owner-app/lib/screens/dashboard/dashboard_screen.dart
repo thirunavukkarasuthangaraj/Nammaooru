@@ -8,6 +8,7 @@ import '../notifications/notifications_screen.dart';
 import '../orders/orders_screen.dart';
 import '../payments/payments_screen.dart';
 import '../promo_codes/promo_codes_screen.dart';
+import '../inventory/inventory_screen.dart';
 import '../../utils/app_config.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/modern_card.dart';
@@ -37,6 +38,8 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
     'totalOrders': 0,
     'pendingOrders': 0,
     'totalProducts': 0,
+    'lowStockProducts': 0,
+    'outOfStockProducts': 0,
   };
   List<dynamic> _recentOrders = [];
   bool _isLoading = true;
@@ -143,6 +146,8 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
               'totalOrders': orderMetrics['totalOrders'] ?? 0,
               'pendingOrders': orderMetrics['pendingOrders'] ?? 0,
               'totalProducts': productMetrics['totalProducts'] ?? 0,
+              'lowStockProducts': productMetrics['lowStockProducts'] ?? 0,
+              'outOfStockProducts': productMetrics['outOfStockProducts'] ?? 0,
             };
             _unreadNotificationCount = orderMetrics['pendingOrders'] ?? 0;
             _isLoading = false;
@@ -484,6 +489,154 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                     ),
 
                     const SizedBox(height: AppTheme.space24),
+
+                    // Inventory Management Card
+                    InfoCard(
+                      title: '',
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => InventoryScreen(token: widget.token),
+                            ),
+                          );
+                        },
+                        borderRadius: AppTheme.roundedLarge,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: (_stats['lowStockProducts'] > 0 || _stats['outOfStockProducts'] > 0)
+                                ? [
+                                    AppTheme.error.withOpacity(0.1),
+                                    AppTheme.warning.withOpacity(0.1),
+                                  ]
+                                : [
+                                    AppTheme.accent.withOpacity(0.1),
+                                    AppTheme.primary.withOpacity(0.1),
+                                  ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: AppTheme.roundedLarge,
+                            border: Border.all(
+                              color: (_stats['lowStockProducts'] > 0 || _stats['outOfStockProducts'] > 0)
+                                ? AppTheme.error.withOpacity(0.3)
+                                : AppTheme.primary.withOpacity(0.2),
+                              width: 2,
+                            ),
+                          ),
+                          padding: const EdgeInsets.all(AppTheme.space20),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(AppTheme.space16),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: (_stats['lowStockProducts'] > 0 || _stats['outOfStockProducts'] > 0)
+                                      ? [AppTheme.error, AppTheme.warning]
+                                      : [AppTheme.accent, AppTheme.primary],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: AppTheme.roundedMedium,
+                                  boxShadow: AppTheme.shadowSmall,
+                                ),
+                                child: Icon(
+                                  (_stats['lowStockProducts'] > 0 || _stats['outOfStockProducts'] > 0)
+                                    ? Icons.warning_amber_rounded
+                                    : Icons.inventory_2,
+                                  color: AppTheme.textWhite,
+                                  size: 32,
+                                ),
+                              ),
+                              const SizedBox(width: AppTheme.space16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (_stats['lowStockProducts'] > 0 || _stats['outOfStockProducts'] > 0) ...[
+                                      Row(
+                                        children: [
+                                          Text(
+                                            'Inventory Alert',
+                                            style: AppTheme.h6.copyWith(
+                                              color: AppTheme.error,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const SizedBox(width: AppTheme.space8),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: AppTheme.space8,
+                                              vertical: AppTheme.space4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: AppTheme.error,
+                                              borderRadius: AppTheme.roundedSmall,
+                                            ),
+                                            child: Text(
+                                              '${_stats['lowStockProducts'] + _stats['outOfStockProducts']}',
+                                              style: AppTheme.bodySmall.copyWith(
+                                                color: AppTheme.textWhite,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: AppTheme.space8),
+                                      if (_stats['outOfStockProducts'] > 0)
+                                        Text(
+                                          '${_stats['outOfStockProducts']} out of stock • ${_stats['lowStockProducts']} low stock',
+                                          style: AppTheme.bodySmall.copyWith(
+                                            color: AppTheme.error,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        )
+                                      else
+                                        Text(
+                                          '${_stats['lowStockProducts']} products running low on stock',
+                                          style: AppTheme.bodySmall.copyWith(
+                                            color: AppTheme.warning,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                    ] else ...[
+                                      Text(
+                                        'Inventory Management',
+                                        style: AppTheme.h6,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: AppTheme.space4),
+                                      Text(
+                                        'Manage stock levels and track inventory for your products',
+                                        style: AppTheme.bodySmall,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              Icon(
+                                Icons.arrow_forward_ios,
+                                color: (_stats['lowStockProducts'] > 0 || _stats['outOfStockProducts'] > 0)
+                                  ? AppTheme.error
+                                  : AppTheme.primary,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: AppTheme.space16),
 
                     // Promo Codes Card
                     InfoCard(

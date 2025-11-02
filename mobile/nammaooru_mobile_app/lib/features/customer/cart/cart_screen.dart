@@ -33,42 +33,41 @@ class _CartScreenState extends State<CartScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: const CustomAppBar(
-        title: 'Shopping Cart',
-        backgroundColor: VillageTheme.primaryGreen,
-        foregroundColor: Colors.white,
-        showBackButton: true,
-      ),
-      body: Consumer<CartProvider>(
-        builder: (context, cartProvider, child) {
-          if (cartProvider.isEmpty) {
-            return _buildEmptyCart();
-          }
-
-          return Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildItemsList(cartProvider),
-                      const SizedBox(height: 12),
-                      _buildPromoCodeSection(cartProvider),
-                      const SizedBox(height: 12),
-                      _buildOrderSummary(cartProvider),
-                    ],
-                  ),
+    return Consumer<CartProvider>(
+      builder: (context, cartProvider, _) {
+        return Scaffold(
+          backgroundColor: VillageTheme.lightBackground,
+          appBar: const CustomAppBar(
+            title: 'Shopping Cart',
+            backgroundColor: VillageTheme.primaryGreen,
+            foregroundColor: Colors.white,
+            showBackButton: true,
+          ),
+          body: cartProvider.isEmpty
+              ? _buildEmptyCart()
+              : Column(
+                  children: [
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _buildItemsList(cartProvider),
+                            const SizedBox(height: 12),
+                            _buildPromoCodeSection(cartProvider),
+                            const SizedBox(height: 12),
+                            _buildOrderSummary(cartProvider),
+                          ],
+                        ),
+                      ),
+                    ),
+                    _buildBottomBar(cartProvider),
+                  ],
                 ),
-              ),
-              _buildBottomBar(cartProvider),
-            ],
-          );
-        },
-      ),
+        );
+      },
     );
   }
 

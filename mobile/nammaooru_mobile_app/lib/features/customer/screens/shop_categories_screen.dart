@@ -5,7 +5,7 @@ import '../../../services/shop_api_service.dart';
 import '../../../shared/providers/cart_provider.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../core/utils/helpers.dart';
-import 'shop_products_screen.dart';
+import 'shop_details_modern_screen.dart';
 import 'cart_screen.dart';
 
 class ShopCategoriesScreen extends StatefulWidget {
@@ -448,10 +448,8 @@ class _ShopCategoriesScreenState extends State<ShopCategoriesScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ShopProductsScreen(
-              shopId: widget.shopId,
-              categoryName: category['searchName'] ?? category['name'],
-              categoryId: category['id']?.toString() ?? '',
+            builder: (context) => ShopDetailsModernScreen(
+              shopId: int.parse(widget.shopId),
             ),
           ),
         );

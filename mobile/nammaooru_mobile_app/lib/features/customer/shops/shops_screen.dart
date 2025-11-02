@@ -9,6 +9,7 @@ import '../../../core/localization/app_localizations.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../services/shop_api_service.dart';
 import '../screens/shop_details_screen.dart';
+import '../screens/shop_details_modern_screen.dart';
 
 class ShopsScreen extends StatefulWidget {
   final String? category;
@@ -596,7 +597,7 @@ class _ShopsScreenState extends State<ShopsScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ShopDetailsScreen(shopId: shopId),
+        builder: (context) => ShopDetailsModernScreen(shopId: shopId),
       ),
     );
   }

@@ -43,7 +43,11 @@ public class ShopProductResponse {
     private String customName;
     private String customDescription;
     private String customAttributes;
-    
+
+    // Shop-specific unit override (if null, uses master product's unit)
+    private Double baseWeight;
+    private String baseUnit;
+
     // Display
     private String displayName; // Computed: custom name or master name
     private String displayDescription; // Computed: custom description or master description

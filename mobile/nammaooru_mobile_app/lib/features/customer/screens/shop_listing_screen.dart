@@ -5,7 +5,7 @@ import '../../../shared/widgets/loading_widget.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/utils/helpers.dart';
-import 'shop_simple_browser.dart';
+import 'shop_details_screen.dart';
 
 class ShopListingScreen extends StatefulWidget {
   final String? category;
@@ -145,12 +145,6 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
         elevation: 0,
         centerTitle: false,
         iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.filter_list),
-            onPressed: _showFilterBottomSheet,
-          ),
-        ],
       ),
       body: Column(
         children: [
@@ -599,13 +593,13 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
     final shopId = shop['id'] ?? 1;
     final shopName = shop['name'] ?? 'Shop';
 
-    // Show simple browser
+    // Show modern shop details screen
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ShopSimpleBrowser(
-          shopId: shopId.toString(),
-          shopName: shopName,
+        builder: (context) => ShopDetailsScreen(
+          shopId: shopId,
+          shop: shop,
         ),
       ),
     );

@@ -23,7 +23,9 @@ class ShopSimpleBrowser extends StatefulWidget {
 
 class _ShopSimpleBrowserState extends State<ShopSimpleBrowser> {
   final ShopApiService _shopApi = ShopApiService();
+  final TextEditingController _searchController = TextEditingController();
   String _selectedCategory = 'All';
+  String _searchQuery = '';
   List<Map<String, dynamic>> _allProducts = [];
   List<Map<String, dynamic>> _filteredProducts = [];
   List<Map<String, dynamic>> _categories = [
@@ -31,12 +33,27 @@ class _ShopSimpleBrowserState extends State<ShopSimpleBrowser> {
   ];
   Map<String, String?> _categoryImages = {}; // Store category name -> image URL
   bool _isLoading = true;
+  bool _isCategoryLoading = false;
 
   @override
   void initState() {
     super.initState();
     _loadCategories();
     _loadProducts();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    setState(() {
+      _searchQuery = _searchController.text;
+      _applyFilters();
+    });
   }
 
   Future<void> _loadCategories() async {
@@ -74,23 +91,33 @@ class _ShopSimpleBrowserState extends State<ShopSimpleBrowser> {
     }
   }
 
-  Future<void> _loadProducts() async {
-    setState(() => _isLoading = true);
+  Future<void> _loadProducts({String? category}) async {
+    setState(() {
+      if (category == null) {
+        _isLoading = true;
+      } else {
+        _isCategoryLoading = true;
+      }
+    });
 
     try {
-      // Load products from API
-      final response = await _shopApi.getShopProducts(shopId: widget.shopId);
+      // Load products from API with optional category filter
+      final response = await _shopApi.getShopProducts(
+        shopId: widget.shopId,
+        category: category != null && category != 'All' ? category : null,
+      );
 
       if (response['statusCode'] == '0000' && response['data'] != null) {
         final products = List<Map<String, dynamic>>.from(response['data']['content'] ?? []);
 
         setState(() {
           _allProducts = products;
-          _filteredProducts = products;
+          _applyFilters();
           _isLoading = false;
+          _isCategoryLoading = false;
         });
 
-        print('Loaded ${products.length} products');
+        print('Loaded ${products.length} products for category: ${category ?? "All"}');
       } else {
         // Use sample data if API fails
         _useSampleData();
@@ -202,13 +229,25 @@ class _ShopSimpleBrowserState extends State<ShopSimpleBrowser> {
   void _filterByCategory(String category) {
     setState(() {
       _selectedCategory = category;
-      if (category == 'All') {
-        _filteredProducts = _allProducts;
-      } else {
-        _filteredProducts = _allProducts
-            .where((product) => product['masterProduct']?['category']?['name'] == category)
-            .toList();
-      }
+    });
+    // Load products with category filter from API
+    _loadProducts(category: category);
+  }
+
+  void _applyFilters() {
+    List<Map<String, dynamic>> filtered = _allProducts;
+
+    // Apply search filter
+    if (_searchQuery.isNotEmpty) {
+      filtered = filtered.where((product) {
+        final name = product['displayName']?.toString().toLowerCase() ??
+                    product['masterProduct']?['name']?.toString().toLowerCase() ?? '';
+        return name.contains(_searchQuery.toLowerCase());
+      }).toList();
+    }
+
+    setState(() {
+      _filteredProducts = filtered;
     });
   }
 
@@ -230,8 +269,42 @@ class _ShopSimpleBrowserState extends State<ShopSimpleBrowser> {
           // Main content
           _isLoading
               ? const Center(child: CircularProgressIndicator())
-              : Row(
-              children: [
+              : Column(
+                  children: [
+                    // Search Bar
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      color: Colors.white,
+                      child: TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: 'Search products...',
+                          prefixIcon: const Icon(Icons.search, color: Color(0xFF4CAF50)),
+                          suffixIcon: _searchQuery.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear, color: Colors.grey),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                  },
+                                )
+                              : null,
+                          filled: true,
+                          fillColor: const Color(0xFFF5F5F5),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Category and Products Row
+                    Expanded(
+                      child: Row(
+                        children: [
                 // Left Side - Categories
                 Container(
                   width: 100,
@@ -299,60 +372,66 @@ class _ShopSimpleBrowserState extends State<ShopSimpleBrowser> {
                   ),
                 ),
 
-                // Right Side - Products Grid
-                Expanded(
-                  child: Container(
-                    color: const Color(0xFFF5F5F5),
-                    child: _filteredProducts.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.shopping_basket_outlined,
-                                  size: 64,
-                                  color: Colors.grey.shade400,
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'No products in this category',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.grey.shade600,
-                                  ),
-                                ),
-                              ],
+                          // Right Side - Products Grid
+                          Expanded(
+                            child: Container(
+                              color: const Color(0xFFF5F5F5),
+                              child: _isCategoryLoading
+                                  ? const Center(child: CircularProgressIndicator())
+                                  : _filteredProducts.isEmpty
+                                      ? Center(
+                                          child: Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Icon(
+                                                Icons.shopping_basket_outlined,
+                                                size: 64,
+                                                color: Colors.grey.shade400,
+                                              ),
+                                              const SizedBox(height: 16),
+                                              Text(
+                                                _searchQuery.isNotEmpty
+                                                    ? 'No products found for "$_searchQuery"'
+                                                    : 'No products in this category',
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  color: Colors.grey.shade600,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        )
+                                      : GridView.builder(
+                                          padding: EdgeInsets.only(
+                                            left: 8,
+                                            right: 8,
+                                            top: 8,
+                                            bottom: cartProvider.isNotEmpty ? 75 : 8,
+                                          ),
+                                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                            crossAxisCount: 2,
+                                            childAspectRatio: 0.72, // Adjusted for better fit
+                                            crossAxisSpacing: 8,
+                                            mainAxisSpacing: 8,
+                                          ),
+                                          itemCount: _filteredProducts.length,
+                                          itemBuilder: (context, index) {
+                                            return _buildProductCard(_filteredProducts[index]);
+                                          },
+                                        ),
                             ),
-                          )
-                        : GridView.builder(
-                            padding: EdgeInsets.only(
-                              left: 8,
-                              right: 8,
-                              top: 8,
-                              bottom: cartProvider.isNotEmpty ? 75 : 8,
-                            ),
-                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              childAspectRatio: 0.72, // Adjusted for better fit
-                              crossAxisSpacing: 8,
-                              mainAxisSpacing: 8,
-                            ),
-                            itemCount: _filteredProducts.length,
-                            itemBuilder: (context, index) {
-                              return _buildProductCard(_filteredProducts[index]);
-                            },
                           ),
-                  ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
 
           // Bottom Cart Bar - Shows when items in cart
           if (cartProvider.isNotEmpty)
             Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
+              bottom: 16,
+              right: 16,
               child: InkWell(
                 onTap: () {
                   // Navigate to cart screen
@@ -364,21 +443,22 @@ class _ShopSimpleBrowserState extends State<ShopSimpleBrowser> {
                   );
                 },
                 child: Container(
-                  height: 65,
+                  height: 60,
                   decoration: BoxDecoration(
                     color: const Color(0xFF4CAF50),
+                    borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
-                        blurRadius: 8,
-                        offset: const Offset(0, -2),
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         // Item count and total
                         Column(
@@ -446,9 +526,13 @@ class _ShopSimpleBrowserState extends State<ShopSimpleBrowser> {
     final productId = product['id'] ?? 0;
     final name = product['displayName']?.toString() ?? product['masterProduct']?['name']?.toString() ?? 'Product';
     final price = (product['price'] ?? 0.0).toDouble();
-    final baseWeight = product['masterProduct']?['baseWeight']?.toString() ?? '';
+    final originalPrice = (product['originalPrice'] ?? 0.0).toDouble();
+    final discountPercentage = (product['discountPercentage'] ?? 0.0).toDouble();
+    final baseWeight = product['masterProduct']?['baseWeight'];
     final baseUnit = product['masterProduct']?['baseUnit']?.toString() ?? '';
-    final unit = baseWeight.isNotEmpty && baseUnit.isNotEmpty ? '$baseWeight $baseUnit' : '';
+    final unit = (baseWeight != null && baseUnit.isNotEmpty)
+        ? '$baseWeight $baseUnit'
+        : (baseUnit.isNotEmpty ? baseUnit : '');
 
     // Check stock availability - try multiple field names
     final stockAvailable = product['stockAvailable'] ??
@@ -458,9 +542,11 @@ class _ShopSimpleBrowserState extends State<ShopSimpleBrowser> {
                           product['quantity'] ??
                           100; // Default to 100 if no stock field found
     final isOutOfStock = stockAvailable <= 0;
+    final hasDiscount = originalPrice > price && originalPrice > 0;
+    final isLowStock = stockAvailable > 0 && stockAvailable <= 10;
 
     // Debug: Print product data to see available fields
-    print('Product: $name, Stock fields - stockAvailable: ${product['stockAvailable']}, stock: ${product['stock']}, stockQuantity: ${product['stockQuantity']}, Final stock: $stockAvailable');
+    print('Product: $name, Stock: $stockAvailable, Price: $price, OriginalPrice: $originalPrice, Discount: $discountPercentage%');
 
     // Check quantity from CartProvider
     int quantity = 0;
@@ -491,73 +577,96 @@ class _ShopSimpleBrowserState extends State<ShopSimpleBrowser> {
       ),
       child: Column(
         children: [
-          // Product Image
+          // Product Image - Clean without badges
           Expanded(
             flex: 3,
-            child: Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-                  child: Container(
-                    width: double.infinity,
-                    color: Colors.grey.shade50,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        image.isNotEmpty
-                            ? Image.network(
-                                image,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return _buildPlaceholderImage(name);
-                                },
-                              )
-                            : _buildPlaceholderImage(name),
-                        // Out of Stock Overlay
-                        if (isOutOfStock)
-                          Container(
-                            color: Colors.black.withOpacity(0.6),
-                            child: const Center(
-                              child: Text(
-                                'OUT OF STOCK',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+              child: Container(
+                width: double.infinity,
+                color: Colors.grey.shade50,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    image.isNotEmpty
+                        ? Image.network(
+                            image,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return _buildPlaceholderImage(name);
+                            },
+                          )
+                        : _buildPlaceholderImage(name),
+                    // Out of Stock Overlay only
+                    if (isOutOfStock)
+                      Container(
+                        color: Colors.black.withOpacity(0.7),
+                        child: const Center(
+                          child: Text(
+                            'OUT OF STOCK',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                      ],
-                    ),
-                  ),
+                        ),
+                      ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
 
           // Product Details
           Padding(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(6),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Price - BLACK COLOR
-                Text(
-                  '₹${price.toStringAsFixed(0)}',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black, // Changed to black
+                // Price Section - Clean and Simple
+                if (hasDiscount)
+                  Row(
+                    children: [
+                      // Discounted Price - GREEN
+                      Text(
+                        '₹${price.toStringAsFixed(0)}',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF4CAF50),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      // Original Price - STRIKETHROUGH
+                      Text(
+                        '₹${originalPrice.toStringAsFixed(0)}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey.shade600,
+                          decoration: TextDecoration.lineThrough,
+                          decorationColor: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  )
+                else
+                  // Regular Price - BLACK
+                  Text(
+                    '₹${price.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
                   ),
-                ),
                 // Name - BLACK COLOR
                 Text(
                   name,
                   style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.black, // Changed to black
+                    fontSize: 11,
+                    color: Colors.black,
                     fontWeight: FontWeight.w500,
                   ),
                   maxLines: 1,
@@ -568,15 +677,15 @@ class _ShopSimpleBrowserState extends State<ShopSimpleBrowser> {
                   Text(
                     unit,
                     style: const TextStyle(
-                      fontSize: 11,
-                      color: Colors.black54, // Darker gray
+                      fontSize: 10,
+                      color: Colors.black54,
                       fontWeight: FontWeight.w400,
                     ),
                   ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 // Add/Quantity Button - Fixed Height
                 Container(
-                  height: 30,
+                  height: 24,
                   width: double.infinity,
                   child: isOutOfStock
                       ? Container(
@@ -589,7 +698,7 @@ class _ShopSimpleBrowserState extends State<ShopSimpleBrowser> {
                             'Out of Stock',
                             style: TextStyle(
                               color: Colors.black54,
-                              fontSize: 11,
+                              fontSize: 10,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -619,67 +728,87 @@ class _ShopSimpleBrowserState extends State<ShopSimpleBrowser> {
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 padding: EdgeInsets.zero,
-                                minimumSize: const Size(double.infinity, 30),
+                                minimumSize: const Size(double.infinity, 24),
                               ),
                               child: const Text(
                                 'ADD',
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 12,
+                                  fontSize: 10,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                             )
                           : Container(
                               decoration: BoxDecoration(
-                                border: Border.all(color: const Color(0xFF4CAF50)),
+                                color: const Color(0xFF4CAF50),
                                 borderRadius: BorderRadius.circular(4),
                               ),
+                              padding: const EdgeInsets.all(1),
                               child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  InkWell(
-                                    onTap: () {
-                                      if (quantity > 1) {
-                                        cartProvider.updateQuantity(productId.toString(), quantity - 1);
-                                      } else {
-                                        cartProvider.removeFromCart(productId.toString());
-                                      }
-                                    },
-                                    child: Container(
-                                      width: 30,
-                                      height: 28,
-                                      alignment: Alignment.center,
-                                      child: const Icon(
-                                        Icons.remove,
-                                        size: 18,
-                                        color: Color(0xFF4CAF50),
+                                  // Minus button
+                                  Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: () {
+                                        if (quantity > 1) {
+                                          cartProvider.updateQuantity(productId.toString(), quantity - 1);
+                                        } else {
+                                          cartProvider.removeFromCart(productId.toString());
+                                        }
+                                      },
+                                      borderRadius: BorderRadius.circular(2),
+                                      child: Container(
+                                        width: 20,
+                                        height: 20,
+                                        alignment: Alignment.center,
+                                        child: const Icon(
+                                          Icons.remove,
+                                          size: 12,
+                                          color: Colors.white,
+                                        ),
                                       ),
                                     ),
                                   ),
+                                  // Quantity display
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                                    constraints: const BoxConstraints(minWidth: 20),
+                                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(2),
+                                    ),
+                                    alignment: Alignment.center,
                                     child: Text(
                                       '$quantity',
+                                      textAlign: TextAlign.center,
                                       style: const TextStyle(
-                                        fontSize: 13,
+                                        fontSize: 10,
                                         fontWeight: FontWeight.bold,
-                                        color: Colors.black,
+                                        color: Colors.black87,
                                       ),
                                     ),
                                   ),
-                                  InkWell(
-                                    onTap: () {
-                                      cartProvider.updateQuantity(productId.toString(), quantity + 1);
-                                    },
-                                    child: Container(
-                                      width: 30,
-                                      height: 28,
-                                      alignment: Alignment.center,
-                                      child: const Icon(
-                                        Icons.add,
-                                        size: 18,
-                                        color: Color(0xFF4CAF50),
+                                  // Plus button
+                                  Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: () {
+                                        cartProvider.updateQuantity(productId.toString(), quantity + 1);
+                                      },
+                                      borderRadius: BorderRadius.circular(2),
+                                      child: Container(
+                                        width: 20,
+                                        height: 20,
+                                        alignment: Alignment.center,
+                                        child: const Icon(
+                                          Icons.add,
+                                          size: 12,
+                                          color: Colors.white,
+                                        ),
                                       ),
                                     ),
                                   ),

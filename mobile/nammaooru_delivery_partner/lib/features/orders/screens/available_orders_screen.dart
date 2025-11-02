@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../../core/providers/delivery_partner_provider.dart';
+import '../../../core/providers/location_provider.dart';
 import '../../../core/models/simple_order_model.dart';
 import '../widgets/order_card.dart';
 import '../widgets/order_details_bottom_sheet.dart';
@@ -43,23 +44,50 @@ class _AvailableOrdersScreenState extends State<AvailableOrdersScreen> {
 
   void _acceptOrder(OrderModel order) async {
     final provider = Provider.of<DeliveryPartnerProvider>(context, listen: false);
+    final locationProvider = Provider.of<LocationProvider>(context, listen: false);
 
     try {
-      await provider.acceptOrder(order.id);
-      Navigator.pop(context); // Close bottom sheet
+      // Get the assignment ID from the accept response
+      final response = await provider.acceptOrder(order.id);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Order #${order.orderNumber} accepted successfully!'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 3),
-        ),
-      );
+      if (response?['success'] == true) {
+        final assignmentId = response?['assignmentId'];
 
-      // Navigate to Active Orders screen to show the accepted order
-      Navigator.pushReplacementNamed(context, '/active-orders');
+        // Start location tracking immediately when order is accepted
+        if (provider.currentPartner != null && assignmentId != null) {
+          // Update location tracking context with assignmentId from response
+          locationProvider.updateOrderContext(
+            assignmentId: assignmentId,
+            orderStatus: 'accepted',
+          );
 
-      _loadAvailableOrders(); // Refresh the list
+          // Start location tracking if not already active
+          if (!locationProvider.isLocationTrackingActive) {
+            await locationProvider.startLocationTracking(
+              partnerId: provider.currentPartner!.partnerId,
+              assignmentId: assignmentId,
+              orderStatus: 'accepted',
+            );
+          }
+        }
+
+        Navigator.pop(context); // Close bottom sheet
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Order #${order.orderNumber} accepted successfully!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+
+        // Navigate to Active Orders screen to show the accepted order
+        Navigator.pushReplacementNamed(context, '/active-orders');
+
+        _loadAvailableOrders(); // Refresh the list
+      } else {
+        throw Exception('Failed to accept order');
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

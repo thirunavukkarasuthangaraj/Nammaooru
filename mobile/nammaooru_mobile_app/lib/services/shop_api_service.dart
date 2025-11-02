@@ -190,6 +190,7 @@ class ShopApiService {
     int page = 0,
     int size = 20,
     String? category,
+    String? search,
     double? minPrice,
     double? maxPrice,
     bool? inStock,
@@ -197,7 +198,7 @@ class ShopApiService {
     String sortDir = 'asc',
   }) async {
     try {
-      Logger.api('Fetching shop products: $shopId with category: $category');
+      Logger.api('Fetching shop products: $shopId with category: $category, search: $search');
 
       final queryParams = <String, String>{
         'page': page.toString(),
@@ -209,6 +210,10 @@ class ShopApiService {
         Logger.api('Added category parameter: $category');
       } else {
         Logger.api('No category parameter - category is null');
+      }
+      if (search != null && search.isNotEmpty) {
+        queryParams['search'] = search;
+        Logger.api('Added search parameter: $search');
       }
       if (minPrice != null) queryParams['minPrice'] = minPrice.toString();
       if (maxPrice != null) queryParams['maxPrice'] = maxPrice.toString();

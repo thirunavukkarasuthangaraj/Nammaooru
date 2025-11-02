@@ -59,7 +59,7 @@
                 rows="3"></textarea>
     </mat-form-field>
 
-    <!-- Price and Cost Price Row -->
+    <!-- Price and Original Price Row -->
     <div class="form-row">
       <mat-form-field appearance="outline">
         <mat-label>Selling Price (₹)</mat-label>
@@ -71,10 +71,32 @@
       </mat-form-field>
 
       <mat-form-field appearance="outline">
+        <mat-label>Original Price / MRP (₹)</mat-label>
+        <input matInput type="number" formControlName="originalPrice" placeholder="0.00">
+        <mat-icon matPrefix>sell</mat-icon>
+        <mat-hint>For discounts: Set higher than selling price</mat-hint>
+      </mat-form-field>
+    </div>
+
+    <!-- Cost Price Row -->
+    <div class="form-row">
+      <mat-form-field appearance="outline">
         <mat-label>Cost Price (₹)</mat-label>
         <input matInput type="number" formControlName="costPrice" placeholder="0.00">
         <mat-icon matPrefix>currency_rupee</mat-icon>
       </mat-form-field>
+    </div>
+
+    <!-- Discount Information -->
+    <div class="discount-info" *ngIf="editForm.get('originalPrice')?.value > editForm.get('price')?.value">
+      <div class="discount-item">
+        <span class="label">Discount:</span>
+        <span class="value discount">₹{{ calculateDiscountAmount() | number:'1.2-2' }}</span>
+      </div>
+      <div class="discount-item">
+        <span class="label">Discount %:</span>
+        <span class="value discount-percent">{{ calculateDiscountPercentage() | number:'1.1-1' }}%</span>
+      </div>
     </div>
 
     <!-- Profit Information -->

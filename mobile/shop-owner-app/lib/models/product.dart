@@ -3,6 +3,8 @@ class Product {
   final String name;
   final String description;
   final double price;
+  final double? originalPrice;
+  final double? costPrice;
   final int stock;
   final String category;
   final String status;
@@ -26,6 +28,8 @@ class Product {
     required this.name,
     required this.description,
     required this.price,
+    this.originalPrice,
+    this.costPrice,
     required this.stock,
     required this.category,
     required this.status,
@@ -51,6 +55,8 @@ class Product {
       name: json['name'] ?? '',
       description: json['description'] ?? '',
       price: (json['price'] ?? 0).toDouble(),
+      originalPrice: json['originalPrice']?.toDouble(),
+      costPrice: json['costPrice']?.toDouble(),
       stock: json['stock'] ?? 0,
       category: json['category'] ?? '',
       status: json['status'] ?? 'ACTIVE',
@@ -77,6 +83,8 @@ class Product {
       'name': name,
       'description': description,
       'price': price,
+      'originalPrice': originalPrice,
+      'costPrice': costPrice,
       'stock': stock,
       'category': category,
       'status': status,
@@ -102,6 +110,8 @@ class Product {
     String? name,
     String? description,
     double? price,
+    double? originalPrice,
+    double? costPrice,
     int? stock,
     String? category,
     String? status,
@@ -125,6 +135,8 @@ class Product {
       name: name ?? this.name,
       description: description ?? this.description,
       price: price ?? this.price,
+      originalPrice: originalPrice ?? this.originalPrice,
+      costPrice: costPrice ?? this.costPrice,
       stock: stock ?? this.stock,
       category: category ?? this.category,
       status: status ?? this.status,
@@ -155,6 +167,30 @@ class Product {
     if (isOutOfStock) return 'OUT_OF_STOCK';
     if (isLowStock) return 'LOW_STOCK';
     return 'IN_STOCK';
+  }
+
+  // Discount calculations
+  bool get hasDiscount => originalPrice != null && originalPrice! > price;
+
+  double get discountAmount {
+    if (!hasDiscount) return 0.0;
+    return originalPrice! - price;
+  }
+
+  double get calculatedDiscountPercentage {
+    if (!hasDiscount) return 0.0;
+    return ((originalPrice! - price) / originalPrice!) * 100;
+  }
+
+  // Profit calculations
+  double get profitAmount {
+    if (costPrice == null) return 0.0;
+    return price - costPrice!;
+  }
+
+  double get profitMargin {
+    if (costPrice == null || price == 0) return 0.0;
+    return ((price - costPrice!) / price) * 100;
   }
 
   @override

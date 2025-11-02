@@ -408,7 +408,11 @@ class _ProductsScreenState extends State<ProductsScreen> {
     final productName = product['displayName'] ?? product['name'] ?? 'Unknown Product';
     final category = product['masterProduct']?['category']?['name'] ?? product['category'] ?? 'Uncategorized';
     final price = product['price'] ?? 0;
+    final originalPrice = product['originalPrice'];
     final stock = product['stockQuantity'] ?? product['stock'] ?? 0;
+    // Check shop-specific unit first, then fall back to master product's unit
+    final unit = product['baseUnit'] ?? product['masterProduct']?['baseUnit'] ?? product['unit'];
+    final weight = product['baseWeight'] ?? product['masterProduct']?['baseWeight'];
     final imageUrl = AppConfig.getImageUrl(primaryImageUrl);
     final inStock = product['inStock'] ?? true;
     final lowStock = product['lowStock'] ?? (stock < 10);
@@ -417,7 +421,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
       name: productName,
       category: category,
       price: price.toDouble(),
+      originalPrice: originalPrice?.toDouble(),
       stock: stock,
+      unit: unit,
+      weight: weight?.toDouble(),
       imageUrl: imageUrl.isNotEmpty ? imageUrl : null,
       onTap: () => _showEditProductDialog(product),
       onEdit: () => _showEditProductDialog(product),
@@ -573,24 +580,52 @@ class _ProductsScreenState extends State<ProductsScreen> {
   }
 
   Future<void> _showEditProductDialog(dynamic product) async {
+    final nameController = TextEditingController(text: product['displayName'] ?? product['name'] ?? '');
     final priceController = TextEditingController(text: product['price'].toString());
+    final originalPriceController = TextEditingController(text: product['originalPrice']?.toString() ?? '');
     final stockController = TextEditingController(text: (product['stockQuantity'] ?? product['stock'] ?? 0).toString());
     final minStockController = TextEditingController(text: (product['minStockLevel'] ?? 5).toString());
+    // Check shop-specific unit first, then fall back to master product's unit
+    final weightController = TextEditingController(text: (product['baseWeight'] ?? product['masterProduct']?['baseWeight'] ?? '').toString());
+    String selectedUnit = product['baseUnit'] ?? product['masterProduct']?['baseUnit'] ?? 'piece';
 
     final result = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Edit ${product['displayName'] ?? product['name']}'),
-        content: SingleChildScrollView(
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text('Edit ${product['displayName'] ?? product['name']}'),
+          content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Product Name',
+                  border: OutlineInputBorder(),
+                  helperText: 'Custom name (optional)',
+                ),
+                textCapitalization: TextCapitalization.words,
+              ),
+              const SizedBox(height: 16),
+              TextField(
                 controller: priceController,
                 decoration: const InputDecoration(
-                  labelText: 'Price (₹)',
+                  labelText: 'Selling Price (₹)',
                   border: OutlineInputBorder(),
                   prefixText: '₹',
+                  helperText: 'Price customer pays',
+                ),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: originalPriceController,
+                decoration: const InputDecoration(
+                  labelText: 'Original Price / MRP (₹)',
+                  border: OutlineInputBorder(),
+                  prefixText: '₹',
+                  helperText: 'For showing discount (optional)',
                 ),
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
               ),
@@ -611,6 +646,40 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: weightController,
+                decoration: const InputDecoration(
+                  labelText: 'Weight/Quantity',
+                  border: OutlineInputBorder(),
+                  helperText: 'e.g., 100, 250, 1, 5',
+                ),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: selectedUnit,
+                decoration: const InputDecoration(
+                  labelText: 'Unit',
+                  border: OutlineInputBorder(),
+                  helperText: 'Select unit type',
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'piece', child: Text('Piece')),
+                  DropdownMenuItem(value: 'gram', child: Text('Gram')),
+                  DropdownMenuItem(value: 'kg', child: Text('Kilogram (KG)')),
+                  DropdownMenuItem(value: 'liter', child: Text('Liter')),
+                  DropdownMenuItem(value: 'ml', child: Text('Milliliter (ML)')),
+                  DropdownMenuItem(value: 'pack', child: Text('Pack')),
+                  DropdownMenuItem(value: 'bottle', child: Text('Bottle')),
+                  DropdownMenuItem(value: 'box', child: Text('Box')),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    selectedUnit = value!;
+                  });
+                },
               ),
             ],
           ),
@@ -670,9 +739,23 @@ class _ProductsScreenState extends State<ProductsScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
+              final name = nameController.text.trim();
               final price = double.tryParse(priceController.text);
+              final originalPrice = originalPriceController.text.trim().isEmpty
+                  ? null
+                  : double.tryParse(originalPriceController.text);
               final stock = int.tryParse(stockController.text);
               final minStock = int.tryParse(minStockController.text);
+              final weight = weightController.text.trim().isEmpty
+                  ? null
+                  : double.tryParse(weightController.text);
+
+              if (name.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please enter product name')),
+                );
+                return;
+              }
 
               if (price == null || stock == null || minStock == null) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -681,12 +764,25 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 return;
               }
 
+              // Validate originalPrice if provided
+              if (originalPrice != null && originalPrice <= price) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Original price must be greater than selling price')),
+                );
+                return;
+              }
+
               // Update product
               final updateResult = await ApiService.updateShopProduct(
                 productId: product['id'],
+                masterProductId: product['masterProduct']?['id'] ?? product['masterProductId'],
                 price: price,
+                originalPrice: originalPrice,
                 stockQuantity: stock,
                 minStockLevel: minStock,
+                customName: name != (product['displayName'] ?? product['name']) ? name : null,
+                baseWeight: weight,
+                baseUnit: selectedUnit,
               );
 
               if (updateResult.isSuccess) {
@@ -709,6 +805,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
             child: const Text('Save'),
           ),
         ],
+      ),
       ),
     );
 

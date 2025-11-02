@@ -164,7 +164,16 @@ public class ShopProductService {
         // Update fields
         productMapper.updateEntity(request, shopProduct);
         shopProduct.setUpdatedBy(getCurrentUsername());
-        
+
+        // Update shop-specific unit/weight overrides (not master product)
+        // These override the master product's defaults for this specific shop
+        if (request.getBaseWeight() != null) {
+            shopProduct.setBaseWeight(request.getBaseWeight());
+        }
+        if (request.getBaseUnit() != null) {
+            shopProduct.setBaseUnit(request.getBaseUnit());
+        }
+
         // Update shop images if provided
         if (request.getShopImageUrls() != null) {
             shopProduct.getShopImages().clear();
@@ -179,29 +188,34 @@ public class ShopProductService {
                     .toList();
             shopProduct.getShopImages().addAll(newImages);
         }
-        
+
         ShopProduct updatedProduct = shopProductRepository.save(shopProduct);
         log.info("Shop product updated successfully: {}", productId);
-        
+
         return productMapper.toResponse(updatedProduct);
     }
 
     public void removeProductFromShop(Long shopId, Long productId) {
         log.info("Removing product from shop: Shop {} - Product {}", shopId, productId);
-        
+
         ShopProduct shopProduct = shopProductRepository.findById(productId)
                 .filter(p -> p.getShop().getId().equals(shopId))
                 .orElseThrow(() -> new RuntimeException("Shop product not found"));
-        
-        // Get shop before deleting the product
+
+        // Get shop before updating the product
         Shop shop = shopProduct.getShop();
-        
-        shopProductRepository.delete(shopProduct);
-        
+
+        // Soft delete: Set status to INACTIVE and make unavailable instead of deleting
+        // This preserves order history and prevents foreign key violations
+        shopProduct.setStatus(ShopProduct.ShopProductStatus.INACTIVE);
+        shopProduct.setIsAvailable(false);
+        shopProduct.setUpdatedBy(getCurrentUsername());
+        shopProductRepository.save(shopProduct);
+
         // Update shop's product count
         updateShopProductCount(shop);
-        
-        log.info("Product removed from shop successfully: {}", productId);
+
+        log.info("Product removed from shop successfully (soft delete): {}", productId);
     }
 
     @Transactional(readOnly = true)
@@ -363,7 +377,8 @@ public class ShopProductService {
     }
 
     private void updateShopProductCount(Shop shop) {
-        long productCount = shopProductRepository.countByShop(shop);
+        // Only count available (ACTIVE) products, excluding INACTIVE/deleted products
+        long productCount = shopProductRepository.countAvailableProductsByShop(shop);
         shop.setProductCount((int) productCount);
         shopRepository.save(shop);
         log.debug("Updated product count for shop {}: {}", shop.getId(), productCount);

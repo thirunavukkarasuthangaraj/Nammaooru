@@ -584,7 +584,7 @@ class _ShopModalBrowserState extends State<ShopModalBrowser> {
                       // Quantity controls or ADD button
                       currentQuantity > 0
                         ? Container(
-                            height: 28,
+                            height: 36,
                             decoration: BoxDecoration(
                               color: VillageTheme.primaryGreen.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(6),
@@ -603,8 +603,8 @@ class _ShopModalBrowserState extends State<ShopModalBrowser> {
                                     }
                                   },
                                   child: Container(
-                                    width: 24,
-                                    height: 28,
+                                    width: 36,
+                                    height: 36,
                                     decoration: BoxDecoration(
                                       color: VillageTheme.primaryGreen,
                                       borderRadius: const BorderRadius.only(
@@ -615,17 +615,17 @@ class _ShopModalBrowserState extends State<ShopModalBrowser> {
                                     child: const Icon(
                                       Icons.remove,
                                       color: Colors.white,
-                                      size: 14,
+                                      size: 18,
                                     ),
                                   ),
                                 ),
                                 // Quantity display
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
                                   child: Text(
                                     '$currentQuantity',
                                     style: const TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 14,
                                       fontWeight: FontWeight.bold,
                                       color: VillageTheme.primaryGreen,
                                     ),
@@ -654,8 +654,8 @@ class _ShopModalBrowserState extends State<ShopModalBrowser> {
                                       }
                                     : null,
                                   child: Container(
-                                    width: 24,
-                                    height: 28,
+                                    width: 36,
+                                    height: 36,
                                     decoration: BoxDecoration(
                                       color: currentQuantity < stockQuantity
                                           ? VillageTheme.primaryGreen
@@ -668,7 +668,7 @@ class _ShopModalBrowserState extends State<ShopModalBrowser> {
                                     child: Icon(
                                       Icons.add,
                                       color: currentQuantity < stockQuantity ? Colors.white : Colors.grey[500],
-                                      size: 14,
+                                      size: 18,
                                     ),
                                   ),
                                 ),

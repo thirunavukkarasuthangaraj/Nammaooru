@@ -5,7 +5,8 @@ class ProductModel {
   final double price;
   final double? discountPrice;
   final String category;
-  final String shopId;
+  final String shopId;  // String shop identifier (e.g., "SH616BAAB9")
+  final int? shopDatabaseId;  // Numeric shop database ID (e.g., 4)
   final String shopName;
   final List<String> images;
   final int stockQuantity;
@@ -18,7 +19,7 @@ class ProductModel {
   final int minStockLevel;
   final DateTime createdAt;
   final DateTime updatedAt;
-  
+
   ProductModel({
     required this.id,
     required this.name,
@@ -27,6 +28,7 @@ class ProductModel {
     this.discountPrice,
     required this.category,
     required this.shopId,
+    this.shopDatabaseId,
     required this.shopName,
     this.images = const [],
     this.stockQuantity = 0,
@@ -50,6 +52,7 @@ class ProductModel {
       discountPrice: json['discountPrice']?.toDouble(),
       category: json['category'] ?? '',
       shopId: json['shopId'] ?? '',
+      shopDatabaseId: json['shopDatabaseId'] != null ? int.tryParse(json['shopDatabaseId'].toString()) : null,
       shopName: json['shopName'] ?? '',
       images: List<String>.from(json['images'] ?? []),
       stockQuantity: json['stockQuantity'] ?? 0,
@@ -74,6 +77,7 @@ class ProductModel {
       'discountPrice': discountPrice,
       'category': category,
       'shopId': shopId,
+      'shopDatabaseId': shopDatabaseId,
       'shopName': shopName,
       'images': images,
       'stockQuantity': stockQuantity,
@@ -108,6 +112,7 @@ class ProductModel {
     double? discountPrice,
     String? category,
     String? shopId,
+    int? shopDatabaseId,
     String? shopName,
     List<String>? images,
     int? stockQuantity,
@@ -129,6 +134,7 @@ class ProductModel {
       discountPrice: discountPrice ?? this.discountPrice,
       category: category ?? this.category,
       shopId: shopId ?? this.shopId,
+      shopDatabaseId: shopDatabaseId ?? this.shopDatabaseId,
       shopName: shopName ?? this.shopName,
       images: images ?? this.images,
       stockQuantity: stockQuantity ?? this.stockQuantity,

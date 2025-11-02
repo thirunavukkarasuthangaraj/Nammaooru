@@ -1,0 +1,18 @@
+# IMPORTANT: Never commit these files!
+
+# Signing keys (SECURITY RISK!)
+*.jks
+*.keystore
+key.properties
+
+# Generated files
+*.iml
+.gradle
+/local.properties
+/.idea/workspace.xml
+/.idea/libraries
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx

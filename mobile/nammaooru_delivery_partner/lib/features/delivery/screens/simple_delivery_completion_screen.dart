@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/delivery_partner_provider.dart';
+import '../../../core/providers/location_provider.dart';
 import '../../../core/models/simple_order_model.dart';
 import '../../../core/services/api_service.dart';
 

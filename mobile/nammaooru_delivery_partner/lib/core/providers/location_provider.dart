@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/location_service.dart';
 import '../services/api_service.dart';
 import '../models/delivery_partner.dart';
+import '../config/app_config.dart';
 
 class LocationProvider with ChangeNotifier {
   final LocationService _locationService = LocationService();
@@ -16,11 +19,15 @@ class LocationProvider with ChangeNotifier {
   Timer? _locationUpdateTimer;
   String? _lastError;
 
+  // Store multiple active assignments
+  final Map<String, String> _activeAssignments = {}; // assignmentId -> orderStatus
+
   // Getters
   Position? get currentPosition => _currentPosition;
   bool get isLocationTrackingActive => _isLocationTrackingActive;
   bool get isLocationPermissionGranted => _isLocationPermissionGranted;
   String? get lastError => _lastError;
+  Map<String, String> get activeAssignments => Map.unmodifiable(_activeAssignments);
 
   // Location update frequency (in seconds)
   static const int _updateIntervalSeconds = 30;
@@ -60,7 +67,16 @@ class LocationProvider with ChangeNotifier {
     String? assignmentId,
     String? orderStatus,
   }) async {
-    if (_isLocationTrackingActive) return;
+    // Add assignment to active list if provided
+    if (assignmentId != null && orderStatus != null) {
+      _activeAssignments[assignmentId] = orderStatus;
+    }
+
+    // Start tracking if not already active
+    if (_isLocationTrackingActive) {
+      notifyListeners();
+      return;
+    }
 
     try {
       _lastError = null;
@@ -87,13 +103,16 @@ class LocationProvider with ChangeNotifier {
       _locationUpdateTimer = Timer.periodic(
         Duration(seconds: _updateIntervalSeconds),
         (timer) async {
-          if (_currentPosition != null) {
-            await _sendLocationUpdate(
-              partnerId: partnerId,
-              position: _currentPosition!,
-              assignmentId: assignmentId,
-              orderStatus: orderStatus,
-            );
+          if (_currentPosition != null && _activeAssignments.isNotEmpty) {
+            // Send location update for EACH active assignment
+            for (var entry in _activeAssignments.entries) {
+              await _sendLocationUpdate(
+                partnerId: partnerId,
+                position: _currentPosition!,
+                assignmentId: entry.key,
+                orderStatus: entry.value,
+              );
+            }
           }
         },
       );
@@ -111,7 +130,20 @@ class LocationProvider with ChangeNotifier {
     _locationService.stopLocationTracking();
     _locationUpdateTimer?.cancel();
     _locationUpdateTimer = null;
+    _activeAssignments.clear();
     notifyListeners();
+  }
+
+  /// Get headers with authentication token
+  Future<Map<String, String>> _getHeaders() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('delivery_partner_token');
+
+    return {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
   }
 
   /// Send location update to backend
@@ -122,22 +154,37 @@ class LocationProvider with ChangeNotifier {
     String? orderStatus,
   }) async {
     try {
+      // Cap accuracy to database limit (NUMERIC(5,2) = max 999.99)
+      final cappedAccuracy = position.accuracy > 999.99 ? 999.99 : position.accuracy;
+
+      // Cap speed to database limit (NUMERIC(5,2) = max 999.99)
+      final cappedSpeed = position.speed > 999.99 ? 999.99 : position.speed;
+
+      // Cap heading to valid range (0-360)
+      final cappedHeading = position.heading > 360 ? 360.0 : position.heading;
+
       final locationData = {
         'latitude': position.latitude,
         'longitude': position.longitude,
-        'accuracy': position.accuracy,
-        'speed': position.speed,
-        'heading': position.heading,
+        'accuracy': cappedAccuracy,
+        'speed': cappedSpeed,
+        'heading': cappedHeading,
         'altitude': position.altitude,
         'timestamp': DateTime.now().toIso8601String(),
         if (assignmentId != null) 'assignmentId': assignmentId,
         if (orderStatus != null) 'orderStatus': orderStatus,
       };
 
-      await _apiService.post(
-        '/api/location/partners/$partnerId/update',
-        locationData,
+      // Use HTTP PUT directly since ApiService doesn't have put method
+      final response = await http.put(
+        Uri.parse('${AppConfig.baseUrl}/api/mobile/delivery-partner/update-location/$partnerId'),
+        headers: await _getHeaders(),
+        body: json.encode(locationData),
       );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to update location: ${response.statusCode}');
+      }
     } catch (e) {
       print('Failed to send location update: $e');
       // Don't throw error to avoid stopping location tracking
@@ -273,9 +320,20 @@ class LocationProvider with ChangeNotifier {
     String? assignmentId,
     String? orderStatus,
   }) {
-    // This would update the current tracking context
-    // Implementation depends on how you want to handle multiple orders
-    print('Updated order context: assignment=$assignmentId, status=$orderStatus');
+    if (assignmentId != null && orderStatus != null) {
+      _activeAssignments[assignmentId] = orderStatus;
+      notifyListeners();
+      print('Updated order context: assignment=$assignmentId, status=$orderStatus');
+      print('Active assignments: ${_activeAssignments.length}');
+    }
+  }
+
+  /// Remove an assignment from tracking (when order is delivered)
+  void removeAssignment(String assignmentId) {
+    _activeAssignments.remove(assignmentId);
+    notifyListeners();
+    print('Removed assignment: $assignmentId');
+    print('Remaining active assignments: ${_activeAssignments.length}');
   }
 
   /// Get formatted address from coordinates

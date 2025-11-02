@@ -19,6 +19,8 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   late final TextEditingController _nameController;
   late final TextEditingController _descriptionController;
   late final TextEditingController _priceController;
+  late final TextEditingController _originalPriceController;
+  late final TextEditingController _costPriceController;
   late final TextEditingController _stockController;
   late final TextEditingController _skuController;
   late final TextEditingController _minStockController;
@@ -41,11 +43,14 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
 
   final List<String> _units = [
     'pcs',
+    'piece',
     'pack',
     'bottle',
     'liter',
     'kg',
     'gram',
+    'gm',
+    'ml',
     'box',
     'dozen',
   ];
@@ -69,6 +74,8 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     _nameController = TextEditingController();
     _descriptionController = TextEditingController();
     _priceController = TextEditingController();
+    _originalPriceController = TextEditingController();
+    _costPriceController = TextEditingController();
     _stockController = TextEditingController();
     _skuController = TextEditingController();
     _minStockController = TextEditingController();
@@ -79,6 +86,8 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     _nameController.text = product.name;
     _descriptionController.text = product.description;
     _priceController.text = product.price.toString();
+    _originalPriceController.text = product.originalPrice?.toString() ?? '';
+    _costPriceController.text = product.costPrice?.toString() ?? '';
     _stockController.text = product.stock.toString();
     _skuController.text = product.sku ?? '';
     _minStockController.text = product.minStock.toString();
@@ -93,6 +102,8 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     _nameController.dispose();
     _descriptionController.dispose();
     _priceController.dispose();
+    _originalPriceController.dispose();
+    _costPriceController.dispose();
     _stockController.dispose();
     _skuController.dispose();
     _minStockController.dispose();
@@ -319,6 +330,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               style: AppTextStyles.heading3,
             ),
             const SizedBox(height: 16),
+            // Selling Price and Unit
             Row(
               children: [
                 Expanded(
@@ -326,13 +338,15 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                   child: TextFormField(
                     controller: _priceController,
                     decoration: const InputDecoration(
-                      labelText: 'Price (₹) *',
+                      labelText: 'Selling Price (₹) *',
                       hintText: '0.00',
                       border: OutlineInputBorder(),
                       prefixText: '₹ ',
+                      helperText: 'Customer pays this price',
                     ),
                     validator: Validators.validatePrice,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (_) => setState(() {}),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -355,6 +369,45 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               ],
             ),
             const SizedBox(height: 16),
+            // Original Price and Cost Price
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _originalPriceController,
+                    decoration: const InputDecoration(
+                      labelText: 'Original Price / MRP (₹)',
+                      hintText: '0.00',
+                      border: OutlineInputBorder(),
+                      prefixText: '₹ ',
+                      helperText: 'For showing discount',
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextFormField(
+                    controller: _costPriceController,
+                    decoration: const InputDecoration(
+                      labelText: 'Cost Price (₹)',
+                      hintText: '0.00',
+                      border: OutlineInputBorder(),
+                      prefixText: '₹ ',
+                      helperText: 'Your purchase cost',
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Discount and Profit Display
+            _buildPriceCalculations(),
+            const SizedBox(height: 16),
+            // Stock fields
             Row(
               children: [
                 Expanded(
@@ -417,6 +470,97 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     );
   }
 
+  Widget _buildPriceCalculations() {
+    final price = double.tryParse(_priceController.text) ?? 0.0;
+    final originalPrice = double.tryParse(_originalPriceController.text) ?? 0.0;
+    final costPrice = double.tryParse(_costPriceController.text) ?? 0.0;
+
+    final hasDiscount = originalPrice > price && price > 0;
+    final hasCost = costPrice > 0 && price > 0;
+
+    if (!hasDiscount && !hasCost) return const SizedBox.shrink();
+
+    return Column(
+      children: [
+        if (hasDiscount) ...[
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.orange.shade300),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.discount, color: Colors.orange.shade700, size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Discount',
+                        style: AppTextStyles.caption.copyWith(
+                          color: Colors.grey.shade700,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Text(
+                        '₹${(originalPrice - price).toStringAsFixed(2)} (${((originalPrice - price) / originalPrice * 100).toStringAsFixed(1)}% OFF)',
+                        style: AppTextStyles.bodyLarge.copyWith(
+                          color: Colors.orange.shade900,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+        if (hasCost) ...[
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.green.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.green.shade300),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.trending_up, color: Colors.green.shade700, size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Profit',
+                        style: AppTextStyles.caption.copyWith(
+                          color: Colors.grey.shade700,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Text(
+                        '₹${(price - costPrice).toStringAsFixed(2)} (${((price - costPrice) / price * 100).toStringAsFixed(1)}% margin)',
+                        style: AppTextStyles.bodyLarge.copyWith(
+                          color: Colors.green.shade900,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _buildSaveButton(ProductProvider productProvider) {
     return SizedBox(
       width: double.infinity,
@@ -467,12 +611,18 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       'name': _nameController.text.trim(),
       'description': _descriptionController.text.trim(),
       'price': double.parse(_priceController.text),
+      'originalPrice': _originalPriceController.text.trim().isEmpty
+          ? null
+          : double.parse(_originalPriceController.text),
+      'costPrice': _costPriceController.text.trim().isEmpty
+          ? null
+          : double.parse(_costPriceController.text),
       'stock': int.parse(_stockController.text),
       'category': _selectedCategory,
       'status': _selectedStatus,
       'image': _selectedImage,
       'sku': _skuController.text.trim().isEmpty ? null : _skuController.text.trim(),
-      'unit': _selectedUnit,
+      'baseUnit': _selectedUnit,
       'minStock': int.parse(_minStockController.text.isEmpty ? '0' : _minStockController.text),
     };
 

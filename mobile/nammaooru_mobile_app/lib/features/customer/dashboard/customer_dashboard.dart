@@ -11,7 +11,7 @@ import '../../../services/order_api_service.dart';
 import '../../../shared/services/notification_service.dart';
 import '../screens/shop_listing_screen.dart';
 import '../screens/shop_details_screen.dart';
-import '../screens/shop_categories_screen.dart';
+// import '../screens/shop_details_modern_screen.dart';
 import '../screens/location_picker_screen.dart';
 import '../screens/google_maps_location_picker_screen.dart';
 import '../screens/notifications_screen.dart';
@@ -462,31 +462,36 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             );
           },
           child: Container(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(16),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: color.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Icon(
                     icon,
-                    size: 40,
+                    size: 32,
                     color: color,
                   ),
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  name,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: VillageTheme.primaryText,
+                const SizedBox(height: 8),
+                Flexible(
+                  child: Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: VillageTheme.primaryText,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  textAlign: TextAlign.center,
                 ),
               ],
             ),
@@ -670,9 +675,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => ShopCategoriesScreen(
-                  shopId: (shop?['id'] ?? 1).toString(),
-                  shopName: shop?['name'] ?? 'Shop',
+                builder: (context) => ShopDetailsScreen(
+                  shopId: shop?['id'] ?? 1,
+                  shop: shop,
                 ),
               ),
             );

@@ -9,6 +9,7 @@ export interface ProductEditData {
   customName: string;
   description?: string;
   price: number;
+  originalPrice?: number;
   costPrice?: number;
   stockQuantity: number;
   category?: string;
@@ -54,6 +55,7 @@ export class ProductEditDialogComponent implements OnInit {
       customName: [this.data.customName || '', [Validators.required, Validators.minLength(3)]],
       description: [this.data.description || ''],
       price: [this.data.price || 0, [Validators.required, Validators.min(0)]],
+      originalPrice: [this.data.originalPrice || 0, [Validators.min(0)]],
       costPrice: [this.data.costPrice || 0, [Validators.min(0)]],
       stockQuantity: [this.data.stockQuantity || 0, [Validators.required, Validators.min(0)]],
       category: [this.data.category || ''],
@@ -93,6 +95,24 @@ export class ProductEditDialogComponent implements OnInit {
     const costPrice = this.editForm.get('costPrice')?.value || 0;
     if (price === 0) return 0;
     return ((price - costPrice) / price) * 100;
+  }
+
+  calculateDiscountAmount(): number {
+    const originalPrice = this.editForm.get('originalPrice')?.value || 0;
+    const price = this.editForm.get('price')?.value || 0;
+    if (originalPrice > price) {
+      return originalPrice - price;
+    }
+    return 0;
+  }
+
+  calculateDiscountPercentage(): number {
+    const originalPrice = this.editForm.get('originalPrice')?.value || 0;
+    const price = this.editForm.get('price')?.value || 0;
+    if (originalPrice > 0 && originalPrice > price) {
+      return ((originalPrice - price) / originalPrice) * 100;
+    }
+    return 0;
   }
 
   onFileSelected(event: Event): void {
