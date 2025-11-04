@@ -1,0 +1,243 @@
+<div class="bulk-import-container">
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>cloud_upload</mat-icon>
+        <span *ngIf="isSuperAdmin">Bulk Import Master Products</span>
+        <span *ngIf="isShopOwner && !isSuperAdmin">Bulk Import Shop Products</span>
+      </mat-card-title>
+      <mat-card-subtitle>
+        <span *ngIf="isSuperAdmin">Import products to master catalog with images</span>
+        <span *ngIf="isShopOwner && !isSuperAdmin">Import products to your shop</span>
+      </mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      <!-- Instructions Section -->
+      <div class="instructions-section">
+        <h3>
+          <mat-icon>info</mat-icon>
+          How to Import Products
+        </h3>
+        <ol>
+          <li *ngIf="isSuperAdmin">
+            <strong>Copy images to folder:</strong>
+            <code>D:/AAWS/nammaooru/uploads/master/products/{{'{'}}folder{{'}'}}/</code>
+          </li>
+          <li>
+            <strong>Download sample template:</strong>
+            <button mat-stroked-button color="primary" (click)="downloadSampleCSV()">
+              <mat-icon>download</mat-icon>
+              Download Sample CSV
+            </button>
+          </li>
+          <li>
+            <strong>Open CSV in Excel:</strong> File → Save As → Excel Workbook (.xlsx)
+          </li>
+          <li>
+            <strong>Fill your product data</strong> (name, categoryId, imagePath, imageFolder are required)
+          </li>
+          <li>
+            <strong>Upload Excel file</strong> using the form below
+          </li>
+        </ol>
+
+        <div class="alert alert-info">
+          <mat-icon>lightbulb</mat-icon>
+          <strong>Tip:</strong> Test with 2-3 products first, then proceed with full import!
+        </div>
+      </div>
+
+      <!-- Upload Section -->
+      <div class="upload-section">
+        <div class="file-upload-area" *ngIf="!selectedFile">
+          <input
+            type="file"
+            #fileInput
+            accept=".xlsx,.xls"
+            (change)="onFileSelected($event)"
+            style="display: none"
+          />
+
+          <div class="upload-box" (click)="fileInput.click()">
+            <mat-icon>upload_file</mat-icon>
+            <p>Click to select Excel file (.xlsx)</p>
+            <p class="hint">or drag and drop here</p>
+          </div>
+        </div>
+
+        <div class="file-selected" *ngIf="selectedFile && !isUploading">
+          <mat-icon class="file-icon">description</mat-icon>
+          <div class="file-info">
+            <h4>{{ selectedFile.name }}</h4>
+            <p>{{ (selectedFile.size / 1024).toFixed(2) }} KB</p>
+          </div>
+          <button mat-icon-button color="warn" (click)="removeFile()">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+
+        <div class="upload-progress" *ngIf="isUploading">
+          <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+          <p>Uploading and processing... Please wait.</p>
+        </div>
+
+        <div class="upload-actions" *ngIf="selectedFile && !isUploading">
+          <button
+            mat-raised-button
+            color="primary"
+            (click)="uploadFile()"
+            [disabled]="isUploading"
+          >
+            <mat-icon>cloud_upload</mat-icon>
+            Upload & Import
+          </button>
+
+          <button mat-stroked-button (click)="removeFile()">
+            <mat-icon>cancel</mat-icon>
+            Cancel
+          </button>
+        </div>
+      </div>
+
+      <!-- Results Section -->
+      <div class="results-section" *ngIf="showResults && importResults">
+        <h3>
+          <mat-icon>assessment</mat-icon>
+          Import Results
+        </h3>
+
+        <div class="results-summary">
+          <div class="summary-card total">
+            <mat-icon>list</mat-icon>
+            <div>
+              <h4>{{ importResults.totalRows }}</h4>
+              <p>Total Rows</p>
+            </div>
+          </div>
+
+          <div class="summary-card success">
+            <mat-icon>check_circle</mat-icon>
+            <div>
+              <h4>{{ importResults.successCount }}</h4>
+              <p>Success</p>
+            </div>
+          </div>
+
+          <div class="summary-card failed">
+            <mat-icon>error</mat-icon>
+            <div>
+              <h4>{{ importResults.failureCount }}</h4>
+              <p>Failed</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="results-actions">
+          <button mat-raised-button color="primary" (click)="resetUpload()">
+            <mat-icon>add</mat-icon>
+            Import More Products
+          </button>
+
+          <button mat-stroked-button (click)="exportResults()">
+            <mat-icon>download</mat-icon>
+            Export Results
+          </button>
+        </div>
+
+        <!-- Detailed Results Table -->
+        <div class="results-table">
+          <table mat-table [dataSource]="importResults.results" class="full-width">
+            <!-- Row Number Column -->
+            <ng-container matColumnDef="rowNumber">
+              <th mat-header-cell *matHeaderCellDef>Row</th>
+              <td mat-cell *matCellDef="let result">{{ result.rowNumber }}</td>
+            </ng-container>
+
+            <!-- Product Name Column -->
+            <ng-container matColumnDef="productName">
+              <th mat-header-cell *matHeaderCellDef>Product Name</th>
+              <td mat-cell *matCellDef="let result">{{ result.productName }}</td>
+            </ng-container>
+
+            <!-- Status Column -->
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>Status</th>
+              <td mat-cell *matCellDef="let result">
+                <span [class]="getStatusClass(result.status)" class="status-badge">
+                  <mat-icon>{{ getStatusIcon(result.status) }}</mat-icon>
+                  {{ result.status }}
+                </span>
+              </td>
+            </ng-container>
+
+            <!-- Message Column -->
+            <ng-container matColumnDef="message">
+              <th mat-header-cell *matHeaderCellDef>Message</th>
+              <td mat-cell *matCellDef="let result">{{ result.message }}</td>
+            </ng-container>
+
+            <!-- Image Status Column -->
+            <ng-container matColumnDef="imageStatus">
+              <th mat-header-cell *matHeaderCellDef>Image Status</th>
+              <td mat-cell *matCellDef="let result">
+                {{ result.imageUploadStatus || 'N/A' }}
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+          </table>
+        </div>
+      </div>
+
+      <!-- Help Section -->
+      <div class="help-section">
+        <mat-expansion-panel>
+          <mat-expansion-panel-header>
+            <mat-panel-title>
+              <mat-icon>help</mat-icon>
+              Need Help?
+            </mat-panel-title>
+          </mat-expansion-panel-header>
+
+          <div class="help-content">
+            <h4>Excel Template Columns:</h4>
+            <ul>
+              <li><strong>A: name</strong> - Product name (required)</li>
+              <li><strong>B: description</strong> - Product description</li>
+              <li><strong>C: categoryId</strong> - Category ID (required)</li>
+              <li><strong>I: originalPrice</strong> - Original price (MRP)</li>
+              <li><strong>J: sellingPrice</strong> - Selling price</li>
+              <li><strong>K: discountPercentage</strong> - Discount %</li>
+              <li><strong>M: stockQuantity</strong> - Stock quantity</li>
+              <li><strong>V: imagePath</strong> - Image filename (e.g., tomato.jpg)</li>
+              <li><strong>W: imageFolder</strong> - Folder name (e.g., vegetables)</li>
+            </ul>
+
+            <h4>Image Folder Structure:</h4>
+            <pre><code>D:/AAWS/nammaooru/uploads/master/products/
+├── vegetables/
+│   ├── tomato.jpg
+│   └── onion.jpg
+└── groceries/
+    ├── rice.jpg
+    └── dal.jpg</code></pre>
+
+            <h4>Common Issues:</h4>
+            <ul>
+              <li><strong>Invalid category ID:</strong> Get valid IDs from Category Management</li>
+              <li><strong>Image not found:</strong> Ensure image filename matches exactly (case-sensitive)</li>
+              <li><strong>File format:</strong> Must be .xlsx format (Excel 2007+)</li>
+            </ul>
+
+            <button mat-stroked-button color="accent" (click)="getTemplateInfo()">
+              <mat-icon>info</mat-icon>
+              Get Full Template Info
+            </button>
+          </div>
+        </mat-expansion-panel>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

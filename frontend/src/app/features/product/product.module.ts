@@ -46,6 +46,7 @@ import { InventoryDialogComponent } from './components/inventory-dialog/inventor
 import { ProductImageUploadComponent } from './components/product-image-upload/product-image-upload.component';
 import { BulkProductAssignmentComponent } from './components/bulk-product-assignment/bulk-product-assignment.component';
 import { ShopOwnerProductsComponent } from './components/shop-owner-products/shop-owner-products.component';
+import { ProductBulkImportComponent } from './components/product-bulk-import/product-bulk-import.component';
 
 @NgModule({
   declarations: [
@@ -63,7 +64,8 @@ import { ShopOwnerProductsComponent } from './components/shop-owner-products/sho
     InventoryDialogComponent,
     ProductImageUploadComponent,
     BulkProductAssignmentComponent,
-    ShopOwnerProductsComponent
+    ShopOwnerProductsComponent,
+    ProductBulkImportComponent
   ],
   imports: [
     CommonModule,

@@ -98,7 +98,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       items: [
         { title: 'All Products', icon: 'inventory', route: '/products', badge: null },
         { title: 'Product Master', icon: 'inventory_2', route: '/products/master', badge: null },
-        { title: 'Categories', icon: 'category', route: '/products/categories', badge: null }
+        { title: 'Categories', icon: 'category', route: '/products/categories', badge: null },
+        { title: 'Bulk Import', icon: 'cloud_upload', route: '/products/bulk-import', badge: null }
       ]
     },
     {
@@ -166,7 +167,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       category: 'Product Management',
       items: [
         { title: 'Product Master', icon: 'inventory_2', route: '/products/master', badge: null },
-        { title: 'Categories', icon: 'category', route: '/products/categories', badge: null }
+        { title: 'Categories', icon: 'category', route: '/products/categories', badge: null },
+        { title: 'Bulk Import', icon: 'cloud_upload', route: '/products/bulk-import', badge: null }
       ]
     },
     {
@@ -259,7 +261,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       category: 'Products',
       items: [
         { title: 'My Products', icon: 'inventory_2', route: '/shop-owner/my-products', badge: null },
-        { title: 'Browse Products', icon: 'search', route: '/shop-owner/browse-products', badge: null }
+        { title: 'Browse Products', icon: 'search', route: '/shop-owner/browse-products', badge: null },
+        { title: 'Bulk Import', icon: 'cloud_upload', route: '/products/bulk-import', badge: null }
       ]
     },
     {

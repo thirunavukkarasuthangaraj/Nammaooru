@@ -1,0 +1,16 @@
+name,description,categoryId,brand,sku,barcode,baseUnit,baseWeight,originalPrice,sellingPrice,discountPercentage,costPrice,stockQuantity,minStockLevel,maxStockLevel,trackInventory,status,isFeatured,isAvailable,tags,specifications,imagePath,imageFolder
+Fresh Tomatoes,Organic tomatoes from local farms,1,FreshFarm,,,kg,1,100,90,10,80,100,10,500,TRUE,ACTIVE,FALSE,TRUE,"organic,fresh,local",Rich in Vitamin C and antioxidants,tomato.jpg,vegetables
+Red Onions,Premium quality red onions,1,FreshFarm,,,kg,1,80,70,12.5,60,150,20,600,TRUE,ACTIVE,FALSE,TRUE,"fresh,organic",Good for cooking and salads,onion.jpg,vegetables
+Green Capsicum,Fresh green bell peppers,1,VeggieWorld,,,kg,0.5,120,100,16.67,90,80,15,400,TRUE,ACTIVE,TRUE,TRUE,"fresh,premium",Rich in antioxidants,capsicum.jpg,vegetables
+Potatoes,Fresh farm potatoes,1,FreshFarm,,,kg,1,60,50,16.67,40,200,30,800,TRUE,ACTIVE,FALSE,TRUE,"fresh,staple",Good source of carbohydrates,potato.jpg,vegetables
+Green Beans,Fresh green beans,1,VeggieWorld,,,kg,0.5,80,70,12.5,60,100,20,400,TRUE,ACTIVE,FALSE,TRUE,fresh,High in fiber,beans.jpg,vegetables
+Basmati Rice 1kg,Premium aged basmati rice,2,IndiaGate,,8901491100014,kg,1,200,180,10,160,200,20,1000,TRUE,ACTIVE,TRUE,TRUE,"premium,aged",Aged for 2 years,rice.jpg,groceries
+Toor Dal 1kg,Premium quality toor dal,2,Fortune,,8901491100021,kg,1,150,135,10,120,150,25,800,TRUE,ACTIVE,FALSE,TRUE,"pulses,healthy",High in protein,dal.jpg,groceries
+Sunflower Oil 1L,Refined sunflower cooking oil,2,Fortune,,8901491100038,liters,1,180,165,8.33,150,100,15,500,TRUE,ACTIVE,FALSE,TRUE,"cooking,oil",Heart healthy oil,oil.jpg,groceries
+Sugar 1kg,Premium white sugar,2,Madhur,,8901491100045,kg,1,50,45,10,40,300,40,1200,TRUE,ACTIVE,FALSE,TRUE,staple,Pure cane sugar,sugar.jpg,groceries
+Wheat Flour 1kg,Premium whole wheat flour,2,Aashirvaad,,8901491100052,kg,1,60,55,8.33,50,250,35,1000,TRUE,ACTIVE,TRUE,TRUE,"staple,healthy",100% whole wheat,flour.jpg,groceries
+Tea 250g,Premium Assam tea,2,Tata,,8901491100069,grams,0.25,120,110,8.33,100,150,20,600,TRUE,ACTIVE,FALSE,TRUE,"beverage,premium",Strong and aromatic,tea.jpg,groceries
+Coffee 200g,Premium instant coffee,2,Nescafe,,8901491100076,grams,0.2,250,225,10,200,80,15,400,TRUE,ACTIVE,FALSE,TRUE,"beverage,premium",Rich aroma and taste,coffee.jpg,groceries
+Milk 1L,Fresh full cream milk,2,Amul,,8901491100083,liters,1,60,58,3.33,55,100,20,500,TRUE,ACTIVE,FALSE,TRUE,fresh,Full cream milk,milk.jpg,groceries
+Bread 400g,Fresh whole wheat bread,2,Britannia,,8901491100090,grams,0.4,45,42,6.67,38,80,15,300,TRUE,ACTIVE,FALSE,TRUE,fresh,Soft and fresh,bread.jpg,groceries
+Eggs 12pcs,Farm fresh eggs,2,Mother Dairy,,8901491100106,pieces,12,84,78,7.14,70,120,25,500,TRUE,ACTIVE,FALSE,TRUE,fresh,Protein rich,eggs.jpg,groceries

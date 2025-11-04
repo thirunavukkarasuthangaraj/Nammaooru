@@ -12,6 +12,7 @@ import { CategoryFormComponent } from './components/category-form/category-form.
 import { ProductDashboardComponent } from './components/product-dashboard/product-dashboard.component';
 import { BulkProductAssignmentComponent } from './components/bulk-product-assignment/bulk-product-assignment.component';
 import { ShopOwnerProductsComponent } from './components/shop-owner-products/shop-owner-products.component';
+import { ProductBulkImportComponent } from './components/product-bulk-import/product-bulk-import.component';
 
 const routes: Routes = [
   {
@@ -141,9 +142,18 @@ const routes: Routes = [
         path: 'my-shop',
         component: ShopProductListComponent,
         canActivate: [RoleGuard],
-        data: { 
+        data: {
           title: 'My Shop Products',
           roles: ['SHOP_OWNER']
+        }
+      },
+      {
+        path: 'bulk-import',
+        component: ProductBulkImportComponent,
+        canActivate: [RoleGuard],
+        data: {
+          title: 'Bulk Import Products',
+          roles: ['SUPER_ADMIN', 'ADMIN', 'SHOP_OWNER']
         }
       }
     ]
