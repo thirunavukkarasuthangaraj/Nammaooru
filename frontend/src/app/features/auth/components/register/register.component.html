@@ -1,152 +1,148 @@
 <div class="register-container">
-  <!-- Animated Background -->
-  <div class="animated-bg">
-    <div class="shape shape-1"></div>
-    <div class="shape shape-2"></div>
-    <div class="shape shape-3"></div>
+  <!-- Background Image with Overlay -->
+  <div class="background-image">
+    <img
+      src="assets/images/background.png"
+      alt="Fresh vegetables background"
+      class="bg-img">
+    <div class="overlay"></div>
   </div>
 
-  <!-- Logo and Brand -->
-  <div class="brand-section">
-    <div class="logo-wrapper">
-      <mat-icon class="logo-icon">storefront</mat-icon>
-      <span class="logo-text">NammaOoru</span>
+  <!-- Content Wrapper -->
+  <div class="content-wrapper">
+    <!-- Logo and Brand -->
+    <div class="brand-section">
+      <h1 class="brand-title">NammaOoru</h1>
+      <p class="brand-tagline">Join us! Fresh groceries await.</p>
     </div>
-    <p class="tagline">Your Local Shopping Companion</p>
-  </div>
 
-  <!-- Registration Form Card -->
-  <div class="form-container">
+    <!-- Registration Form Card -->
     <div class="form-card">
       <div class="form-header">
         <h2>Create Your Account</h2>
-        <p>Join thousands of happy customers shopping locally</p>
+        <p>Join thousands of happy customers</p>
       </div>
 
       <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="register-form">
         <!-- Name Row -->
         <div class="form-row">
-          <div class="input-group half-width">
-            <label class="input-label">First Name *</label>
+          <div class="form-field half-width">
+            <label for="firstName">First Name</label>
             <div class="input-wrapper">
-              <mat-icon class="input-icon">badge</mat-icon>
-              <input 
-                class="modern-input"
+              <span class="material-icons-outlined input-icon">person_outline</span>
+              <input
+                id="firstName"
                 type="text"
-                formControlName="firstName" 
-                placeholder="John">
-              <mat-icon class="success-icon" *ngIf="registerForm.get('firstName')?.valid && registerForm.get('firstName')?.touched">check_circle</mat-icon>
+                formControlName="firstName"
+                placeholder="John"
+                [class.error]="registerForm.get('firstName')?.invalid && registerForm.get('firstName')?.touched">
             </div>
-            <span class="error-text" *ngIf="registerForm.get('firstName')?.invalid && registerForm.get('firstName')?.touched">
-              <mat-icon>error</mat-icon>
+            <span class="error-message" *ngIf="registerForm.get('firstName')?.invalid && registerForm.get('firstName')?.touched">
               {{ registerForm.get('firstName')?.hasError('required') ? 'First name is required' : 'Minimum 2 characters' }}
             </span>
           </div>
 
-          <div class="input-group half-width">
-            <label class="input-label">Last Name *</label>
+          <div class="form-field half-width">
+            <label for="lastName">Last Name</label>
             <div class="input-wrapper">
-              <mat-icon class="input-icon">badge</mat-icon>
-              <input 
-                class="modern-input"
+              <span class="material-icons-outlined input-icon">person_outline</span>
+              <input
+                id="lastName"
                 type="text"
-                formControlName="lastName" 
-                placeholder="Doe">
-              <mat-icon class="success-icon" *ngIf="registerForm.get('lastName')?.valid && registerForm.get('lastName')?.touched">check_circle</mat-icon>
+                formControlName="lastName"
+                placeholder="Doe"
+                [class.error]="registerForm.get('lastName')?.invalid && registerForm.get('lastName')?.touched">
             </div>
-            <span class="error-text" *ngIf="registerForm.get('lastName')?.invalid && registerForm.get('lastName')?.touched">
-              <mat-icon>error</mat-icon>
+            <span class="error-message" *ngIf="registerForm.get('lastName')?.invalid && registerForm.get('lastName')?.touched">
               {{ registerForm.get('lastName')?.hasError('required') ? 'Last name is required' : 'Minimum 2 characters' }}
             </span>
           </div>
         </div>
 
         <!-- Email Field -->
-        <div class="input-group">
-          <label class="input-label">Email Address *</label>
+        <div class="form-field">
+          <label for="email">Email</label>
           <div class="input-wrapper">
-            <mat-icon class="input-icon">email</mat-icon>
-            <input 
-              class="modern-input"
+            <span class="material-icons-outlined input-icon">mail_outline</span>
+            <input
+              id="email"
               type="email"
-              formControlName="email" 
-              placeholder="john.doe@example.com">
-            <mat-icon class="success-icon" *ngIf="registerForm.get('email')?.valid && registerForm.get('email')?.touched">check_circle</mat-icon>
+              formControlName="email"
+              placeholder="you@example.com"
+              [class.error]="registerForm.get('email')?.invalid && registerForm.get('email')?.touched">
           </div>
-          <span class="error-text" *ngIf="registerForm.get('email')?.invalid && registerForm.get('email')?.touched">
-            <mat-icon>error</mat-icon>
+          <span class="error-message" *ngIf="registerForm.get('email')?.invalid && registerForm.get('email')?.touched">
             <ng-container *ngIf="registerForm.get('email')?.hasError('required')">Email is required</ng-container>
-            <ng-container *ngIf="registerForm.get('email')?.hasError('email')">Enter a valid email address</ng-container>
-            <ng-container *ngIf="registerForm.get('email')?.hasError('serverError')">This email is already registered</ng-container>
+            <ng-container *ngIf="registerForm.get('email')?.hasError('email')">Enter a valid email</ng-container>
           </span>
         </div>
 
-        <!-- Mobile Number Field -->
-        <div class="input-group">
-          <label class="input-label">Mobile Number *</label>
+        <!-- Mobile Field -->
+        <div class="form-field">
+          <label for="mobile">Mobile Number</label>
           <div class="input-wrapper">
-            <mat-icon class="input-icon">smartphone</mat-icon>
-            <input 
-              class="modern-input"
+            <span class="material-icons-outlined input-icon">phone_outline</span>
+            <input
+              id="mobile"
               type="tel"
-              formControlName="mobile" 
-              placeholder="+91 98765 43210">
-            <mat-icon class="success-icon" *ngIf="registerForm.get('mobile')?.valid && registerForm.get('mobile')?.touched">check_circle</mat-icon>
+              formControlName="mobile"
+              placeholder="+91 98765 43210"
+              [class.error]="registerForm.get('mobile')?.invalid && registerForm.get('mobile')?.touched">
           </div>
-          <span class="error-text" *ngIf="registerForm.get('mobile')?.invalid && registerForm.get('mobile')?.touched">
-            <mat-icon>error</mat-icon>
+          <span class="error-message" *ngIf="registerForm.get('mobile')?.invalid && registerForm.get('mobile')?.touched">
             <ng-container *ngIf="registerForm.get('mobile')?.hasError('required')">Mobile number is required</ng-container>
-            <ng-container *ngIf="registerForm.get('mobile')?.hasError('pattern')">Enter a valid 10-digit mobile number</ng-container>
-            <ng-container *ngIf="registerForm.get('mobile')?.hasError('serverError')">This mobile number is already registered</ng-container>
+            <ng-container *ngIf="registerForm.get('mobile')?.hasError('pattern')">Enter a valid mobile number</ng-container>
           </span>
         </div>
 
         <!-- Password Field -->
-        <div class="input-group">
-          <label class="input-label">Password *</label>
+        <div class="form-field">
+          <label for="password">Password</label>
           <div class="input-wrapper">
-            <mat-icon class="input-icon">lock</mat-icon>
-            <input 
-              class="modern-input"
+            <span class="material-icons-outlined input-icon">lock_outline</span>
+            <input
+              id="password"
               [type]="hidePassword ? 'password' : 'text'"
-              formControlName="password" 
-              placeholder="Create a strong password">
-            <button type="button" class="toggle-password" (click)="hidePassword = !hidePassword">
-              <mat-icon>{{ hidePassword ? 'visibility' : 'visibility_off' }}</mat-icon>
+              formControlName="password"
+              placeholder="••••••••"
+              [class.error]="registerForm.get('password')?.invalid && registerForm.get('password')?.touched">
+            <button
+              class="toggle-password"
+              type="button"
+              (click)="hidePassword = !hidePassword"
+              [attr.aria-label]="hidePassword ? 'Show password' : 'Hide password'">
+              <span class="material-icons-outlined">
+                {{ hidePassword ? 'visibility_off' : 'visibility' }}
+              </span>
             </button>
           </div>
-          <span class="error-text" *ngIf="registerForm.get('password')?.invalid && registerForm.get('password')?.touched">
-            <mat-icon>error</mat-icon>
-            {{ registerForm.get('password')?.hasError('required') ? 'Password is required' : 'Password must be at least 6 characters' }}
+          <span class="error-message" *ngIf="registerForm.get('password')?.invalid && registerForm.get('password')?.touched">
+            {{ registerForm.get('password')?.hasError('required') ? 'Password is required' : 'Minimum 6 characters' }}
           </span>
         </div>
 
         <!-- Submit Button -->
-        <button type="submit" class="submit-button" [disabled]="registerForm.invalid || isLoading">
-          <div class="button-content">
-            <mat-spinner *ngIf="isLoading" diameter="20"></mat-spinner>
-            <mat-icon *ngIf="!isLoading">person_add</mat-icon>
-            <span>{{ isLoading ? 'Creating Account...' : 'Create Account' }}</span>
-          </div>
+        <button
+          type="submit"
+          class="submit-button"
+          [disabled]="registerForm.invalid || isLoading">
+          <mat-spinner *ngIf="isLoading" diameter="20"></mat-spinner>
+          <span *ngIf="!isLoading">Create Account</span>
+          <span *ngIf="isLoading">Creating Account...</span>
         </button>
 
-        <!-- Auth Links -->
-        <div class="auth-links">
-          <p>Already have an account? 
-            <a routerLink="/auth/login" class="link-primary">Sign In</a>
-          </p>
-        </div>
+        <!-- Sign In Link -->
+        <p class="signup-link">
+          Already have an account?
+          <a routerLink="/auth/login">Sign In</a>
+        </p>
+
+        <!-- Privacy Policy Link -->
+        <p class="privacy-link">
+          By creating an account, you agree to our
+          <a routerLink="/privacy-policy">Privacy Policy</a>
+        </p>
       </form>
     </div>
-  </div>
-
-  <!-- Legal Footer -->
-  <div class="legal-footer">
-    <div class="legal-links">
-      <a routerLink="/privacy-policy" class="legal-link">Privacy Policy</a>
-      <span class="separator">•</span>
-      <a routerLink="/terms-conditions" class="legal-link">Terms & Conditions</a>
-    </div>
-    <span class="version-text">v1.0.0</span>
   </div>
 </div>

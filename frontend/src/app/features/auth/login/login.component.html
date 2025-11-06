@@ -1,79 +1,77 @@
 <div class="login-container">
-  <!-- Animated Background -->
-  <div class="animated-bg">
-    <div class="shape shape-1"></div>
-    <div class="shape shape-2"></div>
-    <div class="shape shape-3"></div>
+  <!-- Background Image with Overlay -->
+  <div class="background-image">
+    <img
+      src="assets/images/background.png"
+      alt="Fresh vegetables background"
+      class="bg-img">
+    <div class="overlay"></div>
   </div>
 
-  <!-- Logo and Brand -->
-  <div class="brand-section">
-    <div class="logo-wrapper">
-      <mat-icon class="logo-icon">storefront</mat-icon>
-      <span class="logo-text">NammaOoru</span>
+  <!-- Content Wrapper -->
+  <div class="content-wrapper">
+    <!-- Logo and Brand -->
+    <div class="brand-section">
+      <h1 class="brand-title">NammaOoru</h1>
+      <p class="brand-tagline">Welcome back! Fresh groceries await.</p>
     </div>
-    <p class="tagline">Welcome back to your dashboard</p>
-  </div>
 
-  <!-- Login Form Card -->
-  <div class="form-container">
+    <!-- Login Form Card -->
     <div class="form-card">
       <div class="form-header">
-        <div class="welcome-icon">
-          <mat-icon>login</mat-icon>
-        </div>
         <h2>Welcome Back</h2>
         <p>Sign in to continue to your account</p>
       </div>
 
       <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
         <!-- Email Field -->
-        <div class="input-group">
-          <label class="input-label">Email</label>
+        <div class="form-field">
+          <label for="email">Email</label>
           <div class="input-wrapper">
-            <mat-icon class="input-icon">email</mat-icon>
-            <input 
-              class="modern-input"
+            <span class="material-icons-outlined input-icon">mail_outline</span>
+            <input
+              id="email"
               type="email"
-              formControlName="email" 
-              placeholder="Enter your email address"
-              autocomplete="email">
-            <mat-icon class="success-icon" *ngIf="loginForm.get('email')?.valid && loginForm.get('email')?.touched">check_circle</mat-icon>
+              formControlName="email"
+              placeholder="you@example.com"
+              autocomplete="email"
+              [class.error]="hasFieldError('email')">
           </div>
-          <span class="error-text" *ngIf="hasFieldError('email')">
-            <mat-icon>error</mat-icon>
+          <span class="error-message" *ngIf="hasFieldError('email')">
             {{ getFieldError('email') }}
           </span>
         </div>
 
         <!-- Password Field -->
-        <div class="input-group">
-          <label class="input-label">Password</label>
+        <div class="form-field">
+          <label for="password">Password</label>
           <div class="input-wrapper">
-            <mat-icon class="input-icon">lock</mat-icon>
-            <input 
-              class="modern-input"
+            <span class="material-icons-outlined input-icon">lock_outline</span>
+            <input
+              id="password"
               [type]="hidePassword ? 'password' : 'text'"
-              formControlName="password" 
-              placeholder="Enter your password"
-              autocomplete="current-password">
-            <button 
+              formControlName="password"
+              placeholder="••••••••"
+              autocomplete="current-password"
+              [class.error]="hasFieldError('password')">
+            <button
               class="toggle-password"
               type="button"
               (click)="hidePassword = !hidePassword"
               [attr.aria-label]="hidePassword ? 'Show password' : 'Hide password'">
-              <mat-icon>{{ hidePassword ? 'visibility' : 'visibility_off' }}</mat-icon>
+              <span class="material-icons-outlined">
+                {{ hidePassword ? 'visibility_off' : 'visibility' }}
+              </span>
             </button>
           </div>
-          <span class="error-text" *ngIf="hasFieldError('password')">
-            <mat-icon>error</mat-icon>
+          <span class="error-message" *ngIf="hasFieldError('password')">
             {{ getFieldError('password') }}
           </span>
         </div>
 
         <!-- Remember Me & Forgot Password -->
         <div class="form-options">
-          <mat-checkbox color="primary" class="remember-me">
+          <mat-checkbox id="remember-me" color="primary">
             Remember me
           </mat-checkbox>
           <a routerLink="/auth/forgot-password" class="forgot-link">
@@ -81,73 +79,34 @@
           </a>
         </div>
 
-        <!-- Error Message Banner -->
+        <!-- Error Message -->
         <div class="error-banner" *ngIf="error">
-          <div class="error-icon-wrapper">
-            <mat-icon class="error-icon">error_outline</mat-icon>
-          </div>
-          <div class="error-content">
-            <span class="error-title">Login Failed</span>
-            <p class="error-message">{{ error }}</p>
-          </div>
+          <span class="material-icons-outlined">error_outline</span>
+          <span>{{ error }}</span>
         </div>
 
         <!-- Submit Button -->
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           class="submit-button"
           [disabled]="loginForm.invalid || isLoading">
-          <div class="button-content">
-            <mat-spinner *ngIf="isLoading" diameter="20"></mat-spinner>
-            <mat-icon *ngIf="!isLoading" class="button-icon">login</mat-icon>
-            <span>{{ isLoading ? 'Signing In...' : 'Sign In' }}</span>
-          </div>
+          <mat-spinner *ngIf="isLoading" diameter="20"></mat-spinner>
+          <span *ngIf="!isLoading">Sign In</span>
+          <span *ngIf="isLoading">Signing In...</span>
         </button>
 
-        <!-- Auth Links -->
-        <div class="auth-links">
-          <div class="divider">
-            <span>Don't have an account?</span>
-          </div>
-          <a routerLink="/auth/register" class="create-account-btn">
-            <mat-icon>person_add</mat-icon>
-            <span>Create New Account</span>
-          </a>
-        </div>
+        <!-- Create Account Link -->
+        <p class="signup-link">
+          Don't have an account?
+          <a routerLink="/auth/register">Create New Account</a>
+        </p>
+
+        <!-- Privacy Policy Link -->
+        <p class="privacy-link">
+          By signing in, you agree to our
+          <a routerLink="/privacy-policy">Privacy Policy</a>
+        </p>
       </form>
     </div>
-  </div>
-
-  <!-- Information Cards -->
-  <div class="info-section">
-    <mat-card class="info-card primary">
-      <mat-card-content>
-        <mat-icon>info</mat-icon>
-        <div class="info-content">
-          <strong>Shop Owners & Delivery Partners</strong>
-          <p>Use your company-provided credentials to access your dashboard</p>
-        </div>
-      </mat-card-content>
-    </mat-card>
-    
-    <mat-card class="info-card support">
-      <mat-card-content>
-        <mat-icon>support_agent</mat-icon>
-        <div class="info-content">
-          <strong>Need Help?</strong>
-          <p>Contact support for assistance with your account</p>
-        </div>
-      </mat-card-content>
-    </mat-card>
-  </div>
-
-  <!-- Legal Footer -->
-  <div class="legal-footer">
-    <div class="legal-links">
-      <a routerLink="/privacy-policy" class="legal-link">Privacy Policy</a>
-      <span class="separator">•</span>
-      <a routerLink="/terms-conditions" class="legal-link">Terms & Conditions</a>
-    </div>
-    <span class="version-text">{{ versionService.getVersion() }}</span>
   </div>
 </div>
