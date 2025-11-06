@@ -19,32 +19,56 @@
           <mat-icon>info</mat-icon>
           How to Import Products
         </h3>
-        <ol>
-          <li *ngIf="isSuperAdmin">
-            <strong>Copy images to folder:</strong>
-            <code>D:/AAWS/nammaooru/uploads/master/products/{{'{'}}folder{{'}'}}/</code>
-          </li>
-          <li>
-            <strong>Download sample template:</strong>
-            <button mat-stroked-button color="primary" (click)="downloadSampleCSV()">
-              <mat-icon>download</mat-icon>
-              Download Sample CSV
-            </button>
-          </li>
-          <li>
-            <strong>Open CSV in Excel:</strong> File → Save As → Excel Workbook (.xlsx)
-          </li>
-          <li>
-            <strong>Fill your product data</strong> (name, categoryId, imagePath, imageFolder are required)
-          </li>
-          <li>
-            <strong>Upload Excel file</strong> using the form below
-          </li>
-        </ol>
 
-        <div class="alert alert-info">
+        <div class="steps-container">
+          <div class="step-card" *ngIf="isSuperAdmin">
+            <div class="step-number">1</div>
+            <div class="step-content">
+              <h4><mat-icon>folder</mat-icon> Prepare Product Images</h4>
+              <p>Upload your product images to the server's product images folder. Organize them in subfolders (e.g., vegetables, groceries, dairy).</p>
+              <div class="info-box">
+                <mat-icon>folder_open</mat-icon>
+                <span>Contact system administrator for image upload access</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="step-card">
+            <div class="step-number" [innerHTML]="isSuperAdmin ? '2' : '1'"></div>
+            <div class="step-content">
+              <h4><mat-icon>download</mat-icon> Download Template</h4>
+              <p>Download our pre-formatted Excel template with all required columns.</p>
+              <button mat-raised-button color="primary" (click)="downloadSampleCSV()">
+                <mat-icon>download</mat-icon>
+                Download Sample Template
+              </button>
+            </div>
+          </div>
+
+          <div class="step-card">
+            <div class="step-number" [innerHTML]="isSuperAdmin ? '3' : '2'"></div>
+            <div class="step-content">
+              <h4><mat-icon>edit</mat-icon> Fill Product Details</h4>
+              <p>Open the template in Excel and fill in your product information. Required fields: name, categoryId, imagePath, imageFolder.</p>
+              <div class="info-box">
+                <mat-icon>info</mat-icon>
+                <span>Save as Excel Workbook (.xlsx) format</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="step-card">
+            <div class="step-number" [innerHTML]="isSuperAdmin ? '4' : '3'"></div>
+            <div class="step-content">
+              <h4><mat-icon>cloud_upload</mat-icon> Upload & Import</h4>
+              <p>Select your completed Excel file below and click "Upload & Import" to process your products.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="alert alert-success">
           <mat-icon>lightbulb</mat-icon>
-          <strong>Tip:</strong> Test with 2-3 products first, then proceed with full import!
+          <strong>Pro Tip:</strong> Start with a small batch of 2-3 products to verify everything works correctly!
         </div>
       </div>
 
@@ -202,39 +226,105 @@
           </mat-expansion-panel-header>
 
           <div class="help-content">
-            <h4>Excel Template Columns:</h4>
-            <ul>
-              <li><strong>A: name</strong> - Product name (required)</li>
-              <li><strong>B: description</strong> - Product description</li>
-              <li><strong>C: categoryId</strong> - Category ID (required)</li>
-              <li><strong>I: originalPrice</strong> - Original price (MRP)</li>
-              <li><strong>J: sellingPrice</strong> - Selling price</li>
-              <li><strong>K: discountPercentage</strong> - Discount %</li>
-              <li><strong>M: stockQuantity</strong> - Stock quantity</li>
-              <li><strong>V: imagePath</strong> - Image filename (e.g., tomato.jpg)</li>
-              <li><strong>W: imageFolder</strong> - Folder name (e.g., vegetables)</li>
-            </ul>
+            <h4><mat-icon>table_chart</mat-icon> Excel Template Columns</h4>
+            <div class="columns-grid">
+              <div class="column-item required">
+                <strong>name</strong>
+                <span>Product name</span>
+              </div>
+              <div class="column-item">
+                <strong>description</strong>
+                <span>Product description</span>
+              </div>
+              <div class="column-item required">
+                <strong>categoryId</strong>
+                <span>Category ID</span>
+              </div>
+              <div class="column-item">
+                <strong>originalPrice</strong>
+                <span>MRP/Original price</span>
+              </div>
+              <div class="column-item">
+                <strong>sellingPrice</strong>
+                <span>Selling price</span>
+              </div>
+              <div class="column-item">
+                <strong>discountPercentage</strong>
+                <span>Discount %</span>
+              </div>
+              <div class="column-item">
+                <strong>stockQuantity</strong>
+                <span>Available stock</span>
+              </div>
+              <div class="column-item required">
+                <strong>imagePath</strong>
+                <span>Image filename (tomato.jpg)</span>
+              </div>
+              <div class="column-item required">
+                <strong>imageFolder</strong>
+                <span>Folder name (vegetables)</span>
+              </div>
+            </div>
 
-            <h4>Image Folder Structure:</h4>
-            <pre><code>D:/AAWS/nammaooru/uploads/master/products/
-├── vegetables/
-│   ├── tomato.jpg
-│   └── onion.jpg
-└── groceries/
-    ├── rice.jpg
-    └── dal.jpg</code></pre>
+            <div class="example-section">
+              <h4><mat-icon>folder_special</mat-icon> Image Organization Example</h4>
+              <div class="folder-structure">
+                <div class="folder-item">
+                  <mat-icon>folder</mat-icon>
+                  <span>vegetables/</span>
+                </div>
+                <div class="file-items">
+                  <div class="file-item">
+                    <mat-icon>image</mat-icon>
+                    <span>tomato.jpg</span>
+                  </div>
+                  <div class="file-item">
+                    <mat-icon>image</mat-icon>
+                    <span>onion.jpg</span>
+                  </div>
+                </div>
 
-            <h4>Common Issues:</h4>
-            <ul>
-              <li><strong>Invalid category ID:</strong> Get valid IDs from Category Management</li>
-              <li><strong>Image not found:</strong> Ensure image filename matches exactly (case-sensitive)</li>
-              <li><strong>File format:</strong> Must be .xlsx format (Excel 2007+)</li>
-            </ul>
+                <div class="folder-item">
+                  <mat-icon>folder</mat-icon>
+                  <span>groceries/</span>
+                </div>
+                <div class="file-items">
+                  <div class="file-item">
+                    <mat-icon>image</mat-icon>
+                    <span>rice.jpg</span>
+                  </div>
+                  <div class="file-item">
+                    <mat-icon>image</mat-icon>
+                    <span>dal.jpg</span>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-            <button mat-stroked-button color="accent" (click)="getTemplateInfo()">
-              <mat-icon>info</mat-icon>
-              Get Full Template Info
-            </button>
+            <h4><mat-icon>troubleshoot</mat-icon> Common Issues & Solutions</h4>
+            <div class="issues-list">
+              <div class="issue-item">
+                <mat-icon color="warn">error</mat-icon>
+                <div>
+                  <strong>Invalid category ID</strong>
+                  <p>Solution: Get valid category IDs from the Category Management section</p>
+                </div>
+              </div>
+              <div class="issue-item">
+                <mat-icon color="warn">broken_image</mat-icon>
+                <div>
+                  <strong>Image not found</strong>
+                  <p>Solution: Ensure image filename matches exactly (case-sensitive) and file exists in specified folder</p>
+                </div>
+              </div>
+              <div class="issue-item">
+                <mat-icon color="warn">description</mat-icon>
+                <div>
+                  <strong>Wrong file format</strong>
+                  <p>Solution: File must be .xlsx format (Excel 2007 or later)</p>
+                </div>
+              </div>
+            </div>
           </div>
         </mat-expansion-panel>
       </div>
