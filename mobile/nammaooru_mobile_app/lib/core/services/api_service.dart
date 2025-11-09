@@ -375,10 +375,10 @@ class ApiService {
   }
 
   // Send password reset OTP
-  Future<Map<String, dynamic>> sendPasswordResetOtp(String email) async {
+  Future<Map<String, dynamic>> sendPasswordResetOtp(String identifier) async {
     try {
       final response = await _dio.post('/auth/forgot-password/send-otp', data: {
-        'email': email,
+        'identifier': identifier,  // Support both email and mobile number
       });
       
       if (response.statusCode == 200) {
@@ -405,10 +405,10 @@ class ApiService {
   }
 
   // Verify password reset OTP
-  Future<Map<String, dynamic>> verifyPasswordResetOtp(String email, String otp) async {
+  Future<Map<String, dynamic>> verifyPasswordResetOtp(String identifier, String otp) async {
     try {
       final response = await _dio.post('/auth/forgot-password/verify-otp', data: {
-        'email': email,
+        'identifier': identifier,  // Support both email and mobile number
         'otp': otp,
       });
       
@@ -436,10 +436,10 @@ class ApiService {
   }
 
   // Reset password with OTP
-  Future<Map<String, dynamic>> resetPasswordWithOtp(String email, String otp, String newPassword) async {
+  Future<Map<String, dynamic>> resetPasswordWithOtp(String identifier, String otp, String newPassword) async {
     try {
       final response = await _dio.post('/auth/forgot-password/reset-password', data: {
-        'email': email,
+        'identifier': identifier,  // Support both email and mobile number
         'otp': otp,
         'newPassword': newPassword,
       });
@@ -468,10 +468,10 @@ class ApiService {
   }
 
   // Resend password reset OTP
-  Future<Map<String, dynamic>> resendPasswordResetOtp(String email) async {
+  Future<Map<String, dynamic>> resendPasswordResetOtp(String identifier) async {
     try {
       final response = await _dio.post('/auth/forgot-password/resend-otp', data: {
-        'email': email,
+        'identifier': identifier,  // Support both email and mobile number
       });
       
       if (response.statusCode == 200) {

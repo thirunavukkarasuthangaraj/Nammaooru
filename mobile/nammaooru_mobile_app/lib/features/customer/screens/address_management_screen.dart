@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:geocoding/geocoding.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../core/storage/local_storage.dart';
@@ -587,12 +588,31 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
   Future<void> _addAddress(String label, String address, String details) async {
     try {
       print('Adding address: $label - $address');
+
+      // Geocode the manually entered address to get real lat/long coordinates
+      double latitude = 13.0827; // Default fallback
+      double longitude = 80.2707; // Default fallback
+
+      try {
+        // Try to get coordinates from the address text
+        final locations = await locationFromAddress(address);
+        if (locations.isNotEmpty) {
+          latitude = locations.first.latitude;
+          longitude = locations.first.longitude;
+          print('✅ Geocoded address to: $latitude, $longitude');
+        } else {
+          print('⚠️ Could not geocode address, using fallback coordinates');
+        }
+      } catch (e) {
+        print('⚠️ Geocoding failed: $e, using fallback coordinates');
+      }
+
       final result = await AddressApiService.addAddress(
         label: label,
         fullAddress: address,
         details: details,
-        latitude: 13.0827 + (DateTime.now().millisecondsSinceEpoch % 100) / 10000,
-        longitude: 80.2707 + (DateTime.now().millisecondsSinceEpoch % 100) / 10000,
+        latitude: latitude,
+        longitude: longitude,
         isDefault: _addresses.isEmpty,
       );
 
@@ -884,7 +904,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                                 crossAxisCount: crossAxisCount,
                                 crossAxisSpacing: 12,
                                 mainAxisSpacing: 12,
-                                childAspectRatio: crossAxisCount == 2 ? 2.2 : 2.8, // Adjusted for compact height
+                                childAspectRatio: crossAxisCount == 2 ? 1.5 : 1.8, // Much taller cards to accommodate long village addresses
                               ),
                               itemCount: _addresses.length,
                               itemBuilder: (context, index) {
@@ -943,7 +963,6 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
     final isDefault = address['isDefault'] ?? false;
 
     return Container(
-      height: 120, // Fixed height for consistency
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -1026,59 +1045,61 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
               ],
             ),
             const SizedBox(height: 6),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  Icons.location_on_outlined,
-                  color: AppColors.primary,
-                  size: 14,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        _buildFullAddress(address),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                          height: 1.3,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        '${address['city'] ?? 'Tirupattur'}, ${address['state'] ?? 'Tamil Nadu'}',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: AppColors.textHint,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if ((address['postalCode'] ?? address['pincode'] ?? '').toString().isNotEmpty)
+            Expanded(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.location_on_outlined,
+                    color: AppColors.primary,
+                    size: 14,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
                         Text(
-                          'PIN: ${address['postalCode'] ?? address['pincode'] ?? ''}',
+                          _buildFullAddress(address),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                            height: 1.3,
+                          ),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          '${address['city'] ?? 'Tirupattur'}, ${address['state'] ?? 'Tamil Nadu'}',
                           style: TextStyle(
                             fontSize: 10,
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w500,
+                            color: AppColors.textHint,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                    ],
+                        if ((address['postalCode'] ?? address['pincode'] ?? '').toString().isNotEmpty)
+                          Text(
+                            'PIN: ${address['postalCode'] ?? address['pincode'] ?? ''}',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-            const Spacer(),
-            if (!isDefault)
+            if (!isDefault) ...[
+              const SizedBox(height: 4),
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
@@ -1096,6 +1117,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                   ),
                 ),
               ),
+            ],
           ],
         ),
       ),

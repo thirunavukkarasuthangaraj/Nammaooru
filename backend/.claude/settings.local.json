@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(taskkill:*)",
+      "Bash(curl:*)",
+      "Bash(mvn spring-boot:run:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(timeout 30 bash:*)",
+      "Bash(cat:*)",
+      "Bash(mvn clean compile:*)",
+      "Bash(flutter run:*)",
+      "Bash(adb install:*)",
+      "Bash(flutter devices:*)",
+      "Bash(flutter install:*)",
+      "Bash(flutter build:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

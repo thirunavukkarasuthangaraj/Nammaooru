@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:email_validator/email_validator.dart';
+import 'dart:ui';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/models/auth_models.dart';
 import '../../../core/theme/village_theme.dart';
@@ -21,11 +22,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
-  
+
   bool _obscurePassword = true;
-  bool _obscureConfirmPassword = true;
   bool _acceptTerms = false;
+  String? _selectedGender;
 
   @override
   void dispose() {
@@ -33,7 +33,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _emailController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
-    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -66,6 +65,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       phoneNumber: _phoneController.text.trim(),
       role: 'CUSTOMER',
       username: generatedUsername,
+      gender: _selectedGender,
     );
 
     if (mounted) {
@@ -91,8 +91,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/login_background.png'),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                child: Container(
+                  color: Colors.white.withOpacity(0.3),
+                ),
+              ),
+            ),
+            SafeArea(
         child: Consumer<AuthProvider>(
           builder: (context, authProvider, child) {
             if (authProvider.authState == AuthState.loading) {
@@ -126,17 +144,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(height: 40),
                     _buildHeader(),
                     const SizedBox(height: 32),
-                    _buildTabButtons(),
-                    const SizedBox(height: 24),
                     _buildNameField(),
                     const SizedBox(height: 16),
                     _buildEmailField(),
                     const SizedBox(height: 16),
                     _buildPhoneField(),
                     const SizedBox(height: 16),
-                    _buildPasswordField(),
+                    _buildGenderField(),
                     const SizedBox(height: 16),
-                    _buildConfirmPasswordField(),
+                    _buildPasswordField(),
                     const SizedBox(height: 16),
                     _buildTermsAndConditions(),
                     const SizedBox(height: 24),
@@ -148,6 +164,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
             );
           },
+        ),
+      ),
+          ],
         ),
       ),
     );
@@ -239,7 +258,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           style: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF2C3E50),
+            color: Colors.white,
           ),
         ),
         const SizedBox(height: 8),
@@ -247,7 +266,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'Join NammaOoru',
           style: TextStyle(
             fontSize: 16,
-            color: Color(0xFF7F8C8D),
+            color: Colors.white,
           ),
         ),
         const SizedBox(height: 4),
@@ -255,7 +274,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'Connect with your local community',
           style: TextStyle(
             fontSize: 14,
-            color: Color(0xFF95A5A6),
+            color: Colors.white,
           ),
         ),
       ],
@@ -278,13 +297,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         decoration: InputDecoration(
           hintText: 'Enter your full name',
-          hintStyle: TextStyle(
-            color: Colors.grey[500],
+          hintStyle: const TextStyle(
+            color: Colors.black54,
             fontSize: 16,
           ),
           prefixIcon: Icon(
             Icons.person_outlined,
-            color: Colors.grey[600],
+            color: Colors.black54,
             size: 20,
           ),
           border: InputBorder.none,
@@ -322,13 +341,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         },
         decoration: InputDecoration(
           hintText: 'Enter your email address',
-          hintStyle: TextStyle(
-            color: Colors.grey[500],
+          hintStyle: const TextStyle(
+            color: Colors.black54,
             fontSize: 16,
           ),
           prefixIcon: Icon(
             Icons.email_outlined,
-            color: Colors.grey[600],
+            color: Colors.black54,
             size: 20,
           ),
           border: InputBorder.none,
@@ -366,13 +385,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         },
         decoration: InputDecoration(
           hintText: 'Enter your phone number',
-          hintStyle: TextStyle(
-            color: Colors.grey[500],
+          hintStyle: const TextStyle(
+            color: Colors.black54,
             fontSize: 16,
           ),
           prefixIcon: Icon(
             Icons.phone_outlined,
-            color: Colors.grey[600],
+            color: Colors.black54,
             size: 20,
           ),
           border: InputBorder.none,
@@ -380,6 +399,55 @@ class _RegisterScreenState extends State<RegisterScreen> {
             horizontal: 16,
             vertical: 16,
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGenderField() {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FA),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: DropdownButtonFormField<String>(
+        value: _selectedGender,
+        decoration: InputDecoration(
+          hintText: 'Select your gender (Optional)',
+          hintStyle: const TextStyle(
+            color: Colors.black54,
+            fontSize: 16,
+          ),
+          prefixIcon: Icon(
+            Icons.person_outline,
+            color: Colors.black54,
+            size: 20,
+          ),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
+        ),
+        items: const [
+          DropdownMenuItem(value: 'MALE', child: Text('Male')),
+          DropdownMenuItem(value: 'FEMALE', child: Text('Female')),
+          DropdownMenuItem(value: 'OTHER', child: Text('Other')),
+          DropdownMenuItem(value: 'PREFER_NOT_TO_SAY', child: Text('Prefer not to say')),
+        ],
+        onChanged: (value) {
+          setState(() {
+            _selectedGender = value;
+          });
+        },
+        style: const TextStyle(
+          fontSize: 16,
+          color: Color(0xFF2C3E50),
+        ),
+        dropdownColor: const Color(0xFFF8F9FA),
+        icon: Icon(
+          Icons.arrow_drop_down,
+          color: Colors.black54,
         ),
       ),
     );
@@ -394,7 +462,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       child: TextFormField(
         controller: _passwordController,
         obscureText: _obscurePassword,
-        textInputAction: TextInputAction.next,
+        textInputAction: TextInputAction.done,
+        onFieldSubmitted: (_) => _handleRegister(),
         style: const TextStyle(
           fontSize: 16,
           color: Color(0xFF2C3E50),
@@ -409,82 +478,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
           return null;
         },
         decoration: InputDecoration(
-          hintText: 'Create a strong password',
-          hintStyle: TextStyle(
-            color: Colors.grey[500],
+          hintText: 'Create a password (e.g., Test@123)',
+          hintStyle: const TextStyle(
+            color: Colors.black54,
             fontSize: 16,
           ),
           prefixIcon: Icon(
             Icons.lock_outlined,
-            color: Colors.grey[600],
+            color: Colors.black54,
             size: 20,
           ),
           suffixIcon: IconButton(
             icon: Icon(
               _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-              color: Colors.grey[600],
+              color: Colors.black54,
               size: 20,
             ),
             onPressed: () {
               setState(() {
                 _obscurePassword = !_obscurePassword;
-              });
-            },
-          ),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 16,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildConfirmPasswordField() {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: TextFormField(
-        controller: _confirmPasswordController,
-        obscureText: _obscureConfirmPassword,
-        textInputAction: TextInputAction.done,
-        style: const TextStyle(
-          fontSize: 16,
-          color: Color(0xFF2C3E50),
-        ),
-        validator: (value) {
-          if (value == null || value.isEmpty) {
-            return 'Please confirm your password';
-          }
-          if (value != _passwordController.text) {
-            return 'Passwords do not match';
-          }
-          return null;
-        },
-        onFieldSubmitted: (_) => _handleRegister(),
-        decoration: InputDecoration(
-          hintText: 'Confirm your password',
-          hintStyle: TextStyle(
-            color: Colors.grey[500],
-            fontSize: 16,
-          ),
-          prefixIcon: Icon(
-            Icons.lock_outlined,
-            color: Colors.grey[600],
-            size: 20,
-          ),
-          suffixIcon: IconButton(
-            icon: Icon(
-              _obscureConfirmPassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-              color: Colors.grey[600],
-              size: 20,
-            ),
-            onPressed: () {
-              setState(() {
-                _obscureConfirmPassword = !_obscureConfirmPassword;
               });
             },
           ),
@@ -623,7 +635,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'Already have an account? ',
           style: TextStyle(
             fontSize: 14,
-            color: Color(0xFF7F8C8D),
+            color: Colors.white,
           ),
         ),
         TextButton(
@@ -639,7 +651,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             'Sign In',
             style: TextStyle(
               fontSize: 14,
-              color: VillageTheme.primaryGreen,
+              color: Colors.white,
               fontWeight: FontWeight.w600,
             ),
           ),

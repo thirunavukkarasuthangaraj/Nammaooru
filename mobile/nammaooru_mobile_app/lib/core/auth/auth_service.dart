@@ -68,24 +68,29 @@ class AuthService {
     required String phoneNumber,
     required String role,
     required String username,
+    String? gender,
   }) async {
     try {
-      // Split the full name into first and last name
-      final nameParts = name.trim().split(' ');
-      final firstName = nameParts.first;
-      final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
-      
+      // Use full name as firstName (backend stores it in both firstName and lastName)
+      final fullName = name.trim();
+
+      final requestData = {
+        'username': username,
+        'email': email,
+        'password': password,
+        'firstName': fullName,
+        'mobileNumber': phoneNumber,
+        'role': 'USER', // Force USER role for customer registration
+      };
+
+      // Add gender if provided
+      if (gender != null && gender.isNotEmpty) {
+        requestData['gender'] = gender;
+      }
+
       final response = await ApiClient.post(
         ApiEndpoints.register,
-        data: {
-          'username': username,
-          'email': email,
-          'password': password,
-          'firstName': firstName,
-          'lastName': lastName,
-          'mobileNumber': phoneNumber,
-          'role': 'USER', // Force USER role for customer registration
-        },
+        data: requestData,
       );
       
       final data = response.data;

@@ -175,6 +175,7 @@ class ProductModel {
 class MasterProductModel {
   final int id;
   final String name;
+  final String? nameTamil;
   final String description;
   final String category;
   final String? subCategory;
@@ -191,6 +192,7 @@ class MasterProductModel {
   MasterProductModel({
     required this.id,
     required this.name,
+    this.nameTamil,
     required this.description,
     required this.category,
     this.subCategory,
@@ -209,9 +211,10 @@ class MasterProductModel {
     return MasterProductModel(
       id: json['id'] ?? 0,
       name: json['name'] ?? '',
+      nameTamil: json['nameTamil'],
       description: json['description'] ?? '',
-      category: json['category'] is Map<String, dynamic> 
-          ? (json['category']['name'] ?? '') 
+      category: json['category'] is Map<String, dynamic>
+          ? (json['category']['name'] ?? '')
           : (json['category'] ?? ''),
       subCategory: json['subCategory'],
       brand: json['brand'],
@@ -233,6 +236,7 @@ class MasterProductModel {
     return {
       'id': id,
       'name': name,
+      'nameTamil': nameTamil,
       'description': description,
       'category': category,
       'subCategory': subCategory,

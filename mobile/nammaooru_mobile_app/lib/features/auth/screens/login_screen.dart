@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'dart:ui';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/validators.dart';
@@ -98,40 +99,59 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Consumer2<AuthProvider, LanguageProvider>(
-          builder: (context, authProvider, languageProvider, child) {
-            return LoadingOverlay(
-              isLoading: authProvider.authState == AuthState.loading,
-              loadingMessage: 'Logging in...',
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24.0),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const SizedBox(height: 40),
-                      _buildHeader(),
-                      const SizedBox(height: 32),
-                      _buildTabButtons(),
-                      const SizedBox(height: 24),
-                      _buildEmailField(),
-                      const SizedBox(height: 16),
-                      _buildPasswordField(),
-                      const SizedBox(height: 12),
-                      _buildRememberMeAndForgotPassword(),
-                      const SizedBox(height: 24),
-                      _buildLoginButton(),
-                      const SizedBox(height: 16),
-                      _buildSignUpLink(),
-                    ],
-                  ),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/login_background.png'),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                child: Container(
+                  color: Colors.white.withOpacity(0.3),
                 ),
               ),
-            );
-          },
+            ),
+            SafeArea(
+              child: Consumer2<AuthProvider, LanguageProvider>(
+                builder: (context, authProvider, languageProvider, child) {
+                  return LoadingOverlay(
+                    isLoading: authProvider.authState == AuthState.loading,
+                    loadingMessage: 'Logging in...',
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const SizedBox(height: 40),
+                            _buildHeader(),
+                            const SizedBox(height: 32),
+                            _buildEmailField(),
+                            const SizedBox(height: 16),
+                            _buildPasswordField(),
+                            const SizedBox(height: 12),
+                            _buildRememberMeAndForgotPassword(),
+                            const SizedBox(height: 24),
+                            _buildLoginButton(),
+                            const SizedBox(height: 16),
+                            _buildSignUpLink(),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -166,7 +186,7 @@ class _LoginScreenState extends State<LoginScreen> {
           style: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF2C3E50),
+            color: Colors.white,
           ),
         ),
         const SizedBox(height: 8),
@@ -174,7 +194,7 @@ class _LoginScreenState extends State<LoginScreen> {
           'Join Namma Ooru Delivery',
           style: TextStyle(
             fontSize: 16,
-            color: Color(0xFF7F8C8D),
+            color: Colors.white,
           ),
         ),
         const SizedBox(height: 4),
@@ -182,7 +202,7 @@ class _LoginScreenState extends State<LoginScreen> {
           'Serving Thirupattur zone',
           style: TextStyle(
             fontSize: 14,
-            color: Color(0xFF95A5A6),
+            color: Colors.white,
           ),
         ),
       ],
@@ -199,19 +219,24 @@ class _LoginScreenState extends State<LoginScreen> {
         controller: _emailController,
         keyboardType: TextInputType.emailAddress,
         textInputAction: TextInputAction.next,
-        validator: Validators.validateEmail,
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return 'Please enter your email or mobile number';
+          }
+          return null;
+        },
         style: const TextStyle(
           fontSize: 16,
           color: Color(0xFF2C3E50),
         ),
         decoration: InputDecoration(
-          hintText: 'Enter your email',
+          hintText: 'Email or Mobile Number',
           hintStyle: const TextStyle(
             color: Colors.black54,
             fontSize: 16,
           ),
           prefixIcon: Icon(
-            Icons.email_outlined,
+            Icons.person_outline,
             color: Colors.black54,
             size: 20,
           ),
@@ -298,7 +323,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   'Remember me',
                   style: TextStyle(
                     fontSize: 14,
-                    color: Color(0xFF7F8C8D),
+                    color: Colors.white,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -320,7 +345,7 @@ class _LoginScreenState extends State<LoginScreen> {
               'Forgot Password?',
               style: TextStyle(
                 fontSize: 14,
-                color: VillageTheme.primaryGreen,
+                color: Colors.white,
                 fontWeight: FontWeight.w600,
               ),
               overflow: TextOverflow.ellipsis,
@@ -371,75 +396,17 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-
-  Widget _buildTabButtons() {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: const Text(
-                'Sign In',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF2C3E50),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                context.go('/register');
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: const Text(
-                  'Create Account',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                    color: Color(0xFF95A5A6),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildSignUpLink() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Column(
       children: [
         const Text(
-          'New to NammaOoru? ',
+          'New to NammaOoru?',
           style: TextStyle(
             fontSize: 14,
-            color: Color(0xFF7F8C8D),
+            color: Colors.white,
           ),
         ),
+        const SizedBox(height: 8),
         TextButton(
           onPressed: () {
             context.go('/register');
@@ -452,9 +419,9 @@ class _LoginScreenState extends State<LoginScreen> {
           child: const Text(
             'Create Account',
             style: TextStyle(
-              fontSize: 14,
-              color: VillageTheme.primaryGreen,
-              fontWeight: FontWeight.w600,
+              fontSize: 18,
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ),

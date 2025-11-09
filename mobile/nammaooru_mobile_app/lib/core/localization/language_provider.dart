@@ -1,18 +1,116 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LanguageProvider with ChangeNotifier {
   String _currentLanguage = 'en';
-  
+  bool _showTamil = false;
+  static const String _keyShowTamil = 'show_tamil';
+  static const String _keyCurrentLanguage = 'current_language';
+
   String get currentLanguage => _currentLanguage;
-  
+  bool get showTamil => _showTamil;
+
+  LanguageProvider() {
+    _loadLanguagePreference();
+  }
+
+  Future<void> _loadLanguagePreference() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _showTamil = prefs.getBool(_keyShowTamil) ?? false;
+      _currentLanguage = prefs.getString(_keyCurrentLanguage) ?? 'en';
+
+      // Sync showTamil with currentLanguage
+      if (_currentLanguage == 'ta') {
+        _showTamil = true;
+      }
+
+      notifyListeners();
+    } catch (e) {
+      print('Error loading language preference: $e');
+    }
+  }
+
+  Future<void> toggleLanguage() async {
+    _showTamil = !_showTamil;
+    _currentLanguage = _showTamil ? 'ta' : 'en';
+    notifyListeners();
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_keyShowTamil, _showTamil);
+      await prefs.setString(_keyCurrentLanguage, _currentLanguage);
+    } catch (e) {
+      print('Error saving language preference: $e');
+    }
+  }
+
   void setLanguage(String language) {
     _currentLanguage = language;
+    _showTamil = language == 'ta';
     notifyListeners();
+
+    // Save to preferences
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.setString(_keyCurrentLanguage, language);
+      prefs.setBool(_keyShowTamil, _showTamil);
+    });
   }
   
   // Get localized text based on current language
   String getText(String englishText, String tamilText) {
     return _currentLanguage == 'ta' ? tamilText : englishText;
+  }
+
+  // Get product name based on language preference
+  String getProductName(dynamic product) {
+    if (product == null) return '';
+
+    // Handle nested masterProduct structure (shop products)
+    if (product['masterProduct'] != null) {
+      if (_showTamil &&
+          product['masterProduct']['nameTamil'] != null &&
+          product['masterProduct']['nameTamil'].toString().isNotEmpty) {
+        return product['masterProduct']['nameTamil'];
+      }
+      return product['masterProduct']['name'] ?? product['displayName'] ?? '';
+    }
+
+    // Handle direct product structure (master products)
+    if (_showTamil && product['nameTamil'] != null && product['nameTamil'].toString().isNotEmpty) {
+      return product['nameTamil'];
+    }
+
+    return product['name'] ?? '';
+  }
+
+  // Get display name for shop products (uses displayName field but respects language toggle)
+  String getDisplayName(dynamic product) {
+    if (product == null) return '';
+
+    print('DEBUG: getDisplayName called - showTamil=$_showTamil');
+    print('DEBUG: product has masterProduct: ${product['masterProduct'] != null}');
+
+    // If Tamil is selected, try to show Tamil name from masterProduct
+    if (_showTamil && product['masterProduct'] != null) {
+      final nameTamil = product['masterProduct']['nameTamil'];
+      print('DEBUG: nameTamil value = $nameTamil');
+      if (nameTamil != null && nameTamil.toString().trim().isNotEmpty) {
+        print('DEBUG: Returning Tamil name: $nameTamil');
+        return nameTamil.toString();
+      }
+    }
+
+    // Fall back to English name from masterProduct or displayName
+    if (product['masterProduct'] != null && product['masterProduct']['name'] != null) {
+      final englishName = product['masterProduct']['name'].toString();
+      print('DEBUG: Returning English name: $englishName');
+      return englishName;
+    }
+
+    final displayName = product['displayName']?.toString() ?? '';
+    print('DEBUG: Returning displayName: $displayName');
+    return displayName;
   }
   
   // Common app translations

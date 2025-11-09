@@ -8,7 +8,7 @@ class ShopApiService {
   Future<Map<String, dynamic>> getActiveShops({
     int page = 0,
     int size = 20,
-    String sortBy = 'distance',
+    String sortBy = 'name',
     String sortDir = 'asc',
     String? city,
     String? category,
@@ -17,18 +17,19 @@ class ShopApiService {
   }) async {
     try {
       Logger.api('Fetching active shops - page: $page, size: $size');
-      
+
       final queryParams = <String, String>{
         'page': page.toString(),
         'size': size.toString(),
         'sortBy': sortBy,
         'sortDir': sortDir,
       };
-      
+
       if (city != null) queryParams['city'] = city;
       if (category != null) queryParams['category'] = category;
-      if (latitude != null) queryParams['lat'] = latitude.toString();
-      if (longitude != null) queryParams['lng'] = longitude.toString();
+      // TEMPORARILY DISABLED: Location-based filtering
+      // if (latitude != null) queryParams['lat'] = latitude.toString();
+      // if (longitude != null) queryParams['lng'] = longitude.toString();
       
       final response = await _apiService.get(
         '/customer/shops',

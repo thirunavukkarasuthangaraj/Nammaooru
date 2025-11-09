@@ -77,9 +77,10 @@ class AuthProvider with ChangeNotifier {
     required String phoneNumber,
     required String role,
     required String username,
+    String? gender,
   }) async {
     _setLoading();
-    
+
     final result = await AuthService.register(
       name: name,
       email: email,
@@ -87,6 +88,7 @@ class AuthProvider with ChangeNotifier {
       phoneNumber: phoneNumber,
       role: role,
       username: username,
+      gender: gender,
     );
     
     if (result.isSuccess) {

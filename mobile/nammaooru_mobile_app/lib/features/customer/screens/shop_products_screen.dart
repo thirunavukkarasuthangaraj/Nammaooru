@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../services/shop_api_service.dart';
 import '../../../core/config/env_config.dart';
 import '../../../shared/providers/cart_provider.dart';
+import '../../../core/localization/language_provider.dart';
 import '../../../core/utils/helpers.dart';
 
 class ShopProductsScreen extends StatefulWidget {
@@ -378,15 +379,19 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Text(
-                                            product['name'],
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.bold,
-                                              color: isOutOfStock ? Colors.grey : Colors.black,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
+                                          Consumer<LanguageProvider>(
+                                            builder: (context, languageProvider, child) {
+                                              return Text(
+                                                languageProvider.getDisplayName(product),
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: isOutOfStock ? Colors.grey : Colors.black,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              );
+                                            },
                                           ),
                                           Text(
                                             product['unit'],

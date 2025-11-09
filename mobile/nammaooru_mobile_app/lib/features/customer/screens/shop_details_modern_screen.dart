@@ -6,6 +6,7 @@ import '../../../shared/providers/cart_provider.dart';
 import '../../../shared/models/product_model.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/localization/app_localizations.dart';
+import '../../../core/localization/language_provider.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../core/utils/image_url_helper.dart';
 import 'cart_screen.dart';
@@ -169,10 +170,15 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
     setState(() {
       String searchTerm = _searchController.text.toLowerCase();
       _filteredProducts = _products.where((product) {
-        final productName = product['customName']?.toString().toLowerCase() ??
+        // Search in both English and Tamil names for better UX
+        final englishName = product['customName']?.toString().toLowerCase() ??
                            product['displayName']?.toString().toLowerCase() ??
                            product['masterProduct']?['name']?.toString().toLowerCase() ?? '';
-        final matchesSearch = searchTerm.isEmpty || productName.contains(searchTerm);
+        final tamilName = product['masterProduct']?['nameTamil']?.toString().toLowerCase() ?? '';
+
+        final matchesSearch = searchTerm.isEmpty ||
+                             englishName.contains(searchTerm) ||
+                             tamilName.contains(searchTerm);
 
         final categoryMatch = _selectedCategory == null ||
                              product['masterProduct']?['category']?['id'] == _selectedCategory;
@@ -222,6 +228,46 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
                         ),
                       ),
                       actions: [
+                        // Language Toggle Button
+                        Consumer<LanguageProvider>(
+                          builder: (context, languageProvider, child) {
+                            return Container(
+                              margin: const EdgeInsets.only(right: 8),
+                              child: InkWell(
+                                onTap: () async {
+                                  await languageProvider.toggleLanguage();
+                                },
+                                borderRadius: BorderRadius.circular(20),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF2E7D32),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        languageProvider.showTamil ? 'த' : 'EN',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      const Icon(
+                                        Icons.language,
+                                        color: Colors.white,
+                                        size: 16,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
                         IconButton(
                           icon: const Icon(Icons.search, color: Colors.black87),
                           onPressed: () {
@@ -453,11 +499,6 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
   }
 
   Widget _buildModernProductCard(Map<String, dynamic> product) {
-    final productName = product['customName']?.toString() ??
-                       product['displayName']?.toString() ??
-                       product['masterProduct']?['name']?.toString() ??
-                       'Product';
-
     final price = double.tryParse(product['price']?.toString() ?? '0') ?? 0.0;
     final originalPrice = double.tryParse(product['originalPrice']?.toString() ?? '0') ?? 0.0;
     final isInStock = product['inStock'] ?? true;
@@ -474,23 +515,28 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
     final unit = product['masterProduct']?['baseUnit'] ?? '';
     final displayUnit = weight != null ? '$weight $unit' : unit.toString();
 
-    return Consumer<CartProvider>(
-      builder: (context, cartProvider, child) {
-        final productModel = ProductModel(
-          id: product['id'].toString(),
-          name: productName,
-          description: product['customDescription']?.toString() ?? '',
-          price: price,
-          category: product['masterProduct']?['category']?.toString() ?? '',
-          shopId: _shop?['shopId']?.toString() ?? widget.shopId.toString(),
-          shopName: _shop?['name']?.toString() ?? 'Shop',
-          images: imageUrl.isNotEmpty ? [imageUrl] : [],
-          stockQuantity: stockQuantity,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        );
+    return Consumer<LanguageProvider>(
+      builder: (context, languageProvider, child) {
+        // Use language provider to get the correct name based on selected language
+        final productName = languageProvider.getDisplayName(product);
 
-        final cartQuantity = cartProvider.getQuantity(productModel.id);
+        return Consumer<CartProvider>(
+          builder: (context, cartProvider, child) {
+            final productModel = ProductModel(
+              id: product['id'].toString(),
+              name: productName,
+              description: product['customDescription']?.toString() ?? '',
+              price: price,
+              category: product['masterProduct']?['category']?.toString() ?? '',
+              shopId: _shop?['shopId']?.toString() ?? widget.shopId.toString(),
+              shopName: _shop?['name']?.toString() ?? 'Shop',
+              images: imageUrl.isNotEmpty ? [imageUrl] : [],
+              stockQuantity: stockQuantity,
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            );
+
+            final cartQuantity = cartProvider.getQuantity(productModel.id);
 
         return Container(
           decoration: BoxDecoration(
@@ -713,6 +759,8 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
           ),
             ],
           ),
+        );
+          },
         );
       },
     );

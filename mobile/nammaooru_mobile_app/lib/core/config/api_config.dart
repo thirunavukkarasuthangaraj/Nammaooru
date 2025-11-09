@@ -1,10 +1,11 @@
 class ApiConfig {
   // Base URL for API calls (mobile device testing)
-  static const String baseUrl = 'http://192.168.1.10:8080/api';
+  static const String baseUrl = 'http://192.168.1.4:8080/api';
 
   // Web URL for Chrome testing
-  static const String webBaseUrl = 'http://localhost:8080/api';
+  static const String webBaseUrl = 'http://192.168.1.4:8080/api';
 
+ 
   // Production URL (change when deploying)
   static const String prodBaseUrl = 'https://nammaoorudelivary.in/api';
 

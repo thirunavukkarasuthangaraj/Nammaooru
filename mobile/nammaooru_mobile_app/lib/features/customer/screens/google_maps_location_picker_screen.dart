@@ -169,8 +169,11 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
             // Has only street name: "Greams Road"
             addressParts.add(streetName!);
           }
+        } else if (streetNumber?.isNotEmpty == true) {
+          // Has only street number (common in villages): "129"
+          // Store it as it's better than nothing
+          addressParts.add(streetNumber!);
         }
-        // Skip street number alone - it's not useful without the street name
 
         // Add subLocality (area/neighborhood) if different from street name
         if (subLocality?.isNotEmpty == true &&
@@ -193,7 +196,10 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
 
         setState(() {
           _selectedAddress = fullAddress.isNotEmpty ? fullAddress : 'Selected Location';
-          _selectedStreet = streetName ?? ''; // Store street name separately
+          // Store street: use street name if available, otherwise use street number (common in villages)
+          _selectedStreet = streetName?.isNotEmpty == true
+              ? streetName!
+              : (streetNumber ?? '');
           _selectedCity = address['locality'] ?? 'Tirupattur'; // City from locality
           _selectedVillage = address['subLocality'] ?? ''; // Village from subLocality
           _selectedState = address['administrativeArea'] ?? 'Tamil Nadu'; // State from administrativeArea

@@ -15,6 +15,7 @@ public class BulkImportRequest {
 
     // Master Product Fields
     private String name;
+    private String nameTamil;
     private String description;
     private String sku;
     private String barcode;
