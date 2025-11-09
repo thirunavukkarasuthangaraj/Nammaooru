@@ -25,17 +25,36 @@ public class PasswordResetOtpService {
     private final PasswordResetOtpRepository otpRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
+    private final com.shopmanagement.service.MobileOtpService mobileOtpService;
     private final PasswordEncoder passwordEncoder;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    public boolean sendPasswordResetOtp(String email) {
+    // Helper method to find user by email OR mobile number
+    private Optional<User> findUserByIdentifier(String identifier) {
+        // Check if identifier is a mobile number (contains only digits and optional +)
+        if (identifier.matches("^[+]?[0-9]+$")) {
+            return userRepository.findByMobileNumber(identifier);
+        } else {
+            return userRepository.findByEmail(identifier.toLowerCase());
+        }
+    }
+
+    // Helper method to get email for storing OTP (we still store by email in the OTP table)
+    private String getEmailFromUser(User user) {
+        return user.getEmail();
+    }
+
+    public boolean sendPasswordResetOtp(String identifier) {
         try {
-            // Check if user exists
-            Optional<User> user = userRepository.findByEmail(email);
-            if (user.isEmpty()) {
-                log.info("Password reset requested for non-existent email: {}", email);
+            // Check if user exists by email OR mobile number
+            Optional<User> userOpt = findUserByIdentifier(identifier);
+            if (userOpt.isEmpty()) {
+                log.info("Password reset requested for non-existent identifier: {}", identifier);
                 return true; // Don't reveal that user doesn't exist
             }
+
+            User user = userOpt.get();
+            String email = getEmailFromUser(user); // Use email for OTP storage
 
             // Rate limiting - max 3 OTP requests per hour
             long recentRequests = otpRepository.countOtpRequestsByEmailSince(
@@ -68,71 +87,94 @@ public class PasswordResetOtpService {
 
             otpRepository.save(otpEntity);
 
-            // Send OTP email
-            emailService.sendPasswordResetOtpEmail(email, user.get().getUsername(), otp);
-            
-            log.info("Password reset OTP sent to: {}", email);
+            // Send OTP via SMS if user has mobile number
+            if (user.getMobileNumber() != null && !user.getMobileNumber().isEmpty()) {
+                try {
+                    // Send the same OTP that was stored in database via SMS
+                    mobileOtpService.sendOtpViaSms(user.getMobileNumber(), otp, "PASSWORD_RESET");
+                    log.info("Password reset OTP sent via SMS to: {}", user.getMobileNumber());
+                } catch (Exception e) {
+                    log.error("Failed to send OTP via SMS, falling back to email", e);
+                    // Fallback to email if SMS fails
+                    emailService.sendPasswordResetOtpEmail(email, user.getUsername(), otp);
+                }
+            } else {
+                // Send OTP email if no mobile number
+                emailService.sendPasswordResetOtpEmail(email, user.getUsername(), otp);
+            }
+
+            log.info("Password reset OTP sent for identifier: {}", identifier);
             return true;
 
         } catch (Exception e) {
-            log.error("Error sending password reset OTP to: {}", email, e);
+            log.error("Error sending password reset OTP for identifier: {}", identifier, e);
             return false;
         }
     }
 
-    public boolean verifyPasswordResetOtp(String email, String otp) {
+    public boolean verifyPasswordResetOtp(String identifier, String otp) {
         try {
+            // Find user by identifier and get their email for OTP lookup
+            Optional<User> userOpt = findUserByIdentifier(identifier);
+            if (userOpt.isEmpty()) {
+                log.warn("User not found for identifier: {}", identifier);
+                return false;
+            }
+
+            String email = getEmailFromUser(userOpt.get());
+
             Optional<PasswordResetOtp> otpEntity = otpRepository
                 .findByEmailAndOtpAndUsedFalseAndExpiryTimeAfter(email, otp, LocalDateTime.now());
 
             if (otpEntity.isEmpty()) {
-                log.warn("Invalid or expired OTP for email: {}", email);
-                
+                log.warn("Invalid or expired OTP for identifier: {}", identifier);
+
                 // Increment attempts for any valid OTP for this email
                 Optional<PasswordResetOtp> anyValidOtp = otpRepository
                     .findByEmailAndUsedFalseAndExpiryTimeAfter(email, LocalDateTime.now());
                 anyValidOtp.ifPresent(PasswordResetOtp::incrementAttempts);
-                
+
                 return false;
             }
 
             PasswordResetOtp otp1 = otpEntity.get();
             if (!otp1.isValid()) {
-                log.warn("OTP is not valid for email: {}", email);
+                log.warn("OTP is not valid for identifier: {}", identifier);
                 return false;
             }
 
-            log.info("OTP verified successfully for email: {}", email);
+            log.info("OTP verified successfully for identifier: {}", identifier);
             return true;
 
         } catch (Exception e) {
-            log.error("Error verifying OTP for email: {}", email, e);
+            log.error("Error verifying OTP for identifier: {}", identifier, e);
             return false;
         }
     }
 
-    public boolean resetPasswordWithOtp(String email, String otp, String newPassword) {
+    public boolean resetPasswordWithOtp(String identifier, String otp, String newPassword) {
         try {
             // First verify the OTP
-            if (!verifyPasswordResetOtp(email, otp)) {
+            if (!verifyPasswordResetOtp(identifier, otp)) {
                 return false;
             }
 
-            // Find the user
-            Optional<User> userOpt = userRepository.findByEmail(email);
+            // Find the user by identifier
+            Optional<User> userOpt = findUserByIdentifier(identifier);
             if (userOpt.isEmpty()) {
-                log.warn("User not found for email: {}", email);
+                log.warn("User not found for identifier: {}", identifier);
                 return false;
             }
 
             User user = userOpt.get();
-            
+            String email = getEmailFromUser(user);
+
             // Update the password
             user.setPassword(passwordEncoder.encode(newPassword));
             user.setLastPasswordChange(LocalDateTime.now());
             user.setPasswordChangeRequired(false);
             user.setIsTemporaryPassword(false);
-            
+
             userRepository.save(user);
 
             // Mark OTP as used
@@ -144,25 +186,34 @@ public class PasswordResetOtpService {
                 otpRepository.save(otpRecord);
             }
 
-            log.info("Password reset successfully for email: {}", email);
+            log.info("Password reset successfully for identifier: {}", identifier);
             return true;
 
         } catch (Exception e) {
-            log.error("Error resetting password for email: {}", email, e);
+            log.error("Error resetting password for identifier: {}", identifier, e);
             return false;
         }
     }
 
-    public boolean resendPasswordResetOtp(String email) {
+    public boolean resendPasswordResetOtp(String identifier) {
         try {
+            // Find user and get their email
+            Optional<User> userOpt = findUserByIdentifier(identifier);
+            if (userOpt.isEmpty()) {
+                log.warn("User not found for identifier: {}", identifier);
+                return true; // Don't reveal user doesn't exist
+            }
+
+            String email = getEmailFromUser(userOpt.get());
+
             // Invalidate existing OTPs
             otpRepository.markAllOtpAsUsedForEmail(email);
-            
+
             // Send new OTP
-            return sendPasswordResetOtp(email);
-            
+            return sendPasswordResetOtp(identifier);
+
         } catch (Exception e) {
-            log.error("Error resending OTP for email: {}", email, e);
+            log.error("Error resending OTP for identifier: {}", identifier, e);
             return false;
         }
     }

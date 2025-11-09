@@ -28,15 +28,19 @@ public class SmsService {
     
     @Value("${sms.gateway.sender-id:NMROOU}")
     private String senderId;
-    
+
     @Value("${sms.gateway.provider:TEXTLOCAL}")
     private String smsProvider;
-    
+
     @Value("${sms.enabled:false}")
     private Boolean smsEnabled;
+
+    @Value("${msg91.template.otp:}")
+    private String msg91OtpTemplateId;
     
-    // SMS Templates
-    private static final String OTP_TEMPLATE = "Your NammaOoru verification code is: %s. Valid for %d minutes. Do not share with anyone. -NammaOoru";
+    // SMS Templates - Must match DLT approved template
+    // DLT Template ID: 1207176226012464195
+    private static final String OTP_TEMPLATE = "Your OTP to complete your Namma Ooru Registration is %s. It is valid for %d minutes. - NAMMAO";
     private static final String WELCOME_TEMPLATE = "Welcome to NammaOoru! Your account has been created successfully. Start shopping now! -NammaOoru";
     private static final String ORDER_CONFIRMATION_TEMPLATE = "Your order #%s has been confirmed. Amount: ₹%.2f. Track your order in the app. -NammaOoru";
     private static final String ORDER_UPDATE_TEMPLATE = "Order #%s update: %s. Check the app for details. -NammaOoru";
@@ -161,34 +165,67 @@ public class SmsService {
     
     private boolean sendViaMsg91(String mobileNumber, String message) {
         try {
-            // Implement MSG91 SMS sending logic
             log.info("Sending SMS via MSG91 to {}: {}", mobileNumber, message);
-            
+
+            // Format mobile number - remove country code if present
+            String formattedNumber = mobileNumber.replaceAll("\\D", "");
+            if (formattedNumber.startsWith("91") && formattedNumber.length() == 12) {
+                formattedNumber = formattedNumber.substring(2);
+            }
+
+            // MSG91 Flow API - for sending templated messages
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.set("authkey", apiKey);
-            
-            Map<String, Object> smsData = new HashMap<>();
-            smsData.put("sender", senderId);
-            smsData.put("route", "4");
-            smsData.put("country", "91");
-            
-            Map<String, Object> sms = new HashMap<>();
-            sms.put("message", message);
-            sms.put("to", new String[]{mobileNumber});
-            
-            smsData.put("sms", new Map[]{sms});
-            
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(smsData, headers);
+
+            // Extract OTP from message
+            String otpCode = extractOtpFromMessage(message);
+
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("flow_id", msg91OtpTemplateId);  // Use flow_id instead of template_id
+
+            // Recipients array
+            Map<String, Object> recipient = new HashMap<>();
+            recipient.put("mobiles", "91" + formattedNumber);  // Must include country code
+
+            // Variables for template
+            if (otpCode != null) {
+                recipient.put("var", otpCode);  // Single variable for ##var##
+            }
+
+            requestBody.put("recipients", new Object[]{recipient});
+
+            // Use Flow API endpoint
+            String flowApiUrl = "https://control.msg91.com/api/v5/flow/";
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+
+            log.info("MSG91 Flow API Request - URL: {}, Flow ID: {}, Mobile: 91{}, OTP: {}",
+                flowApiUrl, msg91OtpTemplateId, formattedNumber, otpCode);
+            log.info("MSG91 Request Body: {}", requestBody);
+
             ResponseEntity<String> response = restTemplate.postForEntity(
-                "https://api.msg91.com/api/v2/sendsms", request, String.class);
-            
+                flowApiUrl, request, String.class);
+
+            log.info("MSG91 Response - Status: {}, Body: {}",
+                response.getStatusCode(), response.getBody());
+
             return response.getStatusCode() == HttpStatus.OK;
-            
+
         } catch (Exception e) {
-            log.error("Error sending SMS via MSG91: {}", e.getMessage());
+            log.error("Error sending SMS via MSG91: {}", e.getMessage(), e);
             return false;
         }
+    }
+
+    private String extractOtpFromMessage(String message) {
+        // Extract 6-digit OTP from message
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\\b\\d{6}\\b");
+        java.util.regex.Matcher matcher = pattern.matcher(message);
+        if (matcher.find()) {
+            return matcher.group();
+        }
+        return null;
     }
     
     private boolean sendViaMockService(String mobileNumber, String message, String purpose) {

@@ -178,7 +178,10 @@ import { environment } from '../../../../../environments/environment';
               <th mat-header-cell *matHeaderCellDef mat-sort-header>Product Details</th>
               <td mat-cell *matCellDef="let product">
                 <div class="product-details">
-                  <div class="product-name">{{ product.name }}</div>
+                  <div class="product-name">
+                    {{ product.name }}
+                    <span class="tamil-name" *ngIf="product.nameTamil"> • {{ product.nameTamil }}</span>
+                  </div>
                   <div class="product-meta">
                     <span class="meta-item">
                       <mat-icon class="meta-icon">label</mat-icon>
@@ -269,7 +272,8 @@ import { environment } from '../../../../../environments/environment';
           <p>Please wait while we fetch your products...</p>
         </div>
 
-        <mat-paginator 
+        <mat-paginator
+          [length]="totalElements"
           [pageSizeOptions]="[10, 25, 50, 100]"
           [pageSize]="10"
           showFirstLastButtons>
@@ -621,6 +625,13 @@ import { environment } from '../../../../../environments/environment';
       margin-bottom: 4px;
     }
 
+    .tamil-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: #667eea;
+      margin-left: 4px;
+    }
+
     .product-meta {
       display: flex;
       gap: 16px;
@@ -815,7 +826,8 @@ export class MasterProductListComponent implements OnInit {
   dataSource = new MatTableDataSource<MasterProduct>();
   loading = false;
   products: MasterProduct[] = [];
-  
+  totalElements = 0;
+
   // Filters
   searchQuery = '';
   categoryFilter = '';
@@ -852,38 +864,44 @@ export class MasterProductListComponent implements OnInit {
 
   ngAfterViewInit() {
     this.setupTableFeatures();
+
+    // Listen to paginator events for server-side pagination
+    if (this.paginator) {
+      this.paginator.page.subscribe(() => {
+        this.loadProducts();
+      });
+    }
   }
 
   private setupTableFeatures() {
-    if (this.paginator && this.sort) {
-      this.dataSource.paginator = this.paginator;
+    if (this.sort) {
       this.dataSource.sort = this.sort;
     }
+    // Don't connect paginator to dataSource for server-side pagination
   }
 
   loadProducts() {
     this.loading = true;
-    
-    // Create filters object for API call
-    const filters: any = {};
+
+    // Create filters object for API call with pagination
+    const filters: any = {
+      page: this.paginator ? this.paginator.pageIndex : 0,
+      size: this.paginator ? this.paginator.pageSize : 10
+    };
+
     if (this.selectedCategoryId) {
       filters.categoryId = this.selectedCategoryId;
     }
     if (this.selectedCategoryName) {
       filters.categoryName = this.selectedCategoryName;
     }
-    
+
     this.productService.getMasterProducts(filters).subscribe({
       next: (response) => {
         this.products = response.content || [];
+        this.totalElements = response.totalElements || 0;
         this.dataSource.data = this.products;
         this.extractFilters();
-        // Only apply local filters if no category is selected (API didn't filter)
-        if (!this.selectedCategoryId && !this.selectedCategoryName) {
-          this.applyFilters();
-        }
-        // Ensure paginator and sort are connected after data is set
-        this.setupTableFeatures();
         this.loading = false;
       },
       error: (error) => {
@@ -918,45 +936,12 @@ export class MasterProductListComponent implements OnInit {
   }
 
   applyFilters() {
-    let filteredData = [...this.products];
-    
-    // Search filter
-    if (this.searchQuery.trim()) {
-      const query = this.searchQuery.toLowerCase();
-      filteredData = filteredData.filter(product => 
-        product.name.toLowerCase().includes(query) ||
-        product.sku.toLowerCase().includes(query) ||
-        (product.brand && product.brand.toLowerCase().includes(query)) ||
-        (product.description && product.description.toLowerCase().includes(query))
-      );
+    // Reset to first page when filters change
+    if (this.paginator) {
+      this.paginator.pageIndex = 0;
     }
-    
-    // Category filter
-    if (this.categoryFilter) {
-      filteredData = filteredData.filter(product => 
-        product.category?.name === this.categoryFilter
-      );
-    }
-    
-    // Brand filter
-    if (this.brandFilter) {
-      filteredData = filteredData.filter(product => 
-        product.brand === this.brandFilter
-      );
-    }
-    
-    // Status filter
-    if (this.statusFilter) {
-      filteredData = filteredData.filter(product => 
-        product.status === this.statusFilter
-      );
-    }
-    
-    this.dataSource.data = filteredData;
-    // Force table refresh
-    if (this.dataSource.paginator) {
-      this.dataSource.paginator.firstPage();
-    }
+    // Reload data from server with new filters
+    this.loadProducts();
   }
 
   clearFilters() {

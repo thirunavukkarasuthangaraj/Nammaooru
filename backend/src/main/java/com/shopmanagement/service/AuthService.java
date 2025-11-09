@@ -29,9 +29,12 @@ public class AuthService {
     
     @Autowired
     private EmailService emailService;
-    
+
     @Autowired
     private EmailOtpService emailOtpService;
+
+    @Autowired
+    private MobileOtpService mobileOtpService;
 
     public AuthResponse register(RegisterRequest request) {
         // Username is not unique anymore, can be duplicate
@@ -44,12 +47,17 @@ public class AuthService {
 
         // Only allow USER role for registration (customers)
         // Shop owners and delivery partners should be created by admin
+
+        // Store full name in both firstName and lastName as per requirement
+        String fullName = request.getFirstName() != null ? request.getFirstName().trim() : "";
+
         var user = User.builder()
                 .username(request.getUsername())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .firstName(request.getFirstName())
-                .lastName(request.getLastName())
+                .firstName(fullName)
+                .lastName(fullName)
+                .gender(request.getGender())
                 .mobileNumber(request.getMobileNumber())
                 .role(User.UserRole.USER)  // Mobile users get USER role for customer functionality
                 .emailVerified(false)
@@ -57,13 +65,21 @@ public class AuthService {
                 .build();
         
         userRepository.save(user);
-        
-        // Send OTP email after successful registration using new secure OTP service
+
+        // Send OTP SMS after successful registration using mobile OTP service
         try {
-            String userName = request.getFirstName() + " " + request.getLastName();
-            emailOtpService.generateAndSendOtp(user.getEmail(), "REGISTRATION", userName);
+            if (user.getMobileNumber() != null && !user.getMobileNumber().isEmpty()) {
+                com.shopmanagement.dto.mobile.MobileOtpRequest otpRequest =
+                    com.shopmanagement.dto.mobile.MobileOtpRequest.builder()
+                        .mobileNumber(user.getMobileNumber())
+                        .purpose("REGISTRATION")
+                        .deviceType("WEB")
+                        .deviceId("web-" + user.getId())
+                        .build();
+                mobileOtpService.generateAndSendOtp(otpRequest);
+            }
         } catch (Exception e) {
-            System.err.println("Failed to send OTP email: " + e.getMessage());
+            System.err.println("Failed to send OTP SMS: " + e.getMessage());
         }
         
         var jwtToken = jwtService.generateToken(user);

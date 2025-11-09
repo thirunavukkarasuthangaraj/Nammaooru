@@ -21,9 +21,10 @@ import java.util.Optional;
 @Slf4j
 @Transactional
 public class MobileOtpService {
-    
+
     private final MobileOtpRepository otpRepository;
     private final EmailService emailService;
+    private final SmsService smsService;
     private final com.shopmanagement.repository.CustomerRepository customerRepository;
     
     @Value("${mobile.otp.expiry-minutes:10}")
@@ -75,15 +76,15 @@ public class MobileOtpService {
             
             // Save OTP
             MobileOtp savedOtp = otpRepository.save(otp);
-            
-            // Send OTP via email (async)
-            sendOtpEmail(request.getMobileNumber(), otpCode, purpose, otpExpiryMinutes);
-            
-            log.info("OTP generated and sent successfully for mobile: {}", request.getMobileNumber());
-            
+
+            // Send OTP via SMS (async)
+            smsService.sendOtpSms(request.getMobileNumber(), otpCode, otpExpiryMinutes);
+
+            log.info("OTP generated and sent successfully via SMS for mobile: {}", request.getMobileNumber());
+
             return Map.of(
                 "success", true,
-                "message", "OTP sent successfully to your registered email",
+                "message", "OTP sent successfully to " + request.getMobileNumber(),
                 "otpId", savedOtp.getId(),
                 "expiresIn", otpExpiryMinutes * 60, // seconds
                 "canRetryAfter", rateLimitMinutes * 60, // seconds
@@ -388,5 +389,73 @@ public class MobileOtpService {
             "otpExpiryMinutes", otpExpiryMinutes,
             "maxAttemptsPerOtp", maxAttempts
         );
+    }
+
+    /**
+     * Check if a mobile number has a verified OTP for a given purpose
+     * Used to validate registration before allowing customer creation
+     *
+     * @param mobileNumber The mobile number to check
+     * @param purpose The purpose (e.g., "REGISTRATION")
+     * @param deviceId Optional device ID for additional validation
+     * @return true if there's a recent verified OTP, false otherwise
+     */
+    public boolean hasVerifiedOtp(String mobileNumber, String purpose, String deviceId) {
+        try {
+            // Look for verified OTP within the last hour (generous window)
+            LocalDateTime oneHourAgo = LocalDateTime.now().minusHours(1);
+
+            MobileOtp.OtpPurpose otpPurpose = MobileOtp.OtpPurpose.valueOf(purpose.toUpperCase());
+
+            // Find the most recent verified OTP for this mobile/purpose
+            Optional<MobileOtp> verifiedOtp = otpRepository.findTopByMobileNumberAndPurposeAndVerifiedAtNotNullOrderByVerifiedAtDesc(
+                mobileNumber,
+                otpPurpose
+            );
+
+            if (verifiedOtp.isPresent()) {
+                MobileOtp otp = verifiedOtp.get();
+
+                // Check if it was verified recently (within 1 hour)
+                if (otp.getVerifiedAt().isAfter(oneHourAgo)) {
+                    // Optional: Also check device ID if provided
+                    if (deviceId != null && !deviceId.isEmpty()) {
+                        if (deviceId.equals(otp.getDeviceId())) {
+                            log.debug("Valid verified OTP found for mobile: {}, purpose: {}", mobileNumber, purpose);
+                            return true;
+                        } else {
+                            log.warn("Device ID mismatch for verified OTP. Expected: {}, Found: {}",
+                                deviceId, otp.getDeviceId());
+                            return false;
+                        }
+                    }
+
+                    log.debug("Valid verified OTP found for mobile: {}, purpose: {}", mobileNumber, purpose);
+                    return true;
+                }
+            }
+
+            log.debug("No verified OTP found for mobile: {}, purpose: {}", mobileNumber, purpose);
+            return false;
+
+        } catch (Exception e) {
+            log.error("Error checking verified OTP for mobile: {}", mobileNumber, e);
+            return false;
+        }
+    }
+
+    /**
+     * Send OTP via SMS without creating a new OTP record.
+     * Used for password reset where OTP is already stored in PasswordResetOtp table.
+     */
+    public void sendOtpViaSms(String mobileNumber, String otp, String purpose) {
+        log.info("Sending pre-generated OTP via SMS to: {} for purpose: {}", mobileNumber, purpose);
+        try {
+            smsService.sendOtpSms(mobileNumber, otp, otpExpiryMinutes);
+            log.info("OTP sent successfully via SMS to: {}", mobileNumber);
+        } catch (Exception e) {
+            log.error("Failed to send OTP via SMS to: {}", mobileNumber, e);
+            throw new RuntimeException("Failed to send OTP via SMS: " + e.getMessage(), e);
+        }
     }
 }

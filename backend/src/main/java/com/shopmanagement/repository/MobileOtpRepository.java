@@ -93,4 +93,10 @@ public interface MobileOtpRepository extends JpaRepository<MobileOtp, Long> {
     // Find OTPs that need to be expired
     @Query("SELECT mo FROM MobileOtp mo WHERE mo.expiresAt < :currentTime AND mo.isActive = true")
     List<MobileOtp> findOtpsToExpire(@Param("currentTime") LocalDateTime currentTime);
+
+    // Find most recent verified OTP for a mobile number and purpose
+    Optional<MobileOtp> findTopByMobileNumberAndPurposeAndVerifiedAtNotNullOrderByVerifiedAtDesc(
+        String mobileNumber,
+        MobileOtp.OtpPurpose purpose
+    );
 }

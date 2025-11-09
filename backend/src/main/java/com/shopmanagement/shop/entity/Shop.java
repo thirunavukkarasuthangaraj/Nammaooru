@@ -226,7 +226,7 @@ public class Shop {
     private Set<ShopDocument> documents = new HashSet<>();
 
     public enum BusinessType {
-        GROCERY, PHARMACY, RESTAURANT, GENERAL
+        GROCERY, PHARMACY, RESTAURANT, GENERAL, FORMER_PRODUCTS, FOOD, MEDICINE, PARCEL
     }
 
     public enum ShopStatus {

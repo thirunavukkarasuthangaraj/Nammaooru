@@ -20,6 +20,9 @@ public class MasterProductRequest {
     @Size(max = 255, message = "Product name must be less than 255 characters")
     private String name;
 
+    @Size(max = 255, message = "Tamil name must be less than 255 characters")
+    private String nameTamil;
+
     @Size(max = 2000, message = "Description must be less than 2000 characters")
     private String description;
 

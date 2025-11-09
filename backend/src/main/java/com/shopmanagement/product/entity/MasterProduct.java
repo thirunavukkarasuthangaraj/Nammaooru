@@ -32,6 +32,10 @@ public class MasterProduct {
     @Column(nullable = false)
     private String name;
 
+    @Size(max = 255)
+    @Column(name = "name_tamil")
+    private String nameTamil;
+
     @Column(length = 2000)
     private String description;
 

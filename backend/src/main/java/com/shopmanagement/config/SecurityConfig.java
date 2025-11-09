@@ -72,6 +72,8 @@ public class SecurityConfig {
                                 "/api/version",
                                 "/api/app-version/**",  // Allow app version check without authentication
                                 "/api/customer/**",  // ALLOW ALL CUSTOMER ENDPOINTS WITHOUT AUTH
+                                "/api/mobile/**",  // ALLOW ALL MOBILE ENDPOINTS (OTP, customer registration, etc.)
+                                "/api/webhooks/**",  // ALLOW WEBHOOKS (MSG91, payment gateways, etc.)
                                 "/api/promotions/active",  // Public: Get active promo codes
                                 "/api/promotions/validate",  // Public: Validate promo code for customers
                                 "/api/mobile/delivery-partner/login",

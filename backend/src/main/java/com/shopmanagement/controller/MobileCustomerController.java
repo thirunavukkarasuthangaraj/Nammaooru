@@ -359,12 +359,20 @@ public class MobileCustomerController {
     }
     
     private Map<String, Object> validateOtpForRegistration(String mobileNumber, String deviceId) {
-        // This should check if there's a recent verified OTP for REGISTRATION purpose
-        // For now, we'll assume it's valid - in production, you'd implement this check
-        return Map.of(
-            "valid", true,
-            "message", "OTP verification valid"
-        );
+        // Check if there's a recent verified OTP for REGISTRATION purpose
+        boolean isValid = mobileOtpService.hasVerifiedOtp(mobileNumber, "REGISTRATION", deviceId);
+
+        if (isValid) {
+            return Map.of(
+                "valid", true,
+                "message", "OTP verification valid"
+            );
+        } else {
+            return Map.of(
+                "valid", false,
+                "message", "Please verify your mobile number with OTP before registering"
+            );
+        }
     }
     
     private String extractTokenFromHeader(String authHeader) {

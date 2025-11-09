@@ -1,6 +1,7 @@
 export interface MasterProduct {
   id: number;
   name: string;
+  nameTamil?: string;
   description: string;
   sku: string;
   barcode?: string;
@@ -116,6 +117,7 @@ export enum ShopProductStatus {
 // Request DTOs
 export interface MasterProductRequest {
   name: string;
+  nameTamil?: string;
   description?: string;
   sku: string;
   barcode?: string;

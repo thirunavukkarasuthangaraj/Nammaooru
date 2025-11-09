@@ -167,52 +167,54 @@ public class BulkProductImportService {
     private BulkImportRequest parseRow(Row row, int rowNumber) {
         return BulkImportRequest.builder()
                 .rowNumber(rowNumber)
-                // Column 0: Product Name
+                // Column 0: Product Name (English)
                 .name(getCellValueAsString(row.getCell(0)))
-                // Column 1: Description
-                .description(getCellValueAsString(row.getCell(1)))
-                // Column 2: Category ID
-                .categoryId(getCellValueAsLong(row.getCell(2)))
-                // Column 3: Brand
-                .brand(getCellValueAsString(row.getCell(3)))
-                // Column 4: SKU
-                .sku(getCellValueAsString(row.getCell(4)))
-                // Column 5: Barcode
-                .barcode(getCellValueAsString(row.getCell(5)))
-                // Column 6: Base Unit (e.g., kg, pieces, liters)
-                .baseUnit(getCellValueAsString(row.getCell(6)))
-                // Column 7: Base Weight
-                .baseWeight(getCellValueAsBigDecimal(row.getCell(7)))
-                // Column 8: Original Price (MRP)
-                .originalPrice(getCellValueAsBigDecimal(row.getCell(8)))
-                // Column 9: Selling Price
-                .sellingPrice(getCellValueAsBigDecimal(row.getCell(9)))
-                // Column 10: Discount Percentage
-                .discountPercentage(getCellValueAsBigDecimal(row.getCell(10)))
-                // Column 11: Cost Price
-                .costPrice(getCellValueAsBigDecimal(row.getCell(11)))
-                // Column 12: Stock Quantity
-                .stockQuantity(getCellValueAsInteger(row.getCell(12)))
-                // Column 13: Min Stock Level
-                .minStockLevel(getCellValueAsInteger(row.getCell(13)))
-                // Column 14: Max Stock Level
-                .maxStockLevel(getCellValueAsInteger(row.getCell(14)))
-                // Column 15: Track Inventory (true/false)
-                .trackInventory(getCellValueAsBoolean(row.getCell(15)))
-                // Column 16: Status (ACTIVE, INACTIVE, etc.)
-                .status(getCellValueAsString(row.getCell(16)))
-                // Column 17: Is Featured
-                .isFeatured(getCellValueAsBoolean(row.getCell(17)))
-                // Column 18: Is Available
-                .isAvailable(getCellValueAsBoolean(row.getCell(18)))
-                // Column 19: Tags (comma-separated)
-                .tags(getCellValueAsString(row.getCell(19)))
-                // Column 20: Specifications
-                .specifications(getCellValueAsString(row.getCell(20)))
-                // Column 21: Image Path (filename or path)
-                .imagePath(getCellValueAsString(row.getCell(21)))
-                // Column 22: Image Folder (subfolder name)
-                .imageFolder(getCellValueAsString(row.getCell(22)))
+                // Column 1: Product Name (Tamil)
+                .nameTamil(getCellValueAsString(row.getCell(1)))
+                // Column 2: Description
+                .description(getCellValueAsString(row.getCell(2)))
+                // Column 3: Category ID
+                .categoryId(getCellValueAsLong(row.getCell(3)))
+                // Column 4: Brand
+                .brand(getCellValueAsString(row.getCell(4)))
+                // Column 5: SKU
+                .sku(getCellValueAsString(row.getCell(5)))
+                // Column 6: Barcode
+                .barcode(getCellValueAsString(row.getCell(6)))
+                // Column 7: Base Unit (e.g., kg, pieces, liters)
+                .baseUnit(getCellValueAsString(row.getCell(7)))
+                // Column 8: Base Weight
+                .baseWeight(getCellValueAsBigDecimal(row.getCell(8)))
+                // Column 9: Original Price (MRP)
+                .originalPrice(getCellValueAsBigDecimal(row.getCell(9)))
+                // Column 10: Selling Price
+                .sellingPrice(getCellValueAsBigDecimal(row.getCell(10)))
+                // Column 11: Discount Percentage
+                .discountPercentage(getCellValueAsBigDecimal(row.getCell(11)))
+                // Column 12: Cost Price
+                .costPrice(getCellValueAsBigDecimal(row.getCell(12)))
+                // Column 13: Stock Quantity
+                .stockQuantity(getCellValueAsInteger(row.getCell(13)))
+                // Column 14: Min Stock Level
+                .minStockLevel(getCellValueAsInteger(row.getCell(14)))
+                // Column 15: Max Stock Level
+                .maxStockLevel(getCellValueAsInteger(row.getCell(15)))
+                // Column 16: Track Inventory (true/false)
+                .trackInventory(getCellValueAsBoolean(row.getCell(16)))
+                // Column 17: Status (ACTIVE, INACTIVE, etc.)
+                .status(getCellValueAsString(row.getCell(17)))
+                // Column 18: Is Featured
+                .isFeatured(getCellValueAsBoolean(row.getCell(18)))
+                // Column 19: Is Available
+                .isAvailable(getCellValueAsBoolean(row.getCell(19)))
+                // Column 20: Tags (comma-separated)
+                .tags(getCellValueAsString(row.getCell(20)))
+                // Column 21: Specifications
+                .specifications(getCellValueAsString(row.getCell(21)))
+                // Column 22: Image Path (filename or path)
+                .imagePath(getCellValueAsString(row.getCell(22)))
+                // Column 23: Image Folder (subfolder name)
+                .imageFolder(getCellValueAsString(row.getCell(23)))
                 .build();
     }
 
@@ -322,6 +324,7 @@ public class BulkProductImportService {
 
         return MasterProductRequest.builder()
                 .name(request.getName())
+                .nameTamil(request.getNameTamil())
                 .description(request.getDescription())
                 .sku(request.getSku())
                 .barcode(request.getBarcode())
@@ -393,28 +396,26 @@ public class BulkProductImportService {
                             ? imageFolder.trim()
                             : "";
 
-            // Expected path: D:/AAWS/nammaooru/uploads/master/products/{folder}/{imagePath}
+            // Expected path: D:/AAWS/nammaooru/uploads/products/master/{folder}/{imagePath}
             Path imageFolderPath;
             String imageUrl;
 
             if (folder.isEmpty()) {
-                // Images directly under products folder
-                imageFolderPath = Paths.get(uploadDir, "master", productImagesPath);
-                imageUrl = "master/" + productImagesPath + "/" + imagePath;
+                // Images directly under products/master folder
+                imageFolderPath = Paths.get(uploadDir, productImagesPath, "master");
+                imageUrl = "/uploads/" + productImagesPath + "/master/" + imagePath;
             } else {
-                // Images in subfolder
-                imageFolderPath = Paths.get(uploadDir, "master", productImagesPath, folder);
-                imageUrl = "master/" + productImagesPath + "/" + folder + "/" + imagePath;
+                // Images in subfolder under products/master
+                imageFolderPath = Paths.get(uploadDir, productImagesPath, "master", folder);
+                imageUrl = "/uploads/" + productImagesPath + "/master/" + folder + "/" + imagePath;
             }
 
             Path imageFilePath = imageFolderPath.resolve(imagePath.trim());
 
-            // Check if image file exists
-            if (!Files.exists(imageFilePath)) {
-                log.warn("Image file not found at: {}", imageFilePath);
-                return folder.isEmpty()
-                    ? "Image not found: " + imagePath
-                    : "Image not found: " + folder + "/" + imagePath;
+            // Check if image file exists (for logging only, don't block save)
+            boolean fileExists = Files.exists(imageFilePath);
+            if (!fileExists) {
+                log.warn("Image file not found at: {} (path will be saved anyway)", imageFilePath);
             }
 
             // Get the master product
@@ -425,7 +426,7 @@ public class BulkProductImportService {
             long existingImageCount = masterProductImageRepository.countByMasterProductId(productId);
             boolean isPrimary = (existingImageCount == 0); // First image is primary
 
-            // Create and save image record
+            // Create and save image record (even if file doesn't exist yet)
             MasterProductImage productImage = MasterProductImage.builder()
                     .masterProduct(masterProduct)
                     .imageUrl(imageUrl)
@@ -437,8 +438,9 @@ public class BulkProductImportService {
 
             masterProductImageRepository.save(productImage);
 
-            log.info("Image reference saved for product {}: {}", productId, imageUrl);
-            return "Linked: " + imageUrl;
+            String status = fileExists ? "Linked" : "Linked (file not found)";
+            log.info("Image reference saved for product {}: {} - {}", productId, imageUrl, status);
+            return status + ": " + imageUrl;
 
         } catch (Exception e) {
             log.error("Error handling image for product {}: {}", productId, e.getMessage());

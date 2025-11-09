@@ -23,34 +23,25 @@ public class ForgotPasswordOtpController {
     @PostMapping("/send-otp")
     public ResponseEntity<ApiResponse<Void>> sendPasswordResetOtp(@RequestBody Map<String, String> request, WebRequest webRequest) {
         try {
-            String email = request.get("email");
-            
-            if (email == null || email.trim().isEmpty()) {
+            // Support both email and mobile number (identifier)
+            String identifier = request.get("identifier") != null ? request.get("identifier") : request.get("email");
+
+            if (identifier == null || identifier.trim().isEmpty()) {
                 ApiResponse<Void> response = ApiResponse.<Void>builder()
                         .statusCode(ResponseConstants.VALIDATION_ERROR)
-                        .message("Email is required")
+                        .message("Email or mobile number is required")
                         .timestamp(LocalDateTime.now())
                         .path(webRequest.getDescription(false).replace("uri=", ""))
                         .build();
                 return ResponseEntity.ok(response);
             }
-            
-            if (!isValidEmail(email)) {
-                ApiResponse<Void> response = ApiResponse.<Void>builder()
-                        .statusCode(ResponseConstants.VALIDATION_ERROR)
-                        .message("Please enter a valid email address")
-                        .timestamp(LocalDateTime.now())
-                        .path(webRequest.getDescription(false).replace("uri=", ""))
-                        .build();
-                return ResponseEntity.ok(response);
-            }
-            
-            boolean success = passwordResetOtpService.sendPasswordResetOtp(email.trim().toLowerCase());
-            
+
+            boolean success = passwordResetOtpService.sendPasswordResetOtp(identifier.trim());
+
             if (success) {
                 ApiResponse<Void> response = ApiResponse.<Void>builder()
                         .statusCode(ResponseConstants.SUCCESS)
-                        .message("OTP has been sent to your email address")
+                        .message("OTP has been sent successfully")
                         .timestamp(LocalDateTime.now())
                         .path(webRequest.getDescription(false).replace("uri=", ""))
                         .build();
@@ -64,7 +55,7 @@ public class ForgotPasswordOtpController {
                         .build();
                 return ResponseEntity.ok(response);
             }
-            
+
         } catch (Exception e) {
             log.error("Error sending password reset OTP", e);
             ApiResponse<Void> response = ApiResponse.<Void>builder()
@@ -80,19 +71,20 @@ public class ForgotPasswordOtpController {
     @PostMapping("/verify-otp")
     public ResponseEntity<ApiResponse<Void>> verifyPasswordResetOtp(@RequestBody Map<String, String> request, WebRequest webRequest) {
         try {
-            String email = request.get("email");
+            // Support both email and mobile number (identifier)
+            String identifier = request.get("identifier") != null ? request.get("identifier") : request.get("email");
             String otp = request.get("otp");
-            
-            if (email == null || email.trim().isEmpty()) {
+
+            if (identifier == null || identifier.trim().isEmpty()) {
                 ApiResponse<Void> response = ApiResponse.<Void>builder()
                         .statusCode(ResponseConstants.VALIDATION_ERROR)
-                        .message("Email is required")
+                        .message("Email or mobile number is required")
                         .timestamp(LocalDateTime.now())
                         .path(webRequest.getDescription(false).replace("uri=", ""))
                         .build();
                 return ResponseEntity.ok(response);
             }
-            
+
             if (otp == null || otp.trim().isEmpty()) {
                 ApiResponse<Void> response = ApiResponse.<Void>builder()
                         .statusCode(ResponseConstants.VALIDATION_ERROR)
@@ -102,9 +94,9 @@ public class ForgotPasswordOtpController {
                         .build();
                 return ResponseEntity.ok(response);
             }
-            
-            boolean isValid = passwordResetOtpService.verifyPasswordResetOtp(email.trim().toLowerCase(), otp.trim());
-            
+
+            boolean isValid = passwordResetOtpService.verifyPasswordResetOtp(identifier.trim(), otp.trim());
+
             if (isValid) {
                 ApiResponse<Void> response = ApiResponse.<Void>builder()
                         .statusCode(ResponseConstants.SUCCESS)
@@ -122,7 +114,7 @@ public class ForgotPasswordOtpController {
                         .build();
                 return ResponseEntity.ok(response);
             }
-            
+
         } catch (Exception e) {
             log.error("Error verifying password reset OTP", e);
             ApiResponse<Void> response = ApiResponse.<Void>builder()
@@ -138,20 +130,21 @@ public class ForgotPasswordOtpController {
     @PostMapping("/reset-password")
     public ResponseEntity<ApiResponse<Void>> resetPasswordWithOtp(@RequestBody Map<String, String> request, WebRequest webRequest) {
         try {
-            String email = request.get("email");
+            // Support both email and mobile number (identifier)
+            String identifier = request.get("identifier") != null ? request.get("identifier") : request.get("email");
             String otp = request.get("otp");
             String newPassword = request.get("newPassword");
-            
-            if (email == null || email.trim().isEmpty()) {
+
+            if (identifier == null || identifier.trim().isEmpty()) {
                 ApiResponse<Void> response = ApiResponse.<Void>builder()
                         .statusCode(ResponseConstants.VALIDATION_ERROR)
-                        .message("Email is required")
+                        .message("Email or mobile number is required")
                         .timestamp(LocalDateTime.now())
                         .path(webRequest.getDescription(false).replace("uri=", ""))
                         .build();
                 return ResponseEntity.ok(response);
             }
-            
+
             if (otp == null || otp.trim().isEmpty()) {
                 ApiResponse<Void> response = ApiResponse.<Void>builder()
                         .statusCode(ResponseConstants.VALIDATION_ERROR)
@@ -161,7 +154,7 @@ public class ForgotPasswordOtpController {
                         .build();
                 return ResponseEntity.ok(response);
             }
-            
+
             if (newPassword == null || newPassword.trim().isEmpty()) {
                 ApiResponse<Void> response = ApiResponse.<Void>builder()
                         .statusCode(ResponseConstants.VALIDATION_ERROR)
@@ -171,7 +164,7 @@ public class ForgotPasswordOtpController {
                         .build();
                 return ResponseEntity.ok(response);
             }
-            
+
             if (newPassword.length() < 8) {
                 ApiResponse<Void> response = ApiResponse.<Void>builder()
                         .statusCode(ResponseConstants.VALIDATION_ERROR)
@@ -181,10 +174,10 @@ public class ForgotPasswordOtpController {
                         .build();
                 return ResponseEntity.ok(response);
             }
-            
+
             boolean success = passwordResetOtpService.resetPasswordWithOtp(
-                email.trim().toLowerCase(), otp.trim(), newPassword);
-            
+                identifier.trim(), otp.trim(), newPassword);
+
             if (success) {
                 ApiResponse<Void> response = ApiResponse.<Void>builder()
                         .statusCode(ResponseConstants.SUCCESS)
@@ -202,7 +195,7 @@ public class ForgotPasswordOtpController {
                         .build();
                 return ResponseEntity.ok(response);
             }
-            
+
         } catch (Exception e) {
             log.error("Error resetting password with OTP", e);
             ApiResponse<Void> response = ApiResponse.<Void>builder()
@@ -218,24 +211,25 @@ public class ForgotPasswordOtpController {
     @PostMapping("/resend-otp")
     public ResponseEntity<ApiResponse<Void>> resendPasswordResetOtp(@RequestBody Map<String, String> request, WebRequest webRequest) {
         try {
-            String email = request.get("email");
-            
-            if (email == null || email.trim().isEmpty()) {
+            // Support both email and mobile number (identifier)
+            String identifier = request.get("identifier") != null ? request.get("identifier") : request.get("email");
+
+            if (identifier == null || identifier.trim().isEmpty()) {
                 ApiResponse<Void> response = ApiResponse.<Void>builder()
                         .statusCode(ResponseConstants.VALIDATION_ERROR)
-                        .message("Email is required")
+                        .message("Email or mobile number is required")
                         .timestamp(LocalDateTime.now())
                         .path(webRequest.getDescription(false).replace("uri=", ""))
                         .build();
                 return ResponseEntity.ok(response);
             }
-            
-            boolean success = passwordResetOtpService.resendPasswordResetOtp(email.trim().toLowerCase());
-            
+
+            boolean success = passwordResetOtpService.resendPasswordResetOtp(identifier.trim());
+
             if (success) {
                 ApiResponse<Void> response = ApiResponse.<Void>builder()
                         .statusCode(ResponseConstants.SUCCESS)
-                        .message("OTP has been resent to your email address")
+                        .message("OTP has been resent successfully")
                         .timestamp(LocalDateTime.now())
                         .path(webRequest.getDescription(false).replace("uri=", ""))
                         .build();
@@ -249,7 +243,7 @@ public class ForgotPasswordOtpController {
                         .build();
                 return ResponseEntity.ok(response);
             }
-            
+
         } catch (Exception e) {
             log.error("Error resending password reset OTP", e);
             ApiResponse<Void> response = ApiResponse.<Void>builder()

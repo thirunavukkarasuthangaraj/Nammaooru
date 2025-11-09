@@ -42,9 +42,15 @@ public class AuthController {
     
     @Autowired
     private EmailOtpService emailOtpService;
-    
+
+    @Autowired
+    private com.shopmanagement.service.MobileOtpService mobileOtpService;
+
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private com.shopmanagement.repository.UserRepository userRepository;
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest request) {
@@ -148,17 +154,37 @@ public class AuthController {
         try {
             String email = request.get("email");
             String purpose = request.getOrDefault("purpose", "REGISTRATION");
-            
+
             if (email == null || email.trim().isEmpty()) {
                 return ResponseEntity.badRequest().body(
                     ApiResponse.error(ResponseConstants.REQUIRED_FIELD_MISSING, "Email is required"));
             }
-            
-            // Use secure OTP service
-            String result = emailOtpService.generateAndSendOtp(email, purpose, "User");
-            
-            return ResponseEntity.ok(ApiResponse.success(result, "OTP sent successfully"));
-            
+
+            // Find user by email to get mobile number
+            User user = authService.findUserByEmail(email);
+            if (user == null) {
+                return ResponseEntity.badRequest().body(
+                    ApiResponse.error(ResponseConstants.USER_NOT_FOUND, "User not found with this email"));
+            }
+
+            if (user.getMobileNumber() == null || user.getMobileNumber().isEmpty()) {
+                return ResponseEntity.badRequest().body(
+                    ApiResponse.error(ResponseConstants.VALIDATION_ERROR, "No mobile number found for this user"));
+            }
+
+            // Send OTP via SMS using mobile OTP service
+            com.shopmanagement.dto.mobile.MobileOtpRequest otpRequest =
+                com.shopmanagement.dto.mobile.MobileOtpRequest.builder()
+                    .mobileNumber(user.getMobileNumber())
+                    .purpose(purpose)
+                    .deviceType("WEB")
+                    .deviceId("web-" + user.getId())
+                    .build();
+
+            mobileOtpService.generateAndSendOtp(otpRequest);
+
+            return ResponseEntity.ok(ApiResponse.success("OTP sent successfully to mobile", "OTP sent successfully"));
+
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(
                 ApiResponse.error(ResponseConstants.GENERAL_ERROR, e.getMessage()));
@@ -169,46 +195,93 @@ public class AuthController {
     public ResponseEntity<ApiResponse<AuthResponse>> verifyOtp(@RequestBody Map<String, String> request) {
         try {
             String email = request.get("email");
+            String mobileNumber = request.get("mobileNumber");
             String otp = request.get("otp");
             String purpose = request.getOrDefault("purpose", "REGISTRATION");
-            
-            if (email == null || email.trim().isEmpty()) {
+
+            // Accept either email or mobile number
+            if ((email == null || email.trim().isEmpty()) && (mobileNumber == null || mobileNumber.trim().isEmpty())) {
                 return ResponseEntity.badRequest().body(
-                    ApiResponse.error(ResponseConstants.REQUIRED_FIELD_MISSING, "Email is required"));
+                    ApiResponse.error(ResponseConstants.REQUIRED_FIELD_MISSING, "Email or mobile number is required"));
             }
-            
+
             if (otp == null || otp.trim().isEmpty()) {
                 return ResponseEntity.badRequest().body(
                     ApiResponse.error(ResponseConstants.REQUIRED_FIELD_MISSING, "OTP is required"));
             }
-            
-            // Use secure OTP verification
-            boolean isOtpValid = emailOtpService.verifyOtp(email, otp, purpose);
-            
-            if (isOtpValid) {
-                // Find user by email and generate auth response
-                var user = authService.findUserByEmail(email);
-                if (user != null) {
-                    var jwtToken = authService.generateTokenForUser(user);
-                    
-                    AuthResponse authResponse = AuthResponse.builder()
-                        .accessToken(jwtToken)
-                        .tokenType("Bearer")
-                        .username(user.getUsername())
-                        .email(user.getEmail())
-                        .role(user.getRole().name())
+
+            boolean isOtpValid = false;
+            User user = null;
+
+            // Try mobile verification first (for new registration flow with SMS)
+            if (mobileNumber != null && !mobileNumber.trim().isEmpty()) {
+                com.shopmanagement.dto.mobile.MobileOtpVerificationRequest verificationRequest =
+                    com.shopmanagement.dto.mobile.MobileOtpVerificationRequest.builder()
+                        .mobileNumber(mobileNumber)
+                        .otp(otp)
+                        .purpose(purpose)
+                        .deviceType("WEB")
+                        .deviceId("web-otp-verification")
                         .build();
-                    
-                    return ResponseEntity.ok(ApiResponse.success(authResponse, "OTP verified successfully"));
-                } else {
-                    return ResponseEntity.badRequest().body(
-                        ApiResponse.error(ResponseConstants.USER_NOT_FOUND, "User not found"));
+                Map<String, Object> verificationResult = mobileOtpService.verifyOtp(verificationRequest);
+                isOtpValid = (Boolean) verificationResult.getOrDefault("success", false);
+                if (isOtpValid) {
+                    user = authService.findUserByMobileNumber(mobileNumber);
                 }
+            }
+            // Fallback to email verification if mobile not provided or failed
+            else if (email != null && !email.trim().isEmpty()) {
+                // Try to find user by email first to get mobile number
+                user = authService.findUserByEmail(email);
+                if (user != null && user.getMobileNumber() != null && !user.getMobileNumber().isEmpty()) {
+                    // Try mobile OTP verification for email-based requests
+                    com.shopmanagement.dto.mobile.MobileOtpVerificationRequest verificationRequest =
+                        com.shopmanagement.dto.mobile.MobileOtpVerificationRequest.builder()
+                            .mobileNumber(user.getMobileNumber())
+                            .otp(otp)
+                            .purpose(purpose)
+                            .deviceType("WEB")
+                            .deviceId("web-" + user.getId())
+                            .build();
+                    Map<String, Object> verificationResult = mobileOtpService.verifyOtp(verificationRequest);
+                    isOtpValid = (Boolean) verificationResult.getOrDefault("success", false);
+                }
+                if (!isOtpValid) {
+                    // Fallback to email OTP verification
+                    isOtpValid = emailOtpService.verifyOtp(email, otp, purpose);
+                    if (isOtpValid && user == null) {
+                        user = authService.findUserByEmail(email);
+                    }
+                }
+            }
+
+            if (isOtpValid && user != null) {
+                // Mark mobile as verified
+                if (user.getMobileNumber() != null && !user.getMobileNumber().isEmpty()) {
+                    user.setMobileVerified(true);
+                    userRepository.save(user);
+                }
+
+                var jwtToken = authService.generateTokenForUser(user);
+
+                AuthResponse authResponse = AuthResponse.builder()
+                    .accessToken(jwtToken)
+                    .tokenType("Bearer")
+                    .userId(user.getId())
+                    .username(user.getUsername())
+                    .email(user.getEmail())
+                    .role(user.getRole().name())
+                    .build();
+
+                return ResponseEntity.ok(ApiResponse.success(authResponse, "OTP verified successfully"));
+            } else if (user == null) {
+                return ResponseEntity.badRequest().body(
+                    ApiResponse.error(ResponseConstants.USER_NOT_FOUND, "User not found"));
             } else {
                 return ResponseEntity.badRequest().body(
                     ApiResponse.error(ResponseConstants.VALIDATION_ERROR, "Invalid or expired OTP"));
             }
-            
+
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(
                 ApiResponse.error(ResponseConstants.GENERAL_ERROR, "OTP verification failed: " + e.getMessage()));

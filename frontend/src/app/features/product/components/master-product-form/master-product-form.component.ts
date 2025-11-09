@@ -33,12 +33,19 @@ import Swal from 'sweetalert2';
               
               <div class="form-grid">
                 <mat-form-field appearance="outline" class="form-field">
-                  <mat-label>Product Name</mat-label>
-                  <input matInput formControlName="name" placeholder="Enter product name">
+                  <mat-label>Product Name (English)</mat-label>
+                  <input matInput formControlName="name" placeholder="Enter product name in English">
                   <mat-icon matSuffix>title</mat-icon>
                   <mat-error *ngIf="productForm.get('name')?.hasError('required')">
                     Product name is required
                   </mat-error>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="form-field">
+                  <mat-label>Product Name (Tamil)</mat-label>
+                  <input matInput formControlName="nameTamil" placeholder="தயவுசெய்து பொருளின் பெயரை உள்ளிடவும்">
+                  <mat-icon matSuffix>translate</mat-icon>
+                  <mat-hint>Optional - Enter product name in Tamil</mat-hint>
                 </mat-form-field>
 
                 <mat-form-field appearance="outline" class="form-field">
@@ -696,6 +703,7 @@ export class MasterProductFormComponent implements OnInit {
   private createForm(): FormGroup {
     return this.fb.group({
       name: ['', [Validators.required, Validators.maxLength(255)]],
+      nameTamil: ['', [Validators.maxLength(255)]],
       description: [''],
       sku: ['', [Validators.required, Validators.maxLength(50)]],
       barcode: [''],
