@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
+import 'dart:ui';
 import '../providers/forgot_password_provider.dart';
 import 'dart:async';
 
@@ -55,65 +57,75 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF1B5E20),  // Dark green
-              Color(0xFF2E7D32),  // Medium dark green
-              Color(0xFF388E3C),  // Lighter dark green
-            ],
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/login_background.png'),
+            fit: BoxFit.cover,
           ),
         ),
-        child: SafeArea(
-          child: Consumer<ForgotPasswordProvider>(
-            builder: (context, provider, child) {
-              if (provider.isLoading) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      _getLoadingMessage(provider.currentStep),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            return Center(
-              child: SingleChildScrollView(
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
                 child: Container(
-                  margin: const EdgeInsets.all(24.0),
-                  padding: const EdgeInsets.all(32.0),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: _buildCurrentStep(provider),
+                  color: Colors.white.withOpacity(0.3),
                 ),
               ),
-            );
-          },
+            ),
+            SafeArea(
+              child: Consumer<ForgotPasswordProvider>(
+                builder: (context, provider, child) {
+                  if (provider.isLoading) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            _getLoadingMessage(provider.currentStep),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return Center(
+                    child: SingleChildScrollView(
+                      child: Container(
+                        margin: const EdgeInsets.all(24.0),
+                        padding: const EdgeInsets.all(32.0),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 20,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
+                        ),
+                        child: _buildCurrentStep(provider),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
-    ));
+    );
   }
 
   String _getLoadingMessage(ForgotPasswordStep step) {
@@ -145,7 +157,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         const SizedBox(height: 40),
         _buildStepHeader(
           'Forgot Password',
-          'Don\'t worry! Enter your email and we\'ll send you a verification code to reset your password.',
+          'Don\'t worry! Enter your email or mobile number and we\'ll send you a verification code to reset your password.',
           Icons.mail_outline,
         ),
         const SizedBox(height: 40),
@@ -196,7 +208,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       children: [
         const SizedBox(height: 40),
         _buildStepHeader(
-          'Verify Email',
+          'Verify Code',
           'We\'ve sent a 6-digit verification code to\n${provider.email}',
           Icons.verified_user_outlined,
         ),
@@ -213,7 +225,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   TextButton(
                     onPressed: () => provider.goBack(),
                     child: const Text(
-                      'Change Email',
+                      'Change',
                       style: TextStyle(
                         color: Color(0xFF666666),
                         fontWeight: FontWeight.w500,
@@ -385,7 +397,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Widget _buildEmailField() {
     return TextFormField(
       controller: _emailController,
-      keyboardType: TextInputType.emailAddress,
+      keyboardType: TextInputType.text,
       textInputAction: TextInputAction.next,
       style: const TextStyle(
         fontSize: 16,
@@ -394,26 +406,23 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       ),
       validator: (value) {
         if (value == null || value.isEmpty) {
-          return 'Please enter your email';
-        }
-        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-          return 'Please enter a valid email address';
+          return 'Please enter your email or mobile number';
         }
         return null;
       },
       decoration: InputDecoration(
-        labelText: 'Email Address',
+        labelText: 'Email or Mobile Number',
         labelStyle: const TextStyle(
           color: Color(0xFF666666),
           fontSize: 14,
           fontWeight: FontWeight.w500,
         ),
-        hintText: 'example@email.com',
+        hintText: 'example@email.com or 9876543210',
         hintStyle: const TextStyle(
           color: Color(0xFF999999),
           fontSize: 16,
         ),
-        prefixIcon: const Icon(Icons.email_outlined,
+        prefixIcon: const Icon(Icons.person_outline,
           color: Colors.black54,
           size: 20,
         ),
@@ -747,13 +756,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Password updated successfully! Please login with your new password.'),
+              content: Text('Password updated successfully!'),
               backgroundColor: Color(0xFF4CAF50),
-              duration: Duration(seconds: 3),
+              duration: Duration(seconds: 2),
             ),
           );
-          // Navigate back to login screen by popping all screens in the forgot password flow
-          Navigator.of(context).popUntil((route) => route.settings.name == '/login' || route.isFirst);
+          // Navigate to customer dashboard after successful password reset
+          context.go('/customer/dashboard');
         }
       }
     }

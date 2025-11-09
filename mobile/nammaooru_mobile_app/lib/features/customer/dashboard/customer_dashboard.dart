@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/auth/auth_provider.dart';
+import '../../../core/localization/language_provider.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../shared/widgets/custom_app_bar.dart';
@@ -34,6 +36,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   bool _isLocationPickerOpen = false;
   List<dynamic> _featuredShops = [];
   List<dynamic> _recentOrders = [];
+  DateTime? _lastBackPressTime;
 
   final _shopApi = ShopApiService();
   final _orderApi = OrderApiService();
@@ -239,31 +242,60 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     }
   }
   
+  Future<bool> _onWillPop() async {
+    final now = DateTime.now();
+    final backButtonHasNotBeenPressedOrSnackBarHasBeenClosed =
+        _lastBackPressTime == null ||
+        now.difference(_lastBackPressTime!) > const Duration(seconds: 2);
+
+    if (backButtonHasNotBeenPressedOrSnackBarHasBeenClosed) {
+      _lastBackPressTime = now;
+      Helpers.showSnackBar(
+        context,
+        'Press back again to exit',
+      );
+      return false;
+    }
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     print('🔵 CustomerDashboard build called');
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      backgroundColor: isDarkMode ? Colors.black : Colors.white,
-      body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            _buildSliverAppBar(),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildLocationSelector(),
-                    const SizedBox(height: 20),
-                    _buildServiceCategories(),
-                  ],
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (bool didPop) async {
+        if (didPop) {
+          return;
+        }
+        final bool shouldPop = await _onWillPop();
+        if (shouldPop && context.mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: isDarkMode ? Colors.black : Colors.white,
+        body: SafeArea(
+          child: CustomScrollView(
+            slivers: [
+              _buildSliverAppBar(),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildLocationSelector(),
+                      const SizedBox(height: 20),
+                      _buildServiceCategories(),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -273,60 +305,123 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return SliverAppBar(
-      expandedHeight: 80.0,
+      expandedHeight: 100.0,
       floating: false,
       pinned: true,
       backgroundColor: isDarkMode ? Colors.grey[900] : VillageTheme.primaryGreen,
       elevation: 0,
-      flexibleSpace: const FlexibleSpaceBar(
-        title: Text(
-          'Welcome! 🙏',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        titlePadding: EdgeInsets.only(left: 16, bottom: 12),
-      ),
-      actions: [
-        IconButton(
-          icon: Stack(
-            children: [
-              const Icon(Icons.notifications_outlined, color: Colors.white),
-              Positioned(
-                right: 0,
-                top: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: const BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
-                  ),
-                  constraints: const BoxConstraints(
-                    minWidth: 16,
-                    minHeight: 16,
-                  ),
-                  child: Text(
-                    '${NotificationService.getUnreadCount()}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                    ),
-                    textAlign: TextAlign.center,
+      flexibleSpace: FlexibleSpaceBar(
+        title: Consumer<LanguageProvider>(
+          builder: (context, languageProvider, child) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  languageProvider.welcome,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
-              ),
-            ],
-          ),
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const NotificationsScreen(),
+                const SizedBox(height: 2),
+                Text(
+                  languageProvider.appName,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+        titlePadding: const EdgeInsets.only(left: 20, bottom: 12),
+      ),
+      actions: [
+        Consumer<LanguageProvider>(
+          builder: (context, languageProvider, child) {
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(left: 12),
+                      child: Text(
+                        languageProvider.showTamil ? 'த' : 'En',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    Switch(
+                      value: languageProvider.showTamil,
+                      onChanged: (value) {
+                        languageProvider.toggleLanguage();
+                      },
+                      activeColor: Colors.white,
+                      activeTrackColor: VillageTheme.accentOrange,
+                      inactiveThumbColor: Colors.white,
+                      inactiveTrackColor: Colors.white.withOpacity(0.3),
+                    ),
+                  ],
+                ),
               ),
             );
           },
+        ),
+        Padding(
+          padding: const EdgeInsets.only(right: 16),
+          child: IconButton(
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.notifications, color: Colors.white, size: 28),
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 18,
+                      minHeight: 18,
+                    ),
+                    child: Text(
+                      '${NotificationService.getUnreadCount()}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NotificationsScreen(),
+                ),
+              );
+            },
+          ),
         ),
       ],
     );
@@ -335,17 +430,17 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   Widget _buildLocationSelector() {
     return InkWell(
       onTap: _showLocationPicker,
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -354,7 +449,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             Icon(
               Icons.location_on,
               color: VillageTheme.primaryGreen,
-              size: 24,
+              size: 28,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -364,17 +459,21 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                   const Text(
                     'Deliver to',
                     style: TextStyle(
-                      fontSize: 12,
-                      color: VillageTheme.secondaryText,
+                      fontSize: 13,
+                      color: Colors.grey,
+                      fontWeight: FontWeight.w400,
                     ),
                   ),
+                  const SizedBox(height: 2),
                   Text(
                     _selectedLocation,
                     style: const TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: VillageTheme.primaryText,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF2C3E50),
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
@@ -382,7 +481,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             Icon(
               Icons.keyboard_arrow_down,
               color: Colors.grey.shade600,
-              size: 20,
+              size: 24,
             ),
           ],
         ),
@@ -391,111 +490,199 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   }
 
   Widget _buildServiceCategories() {
-    final categories = [
-      {'name': 'Grocery', 'icon': Icons.local_grocery_store, 'color': Colors.green},
-      {'name': 'Food', 'icon': Icons.restaurant, 'color': Colors.orange},
-      {'name': 'Medicine', 'icon': Icons.local_pharmacy, 'color': Colors.red},
-      {'name': 'Parcel', 'icon': Icons.local_shipping, 'color': Colors.blue},
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'What do you need?',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: VillageTheme.primaryText,
-          ),
-        ),
-        const SizedBox(height: 20),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            childAspectRatio: 1.1,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-          ),
-          itemCount: categories.length,
-          itemBuilder: (context, index) {
-            final category = categories[index];
-            return _buildCategoryCard(
-              category['name'] as String,
-              category['icon'] as IconData,
-              category['color'] as Color,
-            );
+    return Consumer<LanguageProvider>(
+      builder: (context, languageProvider, child) {
+        final categories = [
+          {
+            'name': languageProvider.getText('Farmer Products', 'விவசாய பொருட்கள்'),
+            'nameEn': 'Farmer Products',
+            'imageUrl': 'assets/images/formar.png',
+            'borderRadius': const BorderRadius.only(
+              topLeft: Radius.circular(48),
+              topRight: Radius.circular(24),
+              bottomLeft: Radius.circular(48),
+              bottomRight: Radius.circular(24),
+            )
           },
-        ),
-      ],
+          {
+            'name': languageProvider.getText('Grocery', 'மளிகை'),
+            'nameEn': 'Grocery',
+            'imageUrl': 'assets/images/gorceries.webp',
+            'borderRadius': const BorderRadius.all(Radius.circular(32))
+          },
+          {
+            'name': languageProvider.getText('Food', 'உணவு'),
+            'nameEn': 'Food',
+            'imageUrl': 'assets/images/Food.jpeg',
+            'borderRadius': const BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(48),
+              bottomLeft: Radius.circular(24),
+              bottomRight: Radius.circular(48),
+            )
+          },
+          {
+            'name': languageProvider.getText('Medicine', 'மருந்து'),
+            'nameEn': 'Medicine',
+            'imageUrl': 'assets/images/Medicines.png',
+            'borderRadius': const BorderRadius.all(Radius.circular(32))
+          },
+        ];
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              languageProvider.getText('What do you need?', 'உங்களுக்கு என்ன வேண்டும்?'),
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF2C3E50),
+              ),
+            ),
+            const SizedBox(height: 16),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 1.0,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+              ),
+              itemCount: categories.length,
+              itemBuilder: (context, index) {
+                final category = categories[index];
+                return _buildCategoryCard(
+                  category['name'] as String,
+                  category['nameEn'] as String,
+                  category['imageUrl'] as String,
+                  category['borderRadius'] as BorderRadius,
+                );
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildCategoryCard(String name, IconData icon, Color color) {
+  Widget _buildCategoryCard(String name, String nameEn, String imageUrl, BorderRadius borderRadius) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: borderRadius,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ShopListingScreen(
-                  category: name.toLowerCase(),
-                  categoryTitle: name,
+      child: ClipRRect(
+        borderRadius: borderRadius,
+        child: Stack(
+          children: [
+            // Background Image
+            Positioned.fill(
+              child: Image.asset(
+                imageUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: Colors.grey[300],
+                    child: const Center(
+                      child: Icon(Icons.broken_image, size: 40, color: Colors.grey),
+                    ),
+                  );
+                },
+              ),
+            ),
+            // Gradient Overlay
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withOpacity(0.6),
+                    ],
+                  ),
                 ),
               ),
-            );
-          },
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Icon(
-                    icon,
-                    size: 32,
-                    color: color,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Flexible(
-                  child: Text(
-                    name,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: VillageTheme.primaryText,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
             ),
-          ),
+            // Tap Handler
+            Positioned.fill(
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: borderRadius,
+                  onTap: () async {
+                    // Special handling for Farmer Products - redirect to WhatsApp channel
+                    if (nameEn == 'Farmer Products') {
+                      final whatsappUrl = Uri.parse('https://www.whatsapp.com/channel/0029VbB1iXbAYlULfRaQlc0z');
+                      try {
+                        if (await canLaunchUrl(whatsappUrl)) {
+                          await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
+                        } else {
+                          if (mounted) {
+                            Helpers.showSnackBar(
+                              context,
+                              'Could not open WhatsApp channel',
+                              isError: true,
+                            );
+                          }
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          Helpers.showSnackBar(
+                            context,
+                            'Error opening WhatsApp: ${e.toString()}',
+                            isError: true,
+                          );
+                        }
+                      }
+                    } else {
+                      // Regular category - navigate to shop listing
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ShopListingScreen(
+                            category: nameEn.toLowerCase(),
+                            categoryTitle: nameEn,
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    alignment: Alignment.bottomLeft,
+                    child: Text(
+                      name,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black,
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      textAlign: TextAlign.left,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
