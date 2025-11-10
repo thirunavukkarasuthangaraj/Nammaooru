@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../../services/shop_api_service.dart';
+import '../../../services/voice_search_service.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/providers/cart_provider.dart';
 import '../../../shared/models/product_model.dart';
@@ -28,6 +29,7 @@ class ShopDetailsScreen extends StatefulWidget {
 
 class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
   final ShopApiService _shopApi = ShopApiService();
+  final VoiceSearchService _voiceSearch = VoiceSearchService();
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
@@ -41,6 +43,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
   bool _isLoadingShop = false;
   bool _isLoadingProducts = false;
   bool _isLoadingCategories = false;
+  bool _isVoiceSearching = false;
   bool _hasError = false;
   String? _errorMessage;
 
@@ -258,6 +261,21 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: 0.5,
                               ),
+                            ),
+                          ),
+                          // Voice search icon - round white button
+                          Container(
+                            margin: const EdgeInsets.only(right: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: IconButton(
+                              icon: const Icon(Icons.mic, color: VillageTheme.primaryGreen, size: 22),
+                              onPressed: () {
+                                _showVoiceSearchDialog();
+                              },
+                              tooltip: 'AI Voice Search',
                             ),
                           ),
                           Consumer<CartProvider>(
@@ -728,6 +746,27 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
           letterSpacing: 0.5,
         ),
       ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.search, color: Colors.white, size: 28),
+          onPressed: () {
+            // Scroll to search bar
+            _scrollController.animateTo(
+              0,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          },
+          tooltip: 'Search',
+        ),
+        IconButton(
+          icon: const Icon(Icons.mic, color: Colors.red, size: 28),
+          onPressed: () {
+            _showVoiceSearchDialog();
+          },
+          tooltip: 'Voice Search (Tamil/English)',
+        ),
+      ],
     );
   }
 
@@ -841,7 +880,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       child: TextField(
         controller: _searchController,
         decoration: InputDecoration(
-          hintText: '🔍 பொருட்களைத் தேடுங்கள்',
+          hintText: 'பொருட்களைத் தேடுங்கள்',
           hintStyle: TextStyle(color: Colors.grey[600]),
           prefixIcon:
               const Icon(Icons.search, color: VillageTheme.primaryGreen),
@@ -1429,6 +1468,281 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
         }
       }
     }
+  }
+
+  void _showVoiceSearchDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          List<dynamic> voiceResults = [];
+          bool isSearching = false;
+          String? searchQuery;
+
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Container(
+              width: MediaQuery.of(context).size.width * 0.9,
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.8,
+              ),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header
+                  Row(
+                    children: [
+                      const Icon(Icons.mic, color: Color(0xFF2E7D32), size: 28),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Voice Search',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Voice search button
+                  if (!isSearching && voiceResults.isEmpty)
+                    Column(
+                      children: [
+                        const SizedBox(height: 32),
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: const Color(0xFF2E7D32).withOpacity(0.1),
+                          ),
+                          padding: const EdgeInsets.all(32),
+                          child: const Icon(
+                            Icons.mic,
+                            size: 80,
+                            color: Color(0xFF2E7D32),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        const Text(
+                          'Tap to speak',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.grey,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          onPressed: () async {
+                            setState(() {
+                              isSearching = true;
+                            });
+
+                            final results =
+                                await _voiceSearch.voiceSearch(widget.shopId);
+                            final query = _voiceSearch.lastWords;
+
+                            setState(() {
+                              isSearching = false;
+                              voiceResults = results;
+                              searchQuery = query;
+                            });
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF2E7D32),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 32, vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          icon: const Icon(Icons.mic, color: Colors.white),
+                          label: const Text(
+                            'Start Voice Search',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+                      ],
+                    ),
+
+                  // Loading indicator
+                  if (isSearching)
+                    Column(
+                      children: const [
+                        SizedBox(height: 32),
+                        CircularProgressIndicator(
+                          color: Color(0xFF2E7D32),
+                        ),
+                        SizedBox(height: 24),
+                        Text(
+                          'Listening...',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.grey,
+                          ),
+                        ),
+                        SizedBox(height: 32),
+                      ],
+                    ),
+
+                  // Search results
+                  if (!isSearching && voiceResults.isNotEmpty)
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (searchQuery != null && searchQuery!.isNotEmpty)
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2E7D32).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.mic,
+                                      color: Color(0xFF2E7D32), size: 20),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'You said: "$searchQuery"',
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          const SizedBox(height: 16),
+                          Text(
+                            '${voiceResults.length} products found',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Expanded(
+                            child: ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: voiceResults.length,
+                              itemBuilder: (context, index) {
+                                final product = voiceResults[index];
+                                return Card(
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  child: ListTile(
+                                    title: Text(
+                                      product['displayName'] ??
+                                          product['name'] ??
+                                          '',
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    subtitle: Text(
+                                      '₹${product['price']}',
+                                      style: const TextStyle(
+                                        color: Color(0xFF2E7D32),
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    trailing: product['inStock'] == true
+                                        ? const Icon(Icons.check_circle,
+                                            color: Colors.green)
+                                        : const Icon(Icons.cancel,
+                                            color: Colors.red),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  // No results message
+                  if (!isSearching &&
+                      voiceResults.isEmpty &&
+                      searchQuery != null)
+                    Column(
+                      children: [
+                        const SizedBox(height: 32),
+                        const Icon(
+                          Icons.search_off,
+                          size: 80,
+                          color: Colors.grey,
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'No products found',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Try saying the product name again',
+                          style: TextStyle(
+                            color: Colors.grey,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton.icon(
+                          onPressed: () async {
+                            setState(() {
+                              isSearching = true;
+                              voiceResults = [];
+                              searchQuery = null;
+                            });
+
+                            final results =
+                                await _voiceSearch.voiceSearch(widget.shopId);
+                            final query = _voiceSearch.lastWords;
+
+                            setState(() {
+                              isSearching = false;
+                              voiceResults = results;
+                              searchQuery = query;
+                            });
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF2E7D32),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 24, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          icon: const Icon(Icons.mic, color: Colors.white),
+                          label: const Text(
+                            'Try Again',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 }
 
