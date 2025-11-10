@@ -184,3 +184,10 @@ email:
     welcome: "Welcome to NammaOoru - Your Shop Account is Ready!"
     password-reset: "Reset Your NammaOoru Account Password"
     shop-approval: "Your Shop has been Approved!"
+
+# Gemini AI Configuration
+gemini:
+  enabled: ${GEMINI_ENABLED:true}
+  api-key: ${GEMINI_API_KEY:AIzaSyCGt_F5WfqMZwr5UDkvOKWSuMQkkNRxoTc}
+  model: ${GEMINI_MODEL:gemini-1.5-flash}
+  api-url: https://generativelanguage.googleapis.com/v1beta/models

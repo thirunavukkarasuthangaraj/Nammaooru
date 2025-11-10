@@ -57,7 +57,10 @@
       "Bash(dart analyze:*)",
       "Bash(\"C:\\Users\\MVNLA\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe\" -s 192.168.1.2:32899 install -r mobile/nammaooru_mobile_app/build/app/outputs/flutter-apk/app-debug.apk)",
       "Bash(del \"D:\\AAWS\\nammaooru\\shop-management-system\\mobile\\nammaooru_mobile_app\\lib\\core\\providers\\language_provider.dart\")",
-      "Bash(\"C:\\Users\\MVNLA\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe\" -s 192.168.1.2:43409 install -r mobile/nammaooru_mobile_app/build/app/outputs/flutter-apk/app-debug.apk)"
+      "Bash(\"C:\\Users\\MVNLA\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe\" -s 192.168.1.2:43409 install -r mobile/nammaooru_mobile_app/build/app/outputs/flutter-apk/app-debug.apk)",
+      "Bash(\"C:\\Users\\MVNLA\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe\" -s 192.168.1.12:37209 install -r mobile/nammaooru_mobile_app/build/app/outputs/flutter-apk/app-release.apk)",
+      "Bash(del \"D:\\AAWS\\nammaooru\\shop-management-system\\backend\\src\\main\\java\\com\\shopmanagement\\controller\\CustomerProductController.java\")",
+      "Bash(\"C:\\Users\\MVNLA\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe\" -s 192.168.1.2:37209 install -r mobile/nammaooru_mobile_app/build/app/outputs/flutter-apk/app-debug.apk)"
     ],
     "deny": [],
     "ask": [],

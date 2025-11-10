@@ -3,22 +3,22 @@ class ApiConfig {
   static const String baseUrl = 'http://192.168.1.4:8080/api';
 
   // Web URL for Chrome testing
-  static const String webBaseUrl = 'http://192.168.1.4:8080/api';
+  static const String webBaseUrl = 'https://nammaoorudelivary.in/api';
 
- 
+
   // Production URL (change when deploying)
   static const String prodBaseUrl = 'https://nammaoorudelivary.in/api';
 
   // Environment detection
   static bool get isWeb => identical(0, 0.0);
-  static bool get isProduction => false; // LOCAL MODE
+  static bool get isProduction => true; // PRODUCTION MODE
 
   // Get appropriate base URL based on environment
   static String get apiUrl {
-    if (isWeb) {
-      return webBaseUrl;
-    } else if (isProduction) {
+    if (isProduction) {
       return prodBaseUrl;
+    } else if (isWeb) {
+      return webBaseUrl;
     } else {
       return baseUrl;
     }

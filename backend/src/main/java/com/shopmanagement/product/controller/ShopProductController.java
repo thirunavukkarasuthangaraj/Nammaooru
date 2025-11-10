@@ -5,6 +5,7 @@ import com.shopmanagement.product.dto.ShopProductRequest;
 import com.shopmanagement.product.dto.ShopProductResponse;
 import com.shopmanagement.product.entity.ShopProduct;
 import com.shopmanagement.product.service.ShopProductService;
+import com.shopmanagement.service.GeminiSearchService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,8 +20,11 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/shops/{shopId}/products")
@@ -29,6 +33,7 @@ import java.util.Map;
 public class ShopProductController {
 
     private final ShopProductService shopProductService;
+    private final GeminiSearchService geminiSearchService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<ShopProductResponse>>> getShopProducts(
@@ -219,5 +224,95 @@ public class ShopProductController {
                 stats,
                 "Shop product statistics fetched successfully"
         ));
+    }
+
+    @GetMapping("/ai-search")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> aiSearchProducts(
+            @PathVariable Long shopId,
+            @RequestParam String query) {
+        log.info("🤖 AI Search - Shop: {}, Query: \"{}\"", shopId, query);
+
+        try {
+            // Get all products from the shop
+            Pageable pageable = PageRequest.of(0, 1000); // Get a large number of products
+            Specification<ShopProduct> spec = Specification.where(null);
+            Page<ShopProductResponse> allProducts = shopProductService.getShopProducts(shopId, spec, pageable);
+
+            // Build product name list for AI matching (include both English and Tamil names)
+            List<String> productNames = allProducts.getContent().stream()
+                    .map(p -> {
+                        String name = p.getDisplayName(); // Use displayName which is computed field
+                        String tamilName = p.getMasterProduct() != null ? p.getMasterProduct().getNameTamil() : null;
+                        if (tamilName != null && !tamilName.isEmpty()) {
+                            return name + " | " + tamilName;
+                        }
+                        return name;
+                    })
+                    .collect(Collectors.toList());
+
+            // Use Gemini AI to find matching products
+            List<String> aiMatches = geminiSearchService.enhanceSearchQuery(query, productNames);
+
+            // Filter products based on AI matches
+            List<ShopProductResponse> matchedProducts = new ArrayList<>();
+
+            if (aiMatches.isEmpty()) {
+                // If AI returns nothing, return all products as fallback
+                matchedProducts = allProducts.getContent();
+                log.info("⚠️ AI returned no matches, showing all {} products", matchedProducts.size());
+            } else {
+                // Match products by name (handle both English and Tamil)
+                for (ShopProductResponse product : allProducts.getContent()) {
+                    String productName = product.getDisplayName(); // Use displayName
+                    String tamilName = product.getMasterProduct() != null ? product.getMasterProduct().getNameTamil() : null;
+
+                    for (String aiMatch : aiMatches) {
+                        // Remove Tamil part if present (format: "Name | தமிழ்")
+                        String cleanMatch = aiMatch.split("\\|")[0].trim();
+
+                        if (productName.equalsIgnoreCase(cleanMatch) ||
+                            (tamilName != null && tamilName.equalsIgnoreCase(cleanMatch)) ||
+                            aiMatch.toLowerCase().contains(productName.toLowerCase()) ||
+                            (tamilName != null && aiMatch.contains(tamilName))) {
+                            matchedProducts.add(product);
+                            break;
+                        }
+                    }
+                }
+                log.info("✅ AI matched {} products out of {} total", matchedProducts.size(), allProducts.getContent().size());
+            }
+
+            // Build response
+            Map<String, Object> response = new HashMap<>();
+            response.put("query", query);
+            response.put("matchedProducts", matchedProducts);
+            response.put("totalProducts", allProducts.getContent().size());
+            response.put("matchCount", matchedProducts.size());
+
+            return ResponseEntity.ok(ApiResponse.success(
+                    response,
+                    "AI search completed successfully"
+            ));
+
+        } catch (Exception e) {
+            log.error("❌ Error in AI search: {}", e.getMessage(), e);
+
+            // Fallback: return all products if AI fails
+            Pageable pageable = PageRequest.of(0, 1000);
+            Specification<ShopProduct> spec = Specification.where(null);
+            Page<ShopProductResponse> allProducts = shopProductService.getShopProducts(shopId, spec, pageable);
+
+            Map<String, Object> fallbackResponse = new HashMap<>();
+            fallbackResponse.put("query", query);
+            fallbackResponse.put("matchedProducts", allProducts.getContent());
+            fallbackResponse.put("totalProducts", allProducts.getContent().size());
+            fallbackResponse.put("matchCount", allProducts.getContent().size());
+            fallbackResponse.put("error", "AI search failed, showing all products");
+
+            return ResponseEntity.ok(ApiResponse.success(
+                    fallbackResponse,
+                    "AI search failed, showing all products as fallback"
+            ));
+        }
     }
 }

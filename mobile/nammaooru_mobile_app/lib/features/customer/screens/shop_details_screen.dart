@@ -8,8 +8,10 @@ import '../../../shared/providers/cart_provider.dart';
 import '../../../shared/models/product_model.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/localization/app_localizations.dart';
+import '../../../core/localization/language_provider.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../core/utils/image_url_helper.dart';
+import '../../../core/config/api_config.dart';
 import 'cart_screen.dart';
 import 'shop_products_screen.dart';
 
@@ -271,7 +273,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                               shape: BoxShape.circle,
                             ),
                             child: IconButton(
-                              icon: const Icon(Icons.mic, color: VillageTheme.primaryGreen, size: 22),
+                              icon: const Icon(Icons.mic,
+                                  color: VillageTheme.primaryGreen, size: 22),
                               onPressed: () {
                                 _showVoiceSearchDialog();
                               },
@@ -963,11 +966,10 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
   }
 
   Widget _buildProductCard(Map<String, dynamic> product) {
-    // Get display name from customName or displayName or master product name
-    final productName = product['customName']?.toString() ??
-        product['displayName']?.toString() ??
-        product['masterProduct']?['name']?.toString() ??
-        'Product';
+    // Use LanguageProvider to get the correct name based on language toggle
+    // listen: true ensures the widget rebuilds when language changes
+    final languageProvider = Provider.of<LanguageProvider>(context);
+    final productName = languageProvider.getDisplayName(product);
 
     // Get description
     final description = product['customDescription']?.toString() ??
@@ -1155,12 +1157,12 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                       Text(
                         productName,
                         style: const TextStyle(
-                          fontSize: 12,
+                          fontSize: 11,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF212121),
-                          height: 1.1,
+                          height: 1.2,
                         ),
-                        maxLines: 2,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 1),
@@ -1417,13 +1419,13 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     if (success) {
       // Successfully added to cart
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${product.name} added to cart'),
-            backgroundColor: const Color(0xFF4CAF50),
-            duration: const Duration(seconds: 2),
-          ),
-        );
+        // ScaffoldMessenger.of(context).showSnackBar(
+        //   SnackBar(
+        //     content: Text('${product.name} added to cart'),
+        //     backgroundColor: const Color(0xFF4CAF50),
+        //     duration: const Duration(seconds: 2),
+        //   ),
+        // );
       }
     } else {
       // Show dialog for different shop
@@ -1471,14 +1473,15 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
   }
 
   void _showVoiceSearchDialog() {
+    // ✅ Declare variables OUTSIDE the builder so they persist!
+    List<dynamic> voiceResults = [];
+    bool isSearching = false;
+    String? searchQuery;
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) {
-          List<dynamic> voiceResults = [];
-          bool isSearching = false;
-          String? searchQuery;
-
           return Dialog(
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
@@ -1517,7 +1520,53 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                   if (!isSearching && voiceResults.isEmpty)
                     Column(
                       children: [
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Search for products',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        // Text input for web testing
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: TextField(
+                            decoration: InputDecoration(
+                              hintText: 'Type product name (e.g., Sugar)',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              prefixIcon: const Icon(Icons.search),
+                            ),
+                            onSubmitted: (query) async {
+                              if (query.trim().isEmpty) return;
+
+                              setState(() {
+                                isSearching = true;
+                              });
+
+                              final results = await _voiceSearch.searchProducts(
+                                  widget.shopId, query);
+
+                              setState(() {
+                                isSearching = false;
+                                voiceResults = results;
+                                searchQuery = query;
+                              });
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'OR',
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
                         Container(
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
@@ -1530,11 +1579,11 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                             color: Color(0xFF2E7D32),
                           ),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 16),
                         const Text(
-                          'Tap to speak',
+                          'Voice search (Android/iOS only)',
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: 14,
                             color: Colors.grey,
                           ),
                         ),
@@ -1642,34 +1691,354 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                               itemCount: voiceResults.length,
                               itemBuilder: (context, index) {
                                 final product = voiceResults[index];
+                                final inStock = product['inStock'] ??
+                                    product['isAvailable'] ??
+                                    true;
+
+                                // Use LanguageProvider to get localized name
+                                final languageProvider = Provider.of<LanguageProvider>(context);
+                                final displayName = languageProvider.getDisplayName(product);
+
+                                final displayDesc =
+                                    product['displayDescription'] ??
+                                        product['description'] ??
+                                        '';
+                                final price = product['price'] ?? 0;
+                                final originalPrice = product['originalPrice'];
+
+                                // Get quantity and unit
+                                final quantity = product['quantity'] ?? product['masterProduct']?['quantity'] ?? 1;
+                                final unit = product['unit'] ?? product['masterProduct']?['unit'] ?? '';
+
+                                // Calculate discount percentage
+                                int? discountPercent;
+                                if (originalPrice != null && originalPrice > price) {
+                                  discountPercent = (((originalPrice - price) / originalPrice) * 100).round();
+                                }
+                                // Get image URL from shopImages or masterProduct images
+                                String? imageUrl;
+                                if (product['shopImages'] != null &&
+                                    (product['shopImages'] as List).isNotEmpty) {
+                                  imageUrl = product['shopImages'][0]['imageUrl'];
+                                } else if (product['primaryImageUrl'] != null) {
+                                  imageUrl = product['primaryImageUrl'];
+                                } else if (product['masterProduct'] != null &&
+                                          product['masterProduct']['images'] != null &&
+                                          (product['masterProduct']['images'] as List).isNotEmpty) {
+                                  imageUrl = product['masterProduct']['images'][0]['imageUrl'];
+                                }
+
+                                // Build full image URL using ImageUrlHelper
+                                final fullImageUrl = imageUrl != null
+                                    ? ImageUrlHelper.getFullImageUrl(imageUrl)
+                                    : null;
+
                                 return Card(
                                   margin: const EdgeInsets.only(bottom: 12),
-                                  child: ListTile(
-                                    title: Text(
-                                      product['displayName'] ??
-                                          product['name'] ??
-                                          '',
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.bold),
-                                    ),
-                                    subtitle: Text(
-                                      '₹${product['price']}',
-                                      style: const TextStyle(
-                                        color: Color(0xFF2E7D32),
-                                        fontWeight: FontWeight.bold,
+                                  elevation: 2,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: InkWell(
+                                    onTap: () {
+                                      // Close dialog
+                                      Navigator.pop(context);
+                                      // Scroll to product or show details
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(12),
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          // Product Image
+                                          ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            child: fullImageUrl != null
+                                                ? Image.network(
+                                                    fullImageUrl,
+                                                    width: 80,
+                                                    height: 80,
+                                                    fit: BoxFit.cover,
+                                                    errorBuilder: (context,
+                                                            error,
+                                                            stackTrace) =>
+                                                        Container(
+                                                      width: 80,
+                                                      height: 80,
+                                                      color: Colors.grey[200],
+                                                      child: const Icon(
+                                                          Icons.image,
+                                                          color: Colors.grey,
+                                                          size: 40),
+                                                    ),
+                                                  )
+                                                : Container(
+                                                    width: 80,
+                                                    height: 80,
+                                                    color: Colors.grey[200],
+                                                    child: const Icon(
+                                                        Icons.image,
+                                                        color: Colors.grey,
+                                                        size: 40),
+                                                  ),
+                                          ),
+                                          const SizedBox(width: 12),
+
+                                          // Product Details
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  displayName,
+                                                  style: const TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                  maxLines: 2,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                                // Show quantity and unit
+                                                if (unit.isNotEmpty) ...[
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    '$quantity $unit',
+                                                    style: TextStyle(
+                                                      fontSize: 13,
+                                                      color: Colors.grey[700],
+                                                      fontWeight: FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                ],
+                                                if (displayDesc.isNotEmpty) ...[
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    displayDesc,
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: Colors.grey[600],
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ],
+                                                const SizedBox(height: 8),
+                                                Row(
+                                                  children: [
+                                                    Text(
+                                                      '₹$price',
+                                                      style: const TextStyle(
+                                                        fontSize: 18,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        color:
+                                                            Color(0xFF2E7D32),
+                                                      ),
+                                                    ),
+                                                    if (originalPrice != null &&
+                                                        originalPrice > price)
+                                                      Padding(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .only(left: 8),
+                                                        child: Text(
+                                                          '₹$originalPrice',
+                                                          style: TextStyle(
+                                                            fontSize: 14,
+                                                            decoration:
+                                                                TextDecoration
+                                                                    .lineThrough,
+                                                            color: Colors
+                                                                .grey[600],
+                                                          ),
+                                                        ),
+                                                      ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 8),
+
+                                                // Stock status indicator
+                                                Row(
+                                                  children: [
+                                                    if (inStock)
+                                                      Row(
+                                                        children: const [
+                                                          Icon(
+                                                              Icons
+                                                                  .check_circle,
+                                                              color:
+                                                                  Colors.green,
+                                                              size: 16),
+                                                          SizedBox(width: 4),
+                                                          Text(
+                                                            'In Stock',
+                                                            style: TextStyle(
+                                                              fontSize: 12,
+                                                              color:
+                                                                  Colors.green,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w500,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      )
+                                                    else
+                                                      Row(
+                                                        children: const [
+                                                          Icon(Icons.cancel,
+                                                              color: Colors.red,
+                                                              size: 16),
+                                                          SizedBox(width: 4),
+                                                          Text(
+                                                            'Out of Stock',
+                                                            style: TextStyle(
+                                                              fontSize: 12,
+                                                              color: Colors.red,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w500,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+
+                                          // Add to Cart with Plus/Minus Controls
+                                          if (inStock)
+                                            Consumer<CartProvider>(
+                                              builder: (context, cartProvider, child) {
+                                                final productId = product['id'].toString();
+                                                final quantity = cartProvider.getQuantity(productId);
+
+                                                // Convert product JSON to ProductModel
+                                                final productModel = ProductModel(
+                                                  id: productId,
+                                                  name: displayName,
+                                                  description: displayName,
+                                                  price: price,
+                                                  category: product['category'] ?? 'Unknown',
+                                                  shopId: widget.shopId.toString(),
+                                                  shopName: widget.shop?['name'] ?? 'Shop',
+                                                  images: imageUrl != null ? [imageUrl] : [],
+                                                  stockQuantity: product['stockQuantity'] ?? 999,
+                                                  createdAt: DateTime.now(),
+                                                  updatedAt: DateTime.now(),
+                                                );
+
+                                                if (quantity == 0) {
+                                                  // Show ADD button when not in cart
+                                                  return ElevatedButton(
+                                                    onPressed: () async {
+                                                      await cartProvider.addToCart(productModel);
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                        SnackBar(
+                                                          content: Text('$displayName added to cart'),
+                                                          duration: const Duration(seconds: 1),
+                                                          behavior: SnackBarBehavior.floating,
+                                                        ),
+                                                      );
+                                                    },
+                                                    style: ElevatedButton.styleFrom(
+                                                      backgroundColor: const Color(0xFF2E7D32),
+                                                      foregroundColor: Colors.white,
+                                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                                      minimumSize: const Size(80, 36),
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius: BorderRadius.circular(8),
+                                                      ),
+                                                    ),
+                                                    child: const Text('ADD', style: TextStyle(fontWeight: FontWeight.bold)),
+                                                  );
+                                                } else {
+                                                  // Show plus/minus controls when in cart
+                                                  return Container(
+                                                    decoration: BoxDecoration(
+                                                      color: const Color(0xFF2E7D32),
+                                                      borderRadius: BorderRadius.circular(8),
+                                                    ),
+                                                    child: Row(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        // Minus button
+                                                        IconButton(
+                                                          icon: const Icon(Icons.remove, color: Colors.white, size: 18),
+                                                          onPressed: () {
+                                                            cartProvider.decreaseQuantity(productId);
+                                                          },
+                                                          padding: const EdgeInsets.all(4),
+                                                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                                        ),
+                                                        // Quantity
+                                                        Container(
+                                                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                                                          child: Text(
+                                                            quantity.toString(),
+                                                            style: const TextStyle(
+                                                              color: Colors.white,
+                                                              fontWeight: FontWeight.bold,
+                                                              fontSize: 16,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        // Plus button
+                                                        IconButton(
+                                                          icon: const Icon(Icons.add, color: Colors.white, size: 18),
+                                                          onPressed: () {
+                                                            cartProvider.increaseQuantity(productId);
+                                                          },
+                                                          padding: const EdgeInsets.all(4),
+                                                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  );
+                                                }
+                                              },
+                                            ),
+                                        ],
                                       ),
                                     ),
-                                    trailing: product['inStock'] == true
-                                        ? const Icon(Icons.check_circle,
-                                            color: Colors.green)
-                                        : const Icon(Icons.cancel,
-                                            color: Colors.red),
                                   ),
                                 );
                               },
                             ),
                           ),
                         ],
+                      ),
+                    ),
+
+                  // Search Again Button (after results)
+                  if (!isSearching && voiceResults.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16),
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            voiceResults = [];
+                            isSearching = false;
+                            searchQuery = null;
+                          });
+                        },
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Search Again'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2E7D32),
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size(double.infinity, 48),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
                       ),
                     ),
 

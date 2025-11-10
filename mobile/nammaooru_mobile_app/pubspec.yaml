@@ -39,6 +39,9 @@ dependencies:
   google_maps_flutter: ^2.13.1
   location: ^6.0.2
 
+  # Voice Search
+  speech_to_text: ^7.3.0
+
   # Device Info & Promo Codes
   device_info_plus: ^10.1.0
   uuid: ^4.2.1

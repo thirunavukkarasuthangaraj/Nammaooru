@@ -170,6 +170,14 @@ class ProductModel {
   String get imageUrl {
     return primaryImageUrl ?? 'https://via.placeholder.com/300x300/f0f0f0/cccccc?text=No+Image';
   }
+
+  // Get localized display name based on language
+  String getLocalizedName(String languageCode) {
+    if (languageCode == 'ta' && masterProduct?.nameTamil != null && masterProduct!.nameTamil!.isNotEmpty) {
+      return masterProduct!.nameTamil!;
+    }
+    return displayName;
+  }
 }
 
 class MasterProductModel {

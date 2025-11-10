@@ -43,7 +43,7 @@ class VoiceSearchService {
           _lastWords = result.recognizedWords;
           debugPrint('🎤 Recognized: $_lastWords');
         },
-        localeId: 'en_IN', // Supports both English and Tamil
+        localeId: 'ta_IN', // Tamil (India) - primary language for recognition
         listenMode: stt.ListenMode.confirmation,
       );
 

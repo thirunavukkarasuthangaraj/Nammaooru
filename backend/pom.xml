@@ -118,6 +118,13 @@
             <version>9.2.0</version>
         </dependency>
 
+        <!-- Google Generative AI (Gemini) -->
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-aiplatform</artifactId>
+            <version>3.34.0</version>
+        </dependency>
+
         <!-- MapStruct for mapping -->
         <dependency>
             <groupId>org.mapstruct</groupId>

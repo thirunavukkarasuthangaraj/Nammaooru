@@ -42,4 +42,24 @@ class LanguageProvider extends ChangeNotifier {
 
     return product['name'] ?? '';
   }
+
+  // Get display name for shop products (checks masterProduct.nameTamil)
+  String getDisplayName(dynamic product) {
+    if (product == null) return '';
+
+    // If Tamil is selected, try to show Tamil name from masterProduct
+    if (_showTamil && product['masterProduct'] != null) {
+      final nameTamil = product['masterProduct']['nameTamil'];
+      if (nameTamil != null && nameTamil.toString().trim().isNotEmpty) {
+        return nameTamil.toString();
+      }
+    }
+
+    // Fall back to English name from masterProduct or displayName
+    if (product['masterProduct'] != null && product['masterProduct']['name'] != null) {
+      return product['masterProduct']['name'].toString();
+    }
+
+    return product['displayName']?.toString() ?? '';
+  }
 }
