@@ -110,122 +110,7 @@ public class ShopProductController {
         ));
     }
 
-    @GetMapping("/{productId}")
-    public ResponseEntity<ApiResponse<ShopProductResponse>> getShopProduct(
-            @PathVariable Long shopId,
-            @PathVariable Long productId) {
-        log.info("Fetching shop product: {} for shop: {}", productId, shopId);
-        ShopProductResponse product = shopProductService.getShopProduct(shopId, productId);
-        return ResponseEntity.ok(ApiResponse.success(
-                product,
-                "Shop product fetched successfully"
-        ));
-    }
-
-    @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'SHOP_OWNER')")
-    public ResponseEntity<ApiResponse<ShopProductResponse>> addProductToShop(
-            @PathVariable Long shopId,
-            @Valid @RequestBody ShopProductRequest request) {
-        log.info("Adding product to shop: {}", shopId);
-        ShopProductResponse product = shopProductService.addProductToShop(shopId, request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
-                product,
-                "Product added to shop successfully"
-        ));
-    }
-
-    @PutMapping("/{productId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'SHOP_OWNER')")
-    public ResponseEntity<ApiResponse<ShopProductResponse>> updateShopProduct(
-            @PathVariable Long shopId,
-            @PathVariable Long productId,
-            @Valid @RequestBody ShopProductRequest request) {
-        log.info("Updating shop product: {} for shop: {}", productId, shopId);
-        ShopProductResponse product = shopProductService.updateShopProduct(shopId, productId, request);
-        return ResponseEntity.ok(ApiResponse.success(
-                product,
-                "Shop product updated successfully"
-        ));
-    }
-
-    @DeleteMapping("/{productId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'SHOP_OWNER')")
-    public ResponseEntity<ApiResponse<Void>> removeProductFromShop(
-            @PathVariable Long shopId,
-            @PathVariable Long productId) {
-        log.info("Removing product from shop: {} - product: {}", shopId, productId);
-        shopProductService.removeProductFromShop(shopId, productId);
-        return ResponseEntity.ok(ApiResponse.success(
-                (Void) null,
-                "Product removed from shop successfully"
-        ));
-    }
-
-    @GetMapping("/search")
-    public ResponseEntity<ApiResponse<Page<ShopProductResponse>>> searchShopProducts(
-            @PathVariable Long shopId,
-            @RequestParam String query,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        log.info("Searching products in shop: {} with query: {}", shopId, query);
-        Pageable pageable = PageRequest.of(page, size);
-        Page<ShopProductResponse> products = shopProductService.searchShopProducts(shopId, query, pageable);
-        return ResponseEntity.ok(ApiResponse.success(
-                products,
-                "Search results fetched successfully"
-        ));
-    }
-
-    @GetMapping("/featured")
-    public ResponseEntity<ApiResponse<List<ShopProductResponse>>> getFeaturedProducts(
-            @PathVariable Long shopId) {
-        log.info("Fetching featured products for shop: {}", shopId);
-        List<ShopProductResponse> products = shopProductService.getFeaturedProducts(shopId);
-        return ResponseEntity.ok(ApiResponse.success(
-                products,
-                "Featured products fetched successfully"
-        ));
-    }
-
-    @GetMapping("/low-stock")
-    public ResponseEntity<ApiResponse<List<ShopProductResponse>>> getLowStockProducts(
-            @PathVariable Long shopId) {
-        log.info("Fetching low stock products for shop: {}", shopId);
-        List<ShopProductResponse> products = shopProductService.getLowStockProducts(shopId);
-        return ResponseEntity.ok(ApiResponse.success(
-                products,
-                "Low stock products fetched successfully"
-        ));
-    }
-
-    @PatchMapping("/{productId}/inventory")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'SHOP_OWNER')")
-    public ResponseEntity<ApiResponse<ShopProductResponse>> updateInventory(
-            @PathVariable Long shopId,
-            @PathVariable Long productId,
-            @RequestParam Integer quantity,
-            @RequestParam String operation) {
-        log.info("Updating inventory for shop: {} - product: {} - operation: {} - quantity: {}", 
-                shopId, productId, operation, quantity);
-        ShopProductResponse product = shopProductService.updateInventory(shopId, productId, quantity, operation);
-        return ResponseEntity.ok(ApiResponse.success(
-                product,
-                "Inventory updated successfully"
-        ));
-    }
-
-    @GetMapping("/stats")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getShopProductStats(
-            @PathVariable Long shopId) {
-        log.info("Fetching product statistics for shop: {}", shopId);
-        Map<String, Object> stats = shopProductService.getShopProductStats(shopId);
-        return ResponseEntity.ok(ApiResponse.success(
-                stats,
-                "Shop product statistics fetched successfully"
-        ));
-    }
-
+    // AI Search endpoint - MUST come before /{productId} to avoid path variable conflict
     @GetMapping("/ai-search")
     public ResponseEntity<ApiResponse<Map<String, Object>>> aiSearchProducts(
             @PathVariable Long shopId,
@@ -314,5 +199,121 @@ public class ShopProductController {
                     "AI search failed, showing all products as fallback"
             ));
         }
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<Page<ShopProductResponse>>> searchShopProducts(
+            @PathVariable Long shopId,
+            @RequestParam String query,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        log.info("Searching products in shop: {} with query: {}", shopId, query);
+        Pageable pageable = PageRequest.of(page, size);
+        Page<ShopProductResponse> products = shopProductService.searchShopProducts(shopId, query, pageable);
+        return ResponseEntity.ok(ApiResponse.success(
+                products,
+                "Search results fetched successfully"
+        ));
+    }
+
+    @GetMapping("/featured")
+    public ResponseEntity<ApiResponse<List<ShopProductResponse>>> getFeaturedProducts(
+            @PathVariable Long shopId) {
+        log.info("Fetching featured products for shop: {}", shopId);
+        List<ShopProductResponse> products = shopProductService.getFeaturedProducts(shopId);
+        return ResponseEntity.ok(ApiResponse.success(
+                products,
+                "Featured products fetched successfully"
+        ));
+    }
+
+    @GetMapping("/low-stock")
+    public ResponseEntity<ApiResponse<List<ShopProductResponse>>> getLowStockProducts(
+            @PathVariable Long shopId) {
+        log.info("Fetching low stock products for shop: {}", shopId);
+        List<ShopProductResponse> products = shopProductService.getLowStockProducts(shopId);
+        return ResponseEntity.ok(ApiResponse.success(
+                products,
+                "Low stock products fetched successfully"
+        ));
+    }
+
+    @GetMapping("/stats")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getShopProductStats(
+            @PathVariable Long shopId) {
+        log.info("Fetching product statistics for shop: {}", shopId);
+        Map<String, Object> stats = shopProductService.getShopProductStats(shopId);
+        return ResponseEntity.ok(ApiResponse.success(
+                stats,
+                "Shop product statistics fetched successfully"
+        ));
+    }
+
+    @GetMapping("/{productId}")
+    public ResponseEntity<ApiResponse<ShopProductResponse>> getShopProduct(
+            @PathVariable Long shopId,
+            @PathVariable Long productId) {
+        log.info("Fetching shop product: {} for shop: {}", productId, shopId);
+        ShopProductResponse product = shopProductService.getShopProduct(shopId, productId);
+        return ResponseEntity.ok(ApiResponse.success(
+                product,
+                "Shop product fetched successfully"
+        ));
+    }
+
+    @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'SHOP_OWNER')")
+    public ResponseEntity<ApiResponse<ShopProductResponse>> addProductToShop(
+            @PathVariable Long shopId,
+            @Valid @RequestBody ShopProductRequest request) {
+        log.info("Adding product to shop: {}", shopId);
+        ShopProductResponse product = shopProductService.addProductToShop(shopId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
+                product,
+                "Product added to shop successfully"
+        ));
+    }
+
+    @PutMapping("/{productId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'SHOP_OWNER')")
+    public ResponseEntity<ApiResponse<ShopProductResponse>> updateShopProduct(
+            @PathVariable Long shopId,
+            @PathVariable Long productId,
+            @Valid @RequestBody ShopProductRequest request) {
+        log.info("Updating shop product: {} for shop: {}", productId, shopId);
+        ShopProductResponse product = shopProductService.updateShopProduct(shopId, productId, request);
+        return ResponseEntity.ok(ApiResponse.success(
+                product,
+                "Shop product updated successfully"
+        ));
+    }
+
+    @DeleteMapping("/{productId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'SHOP_OWNER')")
+    public ResponseEntity<ApiResponse<Void>> removeProductFromShop(
+            @PathVariable Long shopId,
+            @PathVariable Long productId) {
+        log.info("Removing product from shop: {} - product: {}", shopId, productId);
+        shopProductService.removeProductFromShop(shopId, productId);
+        return ResponseEntity.ok(ApiResponse.success(
+                (Void) null,
+                "Product removed from shop successfully"
+        ));
+    }
+
+    @PatchMapping("/{productId}/inventory")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'SHOP_OWNER')")
+    public ResponseEntity<ApiResponse<ShopProductResponse>> updateInventory(
+            @PathVariable Long shopId,
+            @PathVariable Long productId,
+            @RequestParam Integer quantity,
+            @RequestParam String operation) {
+        log.info("Updating inventory for shop: {} - product: {} - operation: {} - quantity: {}",
+                shopId, productId, operation, quantity);
+        ShopProductResponse product = shopProductService.updateInventory(shopId, productId, quantity, operation);
+        return ResponseEntity.ok(ApiResponse.success(
+                product,
+                "Inventory updated successfully"
+        ));
     }
 }
