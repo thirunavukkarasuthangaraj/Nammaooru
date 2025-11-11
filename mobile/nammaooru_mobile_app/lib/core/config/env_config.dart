@@ -5,13 +5,14 @@ class EnvConfig {
   // static const String apiUrl =
   //     'https://nammaoorudelivary.in'; // Alias for compatibility
 
-  // DEVELOPMENT: Local development
+  // DEVELOPMENT: Local development (commented out for production)
   // static const String baseUrl = 'http://192.168.1.4:8080';
   // static const String apiUrl = 'http://192.168.1.4:8080'; // Alias for compatibility
   // static const String baseUrl = 'http://10.0.2.2:8080'; // Android emulator
-  static const String baseUrl = 'http://192.168.1.4:8080'; // Localhost
-  static const String apiUrl =
-      'http://192.168.1.4:8080'; // Alias for compatibility
+
+  // PRODUCTION
+  static const String baseUrl = 'https://nammaoorudelivary.in';
+  static const String apiUrl = 'https://nammaoorudelivary.in';
 
   static const String apiVersion = '';
   static const String fullApiUrl = '$baseUrl/api';

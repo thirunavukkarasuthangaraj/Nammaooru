@@ -8,6 +8,7 @@ class VoiceSearchService {
   final stt.SpeechToText _speech = stt.SpeechToText();
   bool _isListening = false;
   String _lastWords = '';
+  String? _lastError;
 
   /// Check if speech recognition is available
   Future<bool> initialize() async {
@@ -17,18 +18,33 @@ class VoiceSearchService {
           debugPrint('🎤 Speech status: $status');
         },
         onError: (error) {
+          _lastError = error.errorMsg;
           debugPrint('❌ Speech error: ${error.errorMsg}');
         },
       );
       debugPrint('🎤 Speech recognition available: $available');
+
+      if (!available) {
+        _lastError = 'Speech recognition not available on this device';
+      }
+
       return available;
     } catch (e) {
-      debugPrint('❌ Error initializing speech: $e');
+      _lastError = 'Error initializing speech: $e';
+      debugPrint('❌ $_lastError');
       return false;
     }
   }
 
-  /// Start listening for voice input
+  /// Get available locales
+  Future<List<stt.LocaleName>> getAvailableLocales() async {
+    if (!await initialize()) {
+      return [];
+    }
+    return _speech.locales();
+  }
+
+  /// Start listening for voice input with automatic language fallback
   Future<String?> listen() async {
     if (!await initialize()) {
       return null;
@@ -37,14 +53,39 @@ class VoiceSearchService {
     try {
       _lastWords = '';
       _isListening = true;
+      _lastError = null;
+
+      // Get available locales
+      final locales = await getAvailableLocales();
+      debugPrint('🌐 Available locales: ${locales.map((l) => l.localeId).join(", ")}');
+
+      // Try to find Tamil or English locale
+      String? localeId;
+
+      // Priority: Tamil (India) > Tamil (any) > English (India) > English (any) > System default
+      if (locales.any((l) => l.localeId == 'ta_IN')) {
+        localeId = 'ta_IN';
+        debugPrint('✅ Using Tamil (India) locale');
+      } else if (locales.any((l) => l.localeId.startsWith('ta'))) {
+        localeId = locales.firstWhere((l) => l.localeId.startsWith('ta')).localeId;
+        debugPrint('✅ Using Tamil locale: $localeId');
+      } else if (locales.any((l) => l.localeId == 'en_IN')) {
+        localeId = 'en_IN';
+        debugPrint('⚠️ Tamil not available, using English (India)');
+      } else if (locales.any((l) => l.localeId.startsWith('en'))) {
+        localeId = locales.firstWhere((l) => l.localeId.startsWith('en')).localeId;
+        debugPrint('⚠️ Tamil not available, using English: $localeId');
+      }
 
       await _speech.listen(
         onResult: (result) {
           _lastWords = result.recognizedWords;
-          debugPrint('🎤 Recognized: $_lastWords');
+          debugPrint('🎤 Recognized: $_lastWords (confidence: ${result.confidence})');
         },
-        localeId: 'ta_IN', // Tamil (India) - primary language for recognition
+        localeId: localeId, // Use detected locale or system default
         listenMode: stt.ListenMode.confirmation,
+        cancelOnError: false,
+        partialResults: true,
       );
 
       // Wait for speech to complete
@@ -57,9 +98,15 @@ class VoiceSearchService {
       _isListening = false;
       debugPrint('🎤 Final text: $_lastWords');
 
-      return _lastWords.isNotEmpty ? _lastWords : null;
+      if (_lastWords.isEmpty) {
+        _lastError = 'No speech detected. Please try again.';
+        return null;
+      }
+
+      return _lastWords;
     } catch (e) {
-      debugPrint('❌ Error listening: $e');
+      _lastError = 'Error during speech recognition: $e';
+      debugPrint('❌ $_lastError');
       _isListening = false;
       return null;
     }
@@ -86,6 +133,12 @@ class VoiceSearchService {
       final aiResponse = await http.get(
         aiUrl,
         headers: {'Content-Type': 'application/json'},
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          debugPrint('⏱️ AI search timeout');
+          return http.Response('{"error": "timeout"}', 408);
+        },
       );
 
       debugPrint('📡 AI Search Response: ${aiResponse.statusCode}');
@@ -109,6 +162,12 @@ class VoiceSearchService {
       final searchResponse = await http.get(
         searchUrl,
         headers: {'Content-Type': 'application/json'},
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          debugPrint('⏱️ Regular search timeout');
+          return http.Response('{"error": "timeout"}', 408);
+        },
       );
 
       if (searchResponse.statusCode == 200) {
@@ -125,6 +184,7 @@ class VoiceSearchService {
       return [];
     } catch (e) {
       debugPrint('❌ Error calling search: $e');
+      _lastError = 'Network error: Unable to search products';
       return [];
     }
   }
@@ -135,6 +195,7 @@ class VoiceSearchService {
 
     if (query == null || query.trim().isEmpty) {
       debugPrint('⚠️ No voice input detected');
+      _lastError = _lastError ?? 'No voice input detected';
       return [];
     }
 
@@ -143,4 +204,8 @@ class VoiceSearchService {
 
   bool get isListening => _isListening;
   String get lastWords => _lastWords;
+  String? get lastError => _lastError;
+
+  /// Check if speech recognition is supported on device
+  bool get isAvailable => _speech.isAvailable;
 }
