@@ -82,6 +82,7 @@ public class GeminiSearchService {
      */
     private String buildSearchPrompt(String query, List<String> availableProducts) {
         StringBuilder prompt = new StringBuilder();
+        prompt.append("Language: Tamil (ta-IN) and English (en-IN)\n\n");
         prompt.append("You are a smart product search assistant for a grocery delivery app in India.\n\n");
         prompt.append("User's search query (may be in Tamil, English, or mixed): \"").append(query).append("\"\n\n");
 

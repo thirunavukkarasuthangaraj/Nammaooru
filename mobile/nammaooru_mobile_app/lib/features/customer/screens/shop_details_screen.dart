@@ -265,22 +265,6 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                               ),
                             ),
                           ),
-                          // Voice search icon - round white button
-                          Container(
-                            margin: const EdgeInsets.only(right: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                            ),
-                            child: IconButton(
-                              icon: const Icon(Icons.mic,
-                                  color: VillageTheme.primaryGreen, size: 22),
-                              onPressed: () {
-                                _showVoiceSearchDialog();
-                              },
-                              tooltip: 'AI Voice Search',
-                            ),
-                          ),
                           Consumer<CartProvider>(
                             builder: (context, cartProvider, child) {
                               return Row(
@@ -880,26 +864,41 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
           ),
         ],
       ),
-      child: TextField(
-        controller: _searchController,
-        decoration: InputDecoration(
-          hintText: 'பொருட்களைத் தேடுங்கள்',
-          hintStyle: TextStyle(color: Colors.grey[600]),
-          prefixIcon:
-              const Icon(Icons.search, color: VillageTheme.primaryGreen),
-          suffixIcon: _searchController.text.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.clear, color: Colors.grey),
-                  onPressed: () {
-                    _searchController.clear();
-                    _onSearchChanged();
-                  },
-                )
-              : null,
-          border: InputBorder.none,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        ),
+      child: Row(
+        children: [
+          // Voice search icon on the left
+          IconButton(
+            icon: const Icon(Icons.mic, color: VillageTheme.primaryGreen, size: 24),
+            onPressed: () {
+              _showVoiceSearchDialog();
+            },
+            tooltip: 'AI Voice Search',
+          ),
+          // Search text field
+          Expanded(
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'பொருட்களைத் தேடுங்கள்',
+                hintStyle: TextStyle(color: Colors.grey[600]),
+                prefixIcon:
+                    const Icon(Icons.search, color: VillageTheme.primaryGreen),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, color: Colors.grey),
+                        onPressed: () {
+                          _searchController.clear();
+                          _onSearchChanged();
+                        },
+                      )
+                    : null,
+                border: InputBorder.none,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1481,6 +1480,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
 
     showDialog(
       context: context,
+      barrierDismissible: false, // Prevent closing by tapping outside
       builder: (context) => StatefulBuilder(
         builder: (context, setState) {
           return Dialog(
@@ -1512,8 +1512,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                       IconButton(
                         icon: const Icon(Icons.close),
                         onPressed: () {
-                          searchController.dispose();
-                          Navigator.pop(context);
+                          Navigator.of(context).pop();
                         },
                       ),
                     ],
@@ -1521,49 +1520,57 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                   const SizedBox(height: 16),
 
                   // Text input - Always visible
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: TextField(
-                      controller: searchController,
-                      decoration: InputDecoration(
-                        hintText: 'Type product names (e.g., Sugar, Rice, Milk)',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        prefixIcon: const Icon(Icons.search),
+                  TextField(
+                    controller: searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Type product names (e.g., Sugar, Rice, Milk)',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      onSubmitted: (query) async {
-                        if (query.trim().isEmpty) return;
-
-                        setState(() {
-                          isSearching = true;
-                        });
-
-                        final results = await _voiceSearch.searchProducts(
-                            widget.shopId, query);
-
-                        setState(() {
-                          isSearching = false;
-                          voiceResults = results;
-                          searchQuery = query;
-                        });
-                      },
+                      prefixIcon: const Icon(Icons.search, color: Color(0xFF2E7D32)),
+                      suffixIcon: searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                setState(() {
+                                  searchController.clear();
+                                });
+                              },
+                            )
+                          : null,
                     ),
+                    onSubmitted: (query) async {
+                      if (query.trim().isEmpty) return;
+
+                      setState(() {
+                        isSearching = true;
+                      });
+
+                      final results = await _voiceSearch.searchProducts(
+                          widget.shopId, query);
+
+                      setState(() {
+                        isSearching = false;
+                        voiceResults = results;
+                        searchQuery = query;
+                      });
+                    },
                   ),
 
                   // Voice search button
                   if (!isSearching && voiceResults.isEmpty)
                     Column(
                       children: [
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 24),
                         const Text(
                           'OR',
                           style: TextStyle(
                             color: Colors.grey,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w500,
+                            fontSize: 12,
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 24),
                         Container(
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
@@ -1572,16 +1579,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                           padding: const EdgeInsets.all(32),
                           child: const Icon(
                             Icons.mic,
-                            size: 80,
+                            size: 64,
                             color: Color(0xFF2E7D32),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Voice search (Android/iOS only)',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey,
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -1608,22 +1607,45 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF2E7D32),
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 32, vertical: 16),
+                                horizontal: 32, vertical: 14),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
+                            elevation: 2,
                           ),
-                          icon: const Icon(Icons.mic, color: Colors.white),
+                          icon: const Icon(Icons.mic, color: Colors.white, size: 20),
                           label: const Text(
                             'Start Voice Search',
                             style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
                               color: Colors.white,
                             ),
                           ),
                         ),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(Icons.info_outline, size: 16, color: Colors.blue),
+                              SizedBox(width: 6),
+                              Text(
+                                'Voice search works on Android/iOS devices',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.blue,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
                       ],
                     ),
 
@@ -1696,9 +1718,12 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                                     product['isAvailable'] ??
                                     true;
 
-                                // Use LanguageProvider to get localized name
-                                final languageProvider = Provider.of<LanguageProvider>(context);
-                                final displayName = languageProvider.getDisplayName(product);
+                                // Prioritize Tamil name first
+                                final nameTamil = product['masterProduct']?['nameTamil'] ?? product['nameTamil'];
+                                final nameEnglish = product['displayName'] ?? product['name'] ?? product['masterProduct']?['name'];
+                                final displayName = nameTamil != null && nameTamil.toString().isNotEmpty
+                                    ? nameTamil.toString()
+                                    : nameEnglish?.toString() ?? 'Unknown';
 
                                 final displayDesc =
                                     product['displayDescription'] ??
@@ -1742,9 +1767,13 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                                   ),
                                   child: InkWell(
                                     onTap: () {
-                                      // Close dialog
-                                      Navigator.pop(context);
-                                      // Scroll to product or show details
+                                      // Keep dialog open, just show feedback
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Selected: $displayName'),
+                                          duration: const Duration(seconds: 1),
+                                        ),
+                                      );
                                     },
                                     child: Padding(
                                       padding: const EdgeInsets.all(12),
