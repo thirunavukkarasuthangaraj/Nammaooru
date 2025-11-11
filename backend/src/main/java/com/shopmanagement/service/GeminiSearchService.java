@@ -2,8 +2,9 @@ package com.shopmanagement.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.shopmanagement.config.GeminiConfig;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -11,31 +12,46 @@ import org.springframework.web.client.RestTemplate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 @Service
 public class GeminiSearchService {
 
-    @Value("${gemini.api-key}")
-    private String apiKey;
-
-    @Value("${gemini.model:gemini-1.5-flash}")
-    private String modelName;
-
-    @Value("${gemini.api-url:https://generativelanguage.googleapis.com/v1beta/models}")
-    private String apiUrl;
-
-    @Value("${gemini.enabled:true}")
-    private Boolean geminiEnabled;
+    private final GeminiConfig geminiConfig;
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    // Round-robin counter for API key rotation
+    private final AtomicInteger keyRotationCounter = new AtomicInteger(0);
+
+    @Autowired
+    public GeminiSearchService(GeminiConfig geminiConfig) {
+        this.geminiConfig = geminiConfig;
+    }
+
+    /**
+     * Get next API key using round-robin rotation
+     */
+    private String getNextApiKey() {
+        List<String> apiKeys = geminiConfig.getApiKeys();
+        if (apiKeys == null || apiKeys.isEmpty()) {
+            throw new IllegalStateException("No Gemini API keys configured");
+        }
+
+        int index = keyRotationCounter.getAndIncrement() % apiKeys.size();
+        String key = apiKeys.get(index);
+
+        log.debug("🔄 Using API key #{} (Total keys: {})", index + 1, apiKeys.size());
+        return key;
+    }
 
     /**
      * Use Gemini AI to enhance product search with Tamil + English understanding
      */
     public List<String> enhanceSearchQuery(String query, List<String> availableProducts) {
-        if (!geminiEnabled || query == null || query.trim().isEmpty()) {
+        if (!geminiConfig.getEnabled() || query == null || query.trim().isEmpty()) {
             return List.of(query);
         }
 
@@ -88,11 +104,15 @@ public class GeminiSearchService {
     }
 
     /**
-     * Call Gemini 1.5 Flash API using REST
+     * Call Gemini 1.5 Flash API using REST with automatic API key rotation
      */
     private String callGeminiAPI(String prompt) {
+        // Get next API key using round-robin
+        String currentApiKey = getNextApiKey();
+
         try {
-            String url = String.format("%s/%s:generateContent?key=%s", apiUrl, modelName, apiKey);
+            String url = String.format("%s/%s:generateContent?key=%s",
+                geminiConfig.getApiUrl(), geminiConfig.getModel(), currentApiKey);
 
             // Build request body
             Map<String, Object> requestBody = Map.of(
@@ -108,7 +128,7 @@ public class GeminiSearchService {
 
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
-            log.debug("Calling Gemini API: {}", url);
+            log.debug("Calling Gemini API with rotated key");
 
             ResponseEntity<String> response = restTemplate.exchange(
                 url,
@@ -125,7 +145,7 @@ public class GeminiSearchService {
                 JsonNode content = candidates.get(0).path("content").path("parts");
                 if (content.isArray() && content.size() > 0) {
                     String responseText = content.get(0).path("text").asText();
-                    log.debug("Gemini API Response: {}", responseText);
+                    log.debug("✅ Gemini API Response received");
                     return responseText;
                 }
             }
@@ -134,7 +154,7 @@ public class GeminiSearchService {
             return "";
 
         } catch (Exception e) {
-            log.error("Error calling Gemini API: {}", e.getMessage(), e);
+            log.error("❌ Error calling Gemini API: {}", e.getMessage());
             throw new RuntimeException("Failed to call Gemini API", e);
         }
     }
@@ -168,6 +188,20 @@ public class GeminiSearchService {
      * Check if Gemini AI is enabled
      */
     public boolean isEnabled() {
-        return geminiEnabled;
+        return geminiConfig.getEnabled();
+    }
+
+    /**
+     * Get API key configuration info for monitoring
+     */
+    public Map<String, Object> getApiKeyInfo() {
+        List<String> apiKeys = geminiConfig.getApiKeys();
+        return Map.of(
+            "totalKeys", apiKeys != null ? apiKeys.size() : 0,
+            "currentKeyIndex", keyRotationCounter.get() % (apiKeys != null && !apiKeys.isEmpty() ? apiKeys.size() : 1),
+            "perKeyRpm", geminiConfig.getRateLimit() != null ? geminiConfig.getRateLimit().getPerKeyRpm() : 15,
+            "totalRpm", geminiConfig.getRateLimit() != null ? geminiConfig.getRateLimit().getTotalRpm() : 60,
+            "enabled", geminiConfig.getEnabled()
+        );
     }
 }

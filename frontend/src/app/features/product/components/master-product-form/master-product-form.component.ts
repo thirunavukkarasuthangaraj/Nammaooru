@@ -1007,6 +1007,7 @@ export class MasterProductFormComponent implements OnInit {
     
     const request: MasterProductRequest = {
       name: formValue.name,
+      nameTamil: formValue.nameTamil || undefined,
       description: formValue.description || undefined,
       sku: formValue.sku,
       barcode: formValue.barcode || undefined,

@@ -10,6 +10,7 @@ import '../../../core/services/cache_service.dart';
 import '../../../core/storage/local_storage.dart';
 import '../../../shared/widgets/language_selector.dart';
 import '../../../core/api/api_client.dart';
+import '../../../shared/services/location_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -48,6 +49,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // Fetch real user data from API
       try {
         final response = await ApiClient.get('/users/me');
+        int orderCount = 0;
+
+        // Fetch order count
+        try {
+          final ordersResponse = await ApiClient.get('/customer/orders');
+          if (ordersResponse.statusCode == 200) {
+            final ordersData = ordersResponse.data;
+            if (ordersData is Map<String, dynamic>) {
+              final orders = ordersData['data'];
+              if (orders is Map<String, dynamic>) {
+                orderCount = orders['totalElements'] ?? 0;
+              } else if (orders is List) {
+                orderCount = orders.length;
+              }
+            }
+          }
+        } catch (e) {
+          print('Error fetching order count: $e');
+        }
 
         if (response.statusCode == 200) {
           final responseData = response.data;
@@ -59,6 +79,101 @@ class _ProfileScreenState extends State<ProfileScreen> {
               // Cache the user data
               await LocalStorage.setMap('user_profile', userData);
 
+              // Fetch user's addresses to get location
+              String userLocation = 'Not set';
+              String userAddress = 'No address added';
+
+              try {
+                final addressesResponse = await ApiClient.get('/customer/delivery-locations');
+                if (addressesResponse.statusCode == 200) {
+                  final addressData = addressesResponse.data;
+
+                  if (addressData is Map<String, dynamic>) {
+                    final addresses = addressData['data'];
+
+                    if (addresses is List && addresses.isNotEmpty) {
+                      // Find default address or use first address
+                      final defaultAddress = addresses.firstWhere(
+                        (addr) => addr['isDefault'] == true,
+                        orElse: () => addresses[0],
+                      );
+
+                      // Get location from Google reverse geocoding using lat/lng
+                      final latitude = defaultAddress['latitude'];
+                      final longitude = defaultAddress['longitude'];
+
+                      if (latitude != null && longitude != null) {
+                        try {
+                          final placemarks = await LocationService.getAddressFromCoordinates(
+                            latitude.toDouble(),
+                            longitude.toDouble(),
+                          );
+
+                          if (placemarks.isNotEmpty) {
+                            final placemark = placemarks.first;
+                            // Use subLocality (village), locality (city/town), and administrativeArea (state) from Google
+                            final village = placemark.subLocality ?? '';
+                            final city = placemark.locality ?? placemark.subAdministrativeArea ?? '';
+                            final state = placemark.administrativeArea ?? '';
+
+                            // Build location string: Village, City format or City, State format
+                            if (village.isNotEmpty && city.isNotEmpty) {
+                              userLocation = '$village, $city';
+                            } else if (city.isNotEmpty && state.isNotEmpty) {
+                              userLocation = '$city, $state';
+                            } else if (city.isNotEmpty) {
+                              userLocation = city;
+                            } else if (village.isNotEmpty) {
+                              userLocation = village;
+                            } else if (state.isNotEmpty) {
+                              userLocation = state;
+                            }
+                          }
+                        } catch (e) {
+                          print('Error getting location from coordinates: $e');
+                          // Fallback to manually entered city/state if geocoding fails
+                          final city = defaultAddress['city'] ?? '';
+                          final state = defaultAddress['state'] ?? '';
+                          if (city.isNotEmpty && state.isNotEmpty) {
+                            userLocation = '$city, $state';
+                          } else if (city.isNotEmpty) {
+                            userLocation = city;
+                          } else if (state.isNotEmpty) {
+                            userLocation = state;
+                          }
+                        }
+                      } else {
+                        // No coordinates, use manually entered city/state
+                        final city = defaultAddress['city'] ?? '';
+                        final state = defaultAddress['state'] ?? '';
+                        if (city.isNotEmpty && state.isNotEmpty) {
+                          userLocation = '$city, $state';
+                        } else if (city.isNotEmpty) {
+                          userLocation = city;
+                        } else if (state.isNotEmpty) {
+                          userLocation = state;
+                        }
+                      }
+
+                      // Build full address string
+                      final area = defaultAddress['area'] ?? '';
+                      final landmark = defaultAddress['landmark'] ?? '';
+
+                      if (area.isNotEmpty) {
+                        userAddress = area;
+                        if (landmark.isNotEmpty) {
+                          userAddress += ', $landmark';
+                        }
+                      } else if (landmark.isNotEmpty) {
+                        userAddress = landmark;
+                      }
+                    }
+                  }
+                }
+              } catch (e) {
+                print('Error fetching addresses: $e');
+              }
+
               setState(() {
                 _userInfo = {
                   'userId': userData['id']?.toString() ?? 'N/A',
@@ -67,12 +182,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   'name': '${userData['firstName'] ?? ''} ${userData['lastName'] ?? ''}',
                   'phoneNumber': userData['mobileNumber'] ?? 'N/A',
                   'username': userData['username'] ?? 'N/A',
-                  'address': 'Chennai, Tamil Nadu', // Default for now
+                  'address': userAddress,
                   'isAuthenticated': true,
                   'loginTime': DateTime.now().toString(),
                   'accountCreated': userData['createdAt'] ?? 'N/A',
-                  'location': 'Chennai, Tamil Nadu',
-                  'totalOrders': '0', // TODO: Get from orders API
+                  'location': userLocation,
+                  'totalOrders': orderCount.toString(),
                   'membershipType': userData['role'] == 'SHOP_OWNER' ? 'Shop Owner' : 'Customer',
                   'appVersion': '1.0.0',
                   'lastLogin': userData['lastLoginAt'] ?? 'Just now',
@@ -423,16 +538,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       'Account Actions',
       Icons.settings_outlined,
       [
-        _buildActionRow('Edit Profile', Icons.edit_outlined, () {
-          // TODO: Implement edit profile
-          Helpers.showSnackBar(context, 'Edit profile feature coming soon!');
-        }),
         _buildActionRow('Manage Addresses', Icons.location_on_outlined, () {
           context.push('/customer/addresses');
-        }),
-        _buildActionRow('Notification Settings', Icons.notifications_outlined, () {
-          // TODO: Implement notification settings
-          Helpers.showSnackBar(context, 'Notification settings coming soon!');
         }),
       ],
     );

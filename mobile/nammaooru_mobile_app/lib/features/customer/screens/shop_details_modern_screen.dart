@@ -1079,14 +1079,15 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
   }
 
   void _showVoiceSearchDialog() {
+    List<dynamic> voiceResults = [];
+    bool isSearching = false;
+    String? searchQuery;
+    final TextEditingController searchController = TextEditingController();
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) {
-          List<dynamic> voiceResults = [];
-          bool isSearching = false;
-          String? searchQuery;
-
           return Dialog(
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
@@ -1113,17 +1114,59 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
                       const Spacer(),
                       IconButton(
                         icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () {
+                          searchController.dispose();
+                          Navigator.pop(context);
+                        },
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
 
+                  // Text input - Always visible
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: TextField(
+                      controller: searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Type product names (e.g., Sugar, Rice, Milk)',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        prefixIcon: const Icon(Icons.search),
+                      ),
+                      onSubmitted: (query) async {
+                        if (query.trim().isEmpty) return;
+
+                        setState(() {
+                          isSearching = true;
+                        });
+
+                        final results = await _voiceSearch.searchProducts(
+                            widget.shopId, query);
+
+                        setState(() {
+                          isSearching = false;
+                          voiceResults = results;
+                          searchQuery = query;
+                        });
+                      },
+                    ),
+                  ),
+
                   // Voice search button
                   if (!isSearching && voiceResults.isEmpty)
                     Column(
                       children: [
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'OR',
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
                         Container(
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
@@ -1158,6 +1201,10 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
                               isSearching = false;
                               voiceResults = results;
                               searchQuery = query;
+                              // Update the text field with voice search query
+                              if (query != null && query.isNotEmpty) {
+                                searchController.text = query;
+                              }
                             });
                           },
                           style: ElevatedButton.styleFrom(

@@ -86,6 +86,7 @@ public class MasterProductService {
         // Create master product
         MasterProduct product = MasterProduct.builder()
                 .name(request.getName())
+                .nameTamil(request.getNameTamil())
                 .description(request.getDescription())
                 .sku(sku)
                 .barcode(request.getBarcode())
@@ -139,6 +140,7 @@ public class MasterProductService {
         
         // Update fields
         product.setName(request.getName());
+        product.setNameTamil(request.getNameTamil());
         product.setDescription(request.getDescription());
         product.setSku(request.getSku());
         product.setBarcode(request.getBarcode());

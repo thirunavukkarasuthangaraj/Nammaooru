@@ -62,4 +62,52 @@ class LanguageProvider extends ChangeNotifier {
 
     return product['displayName']?.toString() ?? '';
   }
+
+  // Get order status display text based on language preference
+  String getOrderStatus(String status) {
+    if (_showTamil) {
+      switch (status.toUpperCase()) {
+        case 'PENDING':
+          return 'ஆர்டர் செய்யப்பட்டது';
+        case 'CONFIRMED':
+          return 'உறுதி செய்யப்பட்டது';
+        case 'PREPARING':
+          return 'தயாரிக்கப்படுகிறது';
+        case 'READY_FOR_PICKUP':
+          return 'எடுத்துச் செல்ல தயார்';
+        case 'OUT_FOR_DELIVERY':
+          return 'டெலிவரி செய்யப்படுகிறது';
+        case 'DELIVERED':
+          return 'டெலிவரி செய்யப்பட்டது';
+        case 'CANCELLED':
+          return 'ரத்து செய்யப்பட்டது';
+        case 'REFUNDED':
+          return 'பணம் திருப்பித் தரப்பட்டது';
+        default:
+          return status;
+      }
+    } else {
+      // English text
+      switch (status.toUpperCase()) {
+        case 'PENDING':
+          return 'Order Placed';
+        case 'CONFIRMED':
+          return 'Confirmed';
+        case 'PREPARING':
+          return 'Being Prepared';
+        case 'READY_FOR_PICKUP':
+          return 'Ready for Pickup';
+        case 'OUT_FOR_DELIVERY':
+          return 'Out for Delivery';
+        case 'DELIVERED':
+          return 'Delivered';
+        case 'CANCELLED':
+          return 'Cancelled';
+        case 'REFUNDED':
+          return 'Refunded';
+        default:
+          return status;
+      }
+    }
+  }
 }

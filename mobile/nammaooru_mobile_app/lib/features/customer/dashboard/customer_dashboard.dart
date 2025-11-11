@@ -91,7 +91,17 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
 
         if (address != null && mounted) {
           setState(() {
-            _selectedLocation = '${address['locality'] ?? ''}, ${address['administrativeArea'] ?? ''}';
+            // Include village/subLocality if available
+            final village = address['subLocality'] ?? '';
+            final city = address['locality'] ?? '';
+
+            if (village.isNotEmpty && city.isNotEmpty) {
+              _selectedLocation = '$village, $city';
+            } else if (city.isNotEmpty) {
+              _selectedLocation = '$city, ${address['administrativeArea'] ?? ''}';
+            } else {
+              _selectedLocation = 'Tirupattur, Tamil Nadu'; // Fallback
+            }
           });
         }
       }

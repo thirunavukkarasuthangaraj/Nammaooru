@@ -1477,6 +1477,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     List<dynamic> voiceResults = [];
     bool isSearching = false;
     String? searchQuery;
+    final TextEditingController searchController = TextEditingController();
 
     showDialog(
       context: context,
@@ -1510,54 +1511,50 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                       const Spacer(),
                       IconButton(
                         icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () {
+                          searchController.dispose();
+                          Navigator.pop(context);
+                        },
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
 
+                  // Text input - Always visible
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: TextField(
+                      controller: searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Type product names (e.g., Sugar, Rice, Milk)',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        prefixIcon: const Icon(Icons.search),
+                      ),
+                      onSubmitted: (query) async {
+                        if (query.trim().isEmpty) return;
+
+                        setState(() {
+                          isSearching = true;
+                        });
+
+                        final results = await _voiceSearch.searchProducts(
+                            widget.shopId, query);
+
+                        setState(() {
+                          isSearching = false;
+                          voiceResults = results;
+                          searchQuery = query;
+                        });
+                      },
+                    ),
+                  ),
+
                   // Voice search button
                   if (!isSearching && voiceResults.isEmpty)
                     Column(
                       children: [
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Search for products',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        // Text input for web testing
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
-                          child: TextField(
-                            decoration: InputDecoration(
-                              hintText: 'Type product name (e.g., Sugar)',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              prefixIcon: const Icon(Icons.search),
-                            ),
-                            onSubmitted: (query) async {
-                              if (query.trim().isEmpty) return;
-
-                              setState(() {
-                                isSearching = true;
-                              });
-
-                              final results = await _voiceSearch.searchProducts(
-                                  widget.shopId, query);
-
-                              setState(() {
-                                isSearching = false;
-                                voiceResults = results;
-                                searchQuery = query;
-                              });
-                            },
-                          ),
-                        ),
                         const SizedBox(height: 16),
                         const Text(
                           'OR',
@@ -1602,6 +1599,10 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                               isSearching = false;
                               voiceResults = results;
                               searchQuery = query;
+                              // Update the text field with voice search query
+                              if (query != null && query.isNotEmpty) {
+                                searchController.text = query;
+                              }
                             });
                           },
                           style: ElevatedButton.styleFrom(
@@ -1751,38 +1752,69 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          // Product Image
-                                          ClipRRect(
-                                            borderRadius:
-                                                BorderRadius.circular(8),
-                                            child: fullImageUrl != null
-                                                ? Image.network(
-                                                    fullImageUrl,
-                                                    width: 80,
-                                                    height: 80,
-                                                    fit: BoxFit.cover,
-                                                    errorBuilder: (context,
-                                                            error,
-                                                            stackTrace) =>
-                                                        Container(
-                                                      width: 80,
-                                                      height: 80,
-                                                      color: Colors.grey[200],
-                                                      child: const Icon(
-                                                          Icons.image,
-                                                          color: Colors.grey,
-                                                          size: 40),
+                                          // Product Image with discount badge
+                                          Stack(
+                                            children: [
+                                              ClipRRect(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                child: fullImageUrl != null
+                                                    ? Image.network(
+                                                        fullImageUrl,
+                                                        width: 80,
+                                                        height: 80,
+                                                        fit: BoxFit.cover,
+                                                        errorBuilder: (context,
+                                                                error,
+                                                                stackTrace) =>
+                                                            Container(
+                                                          width: 80,
+                                                          height: 80,
+                                                          color: Colors.grey[200],
+                                                          child: const Icon(
+                                                              Icons.image,
+                                                              color: Colors.grey,
+                                                              size: 40),
+                                                        ),
+                                                      )
+                                                    : Container(
+                                                        width: 80,
+                                                        height: 80,
+                                                        color: Colors.grey[200],
+                                                        child: const Icon(
+                                                            Icons.image,
+                                                            color: Colors.grey,
+                                                            size: 40),
+                                                      ),
+                                              ),
+                                              // Discount badge
+                                              if (discountPercent != null && discountPercent > 0)
+                                                Positioned(
+                                                  top: 0,
+                                                  left: 0,
+                                                  child: Container(
+                                                    padding: const EdgeInsets.symmetric(
+                                                      horizontal: 6,
+                                                      vertical: 2,
                                                     ),
-                                                  )
-                                                : Container(
-                                                    width: 80,
-                                                    height: 80,
-                                                    color: Colors.grey[200],
-                                                    child: const Icon(
-                                                        Icons.image,
-                                                        color: Colors.grey,
-                                                        size: 40),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.red,
+                                                      borderRadius: BorderRadius.only(
+                                                        topLeft: Radius.circular(8),
+                                                        bottomRight: Radius.circular(8),
+                                                      ),
+                                                    ),
+                                                    child: Text(
+                                                      '$discountPercent% OFF',
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 10,
+                                                        fontWeight: FontWeight.bold,
+                                                      ),
+                                                    ),
                                                   ),
+                                                ),
+                                            ],
                                           ),
                                           const SizedBox(width: 12),
 

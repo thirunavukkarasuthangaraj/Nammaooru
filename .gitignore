@@ -1,5 +1,10 @@
 backend/src/main/resources/firebase-service-account.json
 
+# Environment files (contains API keys and secrets)
+.env
+backend/.env
+**/.env
+
 # Root level documentation and temporary files
 /*.md
 /*.txt

@@ -5,6 +5,7 @@ import '../../../core/models/order_model.dart';
 import '../../../core/services/order_service.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/theme/village_theme.dart';
+import '../../../core/providers/language_provider.dart';
 import 'order_details_screen.dart';
 import '../orders/order_tracking_screen.dart';
 
@@ -183,15 +184,54 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
     );
   }
 
+  String _getTabLabel(String key, bool isTamil) {
+    if (isTamil) {
+      switch (key) {
+        case '':
+          return 'அனைத்தும்';
+        case 'PENDING':
+          return 'நிலுவையில்';
+        case 'PREPARING':
+          return 'தயாரிக்கப்படுகிறது';
+        case 'OUT_FOR_DELIVERY':
+          return 'டெலிவரி';
+        case 'DELIVERED':
+          return 'டெலிவரி ஆனது';
+        default:
+          return key;
+      }
+    } else {
+      switch (key) {
+        case '':
+          return 'All';
+        case 'PENDING':
+          return 'Pending';
+        case 'PREPARING':
+          return 'Preparing';
+        case 'OUT_FOR_DELIVERY':
+          return 'Delivering';
+        case 'DELIVERED':
+          return 'Delivered';
+        default:
+          return key;
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
+    final languageProvider = Provider.of<LanguageProvider>(context);
 
     // Show login prompt for guest users
     if (!authProvider.isAuthenticated) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('My Orders', maxLines: 1, overflow: TextOverflow.ellipsis),
+          title: Text(
+            languageProvider.showTamil ? 'எனது ஆர்டர்கள்' : 'My Orders',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
           backgroundColor: Colors.green.shade700,
           foregroundColor: Colors.white,
         ),
@@ -201,7 +241,11 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Orders', maxLines: 1, overflow: TextOverflow.ellipsis),
+        title: Text(
+          languageProvider.showTamil ? 'எனது ஆர்டர்கள்' : 'My Orders',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
         backgroundColor: Colors.green.shade700,
         foregroundColor: Colors.white,
         bottom: TabBar(
@@ -213,7 +257,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
           labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
           unselectedLabelStyle: const TextStyle(fontSize: 12),
           padding: const EdgeInsets.symmetric(horizontal: 8),
-          tabs: _orderTabs.map((tab) => Tab(text: tab['label'])).toList(),
+          tabs: _orderTabs.map((tab) => Tab(text: _getTabLabel(tab['key']!, languageProvider.showTamil))).toList(),
         ),
       ),
       body: _isLoading && _ordersResponse.orders.isEmpty
@@ -563,6 +607,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
   }
 
   Widget _buildStatusChip(Order order) {
+    final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
     Color backgroundColor;
     Color textColor = Colors.white;
 
@@ -593,7 +638,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
         borderRadius: BorderRadius.circular(10),
       ),
       child: Text(
-        order.statusDisplayText,
+        languageProvider.getOrderStatus(order.status),
         style: TextStyle(
           color: textColor,
           fontSize: 10,
