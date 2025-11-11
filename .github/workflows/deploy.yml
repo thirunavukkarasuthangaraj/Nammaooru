@@ -15,10 +15,21 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
+
+    - name: Copy source files to server
+      uses: appleboy/scp-action@v0.1.4
+      with:
+        host: ${{ secrets.HETZNER_HOST }}
+        username: ${{ secrets.HETZNER_USER }}
+        password: ${{ secrets.HETZNER_PASSWORD }}
+        source: "backend/,frontend/,docker-compose.yml,nginx/"
+        target: "/opt/shop-management/"
+        strip_components: 0
+        overwrite: true
 
     - name: Deploy to server
       uses: appleboy/ssh-action@v0.1.5
@@ -32,27 +43,15 @@ jobs:
           cd /opt/shop-management
           pwd
           ls -la
-          
-          # Clone/update repository
-          echo "=== STEP 2: Update repository ==="
-          if [ ! -d "shop-management-system" ]; then
-            echo "Cloning repository..."
-            git clone https://github.com/thirunavukkarasuthangaraj/Nammaooru.git shop-management-system
-          else
-            echo "Updating existing repository..."
-            cd shop-management-system && git fetch origin && git reset --hard origin/main && git pull origin main && cd ..
-          fi
-          
-          echo "Repository status:"
-          cd shop-management-system && git log --oneline -3 && cd ..
-          
-          # Copy source files (remove old ones first)
-          echo "=== STEP 3: Copy fresh source files ==="
-          rm -rf backend frontend docker-compose.yml nginx 2>/dev/null || true
-          cp -r shop-management-system/backend ./
-          cp -r shop-management-system/frontend ./
-          cp shop-management-system/docker-compose.yml ./
-          cp -r shop-management-system/nginx ./
+
+          # Verify files were copied
+          echo "=== STEP 2: Verify source files ==="
+          echo "Backend version from copied files:"
+          grep '<version>' backend/pom.xml | head -2 | tail -1 || echo "No backend version found"
+          echo "Frontend version from copied files:"
+          grep '"version"' frontend/package.json || echo "No frontend version found"
+
+          # No git clone/pull needed - files are copied via SCP above
 
           # Check Firebase configuration (DO NOT overwrite existing files)
           echo "=== STEP 3.2: Check Firebase configuration ==="
@@ -90,13 +89,11 @@ jobs:
           nginx -t && systemctl reload nginx
           echo "Nginx configurations updated and reloaded!"
 
-          echo "Files copied. Verifying latest code versions:"
-          echo "Backend version from copied files:"
+          echo "Verifying latest code versions:"
+          echo "Backend version:"
           grep '<version>' backend/pom.xml | head -2 | tail -1 || echo "No backend version found"
-          echo "Frontend version from copied files:"
+          echo "Frontend version:"
           grep '"version"' frontend/package.json || echo "No frontend version found"
-          echo "Checking for test update text in login component:"
-          grep -i "TEST UPDATE" frontend/src/app/features/auth/login/login.component.html || echo "Test update text not found"
           
           # Stop existing containers (check both locations)
           echo "=== STEP 4: Stop existing containers ==="
@@ -213,8 +210,8 @@ jobs:
           curl -f http://localhost:8082/api/version 2>&1 || echo "Version endpoint failed"
           
           echo "Deployment summary:"
-          echo "Frontend version: $(cat shop-management-system/frontend/package.json | grep version | head -1 | cut -d '"' -f 4)"
-          echo "Backend version: $(cat shop-management-system/backend/pom.xml | grep -m1 '<version>' | sed 's/.*<version>\(.*\)<\/version>.*/\1/')"
+          echo "Frontend version: $(cat frontend/package.json | grep version | head -1 | cut -d '"' -f 4)"
+          echo "Backend version: $(cat backend/pom.xml | grep -m1 '<version>' | sed 's/.*<version>\(.*\)<\/version>.*/\1/')"
 
           echo "=== DEPLOYMENT COMPLETE - Check logs above for issues ==="
           
