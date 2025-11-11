@@ -23,6 +23,13 @@ services:
       # - APP_CORS_ALLOWED_METHODS=GET,POST,PUT,DELETE,OPTIONS
       # - APP_CORS_ALLOWED_HEADERS=*
       # - APP_CORS_ALLOW_CREDENTIALS=true
+      # Gemini AI Configuration
+      - GEMINI_ENABLED=${GEMINI_ENABLED:-true}
+      - GEMINI_API_KEY_1=${GEMINI_API_KEY_1}
+      - GEMINI_API_KEY_2=${GEMINI_API_KEY_2}
+      - GEMINI_API_KEY_3=${GEMINI_API_KEY_3}
+      - GEMINI_API_KEY_4=${GEMINI_API_KEY_4}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-1.5-flash}
     ports:
       - "0.0.0.0:8082:8080"
     volumes:
