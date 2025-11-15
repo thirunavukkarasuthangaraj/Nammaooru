@@ -82,24 +82,48 @@ public class GeminiSearchService {
      */
     private String buildSearchPrompt(String query, List<String> availableProducts) {
         StringBuilder prompt = new StringBuilder();
-        prompt.append("Language: Tamil (ta-IN) and English (en-IN)\n\n");
-        prompt.append("You are a smart product search assistant for a grocery delivery app in India.\n\n");
-        prompt.append("User's search query (may be in Tamil, English, or mixed): \"").append(query).append("\"\n\n");
+        prompt.append("You are a smart product search assistant for a grocery delivery app in Tamil Nadu, India.\n\n");
 
-        prompt.append("Available products in the shop:\n");
-        for (int i = 0; i < Math.min(availableProducts.size(), 50); i++) {
-            prompt.append("- ").append(availableProducts.get(i)).append("\n");
+        prompt.append("User's search query: \"").append(query).append("\"\n");
+        prompt.append("(Query may be in Tamil script, Tamil transliteration in English, or English)\n\n");
+
+        prompt.append("Available products (format: \"EnglishName | தமிழ்பெயர்\"):\n");
+        for (int i = 0; i < Math.min(availableProducts.size(), 100); i++) {
+            prompt.append((i+1)).append(". ").append(availableProducts.get(i)).append("\n");
         }
 
-        prompt.append("\nTask: Find all products that match the user's query. Consider:\n");
-        prompt.append("1. Tamil and English synonyms (e.g., 'rice' = 'அரிசி', 'sugar' = 'சர்க்கரை')\n");
-        prompt.append("2. Phonetic transliteration (e.g., 'sarkari' or 'sarkarai' = 'சர்க்கரை' = 'sugar', 'arisi' = 'அரிசி' = 'rice')\n");
-        prompt.append("3. Product categories (e.g., 'breakfast items' includes 'idli batter', 'dosa batter')\n");
-        prompt.append("4. Common variations (e.g., 'milk' matches 'Fresh Milk', 'Cow Milk', 'Buffalo Milk')\n");
-        prompt.append("5. Partial matches (e.g., 'toma' matches 'Tomatoes')\n\n");
+        prompt.append("\n=== IMPORTANT MATCHING RULES ===\n");
+        prompt.append("1. Tamil Transliterations:\n");
+        prompt.append("   - 'arisi', 'arasi', 'arasee' → அரிசி (rice)\n");
+        prompt.append("   - 'sarkari', 'sarkarai', 'sakkarai' → சர்க்கரை (sugar)\n");
+        prompt.append("   - 'pal', 'paal' → பால் (milk)\n");
+        prompt.append("   - 'thakkali', 'tomato' → தக்காளி (tomato)\n");
+        prompt.append("   - 'vengayam', 'onion' → வெங்காயம் (onion)\n\n");
 
-        prompt.append("Return ONLY the matching product names, one per line, exactly as they appear in the available products list.\n");
-        prompt.append("If no matches found, return the word 'NONE'.");
+        prompt.append("2. Product Type Matching:\n");
+        prompt.append("   - If query is about rice/அரிசி, ONLY match rice products (பாஸ்மதி அரிசி, இட்லி அரிசி, etc.)\n");
+        prompt.append("   - If query is about coffee, ONLY match coffee products (BRU, Nescafe, etc.)\n");
+        prompt.append("   - DO NOT match unrelated products - be STRICT about product type\n\n");
+
+        prompt.append("3. Matching Priority:\n");
+        prompt.append("   a. Exact Tamil name match (அரிசி matches அரிசி)\n");
+        prompt.append("   b. Tamil transliteration match (arisi/arasi matches அரிசி)\n");
+        prompt.append("   c. English synonym match (rice matches அரிசி)\n");
+        prompt.append("   d. Partial product name match (தக்காளி matches முழு தக்காளி)\n\n");
+
+        prompt.append("4. Return Format:\n");
+        prompt.append("   - Return ONLY products from the numbered list above\n");
+        prompt.append("   - Return product names EXACTLY as shown (with | separator if present)\n");
+        prompt.append("   - One product per line\n");
+        prompt.append("   - If NO match found, return 'NONE'\n\n");
+
+        prompt.append("Example:\n");
+        prompt.append("Query: 'arisi' → Return: 'Basmati Rice | பாஸ்மதி அரிசி'\n");
+        prompt.append("Query: 'coffee' → Return: 'BRU Coffee | பிரூ காபி'\n");
+        prompt.append("Query: 'தக்காளி' → Return: 'Tomato | தக்காளி'\n\n");
+
+        prompt.append("Your task: Find ALL products that match the query \"").append(query).append("\".\n");
+        prompt.append("Remember: Be STRICT - only return products that are truly related to the query.");
 
         return prompt.toString();
     }
