@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:ui';
 import '../providers/forgot_password_provider.dart';
+import '../../../core/providers/auth_provider.dart';
+import '../../../core/models/auth_models.dart';
 import 'dart:async';
 
 class ForgotPasswordScreen extends StatefulWidget {
@@ -751,18 +753,42 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         _otpController.text.trim(),
         _passwordController.text,
       );
-      
+
       if (mounted) {
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Password updated successfully!'),
+              content: Text('Password updated successfully! Logging you in...'),
               backgroundColor: Color(0xFF4CAF50),
               duration: Duration(seconds: 2),
             ),
           );
-          // Navigate to customer dashboard after successful password reset
-          context.go('/customer/dashboard');
+
+          // Auto-login after successful password reset
+          final authProvider = Provider.of<AuthProvider>(context, listen: false);
+          final loginRequest = LoginRequest(
+            username: provider.email,
+            password: _passwordController.text,
+          );
+          final loginSuccess = await authProvider.login(loginRequest);
+
+          if (loginSuccess) {
+            // Navigate to customer dashboard after auto-login
+            if (mounted) {
+              context.go('/customer/dashboard');
+            }
+          } else {
+            // If auto-login fails, redirect to login screen
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Please login with your new password'),
+                  backgroundColor: Color(0xFFFF9800),
+                ),
+              );
+              context.go('/login');
+            }
+          }
         }
       }
     }

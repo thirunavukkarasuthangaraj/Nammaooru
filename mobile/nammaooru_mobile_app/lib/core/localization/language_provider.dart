@@ -136,4 +136,26 @@ class LanguageProvider with ChangeNotifier {
   String get privacyPolicy => getText('Privacy Policy', 'தனியுரிமை கொள்கை');
   String get agreeToTerms => getText('I agree to the', 'நான் ஒப்புக்கொள்கிறேன்');
   String get and => getText('and', 'மற்றும்');
+
+  // Order status translations
+  String getOrderStatus(String status) {
+    switch (status) {
+      case 'PENDING':
+        return getText('Pending', 'நிலுவையில்');
+      case 'CONFIRMED':
+        return getText('Confirmed', 'உறுதிப்படுத்தப்பட்டது');
+      case 'PREPARING':
+        return getText('Preparing', 'தயாரிக்கப்படுகிறது');
+      case 'READY_FOR_PICKUP':
+        return getText('Ready for Pickup', 'எடுத்துச் செல்ல தயார்');
+      case 'OUT_FOR_DELIVERY':
+        return getText('Out for Delivery', 'விநியோகத்திற்காக');
+      case 'DELIVERED':
+        return getText('Delivered', 'வழங்கப்பட்டது');
+      case 'CANCELLED':
+        return getText('Cancelled', 'ரத்து செய்யப்பட்டது');
+      default:
+        return status;
+    }
+  }
 }

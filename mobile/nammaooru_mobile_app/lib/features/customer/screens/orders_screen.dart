@@ -5,7 +5,7 @@ import '../../../core/models/order_model.dart';
 import '../../../core/services/order_service.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/theme/village_theme.dart';
-import '../../../core/providers/language_provider.dart';
+import '../../../core/localization/language_provider.dart';
 import 'order_details_screen.dart';
 import '../orders/order_tracking_screen.dart';
 

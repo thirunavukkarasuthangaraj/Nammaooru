@@ -59,13 +59,6 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     _searchController.addListener(_onSearchChanged);
   }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    _scrollController.dispose();
-    super.dispose();
-  }
-
   Future<void> _loadCategories() async {
     setState(() {
       _isLoadingCategories = true;
@@ -105,6 +98,13 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
         // Continue with empty categories - not critical
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadShopDetails() async {
@@ -240,12 +240,11 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                     Container(
                       height: kToolbarHeight,
                       color: VillageTheme.primaryGreen,
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: Row(
                         children: [
                           IconButton(
-                            icon: const Icon(Icons.arrow_back,
-                                color: Colors.white, size: 24),
+                            icon: const Icon(Icons.arrow_back_ios,
+                                color: Colors.white, size: 22),
                             onPressed: () {
                               if (context.canPop()) {
                                 context.pop();
@@ -260,17 +259,103 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                               _shop?['name']?.toString() ?? 'Shop',
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 20,
+                                fontSize: 22,
                                 fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
                               ),
                             ),
+                          ),
+                          Consumer<CartProvider>(
+                            builder: (context, cartProvider, child) {
+                              return Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // Cart total - HIDDEN
+                                  // if (cartProvider.isNotEmpty)
+                                  //   Padding(
+                                  //     padding: const EdgeInsets.only(right: 12),
+                                  //     child: Text(
+                                  //       '₹${cartProvider.subtotal.toStringAsFixed(0)}',
+                                  //       style: const TextStyle(
+                                  //         color: Colors.white,
+                                  //         fontSize: 16,
+                                  //         fontWeight: FontWeight.bold,
+                                  //       ),
+                                  //     ),
+                                  //   ),
+                                  // Cart icon with badge
+                                  IconButton(
+                                    icon: Stack(
+                                      clipBehavior: Clip.none,
+                                      children: [
+                                        const Icon(Icons.shopping_cart,
+                                            color: Colors.white, size: 24),
+                                        if (cartProvider.itemCount > 0)
+                                          Positioned(
+                                            right: -8,
+                                            top: -8,
+                                            child: Container(
+                                              padding: const EdgeInsets.all(4),
+                                              decoration: BoxDecoration(
+                                                color: Colors.red,
+                                                shape: BoxShape.circle,
+                                                border: Border.all(
+                                                    color: Colors.white,
+                                                    width: 2),
+                                              ),
+                                              constraints: const BoxConstraints(
+                                                minWidth: 20,
+                                                minHeight: 20,
+                                              ),
+                                              child: Text(
+                                                '${cartProvider.itemCount}',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                    onPressed: () =>
+                                        context.push('/customer/cart'),
+                                  ),
+                                ],
+                              );
+                            },
                           ),
                         ],
                       ),
                     ),
                     // Content area below toolbar
                     Expanded(
-                      child: _buildShopDetailsContent(),
+                      child: Row(
+                        children: [
+                          // LEFT SIDEBAR with categories
+                          Container(
+                            width: 120,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.08),
+                                  blurRadius: 15,
+                                  offset: const Offset(
+                                      3, 0), // Shadow on right side
+                                ),
+                              ],
+                            ),
+                            child: _buildCategorySidebar(),
+                          ),
+                          // MAIN CONTENT AREA
+                          Expanded(
+                            child: _buildShopDetailsContent(),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -383,131 +468,6 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
         },
       ),
       floatingActionButtonLocation: const _RightFloatingButtonLocation(),
-    );
-  }
-
-  Widget _buildHorizontalCategories() {
-    if (_isLoadingCategories) {
-      return Container(
-        height: 100,
-        child: const Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    if (_categories.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return Container(
-      height: 100,
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        itemCount: _categories.length,
-        itemBuilder: (context, index) {
-          final category = _categories[index];
-          final categoryId = category['id']?.toString();
-          final categoryName = category['name']?.toString();
-          final isSelected = _selectedCategory == categoryId;
-          final displayName =
-              category['displayName']?.toString() ?? categoryName ?? 'Category';
-          final imageUrl = category['imageUrl']?.toString();
-          final colorHex = category['color']?.toString() ?? '#4CAF50';
-
-          // Check if imageUrl is an actual image path
-          final bool hasImage = imageUrl != null && imageUrl.isNotEmpty;
-
-          // Parse color from hex
-          Color categoryColor = VillageTheme.primaryGreen;
-          try {
-            categoryColor = Color(int.parse(colorHex.replaceFirst('#', '0xFF')));
-          } catch (e) {
-            categoryColor = VillageTheme.primaryGreen;
-          }
-
-          return GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedCategory = categoryId;
-                // If "All Items" is selected (categoryId is null), set categoryName to null to show all products
-                _selectedCategoryName = categoryId == null ? null : categoryName;
-                _filterProducts(); // Apply filter immediately without API call
-              });
-            },
-            child: Container(
-              width: 85,
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? VillageTheme.primaryGreen.withOpacity(0.15)
-                    : Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: isSelected
-                    ? Border.all(
-                        color: VillageTheme.primaryGreen,
-                        width: 2,
-                      )
-                    : Border.all(
-                        color: Colors.grey.withOpacity(0.3),
-                        width: 1,
-                      ),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Category Image
-                  Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: hasImage
-                          ? Image.network(
-                              ImageUrlHelper.getFullImageUrl(imageUrl!),
-                              width: 50,
-                              height: 50,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return _buildCategoryPlaceholder(
-                                    categoryName ?? 'Category',
-                                    categoryColor,
-                                    isSelected);
-                              },
-                            )
-                          : _buildCategoryPlaceholder(categoryName ?? 'Category',
-                              categoryColor, isSelected),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  // Category Name
-                  Flexible(
-                    child: Text(
-                      displayName,
-                      style: TextStyle(
-                        color: isSelected
-                            ? VillageTheme.primaryGreen
-                            : Colors.grey[800],
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                        fontSize: 9,
-                        height: 1.1,
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
     );
   }
 
@@ -745,8 +705,6 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     return CustomScrollView(
       controller: _scrollController,
       slivers: [
-        SliverToBoxAdapter(child: _buildCouponSection()),
-        SliverToBoxAdapter(child: _buildHorizontalCategories()),
         SliverToBoxAdapter(child: _buildSearchBar()),
         _buildProductGrid(),
       ],
@@ -906,141 +864,41 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
           ),
         ],
       ),
-      child: TextField(
-        controller: _searchController,
-        decoration: InputDecoration(
-          hintText: 'பொருட்களைத் தேடுங்கள்',
-          hintStyle: TextStyle(color: Colors.grey[600]),
-          prefixIcon:
-              const Icon(Icons.search, color: VillageTheme.primaryGreen),
-          suffixIcon: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (_searchController.text.isNotEmpty)
-                IconButton(
-                  icon: const Icon(Icons.clear, color: Colors.grey),
-                  onPressed: () {
-                    _searchController.clear();
-                    _onSearchChanged();
-                  },
-                ),
-              Container(
-                margin: const EdgeInsets.only(right: 8),
-                decoration: BoxDecoration(
-                  color: VillageTheme.primaryGreen,
-                  shape: BoxShape.circle,
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.mic, color: Colors.white, size: 20),
-                  onPressed: () {
-                    _showVoiceSearchDialog();
-                  },
-                  tooltip: 'AI Voice Search',
-                ),
-              ),
-            ],
+      child: Row(
+        children: [
+          // Voice search icon on the left
+          IconButton(
+            icon: const Icon(Icons.mic, color: VillageTheme.primaryGreen, size: 24),
+            onPressed: () {
+              _showVoiceSearchDialog();
+            },
+            tooltip: 'AI Voice Search',
           ),
-          border: InputBorder.none,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCouponSection() {
-    final coupons = [
-      {
-        'code': 'SAVE50',
-        'offer': '₹50 OFF above ₹500',
-        'color': VillageTheme.primaryGreen,
-      },
-      {
-        'code': 'FIRST10',
-        'offer': '10% OFF first order',
-        'color': Colors.orange,
-      },
-      {
-        'code': 'FREEDEL',
-        'offer': 'Free Delivery ₹300+',
-        'color': Colors.blue,
-      },
-    ];
-
-    return Container(
-      height: 80,
-      margin: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 8),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: coupons.length,
-        itemBuilder: (context, index) {
-          final coupon = coupons[index];
-          return Container(
-            width: 240,
-            margin: const EdgeInsets.only(right: 12),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  (coupon['color'] as Color).withOpacity(0.12),
-                  (coupon['color'] as Color).withOpacity(0.05),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: (coupon['color'] as Color).withOpacity(0.25),
-                width: 1,
+          // Search text field
+          Expanded(
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'பொருட்களைத் தேடுங்கள்',
+                hintStyle: TextStyle(color: Colors.grey[600]),
+                prefixIcon:
+                    const Icon(Icons.search, color: VillageTheme.primaryGreen),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, color: Colors.grey),
+                        onPressed: () {
+                          _searchController.clear();
+                          _onSearchChanged();
+                        },
+                      )
+                    : null,
+                border: InputBorder.none,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               ),
             ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: (coupon['color'] as Color).withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    Icons.local_offer,
-                    color: coupon['color'] as Color,
-                    size: 22,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        coupon['code'] as String,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: coupon['color'] as Color,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        coupon['offer'] as String,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey[700],
-                          fontWeight: FontWeight.w500,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }
@@ -1090,18 +948,13 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     }
 
     return SliverPadding(
-      padding: const EdgeInsets.only(
-        left: 12,
-        right: 12,
-        top: 12,
-        bottom: 100, // Extra padding to prevent floating cart from blocking products
-      ),
+      padding: const EdgeInsets.all(16),
       sliver: SliverGrid(
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
-          childAspectRatio: 0.75, // Adjusted for shorter card height
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
+          childAspectRatio: 0.62, // Further reduced for better vertical spacing
+          mainAxisSpacing: 16,
+          crossAxisSpacing: 16,
         ),
         delegate: SliverChildBuilderDelegate(
           (context, index) => _buildProductCard(_products[index]),
@@ -1153,12 +1006,12 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -1173,13 +1026,13 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
               decoration: BoxDecoration(
                 color: Colors.grey[100],
                 borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(16)),
+                    const BorderRadius.vertical(top: Radius.circular(24)),
               ),
               child: Stack(
                 children: [
                   ClipRRect(
                     borderRadius:
-                        const BorderRadius.vertical(top: Radius.circular(16)),
+                        const BorderRadius.vertical(top: Radius.circular(24)),
                     child: imageUrl.isNotEmpty
                         ? Image.network(
                             ImageUrlHelper.getFullImageUrl(imageUrl),
@@ -1289,9 +1142,9 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
 
           // Product Details
           Expanded(
-            flex: 2,
+            flex: 3,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1627,98 +1480,97 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
 
     showDialog(
       context: context,
-      barrierDismissible: true, // Allow closing by clicking outside
-      builder: (dialogContext) => StatefulBuilder(
+      barrierDismissible: false, // Prevent closing by tapping outside
+      builder: (context) => StatefulBuilder(
         builder: (context, setState) {
           return Dialog(
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
             child: Container(
-              width: MediaQuery.of(context).size.width * 0.85,
+              width: MediaQuery.of(context).size.width * 0.9,
               constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.75,
+                maxHeight: MediaQuery.of(context).size.height * 0.8,
               ),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Header with padding
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.mic, color: Color(0xFF2E7D32), size: 28),
-                        const SizedBox(width: 12),
-                        const Expanded(
-                          child: Text(
-                            'Voice Search',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                  // Header
+                  Row(
+                    children: [
+                      const Icon(Icons.mic, color: Color(0xFF2E7D32), size: 28),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Voice Search',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: () {
-                            searchController.dispose();
-                            Navigator.pop(dialogContext);
-                          },
-                        ),
-                      ],
-                    ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                    ],
                   ),
+                  const SizedBox(height: 16),
 
-                  // Scrollable content
-                  Flexible(
-                    child: SingleChildScrollView(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
                   // Text input - Always visible
                   TextField(
-                      controller: searchController,
-                      decoration: InputDecoration(
-                        hintText: 'Type product names (e.g., Sugar, Rice, Milk)',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        prefixIcon: const Icon(Icons.search),
+                    controller: searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Type product names (e.g., Sugar, Rice, Milk)',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      onSubmitted: (query) async {
-                        if (query.trim().isEmpty) return;
-
-                        setState(() {
-                          isSearching = true;
-                        });
-
-                        final results = await _voiceSearch.searchProducts(
-                            widget.shopId, query);
-
-                        setState(() {
-                          isSearching = false;
-                          voiceResults = results;
-                          searchQuery = query;
-                        });
-                      },
+                      prefixIcon: const Icon(Icons.search, color: Color(0xFF2E7D32)),
+                      suffixIcon: searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                setState(() {
+                                  searchController.clear();
+                                });
+                              },
+                            )
+                          : null,
                     ),
+                    onSubmitted: (query) async {
+                      if (query.trim().isEmpty) return;
+
+                      setState(() {
+                        isSearching = true;
+                      });
+
+                      final results = await _voiceSearch.searchProducts(
+                          widget.shopId, query);
+
+                      setState(() {
+                        isSearching = false;
+                        voiceResults = results;
+                        searchQuery = query;
+                      });
+                    },
                   ),
 
                   // Voice search button
                   if (!isSearching && voiceResults.isEmpty)
                     Column(
                       children: [
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 24),
                         const Text(
                           'OR',
                           style: TextStyle(
                             color: Colors.grey,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w500,
+                            fontSize: 12,
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 24),
                         Container(
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
@@ -1727,16 +1579,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                           padding: const EdgeInsets.all(32),
                           child: const Icon(
                             Icons.mic,
-                            size: 80,
+                            size: 64,
                             color: Color(0xFF2E7D32),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Voice search (Android/iOS only)',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey,
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -1763,22 +1607,45 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF2E7D32),
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 32, vertical: 16),
+                                horizontal: 32, vertical: 14),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
+                            elevation: 2,
                           ),
-                          icon: const Icon(Icons.mic, color: Colors.white),
+                          icon: const Icon(Icons.mic, color: Colors.white, size: 20),
                           label: const Text(
                             'Start Voice Search',
                             style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
                               color: Colors.white,
                             ),
                           ),
                         ),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(Icons.info_outline, size: 16, color: Colors.blue),
+                              SizedBox(width: 6),
+                              Text(
+                                'Voice search works on Android/iOS devices',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.blue,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
                       ],
                     ),
 
@@ -1804,7 +1671,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
 
                   // Search results
                   if (!isSearching && voiceResults.isNotEmpty)
-                    Column(
+                    Expanded(
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (searchQuery != null && searchQuery!.isNotEmpty)
@@ -1840,19 +1708,22 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                             ),
                           ),
                           const SizedBox(height: 16),
-                          ListView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: voiceResults.length,
-                            itemBuilder: (context, index) {
+                          Expanded(
+                            child: ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: voiceResults.length,
+                              itemBuilder: (context, index) {
                                 final product = voiceResults[index];
                                 final inStock = product['inStock'] ??
                                     product['isAvailable'] ??
                                     true;
 
-                                // Use LanguageProvider to get localized name
-                                final languageProvider = Provider.of<LanguageProvider>(context);
-                                final displayName = languageProvider.getDisplayName(product);
+                                // Prioritize Tamil name first
+                                final nameTamil = product['masterProduct']?['nameTamil'] ?? product['nameTamil'];
+                                final nameEnglish = product['displayName'] ?? product['name'] ?? product['masterProduct']?['name'];
+                                final displayName = nameTamil != null && nameTamil.toString().isNotEmpty
+                                    ? nameTamil.toString()
+                                    : nameEnglish?.toString() ?? 'Unknown';
 
                                 final displayDesc =
                                     product['displayDescription'] ??
@@ -1896,9 +1767,13 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                                   ),
                                   child: InkWell(
                                     onTap: () {
-                                      // Close dialog
-                                      Navigator.pop(dialogContext);
-                                      // Scroll to product or show details
+                                      // Keep dialog open, just show feedback
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Selected: $displayName'),
+                                          duration: const Duration(seconds: 1),
+                                        ),
+                                      );
                                     },
                                     child: Padding(
                                       padding: const EdgeInsets.all(12),
@@ -2126,18 +2001,13 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                                                   return ElevatedButton(
                                                     onPressed: () async {
                                                       await cartProvider.addToCart(productModel);
-                                                      // Close the voice search dialog using dialogContext
-                                                      Navigator.pop(dialogContext);
-                                                      // Show confirmation snackbar
-                                                      if (context.mounted) {
-                                                        ScaffoldMessenger.of(context).showSnackBar(
-                                                          SnackBar(
-                                                            content: Text('$displayName added to cart'),
-                                                            duration: const Duration(seconds: 1),
-                                                            behavior: SnackBarBehavior.floating,
-                                                          ),
-                                                        );
-                                                      }
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                        SnackBar(
+                                                          content: Text('$displayName added to cart'),
+                                                          duration: const Duration(seconds: 1),
+                                                          behavior: SnackBarBehavior.floating,
+                                                        ),
+                                                      );
                                                     },
                                                     style: ElevatedButton.styleFrom(
                                                       backgroundColor: const Color(0xFF2E7D32),
@@ -2203,8 +2073,10 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                                 );
                               },
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
+                      ),
+                    ),
 
                   // Search Again Button (after results)
                   if (!isSearching && voiceResults.isNotEmpty)
@@ -2294,11 +2166,6 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                         const SizedBox(height: 32),
                       ],
                     ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),

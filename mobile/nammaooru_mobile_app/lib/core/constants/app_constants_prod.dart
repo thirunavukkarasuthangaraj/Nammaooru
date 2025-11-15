@@ -1,9 +1,9 @@
 class AppConstants {
   static const String appName = 'NammaOoru';
   static const String appVersion = '1.0.0';
-  
+
   // Production API URL
-  static const String baseUrl = 'https://api.nammaoorudelivary.in/api';
+  static const String baseUrl = 'https://nammaoorudelivary.in/api';
   
   static const Duration requestTimeout = Duration(seconds: 30);
   static const Duration locationUpdateInterval = Duration(seconds: 30);

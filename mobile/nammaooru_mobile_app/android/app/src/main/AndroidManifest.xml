@@ -1,48 +1,52 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
           xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Internet permission -->
-    <uses-permission android:name="android.permission.INTERNET" />
-    
-    <!-- Location permissions -->
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
-    
-    <!-- Camera permission -->
-    <uses-permission android:name="android.permission.CAMERA" />
-    
-    <!-- Storage permissions -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    
-    <!-- Phone permission -->
-    <uses-permission android:name="android.permission.CALL_PHONE" />
-    
-    <!-- Notification permissions -->
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.VIBRATE" />
-    
-    <!-- Biometric permission -->
-    <uses-permission android:name="android.permission.USE_FINGERPRINT" />
-    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
-    
-    <!-- Audio recording for speech-to-text -->
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <uses-permission android:name="android.permission.MICROPHONE" />
-    
-    <!-- Network state for connectivity monitoring -->
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-    
-    <!-- For package info and device info -->
-    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" 
-                     tools:ignore="QueryAllPackagesPermission" />
-    
-    <!-- Foreground service for location tracking -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+ <!-- Internet permission -->
+<uses-permission android:name="android.permission.INTERNET" />
+
+<!-- Location permissions (foreground only) -->
+<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+<!-- Camera permission -->
+<uses-permission android:name="android.permission.CAMERA" />
+
+<!-- Storage permissions -->
+<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+
+<!-- Phone permission -->
+<uses-permission android:name="android.permission.CALL_PHONE" />
+
+<!-- Notifications & vibration -->
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+<uses-permission android:name="android.permission.WAKE_LOCK" />
+<uses-permission android:name="android.permission.VIBRATE" />
+
+<!-- Biometric authentication -->
+<uses-permission android:name="android.permission.USE_BIOMETRIC" />
+<!-- (USE_FINGERPRINT deprecated — removed) -->
+
+<!-- Audio recording (speech-to-text, mic use) -->
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+<!-- Network monitoring -->
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+<uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+
+<!-- Foreground service for live tracking (safe to keep) -->
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+
+<!-- ✅ Queries block (safe replacement for QUERY_ALL_PACKAGES) -->
+<queries>
+    <!-- Only include the packages/intents your app really interacts with -->
+    <intent>
+        <action android:name="android.intent.action.PROCESS_TEXT" />
+        <data android:mimeType="text/plain" />
+    </intent>
+</queries>
+
 
     <application
         android:label="NammaOoru"

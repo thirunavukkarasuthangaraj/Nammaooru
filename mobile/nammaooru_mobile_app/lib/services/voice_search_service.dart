@@ -46,43 +46,28 @@ class VoiceSearchService {
 
   /// Start listening for voice input with automatic language fallback
   Future<String?> listen() async {
+    debugPrint('🎙️ listen() called');
     if (!await initialize()) {
+      debugPrint('❌ initialize() failed, returning null');
       return null;
     }
 
+    debugPrint('✅ initialize() succeeded, continuing...');
     try {
       _lastWords = '';
       _isListening = true;
       _lastError = null;
 
-      // Get available locales
-      final locales = await getAvailableLocales();
-      debugPrint('🌐 Available locales: ${locales.map((l) => l.localeId).join(", ")}');
+      debugPrint('🎙️ Starting speech recognition with system default locale...');
 
-      // Try to find Tamil or English locale
-      String? localeId;
-
-      // Priority: Tamil (India) > Tamil (any) > English (India) > English (any) > System default
-      if (locales.any((l) => l.localeId == 'ta_IN')) {
-        localeId = 'ta_IN';
-        debugPrint('✅ Using Tamil (India) locale');
-      } else if (locales.any((l) => l.localeId.startsWith('ta'))) {
-        localeId = locales.firstWhere((l) => l.localeId.startsWith('ta')).localeId;
-        debugPrint('✅ Using Tamil locale: $localeId');
-      } else if (locales.any((l) => l.localeId == 'en_IN')) {
-        localeId = 'en_IN';
-        debugPrint('⚠️ Tamil not available, using English (India)');
-      } else if (locales.any((l) => l.localeId.startsWith('en'))) {
-        localeId = locales.firstWhere((l) => l.localeId.startsWith('en')).localeId;
-        debugPrint('⚠️ Tamil not available, using English: $localeId');
-      }
-
+      // Skip locale detection - it hangs in release mode
+      // Just use system default which will auto-detect Tamil/English
       await _speech.listen(
         onResult: (result) {
           _lastWords = result.recognizedWords;
           debugPrint('🎤 Recognized: $_lastWords (confidence: ${result.confidence})');
         },
-        localeId: localeId, // Use detected locale or system default
+        localeId: null, // Let system auto-detect (supports Tamil and English)
         listenMode: stt.ListenMode.confirmation,
         cancelOnError: false,
         partialResults: true,
@@ -191,7 +176,9 @@ class VoiceSearchService {
 
   /// Voice search: listen + AI search
   Future<List<dynamic>> voiceSearch(int shopId) async {
+    debugPrint('🔵 voiceSearch() started for shop $shopId');
     final query = await listen();
+    debugPrint('🔵 voiceSearch() - listen() returned: "$query"');
 
     if (query == null || query.trim().isEmpty) {
       debugPrint('⚠️ No voice input detected');
@@ -199,6 +186,7 @@ class VoiceSearchService {
       return [];
     }
 
+    debugPrint('🔵 voiceSearch() - calling searchProducts with query: "$query"');
     return await searchProducts(shopId, query);
   }
 
