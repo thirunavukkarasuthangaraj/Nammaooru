@@ -322,7 +322,9 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
     final isOpenNow = shop['isOpenNow'] ?? shop['isActive'] ?? false;
     final address = shop['addressLine1']?.toString() ?? '';
     final city = shop['city']?.toString() ?? '';
-    final fullAddress = 'Test Address, Chennai';
+    final fullAddress = address.isNotEmpty && city.isNotEmpty
+        ? '$address, $city'
+        : (city.isNotEmpty ? city : 'Address not available');
 
     // Get business type emoji with more variety
     String getBusinessEmoji(String type) {
