@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -632,28 +633,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                   onTap: () async {
                     // Special handling for Farmer Products - redirect to WhatsApp channel
                     if (nameEn == 'Farmer Products') {
-                      final whatsappUrl = Uri.parse('https://www.whatsapp.com/channel/0029VbB1iXbAYlULfRaQlc0z');
-                      try {
-                        if (await canLaunchUrl(whatsappUrl)) {
-                          await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
-                        } else {
-                          if (mounted) {
-                            Helpers.showSnackBar(
-                              context,
-                              'Could not open WhatsApp channel',
-                              isError: true,
-                            );
-                          }
-                        }
-                      } catch (e) {
-                        if (mounted) {
-                          Helpers.showSnackBar(
-                            context,
-                            'Error opening WhatsApp: ${e.toString()}',
-                            isError: true,
-                          );
-                        }
-                      }
+                      await _openWhatsAppChannel(context);
                     } else {
                       // Regular category - navigate to shop listing
                       Navigator.push(
@@ -667,27 +647,71 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                       );
                     }
                   },
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    alignment: Alignment.bottomLeft,
-                    child: Text(
-                      name,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        shadows: [
-                          Shadow(
-                            color: Colors.black,
-                            blurRadius: 8,
-                            offset: Offset(0, 2),
+                  child: Stack(
+                    children: [
+                      // Card content
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        alignment: Alignment.bottomLeft,
+                        child: Text(
+                          name,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            shadows: [
+                              Shadow(
+                                color: Colors.black,
+                                blurRadius: 8,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
                           ),
-                        ],
+                          textAlign: TextAlign.left,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                      textAlign: TextAlign.left,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                      // WhatsApp badge for Farmer Products
+                      if (nameEn == 'Farmer Products')
+                        Positioned(
+                          top: 12,
+                          right: 12,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF25D366),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.3),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.message,
+                                  color: Colors.white,
+                                  size: 14,
+                                ),
+                                const SizedBox(width: 4),
+                                const Text(
+                                  'WhatsApp',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ),
@@ -1347,6 +1371,203 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               ),
             ),
             child: const Text('Login / Sign Up', style: TextStyle(fontSize: 14)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openWhatsAppChannel(BuildContext context) async {
+    const whatsappChannelUrl = 'https://www.whatsapp.com/channel/0029VbB1iXbAYlULfRaQlc0z';
+    final whatsappUrl = Uri.parse(whatsappChannelUrl);
+
+    // Show loading indicator
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Opening WhatsApp Channel...'),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    try {
+      // Try to launch the URL
+      final launched = await launchUrl(
+        whatsappUrl,
+        mode: LaunchMode.platformDefault,
+      );
+
+      // Close loading dialog
+      if (mounted) {
+        Navigator.pop(context);
+      }
+
+      if (launched) {
+        // Success
+        if (mounted) {
+          Helpers.showSnackBar(
+            context,
+            'Opening WhatsApp Channel...',
+            isError: false,
+          );
+        }
+      } else {
+        // Failed to launch - show fallback dialog
+        if (mounted) {
+          await _showWhatsAppLinkDialog(context, whatsappChannelUrl);
+        }
+      }
+    } catch (e) {
+      // Close loading dialog
+      if (mounted) {
+        Navigator.pop(context);
+      }
+
+      // Show fallback dialog
+      if (mounted) {
+        await _showWhatsAppLinkDialog(context, whatsappChannelUrl);
+      }
+    }
+  }
+
+  Future<void> _showWhatsAppLinkDialog(BuildContext context, String url) async {
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF25D366).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.message,
+                color: Color(0xFF25D366),
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Join Our WhatsApp Channel',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Get fresh farmer products directly! Copy the link below and open it in your browser:',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      url,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.blue[700],
+                        fontFamily: 'monospace',
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.copy, size: 20),
+                    onPressed: () async {
+                      await Clipboard.setData(ClipboardData(text: url));
+                      if (context.mounted) {
+                        Helpers.showSnackBar(
+                          context,
+                          'Link copied to clipboard!',
+                          isError: false,
+                        );
+                      }
+                    },
+                    tooltip: 'Copy link',
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF25D366).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFF25D366).withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: const Color(0xFF25D366), size: 16),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'You can also search for "NammaOoru Farmer Products" on WhatsApp',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close', style: TextStyle(fontSize: 14)),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: url));
+              if (context.mounted) {
+                Navigator.pop(context);
+                Helpers.showSnackBar(
+                  context,
+                  'Link copied! Open it in your browser.',
+                  isError: false,
+                );
+              }
+            },
+            icon: const Icon(Icons.copy, size: 18),
+            label: const Text('Copy Link', style: TextStyle(fontSize: 14)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF25D366),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
           ),
         ],
       ),

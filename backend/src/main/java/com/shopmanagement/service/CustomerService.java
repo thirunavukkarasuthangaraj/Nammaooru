@@ -899,31 +899,44 @@ public class CustomerService {
     /**
      * Get available shops for customer with filtering and location-based search
      */
-    public Map<String, Object> getAvailableShops(int page, int size, String city, String category, 
+    @Transactional(readOnly = true)
+    public Map<String, Object> getAvailableShops(int page, int size, String city, String category,
                                                   Double latitude, Double longitude, Double radiusKm) {
-        
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "rating", "createdAt"));
-        Page<Shop> shops;
-        
-        if (latitude != null && longitude != null) {
-            // Location-based search - for now use basic search, implement distance calculation later
-            shops = shopRepository.findAll(pageable);
-        } else if (city != null) {
-            shops = shopRepository.findAll(pageable); // Simplified for now
-        } else {
-            shops = shopRepository.findAll(pageable);
+        try {
+            log.info("Getting available shops - page: {}, size: {}, city: {}, category: {}", page, size, city, category);
+
+            Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+            Page<Shop> shops;
+
+            if (latitude != null && longitude != null) {
+                // Location-based search - for now use basic search, implement distance calculation later
+                shops = shopRepository.findAll(pageable);
+            } else if (city != null) {
+                shops = shopRepository.findAll(pageable); // Simplified for now
+            } else {
+                shops = shopRepository.findAll(pageable);
+            }
+
+            log.info("Found {} shops", shops.getTotalElements());
+
+            return Map.of(
+                "success", true,
+                "data", Map.of(
+                    "content", shops.getContent(),
+                    "pageable", Map.of(
+                        "pageNumber", page,
+                        "pageSize", size
+                    ),
+                    "totalElements", shops.getTotalElements(),
+                    "totalPages", shops.getTotalPages(),
+                    "last", !shops.hasNext(),
+                    "first", !shops.hasPrevious()
+                )
+            );
+        } catch (Exception e) {
+            log.error("Error fetching available shops", e);
+            throw new RuntimeException("Failed to fetch shops: " + e.getMessage(), e);
         }
-        
-        return Map.of(
-            "success", true,
-            "shops", shops.getContent(),
-            "page", page,
-            "size", size,
-            "totalElements", shops.getTotalElements(),
-            "totalPages", shops.getTotalPages(),
-            "hasNext", shops.hasNext(),
-            "hasPrevious", shops.hasPrevious()
-        );
     }
     
     /**

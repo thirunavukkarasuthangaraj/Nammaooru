@@ -36,13 +36,20 @@ public class CustomerShopController {
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String category) {
-        
-        log.info("Customer fetching shops - page: {}, size: {}, search: {}", page, size, search);
-        
-        Pageable pageable = PageRequest.of(page, size, Sort.by("name"));
-        Page<ShopResponse> shops = shopService.getActiveShops(pageable, search, category);
-        
-        return ResponseEntity.ok(ApiResponse.success(shops, "Shops fetched successfully"));
+
+        try {
+            log.info("Customer fetching shops - page: {}, size: {}, search: {}, category: {}", page, size, search, category);
+
+            Pageable pageable = PageRequest.of(page, size, Sort.by("name"));
+            Page<ShopResponse> shops = shopService.getActiveShops(pageable, search, category);
+
+            log.info("Successfully fetched {} shops", shops.getTotalElements());
+            return ResponseEntity.ok(ApiResponse.success(shops, "Shops fetched successfully"));
+        } catch (Exception e) {
+            log.error("Error fetching shops", e);
+            return ResponseEntity.status(500)
+                    .body(ApiResponse.error("Failed to fetch shops: " + e.getMessage(), "FETCH_SHOPS_ERROR"));
+        }
     }
 
     @GetMapping("/shops/{shopId}")

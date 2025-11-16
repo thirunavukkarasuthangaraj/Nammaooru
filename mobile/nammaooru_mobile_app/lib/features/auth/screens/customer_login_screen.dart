@@ -200,7 +200,7 @@ class _CustomerLoginScreenState extends State<CustomerLoginScreen> {
                 borderSide: BorderSide(color: AppColors.primary),
               ),
             ),
-            validator: Validators.email,
+            validator: Validators.validateEmail,
           ),
           const SizedBox(height: 16),
 
@@ -235,7 +235,7 @@ class _CustomerLoginScreenState extends State<CustomerLoginScreen> {
                 borderSide: BorderSide(color: AppColors.primary),
               ),
             ),
-            validator: Validators.password,
+            validator: Validators.validatePassword,
           ),
           const SizedBox(height: 16),
 
