@@ -87,7 +87,11 @@ class ApiService {
         final responseData = response.data ?? {};
         // Check API response status code
         if (responseData['statusCode'] == AppConstants.successCode) {
-          return responseData;
+          // Add success flag for successful responses
+          return {
+            ...responseData,
+            'success': true,
+          };
         } else {
           return {
             'statusCode': responseData['statusCode'] ?? AppConstants.failureCode,
@@ -160,7 +164,11 @@ class ApiService {
         final responseData = response.data ?? {};
         // Check API response status code
         if (responseData['statusCode'] == AppConstants.successCode) {
-          return responseData;
+          // Add success flag for successful responses
+          return {
+            ...responseData,
+            'success': true,
+          };
         } else {
           return {
             'statusCode': responseData['statusCode'] ?? AppConstants.failureCode,
