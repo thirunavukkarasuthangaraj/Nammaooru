@@ -156,7 +156,12 @@ public class Order {
     }
     
     public boolean canBeCancelled() {
-        return status == OrderStatus.PENDING || status == OrderStatus.CONFIRMED;
+        // Allow customers to cancel at any time before delivery/completion, regardless of delivery partner assignment
+        return status != OrderStatus.DELIVERED &&
+               status != OrderStatus.COMPLETED &&
+               status != OrderStatus.CANCELLED &&
+               status != OrderStatus.REFUNDED &&
+               status != OrderStatus.SELF_PICKUP_COLLECTED;
     }
     
     public boolean isCompleted() {

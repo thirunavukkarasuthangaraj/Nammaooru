@@ -58,16 +58,16 @@ class VoiceSearchService {
       _isListening = true;
       _lastError = null;
 
-      debugPrint('🎙️ Starting speech recognition with system default locale...');
+      debugPrint('🎙️ Starting speech recognition with Tamil locale...');
 
-      // Skip locale detection - it hangs in release mode
-      // Just use system default which will auto-detect Tamil/English
+      // Use Tamil locale to get Tamil script (அரிசி) instead of transliteration (arasi)
+      // ta-IN forces Tamil script output
       await _speech.listen(
         onResult: (result) {
           _lastWords = result.recognizedWords;
           debugPrint('🎤 Recognized: $_lastWords (confidence: ${result.confidence})');
         },
-        localeId: null, // Let system auto-detect (supports Tamil and English)
+        localeId: 'ta-IN', // Force Tamil script for Tamil speech
         listenMode: stt.ListenMode.confirmation,
         cancelOnError: false,
         partialResults: true,

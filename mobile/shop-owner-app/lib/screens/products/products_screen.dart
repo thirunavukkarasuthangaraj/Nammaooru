@@ -227,6 +227,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
   Widget build(BuildContext context) {
     final gridColumns = ResponsiveLayout.getGridColumns(context);
     final padding = ResponsiveLayout.getResponsivePadding(context);
+    final screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -371,10 +372,16 @@ class _ProductsScreenState extends State<ProductsScreen> {
                           controller: _scrollController,
                           padding: padding,
                           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: gridColumns > 3 ? 3 : 2,
-                            crossAxisSpacing: AppTheme.space16,
-                            mainAxisSpacing: AppTheme.space16,
-                            childAspectRatio: 0.7,
+                            crossAxisCount: gridColumns,
+                            // Responsive spacing - smaller on mobile
+                            crossAxisSpacing: screenWidth < 600 ? AppTheme.space12 : AppTheme.space16,
+                            mainAxisSpacing: screenWidth < 600 ? AppTheme.space12 : AppTheme.space16,
+                            // Responsive aspect ratio - taller cards on small screens
+                            childAspectRatio: screenWidth < 600
+                                ? 0.48  // Small phones: taller cards (e.g., 140px wide → 292px tall)
+                                : screenWidth < 900
+                                    ? 0.65  // Tablets: balanced ratio
+                                    : 0.7,  // Desktop: current ratio
                           ),
                           itemCount: _filteredProducts.length + (_isLoadingMore ? 1 : 0),
                           itemBuilder: (context, index) {

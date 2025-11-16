@@ -16,7 +16,9 @@ import 'utils/app_config.dart';
 import 'widgets/modern_button.dart';
 import 'widgets/update_dialog.dart';
 import 'providers/product_provider.dart';
+import 'providers/language_provider.dart';
 import 'services/version_service.dart';
+import 'screens/auth/forgot_password_screen.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
@@ -194,8 +196,11 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => ProductProvider(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ProductProvider()),
+        ChangeNotifierProvider(create: (_) => LanguageProvider()),
+      ],
       child: MaterialApp(
         title: 'Shop Owner',
         debugShowCheckedModeBanner: false,
@@ -237,8 +242,23 @@ class _LoginScreenState extends State<LoginScreen> {
       final userDataStr = prefs.getString('user_data');
 
       if (token != null && userDataStr != null) {
-        print('Found existing auth token, auto-logging in...');
+        print('Found existing auth token, validating role...');
         final userData = jsonDecode(userDataStr);
+
+        // Check user role - only SHOP_OWNER allowed
+        final String? userRole = userData['role']?.toString();
+        print('Stored user role: $userRole');
+
+        if (userRole != 'SHOP_OWNER') {
+          print('Access denied: Stored user role is not SHOP_OWNER, clearing auth');
+          // Clear invalid auth data
+          await prefs.remove('auth_token');
+          await prefs.remove('user_data');
+          setState(() {
+            _checkingAuth = false;
+          });
+          return;
+        }
 
         if (!mounted) return;
 
@@ -278,7 +298,7 @@ class _LoginScreenState extends State<LoginScreen> {
         Uri.parse('$baseUrl/auth/login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'email': _usernameController.text,
+          'identifier': _usernameController.text,
           'password': _passwordController.text,
         }),
       );
@@ -296,9 +316,19 @@ class _LoginScreenState extends State<LoginScreen> {
       print('Token type: ${token.runtimeType}');
 
       if (response.statusCode == 200 && data['statusCode'] == '0000') {
-        print('Login successful, navigating to dashboard...');
+        print('Login successful, checking user role...');
         print('Token to save: $token');
         print('Token length: ${token.length}');
+
+        // Check user role - only SHOP_OWNER allowed
+        final String? userRole = data['data']?['role']?.toString();
+        print('User role: $userRole');
+
+        if (userRole != 'SHOP_OWNER') {
+          print('Access denied: User role is not SHOP_OWNER');
+          _showError('Access Denied: This app is only for shop owners. Your role: ${userRole ?? 'Unknown'}');
+          return;
+        }
 
         // Save token
         final prefs = await SharedPreferences.getInstance();
@@ -433,12 +463,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: AppTheme.space48),
 
-                  // Username field with modern styling
+                  // Mobile Number or Email field with modern styling
                   TextFormField(
                     controller: _usernameController,
                     decoration: InputDecoration(
-                      labelText: 'Username',
-                      hintText: 'Enter your username',
+                      labelText: 'Mobile Number or Email',
+                      hintText: 'Enter mobile number or email',
                       prefixIcon:
                           const Icon(Icons.person, color: AppTheme.primary),
                       filled: true,
@@ -446,7 +476,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter your username';
+                        return 'Please enter your mobile number or email';
                       }
                       return null;
                     },
@@ -485,7 +515,30 @@ class _LoginScreenState extends State<LoginScreen> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: AppTheme.space32),
+                  const SizedBox(height: AppTheme.space8),
+
+                  // Forgot Password link
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ForgotPasswordScreen(),
+                          ),
+                        );
+                      },
+                      child: Text(
+                        'Forgot Password?',
+                        style: AppTheme.bodyMedium.copyWith(
+                          color: AppTheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppTheme.space16),
 
                   // Modern login button with gradient
                   ModernButton(

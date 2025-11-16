@@ -18,6 +18,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
 
   // Form controllers
   final _nameController = TextEditingController();
+  final _customNameController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _brandController = TextEditingController();
   final _skuController = TextEditingController();
@@ -77,7 +78,20 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
 
   Future<void> _pickImages() async {
     try {
-      final List<XFile> images = await _picker.pickMultiImage();
+      // Try multi-image picker first (works on Android 11+ and web)
+      List<XFile> images = [];
+
+      try {
+        images = await _picker.pickMultiImage();
+      } catch (e) {
+        print('Multi-image picker not supported, falling back to single image: $e');
+        // Fallback to single image picker for older Android versions
+        final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+        if (image != null) {
+          images = [image];
+        }
+      }
+
       if (images.isNotEmpty) {
         setState(() {
           _selectedImages.addAll(images);
@@ -88,11 +102,22 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
             );
           }
         });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${images.length} image(s) selected'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 1),
+          ),
+        );
       }
     } catch (e) {
       print('Error picking images: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error picking images: $e')),
+        SnackBar(
+          content: Text('Error picking images: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -141,6 +166,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       // Step 1: Create Master Product
       final masterProductResponse = await ApiService.createMasterProduct(
         name: _nameController.text,
+        nameTamil: _customNameController.text.isNotEmpty ? _customNameController.text : null,
         description: _descriptionController.text,
         sku: _skuController.text,
         categoryId: int.parse(_selectedCategoryId!),
@@ -169,6 +195,9 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
         costPrice: _costPriceController.text.isNotEmpty
             ? double.parse(_costPriceController.text)
             : null,
+        customName: _customNameController.text.isNotEmpty
+            ? _customNameController.text
+            : null,
       );
 
       if (!shopProductResponse.isSuccess) {
@@ -176,22 +205,37 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       }
 
       // Step 3: Upload images if any are selected
+      bool uploadSuccess = _selectedImages.isEmpty; // True if no images or upload succeeds
+
       if (_selectedImages.isNotEmpty) {
         try {
           await _uploadImages(masterProductId);
+          uploadSuccess = true;
         } catch (e) {
           print('Failed to upload images, but product created: $e');
-          // Continue even if image upload fails
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Product created, but image upload failed: ${e.toString()}'),
+                backgroundColor: Colors.orange,
+                duration: const Duration(seconds: 5),
+              ),
+            );
+            // Don't navigate away - let user see the error
+            setState(() => _isLoading = false);
+          }
+          return; // Stop here - don't show success message
         }
       }
 
-      if (mounted) {
+      // Only show success and navigate if upload succeeded or no images
+      if (mounted && uploadSuccess) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
               _selectedImages.isEmpty
                   ? 'Product created and added to your shop successfully!'
-                  : 'Product created with ${_selectedImages.length} images successfully!',
+                  : 'Product created with ${_selectedImages.length} image(s) successfully!',
             ),
             backgroundColor: Colors.green,
           ),
@@ -248,6 +292,15 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                       validator: (value) => value == null || value.isEmpty
                           ? 'Product name is required'
                           : null,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _customNameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Tamil Name / Custom Name (optional)',
+                        hintText: 'பெயர் அல்லது தனிப்பயன் பெயர்',
+                        border: OutlineInputBorder(),
+                      ),
                     ),
                     const SizedBox(height: 16),
                     TextFormField(

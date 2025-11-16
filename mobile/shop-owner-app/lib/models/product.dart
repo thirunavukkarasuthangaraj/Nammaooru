@@ -1,6 +1,7 @@
 class Product {
   final String id;
   final String name;
+  final String? nameTamil;
   final String description;
   final double price;
   final double? originalPrice;
@@ -26,6 +27,7 @@ class Product {
   Product({
     required this.id,
     required this.name,
+    this.nameTamil,
     required this.description,
     required this.price,
     this.originalPrice,
@@ -53,6 +55,7 @@ class Product {
     return Product(
       id: json['id'] ?? '',
       name: json['name'] ?? '',
+      nameTamil: json['nameTamil'],
       description: json['description'] ?? '',
       price: (json['price'] ?? 0).toDouble(),
       originalPrice: json['originalPrice']?.toDouble(),
@@ -81,6 +84,7 @@ class Product {
     return {
       'id': id,
       'name': name,
+      if (nameTamil != null) 'nameTamil': nameTamil,
       'description': description,
       'price': price,
       'originalPrice': originalPrice,
@@ -108,6 +112,7 @@ class Product {
   Product copyWith({
     String? id,
     String? name,
+    String? nameTamil,
     String? description,
     double? price,
     double? originalPrice,
@@ -133,6 +138,7 @@ class Product {
     return Product(
       id: id ?? this.id,
       name: name ?? this.name,
+      nameTamil: nameTamil ?? this.nameTamil,
       description: description ?? this.description,
       price: price ?? this.price,
       originalPrice: originalPrice ?? this.originalPrice,

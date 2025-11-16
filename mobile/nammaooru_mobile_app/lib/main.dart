@@ -13,6 +13,7 @@ import 'core/api/api_service.dart';
 import 'core/services/api_service.dart' as services;
 import 'core/storage/local_storage.dart';
 import 'services/firebase_notification_service.dart';
+import 'services/local_notification_service.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -27,6 +28,9 @@ void main() async {
 
       // Set up background message handler
       FirebaseMessaging.onBackgroundMessage(FirebaseNotificationService.handleBackgroundMessage);
+
+      // Initialize local notifications first (for displaying notifications)
+      await LocalNotificationService.instance.initialize();
 
       // Initialize Firebase notification service
       await FirebaseNotificationService.initialize();

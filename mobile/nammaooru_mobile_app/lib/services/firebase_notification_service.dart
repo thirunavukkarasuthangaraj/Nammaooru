@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../shared/models/notification_model.dart';
 import 'notification_api_service.dart';
+import 'local_notification_service.dart';
 
 class FirebaseNotificationService {
   static final FirebaseNotificationService _instance = FirebaseNotificationService._internal();
@@ -87,6 +88,9 @@ class FirebaseNotificationService {
     final notification = _convertToNotificationModel(message);
     _addLocalNotification(notification);
 
+    // Display the notification using local notifications
+    await _displayNotification(message, notification);
+
     // Show in-app notification or update UI
     _notifyListeners(notification);
   }
@@ -124,6 +128,61 @@ class FirebaseNotificationService {
 
     // This runs in a separate isolate, so we can't update UI directly
     // We can only perform background tasks here
+  }
+
+  /// Display notification using local notifications
+  static Future<void> _displayNotification(RemoteMessage message, NotificationModel notification) async {
+    if (kIsWeb) {
+      debugPrint('Local notifications not supported on web');
+      return;
+    }
+
+    try {
+      final title = message.notification?.title ?? notification.title;
+      final body = message.notification?.body ?? notification.body;
+      final type = notification.type.toLowerCase();
+
+      // Determine which type of notification to show based on the type
+      switch (type) {
+        case 'order':
+        case 'order_update':
+          await LocalNotificationService.instance.showOrderNotification(
+            orderNumber: message.data['orderNumber'] ?? 'N/A',
+            status: message.data['status'] ?? 'Updated',
+            message: body,
+          );
+          break;
+
+        case 'delivery':
+        case 'delivery_update':
+          await LocalNotificationService.instance.showDeliveryNotification(
+            orderId: message.data['orderId'] ?? 'N/A',
+            status: message.data['status'] ?? 'Updated',
+            message: body,
+          );
+          break;
+
+        case 'promotion':
+        case 'promo':
+          await LocalNotificationService.instance.showPromotionNotification(
+            title: title,
+            message: body,
+          );
+          break;
+
+        default:
+          await LocalNotificationService.instance.showGeneralNotification(
+            title: title,
+            message: body,
+            payload: type,
+          );
+          break;
+      }
+
+      debugPrint('✅ Notification displayed successfully');
+    } catch (e) {
+      debugPrint('❌ Error displaying notification: $e');
+    }
   }
 
   /// Convert Firebase message to NotificationModel

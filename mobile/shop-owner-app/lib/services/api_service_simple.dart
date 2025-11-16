@@ -458,6 +458,7 @@ class ApiService {
   // Create Master Product
   static Future<ApiResponse> createMasterProduct({
     required String name,
+    String? nameTamil,
     required String description,
     required String sku,
     required int categoryId,
@@ -470,6 +471,7 @@ class ApiService {
       final headers = await _getAuthHeaders();
       final body = {
         'name': name,
+        if (nameTamil != null && nameTamil.isNotEmpty) 'nameTamil': nameTamil,
         'description': description,
         'sku': sku,
         'categoryId': categoryId,

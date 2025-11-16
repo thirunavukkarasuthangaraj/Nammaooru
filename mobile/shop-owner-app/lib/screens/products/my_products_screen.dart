@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/product_provider.dart';
+import '../../providers/language_provider.dart';
+import '../../widgets/language_selector.dart';
 import '../../models/product.dart';
 import '../../utils/constants.dart';
 import '../../utils/helpers.dart';
@@ -40,6 +42,10 @@ class _MyProductsScreenState extends State<MyProductsScreen> {
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         actions: [
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 8.0),
+            child: LanguageSelector(showLabel: false),
+          ),
           IconButton(
             icon: const Icon(Icons.filter_list),
             onPressed: _showFilterBottomSheet,
@@ -308,52 +314,54 @@ class _MyProductsScreenState extends State<MyProductsScreen> {
   }
 
   Widget _buildProductCard(Product product, ProductProvider productProvider) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        onTap: () => _navigateToProductDetails(product),
-        borderRadius: BorderRadius.circular(AppSizes.borderRadius),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+    return Consumer<LanguageProvider>(
+      builder: (context, languageProvider, _) {
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: InkWell(
+            onTap: () => _navigateToProductDetails(product),
+            borderRadius: BorderRadius.circular(AppSizes.borderRadius),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Product image/icon
-                  Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Center(
-                      child: Text(
-                        product.image ?? '📦',
-                        style: const TextStyle(fontSize: 24),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  // Product info
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                product.name,
-                                style: AppTextStyles.heading3,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            _buildStatusChip(product.status),
-                          ],
+                  Row(
+                    children: [
+                      // Product image/icon
+                      Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
                         ),
+                        child: Center(
+                          child: Text(
+                            product.image ?? '📦',
+                            style: const TextStyle(fontSize: 24),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // Product info
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    languageProvider.getProductName(product),
+                                    style: AppTextStyles.heading3,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                _buildStatusChip(product.status),
+                              ],
+                            ),
                         const SizedBox(height: 4),
                         Text(
                           product.category,
@@ -448,6 +456,8 @@ class _MyProductsScreenState extends State<MyProductsScreen> {
           ),
         ),
       ),
+    );
+      },
     );
   }
 

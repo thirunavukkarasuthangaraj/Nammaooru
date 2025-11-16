@@ -512,6 +512,32 @@ class OrderCard extends StatelessWidget {
     }
   }
 
+  String _getShortStatus(String status) {
+    final statusLower = status.toLowerCase().replaceAll('_', ' ');
+    switch (statusLower) {
+      case 'ready for pickup':
+        return 'READY';
+      case 'out for delivery':
+        return 'DELIVERY';
+      case 'pending':
+        return 'PENDING';
+      case 'accepted':
+        return 'ACCEPTED';
+      case 'preparing':
+        return 'PREPARING';
+      case 'ready':
+        return 'READY';
+      case 'delivered':
+        return 'DONE';
+      case 'cancelled':
+        return 'CANCELLED';
+      case 'rejected':
+        return 'REJECTED';
+      default:
+        return status.toUpperCase().substring(0, status.length > 8 ? 8 : status.length);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final statusColor = _getStatusColor();
@@ -531,6 +557,7 @@ class OrderCard extends StatelessWidget {
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: Column(
@@ -556,47 +583,41 @@ class OrderCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(width: AppTheme.space8),
-                  Flexible(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppTheme.space12,
-                        vertical: AppTheme.space8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: statusColor.withOpacity(0.1),
-                        borderRadius: AppTheme.roundedMedium,
-                        border: Border.all(
-                          color: statusColor.withOpacity(0.3),
-                          width: 1.5,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            _getStatusIcon(),
-                            size: 16,
-                            color: statusColor,
-                          ),
-                          const SizedBox(width: AppTheme.space4),
-                          Flexible(
-                            child: Text(
-                              status.toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: statusColor,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
+                ],
+              ),
+              const SizedBox(height: AppTheme.space8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppTheme.space12,
+                  vertical: AppTheme.space8,
+                ),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.1),
+                  borderRadius: AppTheme.roundedMedium,
+                  border: Border.all(
+                    color: statusColor.withOpacity(0.3),
+                    width: 1.5,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _getStatusIcon(),
+                      size: 16,
+                      color: statusColor,
+                    ),
+                    const SizedBox(width: AppTheme.space8),
+                    Text(
+                      status.toUpperCase().replaceAll('_', ' '),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: statusColor,
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               const Divider(height: AppTheme.space24),
               Row(
