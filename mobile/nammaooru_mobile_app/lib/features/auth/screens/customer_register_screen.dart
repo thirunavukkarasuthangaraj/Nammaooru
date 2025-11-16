@@ -60,9 +60,9 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
       final response = await _authApi.register(
         firstName: _firstNameController.text.trim(),
         lastName: _lastNameController.text.trim(),
-        email: _emailController.text.trim(),
+        email: _emailController.text.trim().toLowerCase(),
         phone: _phoneController.text.trim(),
-        password: _passwordController.text,
+        password: _passwordController.text, // Password is NOT lowercased - security requirement
       );
 
       if (mounted) {

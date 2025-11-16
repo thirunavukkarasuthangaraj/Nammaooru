@@ -921,17 +921,13 @@ public class CustomerService {
 
             return Map.of(
                 "success", true,
-                "data", Map.of(
-                    "content", shops.getContent(),
-                    "pageable", Map.of(
-                        "pageNumber", page,
-                        "pageSize", size
-                    ),
-                    "totalElements", shops.getTotalElements(),
-                    "totalPages", shops.getTotalPages(),
-                    "last", !shops.hasNext(),
-                    "first", !shops.hasPrevious()
-                )
+                "shops", shops.getContent(),
+                "page", page,
+                "size", size,
+                "totalElements", shops.getTotalElements(),
+                "totalPages", shops.getTotalPages(),
+                "hasNext", shops.hasNext(),
+                "hasPrevious", shops.hasPrevious()
             );
         } catch (Exception e) {
             log.error("Error fetching available shops", e);

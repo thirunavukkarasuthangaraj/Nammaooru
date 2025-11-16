@@ -37,8 +37,12 @@ public class AuthService {
     private MobileOtpService mobileOtpService;
 
     public AuthResponse register(RegisterRequest request) {
+        // Normalize email and username to lowercase
+        String normalizedEmail = request.getEmail() != null ? request.getEmail().toLowerCase().trim() : null;
+        String normalizedUsername = request.getUsername() != null ? request.getUsername().toLowerCase().trim() : null;
+
         // Username is not unique anymore, can be duplicate
-        if (userRepository.existsByEmail(request.getEmail())) {
+        if (normalizedEmail != null && userRepository.existsByEmail(normalizedEmail)) {
             throw new RuntimeException("Email already exists");
         }
         if (request.getMobileNumber() != null && userRepository.existsByMobileNumber(request.getMobileNumber())) {
@@ -52,9 +56,9 @@ public class AuthService {
         String fullName = request.getFirstName() != null ? request.getFirstName().trim() : "";
 
         var user = User.builder()
-                .username(request.getUsername())
-                .email(request.getEmail())
-                .password(passwordEncoder.encode(request.getPassword()))
+                .username(normalizedUsername)
+                .email(normalizedEmail)
+                .password(passwordEncoder.encode(request.getPassword())) // Password is NOT lowercased - security requirement
                 .firstName(fullName)
                 .lastName(fullName)
                 .gender(request.getGender())
@@ -102,6 +106,9 @@ public class AuthService {
             throw new AuthenticationFailedException("Email or mobile number is required");
         }
 
+        // Normalize identifier (trim and lowercase for email comparison)
+        loginIdentifier = loginIdentifier.trim();
+
         // Find user by email or mobile number
         User user;
 
@@ -111,8 +118,10 @@ public class AuthService {
             user = userRepository.findByMobileNumber(loginIdentifier)
                     .orElseThrow(() -> new AuthenticationFailedException("Invalid mobile number or password"));
         } else {
+            // Normalize email to lowercase for case-insensitive comparison
+            String normalizedEmail = loginIdentifier.toLowerCase();
             // Try to find by email
-            user = userRepository.findByEmail(loginIdentifier)
+            user = userRepository.findByEmail(normalizedEmail)
                     .orElseThrow(() -> new AuthenticationFailedException("Invalid email or password"));
         }
 

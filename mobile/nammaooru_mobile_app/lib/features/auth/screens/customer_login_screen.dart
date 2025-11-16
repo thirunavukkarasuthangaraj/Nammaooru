@@ -34,13 +34,13 @@ class _CustomerLoginScreenState extends State<CustomerLoginScreen> {
 
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     setState(() => _isLoading = true);
-    
+
     try {
       final response = await _authApi.login(
-        emailOrPhone: _emailController.text.trim(),
-        password: _passwordController.text,
+        emailOrPhone: _emailController.text.trim().toLowerCase(),
+        password: _passwordController.text, // Password is NOT lowercased - security requirement
       );
 
       if (mounted) {
