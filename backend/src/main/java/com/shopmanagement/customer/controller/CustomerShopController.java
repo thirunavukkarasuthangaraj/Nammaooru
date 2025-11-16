@@ -15,6 +15,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -31,6 +32,7 @@ public class CustomerShopController {
     private final ProductCategoryRepository categoryRepository;
 
     @GetMapping("/shops")
+    @Transactional(readOnly = true)
     public ResponseEntity<ApiResponse<Page<ShopResponse>>> getAllShops(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
