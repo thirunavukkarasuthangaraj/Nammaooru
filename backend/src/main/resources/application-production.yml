@@ -91,7 +91,9 @@ app:
     # Use environment variables for production
     dir: ${APP_UPLOAD_DIR:/opt/shop-management/uploads}
     documents:
-      path: ${DOCUMENT_UPLOAD_PATH:/opt/shop-management/uploads/documents}
+      path:
+        shops: ${DOCUMENT_UPLOAD_PATH:/opt/shop-management/uploads/documents/shops}
+        delivery-partners: ${DELIVERY_PARTNER_DOCUMENT_PATH:/opt/shop-management/uploads/documents/delivery-partners}
     product-images: ${PRODUCT_IMAGES_PATH:/opt/shop-management/uploads/products}
     max-file-size: 10MB
     allowed-types: pdf,jpg,jpeg,png,docx,doc,webp
