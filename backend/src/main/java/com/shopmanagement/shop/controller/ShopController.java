@@ -270,7 +270,7 @@ public class ShopController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SHOP_OWNER')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER')")
     public ResponseEntity<ApiResponse<ShopResponse>> updateShop(
             @PathVariable Long id,
             @Valid @RequestBody ShopUpdateRequest request) {
