@@ -106,7 +106,9 @@ app:
   upload:
     dir: ${APP_UPLOAD_DIR:D:/AAWS/nammaooru/uploads}
     documents:
-      path: ${DOCUMENT_UPLOAD_PATH:D:/AAWS/nammaooru/uploads/documents/shops}
+      path:
+        shops: ${DOCUMENT_UPLOAD_PATH:D:/AAWS/nammaooru/uploads/documents/shops}
+        delivery-partners: ${DELIVERY_PARTNER_DOCUMENT_PATH:D:/AAWS/nammaooru/uploads/documents/delivery-partners}
     product-images: ${PRODUCT_IMAGES_PATH:products}
     max-file-size: 10MB
     allowed-types: pdf,jpg,jpeg,png,docx,doc
