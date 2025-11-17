@@ -15,6 +15,7 @@ services:
       - FILE_UPLOAD_PATH=/app/uploads
       - APP_UPLOAD_DIR=/app/uploads
       - DOCUMENT_UPLOAD_PATH=/app/uploads/documents
+      - DELIVERY_PARTNER_DOCUMENT_PATH=/app/uploads/documents/delivery-partners
       - PRODUCT_IMAGES_PATH=products
       # Firebase configuration path (mounted from host)
       - FIREBASE_SERVICE_ACCOUNT_PATH=/app/firebase-config/firebase-service-account.json
