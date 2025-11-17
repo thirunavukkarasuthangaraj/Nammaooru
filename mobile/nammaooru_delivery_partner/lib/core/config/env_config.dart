@@ -1,6 +1,6 @@
 class EnvConfig {
   // Base API Configuration - Using centralized AppConfig
-  static String get baseUrl => 'http://192.168.1.10:8080'; // Use AppConfig instead
+  static String get baseUrl => 'https://nammaoorudelivary.in'; // Production URL
   static const String apiVersion = '';
   static String get fullApiUrl => '$baseUrl/api';
 

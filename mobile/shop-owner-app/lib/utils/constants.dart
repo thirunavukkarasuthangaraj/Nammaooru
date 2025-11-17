@@ -379,7 +379,7 @@ class AppStrings {
 }
 
 class ApiEndpoints {
-  static const String baseUrl = 'http://192.168.1.10:8080/api';
+  static const String baseUrl = 'https://nammaoorudelivary.in/api';
   static const String login = '/auth/login';
   static const String logout = '/auth/logout';
   static const String shopProfile = '/shop/profile';
@@ -389,7 +389,7 @@ class ApiEndpoints {
   static const String orders = '/orders';
   static const String finance = '/finance';
   static const String notifications = '/notifications';
-  static const String websocket = 'ws://192.168.1.10:8080/ws';
+  static const String websocket = 'wss://nammaoorudelivary.in/ws';
 
   // Shop-specific endpoints (require shopId parameter)
   static String shopDashboard(String shopId) => '/shops/$shopId/dashboard';
