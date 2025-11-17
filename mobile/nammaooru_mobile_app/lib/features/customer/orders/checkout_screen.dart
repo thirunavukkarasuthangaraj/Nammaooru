@@ -19,7 +19,9 @@ import '../../../core/models/address_model.dart';
 import '../../../services/address_api_service.dart';
 import '../../../core/services/promo_code_service.dart';
 import '../../../core/services/device_info_service.dart';
+import '../../../core/api/api_client.dart';
 import '../widgets/promo_code_widget.dart';
+import 'package:url_launcher/url_launcher.dart';
 // import 'order_confirmation_screen.dart'; // Temporarily commented
 
 class CheckoutScreen extends StatefulWidget {
@@ -107,27 +109,67 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   Future<void> _loadUserData() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     if (authProvider.isAuthenticated) {
-      // Get name from JWT token
+      // Fetch complete user profile from API
       try {
-        final token = await SecureStorage.getAuthToken();
-        if (token != null) {
-          final userName = JwtHelper.getUserName(token);
-          setState(() {
-            if (userName != null && userName.isNotEmpty) {
-              // Split name into first and last name
-              final nameParts = userName.trim().split(' ');
-              if (nameParts.length > 1) {
-                _nameController.text = nameParts.first;
-                _lastNameController.text = nameParts.sublist(1).join(' ');
-              } else {
-                _nameController.text = userName;
-                _lastNameController.text = userName; // Use same name for last name if no space
-              }
+        final response = await ApiClient.get('/users/me');
+
+        if (response.statusCode == 200) {
+          final responseData = response.data;
+          if (responseData is Map<String, dynamic>) {
+            final userData = responseData['data'];
+
+            if (userData != null && mounted) {
+              // Extract data before setState
+              final firstName = userData['firstName'] ?? '';
+              final lastName = userData['lastName'] ?? '';
+              final phoneNumber = userData['mobileNumber'] ?? '';
+
+              setState(() {
+                // Auto-populate first name
+                if (firstName.isNotEmpty) {
+                  _nameController.text = firstName;
+                }
+
+                // Auto-populate last name
+                if (lastName.isNotEmpty) {
+                  _lastNameController.text = lastName;
+                }
+
+                // Auto-populate phone number
+                if (phoneNumber.isNotEmpty) {
+                  _phoneController.text = phoneNumber;
+                }
+              });
+
+              debugPrint('✅ User data loaded: firstName=$firstName, lastName=$lastName, phone=$phoneNumber');
             }
-          });
+          }
         }
       } catch (e) {
-        debugPrint('Error loading user data: $e');
+        debugPrint('Error loading user profile from API: $e');
+
+        // Fallback to JWT token for name only
+        try {
+          final token = await SecureStorage.getAuthToken();
+          if (token != null) {
+            final userName = JwtHelper.getUserName(token);
+            setState(() {
+              if (userName != null && userName.isNotEmpty) {
+                // Split name into first and last name
+                final nameParts = userName.trim().split(' ');
+                if (nameParts.length > 1) {
+                  _nameController.text = nameParts.first;
+                  _lastNameController.text = nameParts.sublist(1).join(' ');
+                } else {
+                  _nameController.text = userName;
+                  _lastNameController.text = userName;
+                }
+              }
+            });
+          }
+        } catch (e) {
+          debugPrint('Error loading user data from JWT: $e');
+        }
       }
     }
   }
@@ -658,8 +700,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                 onTap: () {
                                   setState(() {
                                     _selectedSavedAddress = address;
+                                    _loadAddressToFields(address);
                                   });
-                                  _loadAddressToFields(address);
                                 },
                                 child: Container(
                                   width: 200,
@@ -819,7 +861,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                 contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                                 isDense: true,
                               ),
-                              validator: (value) => value?.isEmpty == true ? 'Required' : null,
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) return 'Required';
+                                return null;
+                              },
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -835,7 +880,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                               ),
                               validator: (value) {
                                 if (value == null || value.trim().isEmpty) return 'Required';
-                                if (value.trim().length < 2) return 'Min 2 chars';
                                 return null;
                               },
                             ),
@@ -863,7 +907,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) return 'Required';
                           if (value.trim().length != 10) return 'Must be 10 digits';
-                          if (!RegExp(r'^[6-9]\d{9}$').hasMatch(value.trim())) return 'Invalid number';
                           return null;
                         },
                       ),
@@ -900,6 +943,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                           contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                           isDense: true,
                         ),
+                        validator: (value) {
+                          // Optional field, but if entered, must be valid
+                          if (value != null && value.trim().isNotEmpty) {
+                            if (value.trim().length < 3) return 'Too short (min 3 chars)';
+                            if (value.trim().length > 100) return 'Too long (max 100 chars)';
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 10),
 
@@ -914,6 +965,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                           contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                           isDense: true,
                         ),
+                        validator: (value) {
+                          // Optional field, but if entered, must be valid
+                          if (value != null && value.trim().isNotEmpty) {
+                            if (value.trim().length < 3) return 'Too short (min 3 chars)';
+                            if (value.trim().length > 100) return 'Too long (max 100 chars)';
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 12),
 
@@ -974,41 +1033,25 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       ),
                       const SizedBox(height: 10),
 
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _pincodeController,
-                              style: const TextStyle(color: Colors.black, fontSize: 14),
-                              decoration: const InputDecoration(
-                                labelText: 'Pincode *',
-                                labelStyle: TextStyle(fontSize: 12),
-                                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                                isDense: true,
-                                counterText: '',
-                              ),
-                              keyboardType: TextInputType.number,
-                              maxLength: 6,
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) return 'Required';
-                                if (value.trim().length != 6) return '6 digits';
-                                if (!RegExp(r'^[0-9]{6}$').hasMatch(value.trim())) return 'Invalid';
-                                return null;
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: _getCurrentLocation,
-                              icon: const Icon(Icons.my_location, size: 16),
-                              label: const Text('Use GPS', style: TextStyle(fontSize: 12)),
-                              style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                              ),
-                            ),
-                          ),
-                        ],
+                      // Pincode field
+                      TextFormField(
+                        controller: _pincodeController,
+                        style: const TextStyle(color: Colors.black, fontSize: 14),
+                        decoration: const InputDecoration(
+                          labelText: 'Pincode *',
+                          labelStyle: TextStyle(fontSize: 12),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                          isDense: true,
+                          counterText: '',
+                        ),
+                        keyboardType: TextInputType.number,
+                        maxLength: 6,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) return 'Required';
+                          if (value.trim().length != 6) return '6 digits';
+                          if (!RegExp(r'^[0-9]{6}$').hasMatch(value.trim())) return 'Invalid';
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 12),
 
@@ -1054,6 +1097,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         maxLines: 2,
                         onChanged: (value) {
                           _deliveryInstructions = value;
+                        },
+                        validator: (value) {
+                          // Optional field, but if entered, must be valid
+                          if (value != null && value.trim().isNotEmpty) {
+                            if (value.trim().length < 5) return 'Too short (min 5 chars)';
+                            if (value.trim().length > 200) return 'Too long (max 200 chars)';
+                          }
+                          return null;
                         },
                       ),
                       const SizedBox(height: 12),
@@ -2526,6 +2577,50 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error getting location: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            margin: const EdgeInsets.all(12),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _openMapLocation() async {
+    try {
+      // Default location: Tirupattur, Tamil Nadu
+      const double defaultLat = 12.4996;
+      const double defaultLng = 78.5766;
+
+      // Open Google Maps in browser with Tirupattur location
+      final url = Uri.parse(
+        'https://www.google.com/maps/search/?api=1&query=$defaultLat,$defaultLng',
+      );
+
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Google Maps opened. After viewing your location, you can manually enter your address above.'),
+              backgroundColor: VillageTheme.primaryGreen,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              margin: const EdgeInsets.all(12),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      } else {
+        throw Exception('Could not open Google Maps');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error opening map: ${e.toString()}'),
             backgroundColor: Colors.red,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             margin: const EdgeInsets.all(12),
