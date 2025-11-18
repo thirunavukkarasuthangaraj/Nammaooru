@@ -124,8 +124,68 @@ public class EmailOtpService {
 
     public boolean hasActiveOtp(String email, String purpose) {
         return emailOtpRepository.findLatestActiveOtpByEmailAndPurpose(
-                email.trim().toLowerCase(), 
+                email.trim().toLowerCase(),
                 purpose.toUpperCase()
         ).isPresent();
+    }
+
+    /**
+     * Generate OTP without sending email (for cases where we need to use the same OTP for SMS and email)
+     */
+    @Transactional
+    public String generateOtp(String email, String purpose) {
+        // Check rate limiting
+        LocalDateTime oneHourAgo = LocalDateTime.now().minusHours(1);
+        long recentAttempts = emailOtpRepository.countOtpAttemptsSince(email, purpose, oneHourAgo);
+
+        if (recentAttempts >= MAX_ATTEMPTS_PER_HOUR) {
+            throw new RuntimeException("Too many OTP requests. Please try again after an hour.");
+        }
+
+        // Deactivate all previous active OTPs for this email and purpose
+        emailOtpRepository.deactivateAllActiveOtpsByEmailAndPurpose(email, purpose);
+
+        // Generate new 6-digit OTP
+        String otpCode = String.valueOf((int) (Math.random() * 900000) + 100000);
+
+        // Create and save new OTP record
+        EmailOtp emailOtp = EmailOtp.builder()
+                .email(email.trim().toLowerCase())
+                .otpCode(otpCode)
+                .purpose(purpose.toUpperCase())
+                .expiresAt(LocalDateTime.now().plusMinutes(OTP_EXPIRY_MINUTES))
+                .isUsed(false)
+                .isActive(true)
+                .attemptCount(0)
+                .build();
+
+        emailOtpRepository.save(emailOtp);
+
+        log.info("OTP generated for email: {} for purpose: {}", email, purpose);
+        return otpCode;
+    }
+
+    /**
+     * Store an existing OTP (for cases where we generate OTP once and want to use it for multiple channels)
+     */
+    @Transactional
+    public void storeOtp(String email, String otpCode, String purpose) {
+        // Deactivate all previous active OTPs for this email and purpose
+        emailOtpRepository.deactivateAllActiveOtpsByEmailAndPurpose(email, purpose);
+
+        // Create and save new OTP record
+        EmailOtp emailOtp = EmailOtp.builder()
+                .email(email.trim().toLowerCase())
+                .otpCode(otpCode)
+                .purpose(purpose.toUpperCase())
+                .expiresAt(LocalDateTime.now().plusMinutes(OTP_EXPIRY_MINUTES))
+                .isUsed(false)
+                .isActive(true)
+                .attemptCount(0)
+                .build();
+
+        emailOtpRepository.save(emailOtp);
+
+        log.info("OTP stored for email: {} for purpose: {}", email, purpose);
     }
 }
