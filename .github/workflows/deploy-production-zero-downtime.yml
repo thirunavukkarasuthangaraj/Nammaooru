@@ -94,6 +94,7 @@ jobs:
         host: ${{ secrets.HETZNER_HOST }}
         username: ${{ secrets.HETZNER_USER }}
         password: ${{ secrets.HETZNER_PASSWORD }}
+        command_timeout: 15m
         script: |
           echo "════════════════════════════════════════════════════════════"
           echo "   🚀 ZERO DOWNTIME BACKEND DEPLOYMENT"
@@ -189,6 +190,7 @@ jobs:
         host: ${{ secrets.HETZNER_HOST }}
         username: ${{ secrets.HETZNER_USER }}
         password: ${{ secrets.HETZNER_PASSWORD }}
+        command_timeout: 10m
         script: |
           echo "════════════════════════════════════════════════════════════"
           echo "   🎨 ZERO DOWNTIME FRONTEND DEPLOYMENT"
