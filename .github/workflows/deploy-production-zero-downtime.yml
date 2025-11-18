@@ -117,6 +117,15 @@ jobs:
           ./deployment-automation/scripts/zero-downtime-deploy.sh
 
           echo ""
+          echo "🔄 Ensuring Nginx is pointing to new backend..."
+
+          # Make Nginx update script executable
+          chmod +x deployment-automation/scripts/update-nginx-backend-port.sh
+
+          # Update Nginx to new backend port (safety fallback)
+          ./deployment-automation/scripts/update-nginx-backend-port.sh
+
+          echo ""
           echo "════════════════════════════════════════════════════════════"
           echo "   ✅ BACKEND DEPLOYMENT COMPLETE"
           echo "════════════════════════════════════════════════════════════"
