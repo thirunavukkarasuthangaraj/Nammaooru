@@ -62,7 +62,7 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
     HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' $NEW_BACKEND 2>/dev/null || echo "starting")
 
     if [ "$HEALTH_STATUS" = "healthy" ]; then
-        log_info "New backend is healthy!"
+        log_info "New backend container is healthy!"
         break
     fi
 
@@ -75,6 +75,57 @@ if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
     log_error "New backend failed to become healthy!"
     log_error "Logs from new container:"
     docker logs $NEW_BACKEND --tail 50
+
+    log_warn "Rolling back - removing new container..."
+    docker stop $NEW_BACKEND
+    docker rm $NEW_BACKEND
+    exit 1
+fi
+
+# Step 6.5: Wait for APPLICATION readiness (not just container health)
+log_info "Verifying application endpoints are ready..."
+NEW_BACKEND_PORT=$(docker port $NEW_BACKEND 8080 | cut -d':' -f2)
+APP_RETRY_COUNT=0
+MAX_APP_RETRIES=30  # 30 attempts × 5s = 2.5 minutes
+
+while [ $APP_RETRY_COUNT -lt $MAX_APP_RETRIES ]; do
+    # Test multiple critical endpoints to ensure app is truly ready
+    HEALTH_OK=false
+    INFO_OK=false
+
+    # Test 1: Health endpoint
+    if curl -f -s -m 5 http://localhost:$NEW_BACKEND_PORT/actuator/health > /dev/null 2>&1; then
+        HEALTH_OK=true
+    fi
+
+    # Test 2: Info endpoint (validates Spring Boot context is fully loaded)
+    if curl -f -s -m 5 http://localhost:$NEW_BACKEND_PORT/actuator/info > /dev/null 2>&1; then
+        INFO_OK=true
+    fi
+
+    if [ "$HEALTH_OK" = true ] && [ "$INFO_OK" = true ]; then
+        log_info "✅ Application endpoints are fully ready!"
+
+        # Additional verification: Check if JPA repositories are initialized
+        log_info "Final check: Testing database connectivity..."
+        sleep 5  # Give JPA one more moment to finalize
+
+        if curl -f -s -m 5 http://localhost:$NEW_BACKEND_PORT/actuator/health > /dev/null 2>&1; then
+            log_info "✅ Application is 100% ready for production traffic!"
+            break
+        fi
+    fi
+
+    log_warn "Application not fully ready yet (health=$HEALTH_OK, info=$INFO_OK) - attempt $((APP_RETRY_COUNT+1))/$MAX_APP_RETRIES"
+    sleep 5
+    APP_RETRY_COUNT=$((APP_RETRY_COUNT+1))
+done
+
+if [ $APP_RETRY_COUNT -eq $MAX_APP_RETRIES ]; then
+    log_error "Application endpoints failed to become ready in time!"
+    log_error "This is NOT a container health issue - the application is slow to initialize."
+    log_error "Recent logs from new container:"
+    docker logs $NEW_BACKEND --tail 100
 
     log_warn "Rolling back - removing new container..."
     docker stop $NEW_BACKEND
