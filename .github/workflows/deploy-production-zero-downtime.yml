@@ -121,9 +121,28 @@ jobs:
         password: ${{ secrets.HETZNER_PASSWORD }}
         script: |
           echo "Verifying backend health..."
-          sleep 10
-          curl -f https://api.nammaoorudelivary.in/actuator/health || exit 1
-          echo "✅ Backend is healthy!"
+          echo "Waiting for deployment to complete and backend to be fully ready..."
+
+          # Retry health check up to 12 times (2 minutes total)
+          RETRY_COUNT=0
+          MAX_RETRIES=12
+
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            echo "Attempt $((RETRY_COUNT+1))/$MAX_RETRIES..."
+
+            if curl -f -s https://api.nammaoorudelivary.in/actuator/health > /dev/null 2>&1; then
+              echo "✅ Backend is healthy!"
+              curl -s https://api.nammaoorudelivary.in/actuator/health
+              exit 0
+            fi
+
+            echo "Backend not ready yet, waiting 10s..."
+            sleep 10
+            RETRY_COUNT=$((RETRY_COUNT+1))
+          done
+
+          echo "❌ Backend health check failed after $MAX_RETRIES attempts"
+          exit 1
 
   # Step 3: Deploy Frontend with Zero Downtime
   deploy-frontend:
