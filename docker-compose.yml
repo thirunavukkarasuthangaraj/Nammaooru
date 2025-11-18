@@ -26,12 +26,11 @@ services:
       - APP_SCHEDULING_ENABLED=${APP_SCHEDULING_ENABLED:-true}
       # Firebase configuration path (mounted from host)
       - FIREBASE_SERVICE_ACCOUNT_PATH=/app/firebase-config/firebase-service-account.json
-    # Changed to expose instead of fixed port mapping
-    expose:
-      - "8080"
-    # Map to dynamic host ports for load balancing
+    # Expose internal port only (Nginx will proxy to these)
+    # Docker will automatically assign available host ports
+    # Deployment script discovers actual ports dynamically
     ports:
-      - "8082-8084:8080"
+      - "8080"  # Format: "internal_port" - Docker assigns random host port
     volumes:
       # Mount host directory for persistent file storage (production)
       - /opt/shop-management/uploads:/app/uploads
