@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:email_validator/email_validator.dart';
 import 'dart:ui';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/models/auth_models.dart';
 import '../../../core/theme/village_theme.dart';
@@ -290,7 +291,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
       child: TextFormField(
         controller: _nameController,
         textInputAction: TextInputAction.next,
-        validator: Validators.validateName,
+        maxLength: 50,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
+        validator: (value) {
+          if (value == null || value.trim().isEmpty) {
+            return 'Please enter your name';
+          }
+          if (value.trim().length < 2) {
+            return 'Name must be at least 2 characters';
+          }
+          if (value.trim().length > 50) {
+            return 'Name must be less than 50 characters';
+          }
+          return null;
+        },
         style: const TextStyle(
           fontSize: 16,
           color: Color(0xFF2C3E50),
@@ -307,6 +321,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             size: 20,
           ),
           border: InputBorder.none,
+          counterText: '',
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 16,
@@ -326,15 +341,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
         controller: _emailController,
         keyboardType: TextInputType.emailAddress,
         textInputAction: TextInputAction.next,
+        maxLength: 100,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
         style: const TextStyle(
           fontSize: 16,
           color: Color(0xFF2C3E50),
         ),
         validator: (value) {
-          if (value == null || value.isEmpty) {
+          if (value == null || value.trim().isEmpty) {
             return 'Please enter your email';
           }
-          if (!EmailValidator.validate(value)) {
+          if (!EmailValidator.validate(value.trim())) {
             return 'Please enter a valid email address';
           }
           return null;
@@ -351,6 +368,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             size: 20,
           ),
           border: InputBorder.none,
+          counterText: '',
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 16,
@@ -370,16 +388,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
         controller: _phoneController,
         keyboardType: TextInputType.phone,
         textInputAction: TextInputAction.next,
+        maxLength: 10,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
         style: const TextStyle(
           fontSize: 16,
           color: Color(0xFF2C3E50),
         ),
         validator: (value) {
-          if (value == null || value.isEmpty) {
+          if (value == null || value.trim().isEmpty) {
             return 'Please enter your phone number';
           }
-          if (value.length < 10) {
-            return 'Please enter a valid phone number';
+          if (value.trim().length != 10) {
+            return 'Phone number must be 10 digits';
+          }
+          // Check if all digits (no letters)
+          if (!RegExp(r'^[0-9]+$').hasMatch(value.trim())) {
+            return 'Phone number must contain only digits';
           }
           return null;
         },
@@ -395,6 +419,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             size: 20,
           ),
           border: InputBorder.none,
+          counterText: '',
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 16,
@@ -463,17 +488,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
         controller: _passwordController,
         obscureText: _obscurePassword,
         textInputAction: TextInputAction.done,
+        maxLength: 50,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
         onFieldSubmitted: (_) => _handleRegister(),
         style: const TextStyle(
           fontSize: 16,
           color: Color(0xFF2C3E50),
         ),
         validator: (value) {
-          if (value == null || value.isEmpty) {
+          if (value == null || value.trim().isEmpty) {
             return 'Please enter a password';
           }
           if (value.length < 6) {
             return 'Password must be at least 6 characters';
+          }
+          if (value.length > 50) {
+            return 'Password must be less than 50 characters';
           }
           return null;
         },
@@ -501,6 +531,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             },
           ),
           border: InputBorder.none,
+          counterText: '',
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 16,
@@ -556,7 +587,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     GestureDetector(
                       onTap: () {
-                        // TODO: Show terms and conditions
+                        _showTermsAndConditions(context);
                       },
                       child: Text(
                         'Terms & Conditions',
@@ -575,7 +606,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     GestureDetector(
                       onTap: () {
-                        // TODO: Show privacy policy
+                        _showPrivacyPolicy(context);
                       },
                       child: Text(
                         'Privacy Policy',
@@ -658,5 +689,65 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
       ],
     );
+  }
+
+  void _showTermsAndConditions(BuildContext context) async {
+    const String termsUrl = 'https://nammaoorudelivary.in/terms-and-conditions';
+
+    final Uri url = Uri.parse(termsUrl);
+
+    try {
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not open terms and conditions'),
+              backgroundColor: VillageTheme.errorRed,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: VillageTheme.errorRed,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showPrivacyPolicy(BuildContext context) async {
+    const String privacyPolicyUrl = 'https://nammaoorudelivary.in/privacy-policy';
+
+    final Uri url = Uri.parse(privacyPolicyUrl);
+
+    try {
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not open privacy policy'),
+              backgroundColor: VillageTheme.errorRed,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: VillageTheme.errorRed,
+          ),
+        );
+      }
+    }
   }
 }

@@ -1,0 +1,155 @@
+╔═══════════════════════════════════════════════════════════════════════╗
+║                                                                       ║
+║        🚀 GEMINI API - 4 KEYS ROTATION SETUP                         ║
+║           Quick Start Guide (Read This First!)                       ║
+║                                                                       ║
+╚═══════════════════════════════════════════════════════════════════════╝
+
+📁 FOLDER CONTENTS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. START-HERE.txt (this file)   - Quick overview and navigation
+2. README.md                     - Main documentation and quick start
+3. setup-guide.md                - Detailed step-by-step instructions
+4. your-api-keys.txt             - Template to paste your actual keys
+5. set-keys-windows.bat          - Windows script to set env variables
+6. set-keys-linux.sh             - Linux/Mac script to set env variables
+7. .env.template                 - Environment file template
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 QUICK START (5 MINUTES):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEP 1: Get Your Full API Keys
+  → Open: https://aistudio.google.com/api-keys
+  → Click "Show API key" for each of your 4 keys
+  → Copy the full keys (start with AIzaSy...)
+
+STEP 2: Choose Your Setup Method
+
+  🏃 FASTEST (for testing):
+     Open: backend/src/main/resources/application.yml
+     Update lines 193-196 with your full API keys
+     ⚠️  Don't commit this file to Git!
+
+  🔒 MOST SECURE (recommended):
+     Run: set-keys-windows.bat (Windows)
+     Or:  ./set-keys-linux.sh (Linux/Mac)
+
+STEP 3: Start Backend
+  cd backend
+  mvnw.cmd spring-boot:run
+
+STEP 4: Test
+  → Use voice search in mobile app
+  → Check logs for key rotation
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📚 WHICH FILE SHOULD I READ?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+If you want...                    Read this file...
+────────────────────────────────  ─────────────────────────────────────
+Quick overview                    → README.md
+Detailed instructions             → setup-guide.md
+To paste your keys                → your-api-keys.txt
+Windows setup script              → set-keys-windows.bat
+Linux/Mac setup script            → set-keys-linux.sh
+Environment variables template    → .env.template
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ WHAT'S ALREADY DONE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✓ Backend code updated (GeminiSearchService.java)
+✓ Configuration ready (application.yml)
+✓ Round-robin rotation implemented
+✓ Thread-safe with AtomicInteger
+✓ Monitoring method added
+✓ Security (.gitignore updated)
+
+ALL YOU NEED TO DO: Add your 4 API keys!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔒 IMPORTANT SECURITY NOTE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️  NEVER commit API keys to Git!
+
+The .gitignore file is already configured to protect:
+  ✓ .env files
+  ✓ your-api-keys.txt (if you put real keys in it)
+
+ALWAYS use:
+  → Environment variables (set-keys-*.bat/sh)
+  → OR update application.yml temporarily (don't commit!)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 YOUR CONFIGURATION:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+From your Google AI Studio screenshot:
+
+  Key 1: ...GB3Q  (key3)          → 15 RPM
+  Key 2: ...JlQE  (key2)          → 15 RPM
+  Key 3: ...CmQo  (key1)          → 15 RPM
+  Key 4: ...XoTc  (ProductSearch) → 15 RPM
+                                    ────────
+  TOTAL:                            60 RPM
+
+Rotation Pattern:
+  Request 1 → Key 1 (GB3Q)
+  Request 2 → Key 2 (JlQE)
+  Request 3 → Key 3 (CmQo)
+  Request 4 → Key 4 (XoTc)
+  Request 5 → Key 1 (GB3Q) ← Cycles back!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🧪 HOW TO TEST:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Start backend server
+2. Open mobile app at: http://localhost:59999
+3. Navigate to any shop
+4. Click microphone icon (voice search)
+5. Search for products multiple times
+6. Check backend logs:
+
+   You should see:
+   🔄 Using API key #1 (Total keys: 4)
+   🔄 Using API key #2 (Total keys: 4)
+   🔄 Using API key #3 (Total keys: 4)
+   🔄 Using API key #4 (Total keys: 4)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+❓ NEED HELP?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Problem:                          Solution:
+────────────────────────────────  ─────────────────────────────────────
+Keys not working                  → Check if keys are valid in Google
+                                    AI Studio
+Keys not rotating                 → Restart backend server
+403 Forbidden error               → Add IP restrictions in Google AI
+                                    Studio or set to "None"
+Rate limit error                  → Verify all 4 keys are configured
+Not sure where to start           → Read README.md first
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎉 YOU'RE ALMOST THERE!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Everything is configured and ready.
+Just add your 4 API keys and start the backend!
+
+Next step: Open README.md for detailed instructions
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

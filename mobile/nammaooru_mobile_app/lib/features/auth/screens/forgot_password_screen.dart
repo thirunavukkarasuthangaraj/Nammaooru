@@ -159,8 +159,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         const SizedBox(height: 40),
         _buildStepHeader(
           'Forgot Password',
-          'Don\'t worry! Enter your email or mobile number and we\'ll send you a verification code to reset your password.',
-          Icons.mail_outline,
+          'Don\'t worry! Enter your mobile number and we\'ll send you a verification code to reset your password.',
+          Icons.phone_outlined,
         ),
         const SizedBox(height: 40),
         Form(
@@ -211,7 +211,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         const SizedBox(height: 40),
         _buildStepHeader(
           'Verify Code',
-          'We\'ve sent a 6-digit verification code to\n${provider.email}',
+          'We\'ve sent a 6-digit verification code to your mobile number\n${provider.email}',
           Icons.verified_user_outlined,
         ),
         const SizedBox(height: 40),
@@ -399,32 +399,36 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Widget _buildEmailField() {
     return TextFormField(
       controller: _emailController,
-      keyboardType: TextInputType.text,
+      keyboardType: TextInputType.phone,
       textInputAction: TextInputAction.next,
+      maxLength: 10,
       style: const TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.w500,
         color: Color(0xFF1C1C1E),
       ),
       validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Please enter your email or mobile number';
+        if (value == null || value.trim().isEmpty) {
+          return 'Please enter your mobile number';
+        }
+        if (value.trim().length != 10) {
+          return 'Mobile number must be 10 digits';
         }
         return null;
       },
       decoration: InputDecoration(
-        labelText: 'Email or Mobile Number',
+        labelText: 'Mobile Number',
         labelStyle: const TextStyle(
           color: Color(0xFF666666),
           fontSize: 14,
           fontWeight: FontWeight.w500,
         ),
-        hintText: 'example@email.com or 9876543210',
+        hintText: '9876543210',
         hintStyle: const TextStyle(
           color: Color(0xFF999999),
           fontSize: 16,
         ),
-        prefixIcon: const Icon(Icons.person_outline,
+        prefixIcon: const Icon(Icons.phone,
           color: Colors.black54,
           size: 20,
         ),
@@ -451,6 +455,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         filled: true,
         fillColor: Colors.white,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+        counterText: '',
         isDense: false,
       ),
     );
@@ -715,13 +720,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   void _sendOtp(ForgotPasswordProvider provider) async {
     if (_emailFormKey.currentState!.validate()) {
       final success = await provider.sendOtp(_emailController.text.trim());
-      
+
       if (mounted) {
         if (success) {
           _startResendTimer();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Verification code sent to your email!'),
+              content: Text('Verification code sent to your mobile number!'),
               backgroundColor: Color(0xFF4CAF50),
             ),
           );

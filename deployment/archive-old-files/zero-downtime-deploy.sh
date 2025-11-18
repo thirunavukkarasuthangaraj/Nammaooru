@@ -1,0 +1,155 @@
+#!/bin/bash
+set -e
+
+# Zero Downtime Deployment Script
+# Run this on the production server: root@65.21.4.236
+
+echo "🚀 Starting Zero Downtime Deployment..."
+
+# Configuration
+PROJECT_DIR="/opt/shop-management"
+COMPOSE_FILE="docker-compose.yml"
+NGINX_CONFIG="/etc/nginx/sites-available/api.nammaoorudelivary.in"
+SERVICE_NAME="shop-management-system"
+
+# Colors for output
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+# Function to print colored output
+log_info() { echo -e "${GREEN}✓ $1${NC}"; }
+log_warn() { echo -e "${YELLOW}⚠ $1${NC}"; }
+log_error() { echo -e "${RED}✗ $1${NC}"; }
+
+# Change to project directory
+cd $PROJECT_DIR
+
+# Step 1: Pull latest code (if using git)
+if [ -d ".git" ]; then
+    log_info "Pulling latest code from git..."
+    git pull
+fi
+
+# Step 2: Build new images with unique tag
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+log_info "Building new images with tag: $TIMESTAMP..."
+docker-compose -f $COMPOSE_FILE build --build-arg BUILD_DATE=$TIMESTAMP
+
+# Step 3: Get current backend container
+OLD_BACKEND=$(docker ps --filter "label=com.shop.service=backend" --format "{{.Names}}" | head -n 1)
+log_info "Current backend container: $OLD_BACKEND"
+
+# Step 4: Start new backend container (will run alongside old one)
+log_info "Starting new backend container..."
+docker-compose -f $COMPOSE_FILE up -d --no-deps --scale backend=2 --no-recreate backend
+
+# Wait for new container to start
+sleep 5
+
+# Step 5: Get new backend container
+NEW_BACKEND=$(docker ps --filter "label=com.shop.service=backend" --format "{{.Names}}" | grep -v "$OLD_BACKEND" | head -n 1)
+log_info "New backend container: $NEW_BACKEND"
+
+# Step 6: Wait for health check on new container
+log_info "Waiting for new backend to be healthy..."
+RETRY_COUNT=0
+MAX_RETRIES=20
+
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' $NEW_BACKEND 2>/dev/null || echo "starting")
+
+    if [ "$HEALTH_STATUS" = "healthy" ]; then
+        log_info "New backend is healthy!"
+        break
+    fi
+
+    log_warn "Health status: $HEALTH_STATUS (attempt $((RETRY_COUNT+1))/$MAX_RETRIES)"
+    sleep 5
+    RETRY_COUNT=$((RETRY_COUNT+1))
+done
+
+if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+    log_error "New backend failed to become healthy!"
+    log_error "Logs from new container:"
+    docker logs $NEW_BACKEND --tail 50
+
+    log_warn "Rolling back - removing new container..."
+    docker stop $NEW_BACKEND
+    docker rm $NEW_BACKEND
+    exit 1
+fi
+
+# Step 7: Update Nginx upstream to prefer new backend
+log_info "Updating Nginx configuration..."
+NEW_BACKEND_PORT=$(docker port $NEW_BACKEND 8080 | cut -d':' -f2)
+OLD_BACKEND_PORT=$(docker port $OLD_BACKEND 8080 | cut -d':' -f2)
+
+# Update upstream block in nginx config
+log_info "Adding new backend ($NEW_BACKEND_PORT) as primary, old backend ($OLD_BACKEND_PORT) as backup..."
+sed -i "/upstream backend_servers {/,/}/c\\
+upstream backend_servers {\\
+    # New backend (primary) - Updated $(date)\\
+    server localhost:$NEW_BACKEND_PORT max_fails=3 fail_timeout=30s;\\
+    # Old backend (backup)\\
+    server localhost:$OLD_BACKEND_PORT max_fails=3 fail_timeout=30s backup;\\
+    keepalive 32;\\
+}" $NGINX_CONFIG
+
+# Step 8: Test and reload Nginx
+log_info "Testing Nginx configuration..."
+if nginx -t; then
+    log_info "Reloading Nginx..."
+    systemctl reload nginx
+else
+    log_error "Nginx configuration test failed!"
+    log_error "Rolling back nginx config changes..."
+    # Restore from backup if needed
+    exit 1
+fi
+
+# Step 9: Wait for connections to drain from old backend
+log_info "Waiting 30s for connections to drain from old backend..."
+sleep 30
+
+# Step 10: Stop and remove old backend
+log_info "Stopping old backend container: $OLD_BACKEND"
+docker stop $OLD_BACKEND
+docker rm $OLD_BACKEND
+
+# Step 11: Scale down to single backend instance
+log_info "Scaling backend to 1 instance..."
+docker-compose -f $COMPOSE_FILE up -d --scale backend=1 --no-recreate
+
+# Step 12: Clean up old images
+log_info "Cleaning up old Docker images..."
+docker image prune -f
+
+# Step 13: Update final Nginx config to point to single backend
+FINAL_BACKEND=$(docker ps --filter "label=com.shop.service=backend" --format "{{.Names}}" | head -n 1)
+FINAL_PORT=$(docker port $FINAL_BACKEND 8080 | cut -d':' -f2)
+
+log_info "Updating Nginx to use single backend on port $FINAL_PORT..."
+sed -i "/upstream backend_servers {/,/}/c\\
+upstream backend_servers {\\
+    # Active backend - Updated $(date)\\
+    server localhost:$FINAL_PORT max_fails=3 fail_timeout=30s;\\
+    keepalive 32;\\
+}" $NGINX_CONFIG
+
+nginx -t && systemctl reload nginx
+
+# Final status
+log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+log_info "✅ Zero Downtime Deployment Complete!"
+log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+log_info "Active backend: $FINAL_BACKEND (port $FINAL_PORT)"
+log_info "Deployment timestamp: $TIMESTAMP"
+log_info ""
+log_info "Verify deployment:"
+log_info "  curl -f https://api.nammaoorudelivary.in/actuator/health"
+log_info ""
+
+# Show running containers
+docker ps --filter "label=com.shop.service=backend"

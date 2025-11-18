@@ -45,7 +45,6 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@Transactional
 public class ShopService {
 
     private final ShopRepository shopRepository;
@@ -60,6 +59,7 @@ public class ShopService {
     private final com.shopmanagement.service.BusinessHoursService businessHoursService;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
+    @Transactional
     public ShopResponse createShop(ShopCreateRequest request) {
         log.info("Creating new shop: {}", request.getName());
         

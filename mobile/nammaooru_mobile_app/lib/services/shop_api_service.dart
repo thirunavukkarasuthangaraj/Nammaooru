@@ -25,7 +25,8 @@ class ShopApiService {
         'sortDir': sortDir,
       };
 
-      if (city != null) queryParams['city'] = city;
+      // City filter removed - location-based filtering will be added later
+      // if (city != null) queryParams['city'] = city;
       if (category != null) queryParams['category'] = category;
       // TEMPORARILY DISABLED: Location-based filtering
       // if (latitude != null) queryParams['lat'] = latitude.toString();

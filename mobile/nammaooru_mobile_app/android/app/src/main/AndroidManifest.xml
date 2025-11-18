@@ -34,9 +34,8 @@
 <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
-<!-- Foreground service for live tracking (safe to keep) -->
+<!-- Foreground service (removed FOREGROUND_SERVICE_LOCATION to comply with Play Store policy) -->
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-<uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
 <!-- ✅ Queries block (safe replacement for QUERY_ALL_PACKAGES) -->
 <queries>

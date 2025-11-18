@@ -14,7 +14,7 @@ import '../../../shared/widgets/custom_app_bar.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
   final String email;
-  
+
   const OtpVerificationScreen({
     super.key,
     required this.email,
@@ -48,7 +48,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   void _startTimer() {
     _canResend = false;
     _remainingTime = 120;
-    
+
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_remainingTime > 0) {
         setState(() {
@@ -105,7 +105,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         } else if (authProvider.isDeliveryPartner) {
           context.pushReplacement('/delivery-partner/dashboard');
         } else {
-          context.pushReplacement('/customer/dashboard'); // Default to customer dashboard
+          context.pushReplacement(
+              '/customer/dashboard'); // Default to customer dashboard
         }
       } else if (authProvider.errorMessage != null) {
         Helpers.showSnackBar(
@@ -123,7 +124,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final success = await authProvider.resendOtp(widget.email ?? '');
-    
+
     if (mounted) {
       if (success) {
         Helpers.showSnackBar(
@@ -169,48 +170,48 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               ),
             ),
             SafeArea(
-        child: Consumer<AuthProvider>(
-          builder: (context, authProvider, child) {
-            return LoadingOverlay(
-              isLoading: authProvider.authState == AuthState.loading,
-              loadingMessage: 'Verifying OTP...',
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24.0),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const SizedBox(height: 40),
-                      _buildHeader(),
-                      const SizedBox(height: 40),
-                      const Text(
-                        'Enter 6-digit code',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.black,
-                          fontWeight: FontWeight.w500,
+              child: Consumer<AuthProvider>(
+                builder: (context, authProvider, child) {
+                  return LoadingOverlay(
+                    isLoading: authProvider.authState == AuthState.loading,
+                    loadingMessage: 'Verifying OTP...',
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const SizedBox(height: 40),
+                            _buildHeader(),
+                            const SizedBox(height: 40),
+                            const Text(
+                              'Enter 6-digit code',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.black,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 16),
+                            _buildOtpFields(),
+                            const SizedBox(height: 30),
+                            _buildTimer(),
+                            const SizedBox(height: 30),
+                            _buildVerifyButton(),
+                            const SizedBox(height: 20),
+                            _buildResendButton(),
+                            const SizedBox(height: 30),
+                            _buildChangeEmailButton(),
+                          ],
                         ),
-                        textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 16),
-                      _buildOtpFields(),
-                      const SizedBox(height: 30),
-                      _buildTimer(),
-                      const SizedBox(height: 30),
-                      _buildVerifyButton(),
-                      const SizedBox(height: 20),
-                      _buildResendButton(),
-                      const SizedBox(height: 30),
-                      _buildChangeEmailButton(),
-                    ],
-                  ),
-                ),
+                    ),
+                  );
+                },
               ),
-            );
-          },
-        ),
-      ),
+            ),
           ],
         ),
       ),
@@ -367,7 +368,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
   Widget _buildVerifyButton() {
     return PrimaryButton(
-      text: 'Verify Email',
+      text: 'Verify OTP',
       onPressed: _handleVerifyOtp,
       height: 56,
     );
@@ -389,7 +390,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         context.go('/register');
       },
       child: const Text(
-        'Change Email Address',
+        'Change Mobile number',
         style: TextStyle(
           color: Colors.black,
           fontSize: 14,

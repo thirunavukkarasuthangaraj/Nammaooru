@@ -1411,9 +1411,13 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         mode: LaunchMode.platformDefault,
       );
 
-      // Close loading dialog
-      if (mounted) {
-        Navigator.pop(context);
+      // Close loading dialog - use post frame callback to avoid navigator lock issues
+      if (mounted && Navigator.of(context).canPop()) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && Navigator.of(context).canPop()) {
+            Navigator.pop(context);
+          }
+        });
       }
 
       if (launched) {
@@ -1432,9 +1436,13 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         }
       }
     } catch (e) {
-      // Close loading dialog
-      if (mounted) {
-        Navigator.pop(context);
+      // Close loading dialog - use post frame callback to avoid navigator lock issues
+      if (mounted && Navigator.of(context).canPop()) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && Navigator.of(context).canPop()) {
+            Navigator.pop(context);
+          }
+        });
       }
 
       // Show fallback dialog

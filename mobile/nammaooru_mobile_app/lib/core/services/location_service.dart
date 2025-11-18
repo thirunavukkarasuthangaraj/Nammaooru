@@ -10,8 +10,8 @@ class LocationService {
 
   final loc.Location _location = loc.Location();
 
-  // Use your Google Maps API key
-  static const String _googleApiKey = 'AIzaSyDcOGJI9jz-tRj3fPYi4UH04H4Z6DQ4TgE';
+  // Use your Google Maps API key from env config
+  static const String _googleApiKey = 'AIzaSyAr_uGbaOnhebjRyz7ohU6N-hWZJVV_R3U';
 
   Future<Map<String, String>?> getAddressFromGoogleAPI(double latitude, double longitude) async {
     try {
@@ -155,13 +155,23 @@ class LocationService {
     try {
       bool hasPermission = await requestLocationPermission();
       if (!hasPermission) {
+        print('❌ Location permission denied');
         return null;
       }
 
-      loc.LocationData position = await _location.getLocation();
+      print('📍 Getting current location with 15s timeout...');
+      // Add timeout to prevent infinite loading
+      loc.LocationData position = await _location.getLocation().timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          print('⏱️ Location request timed out after 15 seconds');
+          throw Exception('Location request timed out. Please check your device location settings.');
+        },
+      );
+      print('✅ Location obtained: ${position.latitude}, ${position.longitude}');
       return position;
     } catch (e) {
-      print('Error getting current position: $e');
+      print('❌ Error getting current position: $e');
       return null;
     }
   }
@@ -178,7 +188,13 @@ class LocationService {
     print('🔄 FALLING BACK TO FLUTTER GEOCODING');
     try {
       print('🌍 GEOCODING REQUEST: lat=$latitude, lng=$longitude');
-      List<Placemark> placemarks = await placemarkFromCoordinates(latitude, longitude);
+      List<Placemark> placemarks = await placemarkFromCoordinates(latitude, longitude).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          print('⏱️ Geocoding request timed out');
+          return [];
+        },
+      );
 
       print('📍 GEOCODING RESPONSE: Found ${placemarks.length} placemarks');
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
@@ -34,6 +35,10 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
   final VoiceSearchService _voiceSearch = VoiceSearchService();
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final PageController _couponPageController = PageController();
+
+  Timer? _couponAutoSlideTimer;
+  int _currentCouponPage = 0;
 
   Map<String, dynamic>? _shop;
   List<dynamic> _products = [];
@@ -57,13 +62,29 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     _loadCategories();
     _loadProducts();
     _searchController.addListener(_onSearchChanged);
+    _startCouponAutoSlide();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     _scrollController.dispose();
+    _couponPageController.dispose();
+    _couponAutoSlideTimer?.cancel();
     super.dispose();
+  }
+
+  void _startCouponAutoSlide() {
+    _couponAutoSlideTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+      if (_couponPageController.hasClients) {
+        final nextPage = (_currentCouponPage + 1) % 3; // 3 coupons total
+        _couponPageController.animateToPage(
+          nextPage,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
   }
 
   Future<void> _loadCategories() async {
@@ -968,79 +989,105 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     ];
 
     return Container(
-      height: 80,
+      height: 100,
       margin: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 8),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: coupons.length,
-        itemBuilder: (context, index) {
-          final coupon = coupons[index];
-          return Container(
-            width: 240,
-            margin: const EdgeInsets.only(right: 12),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  (coupon['color'] as Color).withOpacity(0.12),
-                  (coupon['color'] as Color).withOpacity(0.05),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: (coupon['color'] as Color).withOpacity(0.25),
-                width: 1,
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
+      child: Column(
+        children: [
+          Expanded(
+            child: PageView.builder(
+              controller: _couponPageController,
+              onPageChanged: (index) {
+                setState(() {
+                  _currentCouponPage = index;
+                });
+              },
+              itemCount: coupons.length,
+              itemBuilder: (context, index) {
+                final coupon = coupons[index];
+                final cardColor = coupon['color'] as Color;
+                return Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   decoration: BoxDecoration(
-                    color: (coupon['color'] as Color).withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    Icons.local_offer,
-                    color: coupon['color'] as Color,
-                    size: 22,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        coupon['code'] as String,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: coupon['color'] as Color,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        coupon['offer'] as String,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey[700],
-                          fontWeight: FontWeight.w500,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: cardColor.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
-                ),
-              ],
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.local_offer,
+                          color: Colors.white,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              coupon['code'] as String,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              coupon['offer'] as String,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
-          );
-        },
+          ),
+          const SizedBox(height: 8),
+          // Page indicators
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              coupons.length,
+              (index) => Container(
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _currentCouponPage == index
+                      ? VillageTheme.primaryGreen
+                      : Colors.grey.withOpacity(0.3),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

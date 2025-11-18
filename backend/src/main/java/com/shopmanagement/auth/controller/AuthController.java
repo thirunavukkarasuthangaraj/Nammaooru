@@ -287,4 +287,164 @@ public class AuthController {
                 ApiResponse.error(ResponseConstants.GENERAL_ERROR, "OTP verification failed: " + e.getMessage()));
         }
     }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse<String>> forgotPassword(@RequestBody Map<String, String> request) {
+        try {
+            String email = request.get("email");
+
+            if (email == null || email.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(
+                    ApiResponse.error(ResponseConstants.REQUIRED_FIELD_MISSING, "Email is required"));
+            }
+
+            // Find user by email
+            User user = authService.findUserByEmail(email);
+            if (user == null) {
+                return ResponseEntity.badRequest().body(
+                    ApiResponse.error(ResponseConstants.USER_NOT_FOUND, "No account found with this email"));
+            }
+
+            boolean otpSentViaSMS = false;
+            boolean otpSentViaEmail = false;
+            String generatedOtp = null;
+
+            // Try to send OTP via SMS if mobile number exists
+            if (user.getMobileNumber() != null && !user.getMobileNumber().isEmpty()) {
+                try {
+                    com.shopmanagement.dto.mobile.MobileOtpRequest otpRequest =
+                        com.shopmanagement.dto.mobile.MobileOtpRequest.builder()
+                            .mobileNumber(user.getMobileNumber())
+                            .purpose("PASSWORD_RESET")
+                            .deviceType("WEB")
+                            .deviceId("web-forgot-password-" + user.getId())
+                            .build();
+
+                    Map<String, Object> otpResult = mobileOtpService.generateAndSendOtp(otpRequest);
+                    generatedOtp = (String) otpResult.get("otp");
+                    otpSentViaSMS = true;
+                    log.info("Password reset OTP sent via SMS to user: {}", user.getUsername());
+                } catch (Exception smsError) {
+                    log.error("Failed to send OTP via SMS: {}", smsError.getMessage());
+                }
+            }
+
+            // Also send OTP via email
+            try {
+                // If OTP was generated from SMS, use the same OTP, otherwise generate new one
+                if (generatedOtp == null) {
+                    generatedOtp = emailOtpService.generateOtp(email, "PASSWORD_RESET");
+                } else {
+                    // Store the same OTP for email verification as fallback
+                    emailOtpService.storeOtp(email, generatedOtp, "PASSWORD_RESET");
+                }
+
+                emailService.sendPasswordResetOtpEmail(email, user.getUsername(), generatedOtp);
+                otpSentViaEmail = true;
+                log.info("Password reset OTP sent via email to user: {}", user.getUsername());
+            } catch (Exception emailError) {
+                log.error("Failed to send OTP via email: {}", emailError.getMessage());
+            }
+
+            // Check if OTP was sent through at least one channel
+            if (!otpSentViaSMS && !otpSentViaEmail) {
+                return ResponseEntity.badRequest().body(
+                    ApiResponse.error(ResponseConstants.GENERAL_ERROR, "Failed to send OTP. Please try again or contact support."));
+            }
+
+            // Build response message
+            String message;
+            if (otpSentViaSMS && otpSentViaEmail) {
+                message = "Password reset OTP sent to your registered email and mobile number";
+            } else if (otpSentViaSMS) {
+                message = "Password reset OTP sent to your registered mobile number";
+            } else {
+                message = "Password reset OTP sent to your registered email";
+            }
+
+            return ResponseEntity.ok(ApiResponse.success(message, "OTP sent successfully"));
+
+        } catch (Exception e) {
+            log.error("Error in forgot password: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(
+                ApiResponse.error(ResponseConstants.GENERAL_ERROR, "Failed to process forgot password request: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<String>> resetPassword(@RequestBody Map<String, String> request) {
+        try {
+            String email = request.get("email");
+            String otp = request.get("otp");
+            String newPassword = request.get("newPassword");
+
+            // Validate inputs
+            if (email == null || email.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(
+                    ApiResponse.error(ResponseConstants.REQUIRED_FIELD_MISSING, "Email is required"));
+            }
+
+            if (otp == null || otp.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(
+                    ApiResponse.error(ResponseConstants.REQUIRED_FIELD_MISSING, "OTP is required"));
+            }
+
+            if (newPassword == null || newPassword.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(
+                    ApiResponse.error(ResponseConstants.REQUIRED_FIELD_MISSING, "New password is required"));
+            }
+
+            // Validate password strength
+            if (newPassword.length() < 8) {
+                return ResponseEntity.badRequest().body(
+                    ApiResponse.error(ResponseConstants.VALIDATION_ERROR, "Password must be at least 8 characters long"));
+            }
+
+            // Find user
+            User user = authService.findUserByEmail(email);
+            if (user == null) {
+                return ResponseEntity.badRequest().body(
+                    ApiResponse.error(ResponseConstants.USER_NOT_FOUND, "User not found"));
+            }
+
+            // Verify OTP via mobile OTP service
+            if (user.getMobileNumber() == null || user.getMobileNumber().isEmpty()) {
+                return ResponseEntity.badRequest().body(
+                    ApiResponse.error(ResponseConstants.VALIDATION_ERROR, "No mobile number found for verification"));
+            }
+
+            com.shopmanagement.dto.mobile.MobileOtpVerificationRequest verificationRequest =
+                com.shopmanagement.dto.mobile.MobileOtpVerificationRequest.builder()
+                    .mobileNumber(user.getMobileNumber())
+                    .otp(otp)
+                    .purpose("PASSWORD_RESET")
+                    .deviceType("WEB")
+                    .deviceId("web-forgot-password-" + user.getId())
+                    .build();
+
+            Map<String, Object> verificationResult = mobileOtpService.verifyOtp(verificationRequest);
+            boolean isOtpValid = (Boolean) verificationResult.getOrDefault("success", false);
+
+            if (!isOtpValid) {
+                return ResponseEntity.badRequest().body(
+                    ApiResponse.error(ResponseConstants.VALIDATION_ERROR, "Invalid or expired OTP"));
+            }
+
+            // Update password
+            user.setPassword(passwordEncoder.encode(newPassword));
+            user.setPasswordChangeRequired(false);
+            userRepository.save(user);
+
+            log.info("Password reset successfully for user: {}", user.getUsername());
+
+            return ResponseEntity.ok(ApiResponse.success(
+                "Password reset successful",
+                "Your password has been reset successfully. You can now login with your new password."));
+
+        } catch (Exception e) {
+            log.error("Error in reset password: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(
+                ApiResponse.error(ResponseConstants.GENERAL_ERROR, "Failed to reset password: " + e.getMessage()));
+        }
+    }
 }

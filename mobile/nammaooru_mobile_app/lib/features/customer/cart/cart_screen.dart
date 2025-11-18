@@ -56,8 +56,9 @@ class _CartScreenState extends State<CartScreen> {
                           children: [
                             _buildItemsList(cartProvider),
                             const SizedBox(height: 12),
-                            _buildPromoCodeSection(cartProvider),
-                            const SizedBox(height: 12),
+                            // Promo code section removed
+                            // _buildPromoCodeSection(cartProvider),
+                            // const SizedBox(height: 12),
                             _buildOrderSummary(cartProvider),
                           ],
                         ),
@@ -538,12 +539,13 @@ class _CartScreenState extends State<CartScreen> {
               Helpers.formatCurrency(cartProvider.taxAmount),
             ),
 
-            if (cartProvider.promoDiscount > 0)
-              _buildSummaryRow(
-                'Promo Discount',
-                '-${Helpers.formatCurrency(cartProvider.promoDiscount)}',
-                valueColor: Colors.green,
-              ),
+            // Promo discount removed
+            // if (cartProvider.promoDiscount > 0)
+            //   _buildSummaryRow(
+            //     'Promo Discount',
+            //     '-${Helpers.formatCurrency(cartProvider.promoDiscount)}',
+            //     valueColor: Colors.green,
+            //   ),
 
             const Divider(thickness: 1, height: 16),
 

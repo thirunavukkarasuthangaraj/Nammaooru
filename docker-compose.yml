@@ -3,30 +3,33 @@ version: '3.8'
 services:
   # Spring Boot Backend (PostgreSQL is external - not in Docker)
   backend:
-    build: 
+    build:
       context: ./backend
-    container_name: nammaooru-backend
+    # REMOVED container_name to allow multiple instances
     environment:
-      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-production}
+      # Database configuration
       - DB_URL=${DB_URL:-jdbc:postgresql://host.docker.internal:5432/shop_management_db}
       - DB_USERNAME=${DB_USERNAME:-postgres}
       - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      # JWT secret (REQUIRED in production)
       - JWT_SECRET=${JWT_SECRET:-your-jwt-secret-key-here}
-      - FILE_UPLOAD_PATH=/app/uploads
-      - APP_UPLOAD_DIR=/app/uploads
-      - DOCUMENT_UPLOAD_PATH=/app/uploads/documents
-      - DELIVERY_PARTNER_DOCUMENT_PATH=/app/uploads/documents/delivery-partners
-      - PRODUCT_IMAGES_PATH=products
+      # File upload paths (override for local dev if needed)
+      - FILE_UPLOAD_PATH=${FILE_UPLOAD_PATH:/opt/shop-management/uploads}
+      - APP_UPLOAD_DIR=${APP_UPLOAD_DIR:/opt/shop-management/uploads}
+      - DOCUMENT_UPLOAD_PATH=${DOCUMENT_UPLOAD_PATH:/opt/shop-management/uploads/documents/shops}
+      - DELIVERY_PARTNER_DOCUMENT_PATH=${DELIVERY_PARTNER_DOCUMENT_PATH:/opt/shop-management/uploads/documents/delivery-partners}
+      - PRODUCT_IMAGES_PATH=${PRODUCT_IMAGES_PATH:/opt/shop-management/uploads/products}
+      # JPA configuration (for development, use: JPA_DDL_AUTO=update JPA_SHOW_SQL=true)
+      - JPA_DDL_AUTO=${JPA_DDL_AUTO:-validate}
+      - JPA_SHOW_SQL=${JPA_SHOW_SQL:-false}
       # Firebase configuration path (mounted from host)
       - FIREBASE_SERVICE_ACCOUNT_PATH=/app/firebase-config/firebase-service-account.json
-      # CORS is configured in SecurityConfig.java - DO NOT set env vars here
-      # - APP_CORS_ALLOWED_ORIGINS=https://nammaoorudelivary.in,https://www.nammaoorudelivary.in
-      # - APP_CORS_ALLOWED_METHODS=GET,POST,PUT,DELETE,OPTIONS
-      # - APP_CORS_ALLOWED_HEADERS=*
-      # - APP_CORS_ALLOW_CREDENTIALS=true
-      # Gemini AI keys are configured in application.yml (no env vars needed)
+    # Changed to expose instead of fixed port mapping
+    expose:
+      - "8080"
+    # Map to dynamic host ports for load balancing
     ports:
-      - "0.0.0.0:8082:8080"
+      - "8082-8084:8080"
     volumes:
       # Mount host directory for persistent file storage (production)
       - /opt/shop-management/uploads:/app/uploads
@@ -43,23 +46,27 @@ services:
       retries: 3
       start_period: 40s
     restart: unless-stopped
+    # Allow scaling
+    labels:
+      - "com.shop.service=backend"
 
-  # Angular Frontend 
+  # Angular Frontend
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: nammaooru-frontend
+    # REMOVED container_name to allow multiple instances
+    expose:
+      - "80"
     ports:
-      - "8080:80"
+      - "8080-8085:80"
     networks:
       - shop-network
     depends_on:
       - backend
     restart: unless-stopped
-
-# Note: Using host directory mount (/opt/shop-management/uploads) instead of Docker volume
-# This allows nginx to serve uploaded files directly
+    labels:
+      - "com.shop.service=frontend"
 
 networks:
   shop-network:

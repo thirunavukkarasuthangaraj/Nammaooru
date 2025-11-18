@@ -542,6 +542,28 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
     );
   }
 
+  void _openMapPickerForNewAddress() async {
+    try {
+      // Open map picker directly to select location and save address
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const GoogleMapsLocationPickerScreen(),
+        ),
+      );
+
+      if (result != null && mounted) {
+        // Address was saved successfully via map picker
+        print('Address saved successfully: $result');
+        await _loadAddresses(); // Refresh the address list
+      }
+    } catch (e) {
+      if (mounted) {
+        Helpers.showSnackBar(context, 'Error opening location picker: $e', isError: true);
+      }
+    }
+  }
+
   void _showMapPicker(TextEditingController labelController,
                       TextEditingController addressController,
                       TextEditingController detailsController) async {
@@ -917,7 +939,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
               ],
             ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _showAddAddressDialog,
+        onPressed: _openMapPickerForNewAddress,
         backgroundColor: AppColors.primary,
         child: const Icon(Icons.add, color: Colors.white, size: 24),
       ),

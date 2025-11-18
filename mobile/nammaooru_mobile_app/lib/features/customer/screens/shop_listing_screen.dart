@@ -56,8 +56,9 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
         page: 0,
         size: 20,
         sortBy: _sortBy,
-        category: widget.category, // Filter by category
-        city: 'Chennai',
+        category: widget.category, // Keep category filter
+        // City filter removed
+        // city: 'Chennai',
       );
 
       if (mounted && response['statusCode'] == '0000' && response['data'] != null) {

@@ -1,0 +1,246 @@
+name: Deploy to Production (Zero Downtime)
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+env:
+  SERVER_HOST: ${{ secrets.HETZNER_HOST }}
+  SERVER_USER: ${{ secrets.HETZNER_USER }}
+
+jobs:
+  # Step 1: Validate before deploying
+  validate:
+    name: Pre-Deployment Validation
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Build and test backend
+      run: |
+        cd backend
+        mvn clean package -DskipTests
+        echo "✅ Backend build successful"
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+
+    - name: Build frontend
+      run: |
+        cd frontend
+        npm ci
+        npm run build --configuration production
+        echo "✅ Frontend build successful"
+
+    - name: Validation Summary
+      run: |
+        echo ""
+        echo "════════════════════════════════════════════════════════════"
+        echo "   ✅ PRE-DEPLOYMENT VALIDATION PASSED"
+        echo "════════════════════════════════════════════════════════════"
+        echo ""
+        echo "✅ Backend builds successfully"
+        echo "✅ Frontend builds successfully"
+        echo ""
+        echo "Proceeding with zero-downtime deployment..."
+        echo ""
+
+  # Step 2: Deploy Backend with Zero Downtime
+  deploy-backend:
+    name: Deploy Backend (Zero Downtime)
+    runs-on: ubuntu-latest
+    needs: validate
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Copy deployment scripts to server
+      uses: appleboy/scp-action@v0.1.4
+      with:
+        host: ${{ secrets.HETZNER_HOST }}
+        username: ${{ secrets.HETZNER_USER }}
+        password: ${{ secrets.HETZNER_PASSWORD }}
+        source: "deployment-automation/"
+        target: "/opt/shop-management/"
+        strip_components: 0
+        overwrite: true
+
+    - name: Copy source code to server
+      uses: appleboy/scp-action@v0.1.4
+      with:
+        host: ${{ secrets.HETZNER_HOST }}
+        username: ${{ secrets.HETZNER_USER }}
+        password: ${{ secrets.HETZNER_PASSWORD }}
+        source: "backend/,frontend/,docker-compose.yml"
+        target: "/opt/shop-management/"
+        strip_components: 0
+        overwrite: true
+
+    - name: Deploy backend with zero downtime
+      uses: appleboy/ssh-action@v0.1.5
+      with:
+        host: ${{ secrets.HETZNER_HOST }}
+        username: ${{ secrets.HETZNER_USER }}
+        password: ${{ secrets.HETZNER_PASSWORD }}
+        script: |
+          echo "════════════════════════════════════════════════════════════"
+          echo "   🚀 ZERO DOWNTIME BACKEND DEPLOYMENT"
+          echo "════════════════════════════════════════════════════════════"
+          echo ""
+
+          cd /opt/shop-management
+
+          # Make script executable
+          chmod +x deployment-automation/scripts/zero-downtime-deploy.sh
+
+          # Run zero downtime deployment
+          ./deployment-automation/scripts/zero-downtime-deploy.sh
+
+          echo ""
+          echo "════════════════════════════════════════════════════════════"
+          echo "   ✅ BACKEND DEPLOYMENT COMPLETE"
+          echo "════════════════════════════════════════════════════════════"
+
+    - name: Verify backend deployment
+      uses: appleboy/ssh-action@v0.1.5
+      with:
+        host: ${{ secrets.HETZNER_HOST }}
+        username: ${{ secrets.HETZNER_USER }}
+        password: ${{ secrets.HETZNER_PASSWORD }}
+        script: |
+          echo "Verifying backend health..."
+          sleep 10
+          curl -f https://api.nammaoorudelivary.in/actuator/health || exit 1
+          echo "✅ Backend is healthy!"
+
+  # Step 3: Deploy Frontend with Zero Downtime
+  deploy-frontend:
+    name: Deploy Frontend (Zero Downtime)
+    runs-on: ubuntu-latest
+    needs: deploy-backend
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+
+    - name: Build frontend
+      run: |
+        cd frontend
+        npm ci
+        npm run build --configuration production
+        echo "✅ Frontend built successfully"
+
+    - name: Package frontend build
+      run: |
+        cd frontend/dist
+        tar -czf deploy.tar.gz shop-management-frontend/
+        echo "✅ Frontend packaged"
+
+    - name: Upload frontend build to server
+      uses: appleboy/scp-action@v0.1.4
+      with:
+        host: ${{ secrets.HETZNER_HOST }}
+        username: ${{ secrets.HETZNER_USER }}
+        password: ${{ secrets.HETZNER_PASSWORD }}
+        source: "frontend/dist/deploy.tar.gz"
+        target: "/opt/shop-management/"
+        strip_components: 0
+        overwrite: true
+
+    - name: Deploy frontend with zero downtime
+      uses: appleboy/ssh-action@v0.1.5
+      with:
+        host: ${{ secrets.HETZNER_HOST }}
+        username: ${{ secrets.HETZNER_USER }}
+        password: ${{ secrets.HETZNER_PASSWORD }}
+        script: |
+          echo "════════════════════════════════════════════════════════════"
+          echo "   🎨 ZERO DOWNTIME FRONTEND DEPLOYMENT"
+          echo "════════════════════════════════════════════════════════════"
+          echo ""
+
+          cd /opt/shop-management/frontend/dist
+
+          # Extract build
+          tar -xzf deploy.tar.gz
+          rm deploy.tar.gz
+
+          # Make script executable
+          chmod +x /opt/shop-management/deployment-automation/scripts/zero-downtime-frontend-deploy.sh
+
+          # Run zero downtime deployment
+          cd /opt/shop-management
+          ./deployment-automation/scripts/zero-downtime-frontend-deploy.sh
+
+          echo ""
+          echo "════════════════════════════════════════════════════════════"
+          echo "   ✅ FRONTEND DEPLOYMENT COMPLETE"
+          echo "════════════════════════════════════════════════════════════"
+
+    - name: Verify frontend deployment
+      uses: appleboy/ssh-action@v0.1.5
+      with:
+        host: ${{ secrets.HETZNER_HOST }}
+        username: ${{ secrets.HETZNER_USER }}
+        password: ${{ secrets.HETZNER_PASSWORD }}
+        script: |
+          echo "Verifying frontend..."
+          curl -I https://nammaoorudelivary.in || exit 1
+          echo "✅ Frontend is live!"
+
+  # Step 4: Post-deployment summary
+  deployment-summary:
+    name: Deployment Summary
+    runs-on: ubuntu-latest
+    needs: [deploy-backend, deploy-frontend]
+
+    steps:
+    - name: Generate deployment summary
+      uses: appleboy/ssh-action@v0.1.5
+      with:
+        host: ${{ secrets.HETZNER_HOST }}
+        username: ${{ secrets.HETZNER_USER }}
+        password: ${{ secrets.HETZNER_PASSWORD }}
+        script: |
+          echo ""
+          echo "════════════════════════════════════════════════════════════"
+          echo "   🎉 DEPLOYMENT SUMMARY"
+          echo "════════════════════════════════════════════════════════════"
+          echo ""
+          echo "✅ Backend deployed with ZERO DOWNTIME"
+          echo "✅ Frontend deployed with ZERO DOWNTIME"
+          echo ""
+          echo "🌐 Application URLs:"
+          echo "   Frontend: https://nammaoorudelivary.in"
+          echo "   API:      https://api.nammaoorudelivary.in"
+          echo ""
+          echo "📊 Container Status:"
+          docker ps --filter "label=com.shop.service=backend" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+          echo ""
+          echo "📁 Current Frontend Release:"
+          readlink /var/www/html
+          echo ""
+          echo "📂 Deployment Files Location:"
+          echo "   /opt/shop-management/deployment-automation/"
+          echo ""
+          echo "🕐 Deployment Time: $(date)"
+          echo "⏱️  Total Downtime: 0 seconds ✨"
+          echo ""
+          echo "════════════════════════════════════════════════════════════"

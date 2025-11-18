@@ -1,6 +1,14 @@
 server:
-  port: 8080
+  port: ${PORT:8080}
   address: 0.0.0.0
+  # Enable compression for production performance
+  compression:
+    enabled: ${SERVER_COMPRESSION_ENABLED:true}
+    mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json
+    min-response-size: 1024
+  # Forward headers configuration for proxy (Nginx)
+  forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:framework}
+
 spring:
   application:
     name: shop-management-system
@@ -18,29 +26,37 @@ spring:
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
-    
+    # Hikari connection pool configuration
+    hikari:
+      maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:10}
+      minimum-idle: ${HIKARI_MIN_IDLE:5}
+      connection-timeout: ${HIKARI_CONNECTION_TIMEOUT:30000}
+      idle-timeout: ${HIKARI_IDLE_TIMEOUT:600000}
+      max-lifetime: ${HIKARI_MAX_LIFETIME:1800000}
+
   jpa:
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      # Use 'update' for dev, 'validate' for production
+      ddl-auto: ${JPA_DDL_AUTO:validate}
+    show-sql: ${JPA_SHOW_SQL:false}
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
+        format_sql: ${HIBERNATE_FORMAT_SQL:false}
         jdbc:
-          time_zone: Asia/Kolkata
+          time_zone: ${HIBERNATE_TIMEZONE:Asia/Kolkata}
     open-in-view: false
-  
+
   sql:
     init:
       mode: never
       continue-on-error: true
-    
+
   servlet:
     multipart:
       max-file-size: 10MB
       max-request-size: 10MB
-      
+
   mail:
     host: ${MAIL_HOST:smtp.hostinger.com}
     port: ${MAIL_PORT:587}
@@ -55,31 +71,45 @@ spring:
             required: true
           ssl:
             trust: "*"
-          connectiontimeout: 30000
-          timeout: 30000
-          writetimeout: 30000
+          connectiontimeout: ${MAIL_CONNECTION_TIMEOUT:5000}
+          timeout: ${MAIL_TIMEOUT:3000}
+          writetimeout: ${MAIL_WRITE_TIMEOUT:5000}
 
 management:
+  health:
+    mail:
+      # Disable mail health check that causes DOWN status in production
+      enabled: ${MAIL_HEALTH_CHECK_ENABLED:false}
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus
+      base-path: /actuator
   endpoint:
     health:
       show-details: when_authorized
+  metrics:
+    export:
+      prometheus:
+        enabled: ${PROMETHEUS_ENABLED:true}
 
 logging:
   level:
-    com.shopmanagement: INFO
+    com.shopmanagement: ${LOG_LEVEL_APP:WARN}
     org.springframework.security: WARN
     org.hibernate.SQL: WARN
     org.hibernate: WARN
-    org.springframework: INFO
+    org.springframework: ${LOG_LEVEL_SPRING:INFO}
   pattern:
     console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: ${LOG_FILE_PATH:/var/log/shop-management/app.log}
+    max-size: ${LOG_FILE_MAX_SIZE:10MB}
+    max-history: ${LOG_FILE_MAX_HISTORY:30}
 
 jwt:
-  secret: ${JWT_SECRET:mySecretKey123456789012345678901234567890}
+  # IMPORTANT: Set JWT_SECRET environment variable in production
+  secret: ${JWT_SECRET}
   expiration: 86400000
 
 firebase:
@@ -88,9 +118,38 @@ firebase:
 
 file:
   upload:
-    path: ${FILE_UPLOAD_PATH:D:/AAWS/nammaooru/uploads}
+    # Production default: /opt/shop-management/uploads
+    # For local dev, override with: FILE_UPLOAD_PATH=D:/AAWS/nammaooru/uploads
+    path: ${FILE_UPLOAD_PATH:/opt/shop-management/uploads}
     max-size: 10485760
     allowed-extensions: jpg,jpeg,png,gif,webp
+
+  # File Storage Configuration
+  storage:
+    # Storage type: local, s3, spaces, cloudinary
+    type: ${FILE_STORAGE_TYPE:local}
+
+    # Local storage configuration
+    local:
+      base-path: ${FILE_STORAGE_PATH:/opt/shop-management/uploads}
+      serve-url: ${FILE_SERVE_URL:https://nammaoorudelivary.in/uploads}
+
+    # S3/DigitalOcean Spaces Configuration (optional)
+    s3:
+      enabled: ${S3_ENABLED:false}
+      endpoint: ${S3_ENDPOINT:https://fra1.digitaloceanspaces.com}
+      region: ${S3_REGION:fra1}
+      bucket: ${S3_BUCKET:nammaooru-uploads}
+      access-key: ${S3_ACCESS_KEY:}
+      secret-key: ${S3_SECRET_KEY:}
+      public-url: ${S3_PUBLIC_URL:https://nammaooru-uploads.fra1.cdn.digitaloceanspaces.com}
+
+    # Cloudinary Configuration (optional)
+    cloudinary:
+      enabled: ${CLOUDINARY_ENABLED:false}
+      cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+      api-key: ${CLOUDINARY_API_KEY:}
+      api-secret: ${CLOUDINARY_API_SECRET:}
 
 app:
   version: @project.version@
@@ -104,25 +163,29 @@ app:
   email:
     enabled: ${EMAIL_ENABLED:true}
   upload:
-    dir: ${APP_UPLOAD_DIR:D:/AAWS/nammaooru/uploads}
+    # Production default: /opt/shop-management/uploads
+    # For local dev, override with: APP_UPLOAD_DIR=D:/AAWS/nammaooru/uploads
+    dir: ${APP_UPLOAD_DIR:/opt/shop-management/uploads}
     documents:
       path:
-        shops: ${DOCUMENT_UPLOAD_PATH:D:/AAWS/nammaooru/uploads/documents/shops}
-        delivery-partners: ${DELIVERY_PARTNER_DOCUMENT_PATH:D:/AAWS/nammaooru/uploads/documents/delivery-partners}
-    product-images: ${PRODUCT_IMAGES_PATH:products}
+        shops: ${DOCUMENT_UPLOAD_PATH:/opt/shop-management/uploads/documents/shops}
+        delivery-partners: ${DELIVERY_PARTNER_DOCUMENT_PATH:/opt/shop-management/uploads/documents/delivery-partners}
+    product-images: ${PRODUCT_IMAGES_PATH:/opt/shop-management/uploads/products}
     max-file-size: 10MB
-    allowed-types: pdf,jpg,jpeg,png,docx,doc
+    allowed-types: pdf,jpg,jpeg,png,docx,doc,webp
   frontend:
-    base-url: ${FRONTEND_BASE_URL:http://localhost:4200}
+    # Production default: https://nammaoorudelivary.in
+    # For local dev, override with: FRONTEND_BASE_URL=http://localhost:4200
+    base-url: ${FRONTEND_BASE_URL:https://nammaoorudelivary.in}
     auth:
-      login-url: ${FRONTEND_LOGIN_URL:http://localhost:4200/auth/login}
-      reset-password-url: ${FRONTEND_RESET_PASSWORD_URL:http://localhost:4200/auth/reset-password}
+      login-url: ${FRONTEND_LOGIN_URL:${FRONTEND_BASE_URL:https://nammaoorudelivary.in}/auth/login}
+      reset-password-url: ${FRONTEND_RESET_PASSWORD_URL:${FRONTEND_BASE_URL:https://nammaoorudelivary.in}/auth/reset-password}
     shop-owner:
-      dashboard-url: ${SHOP_OWNER_DASHBOARD_URL:http://localhost:4200/shop-owner}
+      dashboard-url: ${SHOP_OWNER_DASHBOARD_URL:${FRONTEND_BASE_URL:https://nammaoorudelivary.in}/shop-owner}
     urls:
-      shops: ${SHOPS_URL:http://localhost:4200/shops}
-      contact: ${CONTACT_URL:http://localhost:4200/contact}
-      unsubscribe: ${UNSUBSCRIBE_URL:http://localhost:4200/unsubscribe}
+      shops: ${SHOPS_URL:${FRONTEND_BASE_URL:https://nammaoorudelivary.in}/shops}
+      contact: ${CONTACT_URL:${FRONTEND_BASE_URL:https://nammaoorudelivary.in}/contact}
+      unsubscribe: ${UNSUBSCRIBE_URL:${FRONTEND_BASE_URL:https://nammaoorudelivary.in}/unsubscribe}
   # CORS is configured in SecurityConfig.java - DO NOT configure here to avoid duplicate headers
   # cors:
   #   allowed-origins: ${CORS_ALLOWED_ORIGINS:https://nammaoorudelivary.in,https://www.nammaoorudelivary.in,http://localhost:4200}

@@ -217,11 +217,15 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       child: TextFormField(
         controller: _emailController,
-        keyboardType: TextInputType.emailAddress,
+        keyboardType: TextInputType.phone,
         textInputAction: TextInputAction.next,
+        maxLength: 10,
         validator: (value) {
-          if (value == null || value.isEmpty) {
-            return 'Please enter your email or mobile number';
+          if (value == null || value.trim().isEmpty) {
+            return 'Please enter your mobile number';
+          }
+          if (value.trim().length != 10) {
+            return 'Mobile number must be 10 digits';
           }
           return null;
         },
@@ -230,17 +234,18 @@ class _LoginScreenState extends State<LoginScreen> {
           color: Color(0xFF2C3E50),
         ),
         decoration: InputDecoration(
-          hintText: 'Email or Mobile Number',
+          hintText: 'Mobile Number',
           hintStyle: const TextStyle(
             color: Colors.black54,
             fontSize: 16,
           ),
           prefixIcon: Icon(
-            Icons.person_outline,
+            Icons.phone,
             color: Colors.black54,
             size: 20,
           ),
           border: InputBorder.none,
+          counterText: '',
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 16,
