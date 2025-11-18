@@ -82,21 +82,14 @@ if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
     exit 1
 fi
 
-# Step 7: Update Nginx upstream to prefer new backend
+# Step 7: Update Nginx to point to new backend
 log_info "Updating Nginx configuration..."
 NEW_BACKEND_PORT=$(docker port $NEW_BACKEND 8080 | cut -d':' -f2)
 OLD_BACKEND_PORT=$(docker port $OLD_BACKEND 8080 | cut -d':' -f2)
 
-# Update upstream block in nginx config
-log_info "Adding new backend ($NEW_BACKEND_PORT) as primary, old backend ($OLD_BACKEND_PORT) as backup..."
-sed -i "/upstream backend_servers {/,/}/c\\
-upstream backend_servers {\\
-    # New backend (primary) - Updated $(date)\\
-    server localhost:$NEW_BACKEND_PORT max_fails=3 fail_timeout=30s;\\
-    # Old backend (backup)\\
-    server localhost:$OLD_BACKEND_PORT max_fails=3 fail_timeout=30s backup;\\
-    keepalive 32;\\
-}" $NGINX_CONFIG
+log_info "Updating Nginx to use new backend on port $NEW_BACKEND_PORT..."
+# Update proxy_pass line to use new backend port
+sed -i "s|proxy_pass http://localhost:[0-9]*;|proxy_pass http://localhost:$NEW_BACKEND_PORT;|" $NGINX_CONFIG
 
 # Step 8: Test and reload Nginx
 log_info "Testing Nginx configuration..."
@@ -105,8 +98,8 @@ if nginx -t; then
     systemctl reload nginx
 else
     log_error "Nginx configuration test failed!"
-    log_error "Rolling back nginx config changes..."
-    # Restore from backup if needed
+    log_error "Rolling back to old backend port..."
+    sed -i "s|proxy_pass http://localhost:[0-9]*;|proxy_pass http://localhost:$OLD_BACKEND_PORT;|" $NGINX_CONFIG
     exit 1
 fi
 
@@ -161,12 +154,7 @@ FINAL_BACKEND=$(docker ps --filter "label=com.shop.service=backend" --format "{{
 FINAL_PORT=$(docker port $FINAL_BACKEND 8080 | cut -d':' -f2)
 
 log_info "Updating Nginx to use single backend on port $FINAL_PORT..."
-sed -i "/upstream backend_servers {/,/}/c\\
-upstream backend_servers {\\
-    # Active backend - Updated $(date)\\
-    server localhost:$FINAL_PORT max_fails=3 fail_timeout=30s;\\
-    keepalive 32;\\
-}" $NGINX_CONFIG
+sed -i "s|proxy_pass http://localhost:[0-9]*;|proxy_pass http://localhost:$FINAL_PORT;|" $NGINX_CONFIG
 
 nginx -t && systemctl reload nginx
 
