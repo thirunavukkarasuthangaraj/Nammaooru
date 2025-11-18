@@ -24,23 +24,23 @@ Users:         😊 Happy → 😊 Happy (no errors) → 😊 Happy
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  STEP 1: Current State (Before Deployment)                          │
+│  STEP 1: Current State (Before Deployment) - Production v1.0.7     │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                      │
 │   Internet Users                                                     │
 │        │                                                             │
 │        ↓                                                             │
 │   ┌─────────┐                                                        │
-│   │  Nginx  │  (Port 443 - HTTPS)                                   │
+│   │  Nginx  │  (Port 443 - HTTPS via Cloudflare)                    │
 │   └────┬────┘                                                        │
 │        │                                                             │
 │        ↓                                                             │
-│   ┌──────────────────┐                                               │
-│   │ Old Container    │                                               │
-│   │ Version: v1.0    │                                               │
-│   │ Port: 8082       │  ← Serving 100% of traffic                   │
-│   │ Status: 🟢 Healthy│                                               │
-│   └──────────────────┘                                               │
+│   ┌──────────────────────┐                                           │
+│   │ Container 6          │                                           │
+│   │ Version: v1.0.6      │                                           │
+│   │ Port: 32785 (dynamic)│  ← Serving 100% of traffic               │
+│   │ Status: 🟢 Healthy    │                                           │
+│   └──────────────────────┘                                           │
 │                                                                      │
 │   ✅ Website is ONLINE and working                                   │
 └─────────────────────────────────────────────────────────────────────┘
@@ -54,20 +54,20 @@ Users:         😊 Happy → 😊 Happy (no errors) → 😊 Happy
 │        │                                                             │
 │        ↓                                                             │
 │   ┌─────────┐                                                        │
-│   │  Nginx  │                                                        │
+│   │  Nginx  │  ← Still routing to Container 6                       │
 │   └────┬────┘                                                        │
 │        │                                                             │
 │        ↓                                                             │
-│   ┌──────────────────┐      ┌──────────────────┐                    │
-│   │ Old Container    │      │ New Container    │                    │
-│   │ Version: v1.0    │      │ Version: v2.0    │                    │
-│   │ Port: 8082       │      │ Port: 8083       │                    │
-│   │ Status: 🟢 Healthy│      │ Status: 🟡 Starting...│                │
-│   └──────────────────┘      └──────────────────┘                    │
-│          ↑                           ↑                               │
-│          │                           │                               │
-│     Serving traffic           Building & starting                   │
-│     (Users still work!)       (Not yet serving)                     │
+│   ┌──────────────────────┐      ┌──────────────────────┐            │
+│   │ Container 6          │      │ Container 7          │            │
+│   │ Version: v1.0.6      │      │ Version: v1.0.7 NEW! │            │
+│   │ Port: 32785          │      │ Port: 32787 (dynamic)│            │
+│   │ Status: 🟢 Healthy    │      │ Status: 🟡 Starting...│            │
+│   └──────────────────────┘      └──────────────────────┘            │
+│          ↑                                ↑                          │
+│          │                                │                          │
+│     Serving traffic              Building & starting                │
+│     (Users still work!)          (Health check in progress)         │
 │                                                                      │
 │   ✅ Website is STILL ONLINE (no interruption!)                      │
 └─────────────────────────────────────────────────────────────────────┘
@@ -81,20 +81,20 @@ Users:         😊 Happy → 😊 Happy (no errors) → 😊 Happy
 │        │                                                             │
 │        ↓                                                             │
 │   ┌─────────┐                                                        │
-│   │  Nginx  │  ← Config updated: Route to Port 8083                 │
-│   └────┬────┘                                                        │
+│   │  Nginx  │  ← Config updated: proxy_pass → localhost:32787       │
+│   └────┬────┘     systemctl reload nginx (no downtime!)             │
 │        │                                                             │
 │        ↓                                                             │
-│   ┌──────────────────┐      ┌──────────────────┐                    │
-│   │ Old Container    │      │ New Container    │                    │
-│   │ Version: v1.0    │      │ Version: v2.0    │                    │
-│   │ Port: 8082       │      │ Port: 8083       │                    │
-│   │ Status: 🟡 Draining...│  │ Status: 🟢 Healthy│                    │
-│   └──────────────────┘      └──────────────────┘                    │
-│          ↑                           ↑                               │
-│          │                           │                               │
-│    Finishing old requests      Receiving new requests               │
-│    (backup only)               (primary server)                     │
+│   ┌──────────────────────┐      ┌──────────────────────┐            │
+│   │ Container 6          │      │ Container 7          │            │
+│   │ Version: v1.0.6      │      │ Version: v1.0.7      │            │
+│   │ Port: 32785          │      │ Port: 32787          │            │
+│   │ Status: 🟡 Draining... │      │ Status: 🟢 Healthy    │            │
+│   └──────────────────────┘      └──────────────────────┘            │
+│          ↑                                ↑                          │
+│          │                                │                          │
+│    Finishing old requests          Receiving new requests           │
+│    (30s drain time)                (now primary server)             │
 │                                                                      │
 │   ✅ Website STILL ONLINE (traffic switching smoothly!)              │
 └─────────────────────────────────────────────────────────────────────┘
@@ -108,21 +108,22 @@ Users:         😊 Happy → 😊 Happy (no errors) → 😊 Happy
 │        │                                                             │
 │        ↓                                                             │
 │   ┌─────────┐                                                        │
-│   │  Nginx  │                                                        │
+│   │  Nginx  │  ← Routing to Container 7                             │
 │   └────┬────┘                                                        │
 │        │                                                             │
 │        ↓                                                             │
-│   ┌──────────────────┐      ┌──────────────────┐                    │
-│   │ Old Container    │      │ New Container    │                    │
-│   │ Status: 🔴 Stopped│      │ Version: v2.0    │                    │
-│   │ (Removed)        │      │ Port: 8082       │  ← Now main port   │
-│   └──────────────────┘      │ Status: 🟢 Healthy│                    │
-│                             └──────────────────┘                    │
-│                                      ↑                               │
-│                                      │                               │
-│                               Serving 100% traffic                   │
+│   ┌──────────────────────┐      ┌──────────────────────┐            │
+│   │ Container 6          │      │ Container 7          │            │
+│   │ Status: 🔴 Stopped    │      │ Version: v1.0.7      │            │
+│   │ (Removed)            │      │ Port: 32787          │            │
+│   └──────────────────────┘      │ Status: 🟢 Healthy    │            │
+│                                 └──────────────────────┘            │
+│                                          ↑                           │
+│                                          │                           │
+│                                  Serving 100% traffic                │
 │                                                                      │
 │   ✅ Deployment Complete - ZERO SECONDS OF DOWNTIME! 🎉              │
+│   📊 Old images kept as backup (last 2 builds for rollback)         │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -134,21 +135,22 @@ Users:         😊 Happy → 😊 Happy (no errors) → 😊 Happy
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  STEP 1: Current State                                              │
+│  STEP 1: Current State - Production v1.0.7                          │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                      │
-│   /var/www/html  →  (symlink)  →  /var/www/releases/20250117_120530│
+│   /var/www/html  →  (symlink)  →  /var/www/releases/20251118_133933│
 │                                                       ↓              │
 │                                    ┌──────────────────────────────┐ │
-│                                    │ Old Frontend Files           │ │
+│                                    │ Current Frontend v1.0.6      │ │
 │                                    │ - index.html                 │ │
-│                                    │ - main.js                    │ │
-│                                    │ - styles.css                 │ │
+│                                    │ - main.*.js (bundled)        │ │
+│                                    │ - styles.*.css               │ │
+│                                    │ - assets/                    │ │
 │                                    │ Status: 🟢 Serving users      │ │
 │                                    └──────────────────────────────┘ │
 │                                                                      │
 │   Nginx serves:  /var/www/html/index.html  ← Users get this!        │
-│   ✅ Website ONLINE                                                  │
+│   ✅ Website ONLINE (nammaoorudelivary.in)                           │
 └─────────────────────────────────────────────────────────────────────┘
 
 
@@ -156,23 +158,24 @@ Users:         😊 Happy → 😊 Happy (no errors) → 😊 Happy
 │  STEP 2: Upload New Build (Old One Still Serving!)                  │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                      │
-│   /var/www/html  →  (symlink)  →  /var/www/releases/20250117_120530│
+│   /var/www/html  →  (symlink)  →  /var/www/releases/20251118_133933│
 │                                                       ↓              │
 │                                    ┌──────────────────────────────┐ │
-│                                    │ Old Frontend (v1.0)          │ │
+│                                    │ Old Frontend (v1.0.6)        │ │
 │                                    │ Status: 🟢 Serving users      │ │
 │                                    └──────────────────────────────┘ │
 │                                                                      │
 │                                    ┌──────────────────────────────┐ │
-│                                    │ New Frontend (v2.0)          │ │
-│   /var/www/releases/20250118_153045│ - index.html (new)           │ │
-│                                    │ - main.js (new)              │ │
-│                                    │ - styles.css (new)           │ │
+│                                    │ New Frontend (v1.0.7)        │ │
+│   /var/www/releases/20251118_172432│ - index.html (new)           │ │
+│                                    │ - main.*.js (new bundle)     │ │
+│                                    │ - styles.*.css (new)         │ │
+│                                    │ - assets/ (new)              │ │
 │                                    │ Status: 🟡 Uploaded, not serving│
 │                                    └──────────────────────────────┘ │
 │                                                                      │
 │   Nginx still serves old version  ← Users still get old version!    │
-│   ✅ Website STILL ONLINE                                            │
+│   ✅ Website STILL ONLINE (no interruption during upload)            │
 └─────────────────────────────────────────────────────────────────────┘
 
 
@@ -180,23 +183,27 @@ Users:         😊 Happy → 😊 Happy (no errors) → 😊 Happy
 │  STEP 3: Atomic Symlink Swap (INSTANT!)                             │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                      │
-│   /var/www/html  →  (symlink)  →  /var/www/releases/20250118_153045│
+│   /var/www/html  →  (symlink)  →  /var/www/releases/20251118_172432│
 │                          ↓                            ↓              │
-│                     ATOMIC SWAP                ┌─────────────────┐  │
-│                     (Instant!)                 │ New Frontend    │  │
-│                                                │ Status: 🟢 Live! │  │
-│                                                └─────────────────┘  │
+│                   ln -sfn (atomic!)           ┌──────────────────┐  │
+│                   systemctl reload nginx      │ New Frontend     │  │
+│                                               │ v1.0.7           │  │
+│                                               │ Status: 🟢 Live!  │  │
+│                                               └──────────────────┘  │
 │                                                                      │
-│   Old Release (kept for rollback):                                  │
-│   /var/www/releases/20250117_120530                                 │
+│   Old Releases (kept for instant rollback):                         │
+│   /var/www/releases/20251118_133933 (v1.0.6)                        │
+│   /var/www/releases/20251118_102045 (v1.0.5)                        │
+│   /var/www/releases/20251117_173318 (v1.0.4)                        │
 │                          ↓                                           │
 │                   ┌──────────────────┐                               │
-│                   │ Old Frontend     │                               │
+│                   │ Old Frontends    │                               │
 │                   │ Status: 💾 Archived│                              │
+│                   │ (Keep last 5)    │                               │
 │                   └──────────────────┘                               │
 │                                                                      │
-│   Nginx now serves new version  ← Users instantly get new version!  │
-│   ✅ Website STILL ONLINE - No downtime!                             │
+│   Nginx now serves new version  ← Users instantly get v1.0.7!       │
+│   ✅ Website STILL ONLINE - Zero downtime! Rollback ready in 5s      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -324,7 +331,92 @@ chmod +x zero-downtime-frontend-deploy.sh
 
 ### **Part 2: Daily Deployment (After Setup)**
 
-#### **📱 Backend Deployment**
+---
+
+#### **🚀 Option A: Automated CI/CD Deployment (RECOMMENDED)**
+
+**This is the easiest and safest way to deploy!**
+
+**Step 1: Update version numbers (optional)**
+```bash
+# On local Windows machine
+cd D:\AAWS\nammaooru\shop-management-system
+
+# Update backend/pom.xml: <version>1.0.X</version>
+# Update frontend/package.json: "version": "1.0.X"
+```
+
+**Step 2: Commit and push to main branch**
+```bash
+git add .
+git commit -m "chore: Bump versions to 1.0.X"
+git push
+```
+
+**Step 3: Let GitHub Actions deploy automatically!**
+
+**What happens automatically:**
+```
+┌─────────────────────────────────────────────────────────┐
+│ 🤖 GitHub Actions CI/CD Pipeline (Total: ~16 minutes)   │
+├─────────────────────────────────────────────────────────┤
+│ [1] Pre-Deployment Validation (3m 36s)                  │
+│     ├─ Build backend (mvn clean package)               │
+│     ├─ Build frontend (npm run build:production)       │
+│     └─ Verify both build successfully                  │
+│                                                         │
+│ [2] Deploy Backend Zero Downtime (9m 26s)              │
+│     ├─ SCP source code to server                       │
+│     ├─ Build new Docker image                          │
+│     ├─ Start new container (old still running)         │
+│     ├─ Wait for health check (12 retries, 2 min max)   │
+│     ├─ Update Nginx → route to new backend port        │
+│     ├─ Drain old container (30s)                       │
+│     ├─ Stop old container                              │
+│     └─ Verify: curl api.../actuator/health             │
+│                                                         │
+│ [3] Deploy Frontend Zero Downtime (3m 17s)             │
+│     ├─ Build frontend in GitHub Actions                │
+│     ├─ Package: tar -czf deploy.tar.gz                 │
+│     ├─ SCP to server                                   │
+│     ├─ Extract to /var/www/releases/TIMESTAMP          │
+│     ├─ Atomic symlink swap (/var/www/html)             │
+│     └─ systemctl reload nginx                          │
+│                                                         │
+│ [4] Deployment Summary (11s)                           │
+│     ├─ Show container status                           │
+│     ├─ Show current release symlink                    │
+│     └─ Report: Total Downtime = 0 seconds ✨            │
+└─────────────────────────────────────────────────────────┘
+
+⏱️  Total Time: ~16 minutes
+❌ Downtime: 0 seconds
+✅ Auto-rollback on failure
+```
+
+**Monitor deployment:**
+- **GitHub Actions:** https://github.com/thirunavukkarasuthangaraj/Nammaooru/actions
+- Watch live deployment logs in your browser
+- Get email notifications on success/failure
+
+**After deployment completes:**
+```bash
+# Verify backend
+curl -f https://api.nammaoorudelivary.in/actuator/health
+
+# Verify frontend (may need hard refresh: Ctrl+Shift+R)
+curl -I https://nammaoorudelivary.in
+```
+
+**✅ Done! Your app is deployed with zero downtime.**
+
+---
+
+#### **🔧 Option B: Manual Deployment (Fallback)**
+
+Use this if CI/CD is unavailable or you need to deploy manually.
+
+##### **📱 Backend Deployment**
 
 ```bash
 # SSH to server
@@ -337,7 +429,7 @@ cd /opt/shop-management
 git pull
 
 # Run zero downtime deployment
-./zero-downtime-deploy.sh
+./deployment-automation/scripts/zero-downtime-deploy.sh
 ```
 
 **What happens:**
@@ -347,17 +439,17 @@ git pull
 ├──────────┼────────────────────────────────────┤
 │ 0:00     │ 🔍 Detect current container       │
 │ 0:05     │ 🏗️  Build new Docker image         │
-│ 0:45     │ 🚀 Start new container (port 8083)│
-│ 0:50     │ ⏳ Wait for health check...        │
-│ 1:30     │ ✅ New container HEALTHY!          │
-│ 1:31     │ 🔄 Update Nginx → route to new    │
-│ 1:32     │ ⏳ Wait 30s for connections drain  │
-│ 2:02     │ 🛑 Stop old container              │
-│ 2:05     │ 🧹 Clean up old images             │
-│ 2:10     │ ✅ DEPLOYMENT COMPLETE!            │
+│ 1:30     │ 🚀 Start new container (dynamic port)│
+│ 1:35     │ ⏳ Wait for health check (2 min max)│
+│ 2:30     │ ✅ New container HEALTHY!          │
+│ 2:31     │ 🔄 Update Nginx → route to new    │
+│ 2:32     │ ⏳ Wait 30s for connections drain  │
+│ 3:02     │ 🛑 Stop old container              │
+│ 3:05     │ 🧹 Clean up old images (keep 2)   │
+│ 3:10     │ ✅ DEPLOYMENT COMPLETE!            │
 └──────────┴────────────────────────────────────┘
 
-⏱️  Total Time: ~2-3 minutes
+⏱️  Total Time: ~3-5 minutes
 ❌ Downtime: 0 seconds
 ✅ Success Rate: 100% (auto-rollback on failure)
 ```
@@ -368,7 +460,7 @@ git pull
 curl -f https://api.nammaoorudelivary.in/actuator/health
 
 # View running containers
-docker ps
+docker ps --filter "label=com.shop.service=backend"
 
 # View logs
 docker logs <container-name> --tail 50
@@ -376,7 +468,7 @@ docker logs <container-name> --tail 50
 
 ---
 
-#### **🎨 Frontend Deployment**
+##### **🎨 Frontend Deployment**
 
 **Step 1: Build Locally (On Your Windows Machine)**
 ```bash
@@ -411,7 +503,7 @@ rm deploy.tar.gz
 
 # Deploy with zero downtime
 cd /opt/shop-management
-./zero-downtime-frontend-deploy.sh
+./deployment-automation/scripts/zero-downtime-frontend-deploy.sh
 ```
 
 **What happens:**
@@ -445,6 +537,8 @@ readlink /var/www/html
 # List all releases
 ls -lt /var/www/releases/
 ```
+
+**⚠️ Important:** After frontend deployment, users may need to hard refresh (Ctrl+Shift+R) to clear browser cache.
 
 ---
 
@@ -631,6 +725,61 @@ If health check returns `{"status":"UP"}`, **you're all set!** 🎊
 4. ✅ **Read detailed guide**: `ZERO-DOWNTIME-DEPLOYMENT.md`
 
 **You're ready for production-grade zero downtime deployments!** 🚀
+
+---
+
+## 📝 Recent Updates (v1.0.7 - Nov 18, 2025)
+
+### **✨ What's New**
+
+**Automated CI/CD Deployment:**
+- ✅ **Just push to main** - deployment happens automatically
+- ✅ **16-minute full deployment** with zero downtime
+- ✅ **Health check retry logic** - 12 attempts over 2 minutes (no more premature failures)
+- ✅ **Command timeouts** - Backend 15m, Frontend 10m (no more SSH timeouts)
+- ✅ **Production-tested** - Successfully deployed v1.0.7 with zero downtime
+
+**Configuration Improvements:**
+- ✅ **Fixed frontend API URL** - Now uses correct `api.nammaoorudelivary.in` subdomain
+- ✅ **Dynamic port detection** - Nginx config updates automatically to new backend ports
+- ✅ **Docker image cleanup** - Keeps last 2 builds for rollback, removes old ones
+
+**Deployment Statistics (Actual v1.0.7 Deployment):**
+```
+Pre-Deployment Validation:     3m 36s  ✅
+Backend Zero Downtime Deploy:  9m 26s  ✅
+Frontend Zero Downtime Deploy: 3m 17s  ✅
+Deployment Summary:               11s  ✅
+───────────────────────────────────────
+Total Time:                   16m 45s
+Downtime:                    0 seconds ✨
+```
+
+**Current Production Status:**
+- Backend: v1.0.7 (Container 7, Port 32787)
+- Frontend: v1.0.7 (/var/www/releases/20251118_172432)
+- Health Check: ✅ Passing
+- Zero Downtime: ✅ Confirmed
+
+### **🚀 Quick Deployment (Post-Setup)**
+
+**For v1.0.8+ deployments:**
+
+1. **Bump versions** in `backend/pom.xml` and `frontend/package.json`
+2. **Commit and push:**
+   ```bash
+   git add .
+   git commit -m "chore: Bump versions to 1.0.X"
+   git push
+   ```
+3. **Monitor at:** https://github.com/thirunavukkarasuthangaraj/Nammaooru/actions
+4. **Verify after ~16 minutes:**
+   ```bash
+   curl -f https://api.nammaoorudelivary.in/actuator/health
+   ```
+5. **Hard refresh browser** (Ctrl+Shift+R) to see new frontend
+
+That's it! ✨
 
 ---
 
