@@ -22,6 +22,8 @@ services:
       # JPA configuration (for development, use: JPA_DDL_AUTO=update JPA_SHOW_SQL=true)
       - JPA_DDL_AUTO=${JPA_DDL_AUTO:-validate}
       - JPA_SHOW_SQL=${JPA_SHOW_SQL:-false}
+      # Scheduled jobs control (for zero-downtime deployment)
+      - APP_SCHEDULING_ENABLED=${APP_SCHEDULING_ENABLED:-true}
       # Firebase configuration path (mounted from host)
       - FIREBASE_SERVICE_ACCOUNT_PATH=/app/firebase-config/firebase-service-account.json
     # Changed to expose instead of fixed port mapping

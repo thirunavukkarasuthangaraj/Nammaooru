@@ -42,8 +42,9 @@ OLD_BACKEND=$(docker ps --filter "label=com.shop.service=backend" --format "{{.N
 log_info "Current backend container: $OLD_BACKEND"
 
 # Step 4: Start new backend container (will run alongside old one)
-log_info "Starting new backend container..."
-docker-compose -f $COMPOSE_FILE up -d --no-deps --scale backend=2 --no-recreate backend
+# IMPORTANT: Start with scheduling DISABLED to prevent duplicate job execution
+log_info "Starting new backend container with scheduling disabled..."
+APP_SCHEDULING_ENABLED=false docker-compose -f $COMPOSE_FILE up -d --no-deps --scale backend=2 --no-recreate backend
 
 # Wait for new container to start
 sleep 5
@@ -117,6 +118,14 @@ sleep 30
 log_info "Stopping old backend container: $OLD_BACKEND"
 docker stop $OLD_BACKEND
 docker rm $OLD_BACKEND
+
+# Step 10.5: Enable scheduling on new backend
+log_info "Enabling scheduled jobs on new backend..."
+docker exec $NEW_BACKEND env | grep APP_SCHEDULING || true
+# Restart new backend with scheduling enabled
+docker stop $NEW_BACKEND
+APP_SCHEDULING_ENABLED=true docker-compose -f $COMPOSE_FILE up -d --no-deps --no-recreate backend
+sleep 5
 
 # Step 11: Scale down to single backend instance
 log_info "Scaling backend to 1 instance..."

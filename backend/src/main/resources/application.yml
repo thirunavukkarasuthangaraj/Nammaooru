@@ -156,6 +156,10 @@ app:
   name: @project.name@
   admin:
     email: ${ADMIN_EMAIL:thirunacse75@gmail.com}
+  scheduling:
+    # Control scheduled jobs execution (for zero-downtime deployment)
+    # Set to false during deployment to prevent duplicate job execution
+    enabled: ${APP_SCHEDULING_ENABLED:true}
   assignment:
     retry:
       max-attempts: ${ASSIGNMENT_RETRY_MAX_ATTEMPTS:3}
