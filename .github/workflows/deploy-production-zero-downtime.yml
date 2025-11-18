@@ -40,7 +40,7 @@ jobs:
       run: |
         cd frontend
         npm ci
-        npm run build --configuration production
+        npm run build:production
         echo "✅ Frontend build successful"
 
     - name: Validation Summary
@@ -144,7 +144,7 @@ jobs:
       run: |
         cd frontend
         npm ci
-        npm run build --configuration production
+        npm run build:production
         echo "✅ Frontend built successfully"
 
     - name: Package frontend build
