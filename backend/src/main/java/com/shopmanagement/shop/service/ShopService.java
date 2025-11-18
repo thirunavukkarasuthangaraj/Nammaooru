@@ -10,6 +10,7 @@ import com.shopmanagement.shop.repository.ShopRepository;
 import com.shopmanagement.shop.util.ShopSlugGenerator;
 import com.shopmanagement.service.EmailService;
 import com.shopmanagement.service.AuthService;
+import com.shopmanagement.service.SmsService;
 import com.shopmanagement.entity.User;
 import com.shopmanagement.entity.Order;
 import com.shopmanagement.entity.OrderItem;
@@ -52,6 +53,7 @@ public class ShopService {
     private final ShopSlugGenerator slugGenerator;
     private final EmailService emailService;
     private final AuthService authService;
+    private final SmsService smsService;
     private final UserRepository userRepository;
     private final OrderRepository orderRepository;
     private final OrderAssignmentRepository orderAssignmentRepository;
@@ -398,15 +400,38 @@ public class ShopService {
                     emailService.sendShopOwnerWelcomeEmail(
                         shop.getOwnerEmail(),
                         shop.getOwnerName(),
-                        shop.getOwnerEmail(),
+                        username,  // FIXED: Use the actual generated username
                         temporaryPassword,
                         shop.getName()
                     );
-                    log.info("Welcome email sent successfully to: {}", shop.getOwnerEmail());
+                    log.info("Welcome email sent successfully to: {} with username: {}", shop.getOwnerEmail(), username);
                 } catch (Exception emailError) {
                     log.error("Failed to send welcome email to: {} for shop: {}", shop.getOwnerEmail(), shop.getName(), emailError);
                     // Email failed but user was created - this is a partial success
                     // Admin should be notified to manually send credentials
+                }
+
+                // Send SMS with credentials if mobile number is available
+                if (shop.getOwnerPhone() != null && !shop.getOwnerPhone().isEmpty()) {
+                    try {
+                        String smsMessage = String.format(
+                            "Welcome to NammaOoru! Your shop '%s' has been approved.\n\n" +
+                            "Login Credentials:\n" +
+                            "Username: %s\n" +
+                            "Password: %s\n\n" +
+                            "Login at: https://nammaoorudelivary.in\n\n" +
+                            "Please change your password after first login.",
+                            shop.getName(),
+                            username,
+                            temporaryPassword
+                        );
+
+                        smsService.sendCustomSms(shop.getOwnerPhone(), smsMessage, "SHOP_APPROVAL");
+                        log.info("Credentials SMS sent successfully to: {} for shop: {}", shop.getOwnerPhone(), shop.getName());
+                    } catch (Exception smsError) {
+                        log.error("Failed to send credentials SMS to: {} for shop: {}", shop.getOwnerPhone(), shop.getName(), smsError);
+                        // Continue even if SMS fails - email should have the credentials
+                    }
                 }
                 
             } catch (Exception e) {
