@@ -2,10 +2,10 @@ import packageInfo from '../../package.json';
 
 export const environment = {
   production: true,
-  apiUrl: 'https://nammaoorudelivary.in/api',
+  apiUrl: 'https://api.nammaoorudelivary.in/api',
   appUrl: 'https://nammaoorudelivary.in',
   googleMapsApiKey: 'AIzaSyAr_uGbaOnhebjRyz7ohU6N-hWZJVV_R3U',
-  websocketUrl: 'wss://nammaoorudelivary.in/ws',
+  websocketUrl: 'wss://api.nammaoorudelivary.in/ws',
   version: packageInfo.version,
   buildDate: new Date().toISOString(), // Dynamic build date
   timezone: 'Asia/Kolkata', // Indian Standard Time
