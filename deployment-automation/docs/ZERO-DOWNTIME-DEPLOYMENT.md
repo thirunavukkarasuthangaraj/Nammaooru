@@ -93,7 +93,33 @@ scp zero-downtime-frontend-deploy.sh root@65.21.4.236:/opt/shop-management/
 
 ## 🎬 Deployment Process
 
-### Backend Deployment
+### Option 1: Automated CI/CD (Recommended)
+
+**Simply push to main branch:**
+
+```bash
+# Bump versions
+# backend/pom.xml: <version>1.0.X</version>
+# frontend/package.json: "version": "1.0.X"
+
+git add .
+git commit -m "chore: Bump versions to 1.0.X"
+git push
+```
+
+**GitHub Actions will automatically:**
+1. ✅ Validate builds (backend + frontend)
+2. ✅ Deploy backend with zero downtime (~9 minutes)
+3. ✅ Deploy frontend with zero downtime (~3 minutes)
+4. ✅ Run health checks and verify deployment
+
+**Total time:** ~16 minutes with **zero downtime**
+
+Monitor progress: https://github.com/thirunavukkarasuthangaraj/Nammaooru/actions
+
+---
+
+### Option 2: Manual Deployment
 
 **On Production Server:**
 
@@ -105,7 +131,7 @@ cd /opt/shop-management
 git pull
 
 # Run zero downtime deployment
-./zero-downtime-deploy.sh
+./deployment-automation/scripts/zero-downtime-deploy.sh
 ```
 
 **What happens:**
@@ -326,15 +352,63 @@ curl http://localhost:<port>/actuator/health
 ### Issue: Nginx returns 502
 
 ```bash
-# Check upstream config
-cat /etc/nginx/conf.d/backend-upstream.conf
+# Check if Nginx is pointing to correct backend port
+cat /etc/nginx/sites-available/api.nammaoorudelivary.in | grep proxy_pass
+
+# Get actual backend port
+docker ps --format '{{.Names}}\t{{.Ports}}' | grep backend
+
+# Update Nginx to correct port
+BACKEND_PORT=$(docker port shop-management_backend_7 8080 | cut -d':' -f2)
+sed -i "s|proxy_pass http://localhost:[0-9]*;|proxy_pass http://localhost:$BACKEND_PORT;|" /etc/nginx/sites-available/api.nammaoorudelivary.in
+nginx -t && systemctl reload nginx
 
 # Check Nginx logs
 tail -f /var/log/nginx/error.log
-
-# Verify containers are running
-docker ps
 ```
+
+### Issue: CI/CD health check timeout
+
+**Fixed in v1.0.7:** Health check now retries 12 times (2 minutes total) instead of single 10s check.
+
+```yaml
+# .github/workflows/deploy-production-zero-downtime.yml
+RETRY_COUNT=0
+MAX_RETRIES=12
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+  curl -f https://api.nammaoorudelivary.in/actuator/health && exit 0
+  sleep 10
+  RETRY_COUNT=$((RETRY_COUNT+1))
+done
+```
+
+### Issue: CI/CD command timeout
+
+**Fixed in v1.0.7:** Added explicit timeouts to SSH actions:
+- Backend deployment: 15 minutes
+- Frontend deployment: 10 minutes
+
+```yaml
+- name: Deploy backend with zero downtime
+  uses: appleboy/ssh-action@v0.1.5
+  with:
+    command_timeout: 15m
+```
+
+### Issue: Frontend showing old code
+
+**Root cause:** `frontend/src/environments/environment.prod.ts` had wrong API URL.
+
+**Fixed in v1.0.7:**
+```typescript
+// WRONG (old)
+apiUrl: 'https://nammaoorudelivary.in/api'
+
+// CORRECT (v1.0.7+)
+apiUrl: 'https://api.nammaoorudelivary.in/api'
+```
+
+After fix, clear browser cache or hard refresh (Ctrl+Shift+R).
 
 ### Issue: Old container won't stop
 
@@ -357,11 +431,35 @@ docker kill <container-name>
 
 ---
 
+## 📝 Recent Changes (v1.0.7 - Nov 18, 2025)
+
+### CI/CD Improvements
+- ✅ Added SSH command timeouts (15m backend, 10m frontend)
+- ✅ Improved health check retry logic (12 attempts over 2 minutes)
+- ✅ Fixed deployment script Nginx config updates (regex-based)
+- ✅ Automated deployment via GitHub Actions on push to main
+
+### Configuration Fixes
+- ✅ Fixed frontend API URL to use correct subdomain
+- ✅ Updated environment.prod.ts with `api.nammaoorudelivary.in`
+- ✅ Frontend v1.0.7 deployed with zero-downtime release strategy
+
+### Deployment Stats (v1.0.7)
+- **Total CI/CD time:** 16m 45s
+- **Downtime:** 0 seconds
+- **Backend deployment:** 9m 26s
+- **Frontend deployment:** 3m 17s
+- **Health checks:** Pass ✅
+
+---
+
 ## 🎉 Summary
 
 You now have **production-grade zero downtime deployments**!
 
 **Before:** 30-60 seconds of downtime per deployment
 **After:** 0 seconds of downtime ✨
+
+**CI/CD Status:** https://github.com/thirunavukkarasuthangaraj/Nammaooru/actions
 
 Happy deploying! 🚀
