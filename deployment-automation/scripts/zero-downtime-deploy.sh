@@ -26,10 +26,10 @@ log_error() { echo -e "${RED}✗ $1${NC}"; }
 # Change to project directory
 cd $PROJECT_DIR
 
-# Step 1: Pull latest code (if using git)
-if [ -d ".git" ]; then
+# Step 1: Pull latest code (if using git) - Skip if CI/CD already updated files
+if [ -d ".git" ] && [ "${SKIP_GIT_PULL:-false}" != "true" ]; then
     log_info "Pulling latest code from git..."
-    git pull
+    git pull || log_warn "Git pull failed (continuing anyway - CI/CD may have updated files via SCP)"
 fi
 
 # Step 2: Build new images with unique tag
