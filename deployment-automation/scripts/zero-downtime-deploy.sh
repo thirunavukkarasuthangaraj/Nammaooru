@@ -154,6 +154,35 @@ else
     exit 1
 fi
 
+# Step 8.5: VERIFY Nginx is serving traffic from new backend
+log_info "Verifying Nginx is serving traffic from new backend..."
+VERIFY_RETRY=0
+MAX_VERIFY=15
+
+while [ $VERIFY_RETRY -lt $MAX_VERIFY ]; do
+    # Test through Nginx (actual production URL)
+    if curl -f -s -m 5 http://localhost/actuator/health > /dev/null 2>&1; then
+        log_info "✅ Nginx successfully serving traffic from new backend!"
+        break
+    fi
+
+    log_warn "Nginx not serving traffic yet (attempt $((VERIFY_RETRY+1))/$MAX_VERIFY)"
+    sleep 2
+    VERIFY_RETRY=$((VERIFY_RETRY+1))
+done
+
+if [ $VERIFY_RETRY -eq $MAX_VERIFY ]; then
+    log_error "Nginx failed to serve traffic from new backend!"
+    log_error "Rolling back to old backend..."
+    sed -i "s|proxy_pass http://localhost:[0-9]*;|proxy_pass http://localhost:$OLD_BACKEND_PORT;|" $NGINX_CONFIG
+    nginx -t && systemctl reload nginx
+    log_error "Stopping new container..."
+    docker stop $NEW_BACKEND
+    docker rm $NEW_BACKEND
+    log_info "Rollback complete. Old backend still running."
+    exit 1
+fi
+
 # Step 9: Wait for connections to drain from old backend
 log_info "Waiting 30s for connections to drain from old backend..."
 sleep 30
