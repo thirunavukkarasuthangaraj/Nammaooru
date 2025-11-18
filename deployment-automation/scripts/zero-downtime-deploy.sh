@@ -131,9 +131,30 @@ sleep 5
 log_info "Scaling backend to 1 instance..."
 docker-compose -f $COMPOSE_FILE up -d --scale backend=1 --no-recreate
 
-# Step 12: Clean up old images
-log_info "Cleaning up old Docker images..."
-docker image prune -f
+# Step 12: Clean up old images (keep last 2 builds as backup)
+log_info "Cleaning up old Docker images (keeping last 2 builds)..."
+
+# Get all backend images, sorted by creation date (newest first)
+BACKEND_IMAGES=$(docker images --filter "reference=shop-management-system-backend*" --format "{{.ID}} {{.CreatedAt}}" | sort -rk 2 | awk '{print $1}')
+
+# Count total images
+TOTAL_IMAGES=$(echo "$BACKEND_IMAGES" | wc -l)
+
+if [ "$TOTAL_IMAGES" -gt 2 ]; then
+    # Keep first 2 (newest), delete the rest
+    IMAGES_TO_DELETE=$(echo "$BACKEND_IMAGES" | tail -n +3)
+
+    if [ ! -z "$IMAGES_TO_DELETE" ]; then
+        echo "$IMAGES_TO_DELETE" | xargs docker rmi -f 2>/dev/null || true
+        DELETED_COUNT=$(echo "$IMAGES_TO_DELETE" | wc -l)
+        log_info "Deleted $DELETED_COUNT old image(s), kept last 2 builds as backup"
+    fi
+else
+    log_info "Only $TOTAL_IMAGES image(s) found, keeping all (target: 2)"
+fi
+
+# Also clean dangling images
+docker image prune -f >/dev/null 2>&1
 
 # Step 13: Update final Nginx config to point to single backend
 FINAL_BACKEND=$(docker ps --filter "label=com.shop.service=backend" --format "{{.Names}}" | head -n 1)
