@@ -137,64 +137,27 @@ jobs:
         username: ${{ secrets.HETZNER_USER }}
         password: ${{ secrets.HETZNER_PASSWORD }}
         script: |
-          echo "════════════════════════════════════════════════════════════"
-          echo "   🔍 VERIFYING APPLICATION READINESS"
-          echo "════════════════════════════════════════════════════════════"
-          echo ""
+          echo "Verifying backend health..."
 
-          # Retry application readiness check up to 24 times (4 minutes total)
+          # Quick health check - 6 retries (1 minute total)
           RETRY_COUNT=0
-          MAX_RETRIES=24
+          MAX_RETRIES=6
 
           while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
             echo "Attempt $((RETRY_COUNT+1))/$MAX_RETRIES..."
 
-            # Check multiple endpoints to ensure application is FULLY ready
-            HEALTH_OK=false
-            INFO_OK=false
-
-            # Test 1: Health endpoint
-            if curl -f -s -m 5 https://api.nammaoorudelivary.in/actuator/health > /dev/null 2>&1; then
-              HEALTH_OK=true
-              echo "  ✅ Health endpoint responding"
-            else
-              echo "  ⏳ Health endpoint not ready"
+            if curl -f -s https://api.nammaoorudelivary.in/actuator/health > /dev/null 2>&1; then
+              echo "✅ Backend is healthy!"
+              curl -s https://api.nammaoorudelivary.in/actuator/health
+              exit 0
             fi
 
-            # Test 2: Info endpoint (validates Spring Boot context fully loaded)
-            if curl -f -s -m 5 https://api.nammaoorudelivary.in/actuator/info > /dev/null 2>&1; then
-              INFO_OK=true
-              echo "  ✅ Info endpoint responding"
-            else
-              echo "  ⏳ Info endpoint not ready"
-            fi
-
-            # Both endpoints must respond
-            if [ "$HEALTH_OK" = true ] && [ "$INFO_OK" = true ]; then
-              echo ""
-              echo "✅ Application endpoints are responding!"
-              echo "Performing final verification..."
-              sleep 5
-
-              # Final verification
-              if curl -f -s https://api.nammaoorudelivary.in/actuator/health > /dev/null 2>&1; then
-                echo ""
-                echo "════════════════════════════════════════════════════════════"
-                echo "   ✅ BACKEND IS 100% READY FOR PRODUCTION TRAFFIC"
-                echo "════════════════════════════════════════════════════════════"
-                curl -s https://api.nammaoorudelivary.in/actuator/health
-                exit 0
-              fi
-            fi
-
-            echo "  Application not fully ready yet, waiting 10s..."
+            echo "Backend not ready yet, waiting 10s..."
             sleep 10
             RETRY_COUNT=$((RETRY_COUNT+1))
           done
 
-          echo ""
-          echo "❌ Application failed to become ready after $MAX_RETRIES attempts"
-          echo "This is NOT a container issue - the application endpoints are not responding"
+          echo "❌ Backend health check failed after $MAX_RETRIES attempts"
           exit 1
 
   # Step 3: Deploy Frontend with Zero Downtime

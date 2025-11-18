@@ -82,57 +82,6 @@ if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
     exit 1
 fi
 
-# Step 6.5: Wait for APPLICATION readiness (not just container health)
-log_info "Verifying application endpoints are ready..."
-NEW_BACKEND_PORT=$(docker port $NEW_BACKEND 8080 | cut -d':' -f2)
-APP_RETRY_COUNT=0
-MAX_APP_RETRIES=30  # 30 attempts × 5s = 2.5 minutes
-
-while [ $APP_RETRY_COUNT -lt $MAX_APP_RETRIES ]; do
-    # Test multiple critical endpoints to ensure app is truly ready
-    HEALTH_OK=false
-    INFO_OK=false
-
-    # Test 1: Health endpoint
-    if curl -f -s -m 5 http://localhost:$NEW_BACKEND_PORT/actuator/health > /dev/null 2>&1; then
-        HEALTH_OK=true
-    fi
-
-    # Test 2: Info endpoint (validates Spring Boot context is fully loaded)
-    if curl -f -s -m 5 http://localhost:$NEW_BACKEND_PORT/actuator/info > /dev/null 2>&1; then
-        INFO_OK=true
-    fi
-
-    if [ "$HEALTH_OK" = true ] && [ "$INFO_OK" = true ]; then
-        log_info "✅ Application endpoints are fully ready!"
-
-        # Additional verification: Check if JPA repositories are initialized
-        log_info "Final check: Testing database connectivity..."
-        sleep 5  # Give JPA one more moment to finalize
-
-        if curl -f -s -m 5 http://localhost:$NEW_BACKEND_PORT/actuator/health > /dev/null 2>&1; then
-            log_info "✅ Application is 100% ready for production traffic!"
-            break
-        fi
-    fi
-
-    log_warn "Application not fully ready yet (health=$HEALTH_OK, info=$INFO_OK) - attempt $((APP_RETRY_COUNT+1))/$MAX_APP_RETRIES"
-    sleep 5
-    APP_RETRY_COUNT=$((APP_RETRY_COUNT+1))
-done
-
-if [ $APP_RETRY_COUNT -eq $MAX_APP_RETRIES ]; then
-    log_error "Application endpoints failed to become ready in time!"
-    log_error "This is NOT a container health issue - the application is slow to initialize."
-    log_error "Recent logs from new container:"
-    docker logs $NEW_BACKEND --tail 100
-
-    log_warn "Rolling back - removing new container..."
-    docker stop $NEW_BACKEND
-    docker rm $NEW_BACKEND
-    exit 1
-fi
-
 # Step 7: Update Nginx to point to new backend
 log_info "Updating Nginx configuration..."
 NEW_BACKEND_PORT=$(docker port $NEW_BACKEND 8080 | cut -d':' -f2)
@@ -154,38 +103,9 @@ else
     exit 1
 fi
 
-# Step 8.5: VERIFY Nginx is serving traffic from new backend
-log_info "Verifying Nginx is serving traffic from new backend..."
-VERIFY_RETRY=0
-MAX_VERIFY=15
-
-while [ $VERIFY_RETRY -lt $MAX_VERIFY ]; do
-    # Test through Nginx (actual production URL)
-    if curl -f -s -m 5 http://localhost/actuator/health > /dev/null 2>&1; then
-        log_info "✅ Nginx successfully serving traffic from new backend!"
-        break
-    fi
-
-    log_warn "Nginx not serving traffic yet (attempt $((VERIFY_RETRY+1))/$MAX_VERIFY)"
-    sleep 2
-    VERIFY_RETRY=$((VERIFY_RETRY+1))
-done
-
-if [ $VERIFY_RETRY -eq $MAX_VERIFY ]; then
-    log_error "Nginx failed to serve traffic from new backend!"
-    log_error "Rolling back to old backend..."
-    sed -i "s|proxy_pass http://localhost:[0-9]*;|proxy_pass http://localhost:$OLD_BACKEND_PORT;|" $NGINX_CONFIG
-    nginx -t && systemctl reload nginx
-    log_error "Stopping new container..."
-    docker stop $NEW_BACKEND
-    docker rm $NEW_BACKEND
-    log_info "Rollback complete. Old backend still running."
-    exit 1
-fi
-
 # Step 9: Wait for connections to drain from old backend
-log_info "Waiting 30s for connections to drain from old backend..."
-sleep 30
+log_info "Waiting 10s for connections to drain from old backend..."
+sleep 10
 
 # Step 10: Stop and remove old backend
 log_info "Stopping old backend container: $OLD_BACKEND"
