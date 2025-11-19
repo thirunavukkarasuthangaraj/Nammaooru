@@ -135,12 +135,13 @@ done
 
 # Step 9: Stop old backend - WITH API CHECKS!
 log_step "Stopping old backend container: $OLD_BACKEND"
-OLD_CONTAINER_STOP_TIME=$(date '+%Y-%m-%d %H:%M:%S.%3N')
 
 # API check BEFORE stopping old container
 log_warn "⏰ API CHECK BEFORE STOPPING OLD CONTAINER"
 check_api_health
 
+# Capture timestamp right before stopping (ensures accurate timing)
+OLD_CONTAINER_STOP_TIME=$(date '+%Y-%m-%d %H:%M:%S.%3N')
 log_warn "⏰ STOPPING OLD CONTAINER at $OLD_CONTAINER_STOP_TIME"
 docker stop $OLD_BACKEND
 
