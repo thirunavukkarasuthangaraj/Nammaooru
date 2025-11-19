@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# Zero Downtime Deployment Script - With detailed logging
+# Zero Downtime Deployment Script - With API health checks during container stop
 
 echo "🚀 Starting Zero Downtime Deployment..."
 
@@ -9,6 +9,7 @@ echo "🚀 Starting Zero Downtime Deployment..."
 PROJECT_DIR="/opt/shop-management"
 COMPOSE_FILE="docker-compose.yml"
 NGINX_CONFIG="/etc/nginx/sites-available/api.nammaoorudelivary.in"
+API_URL="https://api.nammaoorudelivary.in/api/version"
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -22,6 +23,20 @@ log_warn() { echo -e "${YELLOW}⚠ [$(date '+%Y-%m-%d %H:%M:%S')] $1${NC}"; }
 log_error() { echo -e "${RED}✗ [$(date '+%Y-%m-%d %H:%M:%S')] $1${NC}"; }
 log_step() { echo -e "${BLUE}→ [$(date '+%Y-%m-%d %H:%M:%S')] $1${NC}"; }
 
+# Function to check API health
+check_api_health() {
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S.%3N')
+    local http_code=$(curl -s -o /dev/null -w '%{http_code}' "$API_URL" 2>/dev/null || echo "000")
+    
+    if [ "$http_code" = "200" ]; then
+        log_info "[$timestamp] ✅ API HEALTH CHECK: HTTP $http_code - API is UP and responding"
+        return 0
+    else
+        log_error "[$timestamp] ❌ API HEALTH CHECK: HTTP $http_code - API is DOWN!"
+        return 1
+    fi
+}
+
 cd $PROJECT_DIR
 
 # Step 1: Build new image
@@ -34,6 +49,10 @@ OLD_BACKEND=$(docker ps --filter "label=com.shop.service=backend" --format "{{.N
 OLD_BACKEND_PORT=$(docker port $OLD_BACKEND 8080 | cut -d':' -f2)
 log_info "Current backend: $OLD_BACKEND (port $OLD_BACKEND_PORT)"
 
+# Initial API check
+log_step "Checking API before deployment..."
+check_api_health
+
 # Step 3: Start new backend (will run alongside old)
 log_step "Starting new backend container alongside old one..."
 log_warn "⏰ API should remain accessible during this step"
@@ -44,6 +63,10 @@ sleep 5
 NEW_BACKEND=$(docker ps --filter "label=com.shop.service=backend" --format "{{.Names}}" | grep -v "$OLD_BACKEND" | head -n 1)
 NEW_BACKEND_PORT=$(docker port $NEW_BACKEND 8080 | cut -d':' -f2)
 log_info "New backend: $NEW_BACKEND (port $NEW_BACKEND_PORT)"
+
+# API check after new container started
+log_step "Checking API after new container started..."
+check_api_health
 
 # Step 5: Wait for new backend health
 log_step "Waiting for new backend to be healthy..."
@@ -72,6 +95,10 @@ if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
     exit 1
 fi
 
+# API check after new container healthy
+log_step "Checking API after new container is healthy..."
+check_api_health
+
 # Step 6: Update Nginx to new backend
 log_step "Switching Nginx from port $OLD_BACKEND_PORT to $NEW_BACKEND_PORT"
 log_warn "⏰ CRITICAL MOMENT: Switching traffic from old to new container"
@@ -91,16 +118,43 @@ else
     exit 1
 fi
 
+# API check immediately after Nginx switch
+log_step "Checking API immediately after Nginx switch..."
+check_api_health
+
 # Step 8: Wait for connections to drain
 log_step "Waiting 10s for connections to drain from old container..."
 log_warn "⏰ Old container $OLD_BACKEND is still running, draining connections"
-sleep 10
 
-# Step 9: Stop old backend
+# API checks during drain period
+for i in {1..5}; do
+    sleep 2
+    log_step "API check during drain period ($i/5)..."
+    check_api_health
+done
+
+# Step 9: Stop old backend - WITH API CHECKS!
 log_step "Stopping old backend container: $OLD_BACKEND"
 OLD_CONTAINER_STOP_TIME=$(date '+%Y-%m-%d %H:%M:%S.%3N')
+
+# API check BEFORE stopping old container
+log_warn "⏰ API CHECK BEFORE STOPPING OLD CONTAINER"
+check_api_health
+
 log_warn "⏰ STOPPING OLD CONTAINER at $OLD_CONTAINER_STOP_TIME"
 docker stop $OLD_BACKEND
+
+# API check IMMEDIATELY AFTER stopping old container
+log_warn "⏰ API CHECK IMMEDIATELY AFTER OLD CONTAINER STOPPED"
+check_api_health
+
+# More API checks to verify stability
+for i in {1..3}; do
+    sleep 1
+    log_step "API check after old container stopped ($i/3)..."
+    check_api_health
+done
+
 docker rm $OLD_BACKEND
 log_info "Old container stopped at $OLD_CONTAINER_STOP_TIME"
 
@@ -108,6 +162,10 @@ log_info "Old container stopped at $OLD_CONTAINER_STOP_TIME"
 log_step "Cleaning up old images..."
 docker images --filter "reference=*backend*" --format "{{.ID}} {{.CreatedAt}}" | sort -rk 2 | awk 'NR>3 {print $1}' | xargs -r docker rmi -f 2>/dev/null || true
 docker image prune -f >/dev/null 2>&1
+
+# Final API health check
+log_step "Final API health check..."
+check_api_health
 
 # Final status
 echo ""
