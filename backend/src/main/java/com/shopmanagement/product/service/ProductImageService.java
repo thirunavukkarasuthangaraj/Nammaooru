@@ -45,10 +45,7 @@ public class ProductImageService {
     private final ShopProductImageRepository shopProductImageRepository;
     private final ProductMapper productMapper;
 
-    @Value("${app.upload.dir}")
-    private String uploadDir;
-
-    @Value("${app.upload.product-images:products}")
+    @Value("${app.upload.product-images:/opt/shop-management/uploads/products}")
     private String productImageDir;
 
     private static final List<String> ALLOWED_EXTENSIONS = Arrays.asList("jpg", "jpeg", "png", "gif", "webp");
@@ -346,9 +343,9 @@ public class ProductImageService {
             String extension = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf("."));
             
             String filename = String.format("%s_%s_%s_%s%s", type, String.join("_", Arrays.stream(ids).map(String::valueOf).toArray(String[]::new)), timestamp, uuid, extension);
-            
+
             // Create directory structure with better error handling
-            Path uploadPath = Paths.get(uploadDir, productImageDir, type);
+            Path uploadPath = Paths.get(productImageDir, type);
             
             log.info("Attempting to create/access upload directory: {}", uploadPath.toAbsolutePath());
             
@@ -373,27 +370,34 @@ public class ProductImageService {
             
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
             log.info("Successfully saved file: {}", filePath.toAbsolutePath());
-            
+
             // Return the relative URL path
-            return String.format("/uploads/%s/%s/%s", productImageDir, type, filename);
+            return String.format("/uploads/products/%s/%s", type, filename);
             
         } catch (IOException e) {
             log.error("Error saving image file: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to save image file: " + uploadDir + ". " + e.getMessage());
+            throw new RuntimeException("Failed to save image file: " + productImageDir + ". " + e.getMessage());
         }
     }
 
     private void deleteImageFile(String imageUrl) {
         try {
-            // Remove leading slash and construct proper path
-            String relativePath = imageUrl.startsWith("/") ? imageUrl.substring(1) : imageUrl;
-            Path filePath = Paths.get(uploadDir).resolve(relativePath);
-            
-            if (Files.exists(filePath)) {
-                Files.delete(filePath);
-                log.info("Successfully deleted image file: {}", filePath);
+            // Extract the filename from the URL path
+            // imageUrl format: /uploads/products/master/filename.jpg
+            String[] parts = imageUrl.split("/");
+            if (parts.length >= 4) {
+                String type = parts[3]; // "master" or "shop"
+                String filename = parts[parts.length - 1];
+                Path filePath = Paths.get(productImageDir, type, filename);
+
+                if (Files.exists(filePath)) {
+                    Files.delete(filePath);
+                    log.info("Successfully deleted image file: {}", filePath);
+                } else {
+                    log.warn("Image file not found for deletion: {}", filePath);
+                }
             } else {
-                log.warn("Image file not found for deletion: {}", filePath);
+                log.error("Invalid image URL format: {}", imageUrl);
             }
         } catch (IOException e) {
             log.error("Error deleting image file: {}", imageUrl, e);
