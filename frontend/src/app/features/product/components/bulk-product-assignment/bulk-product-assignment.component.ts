@@ -1329,9 +1329,8 @@ export class BulkProductAssignmentComponent implements OnInit {
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
       return imageUrl;
     }
-    // Use the API base URL from environment (without /api)
-    const baseUrl = environment.apiUrl.replace('/api', '');
-    return `${baseUrl}${imageUrl}`;
+    // Use the app base URL from environment (for static file serving)
+    return `${environment.appUrl}${imageUrl}`;
   }
 
   onImageError(event: any): void {

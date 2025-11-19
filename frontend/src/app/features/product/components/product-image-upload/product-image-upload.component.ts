@@ -4,6 +4,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { ProductImage } from '../../../../core/models/product.model';
 import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { API_ENDPOINTS } from '../../../../core/constants/app.constants';
+import { environment } from '../../../../../environments/environment';
 
 @Component({
   selector: 'app-product-image-upload',
@@ -526,9 +527,8 @@ export class ProductImageUploadComponent implements OnInit {
     if (image.imageUrl.startsWith('http://') || image.imageUrl.startsWith('https://')) {
       return image.imageUrl;
     }
-    // Otherwise, construct the full URL with the backend base URL (without /api)
-    const baseUrl = API_ENDPOINTS.BASE_URL.replace('/api', '');
-    const fullUrl = `${baseUrl}${image.imageUrl}`;
+    // Otherwise, construct the full URL with the app base URL (for static file serving)
+    const fullUrl = `${environment.appUrl}${image.imageUrl}`;
     console.log('Image URL constructed:', fullUrl, 'from imageUrl:', image.imageUrl);
     return fullUrl;
   }
