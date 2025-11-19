@@ -217,11 +217,11 @@ public class Shop {
     private LocalDateTime updatedAt;
 
     // Relationships - Using Set instead of List to avoid MultipleBagFetchException
-    @OneToMany(mappedBy = "shop", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "shop", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @Builder.Default
     private Set<ShopImage> images = new HashSet<>();
 
-    @OneToMany(mappedBy = "shop", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "shop", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @Builder.Default
     private Set<ShopDocument> documents = new HashSet<>();
 
