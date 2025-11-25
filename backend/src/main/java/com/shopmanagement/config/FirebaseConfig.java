@@ -85,19 +85,27 @@ public class FirebaseConfig {
         System.out.println("🔍 getFirebaseServiceAccountStream() called");
         System.out.println("🔍 firebaseServiceAccountPath = " + firebaseServiceAccountPath);
 
-        // Option 1: Try environment variable path (production)
-        if (firebaseServiceAccountPath != null && !firebaseServiceAccountPath.isEmpty()) {
+        // Option 1: Try environment variable path (production) - skip "classpath:" prefixed paths
+        if (firebaseServiceAccountPath != null && !firebaseServiceAccountPath.isEmpty()
+                && !firebaseServiceAccountPath.startsWith("classpath:")) {
             System.out.println("🔍 Checking if file exists at: " + firebaseServiceAccountPath);
-            if (Files.exists(Paths.get(firebaseServiceAccountPath))) {
-                System.out.println("📂 Loading Firebase credentials from: " + firebaseServiceAccountPath);
-                logger.info("📂 Loading Firebase credentials from: {}", firebaseServiceAccountPath);
-                return new FileInputStream(firebaseServiceAccountPath);
-            } else {
-                System.out.println("⚠️  FIREBASE_SERVICE_ACCOUNT path set but file not found: " + firebaseServiceAccountPath);
-                logger.warn("⚠️  FIREBASE_SERVICE_ACCOUNT path set but file not found: {}", firebaseServiceAccountPath);
+            try {
+                if (Files.exists(Paths.get(firebaseServiceAccountPath))) {
+                    System.out.println("📂 Loading Firebase credentials from: " + firebaseServiceAccountPath);
+                    logger.info("📂 Loading Firebase credentials from: {}", firebaseServiceAccountPath);
+                    return new FileInputStream(firebaseServiceAccountPath);
+                } else {
+                    System.out.println("⚠️  FIREBASE_SERVICE_ACCOUNT path set but file not found: " + firebaseServiceAccountPath);
+                    logger.warn("⚠️  FIREBASE_SERVICE_ACCOUNT path set but file not found: {}", firebaseServiceAccountPath);
+                }
+            } catch (Exception e) {
+                System.out.println("⚠️  Error checking file path: " + e.getMessage());
+                logger.warn("⚠️  Error checking file path: {}", e.getMessage());
             }
-        } else {
+        } else if (firebaseServiceAccountPath == null || firebaseServiceAccountPath.isEmpty()) {
             System.out.println("⚠️  firebaseServiceAccountPath is null or empty!");
+        } else {
+            System.out.println("📂 Path starts with 'classpath:', will try classpath resource...");
         }
 
         // Option 2: Try classpath resource (local development)

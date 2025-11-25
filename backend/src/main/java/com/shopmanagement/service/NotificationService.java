@@ -4,10 +4,12 @@ import com.shopmanagement.dto.notification.NotificationRequest;
 import com.shopmanagement.dto.notification.NotificationResponse;
 import com.shopmanagement.entity.Customer;
 import com.shopmanagement.entity.Notification;
+import com.shopmanagement.entity.UserFcmToken;
 import com.shopmanagement.shop.entity.Shop;
 import com.shopmanagement.entity.User;
 import com.shopmanagement.repository.CustomerRepository;
 import com.shopmanagement.repository.NotificationRepository;
+import com.shopmanagement.repository.UserFcmTokenRepository;
 import com.shopmanagement.shop.repository.ShopRepository;
 import com.shopmanagement.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +41,8 @@ public class NotificationService {
     private final CustomerRepository customerRepository;
     private final ShopRepository shopRepository;
     private final EmailService emailService;
+    private final UserFcmTokenRepository userFcmTokenRepository;
+    private final FirebaseNotificationService firebaseNotificationService;
     
     @Transactional
     public NotificationResponse createNotification(NotificationRequest request) {
@@ -88,26 +92,102 @@ public class NotificationService {
     @Transactional
     public NotificationResponse createBroadcastNotification(NotificationRequest request) {
         log.info("Creating broadcast notification: {} for type: {}", request.getTitle(), request.getRecipientType());
-        
+
         List<Long> recipientIds = getBroadcastRecipients(request.getRecipientType());
         List<Notification> notifications = new ArrayList<>();
-        
+
         for (Long recipientId : recipientIds) {
             Notification notification = buildNotification(request, recipientId);
             notifications.add(notification);
         }
-        
+
         List<Notification> savedNotifications = notificationRepository.saveAll(notifications);
-        
+
         // Send emails if requested
         if (request.getSendEmail() != null && request.getSendEmail()) {
             for (Notification notification : savedNotifications) {
                 sendEmailNotification(notification);
             }
         }
-        
+
+        // Send FCM push notifications if requested
+        if (request.getSendPush() != null && request.getSendPush()) {
+            sendBroadcastPushNotifications(request, recipientIds);
+        }
+
         log.info("Broadcast notification created for {} recipients", savedNotifications.size());
         return mapToResponse(savedNotifications.get(0));
+    }
+
+    public void sendBroadcastPushNotifications(NotificationRequest request, List<Long> recipientIds) {
+        try {
+            log.info("📱 Sending FCM push notifications for broadcast to {} recipients", recipientIds.size());
+            log.info("📱 Recipient IDs: {}", recipientIds);
+            log.info("📱 Recipient Type: {}", request.getRecipientType());
+
+            // Get user IDs based on recipient type
+            List<Long> userIds = getUserIdsForRecipients(request.getRecipientType(), recipientIds);
+            log.info("📱 Found {} user IDs: {}", userIds.size(), userIds);
+
+            if (userIds.isEmpty()) {
+                log.warn("❌ No user IDs found for broadcast notification - check if Customer emails match User emails");
+                return;
+            }
+
+            // Get FCM tokens for all users
+            List<UserFcmToken> fcmTokens = userFcmTokenRepository.findActiveTokensByUserIds(userIds);
+            log.info("📱 Found {} active FCM tokens", fcmTokens.size());
+
+            if (fcmTokens.isEmpty()) {
+                log.warn("❌ No FCM tokens found for {} users - users need to register FCM token from mobile app", userIds.size());
+                return;
+            }
+
+            log.info("📤 Sending push notifications to {} devices", fcmTokens.size());
+
+            int successCount = 0;
+            int failCount = 0;
+
+            for (UserFcmToken fcmToken : fcmTokens) {
+                try {
+                    firebaseNotificationService.sendPromotionalNotification(
+                            request.getTitle(),
+                            request.getMessage(),
+                            fcmToken.getFcmToken()
+                    );
+                    successCount++;
+                } catch (Exception e) {
+                    log.error("Failed to send push notification to token: {}...",
+                            fcmToken.getFcmToken().substring(0, Math.min(20, fcmToken.getFcmToken().length())), e);
+                    failCount++;
+                }
+            }
+
+            log.info("✅ Broadcast push notifications completed: {} success, {} failed", successCount, failCount);
+
+        } catch (Exception e) {
+            log.error("❌ Error sending broadcast push notifications", e);
+        }
+    }
+
+    private List<Long> getUserIdsForRecipients(Notification.RecipientType recipientType, List<Long> recipientIds) {
+        switch (recipientType) {
+            case ALL_USERS:
+                return recipientIds; // recipientIds are already user IDs
+            case ALL_CUSTOMERS:
+                // recipientIds are now User IDs (from getBroadcastRecipients)
+                // They are already user IDs, so return them directly
+                log.info("📱 Processing {} user IDs for ALL_CUSTOMERS broadcast", recipientIds.size());
+                return recipientIds;
+            case ALL_SHOP_OWNERS:
+                // For shop owners, find User IDs with SHOP_OWNER role
+                return userRepository.findByRole(User.UserRole.SHOP_OWNER)
+                        .stream()
+                        .map(User::getId)
+                        .collect(Collectors.toList());
+            default:
+                return new ArrayList<>();
+        }
     }
     
     public NotificationResponse getNotificationById(Long id) {
@@ -369,7 +449,16 @@ public class NotificationService {
             case ALL_USERS:
                 return userRepository.findAll().stream().map(User::getId).collect(Collectors.toList());
             case ALL_CUSTOMERS:
-                return customerRepository.findAll().stream().map(Customer::getId).collect(Collectors.toList());
+                // Get users with USER role (mobile app customers are stored with USER role)
+                List<Long> customerUserIds = userRepository.findByRole(User.UserRole.USER)
+                        .stream()
+                        .map(User::getId)
+                        .collect(Collectors.toList());
+
+                log.info("📱 Found {} users with USER role for ALL_CUSTOMERS broadcast", customerUserIds.size());
+
+                // Return user IDs directly (they already have FCM tokens linked)
+                return customerUserIds;
             case ALL_SHOP_OWNERS:
                 return shopRepository.findAll().stream().map(Shop::getId).collect(Collectors.toList());
             default:
