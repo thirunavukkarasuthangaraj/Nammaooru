@@ -1,5 +1,6 @@
 import { Component, Input } from '@angular/core';
 import { ProductCategory } from '../../../../core/models/product.model';
+import { environment } from '../../../../../environments/environment';
 
 @Component({
   selector: 'app-category-tree',
@@ -8,11 +9,11 @@ import { ProductCategory } from '../../../../core/models/product.model';
       <div *ngFor="let category of categories" class="category-node">
         <div class="category-item" [class.has-subcategories]="category.hasSubcategories">
           <div class="category-content">
-            <mat-icon class="category-icon" *ngIf="category.iconUrl">{{ category.iconUrl }}</mat-icon>
+            <img *ngIf="category.iconUrl" [src]="getImageUrl(category.iconUrl)" class="category-image" alt="{{ category.name }}">
             <mat-icon class="category-icon" *ngIf="!category.iconUrl">
               {{ category.hasSubcategories ? 'folder' : 'label' }}
             </mat-icon>
-            
+
             <div class="category-info">
               <div class="category-name">{{ category.name }}</div>
               <div class="category-meta" *ngIf="category.productCount > 0 || category.subcategoryCount > 0">
@@ -93,6 +94,14 @@ import { ProductCategory } from '../../../../core/models/product.model';
       font-size: 20px;
       height: 20px;
       width: 20px;
+    }
+
+    .category-image {
+      width: 40px;
+      height: 40px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1px solid #e0e0e0;
     }
 
     .category-info {
@@ -185,4 +194,17 @@ export class CategoryTreeComponent {
   @Input() categories: ProductCategory[] = [];
   @Input() readonly = false;
   @Input() showActions = true;
+
+  getImageUrl(iconUrl: string | null): string {
+    if (!iconUrl) {
+      return '';
+    }
+    // If the iconUrl is already a full URL, return it as is
+    if (iconUrl.startsWith('http://') || iconUrl.startsWith('https://')) {
+      return iconUrl;
+    }
+    // Otherwise, prepend the backend URL with cache-busting timestamp
+    const timestamp = new Date().getTime();
+    return `${environment.backendUrl}${iconUrl}?t=${timestamp}`;
+  }
 }

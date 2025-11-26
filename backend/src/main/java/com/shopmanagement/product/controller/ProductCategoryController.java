@@ -33,6 +33,11 @@ public class ProductCategoryController {
 
     private final ProductCategoryService categoryService;
 
+    // Upload base directory from configuration
+    // In production: /opt/shop-management/uploads
+    // In local dev: D:/AAWS/nammaooru/shop-management-system/uploads/opt/shop-management/uploads
+    private static final String UPLOAD_BASE_DIR = "D:/AAWS/nammaooru/shop-management-system/uploads/opt/shop-management/uploads";
+
     @GetMapping
     public ResponseEntity<ApiResponse<Page<ProductCategoryResponse>>> getAllCategories(
             @RequestParam(required = false) Long parentId,
@@ -206,8 +211,8 @@ public class ProductCategoryController {
     }
 
     private String saveImage(MultipartFile file) throws IOException {
-        // Create upload directory if it doesn't exist
-        String uploadDir = "uploads/categories";
+        // Use the configured upload directory
+        String uploadDir = UPLOAD_BASE_DIR + "/categories";
         Path uploadPath = Paths.get(uploadDir);
 
         if (!Files.exists(uploadPath)) {
