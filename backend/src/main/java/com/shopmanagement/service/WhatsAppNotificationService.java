@@ -30,6 +30,9 @@ public class WhatsAppNotificationService {
     
     @Value("${msg91.sender.id:NAMOOR}")
     private String senderId;
+
+    @Value("${msg91.whatsapp.integrated-number:15558914648}")
+    private String integratedNumber;
     
     @Value("${msg91.whatsapp.enabled:false}")
     private boolean whatsappEnabled;
@@ -290,37 +293,57 @@ public class WhatsAppNotificationService {
     }
     
     /**
+     * Send marketing message via WhatsApp
+     */
+    public boolean sendMarketingMessage(String mobileNumber, String templateName, Map<String, Object> templateData) {
+        return sendWhatsAppMessage(mobileNumber, templateName, templateData, "marketing");
+    }
+
+    /**
      * Generic WhatsApp message sender using MSG91 API v5
      */
-    private boolean sendWhatsAppMessage(String mobileNumber, String templateId, 
+    private boolean sendWhatsAppMessage(String mobileNumber, String templateId,
                                        Map<String, Object> templateData, String messageType) {
         try {
             // MSG91 WhatsApp API endpoint (correct URL)
-            String url = "https://control.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/";
+            String url = "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/";
             
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.set("authkey", authKey);
             
-            // Build components array based on template data
-            List<Map<String, Object>> components = new ArrayList<>();
-            
-            // Add body component with parameters if data exists
-            if (templateData != null && !templateData.isEmpty()) {
-                Map<String, Object> bodyComponent = new HashMap<>();
-                bodyComponent.put("type", "body");
-                
-                List<Map<String, Object>> parameters = new ArrayList<>();
-                for (Map.Entry<String, Object> entry : templateData.entrySet()) {
-                    Map<String, Object> param = new HashMap<>();
-                    param.put("type", "text");
-                    param.put("text", String.valueOf(entry.getValue()));
-                    parameters.add(param);
-                }
-                bodyComponent.put("parameters", parameters);
-                components.add(bodyComponent);
+            // Build components object based on template data (MSG91 format)
+            Map<String, Object> components = new HashMap<>();
+
+            // Add header if present (for templates with images/videos)
+            if (templateData != null && templateData.containsKey("header_image")) {
+                Map<String, Object> headerParam = new HashMap<>();
+                headerParam.put("type", "image");
+
+                // Create nested image object with link (MSG91 format)
+                Map<String, Object> imageObject = new HashMap<>();
+                imageObject.put("link", String.valueOf(templateData.get("header_image")));
+                headerParam.put("image", imageObject);
+
+                components.put("header_1", headerParam);
             }
-            
+
+            // Add body parameters if data exists
+            if (templateData != null && !templateData.isEmpty()) {
+                int paramIndex = 1;
+                for (Map.Entry<String, Object> entry : templateData.entrySet()) {
+                    // Skip header_image as it's already processed
+                    if ("header_image".equals(entry.getKey())) {
+                        continue;
+                    }
+                    Map<String, Object> bodyParam = new HashMap<>();
+                    bodyParam.put("type", "text");
+                    bodyParam.put("text", String.valueOf(entry.getValue())); // Changed from "value" to "text"
+                    components.put("body_" + paramIndex, bodyParam);
+                    paramIndex++;
+                }
+            }
+
             // Build to_and_components array
             List<Map<String, Object>> toAndComponents = new ArrayList<>();
             Map<String, Object> toComponent = new HashMap<>();
@@ -348,7 +371,7 @@ public class WhatsAppNotificationService {
             
             // Build request body
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("integrated_number", senderId); // WhatsApp number from config
+            requestBody.put("integrated_number", integratedNumber); // WhatsApp number from config
             requestBody.put("content_type", "template");
             requestBody.put("payload", payload);
             
@@ -397,10 +420,20 @@ public class WhatsAppNotificationService {
     }
     
     private String formatMobileNumber(String number) {
-        // Add country code if not present
-        if (!number.startsWith("+91") && !number.startsWith("91")) {
+        // Remove any spaces or special characters
+        number = number.replaceAll("[^0-9]", "");
+
+        // Add country code if not present (expecting 10 digit Indian number)
+        if (number.length() == 10) {
             return "91" + number;
         }
-        return number.replace("+", "");
+
+        // If already has country code, ensure it's without + prefix
+        if (number.startsWith("91") && number.length() == 12) {
+            return number;
+        }
+
+        // Return as-is if already formatted
+        return number;
     }
 }

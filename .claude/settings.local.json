@@ -79,7 +79,8 @@
       "Bash(mvnw.cmd clean package:*)",
       "Bash(\"C:\\Users\\MVNLA\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe\" -s 192.168.1.4:38847 install -r mobile/nammaooru_mobile_app/build/app/outputs/flutter-apk/app-release.apk)",
       "Bash(scp:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(cmd /c \"dir /b D:\\AAWS\\nammaooru\\shop-management-system\\frontend\\src\\app\\features\\admin\\components\\push-notification-sender\")"
     ],
     "deny": [],
     "ask": [],

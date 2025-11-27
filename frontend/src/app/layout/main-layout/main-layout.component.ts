@@ -132,7 +132,9 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     {
       category: 'Marketing & Promotions',
       items: [
-        { title: 'Promo Codes', icon: 'local_offer', route: '/admin/promo-codes', badge: null }
+        { title: 'Promo Codes', icon: 'local_offer', route: '/admin/promo-codes', badge: null },
+        { title: 'Push Notifications', icon: 'notifications_active', route: '/admin/push-notifications', badge: null },
+        { title: 'Marketing Messages', icon: 'campaign', route: '/admin/marketing', badge: null }
       ]
     },
     {
@@ -189,7 +191,9 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     {
       category: 'Marketing & Promotions',
       items: [
-        { title: 'Promo Codes', icon: 'local_offer', route: '/admin/promo-codes', badge: null }
+        { title: 'Promo Codes', icon: 'local_offer', route: '/admin/promo-codes', badge: null },
+        { title: 'Push Notifications', icon: 'notifications_active', route: '/admin/push-notifications', badge: null },
+        { title: 'Marketing Messages', icon: 'campaign', route: '/admin/marketing', badge: null }
       ]
     },
     {

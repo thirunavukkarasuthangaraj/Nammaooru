@@ -33,6 +33,8 @@ import { DeliveryFeeManagementComponent } from './components/delivery-fee-manage
 import { PromoCodeListComponent } from './components/promo-code-management/promo-code-list.component';
 import { PromoCodeFormComponent } from './components/promo-code-management/promo-code-form.component';
 import { PromoCodeStatsComponent } from './components/promo-code-management/promo-code-stats.component';
+import { MarketingMessagesComponent } from './components/marketing-messages/marketing-messages.component';
+import { PushNotificationSenderComponent } from './components/push-notification-sender/push-notification-sender.component';
 
 @NgModule({
   declarations: [
@@ -42,7 +44,9 @@ import { PromoCodeStatsComponent } from './components/promo-code-management/prom
     DeliveryFeeManagementComponent,
     PromoCodeListComponent,
     PromoCodeFormComponent,
-    PromoCodeStatsComponent
+    PromoCodeStatsComponent,
+    MarketingMessagesComponent,
+    PushNotificationSenderComponent
   ],
   imports: [
     CommonModule,
@@ -100,6 +104,14 @@ import { PromoCodeStatsComponent } from './components/promo-code-management/prom
       {
         path: 'promo-codes',
         component: PromoCodeListComponent
+      },
+      {
+        path: 'push-notifications',
+        component: PushNotificationSenderComponent
+      },
+      {
+        path: 'marketing',
+        component: MarketingMessagesComponent
       },
       {
         path: 'shops',

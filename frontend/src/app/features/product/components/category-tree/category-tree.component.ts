@@ -205,6 +205,8 @@ export class CategoryTreeComponent {
     }
     // Otherwise, prepend the backend URL with cache-busting timestamp
     const timestamp = new Date().getTime();
-    return `${environment.backendUrl}${iconUrl}?t=${timestamp}`;
+    // Extract base URL from apiUrl (remove /api suffix)
+    const baseUrl = environment.apiUrl.replace('/api', '');
+    return `${baseUrl}${iconUrl}?t=${timestamp}`;
   }
 }

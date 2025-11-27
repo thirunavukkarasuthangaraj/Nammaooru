@@ -1,0 +1,256 @@
+<div class="marketing-messages-container">
+  <mat-card class="header-card">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>campaign</mat-icon>
+        WhatsApp Marketing Messages
+      </mat-card-title>
+      <mat-card-subtitle>
+        Send bulk marketing messages to customers via WhatsApp using MSG91
+      </mat-card-subtitle>
+    </mat-card-header>
+  </mat-card>
+
+  <!-- Statistics Card -->
+  <mat-card class="stats-card" *ngIf="stats">
+    <mat-card-header>
+      <mat-card-title>Customer Statistics</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="stats-grid">
+        <div class="stat-item">
+          <div class="stat-value">{{ stats.totalCustomers }}</div>
+          <div class="stat-label">Total Customers</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">{{ stats.activeCustomers }}</div>
+          <div class="stat-label">Active Customers</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">{{ stats.customersWithMobile }}</div>
+          <div class="stat-label">With Mobile Number</div>
+        </div>
+        <div class="stat-item highlight">
+          <div class="stat-value">{{ stats.eligibleForMarketing }}</div>
+          <div class="stat-label">Eligible for Marketing</div>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Marketing Form -->
+  <mat-card class="form-card">
+    <mat-card-header>
+      <mat-card-title>Send Marketing Message</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <form [formGroup]="marketingForm" class="marketing-form">
+        <!-- Template Selection -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Select Template</mat-label>
+          <mat-select formControlName="templateName" required>
+            <mat-option *ngFor="let template of templates" [value]="template.templateName">
+              {{ template.displayName }}
+            </mat-option>
+          </mat-select>
+          <mat-hint *ngIf="getSelectedTemplate()">
+            {{ getSelectedTemplate()?.description }}
+          </mat-hint>
+          <mat-error *ngIf="marketingForm.get('templateName')?.hasError('required')">
+            Please select a template
+          </mat-error>
+        </mat-form-field>
+
+        <!-- Template Description -->
+        <div class="template-info" *ngIf="getSelectedTemplate()">
+          <mat-icon>info</mat-icon>
+          <div class="info-text">
+            <strong>Parameter Description:</strong>
+            {{ getSelectedTemplate()?.parameterDescription }}
+          </div>
+        </div>
+
+        <!-- Image URL (only for marketingmsg template) -->
+        <mat-form-field appearance="outline" class="full-width" *ngIf="isMarketingMsgTemplate()">
+          <mat-label>Marketing Image URL</mat-label>
+          <input
+            matInput
+            formControlName="imageUrl"
+            placeholder="Enter image URL (e.g., https://example.com/image.jpg)"
+            required>
+          <mat-hint align="start">
+            The image that will appear in the WhatsApp message header
+          </mat-hint>
+          <mat-error *ngIf="marketingForm.get('imageUrl')?.hasError('required')">
+            Image URL is required for marketing messages
+          </mat-error>
+        </mat-form-field>
+
+        <!-- Message Parameter 1 -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>{{ isMarketingMsgTemplate() ? 'Message Content (Parameter 1)' : 'Message Content' }}</mat-label>
+          <textarea
+            matInput
+            formControlName="messageParam"
+            rows="4"
+            placeholder="Enter the message content that will replace {{1}} in the template"
+            required
+            maxlength="500">
+          </textarea>
+          <mat-hint align="start">
+            This text will be inserted into the template at the {{1}} placeholder
+          </mat-hint>
+          <mat-hint align="end">
+            {{ marketingForm.get('messageParam')?.value?.length || 0 }}/500
+          </mat-hint>
+          <mat-error *ngIf="marketingForm.get('messageParam')?.hasError('required')">
+            Message content is required
+          </mat-error>
+          <mat-error *ngIf="marketingForm.get('messageParam')?.hasError('maxlength')">
+            Message must not exceed 500 characters
+          </mat-error>
+        </mat-form-field>
+
+        <!-- Message Parameter 2 (only for marketingmsg template) -->
+        <mat-form-field appearance="outline" class="full-width" *ngIf="isMarketingMsgTemplate()">
+          <mat-label>Message Content (Parameter 2)</mat-label>
+          <textarea
+            matInput
+            formControlName="messageParam2"
+            rows="4"
+            placeholder="Enter the second message content that will replace {{2}} in the template"
+            required
+            maxlength="500">
+          </textarea>
+          <mat-hint align="start">
+            This text will be inserted into the template at the {{2}} placeholder
+          </mat-hint>
+          <mat-hint align="end">
+            {{ marketingForm.get('messageParam2')?.value?.length || 0 }}/500
+          </mat-hint>
+          <mat-error *ngIf="marketingForm.get('messageParam2')?.hasError('required')">
+            Second message content is required
+          </mat-error>
+          <mat-error *ngIf="marketingForm.get('messageParam2')?.hasError('maxlength')">
+            Message must not exceed 500 characters
+          </mat-error>
+        </mat-form-field>
+
+        <!-- Target Audience -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Target Audience</mat-label>
+          <mat-select formControlName="targetAudience" required>
+            <mat-option *ngFor="let option of targetAudienceOptions" [value]="option.value">
+              {{ option.label }}
+            </mat-option>
+          </mat-select>
+          <mat-hint>
+            Messages will be sent to active customers who have SMS notifications enabled
+          </mat-hint>
+          <mat-error *ngIf="marketingForm.get('targetAudience')?.hasError('required')">
+            Please select target audience
+          </mat-error>
+        </mat-form-field>
+
+        <!-- Action Buttons -->
+        <div class="form-actions">
+          <button
+            mat-raised-button
+            color="primary"
+            (click)="onSendMessages()"
+            [disabled]="marketingForm.invalid || isSending || isLoading">
+            <mat-icon *ngIf="!isSending">send</mat-icon>
+            <mat-spinner *ngIf="isSending" diameter="20"></mat-spinner>
+            <span *ngIf="!isSending">Send Messages</span>
+            <span *ngIf="isSending">Sending...</span>
+          </button>
+
+          <button
+            mat-stroked-button
+            (click)="onReset()"
+            [disabled]="isSending || isLoading">
+            <mat-icon>refresh</mat-icon>
+            Reset
+          </button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Results Card -->
+  <mat-card class="results-card" *ngIf="lastResult">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon [class.success]="lastResult.success" [class.error]="!lastResult.success">
+          {{ lastResult.success ? 'check_circle' : 'error' }}
+        </mat-icon>
+        Send Results
+      </mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="result-summary">
+        <p class="result-message">{{ lastResult.message }}</p>
+
+        <div class="result-stats">
+          <div class="result-stat success">
+            <mat-icon>done</mat-icon>
+            <div>
+              <div class="stat-value">{{ lastResult.successCount }}</div>
+              <div class="stat-label">Successful</div>
+            </div>
+          </div>
+
+          <div class="result-stat failure">
+            <mat-icon>close</mat-icon>
+            <div>
+              <div class="stat-value">{{ lastResult.failureCount }}</div>
+              <div class="stat-label">Failed</div>
+            </div>
+          </div>
+
+          <div class="result-stat total">
+            <mat-icon>people</mat-icon>
+            <div>
+              <div class="stat-value">{{ lastResult.totalCustomers }}</div>
+              <div class="stat-label">Total</div>
+            </div>
+          </div>
+        </div>
+
+        <mat-progress-bar
+          mode="determinate"
+          [value]="getSuccessRate()"
+          [color]="getSuccessRate() > 80 ? 'primary' : 'warn'">
+        </mat-progress-bar>
+
+        <div class="success-rate">
+          Success Rate: {{ getSuccessRate().toFixed(1) }}%
+        </div>
+
+        <div class="result-details">
+          <p><strong>Template Used:</strong> {{ lastResult.templateUsed }}</p>
+          <p><strong>Message Content:</strong> {{ lastResult.messageParam }}</p>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Important Notice -->
+  <mat-card class="notice-card">
+    <mat-card-content>
+      <div class="notice-content">
+        <mat-icon>warning</mat-icon>
+        <div>
+          <h4>Important Information</h4>
+          <ul>
+            <li>Messages will only be sent to active customers with SMS notifications enabled</li>
+            <li>Customers must have a valid mobile number</li>
+            <li>Templates must be pre-approved in MSG91</li>
+            <li>There is a small delay between messages to avoid rate limiting</li>
+            <li>Please review the message content carefully before sending</li>
+          </ul>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

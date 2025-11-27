@@ -207,9 +207,13 @@ msg91:
     order-confirmation: ${MSG91_ORDER_CONFIRMATION_TEMPLATE_ID:nammaooru}
     order-status: ${MSG91_ORDER_STATUS_TEMPLATE_ID:nammaooru}
     order-delivered: ${MSG91_ORDER_DELIVERED_TEMPLATE_ID:nammaooru}
+    marketing-test: ${MSG91_MARKETING_TEST_TEMPLATE:test}
+    marketing-msg: ${MSG91_MARKETING_MSG_TEMPLATE:marketingmsg}
   whatsapp:
     enabled: ${MSG91_WHATSAPP_ENABLED:true}
-    namespace: ${MSG91_NAMESPACE:020b365c_912b_4032_b27e_c343ddbc1e08}
+    namespace: ${MSG91_NAMESPACE:cdb0958b_6e68_4cd9_ae36_04da5dccb2ba}
+    integrated-number: ${MSG91_INTEGRATED_NUMBER:15558914648}
+    bulk-api-url: ${MSG91_WHATSAPP_BULK_URL:https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/}
   api:
     base-url: ${MSG91_API_URL:https://control.msg91.com/api/v5}
 

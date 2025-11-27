@@ -1,0 +1,119 @@
+<div class="push-notification-container">
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>notifications_active</mat-icon>
+        Send Push Notification
+      </mat-card-title>
+      <mat-card-subtitle>Send notifications to customers via Firebase Cloud Messaging</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      <form [formGroup]="notificationForm" (ngSubmit)="onSubmit()">
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Notification Title</mat-label>
+            <input matInput formControlName="title" placeholder="Enter notification title" maxlength="100">
+            <mat-hint align="end">{{notificationForm.get('title')?.value?.length || 0}}/100</mat-hint>
+            <mat-error *ngIf="notificationForm.get('title')?.hasError('required')">
+              Title is required
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Message</mat-label>
+            <textarea matInput formControlName="message" rows="4" placeholder="Enter notification message" maxlength="500"></textarea>
+            <mat-hint align="end">{{notificationForm.get('message')?.value?.length || 0}}/500</mat-hint>
+            <mat-error *ngIf="notificationForm.get('message')?.hasError('required')">
+              Message is required
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row two-columns">
+          <mat-form-field appearance="outline">
+            <mat-label>Notification Type</mat-label>
+            <mat-select formControlName="type">
+              <mat-option *ngFor="let type of notificationTypes" [value]="type">
+                {{type}}
+              </mat-option>
+            </mat-select>
+            <mat-error *ngIf="notificationForm.get('type')?.hasError('required')">
+              Type is required
+            </mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Priority</mat-label>
+            <mat-select formControlName="priority">
+              <mat-option *ngFor="let priority of priorities" [value]="priority">
+                {{priority}}
+              </mat-option>
+            </mat-select>
+            <mat-error *ngIf="notificationForm.get('priority')?.hasError('required')">
+              Priority is required
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row two-columns">
+          <mat-form-field appearance="outline">
+            <mat-label>Recipient Type</mat-label>
+            <mat-select formControlName="recipientType">
+              <mat-option *ngFor="let type of recipientTypes" [value]="type">
+                {{type === 'ALL_CUSTOMERS' ? 'All Customers' : 'Specific User'}}
+              </mat-option>
+            </mat-select>
+            <mat-error *ngIf="notificationForm.get('recipientType')?.hasError('required')">
+              Recipient type is required
+            </mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" *ngIf="isSpecificUser">
+            <mat-label>Customer ID</mat-label>
+            <input matInput type="number" formControlName="recipientId" placeholder="Enter customer ID">
+            <mat-error *ngIf="notificationForm.get('recipientId')?.hasError('required')">
+              Customer ID is required for specific user
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="form-actions">
+          <button mat-raised-button color="primary" type="submit" [disabled]="loading">
+            <mat-icon *ngIf="!loading">send</mat-icon>
+            <mat-spinner *ngIf="loading" diameter="20"></mat-spinner>
+            {{ loading ? 'Sending...' : 'Send Notification' }}
+          </button>
+          <button mat-button type="button" (click)="notificationForm.reset({priority: 'HIGH', type: 'INFO', recipientType: 'ALL_CUSTOMERS'})" [disabled]="loading">
+            Reset
+          </button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card class="info-card">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>info</mat-icon>
+        Information
+      </mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <ul>
+        <li><strong>All Customers:</strong> Sends notification to all customers who have the mobile app installed</li>
+        <li><strong>Specific User:</strong> Sends notification to a specific customer by their ID</li>
+        <li><strong>Priority Levels:</strong>
+          <ul>
+            <li>HIGH: Shows immediately with sound</li>
+            <li>MEDIUM: Shows with default notification</li>
+            <li>LOW: Silent notification</li>
+          </ul>
+        </li>
+        <li><strong>Notification Types:</strong> Used for categorizing and filtering notifications in the app</li>
+      </ul>
+    </mat-card-content>
+  </mat-card>
+</div>
