@@ -85,22 +85,34 @@ class AppConfig {
   static String get apiBaseUrl {
     if (kIsWeb) {
       return kIsProduction
-          ? 'https://nammaoorudelivary.in/api'
+          ? 'https://api.nammaoorudelivary.in/api'
           : 'http://localhost:8080/api';
     }
     return kIsProduction
-        ? 'https://nammaoorudelivary.in/api'
+        ? 'https://api.nammaoorudelivary.in/api'
         : 'http://192.168.1.3:8080/api'; // your LAN IP for mobile testing
   }
 
   static String get serverBaseUrl {
     if (kIsWeb) {
       return kIsProduction
-          ? 'https://nammaoorudelivary.in'
+          ? 'https://api.nammaoorudelivary.in'
           : 'http://localhost:8080';
     }
     return kIsProduction
-        ? 'https://nammaoorudelivary.in'
+        ? 'https://api.nammaoorudelivary.in'
+        : 'http://192.168.1.3:8080';
+  }
+
+  // Separate image base URL for static file serving (without /api)
+  static String get imageBaseUrl {
+    if (kIsWeb) {
+      return kIsProduction
+          ? 'https://api.nammaoorudelivary.in'
+          : 'http://localhost:8080';
+    }
+    return kIsProduction
+        ? 'https://api.nammaoorudelivary.in'
         : 'http://192.168.1.3:8080';
   }
 
@@ -127,8 +139,12 @@ class AppConfig {
     if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
       return imagePath;
     }
-    // Otherwise, prepend the server base URL
-    return '$serverBaseUrl$imagePath';
+    // Remove /api prefix if present (for static images)
+    String cleanPath = imagePath.startsWith('/api/')
+        ? imagePath.substring(4)  // Remove '/api' prefix
+        : imagePath;
+    // Otherwise, prepend the image base URL (for static file serving)
+    return '$imageBaseUrl$cleanPath';
   }
 
   // Configuration validation
@@ -148,6 +164,7 @@ Use Mock Data: $useMockData
 Enable API Logging: $enableApiLogging
 API Base URL: $apiBaseUrl
 Server Base URL: $serverBaseUrl
+Image Base URL: $imageBaseUrl
 WebSocket URL: $webSocketUrl
 Session Timeout: ${sessionTimeoutMinutes} min
 ========================
