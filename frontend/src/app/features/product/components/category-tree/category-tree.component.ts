@@ -203,10 +203,8 @@ export class CategoryTreeComponent {
     if (iconUrl.startsWith('http://') || iconUrl.startsWith('https://')) {
       return iconUrl;
     }
-    // Otherwise, prepend the backend URL with cache-busting timestamp
+    // Use imageBaseUrl for serving static images (without /api prefix) with cache-busting timestamp
     const timestamp = new Date().getTime();
-    // Extract base URL from apiUrl (remove /api suffix)
-    const baseUrl = environment.apiUrl.replace('/api', '');
-    return `${baseUrl}${iconUrl}?t=${timestamp}`;
+    return `${environment.imageBaseUrl}${iconUrl.startsWith('/') ? '' : '/'}${iconUrl}?t=${timestamp}`;
   }
 }
