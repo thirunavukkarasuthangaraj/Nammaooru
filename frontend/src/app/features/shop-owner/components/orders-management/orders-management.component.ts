@@ -9,6 +9,7 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { SwalService } from '../../../../core/services/swal.service';
 import { ShopContextService } from '../../services/shop-context.service';
 import { environment } from '../../../../../environments/environment';
+import { getImageUrl as getImageUrlUtil } from '../../../../core/utils/image-url.util';
 import { Subject } from 'rxjs';
 import { takeUntil, distinctUntilChanged } from 'rxjs/operators';
 
@@ -978,16 +979,7 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
   }
 
   getImageUrl(imageUrl: string): string {
-    if (!imageUrl) return '';
-
-    // If the URL already contains http/https, return as is
-    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-      return imageUrl;
-    }
-
-    // Construct full URL using backend server URL (without /api)
-    const baseUrl = 'http://localhost:8080'; // Direct backend server URL
-    return `${baseUrl}${imageUrl}`;
+    return getImageUrlUtil(imageUrl);
   }
 
   onImageError(event: any): void {

@@ -11,6 +11,7 @@ import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { environment } from '../../../../../environments/environment';
 import { ShopContextService } from '../../services/shop-context.service';
+import { getImageUrl as getImageUrlUtil } from '../../../../core/utils/image-url.util';
 import { PriceUpdateDialogComponent, PriceUpdateData } from '../price-update-dialog/price-update-dialog.component';
 import { StockUpdateDialogComponent, StockUpdateData } from '../stock-update-dialog/stock-update-dialog.component';
 import { BulkPriceUpdateDialogComponent } from '../bulk-price-update-dialog/bulk-price-update-dialog.component';
@@ -351,36 +352,8 @@ export class MyProductsComponent implements OnInit, OnDestroy {
     if (!product.imageUrl) {
       return 'assets/images/product-placeholder.svg';
     }
-    
-    return this.fixImageUrl(product.imageUrl) || 'assets/images/product-placeholder.svg';
-  }
-  
-  private fixImageUrl(imageUrl: string): string {
-    // If the imageUrl is already a full URL (http/https), return as is
-    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-      return imageUrl;
-    }
-    
-    let fixedUrl = imageUrl;
-    
-    // Fix incomplete URLs by checking if they need extensions
-    if (!fixedUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
-      // Try to guess extension based on the filename pattern
-      if (fixedUrl.includes('jpg') || fixedUrl.includes('jpeg')) {
-        fixedUrl += '.jpg';
-      } else {
-        // Default to png for most cases
-        fixedUrl += '.png';
-      }
-    }
-    
-    // For relative URLs, use the base server URL (without /api) for file serving
-    // Extract base URL from apiUrl (remove '/api' part) - e.g., http://localhost:8080/api -> http://localhost:8082
-    const baseUrl = this.apiUrl.replace('/api', '');
-    
-    // Ensure proper path format
-    const cleanImageUrl = fixedUrl.startsWith('/') ? fixedUrl : `/${fixedUrl}`;
-    return `${baseUrl}${cleanImageUrl}`;
+
+    return getImageUrlUtil(product.imageUrl) || 'assets/images/product-placeholder.svg';
   }
 
   toggleAvailability(product: ShopProduct): void {

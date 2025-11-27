@@ -8,6 +8,7 @@ import { MasterProduct, ShopProductRequest, ShopProductStatus, ProductStatus } f
 import { Shop } from '../../../../core/models/shop.model';
 import Swal from 'sweetalert2';
 import { environment } from '../../../../../environments/environment';
+import { getImageUrl as getImageUrlUtil } from '../../../../core/utils/image-url.util';
 
 interface ProductSelection {
   product: MasterProduct;
@@ -1326,11 +1327,7 @@ export class BulkProductAssignmentComponent implements OnInit {
   }
 
   getImageUrl(imageUrl: string): string {
-    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-      return imageUrl;
-    }
-    // Use the app base URL from environment (for static file serving)
-    return `${environment.appUrl}${imageUrl}`;
+    return getImageUrlUtil(imageUrl);
   }
 
   onImageError(event: any): void {

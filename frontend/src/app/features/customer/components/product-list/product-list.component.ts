@@ -5,6 +5,7 @@ import { ShopService, Shop, Product } from '../../services/shop.service';
 import { CartService } from '../../services/cart.service';
 import { Location } from '@angular/common';
 import { environment } from '../../../../../environments/environment';
+import { getImageUrl as getImageUrlUtil } from '../../../../core/utils/image-url.util';
 
 @Component({
   selector: 'app-product-list',
@@ -167,19 +168,12 @@ export class ProductListComponent implements OnInit, OnDestroy {
       return '/assets/images/product-placeholder.jpg';
     }
 
-    // If image is already a full URL, return as is
-    if (product.image.startsWith('http://') || product.image.startsWith('https://')) {
-      return product.image;
-    }
-
     // If image starts with /assets, return as is (local asset)
     if (product.image.startsWith('/assets')) {
       return product.image;
     }
 
-    // If it's a relative path from the API, construct full URL
-    // Use imageBaseUrl for serving static images (without /api prefix)
-    return `${environment.imageBaseUrl}${product.image.startsWith('/') ? '' : '/'}${product.image}`;
+    return getImageUrlUtil(product.image);
   }
 
   /**
