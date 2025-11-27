@@ -9,6 +9,7 @@ import { MasterProduct, ShopProduct, ShopProductRequest, ShopProductStatus, Prod
 import { Shop } from '../../../../core/models/shop.model';
 import Swal from 'sweetalert2';
 import { environment } from '../../../../../environments/environment';
+import { getImageUrl as getImageUrlUtil } from '../../../../core/utils/image-url.util';
 
 interface ProductItem {
   masterProduct: MasterProduct;
@@ -1170,12 +1171,7 @@ export class ShopOwnerProductsComponent implements OnInit {
   }
 
   getImageUrl(imageUrl: string): string {
-    // If the imageUrl is already a full URL, return as is
-    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-      return imageUrl;
-    }
-    // Use the app base URL from environment (for static file serving)
-    return `${environment.appUrl}${imageUrl}`;
+    return getImageUrlUtil(imageUrl);
   }
 
   onImageError(event: any): void {

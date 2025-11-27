@@ -8,6 +8,7 @@ import { environment } from '../../../../../environments/environment';
 import { ShopContextService } from '../../services/shop-context.service';
 import { ShopOwnerProductService } from '../../services/shop-owner-product.service';
 import { ProductAssignmentDialogComponent, ProductAssignmentData } from '../product-assignment-dialog/product-assignment-dialog.component';
+import { getImageUrl as getImageUrlUtil } from '../../../../core/utils/image-url.util';
 
 interface MasterProduct {
   id: number;
@@ -372,9 +373,9 @@ export class BrowseProductsComponent implements OnInit, OnDestroy {
   }
 
   private getProductImageUrl(product: any): string | undefined {
-    return this.fixImageUrl(this.getImageUrlFromProduct(product));
+    return getImageUrlUtil(this.getImageUrlFromProduct(product));
   }
-  
+
   private getImageUrlFromProduct(product: any): string | undefined {
     // Check for primary image from images array
     if (product.images && product.images.length > 0) {
@@ -387,45 +388,12 @@ export class BrowseProductsComponent implements OnInit, OnDestroy {
         return product.images[0].imageUrl;
       }
     }
-    
+
     // Check for primaryImageUrl field
     if (product.primaryImageUrl) {
       return product.primaryImageUrl;
     }
-    
+
     return undefined;
-  }
-  
-  private fixImageUrl(imageUrl: string | undefined): string | undefined {
-    if (!imageUrl) {
-      return undefined;
-    }
-    
-    let fixedUrl = imageUrl;
-    
-    // Fix incomplete URLs by checking if they need extensions
-    if (!fixedUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
-      // Try to guess extension based on the filename pattern or default to common formats
-      // Check if it looks like it might be a specific format based on naming
-      if (fixedUrl.includes('jpg') || fixedUrl.includes('jpeg')) {
-        fixedUrl += '.jpg';
-      } else {
-        // Default to png for most cases, but you can change this based on your upload patterns
-        fixedUrl += '.png';
-      }
-    }
-    
-    // If it's already a full URL, return as is
-    if (fixedUrl.startsWith('http')) {
-      return fixedUrl;
-    }
-    
-    // For relative URLs, use the base server URL (without /api) for file serving
-    // Extract base URL from apiUrl (remove '/api' part) - e.g., http://localhost:8080/api -> http://localhost:8082
-    const baseUrl = this.apiUrl.replace('/api', '');
-    
-    // Ensure proper path format
-    const cleanImageUrl = fixedUrl.startsWith('/') ? fixedUrl : `/${fixedUrl}`;
-    return `${baseUrl}${cleanImageUrl}`;
   }
 }

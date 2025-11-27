@@ -5,6 +5,7 @@ import { ProductImage } from '../../../../core/models/product.model';
 import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { API_ENDPOINTS } from '../../../../core/constants/app.constants';
 import { environment } from '../../../../../environments/environment';
+import { getImageUrl as getImageUrlUtil } from '../../../../core/utils/image-url.util';
 
 @Component({
   selector: 'app-product-image-upload',
@@ -523,14 +524,7 @@ export class ProductImageUploadComponent implements OnInit {
   }
 
   getImageUrl(image: ProductImage): string {
-    // If the imageUrl is already a full URL, return as is
-    if (image.imageUrl.startsWith('http://') || image.imageUrl.startsWith('https://')) {
-      return image.imageUrl;
-    }
-    // Use imageBaseUrl for serving static images (without /api prefix)
-    const fullUrl = `${environment.imageBaseUrl}${image.imageUrl.startsWith('/') ? '' : '/'}${image.imageUrl}`;
-    console.log('Image URL constructed:', fullUrl, 'from imageUrl:', image.imageUrl);
-    return fullUrl;
+    return getImageUrlUtil(image.imageUrl);
   }
 
   onImageError(event: any): void {
