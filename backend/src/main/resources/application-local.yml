@@ -1,0 +1,7 @@
+# Local Development Configuration Override
+# This file overrides settings in application.yml for local Windows development
+
+app:
+  upload:
+    dir: C:/opt/shop-management/uploads
+    product-images: C:/opt/shop-management/uploads/products

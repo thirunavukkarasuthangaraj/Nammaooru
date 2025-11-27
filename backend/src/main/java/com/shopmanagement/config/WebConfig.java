@@ -34,15 +34,21 @@ public class WebConfig implements WebMvcConfigurer {
 
         // Get absolute path for the upload directory
         String uploadPath = uploadDirectory.getAbsolutePath();
-        
-        // Serve static files from uploads directory
+
+        // Serve static files from uploads directory at /uploads/**
         registry.addResourceHandler("/uploads/**")
                 .addResourceLocations("file:" + uploadPath + "/")
                 .setCachePeriod(3600)
                 .resourceChain(true);
-                
+
+        // Also serve at /api/uploads/** for requests coming through nginx with /api/ prefix
+        registry.addResourceHandler("/api/uploads/**")
+                .addResourceLocations("file:" + uploadPath + "/")
+                .setCachePeriod(3600)
+                .resourceChain(true);
+
         System.out.println("Static resource handler configured:");
-        System.out.println("  URL Pattern: /uploads/**");
+        System.out.println("  URL Pattern: /uploads/** and /api/uploads/**");
         System.out.println("  File Location: " + uploadPath);
     }
 }
