@@ -7,6 +7,7 @@ import com.shopmanagement.product.service.ProductCategoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -33,10 +34,8 @@ public class ProductCategoryController {
 
     private final ProductCategoryService categoryService;
 
-    // Upload base directory from configuration
-    // In production: /opt/shop-management/uploads
-    // In local dev: D:/AAWS/nammaooru/shop-management-system/uploads/opt/shop-management/uploads
-    private static final String UPLOAD_BASE_DIR = "D:/AAWS/nammaooru/shop-management-system/uploads/opt/shop-management/uploads";
+    @Value("${app.upload.dir:./uploads}")
+    private String uploadDir;
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<ProductCategoryResponse>>> getAllCategories(
@@ -212,8 +211,8 @@ public class ProductCategoryController {
 
     private String saveImage(MultipartFile file) throws IOException {
         // Use the configured upload directory
-        String uploadDir = UPLOAD_BASE_DIR + "/categories";
-        Path uploadPath = Paths.get(uploadDir);
+        String categoryUploadDir = uploadDir + "/categories";
+        Path uploadPath = Paths.get(categoryUploadDir);
 
         if (!Files.exists(uploadPath)) {
             Files.createDirectories(uploadPath);
