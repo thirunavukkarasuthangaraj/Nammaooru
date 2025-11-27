@@ -3,7 +3,7 @@ import packageInfo from '../../package.json';
 export const environment = {
   production: true,
   apiUrl: 'https://api.nammaoorudelivary.in/api',
-  imageBaseUrl: 'https://api.nammaoorudelivary.in', // For serving static images
+  imageBaseUrl: 'https://nammaoorudelivary.in', // Images served from frontend domain via Cloudflare
   appUrl: 'https://nammaoorudelivary.in',
   googleMapsApiKey: 'AIzaSyAr_uGbaOnhebjRyz7ohU6N-hWZJVV_R3U',
   websocketUrl: 'wss://api.nammaoorudelivary.in/ws',
