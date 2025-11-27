@@ -1,7 +1,26 @@
 # Local Development Configuration Override
 # This file overrides settings in application.yml for local Windows development
+# To use: Run with -Dspring.profiles.active=local or set SPRING_PROFILES_ACTIVE=local
 
 app:
   upload:
-    dir: C:/opt/shop-management/uploads
-    product-images: C:/opt/shop-management/uploads/products
+    # Windows local development path
+    dir: D:/AAWS/nammaooru/shop-management-system/uploads
+    product-images: D:/AAWS/nammaooru/shop-management-system/uploads/products
+    documents:
+      path:
+        shops: D:/AAWS/nammaooru/shop-management-system/uploads/documents/shops
+        delivery-partners: D:/AAWS/nammaooru/shop-management-system/uploads/documents/delivery-partners
+
+file:
+  upload:
+    path: D:/AAWS/nammaooru/shop-management-system/uploads
+  storage:
+    local:
+      base-path: D:/AAWS/nammaooru/shop-management-system/uploads
+      serve-url: http://localhost:8080/uploads
+
+# Local frontend URL for CORS and links
+app:
+  frontend:
+    base-url: http://localhost:4200

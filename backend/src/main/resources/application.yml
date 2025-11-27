@@ -167,8 +167,7 @@ app:
   email:
     enabled: ${EMAIL_ENABLED:true}
   upload:
-    # Production default: /opt/shop-management/uploads
-    # For local dev, override with: APP_UPLOAD_DIR=D:/AAWS/nammaooru/uploads
+    # Use production path structure for both local and production
     dir: ${APP_UPLOAD_DIR:/opt/shop-management/uploads}
     documents:
       path:
