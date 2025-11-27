@@ -1,6 +1,6 @@
 import { Component, Input } from '@angular/core';
 import { ProductCategory } from '../../../../core/models/product.model';
-import { environment } from '../../../../../environments/environment';
+import { getImageUrl } from '../../../../core/utils/image-url.util';
 
 @Component({
   selector: 'app-category-tree',
@@ -196,15 +196,6 @@ export class CategoryTreeComponent {
   @Input() showActions = true;
 
   getImageUrl(iconUrl: string | null): string {
-    if (!iconUrl) {
-      return '';
-    }
-    // If the iconUrl is already a full URL, return it as is
-    if (iconUrl.startsWith('http://') || iconUrl.startsWith('https://')) {
-      return iconUrl;
-    }
-    // Use imageBaseUrl for serving static images (without /api prefix) with cache-busting timestamp
-    const timestamp = new Date().getTime();
-    return `${environment.imageBaseUrl}${iconUrl.startsWith('/') ? '' : '/'}${iconUrl}?t=${timestamp}`;
+    return getImageUrl(iconUrl);
   }
 }

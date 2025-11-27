@@ -6,7 +6,7 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { ProductService } from '../../../../core/services/product.service';
 import { MasterProduct, ProductFilters } from '../../../../core/models/product.model';
 import Swal from 'sweetalert2';
-import { environment } from '../../../../../environments/environment';
+import { getImageUrl as getImageUrlUtil } from '../../../../core/utils/image-url.util';
 
 @Component({
   selector: 'app-master-product-list',
@@ -1042,11 +1042,7 @@ export class MasterProductListComponent implements OnInit {
   }
 
   getImageUrl(imageUrl: string): string {
-    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-      return imageUrl;
-    }
-    // Use imageBaseUrl (fixed) for serving static images (without /api prefix)
-    return `${environment.imageBaseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+    return getImageUrlUtil(imageUrl);
   }
 
   onImageError(event: any): void {
