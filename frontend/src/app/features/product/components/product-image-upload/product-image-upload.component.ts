@@ -527,8 +527,8 @@ export class ProductImageUploadComponent implements OnInit {
     if (image.imageUrl.startsWith('http://') || image.imageUrl.startsWith('https://')) {
       return image.imageUrl;
     }
-    // Otherwise, construct the full URL with the app base URL (for static file serving)
-    const fullUrl = `${environment.appUrl}${image.imageUrl}`;
+    // Use imageBaseUrl for serving static images (without /api prefix)
+    const fullUrl = `${environment.imageBaseUrl}${image.imageUrl.startsWith('/') ? '' : '/'}${image.imageUrl}`;
     console.log('Image URL constructed:', fullUrl, 'from imageUrl:', image.imageUrl);
     return fullUrl;
   }

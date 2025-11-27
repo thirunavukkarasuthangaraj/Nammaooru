@@ -1045,8 +1045,8 @@ export class MasterProductListComponent implements OnInit {
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
       return imageUrl;
     }
-    // Use the app base URL from environment (for static file serving)
-    return `${environment.appUrl}${imageUrl}`;
+    // Use imageBaseUrl (fixed) for serving static images (without /api prefix)
+    return `${environment.imageBaseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
   }
 
   onImageError(event: any): void {

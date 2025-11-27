@@ -4,6 +4,7 @@ import { Subject, takeUntil, debounceTime } from 'rxjs';
 import { ShopService, Shop, Product } from '../../services/shop.service';
 import { CartService } from '../../services/cart.service';
 import { Location } from '@angular/common';
+import { environment } from '../../../../../environments/environment';
 
 @Component({
   selector: 'app-product-list',
@@ -177,9 +178,8 @@ export class ProductListComponent implements OnInit, OnDestroy {
     }
 
     // If it's a relative path from the API, construct full URL
-    // Assuming images are served from the API
-    const apiUrl = 'http://localhost:8080/api'; // Use environment.apiUrl in production
-    return `${apiUrl}${product.image.startsWith('/') ? '' : '/'}${product.image}`;
+    // Use imageBaseUrl for serving static images (without /api prefix)
+    return `${environment.imageBaseUrl}${product.image.startsWith('/') ? '' : '/'}${product.image}`;
   }
 
   /**
