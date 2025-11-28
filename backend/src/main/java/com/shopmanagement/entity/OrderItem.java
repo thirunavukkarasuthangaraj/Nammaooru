@@ -51,7 +51,7 @@ public class OrderItem {
     @Column(length = 50)
     private String productSku;
     
-    @Column(length = 500)
+    @Column(length = 2000)
     private String productImageUrl;
     
     // Audit fields

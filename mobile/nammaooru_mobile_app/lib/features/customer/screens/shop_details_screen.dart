@@ -1173,9 +1173,10 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     final price = double.tryParse(product['price']?.toString() ?? '0') ?? 0.0;
     final originalPrice =
         double.tryParse(product['originalPrice']?.toString() ?? '0') ?? 0.0;
-    final isInStock = product['inStock'] ?? true;
     final stockQuantity =
         int.tryParse(product['stockQuantity']?.toString() ?? '0') ?? 0;
+    // isInStock should be based on actual stock quantity, not just the inStock flag
+    final isInStock = stockQuantity > 0;
     final isLowStock = stockQuantity > 0 && stockQuantity <= 5;
     final baseWeight =
         product['baseWeight'] ?? product['masterProduct']?['baseWeight'] ?? 1;
