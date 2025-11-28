@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../services/shop_api_service.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/utils/helpers.dart';
+import '../../../core/utils/image_url_helper.dart';
 import 'shop_details_screen.dart';
 
 class ShopListingScreen extends StatefulWidget {
@@ -414,32 +416,8 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
             padding: const EdgeInsets.all(20),
             child: Row(
               children: [
-                // Business Icon with Dynamic Gradient Background
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: getBusinessGradient(businessType),
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: getBusinessGradient(businessType)[0].withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Center(
-                    child: Text(
-                      getBusinessEmoji(businessType),
-                      style: const TextStyle(fontSize: 36),
-                    ),
-                  ),
-                ),
+                // Shop Logo or Business Icon
+                _buildShopLogo(shop, businessType, getBusinessGradient, getBusinessEmoji),
 
                 const SizedBox(width: 16),
 
@@ -604,6 +582,79 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
           shopId: shopId,
           shop: shop,
         ),
+      ),
+    );
+  }
+
+  /// Extract logo URL from shop images
+  String? _getShopLogoUrl(Map<String, dynamic> shop) {
+    final images = shop['images'] as List<dynamic>?;
+    if (images == null || images.isEmpty) return null;
+
+    // Find LOGO type first, then primary, then first image
+    var logo = images.firstWhere(
+      (img) => img['imageType'] == 'LOGO',
+      orElse: () => images.firstWhere(
+        (img) => img['isPrimary'] == true,
+        orElse: () => images.isNotEmpty ? images.first : null,
+      ),
+    );
+
+    return logo?['imageUrl'];
+  }
+
+  /// Build shop logo widget with fallback to emoji icon
+  Widget _buildShopLogo(
+    Map<String, dynamic> shop,
+    String businessType,
+    List<Color> Function(String) getBusinessGradient,
+    String Function(String) getBusinessEmoji,
+  ) {
+    final logoUrl = _getShopLogoUrl(shop);
+
+    return Container(
+      width: 80,
+      height: 80,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: getBusinessGradient(businessType),
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: getBusinessGradient(businessType)[0].withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: logoUrl != null
+            ? CachedNetworkImage(
+                imageUrl: ImageUrlHelper.getFullImageUrl(logoUrl),
+                fit: BoxFit.cover,
+                placeholder: (context, url) => Center(
+                  child: Text(
+                    getBusinessEmoji(businessType),
+                    style: const TextStyle(fontSize: 36),
+                  ),
+                ),
+                errorWidget: (context, url, error) => Center(
+                  child: Text(
+                    getBusinessEmoji(businessType),
+                    style: const TextStyle(fontSize: 36),
+                  ),
+                ),
+              )
+            : Center(
+                child: Text(
+                  getBusinessEmoji(businessType),
+                  style: const TextStyle(fontSize: 36),
+                ),
+              ),
       ),
     );
   }

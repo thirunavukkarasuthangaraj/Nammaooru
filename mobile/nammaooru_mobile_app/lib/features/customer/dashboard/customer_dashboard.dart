@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/auth/auth_provider.dart';
+import '../../../core/utils/image_url_helper.dart';
 import '../../../core/localization/language_provider.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/helpers.dart';
@@ -789,13 +791,31 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     );
   }
 
+  /// Extract logo URL from shop images
+  String? _getShopLogoUrl(Map<String, dynamic>? shop) {
+    if (shop == null) return null;
+    final images = shop['images'] as List<dynamic>?;
+    if (images == null || images.isEmpty) return null;
+
+    // Find LOGO type first, then primary, then first image
+    var logo = images.firstWhere(
+      (img) => img['imageType'] == 'LOGO',
+      orElse: () => images.firstWhere(
+        (img) => img['isPrimary'] == true,
+        orElse: () => images.isNotEmpty ? images.first : null,
+      ),
+    );
+
+    return logo?['imageUrl'];
+  }
+
   Widget _buildShopCard(Map<String, dynamic>? shop) {
     final shopName = shop?['name'] ?? 'Shop';
     final businessType = shop?['businessType'] ?? 'Store';
     final rating = shop?['averageRating']?.toString() ?? '4.0';
     final deliveryTime = shop?['estimatedDeliveryTime']?.toString() ?? '30';
     final isActive = shop?['isActive'] ?? true;
-    final shopImage = shop?['image'] ?? shop?['profileImage'] ?? '';
+    final logoUrl = _getShopLogoUrl(shop);
 
     if (!isActive) return const SizedBox();
 
@@ -836,27 +856,38 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                   top: Radius.circular(12),
                 ),
               ),
-              child: shopImage.isNotEmpty
-                  ? Image.network(
-                      shopImage,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Center(
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(12),
+                ),
+                child: logoUrl != null
+                    ? CachedNetworkImage(
+                        imageUrl: ImageUrlHelper.getFullImageUrl(logoUrl),
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        placeholder: (context, url) => Center(
                           child: Icon(
                             Icons.store,
                             size: 40,
                             color: Colors.grey[400],
                           ),
-                        );
-                      },
-                    )
-                  : Center(
-                      child: Icon(
-                        Icons.store,
-                        size: 40,
-                        color: Colors.grey[400],
+                        ),
+                        errorWidget: (context, url, error) => Center(
+                          child: Icon(
+                            Icons.store,
+                            size: 40,
+                            color: Colors.grey[400],
+                          ),
+                        ),
+                      )
+                    : Center(
+                        child: Icon(
+                          Icons.store,
+                          size: 40,
+                          color: Colors.grey[400],
+                        ),
                       ),
-                    ),
+              ),
             ),
             Padding(
               padding: const EdgeInsets.all(12),
