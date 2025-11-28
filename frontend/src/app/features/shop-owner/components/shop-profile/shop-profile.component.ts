@@ -1,9 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { ShopService } from '@core/services/shop.service';
 import { Shop } from '@core/models/shop.model';
+import { getImageUrl } from '@core/utils/image-url.util';
 
 @Component({
   selector: 'app-shop-profile',
@@ -65,6 +66,49 @@ import { Shop } from '@core/models/shop.model';
         
         <!-- Profile Tab -->
         <div class="tab-pane" [class.active]="selectedIndex === 0">
+          <!-- Shop Logo Upload Section -->
+          <div class="image-upload-section">
+            <div class="content-header">
+              <h2>Shop Logo</h2>
+            </div>
+            <div class="logo-upload-container">
+              <div class="logo-preview" (click)="triggerFileInput()">
+                <img *ngIf="shopLogoUrl" [src]="shopLogoUrl" alt="Shop Logo" class="logo-image">
+                <div *ngIf="!shopLogoUrl" class="logo-placeholder">
+                  <mat-icon>store</mat-icon>
+                  <span>Click to upload logo</span>
+                </div>
+                <div class="upload-overlay">
+                  <mat-icon>cloud_upload</mat-icon>
+                  <span>Upload New Logo</span>
+                </div>
+              </div>
+              <input
+                type="file"
+                #fileInput
+                (change)="onFileSelected($event)"
+                accept="image/*"
+                style="display: none;">
+              <div class="logo-info">
+                <p class="logo-hint">Recommended: 200x200 pixels, PNG or JPG format</p>
+                <div class="logo-actions" *ngIf="shopLogoUrl">
+                  <button mat-stroked-button color="primary" (click)="triggerFileInput()">
+                    <mat-icon>edit</mat-icon>
+                    Change Logo
+                  </button>
+                  <button mat-stroked-button color="warn" (click)="removeLogo()">
+                    <mat-icon>delete</mat-icon>
+                    Remove
+                  </button>
+                </div>
+                <div class="upload-progress" *ngIf="isUploadingImage">
+                  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+                  <span>Uploading...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="content-header">
             <h2>Shop Information</h2>
             <button mat-raised-button color="primary" (click)="toggleEditMode()" [disabled]="isLoading">
@@ -72,7 +116,7 @@ import { Shop } from '@core/models/shop.model';
               {{ isEditMode ? 'Cancel' : 'Edit' }}
             </button>
           </div>
-          
+
           <div class="form-container">
             <form [formGroup]="shopForm" (ngSubmit)="onSave()">
               <div class="form-fields">
@@ -587,6 +631,134 @@ import { Shop } from '@core/models/shop.model';
       margin-top: 2px;
     }
 
+    /* Image Upload Section */
+    .image-upload-section {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .logo-upload-container {
+      display: flex;
+      align-items: flex-start;
+      gap: 24px;
+    }
+
+    .logo-preview {
+      width: 150px;
+      height: 150px;
+      border-radius: 12px;
+      border: 2px dashed #d1d5db;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      background: #f9fafb;
+      transition: all 0.3s ease;
+    }
+
+    .logo-preview:hover {
+      border-color: #3b82f6;
+      background: #eff6ff;
+    }
+
+    .logo-preview:hover .upload-overlay {
+      opacity: 1;
+    }
+
+    .logo-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 10px;
+    }
+
+    .logo-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      color: #9ca3af;
+    }
+
+    .logo-placeholder mat-icon {
+      font-size: 48px;
+      width: 48px;
+      height: 48px;
+    }
+
+    .logo-placeholder span {
+      font-size: 0.85rem;
+      text-align: center;
+    }
+
+    .upload-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(59, 130, 246, 0.85);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: white;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      border-radius: 10px;
+    }
+
+    .upload-overlay mat-icon {
+      font-size: 32px;
+      width: 32px;
+      height: 32px;
+    }
+
+    .upload-overlay span {
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    .logo-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .logo-hint {
+      color: #6b7280;
+      font-size: 0.9rem;
+      margin: 0;
+    }
+
+    .logo-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .upload-progress {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .upload-progress mat-progress-bar {
+      flex: 1;
+      max-width: 200px;
+    }
+
+    .upload-progress span {
+      color: #3b82f6;
+      font-size: 0.9rem;
+    }
+
     /* Mobile Responsive */
     @media (max-width: 768px) {
       .clean-shop-profile {
@@ -645,29 +817,61 @@ import { Shop } from '@core/models/shop.model';
       .form-actions {
         flex-direction: column;
       }
+
+      /* Image upload responsive */
+      .logo-upload-container {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .logo-preview {
+        width: 120px;
+        height: 120px;
+      }
+
+      .logo-info {
+        text-align: center;
+        align-items: center;
+      }
+
+      .logo-actions {
+        flex-direction: column;
+        width: 100%;
+      }
+
+      .logo-actions button {
+        width: 100%;
+      }
     }
   `]
 })
 export class ShopProfileComponent implements OnInit {
+  @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
+
   shopForm: FormGroup;
   isLoading = false;
   isEditMode = false;
   shop: Shop | null = null;
-  
+
+  // Image upload
+  shopLogoUrl: string | null = null;
+  shopLogoId: number | null = null;
+  isUploadingImage = false;
+
   // Shop statistics
   shopStatus = 'Active';
   registrationDate = new Date();
   totalProducts = 0;
   totalOrders = 0;
-  
+
   // Table data sources
   profileFieldsData: any[] = [];
   statisticsData: any[] = [];
   settingsData: any[] = [];
-  
+
   // Tab management
   selectedIndex = 0;
-  
+
   // Holiday management
   holidays: any[] = [];
   newHoliday = {
@@ -999,7 +1203,10 @@ export class ShopProfileComponent implements OnInit {
           
           // Get additional statistics
           this.loadShopStatistics();
-          
+
+          // Load shop logo
+          this.loadShopLogo();
+
           // Update statistics data for table
           this.setupStatisticsData();
         } else {
@@ -1116,5 +1323,134 @@ export class ShopProfileComponent implements OnInit {
       horizontalPosition: 'end',
       verticalPosition: 'top'
     });
+  }
+
+  // Image upload methods
+  triggerFileInput(): void {
+    this.fileInput.nativeElement.click();
+  }
+
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      const file = input.files[0];
+
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        this.snackBar.open('Please select an image file', 'Close', {
+          duration: 3000,
+          horizontalPosition: 'end',
+          verticalPosition: 'top',
+          panelClass: ['error-snackbar']
+        });
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        this.snackBar.open('Image size should be less than 5MB', 'Close', {
+          duration: 3000,
+          horizontalPosition: 'end',
+          verticalPosition: 'top',
+          panelClass: ['error-snackbar']
+        });
+        return;
+      }
+
+      this.uploadImage(file);
+    }
+  }
+
+  private uploadImage(file: File): void {
+    if (!this.shop || !this.shop.id) {
+      this.snackBar.open('Shop not found. Please refresh the page.', 'Close', {
+        duration: 3000,
+        horizontalPosition: 'end',
+        verticalPosition: 'top',
+        panelClass: ['error-snackbar']
+      });
+      return;
+    }
+
+    this.isUploadingImage = true;
+
+    this.shopService.uploadShopImage(this.shop.id, file, 'LOGO').subscribe({
+      next: (response) => {
+        this.isUploadingImage = false;
+
+        // Update the logo URL
+        if (response && response.imageUrl) {
+          this.shopLogoUrl = getImageUrl(response.imageUrl);
+          this.shopLogoId = response.id;
+        }
+
+        this.snackBar.open('Shop logo uploaded successfully!', 'Close', {
+          duration: 3000,
+          horizontalPosition: 'end',
+          verticalPosition: 'top',
+          panelClass: ['success-snackbar']
+        });
+
+        // Reset the file input
+        this.fileInput.nativeElement.value = '';
+      },
+      error: (error) => {
+        this.isUploadingImage = false;
+        console.error('Error uploading image:', error);
+        this.snackBar.open('Failed to upload logo. Please try again.', 'Close', {
+          duration: 3000,
+          horizontalPosition: 'end',
+          verticalPosition: 'top',
+          panelClass: ['error-snackbar']
+        });
+      }
+    });
+  }
+
+  removeLogo(): void {
+    if (!this.shop || !this.shop.id || !this.shopLogoId) {
+      return;
+    }
+
+    this.isUploadingImage = true;
+
+    this.shopService.deleteShopImage(this.shop.id, this.shopLogoId).subscribe({
+      next: () => {
+        this.isUploadingImage = false;
+        this.shopLogoUrl = null;
+        this.shopLogoId = null;
+
+        this.snackBar.open('Shop logo removed successfully', 'Close', {
+          duration: 3000,
+          horizontalPosition: 'end',
+          verticalPosition: 'top',
+          panelClass: ['success-snackbar']
+        });
+      },
+      error: (error) => {
+        this.isUploadingImage = false;
+        console.error('Error removing logo:', error);
+        this.snackBar.open('Failed to remove logo. Please try again.', 'Close', {
+          duration: 3000,
+          horizontalPosition: 'end',
+          verticalPosition: 'top',
+          panelClass: ['error-snackbar']
+        });
+      }
+    });
+  }
+
+  private loadShopLogo(): void {
+    if (this.shop && this.shop.images && this.shop.images.length > 0) {
+      // Find the logo image
+      const logoImage = this.shop.images.find(img => img.imageType === 'LOGO')
+        || this.shop.images.find(img => img.isPrimary)
+        || this.shop.images[0];
+
+      if (logoImage) {
+        this.shopLogoUrl = getImageUrl(logoImage.imageUrl);
+        this.shopLogoId = logoImage.id;
+      }
+    }
   }
 }

@@ -460,6 +460,57 @@ export class ShopService {
     );
   }
 
+  // Upload shop image (logo, banner, or gallery)
+  uploadShopImage(shopId: number, file: File, imageType: 'LOGO' | 'BANNER' | 'GALLERY' = 'LOGO'): Observable<any> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('imageType', imageType);
+
+    return this.http.post<ApiResponse<any>>(`${this.API_URL}/${shopId}/images`, formData).pipe(
+      map(apiResponse => {
+        if (ApiResponseHelper.isError(apiResponse)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(apiResponse));
+        }
+        return apiResponse.data;
+      }),
+      catchError(error => {
+        console.error('Error uploading shop image:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  // Delete shop image
+  deleteShopImage(shopId: number, imageId: number): Observable<void> {
+    return this.http.delete<ApiResponse<void>>(`${this.API_URL}/${shopId}/images/${imageId}`).pipe(
+      map(apiResponse => {
+        if (ApiResponseHelper.isError(apiResponse)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(apiResponse));
+        }
+      }),
+      catchError(error => {
+        console.error('Error deleting shop image:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  // Get shop images
+  getShopImages(shopId: number): Observable<any[]> {
+    return this.http.get<ApiResponse<any[]>>(`${this.API_URL}/${shopId}/images`).pipe(
+      map(apiResponse => {
+        if (ApiResponseHelper.isError(apiResponse)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(apiResponse));
+        }
+        return apiResponse.data || [];
+      }),
+      catchError(error => {
+        console.error('Error fetching shop images:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
   // Transform API response to match frontend model
   private transformShop(shop: any): Shop {
     return {
