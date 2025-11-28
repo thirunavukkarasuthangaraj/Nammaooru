@@ -472,13 +472,14 @@ public class OrderService {
             log.error("❌ Failed to send push notification for status update", e);
         }
         
-        // Auto-send invoice when order is delivered
+        // Auto-send invoice when order is delivered (Email + WhatsApp)
         if (status == Order.OrderStatus.DELIVERED) {
             try {
-                invoiceService.sendInvoiceEmail(orderId);
-                log.info("Invoice email automatically sent for delivered order: {}", order.getOrderNumber());
+                // Send invoice via all channels (Email + WhatsApp)
+                invoiceService.sendInvoiceAll(orderId);
+                log.info("Invoice automatically sent (Email + WhatsApp) for delivered order: {}", order.getOrderNumber());
             } catch (Exception e) {
-                log.error("Failed to send automatic invoice email for order: {}", order.getOrderNumber(), e);
+                log.error("Failed to send automatic invoice for order: {}", order.getOrderNumber(), e);
             }
         }
         

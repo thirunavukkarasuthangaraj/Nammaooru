@@ -5,6 +5,7 @@ import com.shopmanagement.entity.OrderItem;
 import com.shopmanagement.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +25,10 @@ public class InvoiceService {
 
     private final OrderRepository orderRepository;
     private final EmailService emailService;
+    private final WhatsAppNotificationService whatsAppNotificationService;
+
+    @Value("${app.frontend.url:https://nammaooru.com}")
+    private String frontendUrl;
 
     @Transactional(readOnly = true)
     public Map<String, Object> generateInvoiceData(Long orderId) {
@@ -127,6 +132,74 @@ public class InvoiceService {
         } catch (Exception e) {
             log.error("Failed to send invoice email for order: {}", orderId, e);
             throw new RuntimeException("Failed to send invoice email", e);
+        }
+    }
+
+    /**
+     * Send invoice via WhatsApp to customer
+     */
+    @Transactional
+    public void sendInvoiceWhatsApp(Long orderId) {
+        log.info("Sending invoice via WhatsApp for order: {}", orderId);
+
+        try {
+            Order order = orderRepository.findById(orderId)
+                    .orElseThrow(() -> new RuntimeException("Order not found"));
+
+            String customerMobile = order.getCustomer().getMobileNumber();
+            if (customerMobile == null || customerMobile.trim().isEmpty()) {
+                log.warn("Customer has no mobile number, cannot send WhatsApp invoice for order: {}", orderId);
+                return;
+            }
+
+            // Generate invoice URL for the customer to view
+            String invoiceUrl = frontendUrl + "/invoice/" + order.getOrderNumber();
+
+            // Prepare template data for WhatsApp message
+            Map<String, Object> templateData = new HashMap<>();
+            templateData.put("param1", order.getCustomer().getFullName()); // Customer name
+            templateData.put("param2", order.getOrderNumber()); // Order number
+            templateData.put("param3", String.format("₹%.2f", order.getTotalAmount())); // Total amount
+            templateData.put("param4", order.getShop().getName()); // Shop name
+            templateData.put("param5", invoiceUrl); // Invoice link
+
+            // Send WhatsApp message using 'invoice' template
+            boolean sent = whatsAppNotificationService.sendMarketingMessage(
+                    customerMobile,
+                    "invoice", // Template name - needs to be created in MSG91
+                    templateData
+            );
+
+            if (sent) {
+                log.info("WhatsApp invoice sent successfully for order: {}", orderId);
+            } else {
+                log.warn("Failed to send WhatsApp invoice for order: {}", orderId);
+            }
+
+        } catch (Exception e) {
+            log.error("Failed to send WhatsApp invoice for order: {}", orderId, e);
+        }
+    }
+
+    /**
+     * Send both email and WhatsApp invoice
+     */
+    @Transactional
+    public void sendInvoiceAll(Long orderId) {
+        log.info("Sending invoice via all channels for order: {}", orderId);
+
+        // Send email invoice
+        try {
+            sendInvoiceEmail(orderId);
+        } catch (Exception e) {
+            log.error("Email invoice failed for order: {}", orderId, e);
+        }
+
+        // Send WhatsApp invoice
+        try {
+            sendInvoiceWhatsApp(orderId);
+        } catch (Exception e) {
+            log.error("WhatsApp invoice failed for order: {}", orderId, e);
         }
     }
 

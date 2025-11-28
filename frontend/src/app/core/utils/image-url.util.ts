@@ -25,6 +25,11 @@ export function getImageUrl(imagePath: string | null | undefined): string {
     cleanPath = '/' + cleanPath;
   }
 
+  // Add /uploads prefix if not already present (static files are served from /uploads/**)
+  if (!cleanPath.startsWith('/uploads/')) {
+    cleanPath = '/uploads' + cleanPath;
+  }
+
   // Construct full URL with imageBaseUrl
   return `${environment.imageBaseUrl}${cleanPath}`;
 }

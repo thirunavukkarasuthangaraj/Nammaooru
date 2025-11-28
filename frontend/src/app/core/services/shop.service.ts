@@ -466,13 +466,8 @@ export class ShopService {
     formData.append('file', file);
     formData.append('imageType', imageType);
 
-    return this.http.post<ApiResponse<any>>(`${this.API_URL}/${shopId}/images`, formData).pipe(
-      map(apiResponse => {
-        if (ApiResponseHelper.isError(apiResponse)) {
-          throw new Error(ApiResponseHelper.getErrorMessage(apiResponse));
-        }
-        return apiResponse.data;
-      }),
+    // Backend returns ShopImageResponse directly, not wrapped in ApiResponse
+    return this.http.post<any>(`${this.API_URL}/${shopId}/images`, formData).pipe(
       catchError(error => {
         console.error('Error uploading shop image:', error);
         return throwError(() => error);
@@ -482,12 +477,8 @@ export class ShopService {
 
   // Delete shop image
   deleteShopImage(shopId: number, imageId: number): Observable<void> {
-    return this.http.delete<ApiResponse<void>>(`${this.API_URL}/${shopId}/images/${imageId}`).pipe(
-      map(apiResponse => {
-        if (ApiResponseHelper.isError(apiResponse)) {
-          throw new Error(ApiResponseHelper.getErrorMessage(apiResponse));
-        }
-      }),
+    // Backend returns 204 No Content
+    return this.http.delete<void>(`${this.API_URL}/${shopId}/images/${imageId}`).pipe(
       catchError(error => {
         console.error('Error deleting shop image:', error);
         return throwError(() => error);
@@ -497,13 +488,8 @@ export class ShopService {
 
   // Get shop images
   getShopImages(shopId: number): Observable<any[]> {
-    return this.http.get<ApiResponse<any[]>>(`${this.API_URL}/${shopId}/images`).pipe(
-      map(apiResponse => {
-        if (ApiResponseHelper.isError(apiResponse)) {
-          throw new Error(ApiResponseHelper.getErrorMessage(apiResponse));
-        }
-        return apiResponse.data || [];
-      }),
+    // Backend returns List<ShopImageResponse> directly
+    return this.http.get<any[]>(`${this.API_URL}/${shopId}/images`).pipe(
       catchError(error => {
         console.error('Error fetching shop images:', error);
         return throwError(() => error);

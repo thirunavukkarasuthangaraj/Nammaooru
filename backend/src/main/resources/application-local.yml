@@ -11,6 +11,9 @@ app:
       path:
         shops: D:/AAWS/nammaooru/shop-management-system/uploads/documents/shops
         delivery-partners: D:/AAWS/nammaooru/shop-management-system/uploads/documents/delivery-partners
+  # Local frontend URL for CORS and links
+  frontend:
+    base-url: http://localhost:4200
 
 file:
   upload:
@@ -19,8 +22,3 @@ file:
     local:
       base-path: D:/AAWS/nammaooru/shop-management-system/uploads
       serve-url: http://localhost:8080/uploads
-
-# Local frontend URL for CORS and links
-app:
-  frontend:
-    base-url: http://localhost:4200
