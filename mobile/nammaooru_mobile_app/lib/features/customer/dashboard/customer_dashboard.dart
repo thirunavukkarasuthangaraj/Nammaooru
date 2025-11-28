@@ -22,6 +22,7 @@ import '../../../core/services/location_service.dart';
 import '../../../core/services/address_service.dart';
 import '../../../core/services/app_update_service.dart';
 import '../widgets/address_selection_dialog.dart';
+import '../../../shared/widgets/promo_card_banner.dart';
 
 class CustomerDashboard extends StatefulWidget {
   const CustomerDashboard({super.key});
@@ -299,6 +300,16 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildLocationSelector(),
+                      const SizedBox(height: 20),
+                      PromoCardBanner(
+                        title: 'Weekly Deals',
+                        subtitle: 'Up to 40% Off',
+                        description: 'on Fresh Fruits & Vegetables',
+                        backgroundColor: const Color(0xFF4CAF50),
+                        icon: Icons.local_offer,
+                        badgeText: 'HOT DEAL',
+                        badgeColor: Colors.white,
+                      ),
                       const SizedBox(height: 20),
                       _buildServiceCategories(),
                     ],
