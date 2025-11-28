@@ -777,14 +777,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           );
           final loginSuccess = await authProvider.login(loginRequest);
 
-          if (loginSuccess) {
-            // Navigate to customer dashboard after auto-login
-            if (mounted) {
+          if (mounted) {
+            if (loginSuccess) {
+              // Navigate to customer dashboard after auto-login
               context.go('/customer/dashboard');
-            }
-          } else {
-            // If auto-login fails, redirect to login screen
-            if (mounted) {
+            } else {
+              // If auto-login fails, redirect to login screen
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Please login with your new password'),
