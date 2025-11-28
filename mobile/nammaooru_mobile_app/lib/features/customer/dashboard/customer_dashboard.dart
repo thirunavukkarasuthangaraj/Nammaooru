@@ -1121,7 +1121,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     final orderNumber = order['orderNumber'] ?? 'N/A';
     final totalAmount = order['totalAmount']?.toString() ?? '0';
     final status = order['status'] ?? 'PENDING';
-    final itemCount = order['items']?.length ?? 0;
+    final itemCount = order['itemCount'] ?? order['numberOfItems'] ?? order['items']?.length ?? 1;
     final createdAt = order['createdAt'] ?? '';
 
     Color statusColor = VillageTheme.primaryGreen;
