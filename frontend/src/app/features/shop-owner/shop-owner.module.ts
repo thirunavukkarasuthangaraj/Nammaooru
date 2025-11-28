@@ -28,6 +28,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatStepperModule } from '@angular/material/stepper';
 import { MatListModule } from '@angular/material/list';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 
 import { ShopOwnerRoutingModule } from './shop-owner-routing.module';
 import { ShopOwnerDashboardComponent } from './components/shop-owner-dashboard/shop-owner-dashboard.component';
@@ -113,7 +114,8 @@ import { ProductAssignmentDialogComponent } from './components/product-assignmen
     MatSlideToggleModule,
     MatStepperModule,
     MatListModule,
-    MatOptionModule
+    MatOptionModule,
+    MatProgressBarModule
   ]
 })
 export class ShopOwnerModule { }
