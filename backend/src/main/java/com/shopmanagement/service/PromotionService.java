@@ -95,11 +95,12 @@ public class PromotionService {
             return PromoCodeValidationResult.error("This promo code has reached its usage limit");
         }
 
-        // 7. Check first-time-only restriction
+        // 7. Check first-time-only restriction (checks by customer ID, device UUID, or phone)
         if (promotion.getIsFirstTimeOnly()) {
-            Boolean isFirstTime = promotionUsageRepository.isFirstTimeCustomer(customerId);
-            if (!isFirstTime) {
-                return PromoCodeValidationResult.error("This promo code is only for first-time customers");
+            Boolean hasUsed = promotionUsageRepository.hasUsedPromotion(
+                promotion.getId(), customerId, deviceUuid, phone);
+            if (hasUsed) {
+                return PromoCodeValidationResult.error("This promo code can only be used once per customer");
             }
         }
 

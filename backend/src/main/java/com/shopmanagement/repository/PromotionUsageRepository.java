@@ -69,6 +69,20 @@ public interface PromotionUsageRepository extends JpaRepository<PromotionUsage, 
     Boolean isFirstTimeCustomer(@Param("customerId") Long customerId);
 
     /**
+     * Check if a first-time-only promotion was already used by customer ID, device UUID, or phone
+     * This prevents users from re-using first-time-only promos with different accounts
+     */
+    @Query("SELECT CASE WHEN COUNT(pu) > 0 THEN true ELSE false END " +
+           "FROM PromotionUsage pu WHERE pu.promotion.id = :promotionId " +
+           "AND ((:customerId IS NOT NULL AND pu.customer.id = :customerId) " +
+           "OR (:deviceUuid IS NOT NULL AND pu.deviceUuid = :deviceUuid) " +
+           "OR (:phone IS NOT NULL AND pu.customerPhone = :phone))")
+    Boolean hasUsedPromotion(@Param("promotionId") Long promotionId,
+                             @Param("customerId") Long customerId,
+                             @Param("deviceUuid") String deviceUuid,
+                             @Param("phone") String phone);
+
+    /**
      * Get usage history for a specific customer and promotion
      */
     @Query("SELECT pu FROM PromotionUsage pu WHERE pu.promotion.id = :promotionId " +
