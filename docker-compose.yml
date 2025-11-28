@@ -13,12 +13,13 @@ services:
       - DB_PASSWORD=${DB_PASSWORD:-postgres}
       # JWT secret (REQUIRED in production)
       - JWT_SECRET=${JWT_SECRET:-your-jwt-secret-key-here}
-      # File upload paths (override for local dev if needed)
-      - FILE_UPLOAD_PATH=${FILE_UPLOAD_PATH:-/opt/shop-management/uploads}
-      - APP_UPLOAD_DIR=${APP_UPLOAD_DIR:-/opt/shop-management/uploads}
-      - DOCUMENT_UPLOAD_PATH=${DOCUMENT_UPLOAD_PATH:-/opt/shop-management/uploads/documents/shops}
-      - DELIVERY_PARTNER_DOCUMENT_PATH=${DELIVERY_PARTNER_DOCUMENT_PATH:-/opt/shop-management/uploads/documents/delivery-partners}
-      - PRODUCT_IMAGES_PATH=${PRODUCT_IMAGES_PATH:-/opt/shop-management/uploads/products}
+      # File upload paths - use CONTAINER paths (/app/uploads), NOT host paths
+      # Host path /opt/shop-management/uploads is mounted to container path /app/uploads
+      - FILE_UPLOAD_PATH=${FILE_UPLOAD_PATH:-/app/uploads}
+      - APP_UPLOAD_DIR=${APP_UPLOAD_DIR:-/app/uploads}
+      - DOCUMENT_UPLOAD_PATH=${DOCUMENT_UPLOAD_PATH:-/app/uploads/documents/shops}
+      - DELIVERY_PARTNER_DOCUMENT_PATH=${DELIVERY_PARTNER_DOCUMENT_PATH:-/app/uploads/documents/delivery-partners}
+      - PRODUCT_IMAGES_PATH=${PRODUCT_IMAGES_PATH:-/app/uploads/products}
       # JPA configuration (for development, use: JPA_DDL_AUTO=update JPA_SHOW_SQL=true)
       - JPA_DDL_AUTO=${JPA_DDL_AUTO:-validate}
       - JPA_SHOW_SQL=${JPA_SHOW_SQL:-false}

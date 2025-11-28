@@ -893,17 +893,12 @@ export class CategoryListComponent implements OnInit {
       return iconUrl;
     }
 
-    // If it's a relative URL starting with /, assume it's from the backend
+    // If it's a relative URL starting with /, use imageBaseUrl (frontend domain)
     if (iconUrl.startsWith('/')) {
-      return `${this.getApiBaseUrl()}${iconUrl}`;
+      return `${environment.imageBaseUrl}${iconUrl}`;
     }
 
     return iconUrl;
-  }
-
-  private getApiBaseUrl(): string {
-    // Remove '/api' from the apiUrl to get the base URL
-    return environment.apiUrl.replace('/api', '');
   }
 
   onImageError(event: Event): void {

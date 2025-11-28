@@ -227,10 +227,10 @@ export class ProductEditDialogComponent implements OnInit {
       if (this.currentImageUrl.startsWith('http://') || this.currentImageUrl.startsWith('https://')) {
         return this.currentImageUrl;
       }
-      const baseUrl = this.apiUrl.replace('/api', '');
-      const cleanImageUrl = this.currentImageUrl.startsWith('/') ? 
-        this.currentImageUrl.substring(1) : this.currentImageUrl;
-      return `${baseUrl}/${cleanImageUrl}`;
+      // Use imageBaseUrl (frontend domain) for serving images
+      const cleanImageUrl = this.currentImageUrl.startsWith('/') ?
+        this.currentImageUrl : '/' + this.currentImageUrl;
+      return `${environment.imageBaseUrl}${cleanImageUrl}`;
     }
     return 'assets/images/product-placeholder.svg';
   }
