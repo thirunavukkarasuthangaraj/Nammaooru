@@ -9,12 +9,22 @@ class ImageUrlHelper {
       return 'https://via.placeholder.com/300x300/f0f0f0/cccccc?text=No+Image';
     }
 
-    // If it's already a full URL, return as-is
+    // If it's already a full URL, check and fix if needed
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
       // Fix port mismatch for legacy URLs
       if (imageUrl.contains(':8082/')) {
-        return imageUrl.replaceAll(':8082/', ':8080/');
+        imageUrl = imageUrl.replaceAll(':8082/', ':8080/');
       }
+
+      // Fix production URLs missing /uploads prefix
+      // e.g., https://nammaoorudelivary.in/shops/... -> https://nammaoorudelivary.in/uploads/shops/...
+      final uri = Uri.tryParse(imageUrl);
+      if (uri != null &&
+          !uri.path.startsWith('/uploads/') &&
+          (uri.path.startsWith('/shops/') || uri.path.startsWith('/products/'))) {
+        return '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}/uploads${uri.path}';
+      }
+
       return imageUrl;
     }
 
