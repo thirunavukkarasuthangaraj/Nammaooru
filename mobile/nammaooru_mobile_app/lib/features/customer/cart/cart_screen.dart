@@ -35,41 +35,50 @@ class _CartScreenState extends State<CartScreen> {
   Widget build(BuildContext context) {
     return Consumer<CartProvider>(
       builder: (context, cartProvider, _) {
-        return Scaffold(
-          backgroundColor: VillageTheme.lightBackground,
-          appBar: CustomAppBar(
-            title: 'Shopping Cart',
-            backgroundColor: VillageTheme.primaryGreen,
-            foregroundColor: Colors.white,
-            onBackPressed: () {
-              // When coming from dashboard (bottom nav), go back to dashboard
+        return PopScope(
+          canPop: false,
+          onPopInvoked: (didPop) {
+            if (!didPop) {
+              // Handle device back button - go to dashboard
               context.go('/customer/dashboard');
-            },
-          ),
-          body: cartProvider.isEmpty
-              ? _buildEmptyCart()
-              : Column(
-                  children: [
-                    Expanded(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _buildItemsList(cartProvider),
-                            const SizedBox(height: 12),
-                            // Promo code section removed
-                            // _buildPromoCodeSection(cartProvider),
-                            // const SizedBox(height: 12),
-                            _buildOrderSummary(cartProvider),
-                          ],
+            }
+          },
+          child: Scaffold(
+            backgroundColor: VillageTheme.lightBackground,
+            appBar: CustomAppBar(
+              title: 'Shopping Cart',
+              backgroundColor: VillageTheme.primaryGreen,
+              foregroundColor: Colors.white,
+              onBackPressed: () {
+                // When coming from dashboard (bottom nav), go back to dashboard
+                context.go('/customer/dashboard');
+              },
+            ),
+            body: cartProvider.isEmpty
+                ? _buildEmptyCart()
+                : Column(
+                    children: [
+                      Expanded(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _buildItemsList(cartProvider),
+                              const SizedBox(height: 12),
+                              // Promo code section removed
+                              // _buildPromoCodeSection(cartProvider),
+                              // const SizedBox(height: 12),
+                              _buildOrderSummary(cartProvider),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                    _buildBottomBar(cartProvider),
-                  ],
-                ),
+                      _buildBottomBar(cartProvider),
+                    ],
+                  ),
+          ),
         );
       },
     );
