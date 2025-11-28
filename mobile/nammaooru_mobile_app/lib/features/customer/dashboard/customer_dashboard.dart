@@ -315,8 +315,6 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                       _buildFeaturedShops(),
                       const SizedBox(height: 24),
                       _buildRecentOrders(),
-                      const SizedBox(height: 24),
-                      _buildPromotionalBanners(),
                       const SizedBox(height: 20),
                     ],
                   ),
@@ -762,7 +760,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             ),
             TextButton(
               onPressed: () {
-                // TODO: Navigate to all shops
+                Navigator.pushNamed(context, '/customer/shops');
               },
               child: const Text(
                 'See All',
@@ -805,111 +803,122 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     final rating = shop?['averageRating']?.toString() ?? '4.0';
     final deliveryTime = shop?['estimatedDeliveryTime']?.toString() ?? '30';
     final isActive = shop?['isActive'] ?? true;
-    
+    final shopImage = shop?['image'] ?? shop?['profileImage'] ?? '';
+
     if (!isActive) return const SizedBox();
 
-    return Container(
-      width: 160,
-      margin: const EdgeInsets.only(right: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ShopDetailsScreen(
+              shopId: shop?['id'] ?? 1,
+              shop: shop,
+            ),
           ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
+        );
+      },
+      child: Container(
+        width: 160,
+        margin: const EdgeInsets.only(right: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
           borderRadius: BorderRadius.circular(24),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ShopDetailsScreen(
-                  shopId: shop?['id'] ?? 1,
-                  shop: shop,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              height: 100,
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(12),
                 ),
               ),
-            );
-          },
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                height: 100,
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(12),
-                  ),
-                ),
-                child: const Center(
-                  child: Icon(
-                    Icons.store,
-                    size: 40,
-                    color: VillageTheme.hintText,
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      shopName,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: VillageTheme.primaryText,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.star,
-                          size: 12,
-                          color: Colors.amber,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          rating,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: VillageTheme.secondaryText,
+              child: shopImage.isNotEmpty
+                  ? Image.network(
+                      shopImage,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Center(
+                          child: Icon(
+                            Icons.store,
+                            size: 40,
+                            color: Colors.grey[400],
                           ),
-                        ),
-                        const Spacer(),
-                        Text(
-                          '$deliveryTime min',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: VillageTheme.secondaryText,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      businessType,
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: VillageTheme.hintText,
+                        );
+                      },
+                    )
+                  : Center(
+                      child: Icon(
+                        Icons.store,
+                        size: 40,
+                        color: Colors.grey[400],
                       ),
                     ),
-                  ],
-                ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    shopName,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: VillageTheme.primaryText,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.star,
+                        size: 12,
+                        color: Colors.amber,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        rating,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: VillageTheme.secondaryText,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '$deliveryTime min',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: VillageTheme.secondaryText,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    businessType,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: VillageTheme.hintText,
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -1114,10 +1123,10 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     final status = order['status'] ?? 'PENDING';
     final itemCount = order['items']?.length ?? 0;
     final createdAt = order['createdAt'] ?? '';
-    
+
     Color statusColor = VillageTheme.primaryGreen;
     String statusText = status;
-    
+
     switch (status.toUpperCase()) {
       case 'DELIVERED':
         statusColor = VillageTheme.successGreen;
@@ -1139,108 +1148,101 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         statusText = status;
     }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
+    return GestureDetector(
+      onTap: () {
+        Navigator.pushNamed(context, '/customer/orders');
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
             ),
-            child: Icon(
-              Icons.shopping_bag,
-              color: statusColor,
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.shopping_bag,
+                color: statusColor,
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Order #$orderNumber',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: VillageTheme.primaryText,
-                  ),
-                ),
-                Text(
-                  '$itemCount items • ₹$totalAmount',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: VillageTheme.secondaryText,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    statusText,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: statusColor,
-                      fontWeight: FontWeight.w500,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Order #$orderNumber',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: VillageTheme.primaryText,
                     ),
                   ),
-                ),
+                  Text(
+                    '$itemCount items • ₹$totalAmount',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: VillageTheme.secondaryText,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      statusText,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: statusColor,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              children: [
+                if (status.toUpperCase() == 'DELIVERED')
+                  TextButton(
+                    onPressed: () async {
+                      try {
+                        await _orderApi.reorder(order['id']);
+                        Helpers.showSnackBar(context, 'Items added to cart');
+                      } catch (e) {
+                        Helpers.showSnackBar(context, 'Failed to reorder', isError: true);
+                      }
+                    },
+                    child: const Text(
+                      'Reorder',
+                      style: TextStyle(
+                        color: VillageTheme.primaryGreen,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
               ],
             ),
-          ),
-          Column(
-            children: [
-              if (status.toUpperCase() == 'DELIVERED')
-                TextButton(
-                  onPressed: () async {
-                    try {
-                      await _orderApi.reorder(order['id']);
-                      Helpers.showSnackBar(context, 'Items added to cart');
-                    } catch (e) {
-                      Helpers.showSnackBar(context, 'Failed to reorder', isError: true);
-                    }
-                  },
-                  child: const Text(
-                    'Reorder',
-                    style: TextStyle(
-                      color: VillageTheme.primaryGreen,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pushNamed(context, '/order-tracking', arguments: orderNumber);
-                },
-                child: const Text(
-                  'View Details',
-                  style: TextStyle(
-                    color: VillageTheme.secondaryText,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
