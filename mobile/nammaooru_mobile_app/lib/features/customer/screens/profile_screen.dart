@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/auth/auth_service.dart';
 import '../../../core/constants/colors.dart';
@@ -362,6 +363,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             _buildAccountActionsCard(),
                             const SizedBox(height: 24),
                             _buildSystemInfoCard(),
+                            const SizedBox(height: 24),
+                            _buildContactSupportCard(),
                             const SizedBox(height: 32),
                             _buildLogoutButton(),
                           ],
@@ -521,8 +524,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       'User Details',
       Icons.person_outline,
       [
-        _buildDetailRow('User ID', _userInfo['userId'] ?? 'N/A'),
-        _buildDetailRow('Username', _userInfo['username'] ?? 'N/A'),
         _buildDetailRow('Email', _userInfo['email'] ?? 'N/A'),
         _buildDetailRow('Phone', _userInfo['phoneNumber'] ?? 'N/A'),
         _buildDetailRow('Address', _userInfo['address'] ?? 'N/A'),
@@ -687,6 +688,100 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 color: AppColors.primary.withOpacity(0.6),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContactSupportCard() {
+    const supportNumber = '6374217724';
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () async {
+          final Uri launchUri = Uri(
+            scheme: 'tel',
+            path: supportNumber,
+          );
+          try {
+            if (await canLaunchUrl(launchUri)) {
+              await launchUrl(launchUri);
+            } else {
+              if (mounted) {
+                Helpers.showSnackBar(context, 'Could not launch phone call', isError: true);
+              }
+            }
+          } catch (e) {
+            if (mounted) {
+              Helpers.showSnackBar(context, 'Error: $e', isError: true);
+            }
+          }
+        },
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withOpacity(0.06),
+                blurRadius: 24,
+                offset: const Offset(0, 6),
+                spreadRadius: 0,
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    Icons.phone_in_talk_rounded,
+                    color: AppColors.primary,
+                    size: 26,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Contact Support',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        supportNumber,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 18,
+                  color: AppColors.primary.withOpacity(0.6),
+                ),
+              ],
+            ),
           ),
         ),
       ),
