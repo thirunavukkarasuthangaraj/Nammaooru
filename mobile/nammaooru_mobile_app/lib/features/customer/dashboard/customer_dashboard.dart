@@ -631,11 +631,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   }
 
   Widget _buildCategoryCard(String name, String nameEn, String imageUrl, BorderRadius borderRadius) {
-    return _AnimatedCategoryCard(
-      name: name,
-      nameEn: nameEn,
-      imageUrl: imageUrl,
-      borderRadius: borderRadius,
+    return GestureDetector(
       onTap: () async {
         // Special handling for Farmer Products - redirect to WhatsApp channel
         if (nameEn == 'Farmer Products') {
@@ -653,6 +649,82 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           );
         }
       },
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: borderRadius,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+              spreadRadius: 1,
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: borderRadius,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: Image.asset(
+                  imageUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: Colors.grey[300],
+                      child: const Center(
+                        child: Icon(Icons.broken_image, size: 40, color: Colors.grey),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.5),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                top: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  alignment: Alignment.bottomLeft,
+                  child: Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black,
+                          blurRadius: 10,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    textAlign: TextAlign.left,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -1538,207 +1610,6 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _AnimatedCategoryCard extends StatefulWidget {
-  final String name;
-  final String nameEn;
-  final String imageUrl;
-  final BorderRadius borderRadius;
-  final VoidCallback onTap;
-
-  const _AnimatedCategoryCard({
-    required this.name,
-    required this.nameEn,
-    required this.imageUrl,
-    required this.borderRadius,
-    required this.onTap,
-  });
-
-  @override
-  State<_AnimatedCategoryCard> createState() => _AnimatedCategoryCardState();
-}
-
-class _AnimatedCategoryCardState extends State<_AnimatedCategoryCard> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _shadowAnimation;
-  bool _isPressed = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 150),
-      vsync: this,
-    );
-
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-
-    _shadowAnimation = Tween<double>(begin: 0.15, end: 0.25).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _onTapDown(TapDownDetails details) {
-    _controller.forward();
-    setState(() => _isPressed = true);
-  }
-
-  void _onTapUp(TapUpDetails details) {
-    _controller.reverse();
-    setState(() => _isPressed = false);
-    widget.onTap();
-  }
-
-  void _onTapCancel() {
-    _controller.reverse();
-    setState(() => _isPressed = false);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _scaleAnimation,
-      builder: (context, child) {
-        return Transform.scale(
-          scale: _scaleAnimation.value,
-          child: GestureDetector(
-            onTapDown: _onTapDown,
-            onTapUp: _onTapUp,
-            onTapCancel: _onTapCancel,
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: widget.borderRadius,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(_shadowAnimation.value),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
-                    spreadRadius: 1,
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: widget.borderRadius,
-                child: Stack(
-                  children: [
-                    // Background Image
-                    Positioned.fill(
-                      child: Image.asset(
-                        widget.imageUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            color: Colors.grey[300],
-                            child: const Center(
-                              child: Icon(Icons.broken_image, size: 40, color: Colors.grey),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    // Gradient Overlay
-                    Positioned.fill(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.transparent,
-                              Colors.black.withOpacity(_isPressed ? 0.7 : 0.5),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    // Card content
-                    Positioned(
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      top: 0,
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        alignment: Alignment.bottomLeft,
-                        child: Text(
-                          widget.name,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                            shadows: [
-                              Shadow(
-                                color: Colors.black,
-                                blurRadius: 10,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          textAlign: TextAlign.left,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ),
-                    // WhatsApp badge for Farmer Products
-                    if (widget.nameEn == 'Farmer Products')
-                      Positioned(
-                        top: 12,
-                        right: 12,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF25D366),
-                            borderRadius: BorderRadius.circular(14),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.3),
-                                blurRadius: 10,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.message,
-                                color: Colors.white,
-                                size: 15,
-                              ),
-                              const SizedBox(width: 4),
-                              const Text(
-                                'WhatsApp',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.2,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 }
