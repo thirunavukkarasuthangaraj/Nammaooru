@@ -61,12 +61,13 @@ public interface ShopProductRepository extends JpaRepository<ShopProduct, Long>,
             @Param("maxPrice") BigDecimal maxPrice,
             Pageable pageable);
 
-    // Search within shop products
+    // Search within shop products - includes English and Tamil names
     @Query("SELECT sp FROM ShopProduct sp WHERE sp.shop = :shop AND " +
            "(LOWER(COALESCE(sp.customName, sp.masterProduct.name)) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
            "LOWER(COALESCE(sp.customDescription, sp.masterProduct.description)) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
            "LOWER(sp.masterProduct.sku) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-           "LOWER(sp.masterProduct.brand) LIKE LOWER(CONCAT('%', :search, '%')))")
+           "LOWER(sp.masterProduct.brand) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(COALESCE(sp.masterProduct.nameTamil, '')) LIKE LOWER(CONCAT('%', :search, '%')))")
     Page<ShopProduct> searchProductsInShop(@Param("shop") Shop shop, @Param("search") String search, Pageable pageable);
 
     // Category-based queries through master product
