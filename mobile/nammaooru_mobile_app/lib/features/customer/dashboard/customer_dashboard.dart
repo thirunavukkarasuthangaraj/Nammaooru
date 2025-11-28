@@ -312,8 +312,6 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                       const SizedBox(height: 20),
                       _buildServiceCategories(),
                       const SizedBox(height: 24),
-                      _buildQuickActions(),
-                      const SizedBox(height: 24),
                       _buildFeaturedShops(),
                       const SizedBox(height: 24),
                       _buildRecentOrders(),
@@ -723,87 +721,6 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickActions() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildQuickAction(
-            'Reorder',
-            Icons.refresh,
-            VillageTheme.accentOrange,
-            () {
-              // TODO: Show reorder options
-            },
-          ),
-          _buildQuickAction(
-            'Favorites',
-            Icons.favorite_border,
-            Colors.red,
-            () {
-              // TODO: Navigate to favorites
-            },
-          ),
-          _buildQuickAction(
-            'Support',
-            Icons.help_outline,
-            Colors.orange,
-            () {
-              // TODO: Navigate to support
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuickAction(String label, IconData icon, Color color, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.all(8),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                icon,
-                color: color,
-                size: 24,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: VillageTheme.secondaryText,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
         ),
       ),
     );
