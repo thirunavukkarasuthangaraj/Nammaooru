@@ -672,14 +672,6 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _buildQuickAction(
-            'Track Order',
-            Icons.delivery_dining,
-            VillageTheme.primaryGreen,
-            () {
-              Navigator.pushNamed(context, '/customer/orders');
-            },
-          ),
-          _buildQuickAction(
             'Reorder',
             Icons.refresh,
             VillageTheme.accentOrange,
