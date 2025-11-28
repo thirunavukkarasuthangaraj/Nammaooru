@@ -37,10 +37,14 @@ class _CartScreenState extends State<CartScreen> {
       builder: (context, cartProvider, _) {
         return Scaffold(
           backgroundColor: VillageTheme.lightBackground,
-          appBar: const CustomAppBar(
+          appBar: CustomAppBar(
             title: 'Shopping Cart',
             backgroundColor: VillageTheme.primaryGreen,
             foregroundColor: Colors.white,
+            onBackPressed: () {
+              // When coming from dashboard (bottom nav), go back to dashboard
+              context.go('/customer/dashboard');
+            },
           ),
           body: cartProvider.isEmpty
               ? _buildEmptyCart()

@@ -12,7 +12,8 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final Color? foregroundColor;
   final double elevation;
   final bool centerTitle;
-  
+  final VoidCallback? onBackPressed;
+
   const CustomAppBar({
     super.key,
     required this.title,
@@ -23,6 +24,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.foregroundColor,
     this.elevation = 0,
     this.centerTitle = true,
+    this.onBackPressed,
   });
   
   @override
@@ -41,22 +43,19 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       centerTitle: centerTitle,
       leading: leading ?? (showBackButton ? _buildBackButton(context) : null),
       actions: actions,
-      automaticallyImplyLeading: showBackButton,
+      automaticallyImplyLeading: false,
     );
   }
-  
+
   Widget? _buildBackButton(BuildContext context) {
     // Always show back button if showBackButton is true
     return IconButton(
       icon: const Icon(Icons.arrow_back_ios),
       onPressed: () {
-        // Check if we can pop before attempting to pop
-        final router = GoRouter.of(context);
-        if (router.canPop()) {
-          router.pop();
+        if (onBackPressed != null) {
+          onBackPressed!();
         } else {
-          // No pages to pop, navigate to dashboard
-          context.go('/customer/dashboard');
+          GoRouter.of(context).pop();
         }
       },
     );
