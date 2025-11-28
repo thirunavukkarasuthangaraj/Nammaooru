@@ -16,6 +16,7 @@ public class ProductCategoryResponse {
 
     private Long id;
     private String name;
+    private String nameTamil;
     private String description;
     private String slug;
     

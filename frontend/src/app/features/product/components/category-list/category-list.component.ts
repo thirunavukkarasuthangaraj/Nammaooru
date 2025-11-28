@@ -144,6 +144,7 @@ import { environment } from '../../../../../environments/environment';
 
               <div class="category-info">
                 <h3 class="category-name">{{ category.name }}</h3>
+                <p class="category-tamil" *ngIf="category.nameTamil">{{ category.nameTamil }}</p>
                 <p class="category-slug">{{ category.slug }}</p>
                 <p class="category-description">{{ category.description || 'No description available' }}</p>
               </div>
@@ -545,6 +546,13 @@ import { environment } from '../../../../../environments/environment';
       font-weight: 600;
       margin: 0 0 4px 0;
       color: #1a1a1a;
+    }
+
+    .category-tamil {
+      font-size: 16px;
+      color: #4a90d9;
+      margin: 0 0 8px 0;
+      font-weight: 500;
     }
 
     .category-slug {

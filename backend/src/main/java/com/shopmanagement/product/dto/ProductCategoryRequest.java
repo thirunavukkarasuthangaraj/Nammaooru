@@ -17,6 +17,9 @@ public class ProductCategoryRequest {
     @Size(max = 100, message = "Category name must be less than 100 characters")
     private String name;
 
+    @Size(max = 100, message = "Tamil name must be less than 100 characters")
+    private String nameTamil;
+
     @Size(max = 500, message = "Description must be less than 500 characters")
     private String description;
 

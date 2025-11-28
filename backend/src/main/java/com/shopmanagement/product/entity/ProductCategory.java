@@ -30,6 +30,10 @@ public class ProductCategory {
     @Column(nullable = false)
     private String name;
 
+    @Size(max = 100)
+    @Column(name = "name_tamil")
+    private String nameTamil;
+
     @Size(max = 500)
     private String description;
 

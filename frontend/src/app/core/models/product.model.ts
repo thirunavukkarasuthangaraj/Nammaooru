@@ -67,6 +67,7 @@ export interface ShopProduct {
 export interface ProductCategory {
   id: number;
   name: string;
+  nameTamil?: string;
   description?: string;
   slug: string;
   parentId?: number;
@@ -78,12 +79,12 @@ export interface ProductCategory {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
-  
+
   // Hierarchy info
   subcategories?: ProductCategory[];
   hasSubcategories: boolean;
   isRootCategory: boolean;
-  
+
   // Statistics
   productCount: number;
   subcategoryCount: number;
@@ -154,6 +155,7 @@ export interface ShopProductRequest {
 
 export interface ProductCategoryRequest {
   name: string;
+  nameTamil?: string;
   description?: string;
   slug?: string;
   parentId?: number;

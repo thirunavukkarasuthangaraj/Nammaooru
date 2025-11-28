@@ -78,12 +78,19 @@ import Swal from 'sweetalert2';
               
               <div class="form-grid">
                 <mat-form-field appearance="outline" class="form-field">
-                  <mat-label>Category Name</mat-label>
+                  <mat-label>Category Name (English)</mat-label>
                   <input matInput formControlName="name" placeholder="Enter category name">
                   <mat-icon matSuffix>title</mat-icon>
                   <mat-error *ngIf="categoryForm.get('name')?.hasError('required')">
                     Category name is required
                   </mat-error>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="form-field">
+                  <mat-label>Category Name (Tamil - தமிழ்)</mat-label>
+                  <input matInput formControlName="nameTamil" placeholder="வகை பெயர் உள்ளிடவும்">
+                  <mat-icon matSuffix>translate</mat-icon>
+                  <mat-hint>Optional Tamil translation</mat-hint>
                 </mat-form-field>
 
                 <mat-form-field appearance="outline" class="form-field">
@@ -517,6 +524,7 @@ export class CategoryFormComponent implements OnInit {
   private createForm(): FormGroup {
     return this.fb.group({
       name: ['', [Validators.required, Validators.maxLength(255)]],
+      nameTamil: ['', [Validators.maxLength(100)]],
       description: [''],
       slug: [''],
       parentId: [null],
@@ -545,6 +553,7 @@ export class CategoryFormComponent implements OnInit {
       next: (category) => {
         this.categoryForm.patchValue({
           name: category.name,
+          nameTamil: category.nameTamil,
           description: category.description,
           slug: category.slug,
           parentId: category.parentId,
@@ -591,6 +600,7 @@ export class CategoryFormComponent implements OnInit {
   private createCategoryWithImage() {
     const formData = new FormData();
     formData.append('name', this.categoryForm.get('name')?.value);
+    formData.append('nameTamil', this.categoryForm.get('nameTamil')?.value || '');
     formData.append('description', this.categoryForm.get('description')?.value || '');
     formData.append('slug', this.categoryForm.get('slug')?.value || '');
     formData.append('isActive', this.categoryForm.get('isActive')?.value.toString());
@@ -629,6 +639,7 @@ export class CategoryFormComponent implements OnInit {
     const formValue = this.categoryForm.value;
     const request: ProductCategoryRequest = {
       name: formValue.name,
+      nameTamil: formValue.nameTamil || undefined,
       description: formValue.description || undefined,
       slug: formValue.slug || undefined,
       parentId: formValue.parentId || undefined,
@@ -680,6 +691,7 @@ export class CategoryFormComponent implements OnInit {
 
     const request: ProductCategoryRequest = {
       name: formValue.name,
+      nameTamil: formValue.nameTamil || undefined,
       description: formValue.description || undefined,
       slug: formValue.slug || undefined,
       parentId: formValue.parentId || undefined,
