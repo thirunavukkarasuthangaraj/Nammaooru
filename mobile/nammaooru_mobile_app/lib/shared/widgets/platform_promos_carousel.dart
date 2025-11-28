@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import '../../core/services/promo_code_service.dart';
 import 'promo_card_banner.dart';
 
@@ -19,11 +20,37 @@ class PlatformPromosCarousel extends StatefulWidget {
 class _PlatformPromosCarouselState extends State<PlatformPromosCarousel> {
   late Future<List<PromoCode>> _promosFuture;
   final PromoCodeService _promoService = PromoCodeService();
+  late PageController _pageController;
+  Timer? _autoSlideTimer;
 
   @override
   void initState() {
     super.initState();
     _promosFuture = _promoService.getActivePromotions();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _autoSlideTimer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _startAutoSlide(int itemCount) {
+    if (itemCount <= 1) return;
+
+    _autoSlideTimer?.cancel();
+    _autoSlideTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (_pageController.hasClients) {
+        final nextPage = (_pageController.page ?? 0).toInt() + 1;
+        _pageController.animateToPage(
+          nextPage % itemCount,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
   }
 
   Color _getColorForPromo(int index) {
@@ -67,13 +94,22 @@ class _PlatformPromosCarouselState extends State<PlatformPromosCarousel> {
           );
         }
 
-        // Show carousel for multiple promos
+        // Show carousel for multiple promos with auto-slide
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _startAutoSlide(promos.length);
+        });
+
         return SizedBox(
           height: 160,
           child: PageView.builder(
+            controller: _pageController,
             padEnds: false,
             pageSnapping: true,
             itemCount: promos.length,
+            onPageChanged: (index) {
+              // Reset timer on manual swipe
+              _startAutoSlide(promos.length);
+            },
             itemBuilder: (context, index) {
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8.0),
