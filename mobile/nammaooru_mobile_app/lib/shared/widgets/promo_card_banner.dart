@@ -84,19 +84,7 @@ class _PromoCardBannerState extends State<PromoCardBanner> {
             stops: const [0.0, 1.0],
           ),
           borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: widget.backgroundColor.withOpacity(0.4),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
-              spreadRadius: 2,
-            ),
-            BoxShadow(
-              color: widget.backgroundColor.withOpacity(0.15),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          boxShadow: [],
         ),
         child: Stack(
           children: [

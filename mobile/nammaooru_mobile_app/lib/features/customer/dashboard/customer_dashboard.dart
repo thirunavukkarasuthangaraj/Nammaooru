@@ -469,14 +469,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: VillageTheme.primaryGreen.withOpacity(0.15),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
-              spreadRadius: 2,
-            ),
-          ],
+          boxShadow: [],
         ),
         child: Row(
           children: [
@@ -650,14 +643,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: borderRadius,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.15),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
-              spreadRadius: 1,
-            ),
-          ],
+          boxShadow: [],
         ),
         child: ClipRRect(
           borderRadius: borderRadius,
@@ -705,13 +691,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                       fontSize: 18,
                       fontWeight: FontWeight.w900,
                       color: Colors.white,
-                      shadows: [
-                        Shadow(
-                          color: Colors.black,
-                          blurRadius: 10,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
+                      shadows: [],
                     ),
                     textAlign: TextAlign.left,
                     maxLines: 2,
@@ -826,13 +806,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
+          boxShadow: [],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -979,13 +953,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                         color: Colors.grey.withOpacity(0.1),
                         width: 1,
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+                      boxShadow: [],
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -1170,13 +1138,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
+          boxShadow: [],
         ),
         child: Row(
           children: [
