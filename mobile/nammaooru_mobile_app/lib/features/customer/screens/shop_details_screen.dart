@@ -309,7 +309,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
               borderRadius: BorderRadius.circular(28),
               child: InkWell(
                 onTap: () {
-                  context.go('/customer/cart');
+                  context.push('/customer/cart');
                 },
                 borderRadius: BorderRadius.circular(28),
                 child: Container(

@@ -41,7 +41,6 @@ class _CartScreenState extends State<CartScreen> {
             title: 'Shopping Cart',
             backgroundColor: VillageTheme.primaryGreen,
             foregroundColor: Colors.white,
-            showBackButton: true,
           ),
           body: cartProvider.isEmpty
               ? _buildEmptyCart()
