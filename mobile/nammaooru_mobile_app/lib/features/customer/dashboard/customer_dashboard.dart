@@ -458,28 +458,43 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   Widget _buildLocationSelector() {
     return InkWell(
       onTap: _showLocationPicker,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(20),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            colors: [
+              Colors.white,
+              Colors.white.withOpacity(0.95),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+              color: VillageTheme.primaryGreen.withOpacity(0.15),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+              spreadRadius: 2,
             ),
           ],
         ),
         child: Row(
           children: [
-            Icon(
-              Icons.location_on,
-              color: VillageTheme.primaryGreen,
-              size: 28,
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: VillageTheme.primaryGreen.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.location_on,
+                color: VillageTheme.primaryGreen,
+                size: 26,
+              ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -487,18 +502,19 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                   const Text(
                     'Deliver to',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 12,
                       color: Colors.grey,
-                      fontWeight: FontWeight.w400,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 0.3,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   Text(
                     _selectedLocation,
                     style: const TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF2C3E50),
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF1a1a1a),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -506,10 +522,18 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                 ],
               ),
             ),
-            Icon(
-              Icons.keyboard_arrow_down,
-              color: Colors.grey.shade600,
-              size: 24,
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: VillageTheme.primaryGreen.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                Icons.keyboard_arrow_down,
+                color: VillageTheme.primaryGreen,
+                size: 24,
+                weight: 600,
+              ),
             ),
           ],
         ),
@@ -560,12 +584,23 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              languageProvider.getText('What do you need?', 'உங்களுக்கு என்ன வேண்டும்?'),
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF2C3E50),
+            ShaderMask(
+              shaderCallback: (bounds) => LinearGradient(
+                colors: [
+                  VillageTheme.primaryGreen,
+                  VillageTheme.primaryGreen.withOpacity(0.7),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ).createShader(bounds),
+              child: Text(
+                languageProvider.getText('What do you need?', 'உங்களுக்கு என்ன வேண்டும்?'),
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                  letterSpacing: 0.2,
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -596,146 +631,28 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   }
 
   Widget _buildCategoryCard(String name, String nameEn, String imageUrl, BorderRadius borderRadius) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: borderRadius,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.15),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: borderRadius,
-        child: Stack(
-          children: [
-            // Background Image
-            Positioned.fill(
-              child: Image.asset(
-                imageUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    color: Colors.grey[300],
-                    child: const Center(
-                      child: Icon(Icons.broken_image, size: 40, color: Colors.grey),
-                    ),
-                  );
-                },
+    return _AnimatedCategoryCard(
+      name: name,
+      nameEn: nameEn,
+      imageUrl: imageUrl,
+      borderRadius: borderRadius,
+      onTap: () async {
+        // Special handling for Farmer Products - redirect to WhatsApp channel
+        if (nameEn == 'Farmer Products') {
+          await _openWhatsAppChannel(context);
+        } else {
+          // Regular category - navigate to shop listing
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ShopListingScreen(
+                category: nameEn.toLowerCase(),
+                categoryTitle: nameEn,
               ),
             ),
-            // Gradient Overlay
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withOpacity(0.6),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            // Tap Handler
-            Positioned.fill(
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: borderRadius,
-                  onTap: () async {
-                    // Special handling for Farmer Products - redirect to WhatsApp channel
-                    if (nameEn == 'Farmer Products') {
-                      await _openWhatsAppChannel(context);
-                    } else {
-                      // Regular category - navigate to shop listing
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ShopListingScreen(
-                            category: nameEn.toLowerCase(),
-                            categoryTitle: nameEn,
-                          ),
-                        ),
-                      );
-                    }
-                  },
-                  child: Stack(
-                    children: [
-                      // Card content
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        alignment: Alignment.bottomLeft,
-                        child: Text(
-                          name,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            shadows: [
-                              Shadow(
-                                color: Colors.black,
-                                blurRadius: 8,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          textAlign: TextAlign.left,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      // WhatsApp badge for Farmer Products
-                      if (nameEn == 'Farmer Products')
-                        Positioned(
-                          top: 12,
-                          right: 12,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF25D366),
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.3),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.message,
-                                  color: Colors.white,
-                                  size: 14,
-                                ),
-                                const SizedBox(width: 4),
-                                const Text(
-                                  'WhatsApp',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+          );
+        }
+      },
     );
   }
 
@@ -1596,6 +1513,207 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _AnimatedCategoryCard extends StatefulWidget {
+  final String name;
+  final String nameEn;
+  final String imageUrl;
+  final BorderRadius borderRadius;
+  final VoidCallback onTap;
+
+  const _AnimatedCategoryCard({
+    required this.name,
+    required this.nameEn,
+    required this.imageUrl,
+    required this.borderRadius,
+    required this.onTap,
+  });
+
+  @override
+  State<_AnimatedCategoryCard> createState() => _AnimatedCategoryCardState();
+}
+
+class _AnimatedCategoryCardState extends State<_AnimatedCategoryCard> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _shadowAnimation;
+  bool _isPressed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 150),
+      vsync: this,
+    );
+
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+
+    _shadowAnimation = Tween<double>(begin: 0.15, end: 0.25).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onTapDown(TapDownDetails details) {
+    _controller.forward();
+    setState(() => _isPressed = true);
+  }
+
+  void _onTapUp(TapUpDetails details) {
+    _controller.reverse();
+    setState(() => _isPressed = false);
+    widget.onTap();
+  }
+
+  void _onTapCancel() {
+    _controller.reverse();
+    setState(() => _isPressed = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _scaleAnimation,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _scaleAnimation.value,
+          child: GestureDetector(
+            onTapDown: _onTapDown,
+            onTapUp: _onTapUp,
+            onTapCancel: _onTapCancel,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: widget.borderRadius,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(_shadowAnimation.value),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                    spreadRadius: 1,
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: widget.borderRadius,
+                child: Stack(
+                  children: [
+                    // Background Image
+                    Positioned.fill(
+                      child: Image.asset(
+                        widget.imageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: Colors.grey[300],
+                            child: const Center(
+                              child: Icon(Icons.broken_image, size: 40, color: Colors.grey),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    // Gradient Overlay
+                    Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withOpacity(_isPressed ? 0.7 : 0.5),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Card content
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      top: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        alignment: Alignment.bottomLeft,
+                        child: Text(
+                          widget.name,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                            shadows: [
+                              Shadow(
+                                color: Colors.black,
+                                blurRadius: 10,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          textAlign: TextAlign.left,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    // WhatsApp badge for Farmer Products
+                    if (widget.nameEn == 'Farmer Products')
+                      Positioned(
+                        top: 12,
+                        right: 12,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF25D366),
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.3),
+                                blurRadius: 10,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.message,
+                                color: Colors.white,
+                                size: 15,
+                              ),
+                              const SizedBox(width: 4),
+                              const Text(
+                                'WhatsApp',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

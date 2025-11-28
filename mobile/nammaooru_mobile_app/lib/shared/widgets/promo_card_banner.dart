@@ -77,17 +77,24 @@ class _PromoCardBannerState extends State<PromoCardBanner> {
           gradient: LinearGradient(
             colors: [
               widget.backgroundColor,
-              widget.backgroundColor.withOpacity(0.8),
+              widget.backgroundColor.withOpacity(0.7),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
+            stops: const [0.0, 1.0],
           ),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: widget.backgroundColor.withOpacity(0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: widget.backgroundColor.withOpacity(0.4),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+              spreadRadius: 2,
+            ),
+            BoxShadow(
+              color: widget.backgroundColor.withOpacity(0.15),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
