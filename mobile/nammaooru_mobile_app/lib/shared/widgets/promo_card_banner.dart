@@ -1,40 +1,83 @@
 import 'package:flutter/material.dart';
+import '../../core/services/promo_code_service.dart';
 
-class PromoCardBanner extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final String description;
+class PromoCardBanner extends StatefulWidget {
+  final String? title;
+  final String? subtitle;
+  final String? description;
   final Color backgroundColor;
   final Color textColor;
   final IconData? icon;
   final VoidCallback? onTap;
   final String? badgeText;
   final Color? badgeColor;
+  final PromoCode? promoCode;
 
   const PromoCardBanner({
     super.key,
-    required this.title,
-    required this.subtitle,
-    required this.description,
+    this.title,
+    this.subtitle,
+    this.description,
     this.backgroundColor = const Color(0xFF4CAF50),
     this.textColor = Colors.white,
     this.icon,
     this.onTap,
     this.badgeText,
     this.badgeColor,
+    this.promoCode,
   });
 
   @override
+  State<PromoCardBanner> createState() => _PromoCardBannerState();
+}
+
+class _PromoCardBannerState extends State<PromoCardBanner> {
+  late PromoCode _promoCode;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.promoCode != null) {
+      _promoCode = widget.promoCode!;
+      _isLoading = false;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isLoading && widget.promoCode == null) {
+      return Container(
+        margin: const EdgeInsets.symmetric(vertical: 12.0),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: const Center(
+          child: SizedBox(
+            height: 30,
+            width: 30,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
+
+    final promo = widget.promoCode ?? _promoCode;
+    final displayTitle = widget.title ?? promo?.title ?? 'Special Offer';
+    final displaySubtitle = widget.subtitle ?? promo?.formattedDiscount ?? 'Limited Time';
+    final displayDescription = widget.description ?? promo?.description ?? promo?.formattedMinOrder ?? '';
+
     return GestureDetector(
-      onTap: onTap,
+      onTap: widget.onTap,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 12.0),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              backgroundColor,
-              backgroundColor.withOpacity(0.8),
+              widget.backgroundColor,
+              widget.backgroundColor.withOpacity(0.8),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -42,7 +85,7 @@ class PromoCardBanner extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: backgroundColor.withOpacity(0.3),
+              color: widget.backgroundColor.withOpacity(0.3),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -69,13 +112,13 @@ class PromoCardBanner extends StatelessWidget {
               child: Row(
                 children: [
                   // Icon (optional)
-                  if (icon != null)
+                  if (widget.icon != null)
                     Padding(
                       padding: const EdgeInsets.only(right: 20.0),
                       child: Icon(
-                        icon,
+                        widget.icon,
                         size: 48,
-                        color: textColor,
+                        color: widget.textColor,
                       ),
                     ),
                   // Text content
@@ -85,53 +128,72 @@ class PromoCardBanner extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          title,
+                          displayTitle,
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
-                            color: textColor.withOpacity(0.9),
+                            color: widget.textColor.withOpacity(0.9),
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          subtitle,
+                          displaySubtitle,
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
-                            color: textColor,
+                            color: widget.textColor,
                           ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          description,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w400,
-                            color: textColor.withOpacity(0.85),
-                          ),
-                          maxLines: 2,
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
+                        const SizedBox(height: 6),
+                        if (displayDescription.isNotEmpty)
+                          Text(
+                            displayDescription,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w400,
+                              color: widget.textColor.withOpacity(0.85),
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        // Show promo code if available
+                        if (promo != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              'Code: ${promo.code}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: widget.textColor,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),
                   // Badge (optional)
-                  if (badgeText != null)
+                  if (widget.badgeText != null || promo?.isFirstTimeOnly == true)
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: badgeColor ?? Colors.white,
+                        color: widget.badgeColor ?? Colors.white,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        badgeText!,
+                        widget.badgeText ?? 'FIRST TIME',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
-                          color: backgroundColor,
+                          color: widget.backgroundColor,
                         ),
                       ),
                     ),
