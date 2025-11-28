@@ -19,11 +19,16 @@ class ImageUrlHelper {
     }
 
     // If it's a relative path, prepend base URL
-    String baseUrl = EnvConfig.baseUrl;
+    String baseUrl = EnvConfig.imageBaseUrl;
 
     // Ensure imageUrl starts with /
     if (!imageUrl.startsWith('/')) {
       imageUrl = '/$imageUrl';
+    }
+
+    // Add /uploads prefix if not already present (static files are served from /uploads/**)
+    if (!imageUrl.startsWith('/uploads/')) {
+      imageUrl = '/uploads$imageUrl';
     }
 
     return '$baseUrl$imageUrl';

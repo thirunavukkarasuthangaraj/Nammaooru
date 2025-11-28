@@ -7,6 +7,33 @@ import '../constants/app_constants.dart';
 
 class ShopService {
 
+  /// Get the current shop owner's shop details
+  Future<ShopModel> getMyShop() async {
+    try {
+      final response = await ApiClient.get('/shops/my-shop');
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+        // Backend may return data directly or wrapped in ApiResponse
+        if (data is Map<String, dynamic>) {
+          // Check if it's wrapped in ApiResponse
+          if (data['statusCode'] == AppConstants.successCode && data['data'] != null) {
+            return ShopModel.fromJson(data['data']);
+          }
+          // If data has 'id' field, it's a direct ShopModel response
+          if (data.containsKey('id')) {
+            return ShopModel.fromJson(data);
+          }
+        }
+        throw Exception('Invalid response format');
+      } else {
+        throw Exception('HTTP ${response.statusCode}: Failed to fetch my shop');
+      }
+    } catch (e) {
+      throw Exception('Error fetching my shop: $e');
+    }
+  }
+
   Future<ShopListResponse> getShops({
     int page = 0,
     int size = 20,

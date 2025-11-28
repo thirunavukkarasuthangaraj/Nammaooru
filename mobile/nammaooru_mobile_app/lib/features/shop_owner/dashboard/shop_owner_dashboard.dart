@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/utils/helpers.dart';
+import '../../../core/utils/image_url_helper.dart';
+import '../../../core/models/shop_model.dart';
+import '../../../core/services/shop_service.dart';
 import '../../../shared/services/notification_service.dart';
 
 class ShopOwnerDashboard extends StatefulWidget {
@@ -15,6 +19,35 @@ class ShopOwnerDashboard extends StatefulWidget {
 
 class _ShopOwnerDashboardState extends State<ShopOwnerDashboard> {
   bool _isShopOnline = true;
+  ShopModel? _shop;
+  bool _isLoading = true;
+  final ShopService _shopService = ShopService();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadShopData();
+  }
+
+  Future<void> _loadShopData() async {
+    try {
+      final shop = await _shopService.getMyShop();
+      if (mounted) {
+        setState(() {
+          _shop = shop;
+          _isShopOnline = shop.isActive;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+      debugPrint('Error loading shop data: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -113,6 +146,11 @@ class _ShopOwnerDashboardState extends State<ShopOwnerDashboard> {
   }
 
   Widget _buildShopStatusCard(Color primaryColor) {
+    final shopName = _shop?.name ?? 'My Shop';
+    final rating = _shop?.rating?.toStringAsFixed(1) ?? '0.0';
+    final totalOrders = _shop?.totalOrders ?? 0;
+    final logoUrl = _shop?.logoUrl;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -134,16 +172,104 @@ class _ShopOwnerDashboardState extends State<ShopOwnerDashboard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Fresh Mart Store',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+              // Shop Logo
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
                   color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: logoUrl != null
+                      ? CachedNetworkImage(
+                          imageUrl: ImageUrlHelper.getFullImageUrl(logoUrl),
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            color: Colors.grey[200],
+                            child: Icon(
+                              Icons.store,
+                              color: primaryColor,
+                              size: 30,
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            color: Colors.grey[200],
+                            child: Icon(
+                              Icons.store,
+                              color: primaryColor,
+                              size: 30,
+                            ),
+                          ),
+                        )
+                      : Container(
+                          color: Colors.grey[200],
+                          child: Icon(
+                            Icons.store,
+                            color: primaryColor,
+                            size: 30,
+                          ),
+                        ),
                 ),
               ),
+              const SizedBox(width: 16),
+              // Shop Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      shopName,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _isShopOnline ? Colors.green : Colors.red,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            _isShopOnline ? 'ONLINE' : 'OFFLINE',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '$rating ⭐ • $totalOrders orders',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              // Online/Offline Toggle
               Switch(
                 value: _isShopOnline,
                 onChanged: (value) {
@@ -154,35 +280,6 @@ class _ShopOwnerDashboardState extends State<ShopOwnerDashboard> {
                 },
                 activeColor: Colors.white,
                 activeTrackColor: Colors.white.withOpacity(0.3),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: _isShopOnline ? Colors.green : Colors.red,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  _isShopOnline ? 'ONLINE' : 'OFFLINE',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                '4.8 ⭐ • 1,247 orders',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 14,
-                ),
               ),
             ],
           ),

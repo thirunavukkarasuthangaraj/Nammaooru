@@ -35,6 +35,7 @@ class ShopModel {
   final String? updatedBy;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final List<ShopImage>? images;
 
   ShopModel({
     required this.id,
@@ -73,6 +74,7 @@ class ShopModel {
     this.updatedBy,
     this.createdAt,
     this.updatedAt,
+    this.images,
   });
 
   factory ShopModel.fromJson(Map<String, dynamic> json) {
@@ -113,6 +115,9 @@ class ShopModel {
       updatedBy: json['updatedBy'],
       createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt']) : null,
       updatedAt: json['updatedAt'] != null ? DateTime.tryParse(json['updatedAt']) : null,
+      images: json['images'] != null
+          ? (json['images'] as List).map((img) => ShopImage.fromJson(img)).toList()
+          : null,
     );
   }
 
@@ -186,6 +191,20 @@ class ShopModel {
     }
     return 'Min order ₹${minOrderAmount!.toStringAsFixed(0)}';
   }
+
+  /// Get the shop logo URL
+  String? get logoUrl {
+    if (images == null || images!.isEmpty) return null;
+    // Find LOGO type first, then primary, then first image
+    final logo = images!.firstWhere(
+      (img) => img.imageType == 'LOGO',
+      orElse: () => images!.firstWhere(
+        (img) => img.isPrimary == true,
+        orElse: () => images!.first,
+      ),
+    );
+    return logo.imageUrl;
+  }
 }
 
 class ShopListResponse {
@@ -226,5 +245,41 @@ class ShopListResponse {
       hasNext: !(json['last'] ?? true),  // Calculate hasNext based on 'last'
       hasPrevious: !(json['first'] ?? true),  // Calculate hasPrevious based on 'first'
     );
+  }
+}
+
+class ShopImage {
+  final int id;
+  final String imageUrl;
+  final String? imageType;
+  final bool? isPrimary;
+  final DateTime? createdAt;
+
+  ShopImage({
+    required this.id,
+    required this.imageUrl,
+    this.imageType,
+    this.isPrimary,
+    this.createdAt,
+  });
+
+  factory ShopImage.fromJson(Map<String, dynamic> json) {
+    return ShopImage(
+      id: json['id'] ?? 0,
+      imageUrl: json['imageUrl'] ?? '',
+      imageType: json['imageType'],
+      isPrimary: json['isPrimary'],
+      createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt']) : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'imageUrl': imageUrl,
+      'imageType': imageType,
+      'isPrimary': isPrimary,
+      'createdAt': createdAt?.toIso8601String(),
+    };
   }
 }
