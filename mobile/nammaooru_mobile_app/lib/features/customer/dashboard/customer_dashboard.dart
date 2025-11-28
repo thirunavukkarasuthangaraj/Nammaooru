@@ -1150,7 +1150,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
 
     return GestureDetector(
       onTap: () {
-        Navigator.pushNamed(context, '/customer/orders');
+        context.go('/customer/orders');
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
