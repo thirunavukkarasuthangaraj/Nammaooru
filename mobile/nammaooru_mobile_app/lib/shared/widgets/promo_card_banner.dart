@@ -130,32 +130,33 @@ class _PromoCardBannerState extends State<PromoCardBanner> {
                         Text(
                           displayTitle,
                           style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: widget.textColor.withOpacity(0.9),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          displaySubtitle,
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: widget.textColor,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: widget.textColor.withOpacity(0.95),
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 6),
+                        Text(
+                          displaySubtitle,
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w900,
+                            color: widget.textColor,
+                            letterSpacing: 0.5,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 8),
                         if (displayDescription.isNotEmpty)
                           Text(
                             displayDescription,
                             style: TextStyle(
                               fontSize: 13,
-                              fontWeight: FontWeight.w400,
-                              color: widget.textColor.withOpacity(0.85),
+                              fontWeight: FontWeight.w600,
+                              color: widget.textColor.withOpacity(0.9),
                             ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
@@ -163,14 +164,15 @@ class _PromoCardBannerState extends State<PromoCardBanner> {
                         // Show promo code if available
                         if (promo != null)
                           Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
+                            padding: const EdgeInsets.only(top: 10.0),
                             child: Text(
                               'Code: ${promo.code}',
                               style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w900,
                                 color: widget.textColor,
                                 decoration: TextDecoration.underline,
+                                decorationThickness: 2,
                               ),
                             ),
                           ),
