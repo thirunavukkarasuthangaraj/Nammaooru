@@ -1,12 +1,12 @@
 class ApiConfig {
   // Base URL for API calls
-  static const String baseUrl = 'https://nammaoorudelivary.in/api';
+  static const String baseUrl = 'https://api.nammaoorudelivary.in/api';
 
   // Web URL for Chrome testing
-  static const String webBaseUrl = 'https://nammaoorudelivary.in/api';
+  static const String webBaseUrl = 'https://api.nammaoorudelivary.in/api';
 
   // Production URL
-  static const String prodBaseUrl = 'https://nammaoorudelivary.in/api';
+  static const String prodBaseUrl = 'https://api.nammaoorudelivary.in/api';
 
   // Environment detection
   static bool get isWeb => identical(0, 0.0);
