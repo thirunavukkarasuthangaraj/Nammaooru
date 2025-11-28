@@ -80,13 +80,18 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     if (otp.length != 6) {
       Helpers.showSnackBar(
         context,
-        'Please enter complete OTP',
+        'Please enter a complete 6-digit OTP',
         isError: true,
       );
       return;
     }
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    // Prevent multiple verification attempts
+    if (authProvider.authState == AuthState.loading) {
+      return;
+    }
 
     final success = await authProvider.verifyOtp(widget.email ?? '', otp);
 
@@ -108,10 +113,12 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
           context.pushReplacement(
               '/customer/dashboard'); // Default to customer dashboard
         }
-      } else if (authProvider.errorMessage != null) {
+      } else {
+        // Show detailed error message
+        final errorMessage = authProvider.errorMessage ?? 'OTP verification failed. Please try again.';
         Helpers.showSnackBar(
           context,
-          authProvider.errorMessage!,
+          errorMessage,
           isError: true,
         );
         _clearOtp();
@@ -329,9 +336,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
             return null;
           },
           onChanged: (value) {
+            setState(() {}); // Update UI to show input
             if (value.length == 6) {
               // Auto-verify when all 6 digits are entered
-              Future.delayed(const Duration(milliseconds: 300), () {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (mounted && _otpValue.length == 6) {
                   _handleVerifyOtp();
                 }
