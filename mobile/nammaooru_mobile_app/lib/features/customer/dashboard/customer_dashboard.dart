@@ -470,6 +470,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           ),
           borderRadius: BorderRadius.circular(20),
           boxShadow: [],
+          border: Border.all(color: Colors.grey.shade300, width: 1),
         ),
         child: Row(
           children: [
@@ -644,6 +645,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         decoration: BoxDecoration(
           borderRadius: borderRadius,
           boxShadow: [],
+          border: Border.all(color: Colors.grey.shade300, width: 1),
         ),
         child: ClipRRect(
           borderRadius: borderRadius,
@@ -807,6 +809,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
           boxShadow: [],
+          border: Border.all(color: Colors.grey.shade300, width: 1),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1139,6 +1142,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
           boxShadow: [],
+          border: Border.all(color: Colors.grey.shade300, width: 1),
         ),
         child: Row(
           children: [
