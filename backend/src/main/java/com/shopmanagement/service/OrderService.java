@@ -410,24 +410,10 @@ public class OrderService {
             });
         }
         
-        // Send status update email (skip for PREPARING - push notification only)
-        if (status != Order.OrderStatus.PREPARING) {
-            try {
-                emailService.sendOrderStatusUpdateEmail(
-                    order.getCustomer().getEmail(),
-                    order.getCustomer().getFullName(),
-                    order.getOrderNumber(),
-                    oldStatus.name(),
-                    status.name()
-                );
-            } catch (Exception e) {
-                log.error("Failed to send order status update email", e);
-            }
-        } else {
-            log.info("Skipping email for PREPARING status - push notification will be sent instead for order: {}", order.getOrderNumber());
-        }
+        // Track if push notification was sent successfully
+        boolean pushNotificationSent = false;
 
-        // Send push notification to customer for all status updates
+        // Send push notification to customer for all status updates (try push first)
         try {
             log.info("🔔 Starting push notification process for order: {}", order.getOrderNumber());
 
@@ -459,6 +445,7 @@ public class OrderService {
                             fcmToken,
                             order.getCustomer().getId()
                         );
+                        pushNotificationSent = true;
                         log.info("✅ Push notification sent successfully for order status update: {} -> {} to user: {}",
                                 oldStatus.name(), status.name(), username);
                     } else {
@@ -474,6 +461,29 @@ public class OrderService {
             }
         } catch (Exception e) {
             log.error("❌ Failed to send push notification for status update", e);
+        }
+
+        // Send email notification (always for non-PREPARING, or as fallback for PREPARING if push failed)
+        boolean shouldSendEmail = (status != Order.OrderStatus.PREPARING) ||
+                                  (status == Order.OrderStatus.PREPARING && !pushNotificationSent);
+
+        if (shouldSendEmail) {
+            try {
+                if (status == Order.OrderStatus.PREPARING) {
+                    log.info("📧 Sending email as fallback for PREPARING status (push notification failed) for order: {}", order.getOrderNumber());
+                }
+                emailService.sendOrderStatusUpdateEmail(
+                    order.getCustomer().getEmail(),
+                    order.getCustomer().getFullName(),
+                    order.getOrderNumber(),
+                    oldStatus.name(),
+                    status.name()
+                );
+            } catch (Exception e) {
+                log.error("Failed to send order status update email", e);
+            }
+        } else {
+            log.info("📱 Skipping email for PREPARING status - push notification was sent successfully for order: {}", order.getOrderNumber());
         }
         
         // Auto-send invoice when order is delivered (Email + WhatsApp)
