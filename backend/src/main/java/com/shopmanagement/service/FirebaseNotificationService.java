@@ -24,25 +24,26 @@ public class FirebaseNotificationService {
     private final CustomerRepository customerRepository;
 
     public void sendOrderNotification(String orderNumber, String status, String customerToken, Long customerId) {
+        log.info("🚀 FirebaseNotificationService: Preparing notification for order {} with status {}", orderNumber, status);
+
+        String title = getNotificationTitle(status);
+        String body = getNotificationBody(orderNumber, status);
+
+        log.info("📄 Notification details - Title: '{}', Body: '{}'", title, body);
+        log.info("🎯 Target FCM token: {}...", customerToken.substring(0, Math.min(50, customerToken.length())));
+
         try {
-            log.info("🚀 FirebaseNotificationService: Preparing notification for order {} with status {}", orderNumber, status);
-
-            String title = getNotificationTitle(status);
-            String body = getNotificationBody(orderNumber, status);
-
-            log.info("📄 Notification details - Title: '{}', Body: '{}'", title, body);
-            log.info("🎯 Target FCM token: {}...", customerToken.substring(0, Math.min(50, customerToken.length())));
-
-            // Send push notification
+            // Send push notification - this can throw RuntimeException on failure
             sendPushNotification(customerToken, title, body, createOrderData(orderNumber, status));
 
-            // Save notification history
+            // Save notification history only on success
             saveNotificationHistory(customerId, title, body, "ORDER_UPDATE", orderNumber);
 
             log.info("✅ Firebase notification processing completed for order: {}", orderNumber);
-
         } catch (Exception e) {
             log.error("❌ Error sending Firebase notification for order: {}", orderNumber, e);
+            // Re-throw to let caller know notification failed (for fallback handling)
+            throw new RuntimeException("Failed to send push notification for order: " + orderNumber, e);
         }
     }
 
