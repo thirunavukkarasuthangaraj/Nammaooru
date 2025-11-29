@@ -555,10 +555,30 @@ public class OrderService {
 
         Order cancelledOrder = orderRepository.save(order);
 
-        // Send cancellation notification to customer and shop
+        // Send cancellation notification to customer
         try {
             log.info("Sending cancellation notification for order: {}", order.getOrderNumber());
-            notificationService.notifyOrderCancellation(order, reason);
+            if (order.getCustomer() != null && order.getCustomer().getEmail() != null) {
+                String customerEmail = order.getCustomer().getEmail();
+                User customerUser = userRepository.findByEmail(customerEmail).orElse(null);
+                if (customerUser != null) {
+                    List<String> fcmTokens = getFcmTokensForUser(customerUser.getId());
+                    for (String fcmToken : fcmTokens) {
+                        try {
+                            firebaseNotificationService.sendOrderNotification(
+                                order.getOrderNumber(),
+                                "CANCELLED",
+                                fcmToken,
+                                order.getCustomer().getId()
+                            );
+                            log.info("Cancellation notification sent for order: {}", order.getOrderNumber());
+                            break;
+                        } catch (Exception tokenError) {
+                            log.warn("Failed to send cancellation notification with token: {}", tokenError.getMessage());
+                        }
+                    }
+                }
+            }
         } catch (Exception e) {
             log.error("Failed to send cancellation notification: {}", order.getOrderNumber(), e);
         }
