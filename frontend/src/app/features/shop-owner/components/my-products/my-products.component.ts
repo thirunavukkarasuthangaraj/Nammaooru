@@ -87,6 +87,7 @@ export class MyProductsComponent implements OnInit, OnDestroy {
   // Pagination
   totalProducts = 0;
   pageSize = 12;
+  currentPageIndex = 0;
   
   // Table columns
   displayedColumns: string[] = ['image', 'name', 'price', 'stock', 'status', 'actions'];
@@ -329,30 +330,33 @@ export class MyProductsComponent implements OnInit, OnDestroy {
 
   applyFilters(): void {
     this.filteredProducts = this.products.filter(product => {
-      const matchesSearch = !this.searchTerm || 
+      const matchesSearch = !this.searchTerm ||
         product.customName.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
         product.description?.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
         product.sku?.toLowerCase().includes(this.searchTerm.toLowerCase());
-      
+
       const matchesCategory = !this.selectedCategory || product.category === this.selectedCategory;
-      const matchesStatus = !this.selectedStatus || 
+      const matchesStatus = !this.selectedStatus ||
         product.status === this.selectedStatus ||
         (this.selectedStatus === 'available' && product.isAvailable) ||
         (this.selectedStatus === 'unavailable' && !product.isAvailable);
-      
+
       return matchesSearch && matchesCategory && matchesStatus;
     });
-    
+
     this.totalProducts = this.filteredProducts.length;
-    
+
+    // Reset to first page when filters change
+    this.currentPageIndex = 0;
+
     // Clean up selection - remove products that are no longer in filtered results
-    this.selectedProducts = this.selectedProducts.filter(selected => 
+    this.selectedProducts = this.selectedProducts.filter(selected =>
       this.filteredProducts.some(filtered => filtered.id === selected.id)
     );
-    
+
     // Update select all state after filtering
     this.updateSelectAllState();
-    
+
     this.loadCategories(); // Update categories based on filtered products
   }
 
@@ -772,8 +776,8 @@ export class MyProductsComponent implements OnInit, OnDestroy {
   }
 
   onPageChange(event: any): void {
-    // Pagination logic would go here
-    console.log('Page changed:', event);
+    this.currentPageIndex = event.pageIndex;
+    console.log('Page changed:', event.pageIndex, 'Page size:', event.pageSize);
   }
 
 

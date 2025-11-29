@@ -58,7 +58,7 @@
   <!-- Products List -->
   <div class="products-list" *ngIf="!loading">
     <mat-card class="list-container">
-      <table mat-table [dataSource]="filteredProducts" class="products-table">
+      <table mat-table [dataSource]="filteredProducts | slice: currentPageIndex * pageSize : (currentPageIndex + 1) * pageSize" class="products-table">
         
         <!-- Image Column -->
         <ng-container matColumnDef="image">
