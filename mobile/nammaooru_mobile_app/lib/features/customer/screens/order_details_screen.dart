@@ -658,13 +658,17 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   }
 
   String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
+    // Convert to local time (IST)
+    final localDate = date.toLocal();
+    return '${localDate.day}/${localDate.month}/${localDate.year}';
   }
 
   String _formatDateTime(DateTime date) {
-    final hour = date.hour > 12 ? date.hour - 12 : date.hour;
-    final period = date.hour >= 12 ? 'PM' : 'AM';
-    return '${date.day}/${date.month}/${date.year} ${hour == 0 ? 12 : hour}:${date.minute.toString().padLeft(2, '0')} $period';
+    // Convert to local time (IST)
+    final localDate = date.toLocal();
+    final hour = localDate.hour > 12 ? localDate.hour - 12 : localDate.hour;
+    final period = localDate.hour >= 12 ? 'PM' : 'AM';
+    return '${localDate.day}/${localDate.month}/${localDate.year} ${hour == 0 ? 12 : hour}:${localDate.minute.toString().padLeft(2, '0')} $period';
   }
 
   void _showCancelDialog() {

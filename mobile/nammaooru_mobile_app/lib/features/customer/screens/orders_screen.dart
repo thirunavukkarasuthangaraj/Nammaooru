@@ -651,21 +651,24 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
   }
 
   String _formatDate(DateTime date) {
+    // Convert to local time (IST)
+    final localDate = date.toLocal();
     final now = DateTime.now();
-    final difference = now.difference(date);
+    final difference = now.difference(localDate);
 
     if (difference.inDays == 0) {
-      return 'Today, ${_formatTime(date)}';
+      return 'Today, ${_formatTime(localDate)}';
     } else if (difference.inDays == 1) {
-      return 'Yesterday, ${_formatTime(date)}';
+      return 'Yesterday, ${_formatTime(localDate)}';
     } else if (difference.inDays < 7) {
       return '${difference.inDays} days ago';
     } else {
-      return '${date.day}/${date.month}/${date.year}';
+      return '${localDate.day}/${localDate.month}/${localDate.year}';
     }
   }
 
   String _formatTime(DateTime date) {
+    // Date should already be in local time when passed from _formatDate
     final hour = date.hour > 12 ? date.hour - 12 : date.hour;
     final period = date.hour >= 12 ? 'PM' : 'AM';
     return '${hour == 0 ? 12 : hour}:${date.minute.toString().padLeft(2, '0')} $period';

@@ -32,7 +32,7 @@ class Order {
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
-    // Use estimatedDeliveryTime as orderDate if orderDate is not available
+    // Parse date from various possible field names
     DateTime parseDate(String? dateStr) {
       if (dateStr == null || dateStr.isEmpty) return DateTime.now();
       try {
@@ -45,7 +45,8 @@ class Order {
     return Order(
       id: json['id']?.toString() ?? '',
       orderNumber: json['orderNumber'] ?? '',
-      orderDate: parseDate(json['orderDate'] ?? json['estimatedDeliveryTime']),
+      // Backend sends createdAt, fallback to orderDate or estimatedDeliveryTime
+      orderDate: parseDate(json['createdAt'] ?? json['orderDate'] ?? json['estimatedDeliveryTime']),
       status: json['status'] ?? 'PENDING',
       totalAmount: (json['totalAmount'] ?? 0).toDouble(),
       paymentMethod: json['paymentMethod'] ?? 'CASH_ON_DELIVERY',
