@@ -117,13 +117,23 @@ public class GeminiSearchService {
         prompt.append("   - One product per line\n");
         prompt.append("   - If NO match found, return 'NONE'\n\n");
 
+        prompt.append("5. MULTI-PRODUCT QUERIES:\n");
+        prompt.append("   - If query contains MULTIPLE products, return ALL matching products\n");
+        prompt.append("   - 'பால் அரிசி' (milk rice) → return BOTH milk AND rice products\n");
+        prompt.append("   - 'oil rice milk' → return ALL oil, rice, AND milk products\n");
+        prompt.append("   - Split by spaces and find matches for EACH word\n\n");
+
         prompt.append("Example:\n");
         prompt.append("Query: 'arisi' → Return: 'Basmati Rice | பாஸ்மதி அரிசி'\n");
         prompt.append("Query: 'coffee' → Return: 'BRU Coffee | பிரூ காபி'\n");
-        prompt.append("Query: 'தக்காளி' → Return: 'Tomato | தக்காளி'\n\n");
+        prompt.append("Query: 'தக்காளி' → Return: 'Tomato | தக்காளி'\n");
+        prompt.append("Query: 'பால் அரிசி' → Return BOTH:\n");
+        prompt.append("  Milk | பால்\n");
+        prompt.append("  Basmati Rice | பாஸ்மதி அரிசி\n\n");
 
         prompt.append("Your task: Find ALL products that match the query \"").append(query).append("\".\n");
-        prompt.append("Remember: Be STRICT - only return products that are truly related to the query.");
+        prompt.append("If query has multiple words, find matches for EACH word separately and return ALL matches.\n");
+        prompt.append("Remember: Be STRICT about product type - only return products that are truly related to the query words.");
 
         return prompt.toString();
     }
