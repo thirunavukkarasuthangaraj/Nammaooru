@@ -153,23 +153,34 @@ public class ShopProductController {
                 matchedProducts = searchResults.getContent();
                 log.info("📝 Text search found {} products for query: {}", matchedProducts.size(), query);
             } else {
-                // Match products by name (handle both English and Tamil) - STRICT matching only
+                // Match products by name (handle both English and Tamil)
+                // Priority: exact match > contains match (AI already filtered, so contains is safe)
                 for (ShopProductResponse product : allProducts.getContent()) {
                     String productName = product.getDisplayName(); // Use displayName
                     String tamilName = product.getMasterProduct() != null ? product.getMasterProduct().getNameTamil() : null;
+                    String productNameLower = productName.toLowerCase();
+                    String tamilNameLower = tamilName != null ? tamilName.toLowerCase() : "";
 
                     for (String aiMatch : aiMatches) {
                         // Remove Tamil part if present (format: "Name | தமிழ்")
                         String cleanMatch = aiMatch.split("\\|")[0].trim();
                         String tamilPart = aiMatch.contains("|") ? aiMatch.split("\\|")[1].trim() : "";
+                        String cleanMatchLower = cleanMatch.toLowerCase();
+                        String tamilPartLower = tamilPart.toLowerCase();
 
-                        // STRICT matching: Only exact name matches or exact Tamil name matches
+                        // Check for exact match first
                         boolean exactNameMatch = productName.equalsIgnoreCase(cleanMatch);
                         boolean exactTamilMatch = tamilName != null && !tamilName.isEmpty() &&
                                                   (tamilName.equalsIgnoreCase(cleanMatch) || tamilName.equalsIgnoreCase(tamilPart));
                         boolean fullLineMatch = aiMatch.equalsIgnoreCase(productName + " | " + tamilName);
 
-                        if (exactNameMatch || exactTamilMatch || fullLineMatch) {
+                        // Check for contains match (AI already filtered so this is safe)
+                        boolean containsNameMatch = productNameLower.contains(cleanMatchLower) ||
+                                                    cleanMatchLower.contains(productNameLower);
+                        boolean containsTamilMatch = !tamilNameLower.isEmpty() && !tamilPartLower.isEmpty() &&
+                                                     (tamilNameLower.contains(tamilPartLower) || tamilPartLower.contains(tamilNameLower));
+
+                        if (exactNameMatch || exactTamilMatch || fullLineMatch || containsNameMatch || containsTamilMatch) {
                             matchedProducts.add(product);
                             log.debug("✅ Matched product: {} (aiMatch: {})", productName, aiMatch);
                             break;
