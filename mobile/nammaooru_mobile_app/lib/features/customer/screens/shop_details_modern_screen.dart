@@ -1343,6 +1343,7 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
   void _showSearchDialog() {
     showDialog(
       context: context,
+      barrierDismissible: false, // Prevent closing on outside click
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => Dialog(
           shape: RoundedRectangleBorder(
@@ -1551,6 +1552,7 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
 
     showDialog(
       context: context,
+      barrierDismissible: false, // Prevent closing on outside click
       builder: (context) => StatefulBuilder(
         builder: (context, setState) {
           return Dialog(

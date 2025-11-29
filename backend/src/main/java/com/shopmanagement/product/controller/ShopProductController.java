@@ -142,9 +142,12 @@ public class ShopProductController {
             List<ShopProductResponse> matchedProducts = new ArrayList<>();
 
             if (aiMatches.isEmpty()) {
-                // If AI returns nothing, return all products as fallback
-                matchedProducts = allProducts.getContent();
-                log.info("⚠️ AI returned no matches, showing all {} products", matchedProducts.size());
+                // If AI returns nothing, use regular text search as fallback (not all products)
+                log.info("⚠️ AI returned no matches, falling back to text search for: {}", query);
+                Pageable searchPageable = PageRequest.of(0, 100);
+                Page<ShopProductResponse> searchResults = shopProductService.searchShopProducts(shopId, query, searchPageable);
+                matchedProducts = searchResults.getContent();
+                log.info("📝 Text search found {} products for query: {}", matchedProducts.size(), query);
             } else {
                 // Match products by name (handle both English and Tamil)
                 for (ShopProductResponse product : allProducts.getContent()) {
@@ -182,21 +185,21 @@ public class ShopProductController {
         } catch (Exception e) {
             log.error("❌ Error in AI search: {}", e.getMessage(), e);
 
-            // Fallback: return all products if AI fails
-            Pageable pageable = PageRequest.of(0, 1000);
-            Specification<ShopProduct> spec = Specification.where(null);
-            Page<ShopProductResponse> allProducts = shopProductService.getShopProducts(shopId, spec, pageable);
+            // Fallback: use regular text search instead of showing all products
+            log.info("⚠️ AI error, falling back to text search for: {}", query);
+            Pageable searchPageable = PageRequest.of(0, 100);
+            Page<ShopProductResponse> searchResults = shopProductService.searchShopProducts(shopId, query, searchPageable);
 
             Map<String, Object> fallbackResponse = new HashMap<>();
             fallbackResponse.put("query", query);
-            fallbackResponse.put("matchedProducts", allProducts.getContent());
-            fallbackResponse.put("totalProducts", allProducts.getContent().size());
-            fallbackResponse.put("matchCount", allProducts.getContent().size());
-            fallbackResponse.put("error", "AI search failed, showing all products");
+            fallbackResponse.put("matchedProducts", searchResults.getContent());
+            fallbackResponse.put("totalProducts", searchResults.getTotalElements());
+            fallbackResponse.put("matchCount", searchResults.getContent().size());
+            fallbackResponse.put("error", "AI search failed, using text search");
 
             return ResponseEntity.ok(ApiResponse.success(
                     fallbackResponse,
-                    "AI search failed, showing all products as fallback"
+                    "AI search failed, using text search as fallback"
             ));
         }
     }
