@@ -141,9 +141,13 @@ public class ShopProductController {
             // Filter products based on AI matches
             List<ShopProductResponse> matchedProducts = new ArrayList<>();
 
-            if (aiMatches.isEmpty()) {
-                // If AI returns nothing, use regular text search as fallback (not all products)
-                log.info("⚠️ AI returned no matches, falling back to text search for: {}", query);
+            // Detect if AI just returned the original query (fallback case)
+            boolean isAiFallback = aiMatches.size() == 1 && aiMatches.get(0).equalsIgnoreCase(query);
+
+            if (aiMatches.isEmpty() || isAiFallback) {
+                // If AI returns nothing or just the original query, use regular text search as fallback
+                log.info("⚠️ AI returned {} matches (fallback={}), using text search for: {}",
+                        aiMatches.size(), isAiFallback, query);
                 Pageable searchPageable = PageRequest.of(0, 100);
                 Page<ShopProductResponse> searchResults = shopProductService.searchShopProducts(shopId, query, searchPageable);
                 matchedProducts = searchResults.getContent();
