@@ -428,28 +428,37 @@ public class OrderService {
                     String username = customerUser.getUsername();
                     log.info("✅ Found user: {} (ID: {}) for customer email: {}", username, userId, customerEmail);
 
-                    // Get FCM token for the customer
-                    String fcmToken = userFcmTokenRepository.findByUserIdAndIsActiveTrue(userId)
-                            .stream()
-                            .findFirst()
-                            .map(UserFcmToken::getFcmToken)
-                            .orElse(null);
-                    log.info("🔍 FCM token lookup for user ID {}: {}", userId,
-                            fcmToken != null ? "Found token (length: " + fcmToken.length() + ")" : "No token found");
+                    // Get ALL FCM tokens for the customer (try all until one works)
+                    List<String> fcmTokens = getFcmTokensForUser(userId);
+                    log.info("🔍 FCM token lookup for user ID {}: Found {} token(s)", userId, fcmTokens.size());
 
-                    if (fcmToken != null && !fcmToken.isEmpty()) {
-                        log.info("📱 Sending push notification to FCM token: {}...", fcmToken.substring(0, Math.min(50, fcmToken.length())));
-                        firebaseNotificationService.sendOrderNotification(
-                            order.getOrderNumber(),
-                            status.name(),
-                            fcmToken,
-                            order.getCustomer().getId()
-                        );
-                        pushNotificationSent = true;
-                        log.info("✅ Push notification sent successfully for order status update: {} -> {} to user: {}",
-                                oldStatus.name(), status.name(), username);
+                    if (!fcmTokens.isEmpty()) {
+                        // Try each token until one succeeds
+                        for (String fcmToken : fcmTokens) {
+                            try {
+                                log.info("📱 Trying FCM token: {}...", fcmToken.substring(0, Math.min(50, fcmToken.length())));
+                                firebaseNotificationService.sendOrderNotification(
+                                    order.getOrderNumber(),
+                                    status.name(),
+                                    fcmToken,
+                                    order.getCustomer().getId()
+                                );
+                                pushNotificationSent = true;
+                                log.info("✅ Push notification sent successfully for order status update: {} -> {} to user: {}",
+                                        oldStatus.name(), status.name(), username);
+                                break; // Success! No need to try other tokens
+                            } catch (Exception tokenError) {
+                                log.warn("⚠️ Failed to send notification with token, trying next: {}", tokenError.getMessage());
+                                // Continue to next token
+                            }
+                        }
+
+                        if (!pushNotificationSent) {
+                            log.error("❌ Failed to send push notification with all {} available tokens for order: {}",
+                                    fcmTokens.size(), order.getOrderNumber());
+                        }
                     } else {
-                        log.warn("❌ No FCM token found for customer user ID: {} (username: {})", userId, username);
+                        log.warn("❌ No FCM tokens found for customer user ID: {} (username: {})", userId, username);
                         log.warn("💡 User may need to login to mobile app to register FCM token");
                     }
                 } else {
