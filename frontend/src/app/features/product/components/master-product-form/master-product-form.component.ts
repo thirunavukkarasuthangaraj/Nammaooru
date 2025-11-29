@@ -14,6 +14,9 @@ import Swal from 'sweetalert2';
     <div class="form-wrapper">
       <mat-card class="form-card">
         <mat-card-header class="form-header">
+          <button mat-icon-button class="back-button" (click)="onCancel()" matTooltip="Go back">
+            <mat-icon>arrow_back</mat-icon>
+          </button>
           <div mat-card-avatar class="form-avatar">
             <mat-icon>inventory</mat-icon>
           </div>
@@ -295,6 +298,19 @@ import Swal from 'sweetalert2';
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
       padding: 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .back-button {
+      color: white;
+      align-self: flex-start;
+      margin-top: -8px;
+    }
+
+    .back-button:hover {
+      background-color: rgba(255, 255, 255, 0.2);
     }
 
     .form-header .mat-mdc-card-title {
@@ -893,23 +909,27 @@ export class MasterProductFormComponent implements OnInit {
 
     console.log('Loading product with ID:', this.productId);
     console.log('Available categories:', this.categories.length);
-    
+
     this.isLoading = true;
     this.productService.getMasterProduct(this.productId).subscribe({
       next: (product) => {
         console.log('Product data received:', product);
-        console.log('Product categoryId:', product.categoryId);
-        
+
+        // Extract categoryId from nested category object or direct field
+        const categoryId = product.categoryId || (product.category?.id);
+        console.log('Resolved categoryId:', categoryId);
+
         // Check if the category exists in our loaded categories
-        const categoryExists = this.categories.find(cat => cat.id === product.categoryId);
+        const categoryExists = this.categories.find(cat => cat.id === categoryId);
         console.log('Category exists in dropdown:', categoryExists ? 'Yes' : 'No', categoryExists);
-        
+
         this.productForm.patchValue({
           name: product.name,
+          nameTamil: product.nameTamil,
           description: product.description,
           sku: product.sku,
           barcode: product.barcode,
-          categoryId: product.categoryId,
+          categoryId: categoryId,
           brand: product.brand,
           baseUnit: product.baseUnit,
           baseWeight: product.baseWeight,
