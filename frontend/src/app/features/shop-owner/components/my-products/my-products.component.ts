@@ -526,21 +526,18 @@ export class MyProductsComponent implements OnInit, OnDestroy {
     }
 
     console.log('Updating product stock:', product.id, newStock, reason);
-    
-    const updateData: any = { stockQuantity: newStock };
-    if (reason) {
-      updateData.stockUpdateReason = reason;
-    }
-    
-    this.http.put(`${this.apiUrl}/shop-products/${product.id}`, updateData)
+
+    // Use the PATCH inventory endpoint with query params
+    // operation: SET = set exact value, ADD = add to current, SUBTRACT = subtract from current
+    this.http.patch(`${this.apiUrl}/shop-products/${product.id}/inventory?quantity=${newStock}&operation=SET`, {})
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: () => {
           // Update the product in our local array
           const index = this.products.findIndex(p => p.id === product.id);
           if (index !== -1) {
-            this.products[index] = { 
-              ...this.products[index], 
+            this.products[index] = {
+              ...this.products[index],
               stockQuantity: newStock
             };
             this.applyFilters();
@@ -616,7 +613,7 @@ export class MyProductsComponent implements OnInit, OnDestroy {
     }
 
     // Try to update in backend (image already uploaded, just update other fields)
-    this.http.put(`${this.apiUrl}/shop-owner/products/${productId}`, updatedData)
+    this.http.put(`${this.apiUrl}/shop-products/${productId}`, updatedData)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: () => {
@@ -648,7 +645,7 @@ export class MyProductsComponent implements OnInit, OnDestroy {
     }
 
     // Try to send update to backend, but don't fail if it errors
-    this.http.put(`${this.apiUrl}/shop-owner/products/${productId}`, updatedData)
+    this.http.put(`${this.apiUrl}/shop-products/${productId}`, updatedData)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: () => {
