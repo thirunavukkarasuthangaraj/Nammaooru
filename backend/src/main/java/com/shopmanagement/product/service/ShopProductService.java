@@ -93,7 +93,15 @@ public class ShopProductService {
 
     public ShopProductResponse addProductToShop(Long shopId, ShopProductRequest request) {
         log.info("Adding product to shop: {} - Product: {}", shopId, request.getMasterProductId());
-        
+
+        // Validate required fields for CREATE operation
+        if (request.getMasterProductId() == null) {
+            throw new IllegalArgumentException("Master product ID is required when adding a product to shop");
+        }
+        if (request.getPrice() == null) {
+            throw new IllegalArgumentException("Price is required when adding a product to shop");
+        }
+
         // Get shop
         Shop shop = shopRepository.findById(shopId)
                 .orElseThrow(() -> new RuntimeException("Shop not found with id: " + shopId));

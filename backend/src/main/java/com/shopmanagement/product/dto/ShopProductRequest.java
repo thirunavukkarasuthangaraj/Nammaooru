@@ -16,10 +16,11 @@ import java.util.List;
 @AllArgsConstructor
 public class ShopProductRequest {
 
-    @NotNull(message = "Master product ID is required")
+    // Note: masterProductId is required for CREATE but optional for UPDATE
+    // Validation is handled in the service layer based on operation type
     private Long masterProductId;
 
-    @NotNull(message = "Price is required")
+    // Note: price is required for CREATE but optional for UPDATE (partial updates)
     @DecimalMin(value = "0.0", message = "Price must be positive")
     private BigDecimal price;
 
