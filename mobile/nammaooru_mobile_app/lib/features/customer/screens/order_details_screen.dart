@@ -658,57 +658,101 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   }
 
   String _formatDate(DateTime date) {
-    // Convert to local time (IST)
-    final localDate = date.toLocal();
-    return '${localDate.day}/${localDate.month}/${localDate.year}';
+    // Backend sends IST with timezone offset - DateTime.parse handles it
+    return '${date.day}/${date.month}/${date.year}';
   }
 
   String _formatDateTime(DateTime date) {
-    // Convert to local time (IST)
-    final localDate = date.toLocal();
-    final hour = localDate.hour > 12 ? localDate.hour - 12 : localDate.hour;
-    final period = localDate.hour >= 12 ? 'PM' : 'AM';
-    return '${localDate.day}/${localDate.month}/${localDate.year} ${hour == 0 ? 12 : hour}:${localDate.minute.toString().padLeft(2, '0')} $period';
+    // Backend sends IST with timezone offset - DateTime.parse handles it
+    final hour = date.hour > 12 ? date.hour - 12 : date.hour;
+    final period = date.hour >= 12 ? 'PM' : 'AM';
+    return '${date.day}/${date.month}/${date.year} ${hour == 0 ? 12 : hour}:${date.minute.toString().padLeft(2, '0')} $period';
   }
 
   void _showCancelDialog() {
-    String reason = '';
-    
+    String? selectedReason;
+    String? customReason;
+
+    final predefinedReasons = [
+      'Changed my mind',
+      'Found better price elsewhere',
+      'Product no longer needed',
+      'Delivery time too long',
+      'Wrong product selected',
+      'Other (please specify)',
+    ];
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Cancel Order'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Are you sure you want to cancel order #${_order!.orderNumber}?'),
-            const SizedBox(height: 16),
-            TextField(
-              decoration: const InputDecoration(
-                labelText: 'Reason (Optional)',
-                hintText: 'Why are you cancelling this order?',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 2,
-              onChanged: (value) => reason = value,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Cancel Order'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Are you sure you want to cancel order #${_order!.orderNumber}?'),
+                const SizedBox(height: 16),
+                const Text(
+                  'Reason for cancellation:',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                ),
+                const SizedBox(height: 12),
+                ...predefinedReasons.map((reason) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: RadioListTile<String>(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(reason),
+                      value: reason,
+                      groupValue: selectedReason,
+                      onChanged: (value) {
+                        setState(() {
+                          selectedReason = value;
+                          if (value != 'Other (please specify)') {
+                            customReason = null;
+                          }
+                        });
+                      },
+                    ),
+                  );
+                }).toList(),
+                if (selectedReason == 'Other (please specify)') ...[
+                  const SizedBox(height: 8),
+                  TextField(
+                    decoration: const InputDecoration(
+                      labelText: 'Please specify reason',
+                      hintText: 'Why are you cancelling this order?',
+                      border: OutlineInputBorder(),
+                    ),
+                    maxLines: 2,
+                    onChanged: (value) => customReason = value,
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Keep Order'),
+            ),
+            TextButton(
+              onPressed: selectedReason == null
+                  ? null
+                  : () {
+                      final reason = selectedReason == 'Other (please specify)'
+                          ? customReason ?? ''
+                          : selectedReason ?? '';
+                      Navigator.pop(context);
+                      _cancelOrder(reason);
+                    },
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Cancel Order'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Keep Order'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _cancelOrder(reason);
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Cancel Order'),
-          ),
-        ],
       ),
     );
   }
