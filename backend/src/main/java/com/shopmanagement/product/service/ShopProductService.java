@@ -164,12 +164,14 @@ public class ShopProductService {
 
     public ShopProductResponse updateShopProduct(Long shopId, Long productId, ShopProductRequest request) {
         log.info("Updating shop product: Shop {} - Product {}", shopId, productId);
-        
+
         ShopProduct shopProduct = shopProductRepository.findById(productId)
                 .filter(p -> p.getShop().getId().equals(shopId))
                 .orElseThrow(() -> new RuntimeException("Shop product not found"));
-        
-        // Update fields
+
+        log.debug("Current masterProduct: {}, Request masterProductId: {}", shopProduct.getMasterProduct().getId(), request.getMasterProductId());
+
+        // Update fields (masterProductId is ignored for UPDATE operations)
         productMapper.updateEntity(request, shopProduct);
         shopProduct.setUpdatedBy(getCurrentUsername());
 

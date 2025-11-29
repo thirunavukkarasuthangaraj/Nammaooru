@@ -126,33 +126,34 @@ public class ShopOwnerProductController {
     @PreAuthorize("hasRole('SHOP_OWNER') or hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<ShopProductResponse>> updateProduct(
             @PathVariable Long productId,
-            @Valid @RequestBody ShopProductRequest request) {
-        
-        log.info("Updating product {} for current user", productId);
-        
+            @RequestBody ShopProductRequest request) {  // Removed @Valid - no validation needed for UPDATE
+
+        log.info("Updating product {} for current user (masterProductId not required for updates)", productId);
+
         // Get current user's shop
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String currentUsername = authentication.getName();
-        
+
         try {
             Shop currentShop = shopService.getShopByOwner(currentUsername);
-            
+
             if (currentShop == null) {
                 log.warn("No shop found for user: {}", currentUsername);
                 return ResponseEntity.badRequest().body(ApiResponse.error(
                         "No shop found for current user. Please ensure you have a shop registered."
                 ));
             }
-            
+
+            log.debug("Calling updateShopProduct with: shopId={}, productId={}, request={}", currentShop.getId(), productId, request);
             ShopProductResponse product = shopProductService.updateShopProduct(currentShop.getId(), productId, request);
-            
+
             log.info("Product updated successfully for shop: {} (owner: {})", currentShop.getId(), currentUsername);
-            
+
             return ResponseEntity.ok(ApiResponse.success(
                     product,
                     "Product updated successfully"
             ));
-            
+
         } catch (Exception e) {
             log.error("Error updating product {} for user: {}", productId, currentUsername, e);
             return ResponseEntity.badRequest().body(ApiResponse.error(

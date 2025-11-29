@@ -71,25 +71,45 @@ public class ProductAISearchService {
     }
 
     /**
-     * Check if product tags match any of the keywords
+     * Check if product matches keywords across multiple fields
+     * Priority: tags > name > brand > category > description
      */
     private boolean matchesKeywords(MasterProduct product, String[] keywords) {
-        // Check tags first (highest priority)
+        // Build searchable text from multiple fields for better matching
+        StringBuilder searchableText = new StringBuilder();
+
+        // Tags (highest priority)
         if (product.getTags() != null && !product.getTags().isEmpty()) {
-            String tagsLower = product.getTags().toLowerCase();
-            for (String keyword : keywords) {
-                if (keyword.length() > 0 && tagsLower.contains(keyword)) {
-                    return true;
-                }
-            }
+            searchableText.append(product.getTags()).append(" ");
         }
 
-        // Fallback: check product name and description
-        String searchableText = (product.getName() + " " +
-                               (product.getDescription() != null ? product.getDescription() : "")).toLowerCase();
+        // Product name
+        if (product.getName() != null) {
+            searchableText.append(product.getName()).append(" ");
+        }
 
+        // Brand
+        if (product.getBrand() != null) {
+            searchableText.append(product.getBrand()).append(" ");
+        }
+
+        // Category name
+        if (product.getCategory() != null && product.getCategory().getName() != null) {
+            searchableText.append(product.getCategory().getName()).append(" ");
+        }
+
+        // Description
+        if (product.getDescription() != null) {
+            searchableText.append(product.getDescription()).append(" ");
+        }
+
+        String searchableTextLower = searchableText.toString().toLowerCase();
+        log.debug("Voice search matching product: {} - searchable text: {}", product.getName(), searchableTextLower);
+
+        // Check if ANY keyword matches (OR logic)
         for (String keyword : keywords) {
-            if (keyword.length() > 0 && searchableText.contains(keyword)) {
+            if (keyword.length() > 0 && searchableTextLower.contains(keyword)) {
+                log.debug("  -> Matched keyword: '{}'", keyword);
                 return true;
             }
         }
@@ -110,15 +130,17 @@ public class ProductAISearchService {
 
     /**
      * Search products with voice/text query
+     * Returns up to 50 results for better user experience
      */
     public List<MasterProductResponse> voiceSearchProducts(String voiceQuery) {
         log.info("Voice search query: {}", voiceQuery);
 
         try {
             List<MasterProduct> products = searchProductsByKeywords(voiceQuery);
+            log.info("Voice search found {} products for query: '{}'", products.size(), voiceQuery);
 
             return products.stream()
-                    .limit(10) // Limit results for voice search
+                    .limit(50) // Return more results for voice search (increased from 10)
                     .map(productMapper::toResponse)
                     .collect(Collectors.toList());
 
