@@ -54,6 +54,17 @@ public interface MasterProductRepository extends JpaRepository<MasterProduct, Lo
            "LOWER(p.brand) LIKE LOWER(CONCAT('%', :search, '%'))")
     Page<MasterProduct> searchProducts(@Param("search") String search, Pageable pageable);
 
+    // AI Search - Find by status ordered by created date
+    @Query("SELECT p FROM MasterProduct p WHERE p.status = :status ORDER BY p.createdAt DESC")
+    List<MasterProduct> findByStatusOrderByCreatedAtDesc(@Param("status") MasterProduct.ProductStatus status);
+
+    // Search by tags (for AI search)
+    @Query("SELECT p FROM MasterProduct p WHERE " +
+           "p.status = :status AND " +
+           "LOWER(p.tags) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+           "ORDER BY p.createdAt DESC")
+    Page<MasterProduct> searchByTags(@Param("keyword") String keyword, @Param("status") MasterProduct.ProductStatus status, Pageable pageable);
+
     // Advanced search with filters
     @Query("SELECT p FROM MasterProduct p WHERE " +
            "(:categoryId IS NULL OR p.category.id = :categoryId) AND " +
