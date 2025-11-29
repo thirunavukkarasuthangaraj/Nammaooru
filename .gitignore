@@ -48,3 +48,5 @@ frontend/*.md
 documentation/*.md
 !documentation/firebase-setup/*.md
 !documentation/README.md
+uploads/
+fix_all_product_images.sql
