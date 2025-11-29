@@ -658,15 +658,17 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   }
 
   String _formatDate(DateTime date) {
-    // Backend sends IST with timezone offset - DateTime.parse handles it
-    return '${date.day}/${date.month}/${date.year}';
+    // Server is in Germany (UTC+1), convert to IST (UTC+5:30)
+    final istDate = date.add(const Duration(hours: 4, minutes: 30));
+    return '${istDate.day}/${istDate.month}/${istDate.year}';
   }
 
   String _formatDateTime(DateTime date) {
-    // Backend sends IST with timezone offset - DateTime.parse handles it
-    final hour = date.hour > 12 ? date.hour - 12 : date.hour;
-    final period = date.hour >= 12 ? 'PM' : 'AM';
-    return '${date.day}/${date.month}/${date.year} ${hour == 0 ? 12 : hour}:${date.minute.toString().padLeft(2, '0')} $period';
+    // Server is in Germany (UTC+1), convert to IST (UTC+5:30)
+    final istDate = date.add(const Duration(hours: 4, minutes: 30));
+    final hour = istDate.hour > 12 ? istDate.hour - 12 : istDate.hour;
+    final period = istDate.hour >= 12 ? 'PM' : 'AM';
+    return '${istDate.day}/${istDate.month}/${istDate.year} ${hour == 0 ? 12 : hour}:${istDate.minute.toString().padLeft(2, '0')} $period';
   }
 
   void _showCancelDialog() {
