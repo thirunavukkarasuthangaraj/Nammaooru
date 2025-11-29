@@ -157,7 +157,7 @@ public class ShopProduct {
     }
 
     public BigDecimal getDiscountPercentage() {
-        if (originalPrice == null || price == null || originalPrice.equals(BigDecimal.ZERO)) {
+        if (originalPrice == null || price == null || originalPrice.compareTo(BigDecimal.ZERO) <= 0) {
             return BigDecimal.ZERO;
         }
         return getDiscountAmount()
