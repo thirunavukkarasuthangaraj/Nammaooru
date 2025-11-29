@@ -77,6 +77,7 @@
           <td mat-cell *matCellDef="let product">
             <div class="product-details">
               <h3>{{ product.customName }}</h3>
+              <span class="tamil-name" *ngIf="product.masterProduct?.nameTamil">{{ product.masterProduct.nameTamil }}</span>
               <p class="description">{{ product.description || 'No description' }}</p>
               <div class="meta-tags">
                 <span class="category-tag" *ngIf="product.category">

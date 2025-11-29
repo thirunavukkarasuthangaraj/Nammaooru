@@ -19,6 +19,19 @@ import { BrowseMasterProductsDialogComponent, ProductAssignmentResult } from '..
 import { ProductEditDialogComponent } from '../product-edit-dialog/product-edit-dialog.component';
 import { ShopOwnerProductService } from '../../services/shop-owner-product.service';
 
+interface MasterProduct {
+  id?: number;
+  name?: string;
+  nameTamil?: string;
+  description?: string;
+  baseUnit?: string;
+  sku?: string;
+  category?: {
+    id?: number;
+    name?: string;
+  };
+}
+
 interface ShopProduct {
   id: number;
   customName: string;
@@ -34,6 +47,7 @@ interface ShopProduct {
   sku?: string;
   masterProductId?: number;
   masterProductName?: string;
+  masterProduct?: MasterProduct;
   createdAt: string;
   updatedAt: string;
 }
@@ -170,6 +184,15 @@ export class MyProductsComponent implements OnInit, OnDestroy {
               imageUrl: p.primaryImageUrl,
               masterProductId: p.masterProduct?.id,
               masterProductName: p.masterProduct?.name,
+              masterProduct: p.masterProduct ? {
+                id: p.masterProduct.id,
+                name: p.masterProduct.name,
+                nameTamil: p.masterProduct.nameTamil,
+                description: p.masterProduct.description,
+                baseUnit: p.masterProduct.baseUnit,
+                sku: p.masterProduct.sku,
+                category: p.masterProduct.category
+              } : undefined,
               createdAt: p.createdAt,
               updatedAt: p.updatedAt
             };
