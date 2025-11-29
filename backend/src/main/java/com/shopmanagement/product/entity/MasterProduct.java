@@ -65,6 +65,9 @@ public class MasterProduct {
     @Column(length = 1000)
     private String specifications; // JSON string for flexible attributes
 
+    @Column(length = 2000)
+    private String tags; // Comma-separated tags for searching/filtering and Gemini voice search
+
     @Builder.Default
     @Enumerated(EnumType.STRING)
     private ProductStatus status = ProductStatus.ACTIVE;

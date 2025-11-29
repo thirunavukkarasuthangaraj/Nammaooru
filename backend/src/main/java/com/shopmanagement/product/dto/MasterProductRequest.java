@@ -46,6 +46,9 @@ public class MasterProductRequest {
     @Size(max = 1000, message = "Specifications must be less than 1000 characters")
     private String specifications;
 
+    @Size(max = 2000, message = "Tags must be less than 2000 characters")
+    private String tags; // Comma-separated tags for searching/filtering and Gemini voice search
+
     @Builder.Default
     private MasterProduct.ProductStatus status = MasterProduct.ProductStatus.ACTIVE;
 

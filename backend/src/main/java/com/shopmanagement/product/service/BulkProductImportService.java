@@ -382,6 +382,7 @@ public class BulkProductImportService {
                 .baseUnit(request.getBaseUnit())
                 .baseWeight(request.getBaseWeight())
                 .specifications(request.getSpecifications())
+                .tags(request.getTags())
                 .status(status)
                 .isFeatured(request.getIsFeatured() != null ? request.getIsFeatured() : false)
                 .isGlobal(request.getIsGlobal() != null ? request.getIsGlobal() : true)
