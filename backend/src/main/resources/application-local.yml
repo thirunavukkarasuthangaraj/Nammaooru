@@ -5,20 +5,26 @@
 app:
   upload:
     # Windows local development path
-    dir: D:/AAWS/nammaooru/shop-management-system/uploads
-    product-images: D:/AAWS/nammaooru/shop-management-system/uploads/products
+    dir: D:/AAWS/nammaooru/uploads
+    product-images: D:/AAWS/nammaooru/uploads/products
     documents:
       path:
-        shops: D:/AAWS/nammaooru/shop-management-system/uploads/documents/shops
-        delivery-partners: D:/AAWS/nammaooru/shop-management-system/uploads/documents/delivery-partners
+        shops: D:/AAWS/nammaooru/uploads/documents/shops
+        delivery-partners: D:/AAWS/nammaooru/uploads/documents/delivery-partners
   # Local frontend URL for CORS and links
   frontend:
     base-url: http://localhost:4200
 
+spring:
+  jpa:
+    hibernate:
+      # Use 'update' for dev to auto-create missing tables
+      ddl-auto: update
+
 file:
   upload:
-    path: D:/AAWS/nammaooru/shop-management-system/uploads
+    path: D:/AAWS/nammaooru/uploads
   storage:
     local:
-      base-path: D:/AAWS/nammaooru/shop-management-system/uploads
+      base-path: D:/AAWS/nammaooru/uploads
       serve-url: http://localhost:8080/uploads

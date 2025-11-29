@@ -3,15 +3,18 @@ package com.shopmanagement.product.service;
 import com.shopmanagement.product.dto.*;
 import com.shopmanagement.product.entity.MasterProduct;
 import com.shopmanagement.product.entity.MasterProductImage;
+import com.shopmanagement.product.entity.ProductCategory;
 import com.shopmanagement.product.entity.ShopProduct;
 import com.shopmanagement.product.repository.MasterProductImageRepository;
 import com.shopmanagement.product.repository.MasterProductRepository;
+import com.shopmanagement.product.repository.ProductCategoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -25,6 +28,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -36,6 +40,7 @@ public class BulkProductImportService {
     private final ShopProductService shopProductService;
     private final MasterProductRepository masterProductRepository;
     private final MasterProductImageRepository masterProductImageRepository;
+    private final ProductCategoryRepository productCategoryRepository;
 
     @Value("${app.upload.dir}")
     private String uploadDir;
@@ -46,7 +51,6 @@ public class BulkProductImportService {
     /**
      * Import products from Excel for shop owners
      */
-    @Transactional
     public BulkImportResponse importProductsForShop(Long shopId, MultipartFile excelFile,
                                                      List<MultipartFile> images) {
         log.info("Starting bulk import for shop: {}", shopId);
@@ -89,7 +93,6 @@ public class BulkProductImportService {
     /**
      * Import master products (admin only)
      */
-    @Transactional
     public BulkImportResponse importMasterProducts(MultipartFile excelFile, List<MultipartFile> images) {
         log.info("Starting bulk master product import");
 
@@ -163,65 +166,109 @@ public class BulkProductImportService {
 
     /**
      * Parse a single row from Excel
+     * Column mapping matches the actual Excel file structure (without Search Query and Download Link):
+     * A: name, B: nameTamil, C: description, D: descriptionTamil, E: categoryName, F: brand, G: sku,
+     * H: barcode, I: baseUnit, J: baseWeight, K: originalPrice, L: sellingPrice, M: discountPercentage,
+     * N: costPrice, O: stockQuantity, P: minStockLevel, Q: maxStockLevel, R: trackInventory,
+     * S: status, T: isFeatured, U: isAvailable, V: tags, W: specifications, X: imagePath, Y: imageFolder
      */
     private BulkImportRequest parseRow(Row row, int rowNumber) {
+        String categoryName = getCellValueAsString(row.getCell(4));  // Column E (0-indexed as 4)
+        Long categoryId = null;
+        if (categoryName != null && !categoryName.isEmpty()) {
+            categoryId = lookupCategoryByName(categoryName);
+        }
+
         return BulkImportRequest.builder()
                 .rowNumber(rowNumber)
-                // Column 0: Product Name (English)
+                // Column 0 (A): Product Name
                 .name(getCellValueAsString(row.getCell(0)))
-                // Column 1: Product Name (Tamil)
+                // Column 1 (B): Product Name (Tamil)
                 .nameTamil(getCellValueAsString(row.getCell(1)))
-                // Column 2: Description
+                // Column 2 (C): Description
                 .description(getCellValueAsString(row.getCell(2)))
-                // Column 3: Category ID
-                .categoryId(getCellValueAsLong(row.getCell(3)))
-                // Column 4: Brand
-                .brand(getCellValueAsString(row.getCell(4)))
-                // Column 5: SKU
-                .sku(getCellValueAsString(row.getCell(5)))
-                // Column 6: Barcode
-                .barcode(getCellValueAsString(row.getCell(6)))
-                // Column 7: Base Unit (e.g., kg, pieces, liters)
-                .baseUnit(getCellValueAsString(row.getCell(7)))
-                // Column 8: Base Weight
-                .baseWeight(getCellValueAsBigDecimal(row.getCell(8)))
-                // Column 9: Original Price (MRP)
-                .originalPrice(getCellValueAsBigDecimal(row.getCell(9)))
-                // Column 10: Selling Price
-                .sellingPrice(getCellValueAsBigDecimal(row.getCell(10)))
-                // Column 11: Discount Percentage
-                .discountPercentage(getCellValueAsBigDecimal(row.getCell(11)))
-                // Column 12: Cost Price
-                .costPrice(getCellValueAsBigDecimal(row.getCell(12)))
-                // Column 13: Stock Quantity
-                .stockQuantity(getCellValueAsInteger(row.getCell(13)))
-                // Column 14: Min Stock Level
-                .minStockLevel(getCellValueAsInteger(row.getCell(14)))
-                // Column 15: Max Stock Level
-                .maxStockLevel(getCellValueAsInteger(row.getCell(15)))
-                // Column 16: Track Inventory (true/false)
-                .trackInventory(getCellValueAsBoolean(row.getCell(16)))
-                // Column 17: Status (ACTIVE, INACTIVE, etc.)
-                .status(getCellValueAsString(row.getCell(17)))
-                // Column 18: Is Featured
-                .isFeatured(getCellValueAsBoolean(row.getCell(18)))
-                // Column 19: Is Available
-                .isAvailable(getCellValueAsBoolean(row.getCell(19)))
-                // Column 20: Tags (comma-separated)
-                .tags(getCellValueAsString(row.getCell(20)))
-                // Column 21: Specifications
-                .specifications(getCellValueAsString(row.getCell(21)))
-                // Column 22: Image Path (filename or path)
-                .imagePath(getCellValueAsString(row.getCell(22)))
-                // Column 23: Image Folder (subfolder name)
-                .imageFolder(getCellValueAsString(row.getCell(23)))
+                // Column 3 (D): Description (Tamil) - stored but not used
+                // Column 4 (E): Category Name (looked up to get ID)
+                .categoryId(categoryId)
+                // Column 5 (F): Brand
+                .brand(getCellValueAsString(row.getCell(5)))
+                // Column 6 (G): SKU
+                .sku(getCellValueAsString(row.getCell(6)))
+                // Column 7 (H): Barcode
+                .barcode(getCellValueAsString(row.getCell(7)))
+                // Column 8 (I): Base Unit (e.g., kg, pieces, liters)
+                .baseUnit(getCellValueAsString(row.getCell(8)))
+                // Column 9 (J): Base Weight
+                .baseWeight(getCellValueAsBigDecimal(row.getCell(9)))
+                // Column 10 (K): Original Price (MRP)
+                .originalPrice(getCellValueAsBigDecimal(row.getCell(10)))
+                // Column 11 (L): Selling Price
+                .sellingPrice(getCellValueAsBigDecimal(row.getCell(11)))
+                // Column 12 (M): Discount Percentage
+                .discountPercentage(getCellValueAsBigDecimal(row.getCell(12)))
+                // Column 13 (N): Cost Price
+                .costPrice(getCellValueAsBigDecimal(row.getCell(13)))
+                // Column 14 (O): Stock Quantity
+                .stockQuantity(getCellValueAsInteger(row.getCell(14)))
+                // Column 15 (P): Min Stock Level
+                .minStockLevel(getCellValueAsInteger(row.getCell(15)))
+                // Column 16 (Q): Max Stock Level
+                .maxStockLevel(getCellValueAsInteger(row.getCell(16)))
+                // Column 17 (R): Track Inventory (true/false)
+                .trackInventory(getCellValueAsBoolean(row.getCell(17)))
+                // Column 18 (S): Status (ACTIVE, INACTIVE, etc.)
+                .status(getCellValueAsString(row.getCell(18)))
+                // Column 19 (T): Is Featured
+                .isFeatured(getCellValueAsBoolean(row.getCell(19)))
+                // Column 20 (U): Is Available
+                .isAvailable(getCellValueAsBoolean(row.getCell(20)))
+                // Column 21 (V): Tags (comma-separated)
+                .tags(getCellValueAsString(row.getCell(21)))
+                // Column 22 (W): Specifications
+                .specifications(getCellValueAsString(row.getCell(22)))
+                // Column 23 (X): Image Path (filename)
+                .imagePath(getCellValueAsString(row.getCell(23)))
+                // Column 24 (Y): Image Folder (subfolder name, optional)
+                .imageFolder(getCellValueAsString(row.getCell(24)))
                 .build();
     }
 
     /**
-     * Process shop product import
+     * Look up category ID by category name, auto-create if not found
      */
-    private BulkImportResponse.ImportResult processShopProductImport(Long shopId,
+    private Long lookupCategoryByName(String categoryName) {
+        try {
+            Optional<ProductCategory> category = productCategoryRepository.findByName(categoryName);
+            if (category.isPresent()) {
+                return category.get().getId();
+            }
+
+            // Auto-create category if it doesn't exist
+            log.info("Category '{}' not found, auto-creating...", categoryName);
+            ProductCategory newCategory = ProductCategory.builder()
+                    .name(categoryName)
+                    .slug(categoryName.toLowerCase().replaceAll("\\s+", "-"))
+                    .description(categoryName)
+                    .isActive(true)
+                    .sortOrder(0)
+                    .createdBy("BULK_IMPORT")
+                    .updatedBy("BULK_IMPORT")
+                    .build();
+            ProductCategory saved = productCategoryRepository.save(newCategory);
+            log.info("Category auto-created with ID: {}", saved.getId());
+            return saved.getId();
+        } catch (Exception e) {
+            log.error("Error looking up/creating category '{}': {}", categoryName, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Process shop product import with independent transaction
+     * Uses REQUIRES_NEW so each product import can succeed/fail independently
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public BulkImportResponse.ImportResult processShopProductImport(Long shopId,
                                                                        BulkImportRequest request,
                                                                        List<MultipartFile> images) {
         try {
@@ -274,9 +321,11 @@ public class BulkProductImportService {
     }
 
     /**
-     * Process master product import
+     * Process master product import with independent transaction
+     * Uses REQUIRES_NEW so each product import can succeed/fail independently
      */
-    private BulkImportResponse.ImportResult processMasterProductImport(BulkImportRequest request,
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public BulkImportResponse.ImportResult processMasterProductImport(BulkImportRequest request,
                                                                          List<MultipartFile> images) {
         try {
             MasterProductRequest masterProductRequest = buildMasterProductRequest(request);
@@ -391,23 +440,24 @@ public class BulkProductImportService {
                 return "No image specified";
             }
 
-            // Build the expected folder path: master/products/{folder}/ or master/products/
+            // Build the expected folder path: products/master/{folder}/ or products/master/
             String folder = imageFolder != null && !imageFolder.trim().isEmpty()
                             ? imageFolder.trim()
                             : "";
 
-            // Expected path: D:/AAWS/nammaooru/uploads/products/master/{folder}/{imagePath}
+            // productImagesPath is absolute path like: D:/AAWS/nammaooru/uploads/products
+            // We need to look in: D:/AAWS/nammaooru/uploads/products/master/{imagePath}
             Path imageFolderPath;
             String imageUrl;
 
             if (folder.isEmpty()) {
                 // Images directly under products/master folder
-                imageFolderPath = Paths.get(uploadDir, productImagesPath, "master");
-                imageUrl = "/uploads/" + productImagesPath + "/master/" + imagePath;
+                imageFolderPath = Paths.get(productImagesPath, "master");
+                imageUrl = "/uploads/products/master/" + imagePath;
             } else {
                 // Images in subfolder under products/master
-                imageFolderPath = Paths.get(uploadDir, productImagesPath, "master", folder);
-                imageUrl = "/uploads/" + productImagesPath + "/master/" + folder + "/" + imagePath;
+                imageFolderPath = Paths.get(productImagesPath, "master", folder);
+                imageUrl = "/uploads/products/master/" + folder + "/" + imagePath;
             }
 
             Path imageFilePath = imageFolderPath.resolve(imagePath.trim());
