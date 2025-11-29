@@ -95,6 +95,7 @@ public class MasterProductService {
                 .baseUnit(request.getBaseUnit())
                 .baseWeight(request.getBaseWeight())
                 .specifications(request.getSpecifications())
+                .tags(request.getTags())
                 .status(request.getStatus())
                 .isFeatured(request.getIsFeatured())
                 .isGlobal(request.getIsGlobal())
@@ -148,6 +149,7 @@ public class MasterProductService {
         product.setBaseUnit(request.getBaseUnit());
         product.setBaseWeight(request.getBaseWeight());
         product.setSpecifications(request.getSpecifications());
+        product.setTags(request.getTags());
         product.setStatus(request.getStatus());
         product.setIsFeatured(request.getIsFeatured());
         product.setIsGlobal(request.getIsGlobal());

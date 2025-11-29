@@ -179,10 +179,17 @@ public class BulkProductImportService {
             categoryId = lookupCategoryByName(categoryName);
         }
 
+        // Read all values
+        String name = getCellValueAsString(row.getCell(0));
+        String tags = getCellValueAsString(row.getCell(21));
+
+        // Log each row with key values
+        log.info("parseRow #{}: name='{}', categoryId={}, tags='{}'", rowNumber, name, categoryId, tags);
+
         return BulkImportRequest.builder()
                 .rowNumber(rowNumber)
                 // Column 0 (A): Product Name
-                .name(getCellValueAsString(row.getCell(0)))
+                .name(name)
                 // Column 1 (B): Product Name (Tamil)
                 .nameTamil(getCellValueAsString(row.getCell(1)))
                 // Column 2 (C): Description
@@ -223,7 +230,7 @@ public class BulkProductImportService {
                 // Column 20 (U): Is Available
                 .isAvailable(getCellValueAsBoolean(row.getCell(20)))
                 // Column 21 (V): Tags (comma-separated)
-                .tags(getCellValueAsString(row.getCell(21)))
+                .tags(tags)
                 // Column 22 (W): Specifications
                 .specifications(getCellValueAsString(row.getCell(22)))
                 // Column 23 (X): Image Path (filename)
@@ -370,6 +377,8 @@ public class BulkProductImportService {
                 log.warn("Invalid status: {}, using ACTIVE", request.getStatus());
             }
         }
+
+        log.info("buildMasterProductRequest: name='{}', tags='{}' -> preparing to save", request.getName(), request.getTags());
 
         return MasterProductRequest.builder()
                 .name(request.getName())
