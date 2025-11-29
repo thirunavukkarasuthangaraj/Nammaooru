@@ -149,7 +149,7 @@ public class ShopProductController {
                 matchedProducts = searchResults.getContent();
                 log.info("📝 Text search found {} products for query: {}", matchedProducts.size(), query);
             } else {
-                // Match products by name (handle both English and Tamil)
+                // Match products by name (handle both English and Tamil) - STRICT matching only
                 for (ShopProductResponse product : allProducts.getContent()) {
                     String productName = product.getDisplayName(); // Use displayName
                     String tamilName = product.getMasterProduct() != null ? product.getMasterProduct().getNameTamil() : null;
@@ -157,12 +157,17 @@ public class ShopProductController {
                     for (String aiMatch : aiMatches) {
                         // Remove Tamil part if present (format: "Name | தமிழ்")
                         String cleanMatch = aiMatch.split("\\|")[0].trim();
+                        String tamilPart = aiMatch.contains("|") ? aiMatch.split("\\|")[1].trim() : "";
 
-                        if (productName.equalsIgnoreCase(cleanMatch) ||
-                            (tamilName != null && tamilName.equalsIgnoreCase(cleanMatch)) ||
-                            aiMatch.toLowerCase().contains(productName.toLowerCase()) ||
-                            (tamilName != null && aiMatch.contains(tamilName))) {
+                        // STRICT matching: Only exact name matches or exact Tamil name matches
+                        boolean exactNameMatch = productName.equalsIgnoreCase(cleanMatch);
+                        boolean exactTamilMatch = tamilName != null && !tamilName.isEmpty() &&
+                                                  (tamilName.equalsIgnoreCase(cleanMatch) || tamilName.equalsIgnoreCase(tamilPart));
+                        boolean fullLineMatch = aiMatch.equalsIgnoreCase(productName + " | " + tamilName);
+
+                        if (exactNameMatch || exactTamilMatch || fullLineMatch) {
                             matchedProducts.add(product);
+                            log.debug("✅ Matched product: {} (aiMatch: {})", productName, aiMatch);
                             break;
                         }
                     }
