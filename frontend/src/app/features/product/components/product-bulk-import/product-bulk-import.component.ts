@@ -80,6 +80,9 @@ export class ProductBulkImportComponent implements OnInit {
           this.importResults = response.data;
           this.showResults = true;
 
+          // Clear the file after successful import to prevent re-uploading same file
+          this.selectedFile = null;
+
           const message = `Import completed! Success: ${response.data.successCount}, Failed: ${response.data.failureCount}`;
           this.snackBar.open(message, 'Close', {
             duration: 5000,
