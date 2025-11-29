@@ -267,7 +267,7 @@ gemini:
     - ${GEMINI_API_KEY_3:AIzaSyDvKELg3zFky3G2Pg0uN2_NV5BoIl9JiQE}
     - ${GEMINI_API_KEY_4:AIzaSyA-SdjVz-rnQbPk17e9k2FSq6LY_svGB3Q}
   model: ${GEMINI_MODEL:gemini-1.5-flash}
-  api-url: https://generativelanguage.googleapis.com/v1beta/models
+  api-url: https://generativelanguage.googleapis.com/v1/models
   rate-limit:
     per-key-rpm: 15  # Requests per minute per key
     total-rpm: 60     # Total requests per minute (4 keys × 15)
