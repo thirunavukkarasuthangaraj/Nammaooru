@@ -270,6 +270,30 @@ export class ShopOwnerOrderService {
     );
   }
 
+  cancelOrder(orderId: number, reason: string): Observable<ShopOwnerOrder> {
+    const requestBody = { reason: reason };
+
+    return this.http.post<{data: any}>(`${this.apiUrl}/orders/${orderId}/cancel`, requestBody)
+      .pipe(
+        switchMap(response => {
+          // Transform the order to match our interface
+          const transformedOrder = this.transformOrder(response.data);
+
+          // Send Firebase notification
+          this.firebaseService.sendOrderNotification(
+            transformedOrder.orderNumber,
+            'CANCELLED',
+            `Order cancelled: ${reason}`
+          );
+          return of(transformedOrder);
+        }),
+        catchError((error) => {
+          console.error('Error cancelling order:', error);
+          throw error;
+        })
+      );
+  }
+
   /**
    * Transform backend order response to match frontend interface
    */

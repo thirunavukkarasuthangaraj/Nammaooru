@@ -396,15 +396,47 @@ class OrderDetailsScreen extends StatelessWidget {
               ),
             ],
             if (order.status == 'CONFIRMED') ...[
+              Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton.icon(
+                      onPressed: () => _markAsPacked(context, order, orderProvider),
+                      icon: const Icon(Icons.inventory_2),
+                      label: const Text('Mark as Packed'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _showCancelDialog(context, order, orderProvider),
+                      icon: const Icon(Icons.cancel),
+                      label: const Text('Cancel'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.error,
+                        side: BorderSide(color: AppColors.error),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            if (order.status == 'PREPARING') ...[
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => _markAsPacked(context, order, orderProvider),
-                  icon: const Icon(Icons.inventory_2),
-                  label: const Text('Mark as Packed'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
-                    foregroundColor: Colors.white,
+                child: OutlinedButton.icon(
+                  onPressed: () => _showCancelDialog(context, order, orderProvider),
+                  icon: const Icon(Icons.cancel),
+                  label: const Text('Cancel Order'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.error,
+                    side: BorderSide(color: AppColors.error),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                 ),
@@ -552,6 +584,165 @@ class OrderDetailsScreen extends StatelessWidget {
           backgroundColor: AppColors.success,
         ),
       );
+    }
+  }
+
+  void _showCancelDialog(BuildContext context, Order order, OrderProvider orderProvider) {
+    String? selectedReason;
+    String? customReason;
+    final predefinedReasons = [
+      'Item out of stock',
+      'Customer request',
+      'Damaged items',
+      'Wrong items packed',
+      'Unable to prepare on time',
+      'Other (please specify)',
+    ];
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Cancel Order'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Order #${order.id}',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 16),
+                const Text('Why are you cancelling this order?'),
+                const SizedBox(height: 12),
+                // Predefined reasons with radio buttons
+                ...predefinedReasons.map((reason) {
+                  return RadioListTile<String>(
+                    title: Text(reason),
+                    value: reason,
+                    groupValue: selectedReason,
+                    onChanged: (value) {
+                      setState(() {
+                        selectedReason = value;
+                        customReason = null;
+                      });
+                    },
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                  );
+                }).toList(),
+                // Custom reason text field (show only if "Other" is selected)
+                if (selectedReason == 'Other (please specify)') ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      hintText: 'Please specify the reason',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      contentPadding: const EdgeInsets.all(12),
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        customReason = value;
+                      });
+                    },
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Go Back'),
+            ),
+            ElevatedButton(
+              onPressed: (selectedReason == null ||
+                      (selectedReason == 'Other (please specify)' && (customReason?.isEmpty ?? true)))
+                  ? null
+                  : () {
+                      Navigator.pop(context);
+                      _cancelOrder(
+                        context,
+                        order,
+                        orderProvider,
+                        selectedReason ?? '',
+                        customReason,
+                      );
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.grey[300],
+              ),
+              child: const Text('Confirm Cancellation'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _cancelOrder(BuildContext context, Order order, OrderProvider orderProvider, String reason, String? customReason) async {
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      // Prepare the cancellation reason
+      final cancellationReason = reason == 'Other (please specify)' ? customReason ?? reason : reason;
+
+      // Call API to cancel order
+      final response = await ApiService.cancelOrder(order.id, cancellationReason);
+
+      // Close loading dialog
+      if (context.mounted) Navigator.pop(context);
+
+      if (response.success && context.mounted) {
+        // Refresh the order data
+        await orderProvider.loadOrders();
+
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Order cancelled successfully'),
+            backgroundColor: AppColors.success,
+            duration: Duration(seconds: 3),
+          ),
+        );
+
+        // Navigate back to orders list
+        Navigator.pop(context);
+      } else if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to cancel order: ${response.error ?? "Unknown error"}'),
+            backgroundColor: AppColors.error,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      // Close loading dialog
+      if (context.mounted) Navigator.pop(context);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: AppColors.error,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
 

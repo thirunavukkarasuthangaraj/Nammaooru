@@ -1671,680 +1671,194 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     List<dynamic> voiceResults = [];
     bool isSearching = false;
     String? searchQuery;
-    final TextEditingController searchController = TextEditingController();
 
     showDialog(
       context: context,
-      barrierDismissible: true, // Allow closing by clicking outside
+      barrierDismissible: true,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setState) {
           return Dialog(
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Container(
-              width: MediaQuery.of(context).size.width * 0.85,
+              width: MediaQuery.of(context).size.width * 0.8,
               constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.75,
+                maxHeight: MediaQuery.of(context).size.height * 0.6,
               ),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Header with padding
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.mic, color: Color(0xFF2E7D32), size: 28),
-                        const SizedBox(width: 12),
-                        const Expanded(
-                          child: Text(
-                            'Voice Search',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: () {
-                            searchController.dispose();
-                            Navigator.pop(dialogContext);
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Scrollable content
-                  Flexible(
-                    child: SingleChildScrollView(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // Text input - Always visible
-                            TextField(
-                              controller: searchController,
-                              decoration: InputDecoration(
-                                hintText: 'Type product names (e.g., Sugar, Rice, Milk)',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                prefixIcon: const Icon(Icons.search),
-                              ),
-                              onSubmitted: (query) async {
-                                if (query.trim().isEmpty) return;
-
-                                setState(() {
-                                  isSearching = true;
-                                });
-
-                                final results = await _voiceSearch.searchProducts(
-                                    widget.shopId, query);
-
-                                setState(() {
-                                  isSearching = false;
-                                  voiceResults = results;
-                                  searchQuery = query;
-                                });
-                              },
-                            ),
-
-                            // Voice search button
-                            if (!isSearching && voiceResults.isEmpty)
-                              Column(
-                                children: [
-                                  const SizedBox(height: 16),
-                                  const Text(
-                                    'OR',
-                                    style: TextStyle(
-                                      color: Colors.grey,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: const Color(0xFF2E7D32).withOpacity(0.1),
-                                    ),
-                                    padding: const EdgeInsets.all(32),
-                                    child: const Icon(
-                                      Icons.mic,
-                                      size: 80,
-                                      color: Color(0xFF2E7D32),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  const Text(
-                                    'Voice search (Android/iOS only)',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  ElevatedButton.icon(
-                                    onPressed: () async {
-                                      setState(() {
-                                        isSearching = true;
-                                      });
-
-                                      final results =
-                                          await _voiceSearch.voiceSearch(widget.shopId);
-                                      final query = _voiceSearch.lastWords;
-
-                                      setState(() {
-                                        isSearching = false;
-                                        voiceResults = results;
-                                        searchQuery = query;
-                                        // Update the text field with voice search query
-                                        if (query != null && query.isNotEmpty) {
-                                          searchController.text = query;
-                                        }
-                                      });
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF2E7D32),
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 32, vertical: 16),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                    icon: const Icon(Icons.mic, color: Colors.white),
-                                    label: const Text(
-                                      'Start Voice Search',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 32),
-                                ],
-                              ),
-
-                  // Loading indicator
-                  if (isSearching)
-                    Column(
-                      children: const [
-                        SizedBox(height: 32),
-                        CircularProgressIndicator(
-                          color: Color(0xFF2E7D32),
-                        ),
-                        SizedBox(height: 24),
-                        Text(
-                          'Listening...',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.grey,
-                          ),
-                        ),
-                        SizedBox(height: 32),
-                      ],
-                    ),
-
-                  // Search results
-                  if (!isSearching && voiceResults.isNotEmpty)
-                    Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (searchQuery != null && searchQuery!.isNotEmpty)
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF2E7D32).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.mic,
-                                      color: Color(0xFF2E7D32), size: 20),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      'You said: "$searchQuery"',
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          const SizedBox(height: 16),
-                          Text(
-                            '${voiceResults.length} products found',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          ListView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: voiceResults.length,
-                            itemBuilder: (context, index) {
-                                final product = voiceResults[index];
-                                final inStock = product['inStock'] ??
-                                    product['isAvailable'] ??
-                                    true;
-
-                                // Use LanguageProvider to get localized name
-                                final languageProvider = Provider.of<LanguageProvider>(context);
-                                final displayName = languageProvider.getDisplayName(product);
-
-                                final displayDesc =
-                                    product['displayDescription'] ??
-                                        product['description'] ??
-                                        '';
-                                final price = product['price'] ?? 0;
-                                final originalPrice = product['originalPrice'];
-
-                                // Get quantity and unit
-                                final quantity = product['quantity'] ?? product['masterProduct']?['quantity'] ?? 1;
-                                final unit = product['unit'] ?? product['masterProduct']?['unit'] ?? '';
-
-                                // Calculate discount percentage
-                                int? discountPercent;
-                                if (originalPrice != null && originalPrice > price) {
-                                  discountPercent = (((originalPrice - price) / originalPrice) * 100).round();
-                                }
-                                // Get image URL from shopImages or masterProduct images
-                                String? imageUrl;
-                                if (product['shopImages'] != null &&
-                                    (product['shopImages'] as List).isNotEmpty) {
-                                  imageUrl = product['shopImages'][0]['imageUrl'];
-                                } else if (product['primaryImageUrl'] != null) {
-                                  imageUrl = product['primaryImageUrl'];
-                                } else if (product['masterProduct'] != null &&
-                                          product['masterProduct']['images'] != null &&
-                                          (product['masterProduct']['images'] as List).isNotEmpty) {
-                                  imageUrl = product['masterProduct']['images'][0]['imageUrl'];
-                                }
-
-                                // Build full image URL using ImageUrlHelper
-                                final fullImageUrl = imageUrl != null
-                                    ? ImageUrlHelper.getFullImageUrl(imageUrl)
-                                    : null;
-
-                                return Card(
-                                  margin: const EdgeInsets.only(bottom: 12),
-                                  elevation: 2,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: InkWell(
-                                    onTap: () {
-                                      // Close dialog
-                                      Navigator.pop(dialogContext);
-                                      // Scroll to product or show details
-                                    },
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(12),
-                                      child: Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          // Product Image with discount badge
-                                          Stack(
-                                            children: [
-                                              ClipRRect(
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                                child: fullImageUrl != null
-                                                    ? Image.network(
-                                                        fullImageUrl,
-                                                        width: 100,
-                                                        height: 100,
-                                                        fit: BoxFit.cover,
-                                                        errorBuilder: (context,
-                                                                error,
-                                                                stackTrace) =>
-                                                            Container(
-                                                          width: 100,
-                                                          height: 100,
-                                                          color: Colors.grey[200],
-                                                          child: const Icon(
-                                                              Icons.image,
-                                                              color: Colors.grey,
-                                                              size: 50),
-                                                        ),
-                                                      )
-                                                    : Container(
-                                                        width: 100,
-                                                        height: 100,
-                                                        color: Colors.grey[200],
-                                                        child: const Icon(
-                                                            Icons.image,
-                                                            color: Colors.grey,
-                                                            size: 50),
-                                                      ),
-                                              ),
-                                              // Discount badge
-                                              if (discountPercent != null && discountPercent > 0)
-                                                Positioned(
-                                                  top: 0,
-                                                  left: 0,
-                                                  child: Container(
-                                                    padding: const EdgeInsets.symmetric(
-                                                      horizontal: 6,
-                                                      vertical: 2,
-                                                    ),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.red,
-                                                      borderRadius: BorderRadius.only(
-                                                        topLeft: Radius.circular(8),
-                                                        bottomRight: Radius.circular(8),
-                                                      ),
-                                                    ),
-                                                    child: Text(
-                                                      '$discountPercent% OFF',
-                                                      style: const TextStyle(
-                                                        color: Colors.white,
-                                                        fontSize: 10,
-                                                        fontWeight: FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                            ],
-                                          ),
-                                          const SizedBox(width: 12),
-
-                                          // Product Details
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  displayName,
-                                                  style: const TextStyle(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                  maxLines: 2,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                                // Show quantity and unit
-                                                if (unit.isNotEmpty) ...[
-                                                  const SizedBox(height: 4),
-                                                  Text(
-                                                    '$quantity $unit',
-                                                    style: TextStyle(
-                                                      fontSize: 13,
-                                                      color: Colors.grey[700],
-                                                      fontWeight: FontWeight.w500,
-                                                    ),
-                                                  ),
-                                                ],
-                                                if (displayDesc.isNotEmpty) ...[
-                                                  const SizedBox(height: 4),
-                                                  Text(
-                                                    displayDesc,
-                                                    style: TextStyle(
-                                                      fontSize: 12,
-                                                      color: Colors.grey[600],
-                                                    ),
-                                                    maxLines: 1,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                  ),
-                                                ],
-                                                const SizedBox(height: 8),
-                                                Row(
-                                                  children: [
-                                                    Text(
-                                                      '₹$price',
-                                                      style: const TextStyle(
-                                                        fontSize: 18,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        color:
-                                                            Color(0xFF2E7D32),
-                                                      ),
-                                                    ),
-                                                    if (originalPrice != null &&
-                                                        originalPrice > price)
-                                                      Padding(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .only(left: 8),
-                                                        child: Text(
-                                                          '₹$originalPrice',
-                                                          style: TextStyle(
-                                                            fontSize: 14,
-                                                            decoration:
-                                                                TextDecoration
-                                                                    .lineThrough,
-                                                            color: Colors
-                                                                .grey[600],
-                                                          ),
-                                                        ),
-                                                      ),
-                                                  ],
-                                                ),
-                                                const SizedBox(height: 8),
-
-                                                // Stock status indicator
-                                                Row(
-                                                  children: [
-                                                    if (inStock)
-                                                      Row(
-                                                        children: const [
-                                                          Icon(
-                                                              Icons
-                                                                  .check_circle,
-                                                              color:
-                                                                  Colors.green,
-                                                              size: 16),
-                                                          SizedBox(width: 4),
-                                                          Text(
-                                                            'In Stock',
-                                                            style: TextStyle(
-                                                              fontSize: 12,
-                                                              color:
-                                                                  Colors.green,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w500,
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      )
-                                                    else
-                                                      Row(
-                                                        children: const [
-                                                          Icon(Icons.cancel,
-                                                              color: Colors.red,
-                                                              size: 16),
-                                                          SizedBox(width: 4),
-                                                          Text(
-                                                            'Out of Stock',
-                                                            style: TextStyle(
-                                                              fontSize: 12,
-                                                              color: Colors.red,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w500,
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                  ],
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-
-                                          // Add to Cart with Plus/Minus Controls
-                                          if (inStock)
-                                            Consumer<CartProvider>(
-                                              builder: (context, cartProvider, child) {
-                                                final productId = product['id'].toString();
-                                                final quantity = cartProvider.getQuantity(productId);
-
-                                                // Convert product JSON to ProductModel
-                                                final productModel = ProductModel(
-                                                  id: productId,
-                                                  name: displayName,
-                                                  description: displayName,
-                                                  price: price,
-                                                  category: product['category'] ?? 'Unknown',
-                                                  shopId: widget.shopId.toString(),
-                                                  shopName: widget.shop?['name'] ?? 'Shop',
-                                                  images: imageUrl != null ? [imageUrl] : [],
-                                                  stockQuantity: product['stockQuantity'] ?? 999,
-                                                  createdAt: DateTime.now(),
-                                                  updatedAt: DateTime.now(),
-                                                );
-
-                                                if (quantity == 0) {
-                                                  // Show ADD button when not in cart
-                                                  return ElevatedButton(
-                                                    onPressed: () async {
-                                                      await cartProvider.addToCart(productModel);
-                                                      // DON'T close dialog - keep it open for adding more products
-                                                      // Show confirmation snackbar
-                                                      if (context.mounted) {
-                                                        ScaffoldMessenger.of(context).showSnackBar(
-                                                          SnackBar(
-                                                            content: Text('$displayName added to cart'),
-                                                            duration: const Duration(seconds: 1),
-                                                            behavior: SnackBarBehavior.floating,
-                                                          ),
-                                                        );
-                                                      }
-                                                    },
-                                                    style: ElevatedButton.styleFrom(
-                                                      backgroundColor: const Color(0xFF2E7D32),
-                                                      foregroundColor: Colors.white,
-                                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                                      minimumSize: const Size(80, 36),
-                                                      shape: RoundedRectangleBorder(
-                                                        borderRadius: BorderRadius.circular(8),
-                                                      ),
-                                                    ),
-                                                    child: const Text('ADD', style: TextStyle(fontWeight: FontWeight.bold)),
-                                                  );
-                                                } else {
-                                                  // Show plus/minus controls when in cart
-                                                  return Container(
-                                                    decoration: BoxDecoration(
-                                                      color: const Color(0xFF2E7D32),
-                                                      borderRadius: BorderRadius.circular(8),
-                                                    ),
-                                                    child: Row(
-                                                      mainAxisSize: MainAxisSize.min,
-                                                      children: [
-                                                        // Minus button
-                                                        IconButton(
-                                                          icon: const Icon(Icons.remove, color: Colors.white, size: 18),
-                                                          onPressed: () {
-                                                            cartProvider.decreaseQuantity(productId);
-                                                          },
-                                                          padding: const EdgeInsets.all(4),
-                                                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                                                        ),
-                                                        // Quantity
-                                                        Container(
-                                                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                                                          child: Text(
-                                                            quantity.toString(),
-                                                            style: const TextStyle(
-                                                              color: Colors.white,
-                                                              fontWeight: FontWeight.bold,
-                                                              fontSize: 16,
-                                                            ),
-                                                          ),
-                                                        ),
-                                                        // Plus button
-                                                        IconButton(
-                                                          icon: const Icon(Icons.add, color: Colors.white, size: 18),
-                                                          onPressed: () {
-                                                            cartProvider.increaseQuantity(productId);
-                                                          },
-                                                          padding: const EdgeInsets.all(4),
-                                                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  );
-                                                }
-                                              },
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-
-                  // Search Again Button (after results)
-                  if (!isSearching && voiceResults.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 16),
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          setState(() {
-                            voiceResults = [];
-                            isSearching = false;
-                            searchQuery = null;
-                          });
-                        },
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('Search Again'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2E7D32),
-                          foregroundColor: Colors.white,
-                          minimumSize: const Size(double.infinity, 48),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
+                  // Simple Header
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: const [
+                          Icon(Icons.mic, color: Color(0xFF2E7D32), size: 20),
+                          SizedBox(width: 8),
+                          Text('Voice Search', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        ],
                       ),
-                    ),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(dialogContext),
+                        child: const Icon(Icons.close, size: 20),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
 
-                  // No results message
-                  if (!isSearching &&
-                      voiceResults.isEmpty &&
-                      searchQuery != null)
+                  // Simple Voice Button - Small & Compact
+                  if (!isSearching && voiceResults.isEmpty)
                     Column(
                       children: [
-                        const SizedBox(height: 32),
-                        const Icon(
-                          Icons.search_off,
-                          size: 80,
-                          color: Colors.grey,
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'No products found',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Try saying the product name again',
-                          style: TextStyle(
-                            color: Colors.grey,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        ElevatedButton.icon(
-                          onPressed: () async {
-                            setState(() {
-                              isSearching = true;
-                              voiceResults = [];
-                              searchQuery = null;
-                            });
-
-                            final results =
-                                await _voiceSearch.voiceSearch(widget.shopId);
+                        GestureDetector(
+                          onTap: () async {
+                            setState(() => isSearching = true);
+                            final results = await _voiceSearch.voiceSearch(widget.shopId);
                             final query = _voiceSearch.lastWords;
-
                             setState(() {
                               isSearching = false;
                               voiceResults = results;
                               searchQuery = query;
                             });
                           },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF2E7D32),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 24, vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2E7D32),
+                              shape: BoxShape.circle,
                             ),
-                          ),
-                          icon: const Icon(Icons.mic, color: Colors.white),
-                          label: const Text(
-                            'Try Again',
-                            style: TextStyle(color: Colors.white),
+                            child: const Icon(Icons.mic, color: Colors.white, size: 32),
                           ),
                         ),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 12),
+                        const Text('Tap to speak', style: TextStyle(fontSize: 13, color: Colors.grey)),
                       ],
                     ),
-                          ],
-                        ),
+
+                  // Loading indicator - Compact
+                  if (isSearching)
+                    Column(
+                      children: const [
+                        SizedBox(height: 16),
+                        SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF2E7D32))),
+                        SizedBox(height: 8),
+                        Text('Listening...', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                      ],
+                    ),
+
+                  // Search results - Compact
+                  if (!isSearching && voiceResults.isNotEmpty)
+                    Flexible(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (searchQuery != null && searchQuery!.isNotEmpty)
+                            Text('"$searchQuery" - ${voiceResults.length} found', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                          const SizedBox(height: 8),
+                          Flexible(
+                            child: ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: voiceResults.length,
+                              itemBuilder: (context, index) {
+                                final product = voiceResults[index];
+                                final inStock = product['inStock'] ?? product['isAvailable'] ?? true;
+                                final languageProvider = Provider.of<LanguageProvider>(context);
+                                final displayName = languageProvider.getDisplayName(product);
+                                final price = product['price'] ?? 0;
+                                String? imageUrl = product['primaryImageUrl'] ?? product['masterProduct']?['primaryImageUrl'];
+                                final fullImageUrl = imageUrl != null ? ImageUrlHelper.getFullImageUrl(imageUrl) : null;
+
+                                return Card(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  child: ListTile(
+                                    dense: true,
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    leading: ClipRRect(
+                                      borderRadius: BorderRadius.circular(6),
+                                      child: fullImageUrl != null
+                                          ? Image.network(fullImageUrl, width: 50, height: 50, fit: BoxFit.cover,
+                                              errorBuilder: (c, e, s) => Container(width: 50, height: 50, color: Colors.grey[200], child: const Icon(Icons.image, size: 24)))
+                                          : Container(width: 50, height: 50, color: Colors.grey[200], child: const Icon(Icons.image, size: 24)),
+                                    ),
+                                    title: Text(displayName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                    subtitle: Text('₹$price', style: const TextStyle(fontSize: 12, color: Color(0xFF2E7D32), fontWeight: FontWeight.bold)),
+                                    trailing: inStock
+                                        ? Consumer<CartProvider>(
+                                            builder: (context, cartProvider, child) {
+                                              final productId = product['id'].toString();
+                                              final qty = cartProvider.getQuantity(productId);
+                                              final productModel = ProductModel(
+                                                id: productId, name: displayName, description: '', price: price,
+                                                category: '', shopId: widget.shopId.toString(), shopName: widget.shop?['name'] ?? 'Shop',
+                                                images: imageUrl != null ? [imageUrl] : [], stockQuantity: product['stockQuantity'] ?? 999,
+                                                createdAt: DateTime.now(), updatedAt: DateTime.now(),
+                                              );
+                                              if (qty == 0) {
+                                                return SizedBox(
+                                                  width: 50, height: 28,
+                                                  child: ElevatedButton(
+                                                    onPressed: () => cartProvider.addToCart(productModel),
+                                                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2E7D32), padding: EdgeInsets.zero),
+                                                    child: const Text('ADD', style: TextStyle(fontSize: 10, color: Colors.white)),
+                                                  ),
+                                                );
+                                              }
+                                              return Container(
+                                                height: 28,
+                                                decoration: BoxDecoration(color: const Color(0xFF2E7D32), borderRadius: BorderRadius.circular(4)),
+                                                child: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    GestureDetector(onTap: () => cartProvider.decreaseQuantity(productId), child: const Padding(padding: EdgeInsets.symmetric(horizontal: 6), child: Icon(Icons.remove, color: Colors.white, size: 16))),
+                                                    Text('$qty', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                                                    GestureDetector(onTap: () => cartProvider.increaseQuantity(productId), child: const Padding(padding: EdgeInsets.symmetric(horizontal: 6), child: Icon(Icons.add, color: Colors.white, size: 16))),
+                                                  ],
+                                                ),
+                                              );
+                                            },
+                                          )
+                                        : const Text('Out', style: TextStyle(fontSize: 10, color: Colors.red)),
+                                    onTap: () => Navigator.pop(dialogContext),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          // Try Again button
+                          const SizedBox(height: 8),
+                          Center(
+                            child: TextButton.icon(
+                              onPressed: () => setState(() { voiceResults = []; searchQuery = null; }),
+                              icon: const Icon(Icons.refresh, size: 16),
+                              label: const Text('Search Again', style: TextStyle(fontSize: 12)),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
+
+                  // No results - Compact
+                  if (!isSearching && voiceResults.isEmpty && searchQuery != null)
+                    Column(
+                      children: [
+                        const Icon(Icons.search_off, size: 40, color: Colors.grey),
+                        const SizedBox(height: 8),
+                        const Text('No products found', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                        TextButton.icon(
+                          onPressed: () async {
+                            setState(() { isSearching = true; voiceResults = []; searchQuery = null; });
+                            final results = await _voiceSearch.voiceSearch(widget.shopId);
+                            setState(() { isSearching = false; voiceResults = results; searchQuery = _voiceSearch.lastWords; });
+                          },
+                          icon: const Icon(Icons.mic, size: 16),
+                          label: const Text('Try Again', style: TextStyle(fontSize: 12)),
+                        ),
+                      ],
+                    ),
                 ],
               ),
             ),

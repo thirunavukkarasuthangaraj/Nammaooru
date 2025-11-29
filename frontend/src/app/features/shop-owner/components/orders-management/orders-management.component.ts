@@ -343,6 +343,102 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     });
   }
 
+  cancelOrder(order: ShopOwnerOrder): void {
+    // Define predefined cancellation reasons
+    const cancelReasons = [
+      'Item out of stock',
+      'Customer request',
+      'Damaged items',
+      'Wrong items packed',
+      'Unable to prepare on time',
+      'Other (please specify)'
+    ];
+
+    // Create options HTML for SweetAlert
+    const reasonsHtml = cancelReasons
+      .map((reason, index) => `
+        <label style="display: block; margin: 8px 0; cursor: pointer;">
+          <input type="radio" name="cancelReason" value="${reason}" ${index === 0 ? 'checked' : ''} style="margin-right: 8px;">
+          <span>${reason}</span>
+        </label>
+      `)
+      .join('');
+
+    this.swal.custom({
+      title: 'Cancel Order',
+      html: `
+        <div style="text-align: left; padding: 10px 0;">
+          <p style="margin-bottom: 15px; font-weight: 500;">Why are you cancelling this order?</p>
+          <div style="border: 1px solid #ddd; padding: 12px; border-radius: 4px; max-height: 250px; overflow-y: auto;">
+            ${reasonsHtml}
+          </div>
+          <textarea id="customReason" placeholder="If 'Other', please specify reason here..." style="width: 100%; margin-top: 12px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; display: none; min-height: 60px;" maxlength="255"></textarea>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Cancel Order',
+      cancelButtonText: 'Go Back',
+      confirmButtonColor: '#ef4444',
+      didOpen: () => {
+        // Add event listener for radio button changes
+        const radioButtons = document.querySelectorAll('input[name="cancelReason"]');
+        const customReasonTextarea = document.getElementById('customReason') as HTMLTextAreaElement;
+
+        radioButtons.forEach((radio: any) => {
+          radio.addEventListener('change', (e: any) => {
+            if (e.target.value === 'Other (please specify)') {
+              customReasonTextarea.style.display = 'block';
+            } else {
+              customReasonTextarea.style.display = 'none';
+            }
+          });
+        });
+      },
+      inputValidator: () => {
+        const selectedReason = (document.querySelector('input[name="cancelReason"]:checked') as any)?.value;
+        const customReasonTextarea = document.getElementById('customReason') as HTMLTextAreaElement;
+
+        if (!selectedReason) {
+          return 'Please select a cancellation reason';
+        }
+
+        if (selectedReason === 'Other (please specify)' && !customReasonTextarea.value.trim()) {
+          return 'Please specify the reason';
+        }
+
+        return null;
+      }
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const selectedReason = (document.querySelector('input[name="cancelReason"]:checked') as any)?.value;
+        const customReasonTextarea = document.getElementById('customReason') as HTMLTextAreaElement;
+
+        const cancellationReason = selectedReason === 'Other (please specify)'
+          ? customReasonTextarea.value.trim()
+          : selectedReason;
+
+        this.swal.loading('Cancelling order...');
+        this.orderService.cancelOrder(order.id, cancellationReason).subscribe({
+          next: (updatedOrder) => {
+            const orderIndex = this.orders.findIndex(o => o.id === order.id);
+            if (orderIndex !== -1) {
+              this.orders[orderIndex] = updatedOrder;
+              this.updateOrderLists();
+              this.applyFilter();
+            }
+            this.swal.close();
+            this.swal.success('Order Cancelled', `Order #${order.orderNumber} has been cancelled successfully.`);
+          },
+          error: (error) => {
+            console.error('Error cancelling order:', error);
+            this.swal.close();
+            this.swal.error('Error', 'Failed to cancel order. Please try again.');
+          }
+        });
+      }
+    });
+  }
+
   startPreparing(orderId: number): void {
     this.swal.loading('Starting preparation...');
     this.orderService.startPreparing(orderId).subscribe({

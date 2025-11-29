@@ -49,6 +49,10 @@ class AppRouter {
       //   path: '/delivery-fee-test',
       //   builder: (context, state) => const DeliveryFeeTestScreen(),
       // ), // Temporarily disabled
+      GoRoute(
+        path: '/customer/cart',
+        builder: (context, state) => const CartScreen(),
+      ),
       ShellRoute(
         builder: (context, state, child) {
           return CustomerShell(child: child);
@@ -86,10 +90,6 @@ class AppRouter {
             builder: (context, state) => const ShopListingScreen(
               categoryTitle: 'All Categories',
             ),
-          ),
-          GoRoute(
-            path: '/customer/cart',
-            builder: (context, state) => const CartScreen(),
           ),
           GoRoute(
             path: '/customer/orders',

@@ -147,6 +147,9 @@ class PromoCode {
   final DateTime startDate;
   final DateTime endDate;
   final String? imageUrl;
+  final String? bannerUrl;
+  final bool? isFirstTimeOnly;
+  final String? termsAndConditions;
 
   PromoCode({
     required this.id,
@@ -161,6 +164,9 @@ class PromoCode {
     required this.startDate,
     required this.endDate,
     this.imageUrl,
+    this.bannerUrl,
+    this.isFirstTimeOnly,
+    this.termsAndConditions,
   });
 
   factory PromoCode.fromJson(Map<String, dynamic> json) {
@@ -181,6 +187,9 @@ class PromoCode {
       startDate: DateTime.parse(json['startDate']),
       endDate: DateTime.parse(json['endDate']),
       imageUrl: json['imageUrl'],
+      bannerUrl: json['bannerUrl'],
+      isFirstTimeOnly: json['isFirstTimeOnly'],
+      termsAndConditions: json['termsAndConditions'],
     );
   }
 

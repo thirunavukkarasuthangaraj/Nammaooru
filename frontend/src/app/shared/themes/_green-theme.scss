@@ -1,0 +1,118 @@
+// NammaOoru Green Theme - Based on Login Screen
+// This theme provides a consistent green color scheme across the application
+
+// Primary Green Colors (from login screen)
+$green-primary: #4ade80;
+$green-primary-light: #86efac;
+$green-primary-dark: #22c55e;
+$green-primary-darker: #16a34a;
+
+// Complete Green Color Palette (Tailwind Green)
+$green-50: #f0fdf4;
+$green-100: #dcfce7;
+$green-200: #bbf7d0;
+$green-300: #86efac;
+$green-400: #4ade80;
+$green-500: #22c55e;
+$green-600: #16a34a;
+$green-700: #15803d;
+$green-800: #166534;
+$green-900: #134e4a;
+
+// Text Colors (from login screen)
+$text-primary: #374151;
+$text-secondary: #6b7280;
+$text-tertiary: #9ca3af;
+$text-light: #d1d5db;
+$text-white: #ffffff;
+
+// Success Colors (matching green theme)
+$success-light: #dcfce7;
+$success: #22c55e;
+$success-dark: #16a34a;
+
+// Error Colors
+$error-light: #fef2f2;
+$error: #ef4444;
+$error-dark: #dc2626;
+
+// Warning Colors
+$warning-light: #fef3c7;
+$warning: #f59e0b;
+$warning-dark: #d97706;
+
+// Info Colors
+$info-light: #dbeafe;
+$info: #3b82f6;
+$info-dark: #2563eb;
+
+// Border Colors
+$border-light: #f3f4f6;
+$border: #e5e7eb;
+$border-dark: #d1d5db;
+
+// Background Colors
+$bg-white: #ffffff;
+$bg-light: #f9fafb;
+$bg-gray: #f3f4f6;
+$bg-dark: #1f2937;
+
+// Overlay Colors (from login page)
+$overlay-light: rgba(240, 253, 244, 0.85);
+
+// Gradients
+$gradient-primary: linear-gradient(135deg, #{$green-primary} 0%, #{$green-primary-dark} 100%);
+$gradient-light: linear-gradient(135deg, #{$green-300} 0%, #{$green-500} 100%);
+$gradient-dark: linear-gradient(135deg, #{$green-600} 0%, #{$green-800} 100%);
+
+// Shadows (from login page)
+$shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+$shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+$shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+$shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.15);
+$shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+$shadow-2xl: 0 25px 50px rgba(0, 0, 0, 0.25);
+$shadow-form: 0 20px 60px -15px rgba(0, 0, 0, 0.3), 0 0 1px rgba(0, 0, 0, 0.1);
+
+// Focus States
+$focus-ring: 0 0 0 3px rgba(74, 222, 128, 0.1);
+$focus-ring-error: 0 0 0 4px rgba(239, 68, 68, 0.1);
+$focus-ring-success: 0 0 0 4px rgba(34, 197, 94, 0.1);
+
+// Border Radius
+$radius-sm: 0.5rem;
+$radius-md: 0.75rem;
+$radius-lg: 1rem;
+$radius-xl: 1.25rem;
+$radius-2xl: 1.5rem;
+$radius-full: 9999px;
+
+// Spacing
+$spacing-xs: 0.25rem;
+$spacing-sm: 0.5rem;
+$spacing-md: 1rem;
+$spacing-lg: 1.5rem;
+$spacing-xl: 2rem;
+$spacing-2xl: 2.5rem;
+$spacing-3xl: 3rem;
+
+// Transitions
+$transition-fast: 0.15s ease-in-out;
+$transition-normal: 0.2s ease-in-out;
+$transition-slow: 0.3s ease-in-out;
+
+// Z-index Scale
+$z-dropdown: 1000;
+$z-sticky: 1020;
+$z-fixed: 1030;
+$z-modal-backdrop: 1040;
+$z-modal: 1050;
+$z-popover: 1060;
+$z-tooltip: 1070;
+
+// Button States
+$button-padding: 0.75rem 1rem;
+$button-font-size: 0.875rem;
+$button-font-weight: 500;
+$button-border-radius: $radius-sm;
+$button-transition: background $transition-normal;

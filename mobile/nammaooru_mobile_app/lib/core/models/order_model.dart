@@ -109,8 +109,10 @@ class Order {
   }
 
   bool get canBeCancelled {
-    final cancellableStatuses = ['PENDING', 'CONFIRMED'];
-    return cancellableStatuses.contains(status.toUpperCase());
+    // Allow customers to cancel until order is out for delivery or already delivered
+    // Matches backend logic: cancellation allowed for all statuses except DELIVERED, COMPLETED, CANCELLED, REFUNDED, SELF_PICKUP_COLLECTED
+    final nonCancellableStatuses = ['DELIVERED', 'COMPLETED', 'CANCELLED', 'REFUNDED', 'SELF_PICKUP_COLLECTED'];
+    return !nonCancellableStatuses.contains(status.toUpperCase());
   }
 
   bool get canBeTracked {

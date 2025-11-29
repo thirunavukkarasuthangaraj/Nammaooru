@@ -39,7 +39,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   String _generateUsername(String name) {
     final cleanName = name.trim().toLowerCase().replaceAll(' ', '');
-    final timestamp = DateTime.now().millisecondsSinceEpoch.toString().substring(8);
+    final timestamp =
+        DateTime.now().millisecondsSinceEpoch.toString().substring(8);
     return '${cleanName}_$timestamp';
   }
 
@@ -58,7 +59,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final generatedUsername = _generateUsername(_nameController.text);
-    
+
     final success = await authProvider.register(
       name: _nameController.text.trim(),
       email: _emailController.text.trim(),
@@ -112,61 +113,61 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
             ),
             SafeArea(
-        child: Consumer<AuthProvider>(
-          builder: (context, authProvider, child) {
-            if (authProvider.authState == AuthState.loading) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(
-                      color: VillageTheme.primaryGreen,
-                      strokeWidth: 3,
-                    ),
-                    const SizedBox(height: VillageTheme.spacingM),
-                    Text(
-                      'Creating Account...',
-                      style: VillageTheme.bodyLarge.copyWith(
-                        color: VillageTheme.primaryGreen,
+              child: Consumer<AuthProvider>(
+                builder: (context, authProvider, child) {
+                  if (authProvider.authState == AuthState.loading) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircularProgressIndicator(
+                            color: VillageTheme.primaryGreen,
+                            strokeWidth: 3,
+                          ),
+                          const SizedBox(height: VillageTheme.spacingM),
+                          Text(
+                            'Creating Account...',
+                            style: VillageTheme.bodyLarge.copyWith(
+                              color: VillageTheme.primaryGreen,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const SizedBox(height: 40),
+                          _buildHeader(),
+                          const SizedBox(height: 32),
+                          _buildNameField(),
+                          const SizedBox(height: 16),
+                          _buildEmailField(),
+                          const SizedBox(height: 16),
+                          _buildPhoneField(),
+                          const SizedBox(height: 16),
+                          _buildGenderField(),
+                          const SizedBox(height: 16),
+                          _buildPasswordField(),
+                          const SizedBox(height: 16),
+                          _buildTermsAndConditions(),
+                          const SizedBox(height: 24),
+                          _buildRegisterButton(),
+                          const SizedBox(height: 16),
+                          _buildLoginLink(),
+                        ],
                       ),
                     ),
-                  ],
-                ),
-              );
-            }
-
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SizedBox(height: 40),
-                    _buildHeader(),
-                    const SizedBox(height: 32),
-                    _buildNameField(),
-                    const SizedBox(height: 16),
-                    _buildEmailField(),
-                    const SizedBox(height: 16),
-                    _buildPhoneField(),
-                    const SizedBox(height: 16),
-                    _buildGenderField(),
-                    const SizedBox(height: 16),
-                    _buildPasswordField(),
-                    const SizedBox(height: 16),
-                    _buildTermsAndConditions(),
-                    const SizedBox(height: 24),
-                    _buildRegisterButton(),
-                    const SizedBox(height: 16),
-                    _buildLoginLink(),
-                  ],
-                ),
+                  );
+                },
               ),
-            );
-          },
-        ),
-      ),
+            ),
           ],
         ),
       ),
@@ -458,7 +459,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
           DropdownMenuItem(value: 'MALE', child: Text('Male')),
           DropdownMenuItem(value: 'FEMALE', child: Text('Female')),
           DropdownMenuItem(value: 'OTHER', child: Text('Other')),
-          DropdownMenuItem(value: 'PREFER_NOT_TO_SAY', child: Text('Prefer not to say')),
+          DropdownMenuItem(
+              value: 'PREFER_NOT_TO_SAY', child: Text('Prefer not to say')),
         ],
         onChanged: (value) {
           setState(() {
@@ -508,7 +510,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           return null;
         },
         decoration: InputDecoration(
-          hintText: 'Create a password (e.g., Test@123)',
+          hintText: 'Enter Password',
           hintStyle: const TextStyle(
             color: Colors.black54,
             fontSize: 16,
@@ -520,7 +522,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           suffixIcon: IconButton(
             icon: Icon(
-              _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+              _obscurePassword
+                  ? Icons.visibility_outlined
+                  : Icons.visibility_off_outlined,
               color: Colors.black54,
               size: 20,
             ),
@@ -722,7 +726,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   void _showPrivacyPolicy(BuildContext context) async {
-    const String privacyPolicyUrl = 'https://nammaoorudelivary.in/privacy-policy';
+    const String privacyPolicyUrl =
+        'https://nammaoorudelivary.in/privacy-policy';
 
     final Uri url = Uri.parse(privacyPolicyUrl);
 

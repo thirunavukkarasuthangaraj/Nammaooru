@@ -409,7 +409,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           return null;
         },
         decoration: InputDecoration(
-          hintText: 'Create a strong password',
+          hintText: 'Eg: Pass@000',
           hintStyle: TextStyle(
             color: Colors.grey[500],
             fontSize: 16,

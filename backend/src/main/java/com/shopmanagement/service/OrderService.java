@@ -512,20 +512,57 @@ public class OrderService {
     @Transactional
     public OrderResponse cancelOrder(Long orderId, String reason) {
         log.info("Cancelling order: {} with reason: {}", orderId, reason);
-        
+
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
-        
+
         if (!order.canBeCancelled()) {
             throw new RuntimeException("Order cannot be cancelled in current status: " + order.getStatus());
         }
-        
+
         order.setStatus(Order.OrderStatus.CANCELLED);
         order.setCancellationReason(reason);
         order.setUpdatedBy(getCurrentUsername());
-        
+
+        // Handle refund for paid orders
+        if (order.isPaid() && (order.getPaymentMethod() == Order.PaymentMethod.ONLINE_PAYMENT ||
+                               order.getPaymentMethod() == Order.PaymentMethod.UPI ||
+                               order.getPaymentMethod() == Order.PaymentMethod.CARD)) {
+            log.info("Processing refund for cancelled order: {} with amount: {}",
+                    order.getOrderNumber(), order.getTotalAmount());
+            order.setPaymentStatus(Order.PaymentStatus.REFUNDED);
+            // Note: Actual refund transaction would be handled by payment gateway integration
+            // For now, we just mark the status as REFUNDED
+        } else if (order.getPaymentMethod() == Order.PaymentMethod.CASH_ON_DELIVERY) {
+            log.info("COD order cancelled: {}. No refund processing needed.", order.getOrderNumber());
+        }
+
+        // Restore stock for cancelled order items
+        if (order.getOrderItems() != null && !order.getOrderItems().isEmpty()) {
+            for (OrderItem item : order.getOrderItems()) {
+                try {
+                    log.info("Restoring stock for product: {} quantity: {}",
+                            item.getShopProduct().getId(), item.getQuantity());
+                    ShopProduct product = item.getShopProduct();
+                    product.setStockQuantity(product.getStockQuantity() + item.getQuantity());
+                    shopProductRepository.save(product);
+                } catch (Exception e) {
+                    log.error("Failed to restore stock for order item during cancellation: {}",
+                            item.getId(), e);
+                }
+            }
+        }
+
         Order cancelledOrder = orderRepository.save(order);
-        
+
+        // Send cancellation notification to customer and shop
+        try {
+            log.info("Sending cancellation notification for order: {}", order.getOrderNumber());
+            notificationService.notifyOrderCancellation(order, reason);
+        } catch (Exception e) {
+            log.error("Failed to send cancellation notification: {}", order.getOrderNumber(), e);
+        }
+
         return mapToResponse(cancelledOrder);
     }
     
