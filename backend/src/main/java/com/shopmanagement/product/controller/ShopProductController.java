@@ -112,9 +112,20 @@ public class ShopProductController {
     }
 
     /**
-     * Mobile app optimized pagination endpoint
-     * Returns 20 products per page with clear pagination info
-     * Use ?page=0 for first 20 products, ?page=1 for next 20, etc.
+     * Mobile app optimized pagination endpoint for customer app
+     * Returns 20 products per page with pagination info
+     *
+     * USAGE EXAMPLES:
+     * - All products: GET /api/shops/1/products/mobile-list?page=0
+     * - By category: GET /api/shops/1/products/mobile-list?page=0&categoryId=5
+     * - Next page: GET /api/shops/1/products/mobile-list?page=1&categoryId=5
+     * - Search: GET /api/shops/1/products/mobile-list?page=0&search=rice
+     *
+     * MOBILE APP IMPLEMENTATION:
+     * 1. Load first page: page=0, categoryId=null
+     * 2. User clicks category: Reset page=0, categoryId=5
+     * 3. User scrolls down: page=1, categoryId=5 (keeps same category)
+     * 4. Show "Load More" if hasNext=true
      */
     @GetMapping("/mobile-list")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getProductsForMobileApp(
@@ -125,7 +136,7 @@ public class ShopProductController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
-        log.info("Mobile app product listing: shop={}, page={}, size={}, search={}", shopId, page, size, search);
+        log.info("📱 Mobile app listing: shop={}, page={}, categoryId={}, search={}", shopId, page, categoryId, search);
 
         Sort.Direction direction = Sort.Direction.DESC;
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, "updatedAt"));
@@ -160,13 +171,15 @@ public class ShopProductController {
         mobileResponse.put("hasNext", products.hasNext());
         mobileResponse.put("hasPrevious", products.hasPrevious());
         mobileResponse.put("nextPage", page + 1);
+        mobileResponse.put("categoryId", categoryId); // Return which category was filtered
 
-        log.info("Mobile response: {} products on page {} of {}",
-                 products.getContent().size(), page, products.getTotalPages());
+        String filterInfo = categoryId != null ? String.format("category %d", categoryId) : "all categories";
+        log.info("✅ Mobile response: {} products on page {}/{} from {}",
+                 products.getContent().size(), page, products.getTotalPages(), filterInfo);
 
         return ResponseEntity.ok(ApiResponse.success(
                 mobileResponse,
-                String.format("Page %d of %d (%d products total)", page, products.getTotalPages(), products.getTotalElements())
+                String.format("Page %d of %d - %d products total", page + 1, products.getTotalPages(), products.getTotalElements())
         ));
     }
 
