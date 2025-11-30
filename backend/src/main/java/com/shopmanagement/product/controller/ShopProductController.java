@@ -113,18 +113,22 @@ public class ShopProductController {
 
     /**
      * Mobile app optimized pagination endpoint for customer app
-     * Returns 20 products per page with pagination info
+     * Smart pagination: Categories load 20 items, General browsing loads 10 items
      *
      * USAGE EXAMPLES:
-     * - All products: GET /api/shops/1/products/mobile-list?page=0
-     * - By category: GET /api/shops/1/products/mobile-list?page=0&categoryId=5
+     * - All products (fast): GET /api/shops/1/products/mobile-list?page=0 → loads 10 items
+     * - By category (more items): GET /api/shops/1/products/mobile-list?page=0&categoryId=5 → loads 20 items
      * - Next page: GET /api/shops/1/products/mobile-list?page=1&categoryId=5
      * - Search: GET /api/shops/1/products/mobile-list?page=0&search=rice
      *
+     * SMART PAGE SIZING:
+     * - categoryId present: Default size = 20 (category browsing - user wants more items)
+     * - categoryId null: Default size = 10 (general browsing - faster loading)
+     *
      * MOBILE APP IMPLEMENTATION:
-     * 1. Load first page: page=0, categoryId=null
-     * 2. User clicks category: Reset page=0, categoryId=5
-     * 3. User scrolls down: page=1, categoryId=5 (keeps same category)
+     * 1. Load first page: page=0, categoryId=null (10 items, fast)
+     * 2. User clicks category: Reset page=0, categoryId=5 (20 items, more options)
+     * 3. User scrolls down: page=1, categoryId=5 (keeps same category, 20 items)
      * 4. Show "Load More" if hasNext=true
      */
     @GetMapping("/mobile-list")
@@ -134,12 +138,17 @@ public class ShopProductController {
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) String brand,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(required = false) Integer size) {
 
-        log.info("📱 Mobile app listing: shop={}, page={}, categoryId={}, search={}", shopId, page, categoryId, search);
+        // Smart page sizing: 20 items for categories, 10 items for general browsing
+        int pageSize = size != null ? size : (categoryId != null ? 20 : 10);
+
+        log.info("⚡ Mobile app listing: shop={}, page={}, size={}, categoryId={}, mode={}",
+                 shopId, page, pageSize, categoryId,
+                 categoryId != null ? "CATEGORY_MODE (20 items)" : "GENERAL_MODE (10 items)");
 
         Sort.Direction direction = Sort.Direction.DESC;
-        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, "updatedAt"));
+        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(direction, "updatedAt"));
 
         Specification<ShopProduct> spec = (root, query, cb) -> cb.equal(root.get("shop").get("id"), shopId);
 
@@ -165,13 +174,14 @@ public class ShopProductController {
         Map<String, Object> mobileResponse = new HashMap<>();
         mobileResponse.put("products", products.getContent());
         mobileResponse.put("currentPage", page);
-        mobileResponse.put("pageSize", size);
+        mobileResponse.put("pageSize", pageSize); // Use calculated pageSize
         mobileResponse.put("totalProducts", products.getTotalElements());
         mobileResponse.put("totalPages", products.getTotalPages());
         mobileResponse.put("hasNext", products.hasNext());
         mobileResponse.put("hasPrevious", products.hasPrevious());
         mobileResponse.put("nextPage", page + 1);
         mobileResponse.put("categoryId", categoryId); // Return which category was filtered
+        mobileResponse.put("mode", categoryId != null ? "CATEGORY_MODE (20 items)" : "GENERAL_MODE (10 items)"); // Show mode
 
         String filterInfo = categoryId != null ? String.format("category %d", categoryId) : "all categories";
         log.info("✅ Mobile response: {} products on page {}/{} from {}",
