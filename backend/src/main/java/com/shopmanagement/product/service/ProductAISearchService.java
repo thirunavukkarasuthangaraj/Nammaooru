@@ -72,6 +72,7 @@ public class ProductAISearchService {
 
     /**
      * Check if product matches keywords across multiple fields
+     * Uses fuzzy matching to handle typos and variations
      * Priority: tags > name > brand > category > description
      */
     private boolean matchesKeywords(MasterProduct product, String[] keywords) {
@@ -106,15 +107,89 @@ public class ProductAISearchService {
         String searchableTextLower = searchableText.toString().toLowerCase();
         log.debug("Voice search matching product: {} - searchable text: {}", product.getName(), searchableTextLower);
 
-        // Check if ANY keyword matches (OR logic)
+        // Check if ANY keyword matches using fuzzy matching (handles typos)
         for (String keyword : keywords) {
-            if (keyword.length() > 0 && searchableTextLower.contains(keyword)) {
-                log.debug("  -> Matched keyword: '{}'", keyword);
-                return true;
+            if (keyword.length() > 0) {
+                // Try exact match first (fastest)
+                if (searchableTextLower.contains(keyword)) {
+                    log.debug("  -> Exact match for keyword: '{}'", keyword);
+                    return true;
+                }
+
+                // Try fuzzy match (handles typos with 80% similarity threshold)
+                if (fuzzyMatch(searchableTextLower, keyword, 0.80)) {
+                    log.debug("  -> Fuzzy match for keyword: '{}'", keyword);
+                    return true;
+                }
             }
         }
 
         return false;
+    }
+
+    /**
+     * Fuzzy matching using word-level similarity
+     * Splits text into words and checks similarity of each word against keyword
+     */
+    private boolean fuzzyMatch(String text, String keyword, double threshold) {
+        String[] words = text.split("[\\s,]+"); // Split by spaces and commas
+
+        for (String word : words) {
+            if (word.length() > 0) {
+                double similarity = calculateSimilarity(word, keyword);
+                if (similarity >= threshold) {
+                    log.debug("    Fuzzy: '{}' vs '{}' = {}", word, keyword, String.format("%.2f", similarity));
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Calculate similarity between two strings using Levenshtein distance
+     * Returns value between 0.0 (completely different) and 1.0 (identical)
+     */
+    private double calculateSimilarity(String s1, String s2) {
+        // Shorter string length for prefix matching (e.g., "puz" should match "puzhugal")
+        int minLen = Math.min(s1.length(), s2.length());
+        int maxLen = Math.max(s1.length(), s2.length());
+
+        // Check prefix match first (for voice search, user might say partial word)
+        if (s1.startsWith(s2) || s2.startsWith(s1)) {
+            return minLen / (double) maxLen;  // Partial match score
+        }
+
+        // Levenshtein distance for typo tolerance
+        int distance = levenshteinDistance(s1, s2);
+        return 1.0 - (distance / (double) maxLen);
+    }
+
+    /**
+     * Calculate Levenshtein distance between two strings
+     * Measures minimum edits (insert, delete, substitute) needed to transform one string to another
+     */
+    private int levenshteinDistance(String s1, String s2) {
+        int[][] dp = new int[s1.length() + 1][s2.length() + 1];
+
+        for (int i = 0; i <= s1.length(); i++) {
+            dp[i][0] = i;
+        }
+        for (int j = 0; j <= s2.length(); j++) {
+            dp[0][j] = j;
+        }
+
+        for (int i = 1; i <= s1.length(); i++) {
+            for (int j = 1; j <= s2.length(); j++) {
+                int cost = s1.charAt(i - 1) == s2.charAt(j - 1) ? 0 : 1;
+                dp[i][j] = Math.min(Math.min(
+                        dp[i - 1][j] + 1,      // deletion
+                        dp[i][j - 1] + 1),     // insertion
+                        dp[i - 1][j - 1] + cost); // substitution
+            }
+        }
+
+        return dp[s1.length()][s2.length()];
     }
 
     /**
