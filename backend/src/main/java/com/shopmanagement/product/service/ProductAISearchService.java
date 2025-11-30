@@ -80,7 +80,7 @@ public class ProductAISearchService {
     /**
      * Check if product matches keywords across multiple fields
      * Uses fuzzy matching to handle typos and variations
-     * Priority: tags > name > brand > category > description
+     * Priority: tags > name > nameTamil > brand > category > description
      */
     private boolean matchesKeywords(MasterProduct product, String[] keywords) {
         // Build searchable text from multiple fields for better matching
@@ -91,9 +91,14 @@ public class ProductAISearchService {
             searchableText.append(product.getTags()).append(" ");
         }
 
-        // Product name
+        // Product name (English)
         if (product.getName() != null) {
             searchableText.append(product.getName()).append(" ");
+        }
+
+        // Product name (Tamil) - for Tamil language search
+        if (product.getNameTamil() != null) {
+            searchableText.append(product.getNameTamil()).append(" ");
         }
 
         // Brand
