@@ -1,36 +1,33 @@
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'dart:convert';
 
+/// Mobile implementation using SharedPreferences only
+/// Removed flutter_secure_storage to avoid package_info_plus transitive dependency (QUERY_ALL_PACKAGES)
 class LocalStorageImpl {
   static late SharedPreferences prefs;
-  static const FlutterSecureStorage secureStorage = FlutterSecureStorage(
-    aOptions: AndroidOptions(
-      encryptedSharedPreferences: true,
-    ),
-    iOptions: IOSOptions(
-      accessibility: KeychainAccessibility.first_unlock_this_device,
-    ),
-  );
 
   static Future<void> init() async {
     prefs = await SharedPreferences.getInstance();
   }
 
-  // Mobile implementation - use FlutterSecureStorage for sensitive data
+  // Use SharedPreferences with 'secure_' prefix (flutter_secure_storage removed)
   static Future<void> setSecureString(String key, String value) async {
-    await secureStorage.write(key: key, value: value);
+    await prefs.setString('secure_$key', value);
   }
 
   static Future<String?> getSecureString(String key) async {
-    return await secureStorage.read(key: key);
+    return prefs.getString('secure_$key');
   }
 
   static Future<void> removeSecureString(String key) async {
-    await secureStorage.delete(key: key);
+    await prefs.remove('secure_$key');
   }
 
   static Future<void> clearSecureStorage() async {
-    await secureStorage.deleteAll();
+    final keys = prefs.getKeys();
+    for (String key in keys) {
+      if (key.startsWith('secure_')) {
+        await prefs.remove(key);
+      }
+    }
   }
 }
