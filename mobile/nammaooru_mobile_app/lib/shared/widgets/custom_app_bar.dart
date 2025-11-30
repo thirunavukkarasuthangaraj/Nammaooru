@@ -50,7 +50,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget? _buildBackButton(BuildContext context) {
     // Always show back button if showBackButton is true
     return IconButton(
-      icon: const Icon(Icons.arrow_back_ios),
+      icon: const Icon(Icons.arrow_back),
       onPressed: () {
         if (onBackPressed != null) {
           onBackPressed!();
