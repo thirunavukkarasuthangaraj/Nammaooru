@@ -264,172 +264,179 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
           ),
         ],
       ),
-      body: NestedScrollView(
-        controller: _scrollController,
-        headerSliverBuilder: (context, innerBoxIsScrolled) => [
+      body: Column(
+        children: [
           // ============================================
-          // STICKY HEADER (Search + Voice + Categories)
+          // FIXED HEADER (Search + Voice + Categories)
           // ============================================
-          SliverAppBar(
-            floating: true,
-            pinned: true,
-            expandedHeight: 220,
-            backgroundColor: Colors.white,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Column(
-                children: [
-                  // SEARCH BOX
-                  Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: 'Search products...',
-                        prefixIcon: const Icon(Icons.search, color: Colors.green),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(color: Colors.green),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(vertical: 10),
+          Container(
+            color: Colors.white,
+            child: Column(
+              children: [
+                // SEARCH BOX
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: TextField(
+                    decoration: InputDecoration(
+                      hintText: 'Search products...',
+                      prefixIcon: const Icon(Icons.search, color: Colors.green),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Colors.green),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
+                  ),
+                ),
+
+                // VOICE SEARCH BUTTON
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: GestureDetector(
+                    onTap: () {
+                      // TODO: Implement voice search
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Voice search feature coming soon')),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Icon(Icons.mic, color: Colors.white, size: 20),
+                          SizedBox(width: 8),
+                          Text(
+                            'Voice Search',
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
+                        ],
                       ),
                     ),
                   ),
+                ),
 
-                  // VOICE SEARCH BUTTON
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: GestureDetector(
-                      onTap: () {
-                        // TODO: Implement voice search
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Voice search feature coming soon')),
-                        );
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.blue,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
-                            Icon(Icons.mic, color: Colors.white, size: 20),
-                            SizedBox(width: 8),
-                            Text(
-                              'Voice Search',
-                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+                // CATEGORY FILTERS (Horizontal Scroll)
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 50,
+                  child: _categoriesLoading
+                      ? const Center(child: SizedBox(
+                          width: 30,
+                          height: 30,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ))
+                      : _categories.isEmpty
+                          ? Center(child: Text('No categories', style: TextStyle(color: Colors.grey[500])))
+                          : ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            itemCount: _categories.length,
+                            itemBuilder: (context, index) {
+                              final category = _categories[index];
+                              final isSelected = _selectedCategoryId == category['id'];
 
-                  // CATEGORY FILTERS (Horizontal Scroll)
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 50,
-                    child: _categoriesLoading
-                        ? const Center(child: SizedBox(
-                            width: 30,
-                            height: 30,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ))
-                        : _categories.isEmpty
-                            ? Center(child: Text('No categories', style: TextStyle(color: Colors.grey[500])))
-                            : ListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                              itemCount: _categories.length,
-                              itemBuilder: (context, index) {
-                                final category = _categories[index];
-                                final isSelected = _selectedCategoryId == category['id'];
-
-                                return Padding(
-                                  padding: const EdgeInsets.only(right: 8),
-                                  child: GestureDetector(
-                                    onTap: () => _selectCategory(category['id'], category['name']),
-                                    child: Chip(
-                                      label: Text(category['name']),
-                                      backgroundColor: isSelected ? Colors.green : Colors.grey[300],
-                                      labelStyle: TextStyle(
-                                        color: isSelected ? Colors.white : Colors.black,
-                                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                      ),
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: GestureDetector(
+                                  onTap: () => _selectCategory(category['id'], category['name']),
+                                  child: Chip(
+                                    label: Text(category['name']),
+                                    backgroundColor: isSelected ? Colors.green : Colors.grey[300],
+                                    labelStyle: TextStyle(
+                                      color: isSelected ? Colors.white : Colors.black,
+                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                                     ),
                                   ),
-                                );
-                              },
-                            ),
-                  ),
-                ],
-              ),
+                                ),
+                              );
+                            },
+                          ),
+                ),
+                const SizedBox(height: 8),
+              ],
             ),
           ),
-        ],
 
-        // ============================================
-        // SCROLLABLE CONTENT (Banner + Products)
-        // ============================================
-        body: _isLoading && _products.isEmpty
-            ? const Center(child: CircularProgressIndicator())
-            : NotificationListener<ScrollNotification>(
-                onNotification: (_) => false,
-                child: ListView(
-                  padding: EdgeInsets.zero,
-                  children: [
-                    // BANNER (hides on scroll)
-                    Container(
-                      height: 150,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Colors.green, Colors.green[700]!],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                      ),
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.local_offer, color: Colors.white, size: 40),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Special Offers Today',
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white),
+          // ============================================
+          // SCROLLABLE AREA (ONLY Products + Banner)
+          // ============================================
+          Expanded(
+            child: _isLoading && _products.isEmpty
+                ? const Center(child: CircularProgressIndicator())
+                : NotificationListener<ScrollNotification>(
+                    onNotification: (scrollNotification) {
+                      if (scrollNotification is ScrollEndNotification) {
+                        double pixels = scrollNotification.metrics.pixels;
+                        double maxScroll = scrollNotification.metrics.maxScrollExtent;
+
+                        // Load more when 80% scrolled
+                        if (pixels > maxScroll * 0.8 && _hasMore && !_isLoading) {
+                          _loadMoreProducts();
+                        }
+                      }
+                      return false;
+                    },
+                    child: ListView(
+                      controller: _scrollController,
+                      padding: EdgeInsets.zero,
+                      children: [
+                        // BANNER (hides on scroll)
+                        Container(
+                          height: 150,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Colors.green, Colors.green[700]!],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
                             ),
-                          ],
+                          ),
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.local_offer, color: Colors.white, size: 40),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Special Offers Today',
+                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
 
-                    // PRODUCTS GRID
-                    if (_products.isEmpty && !_isLoading)
-                      Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(32),
-                          child: Text('No products available', style: Theme.of(context).textTheme.titleMedium),
-                        ),
-                      )
-                    else
-                      GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        padding: const EdgeInsets.all(12),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          childAspectRatio: 0.65,
-                          crossAxisSpacing: 10,
-                          mainAxisSpacing: 10,
-                        ),
-                        itemCount: _products.length,
-                        itemBuilder: (context, index) {
-                          final product = _products[index];
-                          final productId = product['id'].toString();
-                          final quantity = _productQuantities[productId] ?? 0;
-                          final stock = product['stockQuantity'] as int? ?? 0;
-                          final isOutOfStock = stock == 0;
-                          final isLowStock = stock > 0 && stock <= 5;
+                        // PRODUCTS GRID
+                        if (_products.isEmpty && !_isLoading)
+                          Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(32),
+                              child: Text('No products available', style: Theme.of(context).textTheme.titleMedium),
+                            ),
+                          )
+                        else
+                          GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            padding: const EdgeInsets.all(12),
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              childAspectRatio: 0.65,
+                              crossAxisSpacing: 10,
+                              mainAxisSpacing: 10,
+                            ),
+                            itemCount: _products.length,
+                            itemBuilder: (context, index) {
+                              final product = _products[index];
+                              final productId = product['id'].toString();
+                              final quantity = _productQuantities[productId] ?? 0;
+                              final stock = product['stockQuantity'] as int? ?? 0;
+                              final isOutOfStock = stock == 0;
+                              final isLowStock = stock > 0 && stock <= 5;
 
                             return Card(
                               elevation: 2,
