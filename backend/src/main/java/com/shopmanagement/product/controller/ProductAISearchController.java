@@ -49,15 +49,20 @@ public class ProductAISearchController {
 
     /**
      * Voice search - converts voice query to text and searches
+     * Supports natural language multi-product queries:
+     * - "rice and dal" → searches for both rice and dal
+     * - "milk & bread & cheese" → searches for milk, bread, and cheese
      */
     @PostMapping("/voice")
     public ResponseEntity<ApiResponse<List<MasterProductResponse>>> voiceSearchProducts(
             @RequestParam(name = "q") String voiceQuery
     ) {
-        log.info("Voice search request: query={}", voiceQuery);
+        // Preprocess voice query to convert natural language to comma-separated format
+        String processedQuery = preprocessVoiceQuery(voiceQuery);
+        log.info("Voice search request: original={}, processed={}", voiceQuery, processedQuery);
 
         try {
-            List<MasterProductResponse> results = productAISearchService.voiceSearchProducts(voiceQuery);
+            List<MasterProductResponse> results = productAISearchService.voiceSearchProducts(processedQuery);
 
             return ResponseEntity.ok(ApiResponse.success(
                     results,
@@ -72,15 +77,18 @@ public class ProductAISearchController {
     /**
      * Voice search with grouped results - best for multi-item searches (5-10+ items)
      * Returns results grouped and organized by keyword
+     * Supports: "rice and dal" or "milk & bread & cheese & butter & eggs" (up to 5+ products)
      */
     @PostMapping("/voice/grouped")
     public ResponseEntity<ApiResponse<List<VoiceSearchGroupedResponse>>> voiceSearchGrouped(
             @RequestParam(name = "q") String voiceQuery
     ) {
-        log.info("Grouped voice search request: query={}", voiceQuery);
+        // Preprocess voice query to convert natural language to comma-separated format
+        String processedQuery = preprocessVoiceQuery(voiceQuery);
+        log.info("Grouped voice search request: original={}, processed={}", voiceQuery, processedQuery);
 
         try {
-            List<VoiceSearchGroupedResponse> results = productAISearchService.voiceSearchGrouped(voiceQuery);
+            List<VoiceSearchGroupedResponse> results = productAISearchService.voiceSearchGrouped(processedQuery);
 
             int totalProducts = results.stream().mapToInt(VoiceSearchGroupedResponse::getCount).sum();
             return ResponseEntity.ok(ApiResponse.success(
@@ -154,5 +162,34 @@ public class ProductAISearchController {
             log.error("Error during smart search: {}", e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error("Smart search failed: " + e.getMessage()));
         }
+    }
+
+    /**
+     * Preprocess voice query to convert natural language to comma-separated format
+     * Examples:
+     *   "rice and dal" → "rice,dal"
+     *   "milk & bread" → "milk,bread"
+     *   "oil or salt or spice" → "oil,salt,spice"
+     *   "rice" → "rice" (no change)
+     */
+    private String preprocessVoiceQuery(String query) {
+        if (query == null || query.trim().isEmpty()) {
+            return query;
+        }
+
+        // If already contains commas, assume it's properly formatted
+        if (query.contains(",")) {
+            return query.trim();
+        }
+
+        // Convert natural language conjunctions to commas
+        String processed = query
+                .replaceAll("\\s+and\\s+", ",")  // "rice and dal" → "rice,dal"
+                .replaceAll("\\s+&\\s+", ",")    // "rice & dal" → "rice,dal"
+                .replaceAll("\\s+or\\s+", ",")   // "rice or dal" → "rice,dal"
+                .trim();
+
+        log.debug("Voice query preprocessing: \"{}\" → \"{}\"", query, processed);
+        return processed;
     }
 }
