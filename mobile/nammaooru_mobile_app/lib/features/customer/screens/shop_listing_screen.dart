@@ -148,6 +148,10 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
         elevation: 0,
         centerTitle: false,
         iconTheme: const IconThemeData(color: Colors.white),
+        leading: GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: const Icon(Icons.arrow_back, color: Colors.white),
+        ),
       ),
       body: Column(
         children: [

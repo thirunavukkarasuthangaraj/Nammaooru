@@ -235,6 +235,10 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
         title: Text('${_selectedCategory} Products', style: TextStyle(color: Colors.white, fontSize: 18)),
         backgroundColor: Colors.green,
         iconTheme: IconThemeData(color: Colors.white),
+        leading: GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: const Icon(Icons.arrow_back, color: Colors.white),
+        ),
         actions: [
           Stack(
             children: [
