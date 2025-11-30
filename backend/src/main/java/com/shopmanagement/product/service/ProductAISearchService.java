@@ -439,30 +439,60 @@ public class ProductAISearchService {
      */
     @Transactional
     public void populateTamilNamesInTags() {
-        log.info("Starting Tamil names population in tags field...");
+        log.info("Starting bidirectional (English + Tamil) names population in tags field...");
 
         List<MasterProduct> allProducts = masterProductRepository.findAll();
         int updated = 0;
 
         for (MasterProduct product : allProducts) {
-            if (product.getNameTamil() != null && !product.getNameTamil().isEmpty()) {
-                String currentTags = product.getTags() != null ? product.getTags() : "";
+            StringBuilder newTags = new StringBuilder();
 
-                // Check if Tamil name is already in tags
-                if (!currentTags.contains(product.getNameTamil())) {
-                    // Add Tamil name to the beginning of tags for highest priority
-                    String newTags = product.getNameTamil();
-                    if (!currentTags.isEmpty()) {
-                        newTags = newTags + ", " + currentTags;
-                    }
-                    product.setTags(newTags);
-                    masterProductRepository.save(product);
-                    updated++;
-                    log.debug("Updated tags for: {} -> {}", product.getName(), newTags);
+            // 1. Add English product name (for Tamil speakers searching in English)
+            if (product.getName() != null && !product.getName().isEmpty()) {
+                newTags.append(product.getName());
+            }
+
+            // 2. Add Tamil product name (for English speakers or Tamil script searches)
+            if (product.getNameTamil() != null && !product.getNameTamil().isEmpty()) {
+                if (newTags.length() > 0) {
+                    newTags.append(", ");
                 }
+                newTags.append(product.getNameTamil());
+            }
+
+            // 3. Add category name (for broader searches)
+            if (product.getCategory() != null && product.getCategory().getName() != null) {
+                if (newTags.length() > 0) {
+                    newTags.append(", ");
+                }
+                newTags.append(product.getCategory().getName());
+            }
+
+            // 4. Add brand if exists
+            if (product.getBrand() != null && !product.getBrand().isEmpty()) {
+                if (newTags.length() > 0) {
+                    newTags.append(", ");
+                }
+                newTags.append(product.getBrand());
+            }
+
+            // 5. Add SKU for product code searches
+            if (product.getSku() != null && !product.getSku().isEmpty()) {
+                if (newTags.length() > 0) {
+                    newTags.append(", ");
+                }
+                newTags.append(product.getSku());
+            }
+
+            String finalTags = newTags.toString();
+            if (!finalTags.isEmpty() && !finalTags.equals(product.getTags())) {
+                product.setTags(finalTags);
+                masterProductRepository.save(product);
+                updated++;
+                log.debug("Updated tags for: {} -> {}", product.getName(), finalTags);
             }
         }
 
-        log.info("Tamil names population completed. Updated {} products", updated);
+        log.info("Bidirectional tags population completed. Updated {} products", updated);
     }
 }
