@@ -9,7 +9,7 @@ import '../config/env_config.dart';
 import '../constants/app_constants.dart';
 
 class ApiService {
-  static const String _baseUrl = EnvConfig.baseUrl + '/api';
+  static const String _baseUrl = EnvConfig.fullApiUrl;
   late Dio _dio;
   
   static final ApiService _instance = ApiService._internal();

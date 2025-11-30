@@ -4,7 +4,7 @@ import '../config/env_config.dart';
 import '../storage/secure_storage.dart';
 
 class PromoCodeService {
-  static const String _baseUrl = EnvConfig.baseUrl;
+  static const String _baseUrl = EnvConfig.fullApiUrl;
 
   /// Validate a promo code
   /// Returns validation result with discount amount
@@ -17,7 +17,7 @@ class PromoCodeService {
     String? shopId,
   }) async {
     try {
-      final url = Uri.parse('$_baseUrl/api/promotions/validate');
+      final url = Uri.parse('$_baseUrl/promotions/validate');
 
       final response = await http.post(
         url,
@@ -66,8 +66,8 @@ class PromoCodeService {
   Future<List<PromoCode>> getActivePromotions({String? shopId}) async {
     try {
       final url = shopId != null
-          ? Uri.parse('$_baseUrl/api/promotions/active?shopId=$shopId')
-          : Uri.parse('$_baseUrl/api/promotions/active');
+          ? Uri.parse('$_baseUrl/promotions/active?shopId=$shopId')
+          : Uri.parse('$_baseUrl/promotions/active');
 
       final response = await http.get(url);
 
@@ -90,7 +90,7 @@ class PromoCodeService {
     try {
       final token = await SecureStorage.getAuthToken();
       final url =
-          Uri.parse('$_baseUrl/api/promotions/my-usage?customerId=$customerId');
+          Uri.parse('$_baseUrl/promotions/my-usage?customerId=$customerId');
 
       final response = await http.get(
         url,

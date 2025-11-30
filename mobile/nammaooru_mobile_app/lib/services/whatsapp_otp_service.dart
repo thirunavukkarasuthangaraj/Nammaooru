@@ -17,7 +17,7 @@ class WhatsAppOTPService {
     String purpose = 'login',
   }) async {
     try {
-      final url = Uri.parse('$_baseUrl/api/auth/whatsapp/send-otp');
+      final url = Uri.parse('$_baseUrl/auth/whatsapp/send-otp');
       
       final response = await http.post(
         url,
@@ -64,7 +64,7 @@ class WhatsAppOTPService {
     String? deviceType,
   }) async {
     try {
-      final url = Uri.parse('$_baseUrl/api/auth/whatsapp/verify-otp');
+      final url = Uri.parse('$_baseUrl/auth/whatsapp/verify-otp');
       
       final response = await http.post(
         url,
@@ -116,7 +116,7 @@ class WhatsAppOTPService {
     String channel = 'whatsapp',
   }) async {
     try {
-      final url = Uri.parse('$_baseUrl/api/auth/whatsapp/resend-otp');
+      final url = Uri.parse('$_baseUrl/auth/whatsapp/resend-otp');
       
       final response = await http.post(
         url,
@@ -156,7 +156,7 @@ class WhatsAppOTPService {
   /// Check OTP status
   static Future<Map<String, dynamic>> checkOTPStatus(String mobileNumber) async {
     try {
-      final url = Uri.parse('$_baseUrl/api/auth/whatsapp/status/$mobileNumber');
+      final url = Uri.parse('$_baseUrl/auth/whatsapp/status/$mobileNumber');
       
       final response = await http.get(
         url,

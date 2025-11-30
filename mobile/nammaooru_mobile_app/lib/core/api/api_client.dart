@@ -9,7 +9,7 @@ class ApiClient {
 
   static void initialize() {
     _dio = Dio(BaseOptions(
-      baseUrl: EnvConfig.baseUrl + '/api',
+      baseUrl: EnvConfig.fullApiUrl,
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
       headers: {

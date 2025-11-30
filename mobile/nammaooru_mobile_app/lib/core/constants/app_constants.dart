@@ -5,7 +5,8 @@ class AppConstants {
   static const String appVersion = '1.0.0';
   
   // Use environment configuration for base URL
-  static String get baseUrl => EnvConfig.baseUrl + '/api';
+  static String get baseUrl => EnvConfig.fullApiUrl;
+  static String get apiBaseUrl => EnvConfig.fullApiUrl;
   
   // For production, uncomment:
   // static const String baseUrl = 'https://api.nammaoorudelivary.in/api';

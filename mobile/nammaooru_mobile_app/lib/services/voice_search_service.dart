@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:speech_to_text/speech_to_text.dart' as stt;
-import '../core/config/api_config.dart';
+import '../core/config/env_config.dart';
 
 class VoiceSearchService {
   final stt.SpeechToText _speech = stt.SpeechToText();
@@ -113,7 +113,7 @@ class VoiceSearchService {
       // Pass Tamil text directly to backend - Gemini AI will handle transliteration
       // Try AI search endpoint first
       final aiUrl = Uri.parse(
-        '${ApiConfig.baseUrl}/shops/$shopId/products/ai-search?query=${Uri.encodeComponent(query)}',
+        '${EnvConfig.fullApiUrl}/shops/$shopId/products/ai-search?query=${Uri.encodeComponent(query)}',
       );
 
       final aiResponse = await http.get(
@@ -142,7 +142,7 @@ class VoiceSearchService {
       // Fallback to regular search if AI search fails
       debugPrint('⚠️ AI search not available, using regular search');
       final searchUrl = Uri.parse(
-        '${ApiConfig.baseUrl}/shops/$shopId/products/search?query=${Uri.encodeComponent(query)}',
+        '${EnvConfig.fullApiUrl}/shops/$shopId/products/search?query=${Uri.encodeComponent(query)}',
       );
 
       final searchResponse = await http.get(

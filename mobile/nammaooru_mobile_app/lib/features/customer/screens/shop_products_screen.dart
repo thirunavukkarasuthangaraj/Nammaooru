@@ -122,7 +122,7 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final baseUrl = '${EnvConfig.baseUrl}/api/shops/${widget.shopId}/products/mobile-list';
+      final baseUrl = '${EnvConfig.fullApiUrl}/shops/${widget.shopId}/products/mobile-list';
       final uri = Uri.parse(baseUrl).replace(queryParameters: {
         'page': '0',
         'categoryId': _selectedCategoryId,
@@ -153,7 +153,7 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
 
     try {
       _currentPage++;
-      final baseUrl = '${EnvConfig.baseUrl}/api/shops/${widget.shopId}/products/mobile-list';
+      final baseUrl = '${EnvConfig.fullApiUrl}/shops/${widget.shopId}/products/mobile-list';
       final uri = Uri.parse(baseUrl).replace(queryParameters: {
         'page': _currentPage.toString(),
         'categoryId': _selectedCategoryId,
