@@ -122,7 +122,7 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final baseUrl = '${EnvConfig.apiBaseUrl}/api/shops/${widget.shopId}/products/mobile-list';
+      final baseUrl = '${EnvConfig.baseUrl}/api/shops/${widget.shopId}/products/mobile-list';
       final uri = Uri.parse(baseUrl).replace(queryParameters: {
         'page': '0',
         'categoryId': _selectedCategoryId,
@@ -153,7 +153,7 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
 
     try {
       _currentPage++;
-      final baseUrl = '${EnvConfig.apiBaseUrl}/api/shops/${widget.shopId}/products/mobile-list';
+      final baseUrl = '${EnvConfig.baseUrl}/api/shops/${widget.shopId}/products/mobile-list';
       final uri = Uri.parse(baseUrl).replace(queryParameters: {
         'page': _currentPage.toString(),
         'categoryId': _selectedCategoryId,
@@ -269,18 +269,23 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
         ],
       ),
       body: Column(
+        mainAxisSize: MainAxisSize.max,
         children: [
           // ============================================
           // FIXED HEADER (Search + Voice + Categories)
           // ============================================
           Container(
             color: Colors.white,
+            width: double.infinity,
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 // SEARCH BOX
                 Padding(
                   padding: const EdgeInsets.all(12),
-                  child: TextField(
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: TextField(
                     decoration: InputDecoration(
                       hintText: 'Search products...',
                       prefixIcon: const Icon(Icons.search, color: Colors.green),
@@ -289,6 +294,7 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                         borderSide: const BorderSide(color: Colors.green),
                       ),
                       contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
                     ),
                   ),
                 ),
@@ -299,6 +305,7 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                   child: GestureDetector(
                     onTap: () => _showVoiceSearchDialog(),
                     child: Container(
+                      width: double.infinity,
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: Colors.blue,
@@ -320,43 +327,43 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                 ),
 
                 // CATEGORY FILTERS (Horizontal Scroll)
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 50,
-                  child: _categoriesLoading
-                      ? const Center(child: SizedBox(
-                          width: 30,
-                          height: 30,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ))
-                      : _categories.isEmpty
-                          ? Center(child: Text('No categories', style: TextStyle(color: Colors.grey[500])))
-                          : ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            itemCount: _categories.length,
-                            itemBuilder: (context, index) {
-                              final category = _categories[index];
-                              final isSelected = _selectedCategoryId == category['id'];
-
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: GestureDetector(
-                                  onTap: () => _selectCategory(category['id'], category['name']),
-                                  child: Chip(
-                                    label: Text(category['name']),
-                                    backgroundColor: isSelected ? Colors.green : Colors.grey[300],
-                                    labelStyle: TextStyle(
-                                      color: isSelected ? Colors.white : Colors.black,
-                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                ),
-                const SizedBox(height: 8),
+                // const SizedBox(height: 12),
+                // SizedBox(
+                //   height: 50,
+                //   child: _categoriesLoading
+                //       ? const Center(child: SizedBox(
+                //           width: 30,
+                //           height: 30,
+                //           child: CircularProgressIndicator(strokeWidth: 2),
+                //         ))
+                //       : _categories.isEmpty
+                //           ? Center(child: Text('No categories', style: TextStyle(color: Colors.grey[500])))
+                //           : ListView.builder(
+                //             scrollDirection: Axis.horizontal,
+                //             padding: const EdgeInsets.symmetric(horizontal: 12),
+                //             itemCount: _categories.length,
+                //             itemBuilder: (context, index) {
+                //               final category = _categories[index];
+                //               final isSelected = _selectedCategoryId == category['id'];
+                //
+                //               return Padding(
+                //                 padding: const EdgeInsets.only(right: 8),
+                //                 child: GestureDetector(
+                //                   onTap: () => _selectCategory(category['id'], category['name']),
+                //                   child: Chip(
+                //                     label: Text(category['name']),
+                //                     backgroundColor: isSelected ? Colors.green : Colors.grey[300],
+                //                     labelStyle: TextStyle(
+                //                       color: isSelected ? Colors.white : Colors.black,
+                //                       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                //                     ),
+                //                   ),
+                //                 ),
+                //               );
+                //             },
+                //           ),
+                // ),
+                // const SizedBox(height: 8),
               ],
             ),
           ),
@@ -670,6 +677,7 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                   ],
                 ),
               ),
+          ),
         ],
       ),
 
@@ -825,7 +833,7 @@ class _VoiceSearchDialogState extends State<VoiceSearchDialog> {
     setState(() => _isSearching = true);
 
     try {
-      final baseUrl = '${EnvConfig.apiBaseUrl}/api/v1/products/search/voice/grouped';
+      final baseUrl = '${EnvConfig.baseUrl}/api/v1/products/search/voice/grouped';
       final uri = Uri.parse(baseUrl).replace(queryParameters: {'q': query}).toString();
 
       final response = await http.post(Uri.parse(uri));

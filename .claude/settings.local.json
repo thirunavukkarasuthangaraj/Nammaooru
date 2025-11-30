@@ -20,7 +20,13 @@
       "Bash(mvn clean package:*)",
       "Bash(python:*)",
       "Bash(git commit:*)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(flutter clean:*)",
+      "Bash(flutter pub get:*)",
+      "Bash(dart analyze:*)",
+      "Bash(cat:*)",
+      "Bash(flutter build:*)",
+      "Bash(flutter install:*)"
     ],
     "deny": [],
     "ask": [],
