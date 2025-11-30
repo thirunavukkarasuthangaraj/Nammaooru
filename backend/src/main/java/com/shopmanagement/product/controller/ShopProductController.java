@@ -48,11 +48,12 @@ public class ShopProductController {
             @RequestParam(required = false) BigDecimal minPrice,
             @RequestParam(required = false) BigDecimal maxPrice,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "updatedAt") String sortBy,
             @RequestParam(defaultValue = "DESC") String sortDirection) {
-        
-        log.info("Fetching products for shop: {} - page: {}, size: {}", shopId, page, size);
+
+        log.info("Fetching products for shop: {} - page: {}, size: {} (pagination: offset={}, limit={})",
+                 shopId, page, size, (page * size), size);
         
         Sort.Direction direction = sortDirection.equalsIgnoreCase("ASC") ? Sort.Direction.ASC : Sort.Direction.DESC;
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
@@ -107,6 +108,65 @@ public class ShopProductController {
         return ResponseEntity.ok(ApiResponse.success(
                 products,
                 "Shop products fetched successfully"
+        ));
+    }
+
+    /**
+     * Mobile app optimized pagination endpoint
+     * Returns 20 products per page with clear pagination info
+     * Use ?page=0 for first 20 products, ?page=1 for next 20, etc.
+     */
+    @GetMapping("/mobile-list")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getProductsForMobileApp(
+            @PathVariable Long shopId,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) String brand,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        log.info("Mobile app product listing: shop={}, page={}, size={}, search={}", shopId, page, size, search);
+
+        Sort.Direction direction = Sort.Direction.DESC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, "updatedAt"));
+
+        Specification<ShopProduct> spec = (root, query, cb) -> cb.equal(root.get("shop").get("id"), shopId);
+
+        if (search != null && !search.isEmpty()) {
+            String searchPattern = "%" + search.toLowerCase() + "%";
+            spec = spec.and((root, query, cb) -> cb.or(
+                cb.like(cb.lower(root.get("masterProduct").get("name")), searchPattern),
+                cb.like(cb.lower(root.get("customName")), searchPattern)
+            ));
+        }
+
+        if (categoryId != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("masterProduct").get("category").get("id"), categoryId));
+        }
+
+        if (brand != null && !brand.isEmpty()) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("masterProduct").get("brand"), brand));
+        }
+
+        Page<ShopProductResponse> products = shopProductService.getShopProducts(shopId, spec, pageable);
+
+        // Format response for mobile app "Load More" button
+        Map<String, Object> mobileResponse = new HashMap<>();
+        mobileResponse.put("products", products.getContent());
+        mobileResponse.put("currentPage", page);
+        mobileResponse.put("pageSize", size);
+        mobileResponse.put("totalProducts", products.getTotalElements());
+        mobileResponse.put("totalPages", products.getTotalPages());
+        mobileResponse.put("hasNext", products.hasNext());
+        mobileResponse.put("hasPrevious", products.hasPrevious());
+        mobileResponse.put("nextPage", page + 1);
+
+        log.info("Mobile response: {} products on page {} of {}",
+                 products.getContent().size(), page, products.getTotalPages());
+
+        return ResponseEntity.ok(ApiResponse.success(
+                mobileResponse,
+                String.format("Page %d of %d (%d products total)", page, products.getTotalPages(), products.getTotalElements())
         ));
     }
 
