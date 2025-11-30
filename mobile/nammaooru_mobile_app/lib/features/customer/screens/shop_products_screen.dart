@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../../../services/shop_api_service.dart';
 import '../../../core/config/env_config.dart';
 import '../../../shared/providers/cart_provider.dart';
@@ -24,83 +26,182 @@ class ShopProductsScreen extends StatefulWidget {
 
 class _ShopProductsScreenState extends State<ShopProductsScreen> {
   late String _selectedCategory;
-  final List<Map<String, dynamic>> _categories = [
-    {
-      'name': 'All',
-      'imageUrl': 'https://images.unsplash.com/photo-1543168256-8133d1f3d731?w=400',
-    },
-    {
-      'name': 'Grocery',
-      'imageUrl': 'https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=400',
-    },
-    {
-      'name': 'Medicine',
-      'imageUrl': 'https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=400',
-    },
-    {
-      'name': 'Milk',
-      'imageUrl': 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=400',
-    },
-    {
-      'name': 'Snacks',
-      'imageUrl': 'https://images.unsplash.com/photo-1621939514649-280e2ee25f60?w=400',
-    },
-  ];
+  late String? _selectedCategoryId;
+  late ScrollController _scrollController;
+
+  // Pagination state
+  int _currentPage = 0;
+  int _pageSize = 10; // Default for general browsing
+  bool _isLoading = false;
+  bool _hasMore = true;
+  List<Map<String, dynamic>> _products = [];
+
+  // Categories list (loaded from API)
+  List<Map<String, dynamic>> _categories = [];
+  bool _categoriesLoading = true;
 
   // Track quantities for each product
-  final Map<int, int> _productQuantities = {};
-
-  final List<Map<String, dynamic>> _allProducts = [
-    {'id': 1, 'name': 'Coffee', 'price': 150, 'category': 'Grocery', 'unit': '500g', 'stock': 10},
-    {'id': 2, 'name': 'Rice', 'price': 180, 'category': 'Grocery', 'unit': '1kg', 'stock': 25},
-    {'id': 3, 'name': 'Oil', 'price': 120, 'category': 'Grocery', 'unit': '1L', 'stock': 15},
-    {'id': 4, 'name': 'Cough Syrup', 'price': 95, 'category': 'Medicine', 'unit': '100ml', 'stock': 5},
-    {'id': 5, 'name': 'Paracetamol', 'price': 30, 'category': 'Medicine', 'unit': '10 tabs', 'stock': 20},
-    {'id': 6, 'name': 'Milk', 'price': 60, 'category': 'Dairy', 'unit': '1L', 'stock': 30},
-    {'id': 7, 'name': 'Cheese', 'price': 120, 'category': 'Dairy', 'unit': '200g', 'stock': 8},
-    {'id': 8, 'name': 'Chips', 'price': 20, 'category': 'Snacks', 'unit': '50g', 'stock': 50},
-    {'id': 9, 'name': 'Biscuits', 'price': 30, 'category': 'Snacks', 'unit': '100g', 'stock': 40},
-    {'id': 10, 'name': 'Sugar', 'price': 45, 'category': 'Grocery', 'unit': '1kg', 'stock': 35},
-  ];
+  final Map<String, int> _productQuantities = {};
 
   @override
   void initState() {
     super.initState();
-    // Set initial category from the passed categoryName
-    _selectedCategory = widget.categoryName == 'Grocery' ? 'Grocery' :
-                       widget.categoryName == 'Medicine' ? 'Medicine' :
-                       widget.categoryName == 'Dairy' ? 'Dairy' :
-                       widget.categoryName == 'Snacks' ? 'Snacks' : 'All';
+    _scrollController = ScrollController();
+    _scrollController.addListener(_onScroll);
+
+    // Set initial category
+    _selectedCategory = widget.categoryName;
+    _selectedCategoryId = widget.categoryId;
+
+    // Adjust page size based on category selection
+    _pageSize = _selectedCategoryId != null ? 20 : 10;
+
+    // Load categories from API
+    _loadCategories();
+
+    // Load initial products
+    _loadProducts();
 
     // Initialize quantities from cart
     _initializeQuantitiesFromCart();
   }
 
-  void _initializeQuantitiesFromCart() {
-    final cartProvider = Provider.of<CartProvider>(context, listen: false);
-    for (var item in cartProvider.items) {
-      final productId = int.tryParse(item.product.id.toString());
-      if (productId != null) {
-        _productQuantities[productId] = item.quantity;
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      // TODO: Replace with actual category API endpoint
+      // For now, you can use mock data or connect to your backend
+      // Example: GET /api/categories or GET /api/shops/{shopId}/categories
+
+      // Placeholder: Add 'All' category at the beginning
+      setState(() {
+        _categories = [
+          {'id': null, 'name': 'All', 'imageUrl': 'https://images.unsplash.com/photo-1543168256-8133d1f3d731?w=400'},
+        ];
+        _categoriesLoading = false;
+      });
+
+      // TODO: Uncomment and update when category API is available
+      // final baseUrl = '${EnvConfig.apiBaseUrl}/api/categories';
+      // final response = await http.get(Uri.parse(baseUrl));
+      // if (response.statusCode == 200) {
+      //   final data = jsonDecode(response.body);
+      //   final categories = List<Map<String, dynamic>>.from(data['data'] ?? []);
+      //
+      //   setState(() {
+      //     _categories = [
+      //       {'id': null, 'name': 'All', 'imageUrl': ''},
+      //       ...categories,
+      //     ];
+      //     _categoriesLoading = false;
+      //   });
+      // }
+    } catch (e) {
+      print('Error loading categories: $e');
+      setState(() => _categoriesLoading = false);
+    }
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent * 0.8) {
+      if (_hasMore && !_isLoading) {
+        _loadMoreProducts();
       }
     }
   }
 
-  List<Map<String, dynamic>> get _filteredProducts {
-    if (_selectedCategory == 'All') {
-      return _allProducts;
+  Future<void> _loadProducts() async {
+    if (_isLoading) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final baseUrl = '${EnvConfig.apiBaseUrl}/api/shops/${widget.shopId}/products/mobile-list';
+      final uri = Uri.parse(baseUrl).replace(queryParameters: {
+        'page': '0',
+        'categoryId': _selectedCategoryId,
+        'size': _pageSize.toString(),
+      }).toString();
+
+      final response = await http.get(Uri.parse(uri));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          _products = List<Map<String, dynamic>>.from(data['data']['products'] ?? []);
+          _hasMore = data['data']['hasNext'] ?? false;
+          _currentPage = 0;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading products: $e');
+      setState(() => _isLoading = false);
     }
-    // Handle 'Milk' category mapping to 'Dairy'
-    final categoryToFilter = _selectedCategory == 'Milk' ? 'Dairy' : _selectedCategory;
-    return _allProducts.where((p) => p['category'] == categoryToFilter).toList();
   }
 
-  void _updateQuantity(int productId, int change, int maxStock) {
+  Future<void> _loadMoreProducts() async {
+    if (_isLoading || !_hasMore) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      _currentPage++;
+      final baseUrl = '${EnvConfig.apiBaseUrl}/api/shops/${widget.shopId}/products/mobile-list';
+      final uri = Uri.parse(baseUrl).replace(queryParameters: {
+        'page': _currentPage.toString(),
+        'categoryId': _selectedCategoryId,
+        'size': _pageSize.toString(),
+      }).toString();
+
+      final response = await http.get(Uri.parse(uri));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          _products.addAll(List<Map<String, dynamic>>.from(data['data']['products'] ?? []));
+          _hasMore = data['data']['hasNext'] ?? false;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading more products: $e');
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _selectCategory(String? categoryId, String categoryName) async {
+    setState(() {
+      _selectedCategoryId = categoryId;
+      _selectedCategory = categoryName;
+      _pageSize = categoryId != null ? 20 : 10; // Smart sizing
+      _currentPage = 0;
+      _products = [];
+      _isLoading = true;
+    });
+
+    await _loadProducts();
+  }
+
+  void _initializeQuantitiesFromCart() {
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+    for (var item in cartProvider.items) {
+      final productId = item.product.id.toString();
+      _productQuantities[productId] = item.quantity;
+    }
+  }
+
+  void _updateQuantity(String productId, int change, int maxStock) {
     setState(() {
       int currentQty = _productQuantities[productId] ?? 0;
       int newQty = currentQty + change;
 
-      // Ensure quantity stays within bounds
       if (newQty >= 0 && newQty <= maxStock) {
         if (newQty == 0) {
           _productQuantities.remove(productId);
@@ -108,20 +209,16 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
           _productQuantities[productId] = newQty;
         }
       } else if (newQty > maxStock) {
-        // Show error if trying to exceed stock
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
-              children: [
-                const Icon(Icons.warning, color: Colors.white),
-                const SizedBox(width: 8),
-                Text('Only $maxStock items available in stock'),
+              children: const [
+                Icon(Icons.warning, color: Colors.white),
+                SizedBox(width: 8),
               ],
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
             ),
             backgroundColor: Colors.orange,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            margin: const EdgeInsets.all(10),
           ),
         );
       }
@@ -135,7 +232,7 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: Text('Shop Products', style: TextStyle(color: Colors.white)),
+        title: Text('${_selectedCategory} Products', style: TextStyle(color: Colors.white, fontSize: 18)),
         backgroundColor: Colors.green,
         iconTheme: IconThemeData(color: Colors.white),
         actions: [
@@ -143,9 +240,7 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
             children: [
               IconButton(
                 icon: const Icon(Icons.shopping_cart, color: Colors.white),
-                onPressed: () {
-                  Navigator.pushNamed(context, '/cart');
-                },
+                onPressed: () => Navigator.pushNamed(context, '/cart'),
               ),
               if (cartProvider.itemCount > 0)
                 Positioned(
@@ -157,17 +252,10 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                       color: Colors.red,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    constraints: const BoxConstraints(
-                      minWidth: 16,
-                      minHeight: 16,
-                    ),
+                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
                     child: Text(
                       '${cartProvider.itemCount}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -176,133 +264,172 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
           ),
         ],
       ),
-      body: Row(
-        children: [
-          // Left - Categories
-          Container(
-            width: 130,
-            color: Colors.white,
-            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            child: ListView.builder(
-              itemCount: _categories.length,
-              itemBuilder: (context, index) {
-                final category = _categories[index];
-                final categoryName = category['name'];
-                final isSelected = _selectedCategory == categoryName;
+      body: NestedScrollView(
+        controller: _scrollController,
+        headerSliverBuilder: (context, innerBoxIsScrolled) => [
+          // ============================================
+          // STICKY HEADER (Search + Voice + Categories)
+          // ============================================
+          SliverAppBar(
+            floating: true,
+            pinned: true,
+            expandedHeight: 220,
+            backgroundColor: Colors.white,
+            flexibleSpace: FlexibleSpaceBar(
+              background: Column(
+                children: [
+                  // SEARCH BOX
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: TextField(
+                      decoration: InputDecoration(
+                        hintText: 'Search products...',
+                        prefixIcon: const Icon(Icons.search, color: Colors.green),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(color: Colors.green),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                    ),
+                  ),
 
-                return InkWell(
-                  onTap: () {
-                    setState(() {
-                      _selectedCategory = categoryName;
-                    });
-                  },
-                  child: Container(
-                    padding: EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-                    decoration: BoxDecoration(
-                      color: isSelected ? Colors.green.withOpacity(0.1) : Colors.white,
-                      border: Border(
-                        left: BorderSide(
-                          color: isSelected ? Colors.green : Colors.transparent,
-                          width: 3,
+                  // VOICE SEARCH BUTTON
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: GestureDetector(
+                      onTap: () {
+                        // TODO: Implement voice search
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Voice search feature coming soon')),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.blue,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(Icons.mic, color: Colors.white, size: 20),
+                            SizedBox(width: 8),
+                            Text(
+                              'Voice Search',
+                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                    child: Column(
-                      children: [
-                        // Category Image
-                        SizedBox(
-                          width: 100,
-                          height: 90,
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Image.network(
-                              category['imageUrl'] ?? '',
-                              width: 100,
-                              height: 90,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => Container(
-                                width: 100,
-                                height: 90,
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[300],
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Icon(
-                                  _getCategoryIcon(categoryName),
-                                  color: Colors.grey[600],
-                                  size: 48,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          categoryName,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: isSelected ? Colors.green : Colors.grey[700],
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
                   ),
-                );
-              },
+
+                  // CATEGORY FILTERS (Horizontal Scroll)
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 50,
+                    child: _categoriesLoading
+                        ? const Center(child: SizedBox(
+                            width: 30,
+                            height: 30,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ))
+                        : _categories.isEmpty
+                            ? Center(child: Text('No categories', style: TextStyle(color: Colors.grey[500])))
+                            : ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              itemCount: _categories.length,
+                              itemBuilder: (context, index) {
+                                final category = _categories[index];
+                                final isSelected = _selectedCategoryId == category['id'];
+
+                                return Padding(
+                                  padding: const EdgeInsets.only(right: 8),
+                                  child: GestureDetector(
+                                    onTap: () => _selectCategory(category['id'], category['name']),
+                                    child: Chip(
+                                      label: Text(category['name']),
+                                      backgroundColor: isSelected ? Colors.green : Colors.grey[300],
+                                      labelStyle: TextStyle(
+                                        color: isSelected ? Colors.white : Colors.black,
+                                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                  ),
+                ],
+              ),
             ),
           ),
+        ],
 
-          // Right - Products
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Product count
-                Container(
-                  padding: EdgeInsets.all(12),
-                  color: Colors.white,
-                  child: Row(
-                    children: [
-                      Text(
-                        '${_filteredProducts.length} Products',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                      ),
-                      if (_selectedCategory != 'All')
-                        Text(
-                          ' in $_selectedCategory',
-                          style: TextStyle(fontSize: 14, color: Colors.green, fontWeight: FontWeight.bold),
+        // ============================================
+        // SCROLLABLE CONTENT (Banner + Products)
+        // ============================================
+        body: _isLoading && _products.isEmpty
+            ? const Center(child: CircularProgressIndicator())
+            : NotificationListener<ScrollNotification>(
+                onNotification: (_) => false,
+                child: ListView(
+                  padding: EdgeInsets.zero,
+                  children: [
+                    // BANNER (hides on scroll)
+                    Container(
+                      height: 150,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.green, Colors.green[700]!],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
-                    ],
-                  ),
-                ),
+                      ),
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.local_offer, color: Colors.white, size: 40),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Special Offers Today',
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
 
-                // Products Grid
-                Expanded(
-                  child: _filteredProducts.isEmpty
-                      ? Center(
-                          child: Text(
-                            'No products in this category',
-                            style: TextStyle(fontSize: 16, color: Colors.grey),
-                          ),
-                        )
-                      : GridView.builder(
-                          padding: EdgeInsets.all(12),
-                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            childAspectRatio: 0.65,
-                            crossAxisSpacing: 10,
-                            mainAxisSpacing: 10,
-                          ),
-                          itemCount: _filteredProducts.length,
-                          itemBuilder: (context, index) {
-                            final product = _filteredProducts[index];
-                            final productId = product['id'] as int;
-                            final quantity = _productQuantities[productId] ?? 0;
-                            final stock = product['stock'] as int;
-                            final isOutOfStock = stock == 0;
-                            final isLowStock = stock > 0 && stock <= 5;
+                    // PRODUCTS GRID
+                    if (_products.isEmpty && !_isLoading)
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(32),
+                          child: Text('No products available', style: Theme.of(context).textTheme.titleMedium),
+                        ),
+                      )
+                    else
+                      GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        padding: const EdgeInsets.all(12),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          childAspectRatio: 0.65,
+                          crossAxisSpacing: 10,
+                          mainAxisSpacing: 10,
+                        ),
+                        itemCount: _products.length,
+                        itemBuilder: (context, index) {
+                          final product = _products[index];
+                          final productId = product['id'].toString();
+                          final quantity = _productQuantities[productId] ?? 0;
+                          final stock = product['stockQuantity'] as int? ?? 0;
+                          final isOutOfStock = stock == 0;
+                          final isLowStock = stock > 0 && stock <= 5;
 
                             return Card(
                               elevation: 2,
@@ -375,34 +502,30 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                                   Expanded(
                                     flex: 3,
                                     child: Padding(
-                                      padding: EdgeInsets.all(8),
+                                      padding: const EdgeInsets.all(8),
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Consumer<LanguageProvider>(
-                                            builder: (context, languageProvider, child) {
-                                              return Text(
-                                                languageProvider.getDisplayName(product),
-                                                style: TextStyle(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: isOutOfStock ? Colors.grey : Colors.black,
-                                                ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              );
-                                            },
+                                          Text(
+                                            product['displayName'] ?? product['name'] ?? 'Product',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.bold,
+                                              color: isOutOfStock ? Colors.grey : Colors.black,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
                                           ),
                                           Text(
-                                            product['unit'],
-                                            style: TextStyle(
+                                            product['unit'] ?? '',
+                                            style: const TextStyle(
                                               fontSize: 11,
                                               color: Colors.grey,
                                             ),
                                           ),
                                           const SizedBox(height: 4),
                                           Text(
-                                            '₹${product['price']}',
+                                            '₹${product['price'] ?? 0}',
                                             style: TextStyle(
                                               fontSize: 16,
                                               fontWeight: FontWeight.bold,
@@ -415,7 +538,7 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                                           if (isOutOfStock)
                                             Container(
                                               width: double.infinity,
-                                              padding: EdgeInsets.symmetric(vertical: 8),
+                                              padding: const EdgeInsets.symmetric(vertical: 8),
                                               decoration: BoxDecoration(
                                                 color: Colors.grey[300],
                                                 borderRadius: BorderRadius.circular(4),
@@ -443,26 +566,22 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                                                   InkWell(
                                                     onTap: () => _updateQuantity(productId, -1, stock),
                                                     child: Container(
-                                                      padding: EdgeInsets.all(4),
-                                                      child: Icon(
-                                                        Icons.remove,
-                                                        color: Colors.green,
-                                                        size: 18,
-                                                      ),
+                                                      padding: const EdgeInsets.all(4),
+                                                      child: const Icon(Icons.remove, color: Colors.green, size: 18),
                                                     ),
                                                   ),
                                                   Column(
                                                     children: [
                                                       Text(
                                                         '$quantity',
-                                                        style: TextStyle(
+                                                        style: const TextStyle(
                                                           color: Colors.green,
                                                           fontSize: 14,
                                                           fontWeight: FontWeight.bold,
                                                         ),
                                                       ),
                                                       if (quantity == stock)
-                                                        Text(
+                                                        const Text(
                                                           'Max',
                                                           style: TextStyle(
                                                             color: Colors.orange,
@@ -475,7 +594,7 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                                                   InkWell(
                                                     onTap: () => _updateQuantity(productId, 1, stock),
                                                     child: Container(
-                                                      padding: EdgeInsets.all(4),
+                                                      padding: const EdgeInsets.all(4),
                                                       child: Icon(
                                                         Icons.add,
                                                         color: quantity < stock ? Colors.green : Colors.grey,
@@ -491,12 +610,12 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                                               onTap: () => _updateQuantity(productId, 1, stock),
                                               child: Container(
                                                 width: double.infinity,
-                                                padding: EdgeInsets.symmetric(vertical: 8),
+                                                padding: const EdgeInsets.symmetric(vertical: 8),
                                                 decoration: BoxDecoration(
                                                   color: Colors.green,
                                                   borderRadius: BorderRadius.circular(4),
                                                 ),
-                                                child: Text(
+                                                child: const Text(
                                                   'ADD',
                                                   textAlign: TextAlign.center,
                                                   style: TextStyle(
@@ -516,10 +635,35 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                             );
                           },
                         ),
+                    // LOADING INDICATOR (bottom for infinite scroll)
+                    if (_isLoading && _products.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Center(
+                          child: Column(
+                            children: const [
+                              CircularProgressIndicator(),
+                              SizedBox(height: 8),
+                              Text('Loading more...', style: TextStyle(color: Colors.grey)),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                    // NO MORE PRODUCTS
+                    if (!_hasMore && _products.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Center(
+                          child: Text(
+                            'No more products',
+                            style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
         ],
       ),
 
