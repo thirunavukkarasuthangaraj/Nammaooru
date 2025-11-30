@@ -63,8 +63,9 @@ public class ProductAISearchService {
         log.info("Total active products in database: {}", allProducts.size());
 
         // Split keywords and convert to lowercase for case-insensitive matching
-        String[] keywordArray = keywords.toLowerCase().split("[,\\s]+");
-        log.info("Parsed {} keywords: {}", keywordArray.length, java.util.Arrays.toString(keywordArray));
+        // Note: Tamil text won't be affected by toLowerCase() which is fine
+        String[] keywordArray = keywords.split("[,\\s]+");
+        log.info("Parsed {} keywords from query: '{}' -> {}", keywordArray.length, keywords, java.util.Arrays.toString(keywordArray));
 
         // Filter products that match keywords in their tags
         List<MasterProduct> results = allProducts.stream()
@@ -117,20 +118,28 @@ public class ProductAISearchService {
         }
 
         String searchableTextLower = searchableText.toString().toLowerCase();
-        log.debug("Voice search matching product: {} - searchable text: {}", product.getName(), searchableTextLower);
+        log.debug("Search matching product: {} - searchable text contains: {}", product.getName(), searchableText.toString().substring(0, Math.min(100, searchableText.length())));
 
         // Check if ANY keyword matches using fuzzy matching (handles typos)
         for (String keyword : keywords) {
             if (keyword.length() > 0) {
+                String keywordLower = keyword.toLowerCase();
+
                 // Try exact match first (fastest)
-                if (searchableTextLower.contains(keyword)) {
-                    log.debug("  -> Exact match for keyword: '{}'", keyword);
+                if (searchableTextLower.contains(keywordLower)) {
+                    log.debug("  -> Exact match for keyword: '{}' in {}", keyword, product.getName());
+                    return true;
+                }
+
+                // For Tamil text, also try direct match without toLowerCase
+                if (searchableText.toString().contains(keyword)) {
+                    log.debug("  -> Direct match for Tamil keyword: '{}' in {}", keyword, product.getName());
                     return true;
                 }
 
                 // Try fuzzy match (handles typos with 80% similarity threshold)
-                if (fuzzyMatch(searchableTextLower, keyword, 0.80)) {
-                    log.debug("  -> Fuzzy match for keyword: '{}'", keyword);
+                if (fuzzyMatch(searchableTextLower, keywordLower, 0.80)) {
+                    log.debug("  -> Fuzzy match for keyword: '{}' in {}", keyword, product.getName());
                     return true;
                 }
             }

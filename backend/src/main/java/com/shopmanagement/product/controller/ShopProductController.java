@@ -235,6 +235,18 @@ public class ShopProductController {
                 Page<ShopProductResponse> searchResults = shopProductService.searchShopProducts(shopId, query, searchPageable);
                 matchedProducts = searchResults.getContent();
                 log.info("📝 Text search found {} products for query: {}", matchedProducts.size(), query);
+
+                // If still no results and query looks like Tamil, try direct Tamil name matching
+                if (matchedProducts.isEmpty() && isTamilText(query)) {
+                    log.info("📝 No text search results for Tamil query, trying direct Tamil name matching");
+                    matchedProducts = allProducts.getContent().stream()
+                            .filter(p -> {
+                                String tamilName = p.getMasterProduct() != null ? p.getMasterProduct().getNameTamil() : null;
+                                return tamilName != null && tamilName.contains(query);
+                            })
+                            .collect(Collectors.toList());
+                    log.info("✅ Tamil name matching found {} products", matchedProducts.size());
+                }
             } else {
                 // Match products by name (handle both English and Tamil)
                 // Priority: exact match > contains match (AI already filtered, so contains is safe)
@@ -305,6 +317,13 @@ public class ShopProductController {
                     "AI search failed, using text search as fallback"
             ));
         }
+    }
+
+    /**
+     * Check if text contains Tamil characters
+     */
+    private boolean isTamilText(String text) {
+        return text != null && text.matches(".*[\\u0B80-\\u0BFF].*");
     }
 
     @GetMapping("/search")
