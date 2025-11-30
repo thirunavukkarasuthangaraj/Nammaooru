@@ -1,9 +1,11 @@
 package com.shopmanagement.product.controller;
 
 import com.shopmanagement.common.dto.ApiResponse;
+import com.shopmanagement.product.dto.MasterProductResponse;
 import com.shopmanagement.product.dto.ShopProductRequest;
 import com.shopmanagement.product.dto.ShopProductResponse;
 import com.shopmanagement.product.entity.ShopProduct;
+import com.shopmanagement.product.service.ProductAISearchService;
 import com.shopmanagement.product.service.ShopProductService;
 import com.shopmanagement.service.GeminiSearchService;
 import jakarta.validation.Valid;
@@ -20,10 +22,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
@@ -33,6 +32,7 @@ import java.util.stream.Collectors;
 public class ShopProductController {
 
     private final ShopProductService shopProductService;
+    private final ProductAISearchService productAISearchService;
     private final GeminiSearchService geminiSearchService;
 
     @GetMapping
@@ -198,48 +198,40 @@ public class ShopProductController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> aiSearchProducts(
             @PathVariable Long shopId,
             @RequestParam String query) {
-        log.info("🤖 AI Search - Shop: {}, Query: \"{}\"", shopId, query);
+        // Preprocess query to convert natural language to comma-separated format
+        String processedQuery = preprocessQuery(query);
+        log.info("🤖 AI Search - Shop: {}, Original Query: \"{}\", Processed Query: \"{}\"", shopId, query, processedQuery);
 
         try {
-            // Get all products from the shop
-            Pageable pageable = PageRequest.of(0, 1000); // Get a large number of products
+            // First, use AI service with Tamil transliteration support
+            Pageable pageable = PageRequest.of(0, 100);
+            Page<MasterProductResponse> aiResults = productAISearchService.searchProductsByAI(processedQuery, pageable);
+
+            log.info("✅ AI service found {} master products", aiResults.getTotalElements());
+
+            // Now filter to only products available in this shop
             Specification<ShopProduct> spec = Specification.where(null);
-            Page<ShopProductResponse> allProducts = shopProductService.getShopProducts(shopId, spec, pageable);
+            Page<ShopProductResponse> allShopProducts = shopProductService.getShopProducts(shopId, spec, PageRequest.of(0, 1000));
 
-            // Build product name list for AI matching (include both English and Tamil names)
-            List<String> productNames = allProducts.getContent().stream()
-                    .map(p -> {
-                        String name = p.getDisplayName(); // Use displayName which is computed field
-                        String tamilName = p.getMasterProduct() != null ? p.getMasterProduct().getNameTamil() : null;
-                        if (tamilName != null && !tamilName.isEmpty()) {
-                            return name + " | " + tamilName;
-                        }
-                        return name;
-                    })
-                    .collect(Collectors.toList());
-
-            // Use Gemini AI to find matching products
-            List<String> aiMatches = geminiSearchService.enhanceSearchQuery(query, productNames);
-
-            // Filter products based on AI matches
             List<ShopProductResponse> matchedProducts = new ArrayList<>();
 
-            // Detect if AI just returned the original query (fallback case)
-            boolean isAiFallback = aiMatches.size() == 1 && aiMatches.get(0).equalsIgnoreCase(query);
+            if (aiResults.getTotalElements() > 0) {
+                // Match AI results with shop products
+                Set<Long> masterProductIds = aiResults.getContent().stream()
+                        .map(MasterProductResponse::getId)
+                        .collect(Collectors.toSet());
 
-            if (aiMatches.isEmpty() || isAiFallback) {
-                // If AI returns nothing or just the original query, use regular text search as fallback
-                log.info("⚠️ AI returned {} matches (fallback={}), using text search for: {}",
-                        aiMatches.size(), isAiFallback, query);
-                Pageable searchPageable = PageRequest.of(0, 100);
-                Page<ShopProductResponse> searchResults = shopProductService.searchShopProducts(shopId, query, searchPageable);
-                matchedProducts = searchResults.getContent();
-                log.info("📝 Text search found {} products for query: {}", matchedProducts.size(), query);
+                matchedProducts = allShopProducts.getContent().stream()
+                        .filter(sp -> sp.getMasterProduct() != null && masterProductIds.contains(sp.getMasterProduct().getId()))
+                        .limit(100)
+                        .collect(Collectors.toList());
 
-                // If still no results and query looks like Tamil, try direct Tamil name matching
-                if (matchedProducts.isEmpty() && isTamilText(query)) {
-                    log.info("📝 No text search results for Tamil query, trying direct Tamil name matching");
-                    matchedProducts = allProducts.getContent().stream()
+                log.info("📝 Found {} products in this shop from AI matches", matchedProducts.size());
+            } else {
+                // Fallback: If AI returns nothing and query looks like Tamil, try direct Tamil name matching
+                if (isTamilText(query)) {
+                    log.info("⚠️ AI returned 0 results for Tamil query, trying direct Tamil name matching");
+                    matchedProducts = allShopProducts.getContent().stream()
                             .filter(p -> {
                                 String tamilName = p.getMasterProduct() != null ? p.getMasterProduct().getNameTamil() : null;
                                 return tamilName != null && tamilName.contains(query);
@@ -247,49 +239,14 @@ public class ShopProductController {
                             .collect(Collectors.toList());
                     log.info("✅ Tamil name matching found {} products", matchedProducts.size());
                 }
-            } else {
-                // Match products by name (handle both English and Tamil)
-                // Priority: exact match > contains match (AI already filtered, so contains is safe)
-                for (ShopProductResponse product : allProducts.getContent()) {
-                    String productName = product.getDisplayName(); // Use displayName
-                    String tamilName = product.getMasterProduct() != null ? product.getMasterProduct().getNameTamil() : null;
-                    String productNameLower = productName.toLowerCase();
-                    String tamilNameLower = tamilName != null ? tamilName.toLowerCase() : "";
-
-                    for (String aiMatch : aiMatches) {
-                        // Remove Tamil part if present (format: "Name | தமிழ்")
-                        String cleanMatch = aiMatch.split("\\|")[0].trim();
-                        String tamilPart = aiMatch.contains("|") ? aiMatch.split("\\|")[1].trim() : "";
-                        String cleanMatchLower = cleanMatch.toLowerCase();
-                        String tamilPartLower = tamilPart.toLowerCase();
-
-                        // Check for exact match first
-                        boolean exactNameMatch = productName.equalsIgnoreCase(cleanMatch);
-                        boolean exactTamilMatch = tamilName != null && !tamilName.isEmpty() &&
-                                                  (tamilName.equalsIgnoreCase(cleanMatch) || tamilName.equalsIgnoreCase(tamilPart));
-                        boolean fullLineMatch = aiMatch.equalsIgnoreCase(productName + " | " + tamilName);
-
-                        // Check for contains match (AI already filtered so this is safe)
-                        boolean containsNameMatch = productNameLower.contains(cleanMatchLower) ||
-                                                    cleanMatchLower.contains(productNameLower);
-                        boolean containsTamilMatch = !tamilNameLower.isEmpty() && !tamilPartLower.isEmpty() &&
-                                                     (tamilNameLower.contains(tamilPartLower) || tamilPartLower.contains(tamilNameLower));
-
-                        if (exactNameMatch || exactTamilMatch || fullLineMatch || containsNameMatch || containsTamilMatch) {
-                            matchedProducts.add(product);
-                            log.debug("✅ Matched product: {} (aiMatch: {})", productName, aiMatch);
-                            break;
-                        }
-                    }
-                }
-                log.info("✅ AI matched {} products out of {} total", matchedProducts.size(), allProducts.getContent().size());
             }
 
             // Build response
             Map<String, Object> response = new HashMap<>();
-            response.put("query", query);
+            response.put("query", query);  // Show original query to user
+            response.put("processedQuery", processedQuery);  // Show processed query for transparency
             response.put("matchedProducts", matchedProducts);
-            response.put("totalProducts", allProducts.getContent().size());
+            response.put("totalProducts", allShopProducts.getTotalElements());
             response.put("matchCount", matchedProducts.size());
 
             return ResponseEntity.ok(ApiResponse.success(
@@ -307,6 +264,7 @@ public class ShopProductController {
 
             Map<String, Object> fallbackResponse = new HashMap<>();
             fallbackResponse.put("query", query);
+            fallbackResponse.put("processedQuery", processedQuery);
             fallbackResponse.put("matchedProducts", searchResults.getContent());
             fallbackResponse.put("totalProducts", searchResults.getTotalElements());
             fallbackResponse.put("matchCount", searchResults.getContent().size());
@@ -317,6 +275,37 @@ public class ShopProductController {
                     "AI search failed, using text search as fallback"
             ));
         }
+    }
+
+    /**
+     * Preprocess query to convert natural language to comma-separated format
+     * Examples:
+     *   "rice and dal" → "rice,dal"
+     *   "milk & bread" → "milk,bread"
+     *   "oil and salt and spice" → "oil,salt,spice"
+     *   "rice" → "rice" (no change)
+     *   "rice,dal" → "rice,dal" (already comma-separated)
+     */
+    private String preprocessQuery(String query) {
+        if (query == null || query.trim().isEmpty()) {
+            return query;
+        }
+
+        // If already contains commas, assume it's properly formatted
+        if (query.contains(",")) {
+            return query.trim();
+        }
+
+        // Convert natural language conjunctions to commas
+        // Replace " and ", " & ", " or " with comma
+        String processed = query
+                .replaceAll("\\s+and\\s+", ",")  // "rice and dal" → "rice,dal"
+                .replaceAll("\\s+&\\s+", ",")    // "rice & dal" → "rice,dal"
+                .replaceAll("\\s+or\\s+", ",")   // "rice or dal" → "rice,dal"
+                .trim();
+
+        log.debug("Query preprocessing: \"{}\" → \"{}\"", query, processed);
+        return processed;
     }
 
     /**
