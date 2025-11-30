@@ -71,15 +71,14 @@ class VoiceSearchService {
         listenMode: stt.ListenMode.confirmation,
         cancelOnError: false,
         partialResults: true,
-        pauseFor: const Duration(seconds: 3), // Wait 3 seconds of silence before stopping
-        listenFor: const Duration(seconds: 30), // Allow up to 30 seconds of speaking
+        pauseFor: const Duration(seconds: 3), // Wait 3 seconds of silence before auto-stopping
+        listenFor: const Duration(seconds: 30), // Maximum 30 seconds of speaking
       );
 
-      // Wait for speech to complete - increased to 30 seconds max
-      await Future.delayed(const Duration(seconds: 30));
-
-      if (_speech.isListening) {
-        await _speech.stop();
+      // Wait for speech recognition to complete automatically (on silence)
+      // Check every 100ms if still listening
+      while (_speech.isListening) {
+        await Future.delayed(const Duration(milliseconds: 100));
       }
 
       _isListening = false;
