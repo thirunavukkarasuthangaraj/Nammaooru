@@ -275,7 +275,11 @@ public class ProductAISearchService {
                 if (product.getTags() != null && product.getTags().toLowerCase().contains(keyword)) {
                     score += 100;
                 }
-                // Exact match in name
+                // Exact match in Tamil name (high priority for Tamil-speaking customers)
+                else if (product.getNameTamil() != null && product.getNameTamil().toLowerCase().contains(keyword)) {
+                    score += 75;
+                }
+                // Exact match in English name
                 else if (product.getName() != null && product.getName().toLowerCase().contains(keyword)) {
                     score += 50;
                 }
@@ -404,7 +408,11 @@ public class ProductAISearchService {
         if (product.getTags() != null && product.getTags().toLowerCase().contains(keyword)) {
             score += 100;
         }
-        // Name match
+        // Tamil name match (high priority for Tamil-speaking customers)
+        else if (product.getNameTamil() != null && product.getNameTamil().toLowerCase().contains(keyword)) {
+            score += 75;
+        }
+        // English name match
         else if (product.getName() != null && product.getName().toLowerCase().contains(keyword)) {
             score += 50;
         }
