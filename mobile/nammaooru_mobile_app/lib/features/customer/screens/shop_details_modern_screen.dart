@@ -1341,21 +1341,21 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
   }
 
   void _showSearchDialog() {
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: false,
-      barrierColor: Colors.black26,
-      barrierLabel: 'Dialog',
-      transitionDuration: const Duration(milliseconds: 200),
-      pageBuilder: (context, animation1, animation2) {
-        return StatefulBuilder(
-          builder: (context, setState) => WillPopScope(
-            onWillPop: () async => false,
-            child: Dialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Padding(
+    Navigator.of(context, rootNavigator: true).push(
+      PageRouteBuilder(
+        opaque: false,
+        barrierDismissible: false,
+        barrierColor: Colors.black26,
+        barrierLabel: 'Dialog',
+        pageBuilder: (context, animation1, animation2) {
+          return StatefulBuilder(
+            builder: (context, setState) => WillPopScope(
+              onWillPop: () async => false,
+              child: Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1499,10 +1499,11 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
             ),
           ),
             ),
+            );
+            },
           );
-          },
-        );
-      },
+        },
+      ),
     );
   }
 
@@ -1559,22 +1560,22 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
     String? searchQuery;
     final TextEditingController searchController = TextEditingController();
 
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: false,
-      barrierColor: Colors.black26,
-      barrierLabel: 'Dialog',
-      transitionDuration: const Duration(milliseconds: 200),
-      pageBuilder: (context, animation1, animation2) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return WillPopScope(
-              onWillPop: () async => false,
-              child: Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Container(
+    Navigator.of(context, rootNavigator: true).push(
+      PageRouteBuilder(
+        opaque: false,
+        barrierDismissible: false,
+        barrierColor: Colors.black26,
+        barrierLabel: 'Dialog',
+        pageBuilder: (context, animation1, animation2) {
+          return StatefulBuilder(
+            builder: (context, setState) {
+              return WillPopScope(
+                onWillPop: () async => false,
+                child: Dialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Container(
               width: MediaQuery.of(context).size.width * 0.9,
               maxHeight: MediaQuery.of(context).size.height * 0.8,
               padding: const EdgeInsets.all(16),
@@ -1862,11 +1863,13 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
                 ],
               ),
             ),
-            ),
+                ),
+              ),
+            );
+            },
           );
-          },
-        );
-      },
+        },
+      ),
     );
   }
 }
