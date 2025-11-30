@@ -1345,11 +1345,13 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
       context: context,
       barrierDismissible: false, // Prevent closing on outside click
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) => Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Padding(
+        builder: (context, setState) => WillPopScope(
+          onWillPop: () async => false, // Prevent back button
+          child: Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1492,6 +1494,7 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
               ],
             ),
           ),
+          ),
         ),
       ),
     );
@@ -1555,11 +1558,13 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
       barrierDismissible: false, // Prevent closing on outside click
       builder: (context) => StatefulBuilder(
         builder: (context, setState) {
-          return Dialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Container(
+          return WillPopScope(
+            onWillPop: () async => false, // Prevent back button
+            child: Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Container(
               width: MediaQuery.of(context).size.width * 0.9,
               maxHeight: MediaQuery.of(context).size.height * 0.8,
               padding: const EdgeInsets.all(16),
@@ -1846,6 +1851,7 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
                     ),
                 ],
               ),
+            ),
             ),
           );
         },
