@@ -293,12 +293,7 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: GestureDetector(
-                    onTap: () {
-                      // TODO: Implement voice search
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Voice search feature coming soon')),
-                      );
-                    },
+                    onTap: () => _showVoiceSearchDialog(),
                     child: Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
@@ -748,6 +743,32 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
     );
   }
 
+  void _showVoiceSearchDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return VoiceSearchDialog(
+          shopId: widget.shopId,
+          onProductSelected: (product) {
+            // Close dialog when product is selected
+            Navigator.pop(context);
+
+            // Optionally add product to cart
+            _updateQuantity(product['id'].toString(), 1, product['stockQuantity'] ?? 0);
+
+            // Show confirmation
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Added ${product['displayName']} to cart'),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   IconData _getCategoryIcon(String category) {
     switch (category) {
       case 'Grocery':
@@ -763,5 +784,265 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
       default:
         return Icons.category;
     }
+  }
+}
+
+// ============================================
+// VOICE SEARCH DIALOG WIDGET
+// ============================================
+class VoiceSearchDialog extends StatefulWidget {
+  final String shopId;
+  final Function(Map<String, dynamic>) onProductSelected;
+
+  const VoiceSearchDialog({
+    Key? key,
+    required this.shopId,
+    required this.onProductSelected,
+  }) : super(key: key);
+
+  @override
+  State<VoiceSearchDialog> createState() => _VoiceSearchDialogState();
+}
+
+class _VoiceSearchDialogState extends State<VoiceSearchDialog> {
+  final TextEditingController _searchController = TextEditingController();
+  List<Map<String, dynamic>> _voiceSearchResults = [];
+  bool _isSearching = false;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _performVoiceSearch(String query) async {
+    if (query.isEmpty) return;
+
+    setState(() => _isSearching = true);
+
+    try {
+      final baseUrl = '${EnvConfig.apiBaseUrl}/api/v1/products/search/voice/grouped';
+      final uri = Uri.parse(baseUrl).replace(queryParameters: {'q': query}).toString();
+
+      final response = await http.post(Uri.parse(uri));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final groupedResults = List<Map<String, dynamic>>.from(data['data'] ?? []);
+
+        // Flatten grouped results into single list
+        List<Map<String, dynamic>> allProducts = [];
+        for (var group in groupedResults) {
+          if (group['products'] != null) {
+            allProducts.addAll(List<Map<String, dynamic>>.from(group['products']));
+          }
+        }
+
+        setState(() {
+          _voiceSearchResults = allProducts;
+          _isSearching = false;
+        });
+      }
+    } catch (e) {
+      print('Voice search error: $e');
+      setState(() => _isSearching = false);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Search failed: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      insetPadding: const EdgeInsets.all(0),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
+      child: Column(
+        mainAxisSize: MainAxisSize.max,
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: const BoxDecoration(
+              color: Colors.blue,
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.mic, color: Colors.white, size: 24),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Voice Search',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: const Icon(Icons.close, color: Colors.white),
+                ),
+              ],
+            ),
+          ),
+
+          // Search Input
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search products (e.g., rice, tomato, oil)',
+                prefixIcon: const Icon(Icons.search, color: Colors.blue),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? GestureDetector(
+                        onTap: () {
+                          _searchController.clear();
+                          setState(() => _voiceSearchResults = []);
+                        },
+                        child: const Icon(Icons.clear),
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Colors.blue),
+                ),
+              ),
+              onChanged: (value) => setState(() {}),
+              onSubmitted: (value) => _performVoiceSearch(value),
+            ),
+          ),
+
+          // Search Button
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: ElevatedButton.icon(
+              onPressed: () => _performVoiceSearch(_searchController.text),
+              icon: const Icon(Icons.search),
+              label: const Text('Search'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                minimumSize: const Size(double.infinity, 48),
+              ),
+            ),
+          ),
+
+          // Results
+          Expanded(
+            child: _isSearching
+                ? const Center(child: CircularProgressIndicator())
+                : _voiceSearchResults.isEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Text(
+                            _searchController.text.isEmpty
+                                ? 'Enter search query to find products'
+                                : 'No products found',
+                            style: TextStyle(color: Colors.grey[500]),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _voiceSearchResults.length,
+                        itemBuilder: (context, index) {
+                          final product = _voiceSearchResults[index];
+                          final stock = product['stockQuantity'] as int? ?? 0;
+                          final isOutOfStock = stock == 0;
+
+                          return GestureDetector(
+                            onTap: isOutOfStock ? null : () => widget.onProductSelected(product),
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: isOutOfStock ? Colors.grey[300]! : Colors.blue[200]!,
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                                color: isOutOfStock ? Colors.grey[100] : Colors.blue[50],
+                              ),
+                              child: Row(
+                                children: [
+                                  // Product Image
+                                  Container(
+                                    width: 60,
+                                    height: 60,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[300],
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(4),
+                                      child: product['primaryImageUrl'] != null
+                                          ? Image.network(
+                                              product['primaryImageUrl'],
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (context, error, stackTrace) =>
+                                                  Icon(Icons.shopping_bag, color: Colors.grey[500]),
+                                            )
+                                          : Icon(Icons.shopping_bag, color: Colors.grey[500]),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+
+                                  // Product Details
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          product['displayName'] ?? product['name'] ?? 'Product',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        Text(
+                                          '₹${product['price'] ?? 0}',
+                                          style: const TextStyle(
+                                            color: Colors.green,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        if (isOutOfStock)
+                                          const Text(
+                                            'Out of Stock',
+                                            style: TextStyle(color: Colors.red, fontSize: 12),
+                                          )
+                                        else
+                                          Text(
+                                            '$stock in stock',
+                                            style: TextStyle(
+                                              color: Colors.grey[600],
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+
+                                  // Add Button
+                                  if (!isOutOfStock)
+                                    Icon(Icons.add_circle, color: Colors.blue, size: 24),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+          ),
+
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
   }
 }
