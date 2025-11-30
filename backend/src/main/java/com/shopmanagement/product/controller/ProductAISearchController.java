@@ -94,6 +94,26 @@ public class ProductAISearchController {
     }
 
     /**
+     * Populate Tamil names in tags for better search
+     * This endpoint updates all products to include their Tamil names in the tags field
+     */
+    @PostMapping("/populate-tamil-tags")
+    public ResponseEntity<ApiResponse<String>> populateTamilTagsInProducts() {
+        log.info("Populate Tamil tags request received");
+
+        try {
+            productAISearchService.populateTamilNamesInTags();
+            return ResponseEntity.ok(ApiResponse.success(
+                    "Tamil names have been added to product tags",
+                    "Tamil language search will now work better"
+            ));
+        } catch (Exception e) {
+            log.error("Error populating Tamil tags: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to populate Tamil tags: " + e.getMessage()));
+        }
+    }
+
+    /**
      * Get product with AI-generated description
      */
     @GetMapping("/{id}/with-description")

@@ -423,4 +423,37 @@ public class ProductAISearchService {
 
         return score;
     }
+
+    /**
+     * Populate Tamil names in tags field for better searchability
+     * This adds Tamil product names to the tags field so Tamil language search works
+     */
+    @Transactional
+    public void populateTamilNamesInTags() {
+        log.info("Starting Tamil names population in tags field...");
+
+        List<MasterProduct> allProducts = masterProductRepository.findAll();
+        int updated = 0;
+
+        for (MasterProduct product : allProducts) {
+            if (product.getNameTamil() != null && !product.getNameTamil().isEmpty()) {
+                String currentTags = product.getTags() != null ? product.getTags() : "";
+
+                // Check if Tamil name is already in tags
+                if (!currentTags.contains(product.getNameTamil())) {
+                    // Add Tamil name to the beginning of tags for highest priority
+                    String newTags = product.getNameTamil();
+                    if (!currentTags.isEmpty()) {
+                        newTags = newTags + ", " + currentTags;
+                    }
+                    product.setTags(newTags);
+                    masterProductRepository.save(product);
+                    updated++;
+                    log.debug("Updated tags for: {} -> {}", product.getName(), newTags);
+                }
+            }
+        }
+
+        log.info("Tamil names population completed. Updated {} products", updated);
+    }
 }
