@@ -56,18 +56,25 @@ public class ProductAISearchService {
      * Search products by keywords in tags field
      */
     private List<MasterProduct> searchProductsByKeywords(String keywords) {
-        log.debug("Searching products by keywords: {}", keywords);
+        log.info("Searching products by keywords: {}", keywords);
 
         // Get all active products with tags
         List<MasterProduct> allProducts = masterProductRepository.findByStatusOrderByCreatedAtDesc(MasterProduct.ProductStatus.ACTIVE);
+        log.info("Total active products in database: {}", allProducts.size());
 
         // Split keywords and convert to lowercase for case-insensitive matching
         String[] keywordArray = keywords.toLowerCase().split("[,\\s]+");
+        log.info("Parsed {} keywords: {}", keywordArray.length, java.util.Arrays.toString(keywordArray));
 
         // Filter products that match keywords in their tags
-        return allProducts.stream()
+        List<MasterProduct> results = allProducts.stream()
                 .filter(product -> matchesKeywords(product, keywordArray))
                 .collect(Collectors.toList());
+
+        log.info("Found {} matching products", results.size());
+        results.forEach(p -> log.info("  - {} (tags: {})", p.getName(), p.getTags()));
+
+        return results;
     }
 
     /**
@@ -206,22 +213,95 @@ public class ProductAISearchService {
     /**
      * Search products with voice/text query
      * Returns up to 50 results for better user experience
+     * Results are ranked by relevance (exact matches first)
      */
     public List<MasterProductResponse> voiceSearchProducts(String voiceQuery) {
-        log.info("Voice search query: {}", voiceQuery);
+        log.info("Voice search query: '{}'", voiceQuery);
 
         try {
             List<MasterProduct> products = searchProductsByKeywords(voiceQuery);
             log.info("Voice search found {} products for query: '{}'", products.size(), voiceQuery);
 
-            return products.stream()
-                    .limit(50) // Return more results for voice search (increased from 10)
+            // Sort by relevance: products with exact tag matches first
+            List<MasterProduct> rankedProducts = rankByRelevance(products, voiceQuery);
+
+            List<MasterProductResponse> results = rankedProducts.stream()
+                    .limit(50) // Return more results for voice search
                     .map(productMapper::toResponse)
                     .collect(Collectors.toList());
 
+            log.info("Returning {} results for voice search", results.size());
+            return results;
+
         } catch (Exception e) {
-            log.error("Voice search failed: {}", e.getMessage());
+            log.error("Voice search failed: {}", e.getMessage(), e);
             return new ArrayList<>();
         }
+    }
+
+    /**
+     * Rank products by relevance to the search query
+     * Products with exact tag matches come first
+     */
+    private List<MasterProduct> rankByRelevance(List<MasterProduct> products, String query) {
+        String[] keywords = query.toLowerCase().split("[,\\s]+");
+
+        return products.stream()
+                .sorted((p1, p2) -> {
+                    int score1 = calculateRelevanceScore(p1, keywords);
+                    int score2 = calculateRelevanceScore(p2, keywords);
+                    return Integer.compare(score2, score1); // Higher score first
+                })
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Calculate relevance score for a product based on keywords
+     * Higher score = more relevant (exact matches score higher than fuzzy)
+     */
+    private int calculateRelevanceScore(MasterProduct product, String[] keywords) {
+        int score = 0;
+        String searchableText = buildSearchableText(product).toLowerCase();
+        String[] words = searchableText.split("[\\s,]+");
+
+        for (String keyword : keywords) {
+            if (keyword.length() > 0) {
+                // Exact match in tags (highest priority)
+                if (product.getTags() != null && product.getTags().toLowerCase().contains(keyword)) {
+                    score += 100;
+                }
+                // Exact match in name
+                else if (product.getName() != null && product.getName().toLowerCase().contains(keyword)) {
+                    score += 50;
+                }
+                // Fuzzy match in any field
+                else if (fuzzyMatch(searchableText, keyword, 0.80)) {
+                    score += 25;
+                }
+                // Word-level fuzzy match
+                for (String word : words) {
+                    if (word.length() > 0 && calculateSimilarity(word, keyword) >= 0.80) {
+                        score += 10;
+                    }
+                }
+            }
+        }
+
+        return score;
+    }
+
+    /**
+     * Build searchable text from product fields
+     */
+    private String buildSearchableText(MasterProduct product) {
+        StringBuilder text = new StringBuilder();
+        if (product.getTags() != null) text.append(product.getTags()).append(" ");
+        if (product.getName() != null) text.append(product.getName()).append(" ");
+        if (product.getBrand() != null) text.append(product.getBrand()).append(" ");
+        if (product.getCategory() != null && product.getCategory().getName() != null) {
+            text.append(product.getCategory().getName()).append(" ");
+        }
+        if (product.getDescription() != null) text.append(product.getDescription()).append(" ");
+        return text.toString();
     }
 }
