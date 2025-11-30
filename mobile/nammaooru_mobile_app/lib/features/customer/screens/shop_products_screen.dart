@@ -859,7 +859,7 @@ class _VoiceSearchDialogState extends State<VoiceSearchDialog> {
   Widget build(BuildContext context) {
     return Dialog(
       insetPadding: const EdgeInsets.all(0),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       child: Column(
         mainAxisSize: MainAxisSize.max,
         children: [
