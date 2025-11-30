@@ -1,5 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
+import { MatPaginator, PageEvent } from '@angular/material/paginator';
 import { ProductCategoryService } from '../../../../core/services/product-category.service';
 import { ProductCategory } from '../../../../core/models/product.model';
 import Swal from 'sweetalert2';
@@ -120,8 +121,9 @@ import { environment } from '../../../../../environments/environment';
           </div>
 
           <!-- Categories Grid -->
-          <div *ngIf="!loading && categories.length > 0" class="categories-grid">
-            <div *ngFor="let category of categories" class="category-card">
+          <div *ngIf="!loading && categories.length > 0">
+            <div class="categories-grid">
+              <div *ngFor="let category of categories" class="category-card">
               <div class="category-card-header">
                 <div class="category-icon-wrapper" [class.has-image]="category.iconUrl">
                   <img *ngIf="category.iconUrl && isImageUrl(category.iconUrl)"
@@ -196,6 +198,18 @@ import { environment } from '../../../../../environments/environment';
                   Delete
                 </button>
               </div>
+              </div>
+            </div>
+
+            <!-- Pagination -->
+            <div class="pagination-wrapper">
+              <mat-paginator
+                [length]="totalCategories"
+                [pageSize]="pageSize"
+                [pageSizeOptions]="[10, 20, 50]"
+                [showFirstLastButtons]="true"
+                (page)="onPageChange($event)">
+              </mat-paginator>
             </div>
           </div>
         </mat-card>
@@ -684,6 +698,19 @@ import { environment } from '../../../../../environments/environment';
       margin-right: 4px;
     }
 
+    /* Pagination */
+    .pagination-wrapper {
+      padding: 24px;
+      border-top: 1px solid #e0e0e0;
+      background: #fafafa;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    ::ng-deep .mat-mdc-paginator {
+      background: transparent;
+    }
+
     /* Responsive Design */
     @media (max-width: 1024px) {
       .categories-grid {
@@ -735,8 +762,13 @@ import { environment } from '../../../../../environments/environment';
   `]
 })
 export class CategoryListComponent implements OnInit {
+  @ViewChild(MatPaginator) paginator!: MatPaginator;
+
   categories: ProductCategory[] = [];
   loading = false;
+  pageSize = 10;
+  pageIndex = 0;
+  totalCategories = 0;
 
   constructor(
     private dialog: MatDialog,
@@ -749,10 +781,15 @@ export class CategoryListComponent implements OnInit {
 
   loadCategories() {
     this.loading = true;
-    this.categoryService.getCategories().subscribe({
+    console.log('Loading categories with pageIndex:', this.pageIndex, 'pageSize:', this.pageSize);
+
+    this.categoryService.getCategories(undefined, undefined, undefined, this.pageIndex, this.pageSize).subscribe({
       next: (response) => {
+        console.log('Categories response:', response);
         this.categories = response.content || [];
+        this.totalCategories = response.totalElements || 0;
         this.loading = false;
+        console.log('Loaded categories:', this.categories.length, 'Total:', this.totalCategories);
       },
       error: (error) => {
         console.error('Error loading categories:', error);
@@ -767,8 +804,17 @@ export class CategoryListComponent implements OnInit {
     });
   }
 
+  onPageChange(event: PageEvent) {
+    console.log('Page change event:', event);
+    this.pageIndex = event.pageIndex;
+    this.pageSize = event.pageSize;
+    console.log('New pageIndex:', this.pageIndex, 'New pageSize:', this.pageSize);
+    this.loadCategories();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
   getTotalCategories(): number {
-    return this.categories.length;
+    return this.totalCategories;
   }
 
   getActiveCategories(): number {

@@ -1,6 +1,7 @@
 package com.shopmanagement.product.service;
 
 import com.shopmanagement.product.dto.MasterProductResponse;
+import com.shopmanagement.product.dto.VoiceSearchGroupedResponse;
 import com.shopmanagement.product.entity.MasterProduct;
 import com.shopmanagement.product.mapper.ProductMapper;
 import com.shopmanagement.product.repository.MasterProductRepository;
@@ -12,8 +13,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -303,5 +303,111 @@ public class ProductAISearchService {
         }
         if (product.getDescription() != null) text.append(product.getDescription()).append(" ");
         return text.toString();
+    }
+
+    /**
+     * Search products with multiple keywords and group results by keyword
+     * Best for voice search with 5-10+ items
+     * Returns organized results grouped by each keyword
+     */
+    public List<VoiceSearchGroupedResponse> voiceSearchGrouped(String voiceQuery) {
+        log.info("Grouped voice search query: '{}'", voiceQuery);
+
+        try {
+            List<MasterProduct> allProducts = masterProductRepository.findByStatusOrderByCreatedAtDesc(MasterProduct.ProductStatus.ACTIVE);
+            log.info("Total active products: {}", allProducts.size());
+
+            // Split into individual keywords
+            String[] keywords = voiceQuery.toLowerCase().split("[,\\s]+");
+            keywords = Arrays.stream(keywords)
+                    .filter(k -> k.length() > 0)
+                    .toArray(String[]::new);
+
+            log.info("Parsed {} keywords: {}", keywords.length, Arrays.toString(keywords));
+
+            List<VoiceSearchGroupedResponse> groupedResults = new ArrayList<>();
+
+            // For each keyword, find and group matching products
+            for (String keyword : keywords) {
+                List<MasterProduct> matchingProducts = findProductsForKeyword(allProducts, keyword);
+
+                // Rank by relevance for this specific keyword
+                List<MasterProduct> rankedProducts = matchingProducts.stream()
+                        .sorted((p1, p2) -> Integer.compare(
+                                calculateKeywordRelevance(p2, keyword),
+                                calculateKeywordRelevance(p1, keyword)
+                        ))
+                        .limit(5) // Top 5 per keyword
+                        .collect(Collectors.toList());
+
+                if (!rankedProducts.isEmpty()) {
+                    List<MasterProductResponse> responses = rankedProducts.stream()
+                            .map(productMapper::toResponse)
+                            .collect(Collectors.toList());
+
+                    groupedResults.add(VoiceSearchGroupedResponse.builder()
+                            .keyword(keyword)
+                            .count(matchingProducts.size()) // Show total matching, but return top 5
+                            .products(responses)
+                            .build());
+
+                    log.info("Keyword '{}': Found {} products, returning top 5", keyword, matchingProducts.size());
+                }
+            }
+
+            log.info("Returning {} keyword groups", groupedResults.size());
+            return groupedResults;
+
+        } catch (Exception e) {
+            log.error("Grouped voice search failed: {}", e.getMessage(), e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Find products matching a single keyword
+     */
+    private List<MasterProduct> findProductsForKeyword(List<MasterProduct> products, String keyword) {
+        return products.stream()
+                .filter(product -> matchesKeywordSingle(product, keyword))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Check if product matches a single keyword
+     */
+    private boolean matchesKeywordSingle(MasterProduct product, String keyword) {
+        String searchableText = buildSearchableText(product).toLowerCase();
+
+        // Exact match
+        if (searchableText.contains(keyword)) {
+            return true;
+        }
+
+        // Fuzzy match
+        return fuzzyMatch(searchableText, keyword, 0.80);
+    }
+
+    /**
+     * Calculate relevance score for a specific keyword
+     */
+    private int calculateKeywordRelevance(MasterProduct product, String keyword) {
+        int score = 0;
+        String searchableText = buildSearchableText(product).toLowerCase();
+
+        // Tags match (highest priority)
+        if (product.getTags() != null && product.getTags().toLowerCase().contains(keyword)) {
+            score += 100;
+        }
+        // Name match
+        else if (product.getName() != null && product.getName().toLowerCase().contains(keyword)) {
+            score += 50;
+        }
+        // Fuzzy match
+        else if (fuzzyMatch(searchableText, keyword, 0.80)) {
+            score += 25;
+        }
+
+        return score;
     }
 }

@@ -2,6 +2,7 @@ package com.shopmanagement.product.controller;
 
 import com.shopmanagement.dto.ApiResponse;
 import com.shopmanagement.product.dto.MasterProductResponse;
+import com.shopmanagement.product.dto.VoiceSearchGroupedResponse;
 import com.shopmanagement.product.service.ProductAISearchService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -65,6 +66,30 @@ public class ProductAISearchController {
         } catch (Exception e) {
             log.error("Error during voice search: {}", e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error("Voice search failed: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Voice search with grouped results - best for multi-item searches (5-10+ items)
+     * Returns results grouped and organized by keyword
+     */
+    @PostMapping("/voice/grouped")
+    public ResponseEntity<ApiResponse<List<VoiceSearchGroupedResponse>>> voiceSearchGrouped(
+            @RequestParam(name = "q") String voiceQuery
+    ) {
+        log.info("Grouped voice search request: query={}", voiceQuery);
+
+        try {
+            List<VoiceSearchGroupedResponse> results = productAISearchService.voiceSearchGrouped(voiceQuery);
+
+            int totalProducts = results.stream().mapToInt(VoiceSearchGroupedResponse::getCount).sum();
+            return ResponseEntity.ok(ApiResponse.success(
+                    results,
+                    "Found " + results.size() + " keyword groups with " + totalProducts + " total products"
+            ));
+        } catch (Exception e) {
+            log.error("Error during grouped voice search: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error("Grouped voice search failed: " + e.getMessage()));
         }
     }
 

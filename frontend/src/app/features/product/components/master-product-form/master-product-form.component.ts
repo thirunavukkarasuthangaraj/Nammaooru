@@ -17,11 +17,15 @@ import Swal from 'sweetalert2';
           <button mat-icon-button class="back-button" (click)="onCancel()" matTooltip="Go back">
             <mat-icon>arrow_back</mat-icon>
           </button>
-          <div mat-card-avatar class="form-avatar">
-            <mat-icon>inventory</mat-icon>
+          <div class="header-content">
+            <div mat-card-avatar class="form-avatar">
+              <mat-icon>inventory</mat-icon>
+            </div>
+            <div class="header-text">
+              <mat-card-title>{{ isEditMode ? 'Edit Product' : 'Create New Product' }}</mat-card-title>
+              <mat-card-subtitle>{{ isEditMode ? 'Update product information' : 'Add a new product to your inventory' }}</mat-card-subtitle>
+            </div>
           </div>
-          <mat-card-title>{{ isEditMode ? 'Edit Product' : 'Create New Product' }}</mat-card-title>
-          <mat-card-subtitle>{{ isEditMode ? 'Update product information' : 'Add a new product to your inventory' }}</mat-card-subtitle>
         </mat-card-header>
 
         <mat-card-content class="form-content">
@@ -297,31 +301,47 @@ import Swal from 'sweetalert2';
     .form-header {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
-      padding: 24px;
+      padding: 0;
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 0;
     }
 
     .back-button {
       color: white;
-      align-self: flex-start;
-      margin-top: -8px;
+      flex-shrink: 0;
+      padding: 16px;
+      margin: 0;
+      border-radius: 0;
     }
 
     .back-button:hover {
       background-color: rgba(255, 255, 255, 0.2);
     }
 
+    .header-content {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 24px 24px 24px 0;
+      flex: 1;
+    }
+
+    .header-text {
+      display: flex;
+      flex-direction: column;
+    }
+
     .form-header .mat-mdc-card-title {
       color: white !important;
       font-size: 1.5rem;
       font-weight: 600;
+      margin: 0;
     }
 
     .form-header .mat-mdc-card-subtitle {
       color: rgba(255, 255, 255, 0.8) !important;
-      margin-top: 8px;
+      margin: 8px 0 0 0;
     }
 
     .form-avatar {
