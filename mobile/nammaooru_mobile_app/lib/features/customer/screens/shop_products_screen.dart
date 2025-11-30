@@ -758,6 +758,7 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
   void _showVoiceSearchDialog() {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (BuildContext context) {
         return VoiceSearchDialog(
           shopId: widget.shopId,
@@ -869,37 +870,39 @@ class _VoiceSearchDialogState extends State<VoiceSearchDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      insetPadding: const EdgeInsets.all(0),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-      child: Column(
-        mainAxisSize: MainAxisSize.max,
-        children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              color: Colors.blue,
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.mic, color: Colors.white, size: 24),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Voice Search',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: Colors.white,
+    return WillPopScope(
+      onWillPop: () async => !_isSearching,
+      child: Dialog(
+        insetPadding: const EdgeInsets.all(0),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        child: Column(
+          mainAxisSize: MainAxisSize.max,
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: const BoxDecoration(
+                color: Colors.blue,
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.mic, color: Colors.white, size: 24),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Voice Search',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: Colors.white,
+                      ),
                     ),
                   ),
-                ),
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: const Icon(Icons.close, color: Colors.white),
-                ),
-              ],
+                  GestureDetector(
+                    onTap: _isSearching ? null : () => Navigator.pop(context),
+                    child: Icon(Icons.close, color: _isSearching ? Colors.grey : Colors.white, size: 20),
+                  ),
+                ],
+              ),
             ),
-          ),
 
           // Search Input
           Padding(
@@ -1054,6 +1057,7 @@ class _VoiceSearchDialogState extends State<VoiceSearchDialog> {
 
           const SizedBox(height: 8),
         ],
+      ),
       ),
     );
   }

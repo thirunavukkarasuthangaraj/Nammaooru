@@ -1670,43 +1670,46 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     // ✅ Declare variables OUTSIDE the builder so they persist!
     List<dynamic> voiceResults = [];
     bool isSearching = false;
+    String searchStatus = ''; // Track: 'listening', 'searching'
     String? searchQuery;
 
     showDialog(
       context: context,
-      barrierDismissible: true,
+      barrierDismissible: false,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setState) {
-          return Dialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Container(
-              width: MediaQuery.of(context).size.width * 0.8,
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.6,
+          return WillPopScope(
+            onWillPop: () async => !isSearching,
+            child: Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Simple Header
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: const [
-                          Icon(Icons.mic, color: Color(0xFF2E7D32), size: 20),
-                          SizedBox(width: 8),
-                          Text('Voice Search', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                      GestureDetector(
-                        onTap: () => Navigator.pop(dialogContext),
-                        child: const Icon(Icons.close, size: 20),
-                      ),
-                    ],
-                  ),
+              child: Container(
+                width: MediaQuery.of(context).size.width * 0.8,
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.6,
+                ),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Simple Header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: const [
+                            Icon(Icons.mic, color: Color(0xFF2E7D32), size: 20),
+                            SizedBox(width: 8),
+                            Text('Voice Search', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                        GestureDetector(
+                          onTap: isSearching ? null : () => Navigator.pop(dialogContext),
+                          child: Icon(Icons.close, size: 20, color: isSearching ? Colors.grey : Colors.black),
+                        ),
+                      ],
+                    ),
                   const SizedBox(height: 16),
 
                   // Simple Voice Button - Small & Compact
@@ -1715,13 +1718,37 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                       children: [
                         GestureDetector(
                           onTap: () async {
-                            setState(() => isSearching = true);
-                            final results = await _voiceSearch.voiceSearch(widget.shopId);
-                            final query = _voiceSearch.lastWords;
+                            // Step 1: Start listening
+                            setState(() {
+                              isSearching = true;
+                              searchStatus = 'listening';
+                            });
+
+                            // Step 2: Listen to voice
+                            final query = await _voiceSearch.listen();
+
+                            if (query == null || query.trim().isEmpty) {
+                              setState(() {
+                                isSearching = false;
+                                searchStatus = '';
+                              });
+                              return;
+                            }
+
+                            // Step 3: Now searching
+                            setState(() {
+                              searchStatus = 'searching';
+                              searchQuery = query;
+                            });
+
+                            // Step 4: Search products
+                            final results = await _voiceSearch.searchProducts(widget.shopId, query);
+
+                            // Step 5: Done
                             setState(() {
                               isSearching = false;
+                              searchStatus = '';
                               voiceResults = results;
-                              searchQuery = query;
                             });
                           },
                           child: Container(
@@ -1738,14 +1765,45 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                       ],
                     ),
 
-                  // Loading indicator - Compact
+                  // Loading indicator with different states
                   if (isSearching)
                     Column(
-                      children: const [
-                        SizedBox(height: 16),
-                        SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF2E7D32))),
-                        SizedBox(height: 8),
-                        Text('Listening...', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                      children: [
+                        const SizedBox(height: 16),
+                        if (searchStatus == 'listening')
+                          Column(
+                            children: const [
+                              Icon(Icons.mic, size: 40, color: Color(0xFF2E7D32)),
+                              SizedBox(height: 12),
+                              Text('🎤 Listening...', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF2E7D32))),
+                              SizedBox(height: 4),
+                              Text('Speak now', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                            ],
+                          )
+                        else if (searchStatus == 'searching')
+                          Column(
+                            children: [
+                              const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF2E7D32))),
+                              const SizedBox(height: 12),
+                              Text(
+                                searchQuery != null && searchQuery!.isNotEmpty
+                                    ? '🔍 Searching "$searchQuery"...'
+                                    : '🔍 Searching...',
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.grey),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 4),
+                              const Text('Please wait', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                            ],
+                          )
+                        else
+                          Column(
+                            children: const [
+                              SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF2E7D32))),
+                              SizedBox(height: 8),
+                              Text('Processing...', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                            ],
+                          ),
                       ],
                     ),
 
@@ -1850,9 +1908,33 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                         const Text('No products found', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                         TextButton.icon(
                           onPressed: () async {
-                            setState(() { isSearching = true; voiceResults = []; searchQuery = null; });
-                            final results = await _voiceSearch.voiceSearch(widget.shopId);
-                            setState(() { isSearching = false; voiceResults = results; searchQuery = _voiceSearch.lastWords; });
+                            setState(() {
+                              isSearching = true;
+                              searchStatus = 'listening';
+                              voiceResults = [];
+                              searchQuery = null;
+                            });
+
+                            final query = await _voiceSearch.listen();
+                            if (query == null || query.trim().isEmpty) {
+                              setState(() {
+                                isSearching = false;
+                                searchStatus = '';
+                              });
+                              return;
+                            }
+
+                            setState(() {
+                              searchStatus = 'searching';
+                              searchQuery = query;
+                            });
+
+                            final results = await _voiceSearch.searchProducts(widget.shopId, query);
+                            setState(() {
+                              isSearching = false;
+                              searchStatus = '';
+                              voiceResults = results;
+                            });
                           },
                           icon: const Icon(Icons.mic, size: 16),
                           label: const Text('Try Again', style: TextStyle(fontSize: 12)),
@@ -1861,6 +1943,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                     ),
                 ],
               ),
+            ),
             ),
           );
         },

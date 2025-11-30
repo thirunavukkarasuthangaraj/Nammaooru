@@ -1,21 +1,13 @@
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:flutter/foundation.dart';
 import 'dart:convert';
+import 'local_storage_impl.dart';
 
 class LocalStorage {
   static late SharedPreferences _prefs;
-  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage(
-    aOptions: AndroidOptions(
-      encryptedSharedPreferences: true,
-    ),
-    iOptions: IOSOptions(
-      accessibility: KeychainAccessibility.first_unlock_this_device,
-    ),
-  );
-  
+
   static Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
+    await LocalStorageImpl.init();
   }
   
   static Future<void> setString(String key, String value) async {
@@ -50,44 +42,17 @@ class LocalStorage {
     await _prefs.clear();
   }
   
-  static Future<void> setSecureString(String key, String value) async {
-    if (kIsWeb) {
-      // On web, use SharedPreferences as FlutterSecureStorage has issues
-      await _prefs.setString('secure_$key', value);
-    } else {
-      await _secureStorage.write(key: key, value: value);
-    }
-  }
-  
-  static Future<String?> getSecureString(String key) async {
-    if (kIsWeb) {
-      // On web, use SharedPreferences as FlutterSecureStorage has issues
-      return _prefs.getString('secure_$key');
-    } else {
-      return await _secureStorage.read(key: key);
-    }
-  }
-  
-  static Future<void> removeSecureString(String key) async {
-    if (kIsWeb) {
-      await _prefs.remove('secure_$key');
-    } else {
-      await _secureStorage.delete(key: key);
-    }
-  }
-  
-  static Future<void> clearSecureStorage() async {
-    if (kIsWeb) {
-      final keys = _prefs.getKeys();
-      for (String key in keys) {
-        if (key.startsWith('secure_')) {
-          await _prefs.remove(key);
-        }
-      }
-    } else {
-      await _secureStorage.deleteAll();
-    }
-  }
+  static Future<void> setSecureString(String key, String value) =>
+      LocalStorageImpl.setSecureString(key, value);
+
+  static Future<String?> getSecureString(String key) =>
+      LocalStorageImpl.getSecureString(key);
+
+  static Future<void> removeSecureString(String key) =>
+      LocalStorageImpl.removeSecureString(key);
+
+  static Future<void> clearSecureStorage() =>
+      LocalStorageImpl.clearSecureStorage();
 
   // Additional methods for map and list operations
   static Future<void> setMap(String key, Map<String, dynamic> value) async {

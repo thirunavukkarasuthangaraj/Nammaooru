@@ -1,7 +1,7 @@
 name: nammaooru_mobile_app
 description: NammaOoru Multi-Service Delivery Platform - Flutter Mobile App
 publish_to: 'none'
-version: 1.0.3+6
+version: 1.0.7+8
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -28,18 +28,18 @@ dependencies:
 
   # Local Storage
   shared_preferences: ^2.2.2
-  flutter_secure_storage: ^9.0.0
+  flutter_secure_storage: ^9.2.4
   
   # Utils
-  connectivity_plus: ^5.0.2
+  connectivity_plus: ^7.0.0
   url_launcher: ^6.2.1
 
   # Geolocation & Maps
-  geocoding: ^3.0.0
-  geolocator: ^10.1.0
-  permission_handler: ^11.1.0
+  geocoding: ^4.0.0
+  geolocator: ^14.0.2
+  permission_handler: ^12.0.1
   google_maps_flutter: ^2.13.1
-  location: ^6.0.2
+  location: ^8.0.1
 
   # Voice Search
   speech_to_text: ^7.3.0

@@ -4,6 +4,9 @@
  <!-- Internet permission -->
 <uses-permission android:name="android.permission.INTERNET" />
 
+<!-- ❌ Explicitly REMOVE QUERY_ALL_PACKAGES permission added by dependencies -->
+<uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" tools:node="remove" />
+
 <!-- Location permissions (foreground only) -->
 <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />

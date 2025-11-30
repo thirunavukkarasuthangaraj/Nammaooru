@@ -1557,6 +1557,7 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
   void _showVoiceSearchDialog() {
     List<dynamic> voiceResults = [];
     bool isSearching = false;
+    String searchStatus = ''; // Track current status: 'listening', 'processing', 'searching'
     String? searchQuery;
     final TextEditingController searchController = TextEditingController();
 
@@ -1570,7 +1571,7 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
           return StatefulBuilder(
             builder: (context, setState) {
               return WillPopScope(
-                onWillPop: () async => false,
+                onWillPop: () async => !isSearching,
                 child: Dialog(
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
@@ -1596,8 +1597,8 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
                       ),
                       const Spacer(),
                       IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () {
+                        icon: Icon(Icons.close, color: isSearching ? Colors.grey : Colors.black),
+                        onPressed: isSearching ? null : () {
                           searchController.dispose();
                           Navigator.pop(context);
                         },
@@ -1673,21 +1674,38 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
                         const SizedBox(height: 16),
                         ElevatedButton.icon(
                           onPressed: () async {
+                            // Step 1: Start listening
                             setState(() {
                               isSearching = true;
+                              searchStatus = 'listening';
                             });
 
-                            final results = await _voiceSearch.voiceSearch(widget.shopId);
-                            final query = _voiceSearch.lastWords;
+                            // Step 2: Listen to voice input
+                            final query = await _voiceSearch.listen();
 
+                            if (query == null || query.trim().isEmpty) {
+                              setState(() {
+                                isSearching = false;
+                                searchStatus = '';
+                              });
+                              return;
+                            }
+
+                            // Step 3: Processing complete, now searching
+                            setState(() {
+                              searchStatus = 'searching';
+                              searchQuery = query;
+                              searchController.text = query;
+                            });
+
+                            // Step 4: Search products
+                            final results = await _voiceSearch.searchProducts(widget.shopId, query);
+
+                            // Step 5: Done
                             setState(() {
                               isSearching = false;
+                              searchStatus = '';
                               voiceResults = results;
-                              searchQuery = query;
-                              // Update the text field with voice search query
-                              if (query != null && query.isNotEmpty) {
-                                searchController.text = query;
-                              }
                             });
                           },
                           style: ElevatedButton.styleFrom(
@@ -1711,22 +1729,90 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
                       ],
                     ),
 
-                  // Loading indicator
+                  // Loading indicator with different states
                   if (isSearching)
                     Column(
                       children: [
                         const SizedBox(height: 32),
-                        const CircularProgressIndicator(
-                          color: Color(0xFF2E7D32),
-                        ),
-                        const SizedBox(height: 24),
-                        const Text(
-                          'Listening...',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.grey,
+                        // Animated mic icon for listening state
+                        if (searchStatus == 'listening')
+                          Column(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: const Color(0xFF2E7D32).withOpacity(0.1),
+                                ),
+                                child: const Icon(
+                                  Icons.mic,
+                                  size: 60,
+                                  color: Color(0xFF2E7D32),
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                              const Text(
+                                '🎤 Listening...',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF2E7D32),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              const Text(
+                                'Speak now',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          )
+                        else if (searchStatus == 'searching')
+                          Column(
+                            children: [
+                              const CircularProgressIndicator(
+                                color: Color(0xFF2E7D32),
+                              ),
+                              const SizedBox(height: 24),
+                              Text(
+                                searchQuery != null && searchQuery!.isNotEmpty
+                                    ? '🔍 Searching for "$searchQuery"...'
+                                    : '🔍 Searching products...',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.grey,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 8),
+                              const Text(
+                                'Please wait',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          )
+                        else
+                          Column(
+                            children: const [
+                              CircularProgressIndicator(
+                                color: Color(0xFF2E7D32),
+                              ),
+                              SizedBox(height: 24),
+                              Text(
+                                'Processing...',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
                         const SizedBox(height: 32),
                       ],
                     ),

@@ -75,8 +75,13 @@ class VoiceSearchService {
         listenFor: const Duration(seconds: 30), // Allow up to 30 seconds of speaking
       );
 
-      // Wait for speech to complete - increased to 30 seconds max
-      await Future.delayed(const Duration(seconds: 30));
+      // Wait for speech to complete naturally (check every 500ms)
+      int maxWaitSeconds = 30;
+      int waitedSeconds = 0;
+      while (_speech.isListening && waitedSeconds < maxWaitSeconds) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        waitedSeconds++;
+      }
 
       if (_speech.isListening) {
         await _speech.stop();
