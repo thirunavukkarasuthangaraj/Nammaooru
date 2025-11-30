@@ -1,7 +1,7 @@
 name: nammaooru_mobile_app
 description: NammaOoru Multi-Service Delivery Platform - Flutter Mobile App
 publish_to: 'none'
-version: 1.0.7+8
+version: 1.0.8+9
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -45,7 +45,7 @@ dependencies:
   speech_to_text: ^7.3.0
 
   # Device Info & Promo Codes
-  device_info_plus: ^10.1.0
+  device_info_plus: ^9.1.2  # Downgraded to avoid QUERY_ALL_PACKAGES permission
   uuid: ^4.2.1
   package_info_plus: ^8.0.0
   

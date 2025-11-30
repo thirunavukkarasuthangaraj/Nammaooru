@@ -30,8 +30,8 @@ android {
         applicationId "com.nammaooru.app"
         minSdkVersion flutter.minSdkVersion
         targetSdkVersion 35
-        versionCode 8
-        versionName "1.0.7"
+        versionCode 9
+        versionName "1.0.8"
         // Enable multidex for large apps
         multiDexEnabled true
     }
