@@ -5,6 +5,7 @@ import com.shopmanagement.product.dto.VoiceSearchGroupedResponse;
 import com.shopmanagement.product.entity.MasterProduct;
 import com.shopmanagement.product.mapper.ProductMapper;
 import com.shopmanagement.product.repository.MasterProductRepository;
+import com.shopmanagement.service.GeminiSearchService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -24,6 +25,7 @@ public class ProductAISearchService {
 
     private final MasterProductRepository masterProductRepository;
     private final ProductMapper productMapper;
+    private final GeminiSearchService geminiSearchService;
 
     /**
      * Search products based on natural language query using tag matching
@@ -53,27 +55,47 @@ public class ProductAISearchService {
     }
 
     /**
-     * Search products by keywords in tags field
+     * Search products by keywords in name and nameTamil fields
+     * Supports both English and Tamil search with Gemini transliteration for mixed text
      */
     private List<MasterProduct> searchProductsByKeywords(String keywords) {
         log.info("Searching products by keywords: {}", keywords);
 
-        // Get all active products with tags
+        // Check if query contains Tamil characters and transliterate if needed
+        String searchKeywords = keywords;
+        if (isTamilText(keywords)) {
+            log.info("🔄 Detected Tamil text, transliterating using Gemini...");
+            searchKeywords = geminiSearchService.transliterateTamilToEnglish(keywords);
+            log.info("✅ Transliterated result: {}", searchKeywords);
+        }
+
+        // Get all active products
         List<MasterProduct> allProducts = masterProductRepository.findByStatusOrderByCreatedAtDesc(MasterProduct.ProductStatus.ACTIVE);
         log.info("Total active products in database: {}", allProducts.size());
 
-        // Split keywords and convert to lowercase for case-insensitive matching
-        // Note: Tamil text won't be affected by toLowerCase() which is fine
-        String[] keywordArray = keywords.split("[,\\s]+");
-        log.info("Parsed {} keywords from query: '{}' -> {}", keywordArray.length, keywords, java.util.Arrays.toString(keywordArray));
+        // Split keywords
+        String[] keywordArray = searchKeywords.toLowerCase().split("[,\\s]+");
+        log.info("Parsed {} keywords: {}", keywordArray.length, java.util.Arrays.toString(keywordArray));
 
-        // Filter products that match keywords in their tags
+        // Filter products that match keywords in name or nameTamil
         List<MasterProduct> results = allProducts.stream()
-                .filter(product -> matchesKeywords(product, keywordArray))
+                .filter(product -> {
+                    String name = product.getName() != null ? product.getName().toLowerCase() : "";
+                    String nameTamil = product.getNameTamil() != null ? product.getNameTamil() : "";
+
+                    // Check if any keyword matches name or nameTamil
+                    for (String keyword : keywordArray) {
+                        if (keyword.isEmpty()) continue;
+                        if (name.contains(keyword) || nameTamil.contains(keyword)) {
+                            return true;
+                        }
+                    }
+                    return false;
+                })
                 .collect(Collectors.toList());
 
         log.info("Found {} matching products", results.size());
-        results.forEach(p -> log.info("  - {} (tags: {})", p.getName(), p.getTags()));
+        results.forEach(p -> log.info("  - {} | {} (SKU: {})", p.getName(), p.getNameTamil(), p.getSku()));
 
         return results;
     }
@@ -211,6 +233,13 @@ public class ProductAISearchService {
         }
 
         return dp[s1.length()][s2.length()];
+    }
+
+    /**
+     * Check if text contains Tamil characters
+     */
+    private boolean isTamilText(String text) {
+        return text != null && text.matches(".*[\\u0B80-\\u0BFF].*");
     }
 
     /**

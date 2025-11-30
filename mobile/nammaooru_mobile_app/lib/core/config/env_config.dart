@@ -1,15 +1,15 @@
 class EnvConfig {
   // Base API Configuration
-  // PRODUCTION: Use your deployed server
-  static const String baseUrl = 'https://api.nammaoorudelivary.in';
-  static const String apiUrl = 'https://api.nammaoorudelivary.in'; // Alias for compatibility
+  // DEVELOPMENT: Local development - Point to localhost
+  static const String baseUrl = 'http://localhost:8080';
+  static const String apiUrl = 'http://localhost:8080'; // Alias for compatibility
 
   // Image base URL (frontend domain for serving images)
   static const String imageBaseUrl = 'https://nammaoorudelivary.in';
 
-  // DEVELOPMENT: Local development
-  // static const String baseUrl = 'http://192.168.1.3:8080';
-  // static const String apiUrl = 'http://192.168.1.3:8080'; // Alias for compatibility
+  // PRODUCTION: Use your deployed server
+  // static const String baseUrl = 'https://api.nammaoorudelivary.in';
+  // static const String apiUrl = 'https://api.nammaoorudelivary.in'; // Alias for compatibility
 
   static const String apiVersion = '';
   static const String fullApiUrl = '$baseUrl/api';

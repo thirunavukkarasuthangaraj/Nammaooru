@@ -46,12 +46,24 @@
     </div>
     
     <div class="filter-controls">
+      <div class="select-all-control" *ngIf="filteredProducts.length > 0">
+        <mat-checkbox
+          [checked]="areAllProductsSelected()"
+          (change)="areAllProductsSelected() ? clearSelection() : selectAllProducts()"
+          matTooltip="Select/Deselect all products on this page">
+          Select All
+        </mat-checkbox>
+        <span class="selection-count" *ngIf="selectedProducts.length > 0">
+          ({{ selectedProducts.length }} selected)
+        </span>
+      </div>
+
       <mat-form-field appearance="outline" class="search-field">
         <mat-label>Search products</mat-label>
         <mat-icon matPrefix>search</mat-icon>
-        <input matInput 
-               [(ngModel)]="searchTerm" 
-               (ngModelChange)="onSearchChange()" 
+        <input matInput
+               [(ngModel)]="searchTerm"
+               (ngModelChange)="onSearchChange()"
                placeholder="Type product name, brand, or SKU...">
         <button mat-icon-button matSuffix *ngIf="searchTerm" (click)="searchTerm = ''; onSearchChange()">
           <mat-icon>close</mat-icon>
@@ -233,13 +245,13 @@
 
   <!-- Pagination -->
   <mat-card class="pagination-card" *ngIf="!loading && totalProducts > pageSize">
-    <mat-paginator 
-      [length]="totalProducts" 
-      [pageSize]="pageSize" 
-      [pageSizeOptions]="[12, 24, 48, 96]"
+    <mat-paginator
+      [length]="totalProducts"
+      [pageSize]="pageSize"
+      [pageSizeOptions]="[12, 24, 48, 96, 200]"
       [pageIndex]="currentPage"
       [showFirstLastButtons]="true"
-      (page)="onPageChange($event.pageIndex)">
+      (page)="onPageChange($event)">
     </mat-paginator>
   </mat-card>
 

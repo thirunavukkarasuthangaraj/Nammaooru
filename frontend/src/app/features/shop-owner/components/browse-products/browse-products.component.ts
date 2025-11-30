@@ -197,8 +197,9 @@ export class BrowseProductsComponent implements OnInit, OnDestroy {
     this.loadMasterProducts();
   }
 
-  onPageChange(page: number): void {
-    this.currentPage = page;
+  onPageChange(event: any): void {
+    this.currentPage = event.pageIndex;
+    this.pageSize = event.pageSize;
     this.loadMasterProducts();
   }
 
@@ -222,8 +223,17 @@ export class BrowseProductsComponent implements OnInit, OnDestroy {
     return this.selectedProducts.some(p => p.id === product.id);
   }
 
+  selectAllProducts(): void {
+    this.selectedProducts = [...this.filteredProducts];
+  }
+
   clearSelection(): void {
     this.selectedProducts = [];
+  }
+
+  areAllProductsSelected(): boolean {
+    return this.filteredProducts.length > 0 &&
+           this.selectedProducts.length === this.filteredProducts.length;
   }
 
   assignSelectedProducts(): void {

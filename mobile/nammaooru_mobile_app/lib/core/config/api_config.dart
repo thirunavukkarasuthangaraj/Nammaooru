@@ -1,16 +1,16 @@
 class ApiConfig {
   // Base URL for API calls
-  static const String baseUrl = 'https://api.nammaoorudelivary.in/api';
+  static const String baseUrl = 'http://172.25.224.1:8080/api';
 
   // Web URL for Chrome testing
-  static const String webBaseUrl = 'https://api.nammaoorudelivary.in/api';
+  static const String webBaseUrl = 'http://172.25.224.1:8080/api';
 
-  // Production URL
-  static const String prodBaseUrl = 'https://api.nammaoorudelivary.in/api';
+  // Production URL (LOCAL TESTING)
+  static const String prodBaseUrl = 'http://172.25.224.1:8080/api';
 
   // Environment detection
   static bool get isWeb => identical(0, 0.0);
-  static bool get isProduction => true; // PRODUCTION MODE
+  static bool get isProduction => false; // LOCAL MODE
 
   // Get appropriate base URL based on environment
   static String get apiUrl {
