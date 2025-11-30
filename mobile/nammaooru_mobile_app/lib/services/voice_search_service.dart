@@ -108,15 +108,12 @@ class VoiceSearchService {
   /// Call AI search API with voice query
   Future<List<dynamic>> searchProducts(int shopId, String query) async {
     try {
-      debugPrint('🔍 AI Search: Shop $shopId, Query: "$query" (Original Tamil)');
+      debugPrint('🔍 AI Search: Shop $shopId, Query: "$query"');
 
-      // Convert Tamil script to transliterated English for better search results
-      String searchQuery = _transliterateTamilToEnglish(query);
-      debugPrint('🔄 Converted to transliterated: "$searchQuery"');
-
+      // Pass Tamil text directly to backend - Gemini AI will handle transliteration
       // Try AI search endpoint first
       final aiUrl = Uri.parse(
-        '${ApiConfig.baseUrl}/shops/$shopId/products/ai-search?query=${Uri.encodeComponent(searchQuery)}',
+        '${ApiConfig.baseUrl}/shops/$shopId/products/ai-search?query=${Uri.encodeComponent(query)}',
       );
 
       final aiResponse = await http.get(
@@ -145,7 +142,7 @@ class VoiceSearchService {
       // Fallback to regular search if AI search fails
       debugPrint('⚠️ AI search not available, using regular search');
       final searchUrl = Uri.parse(
-        '${ApiConfig.baseUrl}/shops/$shopId/products/search?query=${Uri.encodeComponent(searchQuery)}',
+        '${ApiConfig.baseUrl}/shops/$shopId/products/search?query=${Uri.encodeComponent(query)}',
       );
 
       final searchResponse = await http.get(
@@ -194,181 +191,6 @@ class VoiceSearchService {
     return await searchProducts(shopId, query);
   }
 
-  /// Convert Tamil script to transliterated English
-  /// Examples: தக்காளி -> takkaali, அரிசி -> arisi, வெங்காயம் -> vengayam
-  String _transliterateTamilToEnglish(String tamilText) {
-    // Tamil to English transliteration map
-    final tamilToEnglishMap = {
-      'அ': 'a',
-      'ஆ': 'aa',
-      'இ': 'i',
-      'ஈ': 'ee',
-      'உ': 'u',
-      'ஊ': 'uu',
-      'எ': 'e',
-      'ஏ': 'ee',
-      'ஐ': 'ai',
-      'ஒ': 'o',
-      'ஓ': 'o',
-      'ஔ': 'au',
-      'க': 'ka',
-      'கா': 'ka',
-      'கி': 'ki',
-      'கீ': 'kee',
-      'கு': 'ku',
-      'கூ': 'koo',
-      'கெ': 'ke',
-      'கே': 'ke',
-      'கை': 'kai',
-      'கொ': 'ko',
-      'கோ': 'ko',
-      'கௌ': 'kau',
-      'ங': 'ng',
-      'ச': 'cha',
-      'சா': 'cha',
-      'சி': 'chi',
-      'சீ': 'chee',
-      'சு': 'chu',
-      'சூ': 'choo',
-      'செ': 'che',
-      'சே': 'che',
-      'சை': 'chai',
-      'சொ': 'cho',
-      'சோ': 'cho',
-      'சௌ': 'chau',
-      'ட': 'ta',
-      'டா': 'ta',
-      'டி': 'ti',
-      'டீ': 'tee',
-      'டு': 'tu',
-      'டூ': 'too',
-      'டெ': 'te',
-      'டே': 'te',
-      'டை': 'tai',
-      'டொ': 'to',
-      'டோ': 'to',
-      'டௌ': 'tau',
-      'ண': 'na',
-      'ணா': 'na',
-      'ணி': 'ni',
-      'ணீ': 'nee',
-      'ணு': 'nu',
-      'ணூ': 'noo',
-      'ணெ': 'ne',
-      'ணே': 'ne',
-      'ணை': 'nai',
-      'ணொ': 'no',
-      'ணோ': 'no',
-      'ணௌ': 'nau',
-      'த': 'tha',
-      'தா': 'tha',
-      'தி': 'thi',
-      'தீ': 'thee',
-      'து': 'thu',
-      'தூ': 'thoo',
-      'தெ': 'the',
-      'தே': 'the',
-      'தை': 'thai',
-      'தொ': 'tho',
-      'தோ': 'tho',
-      'தௌ': 'thau',
-      'ந': 'na',
-      'நா': 'na',
-      'நி': 'ni',
-      'நீ': 'nee',
-      'நு': 'nu',
-      'நூ': 'noo',
-      'நெ': 'ne',
-      'நே': 'ne',
-      'நை': 'nai',
-      'நொ': 'no',
-      'நோ': 'no',
-      'நௌ': 'nau',
-      'ப': 'pa',
-      'பா': 'pa',
-      'பி': 'pi',
-      'பீ': 'pee',
-      'பு': 'pu',
-      'பூ': 'poo',
-      'பெ': 'pe',
-      'பே': 'pe',
-      'பை': 'pai',
-      'பொ': 'po',
-      'போ': 'po',
-      'பௌ': 'pau',
-      'ம': 'ma',
-      'மா': 'ma',
-      'மி': 'mi',
-      'மீ': 'mee',
-      'மு': 'mu',
-      'மூ': 'moo',
-      'மெ': 'me',
-      'மே': 'me',
-      'மை': 'mai',
-      'மொ': 'mo',
-      'மோ': 'mo',
-      'மௌ': 'mau',
-      'ய': 'ya',
-      'ர': 'ra',
-      'ல': 'la',
-      'ள': 'la',
-      'ழ': 'zha',
-      'வ': 'va',
-      'வா': 'va',
-      'வி': 'vi',
-      'வீ': 'vee',
-      'வு': 'vu',
-      'வூ': 'voo',
-      'வெ': 've',
-      'வே': 've',
-      'வை': 'vai',
-      'வொ': 'vo',
-      'வோ': 'vo',
-      'வௌ': 'vau',
-      'ஶ': 'sha',
-      'ஷ': 'sha',
-      'ஸ': 'sa',
-      'ஸ்ரீ': 'shree',
-      'ஹ': 'ha',
-      '்': '', // Viraam (half consonant marker)
-      '‌': '', // Zero-width non-joiner
-      'ு': 'u',
-      'ூ': 'oo',
-      'ெ': 'e',
-      'ே': 'e',
-      'ै': 'ai',
-      'ொ': 'o',
-      'ோ': 'o',
-      'ौ': 'au',
-    };
-
-    String result = '';
-    for (int i = 0; i < tamilText.length; i++) {
-      String char = tamilText[i];
-
-      // Try 2-character combinations first
-      if (i < tamilText.length - 1) {
-        String twoChar = tamilText.substring(i, i + 2);
-        if (tamilToEnglishMap.containsKey(twoChar)) {
-          result += tamilToEnglishMap[twoChar]!;
-          i++; // Skip next character
-          continue;
-        }
-      }
-
-      // Then try single character
-      if (tamilToEnglishMap.containsKey(char)) {
-        result += tamilToEnglishMap[char]!;
-      } else if (char == ' ' || char == '-' || char.isEmpty) {
-        result += ' '; // Keep spaces
-      } else {
-        result += char; // Keep unknown characters as-is
-      }
-    }
-
-    // Clean up extra spaces
-    return result.replaceAll(RegExp(r'\s+'), ' ').trim();
-  }
 
   bool get isListening => _isListening;
   String get lastWords => _lastWords;
