@@ -1,8 +1,8 @@
 import 'dart:io';
-import 'package:device_info_plus/device_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
+/// Simple device UUID service without device_info_plus to avoid Google Play permission issues
 class DeviceInfoService {
   static final DeviceInfoService _instance = DeviceInfoService._internal();
   factory DeviceInfoService() => _instance;
@@ -14,6 +14,7 @@ class DeviceInfoService {
   /// Get or generate device UUID
   /// This UUID persists across app installations using SharedPreferences
   /// and is used for promo code tracking
+  /// NOTE: Simplified to avoid QUERY_ALL_PACKAGES permission - uses random UUID
   Future<String> getDeviceUuid() async {
     // Return cached value if available
     if (_cachedDeviceUuid != null) {
@@ -31,25 +32,14 @@ class DeviceInfoService {
         return storedUuid;
       }
 
-      // Generate new UUID based on device info
-      final deviceInfo = DeviceInfoPlugin();
+      // Generate new random UUID (no device info to avoid permissions)
       String deviceUuid;
-
       if (Platform.isAndroid) {
-        final androidInfo = await deviceInfo.androidInfo;
-        // Use Android ID as base, but generate UUID if not available
-        deviceUuid = androidInfo.id.isNotEmpty
-            ? 'android_${androidInfo.id}'
-            : 'android_${const Uuid().v4()}';
+        deviceUuid = 'android_${const Uuid().v4()}';
       } else if (Platform.isIOS) {
-        final iosInfo = await deviceInfo.iosInfo;
-        // Use identifierForVendor as base
-        deviceUuid = iosInfo.identifierForVendor != null && iosInfo.identifierForVendor!.isNotEmpty
-            ? 'ios_${iosInfo.identifierForVendor}'
-            : 'ios_${const Uuid().v4()}';
+        deviceUuid = 'ios_${const Uuid().v4()}';
       } else {
-        // For web or other platforms, generate random UUID
-        deviceUuid = 'other_${const Uuid().v4()}';
+        deviceUuid = 'web_${const Uuid().v4()}';
       }
 
       // Store the UUID
@@ -72,33 +62,20 @@ class DeviceInfoService {
   }
 
   /// Get device information for logging/debugging
+  /// Simplified version without device_info_plus
   Future<Map<String, dynamic>> getDeviceInfo() async {
     try {
-      final deviceInfo = DeviceInfoPlugin();
-
       if (Platform.isAndroid) {
-        final androidInfo = await deviceInfo.androidInfo;
-        return {
-          'platform': 'Android',
-          'model': androidInfo.model,
-          'manufacturer': androidInfo.manufacturer,
-          'version': androidInfo.version.release,
-          'sdkInt': androidInfo.version.sdkInt,
-        };
+        return {'platform': 'Android'};
       } else if (Platform.isIOS) {
-        final iosInfo = await deviceInfo.iosInfo;
-        return {
-          'platform': 'iOS',
-          'model': iosInfo.model,
-          'name': iosInfo.name,
-          'systemVersion': iosInfo.systemVersion,
-        };
+        return {'platform': 'iOS'};
+      } else {
+        return {'platform': 'Web'};
       }
     } catch (e) {
       print('Error getting device info: $e');
+      return {'platform': 'Unknown'};
     }
-
-    return {'platform': 'Unknown'};
   }
 
   /// Clear cached device UUID (for testing purposes)
