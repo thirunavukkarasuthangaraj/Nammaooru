@@ -5,10 +5,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shopmanagement.config.GeminiConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -19,16 +22,20 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class GeminiSearchService {
 
     private final GeminiConfig geminiConfig;
-
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     // Round-robin counter for API key rotation
     private final AtomicInteger keyRotationCounter = new AtomicInteger(0);
 
     @Autowired
-    public GeminiSearchService(GeminiConfig geminiConfig) {
+    public GeminiSearchService(GeminiConfig geminiConfig, RestTemplateBuilder restTemplateBuilder) {
         this.geminiConfig = geminiConfig;
+        // Configure RestTemplate with 10 second timeout for both connection and read
+        this.restTemplate = restTemplateBuilder
+                .setConnectTimeout(Duration.ofSeconds(10))
+                .setReadTimeout(Duration.ofSeconds(10))
+                .build();
     }
 
     /**
@@ -155,6 +162,9 @@ public class GeminiSearchService {
             log.warn("No valid response from Gemini API");
             return "";
 
+        } catch (RestClientException e) {
+            log.error("⏱️ Gemini API timeout or connection error: {}", e.getMessage());
+            throw new RuntimeException("Gemini API timeout - please try again", e);
         } catch (Exception e) {
             log.error("❌ Error calling Gemini API: {}", e.getMessage());
             throw new RuntimeException("Failed to call Gemini API", e);
@@ -184,6 +194,39 @@ public class GeminiSearchService {
         }
 
         return products;
+    }
+
+    /**
+     * Convert mixed Tamil/transliterated text to clean English transliteration using Gemini
+     * Example: "thakakalaி vengkayama poonatu" -> "takkaali vengayama poonadu"
+     */
+    public String transliterateTamilToEnglish(String mixedText) {
+        if (!geminiConfig.getEnabled() || mixedText == null || mixedText.trim().isEmpty()) {
+            return mixedText;
+        }
+
+        try {
+            log.info("🔄 Transliterating Tamil to English: {}", mixedText);
+
+            String prompt = "Convert this text to proper English transliteration of Tamil words. " +
+                    "If text contains Tamil script, convert to English phonetic spelling. " +
+                    "If text is already English or mixed, clean it up to proper transliteration. " +
+                    "Return ONLY the transliterated text, nothing else.\n" +
+                    "Text to convert: \"" + mixedText + "\"";
+
+            String aiResponse = callGeminiAPI(prompt).trim();
+
+            if (aiResponse != null && !aiResponse.isEmpty()) {
+                log.info("✅ Transliterated result: {}", aiResponse);
+                return aiResponse;
+            }
+
+            return mixedText; // Return original if conversion fails
+
+        } catch (Exception e) {
+            log.error("⚠️ Error transliterating text: {}", e.getMessage());
+            return mixedText; // Return original on error
+        }
     }
 
     /**
