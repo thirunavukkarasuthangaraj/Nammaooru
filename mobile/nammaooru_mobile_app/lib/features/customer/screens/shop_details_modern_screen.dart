@@ -1341,13 +1341,17 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
   }
 
   void _showSearchDialog() {
-    showDialog(
+    showGeneralDialog(
       context: context,
-      barrierDismissible: false, // Prevent closing on outside click
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => WillPopScope(
-          onWillPop: () async => false, // Prevent back button
-          child: Dialog(
+      barrierDismissible: false,
+      barrierColor: Colors.black26,
+      barrierLabel: 'Dialog',
+      transitionDuration: const Duration(milliseconds: 200),
+      pageBuilder: (context, animation1, animation2) {
+        return StatefulBuilder(
+          builder: (context, setState) => WillPopScope(
+            onWillPop: () async => false,
+            child: Dialog(
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
@@ -1494,9 +1498,11 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
               ],
             ),
           ),
-          ),
-        ),
-      ),
+            ),
+          );
+          },
+        );
+      },
     );
   }
 
@@ -1553,14 +1559,18 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
     String? searchQuery;
     final TextEditingController searchController = TextEditingController();
 
-    showDialog(
+    showGeneralDialog(
       context: context,
-      barrierDismissible: false, // Prevent closing on outside click
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) {
-          return WillPopScope(
-            onWillPop: () async => false, // Prevent back button
-            child: Dialog(
+      barrierDismissible: false,
+      barrierColor: Colors.black26,
+      barrierLabel: 'Dialog',
+      transitionDuration: const Duration(milliseconds: 200),
+      pageBuilder: (context, animation1, animation2) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return WillPopScope(
+              onWillPop: () async => false,
+              child: Dialog(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -1854,8 +1864,9 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
             ),
             ),
           );
-        },
-      ),
+          },
+        );
+      },
     );
   }
 }
