@@ -102,4 +102,8 @@ public interface MasterProductRepository extends JpaRepository<MasterProduct, Lo
 
     @Query("SELECT p.brand, COUNT(p) FROM MasterProduct p WHERE p.brand IS NOT NULL GROUP BY p.brand ORDER BY COUNT(p) DESC")
     List<Object[]> getProductCountByBrand();
+
+    // Find all products ordered by category sort order, then by product name
+    @Query("SELECT p FROM MasterProduct p JOIN p.category c ORDER BY c.sortOrder ASC, p.name ASC")
+    Page<MasterProduct> findAllOrderedByCategoryPriority(Pageable pageable);
 }

@@ -44,17 +44,19 @@ public class ProductCategoryController {
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "name") String sortBy,
-            @RequestParam(defaultValue = "ASC") String sortDirection) {
-        
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDirection) {
+
         log.info("Fetching categories - page: {}, size: {}, parentId: {}", page, size, parentId);
-        
-        Sort.Direction direction = sortDirection.equalsIgnoreCase("ASC") ? Sort.Direction.ASC : Sort.Direction.DESC;
-        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
-        
+
+        // ALWAYS sort by sortOrder first (ascending), then by name (ascending)
+        // This ensures categories appear in priority order regardless of frontend request
+        Pageable pageable = PageRequest.of(page, size,
+            Sort.by(Sort.Order.asc("sortOrder"), Sort.Order.asc("name")));
+
         Page<ProductCategoryResponse> categories = categoryService.getCategories(
                 parentId, isActive, search, pageable);
-        
+
         return ResponseEntity.ok(ApiResponse.success(categories, "Categories fetched successfully"));
     }
 

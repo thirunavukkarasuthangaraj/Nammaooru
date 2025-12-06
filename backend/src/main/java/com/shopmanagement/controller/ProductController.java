@@ -32,16 +32,15 @@ public class ProductController {
     public ResponseEntity<Page<MasterProduct>> getAllProducts(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "name") String sortBy,
+            @RequestParam(defaultValue = "category") String sortBy,
             @RequestParam(defaultValue = "ASC") String sortDirection) {
-        
-        log.info("Fetching all products - page: {}, size: {}", page, size);
-        
-        Sort.Direction direction = sortDirection.equalsIgnoreCase("DESC") ? 
-            Sort.Direction.DESC : Sort.Direction.ASC;
-        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
-        
-        Page<MasterProduct> products = masterProductRepository.findAll(pageable);
+
+        log.info("Fetching all products - page: {}, size: {}, sortBy: {}", page, size, sortBy);
+
+        Pageable pageable = PageRequest.of(page, size);
+
+        // Always sort by category priority first, then by product name
+        Page<MasterProduct> products = masterProductRepository.findAllOrderedByCategoryPriority(pageable);
         return ResponseEntity.ok(products);
     }
     
