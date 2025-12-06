@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "========================================="
-echo "  Quick Docker Setup for Shop Management"
+echo "  Quick Docker Setup for Thiru Software"
 echo "========================================="
 
 # Update system

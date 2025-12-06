@@ -1,4 +1,4 @@
-# NammaOoru Shop Management System - Documentation
+# NammaOoru Thiru Software System - Documentation
 
 Complete documentation for the NammaOoru multi-vendor food delivery and e-commerce platform.
 

@@ -1,12 +1,11 @@
--- CORRECTED SQL to update ALL categories with proper sort order
--- IMPORTANT: The last UPDATE now EXCLUDES categories already updated!
+-- Update ALL categories with proper sort order
+-- This ensures every category has a sort_order value
 
 -- 1. Grocery/Staples categories (sort_order 1-5)
 UPDATE product_categories
 SET sort_order = 1, updated_at = NOW()
 WHERE name IN ('Staples', 'Rice', 'Dals & Pulses', 'Canned Goods', 'Dried Goods',
                'Salt & Sugar', 'Syrups & Sweeteners', 'Millets');
-
 
 -- 2. Masala/Spices categories (sort_order 6-10)
 UPDATE product_categories
@@ -74,16 +73,14 @@ SET sort_order = 81, updated_at = NOW()
 WHERE LOWER(name) LIKE '%household%' OR LOWER(name) LIKE '%cleaning%' OR LOWER(name) LIKE '%laundry%'
    OR name IN ('Cleaning & Household', 'Household & Misc', 'Laundry', 'Pest Control', 'Disposable Items');
 
--- 13. CORRECTED: All remaining categories that STILL have sort_order 0 or NULL
--- This now excludes categories already updated above (sort_order 1, 6, 11, 16, 21, 31, 36, 41, 51, 61, 71, 81)
+-- 13. All remaining categories that haven't been assigned (sort_order 100)
+-- This catches ANY category that doesn't match the above patterns
 UPDATE product_categories
 SET sort_order = 100, updated_at = NOW()
-WHERE (sort_order = 0 OR sort_order IS NULL)
-  AND sort_order NOT IN (1, 6, 11, 16, 21, 31, 36, 41, 51, 61, 71, 81);
+WHERE sort_order = 0 OR sort_order IS NULL;
 
--- Verify results - should show categories sorted by priority
-SELECT name, sort_order
+-- Verify results
+SELECT name, sort_order, id
 FROM product_categories
-WHERE sort_order IN (1, 6, 11, 16, 21, 31, 36, 41, 51, 61, 71, 81, 100)
 ORDER BY sort_order, name
 LIMIT 100;

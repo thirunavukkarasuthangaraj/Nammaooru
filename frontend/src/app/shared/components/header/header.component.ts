@@ -282,22 +282,22 @@ export class HeaderComponent implements OnInit {
         ? new Date(this.versionInfo.server.buildDate).toLocaleString()
         : 'Unknown';
       
-      const message = `🏪 Shop Management System
+      const message = `🏪 Thiru Software System
 
 📱 Frontend Version: ${this.versionInfo.client}
 🖥️ Backend Version: v${this.versionInfo.server.version}
-📦 Application: ${this.versionInfo.server.name || 'Shop Management Backend'}
+📦 Application: ${this.versionInfo.server.name || 'Thiru Software Backend'}
 
 🕐 Build Date: ${buildDate}
 ⚡ Server Status: Online`;
       
       Swal.fire({
-        title: '🏪 Shop Management System',
+        title: '🏪 Thiru Software System',
         html: `
           <div style="text-align: left; font-family: monospace; white-space: pre-wrap;">
 📱 Frontend Version: ${this.versionInfo.client}<br>
 🖥️ Backend Version: v${this.versionInfo.server.version}<br>
-📦 Application: ${this.versionInfo.server.name || 'Shop Management Backend'}<br><br>
+📦 Application: ${this.versionInfo.server.name || 'Thiru Software Backend'}<br><br>
 🕐 Build Date: ${buildDate}<br>
 ⚡ Server Status: Online
           </div>
@@ -307,7 +307,7 @@ export class HeaderComponent implements OnInit {
       });
     } else {
       Swal.fire({
-        title: '🏪 Shop Management System',
+        title: '🏪 Thiru Software System',
         html: `
           <div style="text-align: left; font-family: monospace;">
 📱 Frontend: ${this.versionService.getVersion()}<br>

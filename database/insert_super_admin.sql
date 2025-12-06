@@ -119,13 +119,13 @@ INSERT INTO permissions (name, description, category, resource_type, action_type
 ('USER_DELETE', 'Delete users', 'User Management', 'USER', 'DELETE', true, 'SYSTEM', 'SYSTEM'),
 ('USER_MANAGE_ROLES', 'Manage user roles', 'User Management', 'USER', 'MANAGE_ROLES', true, 'SYSTEM', 'SYSTEM'),
 
--- Shop Management Permissions
-('SHOP_CREATE', 'Create new shops', 'Shop Management', 'SHOP', 'CREATE', true, 'SYSTEM', 'SYSTEM'),
-('SHOP_READ', 'View shop details', 'Shop Management', 'SHOP', 'READ', true, 'SYSTEM', 'SYSTEM'),
-('SHOP_UPDATE', 'Update shop information', 'Shop Management', 'SHOP', 'UPDATE', true, 'SYSTEM', 'SYSTEM'),
-('SHOP_DELETE', 'Delete shops', 'Shop Management', 'SHOP', 'DELETE', true, 'SYSTEM', 'SYSTEM'),
-('SHOP_APPROVE', 'Approve shop registrations', 'Shop Management', 'SHOP', 'APPROVE', true, 'SYSTEM', 'SYSTEM'),
-('SHOP_SUSPEND', 'Suspend shops', 'Shop Management', 'SHOP', 'SUSPEND', true, 'SYSTEM', 'SYSTEM'),
+-- Thiru Software Permissions
+('SHOP_CREATE', 'Create new shops', 'Thiru Software', 'SHOP', 'CREATE', true, 'SYSTEM', 'SYSTEM'),
+('SHOP_READ', 'View shop details', 'Thiru Software', 'SHOP', 'READ', true, 'SYSTEM', 'SYSTEM'),
+('SHOP_UPDATE', 'Update shop information', 'Thiru Software', 'SHOP', 'UPDATE', true, 'SYSTEM', 'SYSTEM'),
+('SHOP_DELETE', 'Delete shops', 'Thiru Software', 'SHOP', 'DELETE', true, 'SYSTEM', 'SYSTEM'),
+('SHOP_APPROVE', 'Approve shop registrations', 'Thiru Software', 'SHOP', 'APPROVE', true, 'SYSTEM', 'SYSTEM'),
+('SHOP_SUSPEND', 'Suspend shops', 'Thiru Software', 'SHOP', 'SUSPEND', true, 'SYSTEM', 'SYSTEM'),
 
 -- Product Management Permissions
 ('PRODUCT_CREATE', 'Create new products', 'Product Management', 'PRODUCT', 'CREATE', true, 'SYSTEM', 'SYSTEM'),

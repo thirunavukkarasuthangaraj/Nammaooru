@@ -1,7 +1,7 @@
 # Firebase Notification System Documentation
 
 ## Overview
-Complete Firebase Cloud Messaging (FCM) implementation for real-time push notifications across the NammaOoru Shop Management System.
+Complete Firebase Cloud Messaging (FCM) implementation for real-time push notifications across the NammaOoru Thiru Software System.
 
 ## Architecture Components
 

@@ -307,7 +307,7 @@ These files and credentials are in `.gitignore` for security.
 ## 🎯 Service Configuration Details
 
 ### Firebase Project
-**Project Name**: NammaOoru Shop Management
+**Project Name**: NammaOoru Thiru Software
 **Project ID**: `nammaooru-shop-management`
 **Region**: Default (us-central1)
 

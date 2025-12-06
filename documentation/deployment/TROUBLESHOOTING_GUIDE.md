@@ -1,4 +1,4 @@
-# 🔧 NammaOoru Shop Management System - Troubleshooting Guide
+# 🔧 NammaOoru Thiru Software System - Troubleshooting Guide
 
 ## 🚨 Emergency Quick Reference
 

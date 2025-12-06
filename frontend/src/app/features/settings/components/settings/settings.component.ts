@@ -60,11 +60,11 @@ export class SettingsComponent implements OnInit {
       {
         id: 1,
         key: 'app.name',
-        value: 'Nammaooru Shop Management',
+        value: 'Nammaooru Thiru Software',
         description: 'Application name',
         category: 'General',
         type: 'text',
-        defaultValue: 'Nammaooru Shop Management',
+        defaultValue: 'Nammaooru Thiru Software',
         isEditable: true
       },
       {

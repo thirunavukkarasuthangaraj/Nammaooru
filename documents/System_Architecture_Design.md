@@ -1,4 +1,4 @@
-# 🏗️ Nammaooru Shop Management System - Architecture Design
+# 🏗️ Nammaooru Thiru Software System - Architecture Design
 
 ## 📋 Table of Contents
 1. [System Overview](#system-overview)
@@ -13,7 +13,7 @@
 
 ## 🎯 System Overview
 
-The Nammaooru Shop Management System is a comprehensive e-commerce platform that connects customers, shop owners, and delivery partners through a unified system.
+The Nammaooru Thiru Software System is a comprehensive e-commerce platform that connects customers, shop owners, and delivery partners through a unified system.
 
 ### Key Components:
 - **Backend**: Spring Boot REST API
@@ -342,4 +342,4 @@ WEB DASHBOARD
 
 ---
 
-*This document outlines the complete system architecture for the Nammaooru Shop Management System. For technical implementation details, refer to the individual service documentation.*
+*This document outlines the complete system architecture for the Nammaooru Thiru Software System. For technical implementation details, refer to the individual service documentation.*

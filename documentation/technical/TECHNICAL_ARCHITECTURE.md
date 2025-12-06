@@ -1,4 +1,4 @@
-# 🏗️ NammaOoru Shop Management System - Technical Architecture
+# 🏗️ NammaOoru Thiru Software System - Technical Architecture
 
 ## 📋 Document Overview
 
@@ -13,7 +13,7 @@
 ### High-Level System Overview
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────┐
-│                           NammaOoru Shop Management System                          │
+│                           NammaOoru Thiru Software System                          │
 │                                 Multi-Platform Architecture                         │
 └─────────────────────────────────────────────────────────────────────────────────────┘
 
@@ -262,7 +262,7 @@ CREATE INDEX idx_customers_user_id ON customers(user_id);
 CREATE INDEX idx_customers_location ON customers(latitude, longitude);
 ```
 
-#### 2. Shop Management Tables
+#### 2. Thiru Software Tables
 
 **shops** - Shop information and management
 ```sql
@@ -3547,4 +3547,4 @@ private boolean isUpdateRequired(String currentVersion, String requiredVersion) 
 
 ---
 
-This document serves as the definitive technical reference for the NammaOoru Shop Management System architecture.
+This document serves as the definitive technical reference for the NammaOoru Thiru Software System architecture.

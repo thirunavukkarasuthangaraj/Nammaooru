@@ -217,7 +217,7 @@ public class OrderAssignmentRetryService {
                 "3. Contact delivery partners to come online\n" +
                 "4. Consider hiring more delivery partners\n\n" +
                 "Customer is waiting and may contact support!\n\n" +
-                "This is a CRITICAL automated alert from NammaOoru Shop Management System.",
+                "This is a CRITICAL automated alert from NammaOoru Thiru Software System.",
                 order.getOrderNumber(), maxOrderAgeMinutes,
                 order.getId(),
                 order.getOrderNumber(),

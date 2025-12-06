@@ -252,7 +252,7 @@ public class SettingService {
     public void initializeDefaultSettings() {
         log.info("Initializing default system settings");
         
-        createDefaultSettingIfNotExists("app.name", "NammaOoru Shop Management", 
+        createDefaultSettingIfNotExists("app.name", "NammaOoru Thiru Software", 
                 "Application Name", "GENERAL", Setting.SettingType.STRING, Setting.SettingScope.GLOBAL);
         
         createDefaultSettingIfNotExists("app.version", "1.0.0", 

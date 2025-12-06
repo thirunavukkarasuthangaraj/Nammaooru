@@ -2,7 +2,7 @@
 
 ## Common Issues and Solutions
 
-This document covers the major deployment issues encountered and their solutions for the Shop Management System.
+This document covers the major deployment issues encountered and their solutions for the Thiru Software System.
 
 ### Issue 1: Docker Build Failures (Local)
 

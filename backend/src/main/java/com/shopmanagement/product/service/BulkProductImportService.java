@@ -166,11 +166,12 @@ public class BulkProductImportService {
 
     /**
      * Parse a single row from Excel
-     * Column mapping matches the actual Excel file structure (without Search Query and Download Link):
+     * Column mapping matches the actual Excel file structure (WITH Search Query and Download Link):
      * A: name, B: nameTamil, C: description, D: descriptionTamil, E: categoryName, F: brand, G: sku,
-     * H: barcode, I: baseUnit, J: baseWeight, K: originalPrice, L: sellingPrice, M: discountPercentage,
-     * N: costPrice, O: stockQuantity, P: minStockLevel, Q: maxStockLevel, R: trackInventory,
-     * S: status, T: isFeatured, U: isAvailable, V: tags, W: specifications, X: imagePath, Y: imageFolder
+     * H: Search Query (SKIP), I: Download Link (SKIP), J: baseUnit, K: baseWeight, L: originalPrice,
+     * M: sellingPrice, N: discountPercentage, O: costPrice, P: stockQuantity, Q: minStockLevel,
+     * R: maxStockLevel, S: trackInventory, T: status, U: isFeatured, V: isAvailable, W: tags,
+     * X: specifications, Y: imagePath, Z: imageFolder
      */
     private BulkImportRequest parseRow(Row row, int rowNumber) {
         String categoryName = getCellValueAsString(row.getCell(4));  // Column E (0-indexed as 4)
@@ -181,7 +182,7 @@ public class BulkProductImportService {
 
         // Read all values
         String name = getCellValueAsString(row.getCell(0));
-        String tags = getCellValueAsString(row.getCell(21));
+        String tags = getCellValueAsString(row.getCell(22));  // Fixed: Column W (index 22)
 
         // Log each row with key values
         log.info("parseRow #{}: name='{}', categoryId={}, tags='{}'", rowNumber, name, categoryId, tags);
@@ -201,42 +202,44 @@ public class BulkProductImportService {
                 .brand(getCellValueAsString(row.getCell(5)))
                 // Column 6 (G): SKU
                 .sku(getCellValueAsString(row.getCell(6)))
-                // Column 7 (H): Barcode
-                .barcode(getCellValueAsString(row.getCell(7)))
-                // Column 8 (I): Base Unit (e.g., kg, pieces, liters)
-                .baseUnit(getCellValueAsString(row.getCell(8)))
-                // Column 9 (J): Base Weight
-                .baseWeight(getCellValueAsBigDecimal(row.getCell(9)))
-                // Column 10 (K): Original Price (MRP)
-                .originalPrice(getCellValueAsBigDecimal(row.getCell(10)))
-                // Column 11 (L): Selling Price
-                .sellingPrice(getCellValueAsBigDecimal(row.getCell(11)))
-                // Column 12 (M): Discount Percentage
-                .discountPercentage(getCellValueAsBigDecimal(row.getCell(12)))
-                // Column 13 (N): Cost Price
-                .costPrice(getCellValueAsBigDecimal(row.getCell(13)))
-                // Column 14 (O): Stock Quantity
-                .stockQuantity(getCellValueAsInteger(row.getCell(14)))
-                // Column 15 (P): Min Stock Level
-                .minStockLevel(getCellValueAsInteger(row.getCell(15)))
-                // Column 16 (Q): Max Stock Level
-                .maxStockLevel(getCellValueAsInteger(row.getCell(16)))
-                // Column 17 (R): Track Inventory (true/false)
-                .trackInventory(getCellValueAsBoolean(row.getCell(17)))
-                // Column 18 (S): Status (ACTIVE, INACTIVE, etc.)
-                .status(getCellValueAsString(row.getCell(18)))
-                // Column 19 (T): Is Featured
-                .isFeatured(getCellValueAsBoolean(row.getCell(19)))
-                // Column 20 (U): Is Available
-                .isAvailable(getCellValueAsBoolean(row.getCell(20)))
-                // Column 21 (V): Tags (comma-separated)
+                // Column 7 (H): Search Query (SKIP - not used)
+                // Column 8 (I): Download Link (SKIP - not used)
+                // Column 9 (J): Base Unit (e.g., kg, pieces, liters)
+                .baseUnit(getCellValueAsString(row.getCell(9)))
+                // Column 10 (K): Base Weight
+                .baseWeight(getCellValueAsBigDecimal(row.getCell(10)))
+                // Column 11 (L): Original Price (MRP)
+                .originalPrice(getCellValueAsBigDecimal(row.getCell(11)))
+                // Column 12 (M): Selling Price
+                .sellingPrice(getCellValueAsBigDecimal(row.getCell(12)))
+                // Column 13 (N): Discount Percentage
+                .discountPercentage(getCellValueAsBigDecimal(row.getCell(13)))
+                // Column 14 (O): Cost Price
+                .costPrice(getCellValueAsBigDecimal(row.getCell(14)))
+                // Column 15 (P): Stock Quantity
+                .stockQuantity(getCellValueAsInteger(row.getCell(15)))
+                // Column 16 (Q): Min Stock Level
+                .minStockLevel(getCellValueAsInteger(row.getCell(16)))
+                // Column 17 (R): Max Stock Level
+                .maxStockLevel(getCellValueAsInteger(row.getCell(17)))
+                // Column 18 (S): Track Inventory (true/false)
+                .trackInventory(getCellValueAsBoolean(row.getCell(18)))
+                // Column 19 (T): Status (ACTIVE, INACTIVE, etc.)
+                .status(getCellValueAsString(row.getCell(19)))
+                // Column 20 (U): Is Featured
+                .isFeatured(getCellValueAsBoolean(row.getCell(20)))
+                // Column 21 (V): Is Available
+                .isAvailable(getCellValueAsBoolean(row.getCell(21)))
+                // Column 22 (W): Tags (comma-separated)
                 .tags(tags)
-                // Column 22 (W): Specifications
-                .specifications(getCellValueAsString(row.getCell(22)))
-                // Column 23 (X): Image Path (filename)
-                .imagePath(getCellValueAsString(row.getCell(23)))
-                // Column 24 (Y): Image Folder (subfolder name, optional)
-                .imageFolder(getCellValueAsString(row.getCell(24)))
+                // Column 23 (X): Specifications
+                .specifications(getCellValueAsString(row.getCell(23)))
+                // Column 24 (Y): Image Path (filename)
+                .imagePath(getCellValueAsString(row.getCell(24)))
+                // Column 25 (Z): Image Folder (subfolder name, optional)
+                .imageFolder(getCellValueAsString(row.getCell(25)))
+                // Note: barcode field removed as column H is now Search Query
+                .barcode(null)
                 .build();
     }
 

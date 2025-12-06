@@ -1,4 +1,4 @@
-# Deployment Issues and Fixes - Shop Management System
+# Deployment Issues and Fixes - Thiru Software System
 
 **Date:** October 11, 2025
 **Environment:** Production (nammaoorudelivary.in)

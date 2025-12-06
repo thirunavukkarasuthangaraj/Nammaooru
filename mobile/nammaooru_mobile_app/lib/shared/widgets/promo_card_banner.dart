@@ -166,8 +166,6 @@ class _PromoCardBannerState extends State<PromoCardBanner> {
                                 fontSize: 13,
                                 fontWeight: FontWeight.w900,
                                 color: widget.textColor,
-                                decoration: TextDecoration.underline,
-                                decorationThickness: 2,
                               ),
                             ),
                           ),

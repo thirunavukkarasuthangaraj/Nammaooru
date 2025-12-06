@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "========================================="
-echo "  Shop Management System - Server Setup"
+echo "  Thiru Software System - Server Setup"
 echo "========================================="
 
 # Update system

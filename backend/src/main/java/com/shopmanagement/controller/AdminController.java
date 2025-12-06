@@ -44,7 +44,7 @@ public class AdminController {
         
         // General Settings
         Map<String, Object> general = new HashMap<>();
-        general.put("siteName", "NammaOoru Shop Management");
+        general.put("siteName", "NammaOoru Thiru Software");
         general.put("siteUrl", "https://nammaooru.com");
         general.put("adminEmail", "admin@nammaooru.com");
         general.put("supportEmail", "support@nammaooru.com");

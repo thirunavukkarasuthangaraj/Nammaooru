@@ -1,8 +1,8 @@
-# NammaOoru Shop Management System - Documentation Index
+# NammaOoru Thiru Software System - Documentation Index
 
 ## 📚 Complete Documentation Suite
 
-This documentation covers everything you need to know about the NammaOoru Shop Management System, including the painful email issues we faced and how we solved them.
+This documentation covers everything you need to know about the NammaOoru Thiru Software System, including the painful email issues we faced and how we solved them.
 
 ## 🔗 Quick Navigation
 

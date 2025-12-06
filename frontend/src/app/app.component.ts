@@ -7,7 +7,7 @@ import { User } from '@core/models/auth.model';
   template: `<router-outlet></router-outlet>`
 })
 export class AppComponent implements OnInit {
-  title = 'Shop Management System';
+  title = 'Thiru Software System';
 
   constructor(private authService: AuthService) {}
 

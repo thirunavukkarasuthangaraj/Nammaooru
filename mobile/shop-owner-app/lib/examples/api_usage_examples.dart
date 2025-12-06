@@ -60,7 +60,7 @@ class ApiUsageExamples {
     }
   }
 
-  // Shop Management Examples
+  // Thiru Software Examples
   static Future<void> shopProfileExample() async {
     // Get my shop
     final response = await ApiService.getMyShop();
@@ -85,10 +85,7 @@ class ApiUsageExamples {
         'zipCode': '600001',
         'country': 'India'
       },
-      'location': {
-        'latitude': 13.0827,
-        'longitude': 80.2707
-      },
+      'location': {'latitude': 13.0827, 'longitude': 80.2707},
       'gstNumber': '29ABCDE1234F1Z5',
       'panNumber': 'ABCDE1234F',
       'bankDetails': {
@@ -150,7 +147,8 @@ class ApiUsageExamples {
       }
     ];
 
-    final bulkResponse = await ApiService.bulkUpdateBusinessHours('1', weeklySchedule);
+    final bulkResponse =
+        await ApiService.bulkUpdateBusinessHours('1', weeklySchedule);
 
     if (bulkResponse.success) {
       print('Business hours bulk updated');
@@ -294,7 +292,8 @@ class ApiUsageExamples {
     }
 
     // Get dashboard low stock products
-    final dashboardLowStockResponse = await ApiService.getDashboardLowStockProducts(limit: 10);
+    final dashboardLowStockResponse =
+        await ApiService.getDashboardLowStockProducts(limit: 10);
     if (dashboardLowStockResponse.success) {
       final products = dashboardLowStockResponse.data['data'];
       print('Dashboard low stock: ${products.length}');
@@ -324,14 +323,16 @@ class ApiUsageExamples {
     }
 
     // Update order status
-    final updateStatusResponse = await ApiService.updateOrderStatus('1', 'CONFIRMED');
+    final updateStatusResponse =
+        await ApiService.updateOrderStatus('1', 'CONFIRMED');
 
     if (updateStatusResponse.success) {
       print('Order status updated');
     }
 
     // Reject order
-    final rejectResponse = await ApiService.rejectOrder('1', 'Product out of stock');
+    final rejectResponse =
+        await ApiService.rejectOrder('1', 'Product out of stock');
 
     if (rejectResponse.success) {
       print('Order rejected');

@@ -203,7 +203,7 @@ public class EmailService {
 
     public void sendTestEmail(String to) {
         sendSimpleEmail(to, "NammaOoru - Test Email", 
-            "This is a test email from NammaOoru Shop Management System. " +
+            "This is a test email from NammaOoru Thiru Software System. " +
             "If you received this email, the email configuration is working correctly!");
     }
 
@@ -654,7 +654,7 @@ public class EmailService {
                 "3. Contact delivery partners to come online immediately\n" +
                 "4. Use admin panel to check partner availability\n\n" +
                 "🔗 Admin Dashboard: %s\n\n" +
-                "This is an automated alert from NammaOoru Shop Management System.\n" +
+                "This is an automated alert from NammaOoru Thiru Software System.\n" +
                 "Reply to this email or check the dashboard immediately.",
                 orderId,
                 orderNumber,
@@ -689,7 +689,7 @@ public class EmailService {
                 "- Time: %s\n" +
                 "- Retry Attempts: %d\n\n" +
                 "The order has been successfully assigned to a delivery partner after %d retry attempts.\n\n" +
-                "This is an automated notification from NammaOoru Shop Management System.",
+                "This is an automated notification from NammaOoru Thiru Software System.",
                 orderNumber,
                 partnerName,
                 java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),

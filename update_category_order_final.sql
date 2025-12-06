@@ -1,12 +1,11 @@
--- CORRECTED SQL to update ALL categories with proper sort order
--- IMPORTANT: The last UPDATE now EXCLUDES categories already updated!
+-- Update category sort order with specific category priorities
+-- Order: Grocery, Masala, Oil, Atta, Milk, Vegetables, Others
 
 -- 1. Grocery/Staples categories (sort_order 1-5)
 UPDATE product_categories
 SET sort_order = 1, updated_at = NOW()
 WHERE name IN ('Staples', 'Rice', 'Dals & Pulses', 'Canned Goods', 'Dried Goods',
                'Salt & Sugar', 'Syrups & Sweeteners', 'Millets');
-
 
 -- 2. Masala/Spices categories (sort_order 6-10)
 UPDATE product_categories
@@ -29,37 +28,37 @@ UPDATE product_categories
 SET sort_order = 21, updated_at = NOW()
 WHERE LOWER(name) LIKE '%milk%' OR LOWER(name) LIKE '%dairy%' OR LOWER(name) LIKE '%curd%'
    OR LOWER(name) LIKE '%yogurt%' OR LOWER(name) LIKE '%paneer%' OR LOWER(name) LIKE '%cheese%'
-   OR LOWER(name) LIKE '%butter%' OR name IN ('Frozen & Dairy');
+   OR LOWER(name) LIKE '%butter%' OR name LIKE 'Frozen & Dairy';
 
--- 6. Vegetables categories (sort_order 31-35)
+-- 6. Vegetables categories (sort_order 31-35) - if any exist
 UPDATE product_categories
 SET sort_order = 31, updated_at = NOW()
 WHERE LOWER(name) LIKE '%vegetable%' OR LOWER(name) LIKE '%veggie%';
 
--- 7. Fruits (sort_order 36-40)
+-- Keep Fruits (sort_order 36-40)
 UPDATE product_categories
 SET sort_order = 36, updated_at = NOW()
 WHERE LOWER(name) LIKE '%fruit%' OR name = 'Dry Fruits & Nuts';
 
--- 8. Beverages (sort_order 41-50)
+-- Keep Beverages (sort_order 41-50)
 UPDATE product_categories
 SET sort_order = 41, updated_at = NOW()
 WHERE LOWER(name) LIKE '%beverage%' OR LOWER(name) LIKE '%drink%' OR LOWER(name) LIKE '%juice%'
    OR LOWER(name) LIKE '%tea%' OR LOWER(name) LIKE '%coffee%' OR name IN ('Tea', 'Coffee', 'Health Drinks', 'Juices & Drinks');
 
--- 9. Snacks (sort_order 51-60)
+-- Keep Snacks (sort_order 51-60)
 UPDATE product_categories
 SET sort_order = 51, updated_at = NOW()
 WHERE LOWER(name) LIKE '%snack%' OR LOWER(name) LIKE '%chips%' OR LOWER(name) LIKE '%biscuit%'
    OR LOWER(name) LIKE '%cookie%' OR name IN ('Biscuits & Cookies', 'Chips & Crisps', 'Savory Snacks (Namkeen)', 'Confectionery');
 
--- 10. Bakery (sort_order 61-70)
+-- Keep Bakery (sort_order 61-70)
 UPDATE product_categories
 SET sort_order = 61, updated_at = NOW()
 WHERE LOWER(name) LIKE '%bakery%' OR LOWER(name) LIKE '%bread%' OR LOWER(name) LIKE '%cake%'
    OR name IN ('Bakery & Rusks', 'Bakery & Bread');
 
--- 11. Personal Care (sort_order 71-80)
+-- Keep Personal Care (sort_order 71-80)
 UPDATE product_categories
 SET sort_order = 71, updated_at = NOW()
 WHERE LOWER(name) LIKE '%personal%' OR LOWER(name) LIKE '%care%' OR LOWER(name) LIKE '%hygiene%'
@@ -68,22 +67,19 @@ WHERE LOWER(name) LIKE '%personal%' OR LOWER(name) LIKE '%care%' OR LOWER(name) 
                'Shoe Care', 'Personal Care', 'Automotive Care', 'Feminine Hygiene',
                'Baby Care', 'Men''s Grooming', 'Bathing Soap', 'Body Wash', 'Bathing Accessories');
 
--- 12. Household (sort_order 81-90)
+-- Keep Household (sort_order 81-90)
 UPDATE product_categories
 SET sort_order = 81, updated_at = NOW()
 WHERE LOWER(name) LIKE '%household%' OR LOWER(name) LIKE '%cleaning%' OR LOWER(name) LIKE '%laundry%'
    OR name IN ('Cleaning & Household', 'Household & Misc', 'Laundry', 'Pest Control', 'Disposable Items');
 
--- 13. CORRECTED: All remaining categories that STILL have sort_order 0 or NULL
--- This now excludes categories already updated above (sort_order 1, 6, 11, 16, 21, 31, 36, 41, 51, 61, 71, 81)
+-- All other categories remain at 100
 UPDATE product_categories
 SET sort_order = 100, updated_at = NOW()
-WHERE (sort_order = 0 OR sort_order IS NULL)
-  AND sort_order NOT IN (1, 6, 11, 16, 21, 31, 36, 41, 51, 61, 71, 81);
+WHERE sort_order = 0 OR sort_order IS NULL OR name IN
+      ('Ready-to-Eat', 'Ready Batter', 'Pooja & Misc', 'Electrical & Misc',
+       'Dried Seafood', 'Storage & Containers', 'Kitchenware', 'Instant Food',
+       'Spreads & Jams', 'Health & Wellness', 'First Aid');
 
--- Verify results - should show categories sorted by priority
-SELECT name, sort_order
-FROM product_categories
-WHERE sort_order IN (1, 6, 11, 16, 21, 31, 36, 41, 51, 61, 71, 81, 100)
-ORDER BY sort_order, name
-LIMIT 100;
+-- Show results sorted by sort_order
+SELECT name, sort_order FROM product_categories ORDER BY sort_order, name;

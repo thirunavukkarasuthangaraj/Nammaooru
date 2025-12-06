@@ -1,7 +1,7 @@
 # Push Notification Local Setup Guide
 
 ## Overview
-Push notifications are now fully integrated in the Shop Management System. When a shop owner accepts an order, the customer will receive a push notification on their device.
+Push notifications are now fully integrated in the Thiru Software System. When a shop owner accepts an order, the customer will receive a push notification on their device.
 
 ## How It Works
 

@@ -1,4 +1,4 @@
-# Complete Authentication Module Documentation - Spring Boot Shop Management System
+# Complete Authentication Module Documentation - Spring Boot Thiru Software System
 
 ## Executive Summary
 

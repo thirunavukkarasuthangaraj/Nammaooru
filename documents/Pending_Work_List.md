@@ -1,4 +1,4 @@
-# 📋 Pending Work List - Nammaooru Shop Management System
+# 📋 Pending Work List - Nammaooru Thiru Software System
 
 ## 🚨 Critical Issues (High Priority)
 

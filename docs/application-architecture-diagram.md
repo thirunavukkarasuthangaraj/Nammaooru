@@ -65,7 +65,7 @@ C4Component
     Container_Boundary(api, "API Application (Spring Boot)") {
         Component(auth, "Authentication Controller", "Spring Security", "JWT token management")
         Component(user, "User Management", "JPA/Hibernate", "User CRUD operations")
-        Component(shop, "Shop Management", "JPA/Hibernate", "Shop & product management")
+        Component(shop, "Thiru Software", "JPA/Hibernate", "Shop & product management")
         Component(order, "Order Processing", "JPA/Hibernate", "Order lifecycle management")
         Component(delivery, "Delivery Management", "JPA/Hibernate", "Partner & tracking management")
         Component(upload, "File Upload Service", "Spring Boot", "Image & document uploads")

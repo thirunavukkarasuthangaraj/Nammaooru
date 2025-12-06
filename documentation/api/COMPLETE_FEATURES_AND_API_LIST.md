@@ -1,4 +1,4 @@
-# 📋 NammaOoru Shop Management System - Complete Features & API Documentation
+# 📋 NammaOoru Thiru Software System - Complete Features & API Documentation
 
 <div align="center">
 
@@ -129,7 +129,7 @@ graph TB
 | Feature | Status | Description |
 |---------|--------|-------------|
 | **🎛️ System Dashboard** | ✅ | Complete system overview |
-| **🏪 Shop Management** | ✅ | Approve and manage shops |
+| **🏪 Thiru Software** | ✅ | Approve and manage shops |
 | **👥 User Management** | ✅ | Manage all user accounts |
 | **📂 Category Management** | ✅ | System-wide categories |
 | **📊 System Analytics** | ✅ | Platform-wide metrics |
@@ -531,7 +531,7 @@ gitGraph
 
 ## 🎉 System Status: Production Ready with Minor Enhancements Pending
 
-**NammaOoru Shop Management System is fully operational with 91.5% completion across all platforms**
+**NammaOoru Thiru Software System is fully operational with 91.5% completion across all platforms**
 
 ![Overall](https://img.shields.io/badge/Overall_Completion-91.5%25-brightgreen?style=for-the-badge)
 ![Backend](https://img.shields.io/badge/Backend_API-100%25_Complete-green?style=for-the-badge)
@@ -565,4 +565,4 @@ gitGraph
 
 ---
 
-*This document provides a comprehensive overview of the NammaOoru Shop Management System. For specific implementation details, please refer to the individual documentation files linked above.*
+*This document provides a comprehensive overview of the NammaOoru Thiru Software System. For specific implementation details, please refer to the individual documentation files linked above.*

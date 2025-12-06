@@ -1559,6 +1559,7 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
     bool isSearching = false;
     String searchStatus = ''; // Track current status: 'listening', 'processing', 'searching'
     String? searchQuery;
+    int countdown = 5; // Countdown timer for silence detection
     final TextEditingController searchController = TextEditingController();
 
     Navigator.of(context, rootNavigator: true).push(
@@ -1572,11 +1573,14 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
             builder: (context, setState) {
               return WillPopScope(
                 onWillPop: () async => !isSearching,
-                child: Dialog(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Container(
+                child: Material(
+                  color: Colors.transparent,
+                  child: Center(
+                    child: Dialog(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Container(
               width: MediaQuery.of(context).size.width * 0.9,
               maxHeight: MediaQuery.of(context).size.height * 0.8,
               padding: const EdgeInsets.all(16),
@@ -1761,7 +1765,8 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
                               ),
                               const SizedBox(height: 8),
                               const Text(
-                                'Speak now',
+                                'Speak multiple products with pauses\n(mic closes after 5 seconds of silence)',
+                                textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: Colors.grey,
@@ -1949,9 +1954,11 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
                 ],
               ),
             ),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            );
+              );
             },
           );
         },

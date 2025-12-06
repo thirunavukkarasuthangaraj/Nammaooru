@@ -123,7 +123,7 @@ sudo certbot renew --dry-run
 Create `/etc/systemd/system/shop-management.service`:
 ```ini
 [Unit]
-Description=Shop Management System
+Description=Thiru Software System
 After=network.target
 
 [Service]

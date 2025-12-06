@@ -86,7 +86,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       ]
     },
     {
-      category: 'Shop Management',
+      category: 'Thiru Software',
       items: [
         { title: 'All Shops', icon: 'store', route: '/shops', badge: null },
         { title: 'Shop Master', icon: 'store', route: '/shops/master', badge: null },
@@ -159,7 +159,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       ]
     },
     {
-      category: 'Shop Management',
+      category: 'Thiru Software',
       items: [
         { title: 'Shop Master', icon: 'store', route: '/shops/master', badge: null },
         { title: 'Shop Approvals', icon: 'check_circle', route: '/shops/approvals', badge: '3' }
@@ -256,7 +256,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       ]
     },
     {
-      category: 'Shop Management',
+      category: 'Thiru Software',
       items: [
         { title: 'Shop Profile', icon: 'store', route: '/shop-owner/profile', badge: null }
       ]
@@ -572,7 +572,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     const url = this.router.url;
     const allItems = this.currentMenuItems.flatMap(section => section.items);
     const menuItem = allItems.find((item: any) => url.startsWith(item.route));
-    return menuItem ? menuItem.title : 'NammaOoru Shop Management';
+    return menuItem ? menuItem.title : 'NammaOoru Thiru Software';
   }
 
   getCurrentPageBreadcrumb(): string {

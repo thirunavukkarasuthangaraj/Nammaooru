@@ -1,4 +1,4 @@
-# Deployment Guide - NammaOoru Shop Management System
+# Deployment Guide - NammaOoru Thiru Software System
 
 ## Why We Faced Email Issues (Root Cause Analysis)
 

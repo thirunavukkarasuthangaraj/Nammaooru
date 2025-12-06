@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../../services/shop_api_service.dart';
+import '../../../services/voice_search_service.dart';
 import '../../../core/config/env_config.dart';
 import '../../../shared/providers/cart_provider.dart';
 import '../../../core/localization/language_provider.dart';
@@ -68,6 +69,7 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
 
   @override
   void dispose() {
+    _voiceSearchOverlay?.remove();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
@@ -755,31 +757,38 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
     );
   }
 
+  OverlayEntry? _voiceSearchOverlay;
+
   void _showVoiceSearchDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return VoiceSearchDialog(
-          shopId: widget.shopId,
-          onProductSelected: (product) {
-            // Close dialog when product is selected
-            Navigator.pop(context);
+    // Remove existing overlay if any
+    _voiceSearchOverlay?.remove();
 
-            // Optionally add product to cart
-            _updateQuantity(product['id'].toString(), 1, product['stockQuantity'] ?? 0);
+    // Create overlay entry
+    _voiceSearchOverlay = OverlayEntry(
+      builder: (context) => VoiceSearchDialog(
+        shopId: widget.shopId,
+        onProductSelected: (product) {
+          // Add product to cart
+          _updateQuantity(product['id'].toString(), 1, product['stockQuantity'] ?? 0);
 
-            // Show confirmation
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Added ${product['displayName']} to cart'),
-                duration: const Duration(seconds: 2),
-              ),
-            );
-          },
-        );
-      },
+          // Show confirmation
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Added ${product['displayName']} to cart'),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        },
+        onClose: () {
+          // Remove overlay when close button is clicked
+          _voiceSearchOverlay?.remove();
+          _voiceSearchOverlay = null;
+        },
+      ),
     );
+
+    // Insert overlay
+    Overlay.of(context).insert(_voiceSearchOverlay!);
   }
 
   IconData _getCategoryIcon(String category) {
@@ -806,11 +815,13 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
 class VoiceSearchDialog extends StatefulWidget {
   final String shopId;
   final Function(Map<String, dynamic>) onProductSelected;
+  final VoidCallback onClose;
 
   const VoiceSearchDialog({
     Key? key,
     required this.shopId,
     required this.onProductSelected,
+    required this.onClose,
   }) : super(key: key);
 
   @override
@@ -818,14 +829,38 @@ class VoiceSearchDialog extends StatefulWidget {
 }
 
 class _VoiceSearchDialogState extends State<VoiceSearchDialog> {
-  final TextEditingController _searchController = TextEditingController();
+  final VoiceSearchService _voiceService = VoiceSearchService();
   List<Map<String, dynamic>> _voiceSearchResults = [];
+  bool _isListening = false;
   bool _isSearching = false;
+  String _spokenText = '';
+
+  @override
+  void initState() {
+    super.initState();
+    // Auto-start voice listening when dialog opens
+    _startVoiceListening();
+  }
 
   @override
   void dispose() {
-    _searchController.dispose();
+    _voiceService.stopListening();
     super.dispose();
+  }
+
+  Future<void> _startVoiceListening() async {
+    setState(() => _isListening = true);
+
+    final spokenText = await _voiceService.listen();
+
+    setState(() {
+      _isListening = false;
+      _spokenText = spokenText ?? '';
+    });
+
+    if (spokenText != null && spokenText.isNotEmpty) {
+      await _performVoiceSearch(spokenText);
+    }
   }
 
   Future<void> _performVoiceSearch(String query) async {
@@ -870,109 +905,122 @@ class _VoiceSearchDialogState extends State<VoiceSearchDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async => !_isSearching,
-      child: Dialog(
-        insetPadding: const EdgeInsets.all(0),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-        child: Column(
-          mainAxisSize: MainAxisSize.max,
-          children: [
-            // Header
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                color: Colors.blue,
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.mic, color: Colors.white, size: 24),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Voice Search',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: Colors.white,
-                      ),
-                    ),
+    return Material(
+      type: MaterialType.transparency,
+      child: GestureDetector(
+        onTap: () {}, // Absorb all taps on the background
+        child: Container(
+          color: Colors.black87,
+          child: SafeArea(
+            child: Column(
+              children: [
+                // Close button
+                Align(
+                  alignment: Alignment.topLeft,
+                  child: IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                    onPressed: widget.onClose,
                   ),
-                  GestureDetector(
-                    onTap: _isSearching ? null : () => Navigator.pop(context),
-                    child: Icon(Icons.close, color: _isSearching ? Colors.grey : Colors.white, size: 20),
-                  ),
-                ],
-              ),
-            ),
-
-          // Search Input
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search products (e.g., rice, tomato, oil)',
-                prefixIcon: const Icon(Icons.search, color: Colors.blue),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? GestureDetector(
-                        onTap: () {
-                          _searchController.clear();
-                          setState(() => _voiceSearchResults = []);
-                        },
-                        child: const Icon(Icons.clear),
-                      )
-                    : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Colors.blue),
                 ),
-              ),
-              onChanged: (value) => setState(() {}),
-              onSubmitted: (value) => _performVoiceSearch(value),
-            ),
-          ),
 
-          // Search Button
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: ElevatedButton.icon(
-              onPressed: () => _performVoiceSearch(_searchController.text),
-              icon: const Icon(Icons.search),
-              label: const Text('Search'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                minimumSize: const Size(double.infinity, 48),
-              ),
-            ),
-          ),
+                const Spacer(),
 
-          // Results
-          Expanded(
-            child: _isSearching
-                ? const Center(child: CircularProgressIndicator())
-                : _voiceSearchResults.isEmpty
-                    ? Center(
-                        child: Padding(
+              // Listening state or results
+              if (_isListening) ...[
+                // Listening animation
+                const Text(
+                  'Listening...',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w300,
+                  ),
+                ),
+                const SizedBox(height: 60),
+                // Animated microphone
+                Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.red,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.red.withOpacity(0.3),
+                        blurRadius: 30,
+                        spreadRadius: 10,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.mic,
+                    color: Colors.white,
+                    size: 60,
+                  ),
+                ),
+                const SizedBox(height: 40),
+                Text(
+                  _spokenText.isEmpty ? 'Speak now...' : _spokenText,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 16,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ] else if (_isSearching) ...[
+                const CircularProgressIndicator(color: Colors.white),
+                const SizedBox(height: 20),
+                const Text(
+                  'Searching products...',
+                  style: TextStyle(color: Colors.white, fontSize: 18),
+                ),
+              ] else if (_voiceSearchResults.isNotEmpty) ...[
+                // Results list
+                Expanded(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {}, // Absorb taps to prevent dismissal
+                    child: Container(
+                      margin: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Column(
+                      children: [
+                        Padding(
                           padding: const EdgeInsets.all(16),
-                          child: Text(
-                            _searchController.text.isEmpty
-                                ? 'Enter search query to find products'
-                                : 'No products found',
-                            style: TextStyle(color: Colors.grey[500]),
-                            textAlign: TextAlign.center,
+                          child: Row(
+                            children: [
+                              const Icon(Icons.search, color: Colors.blue),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  _spokenText,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.mic, color: Colors.red),
+                                onPressed: _startVoiceListening,
+                              ),
+                            ],
                           ),
                         ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: _voiceSearchResults.length,
-                        itemBuilder: (context, index) {
-                          final product = _voiceSearchResults[index];
-                          final stock = product['stockQuantity'] as int? ?? 0;
-                          final isOutOfStock = stock == 0;
+                        const Divider(height: 1),
+                        Expanded(
+                          child: ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: _voiceSearchResults.length,
+                            itemBuilder: (context, index) {
+                              final product = _voiceSearchResults[index];
+                              final stock = product['stockQuantity'] as int? ?? 0;
+                              final isOutOfStock = stock == 0;
 
-                          return GestureDetector(
-                            onTap: isOutOfStock ? null : () => widget.onProductSelected(product),
-                            child: Container(
+                              return Container(
                               margin: const EdgeInsets.only(bottom: 8),
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
@@ -1046,18 +1094,46 @@ class _VoiceSearchDialogState extends State<VoiceSearchDialog> {
 
                                   // Add Button
                                   if (!isOutOfStock)
-                                    Icon(Icons.add_circle, color: Colors.blue, size: 24),
+                                    IconButton(
+                                      icon: const Icon(Icons.add_circle, color: Colors.blue, size: 28),
+                                      onPressed: () {
+                                        widget.onProductSelected(product);
+                                      },
+                                    ),
                                 ],
                               ),
-                            ),
-                          );
+                            );
                         },
                       ),
-          ),
+                    ),
+                  ],
+                ),
+                    ),
+                  ),
+                ),
+          ] else ...[
+            // No results state
+            const Text(
+              'No products found',
+              style: TextStyle(color: Colors.white70, fontSize: 18),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: _startVoiceListening,
+              icon: const Icon(Icons.mic),
+              label: const Text('Try Again'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              ),
+            ),
+          ],
 
-          const SizedBox(height: 8),
+          const Spacer(),
         ],
       ),
+          ),
+        ),
       ),
     );
   }

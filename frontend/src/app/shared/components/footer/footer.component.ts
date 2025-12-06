@@ -6,7 +6,7 @@ import { Component } from '@angular/core';
     <footer class="app-footer">
       <div class="footer-content">
         <div class="footer-section">
-          <h4>Shop Management System</h4>
+          <h4>Thiru Software System</h4>
           <p>Efficiently manage your shops and business operations</p>
         </div>
         
@@ -47,7 +47,7 @@ import { Component } from '@angular/core';
       
       <div class="footer-bottom">
         <div class="footer-content">
-          <p>&copy; {{currentYear}} Shop Management System. All rights reserved.</p>
+          <p>&copy; {{currentYear}} Thiru Software System. All rights reserved.</p>
           <p>Built with Angular & Spring Boot</p>
         </div>
       </div>

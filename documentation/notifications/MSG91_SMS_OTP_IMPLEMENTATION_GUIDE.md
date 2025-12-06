@@ -1,7 +1,7 @@
 # MSG91 SMS & OTP Implementation Guide
 
 ## Overview
-This guide provides complete instructions for implementing MSG91 SMS and OTP functionality in the NammaOoru Shop Management System, including the registration OTP template ID **1207176226012464195**.
+This guide provides complete instructions for implementing MSG91 SMS and OTP functionality in the NammaOoru Thiru Software System, including the registration OTP template ID **1207176226012464195**.
 
 ---
 

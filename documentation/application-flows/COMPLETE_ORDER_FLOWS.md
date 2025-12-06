@@ -15,7 +15,7 @@
 
 ## Overview
 
-This document provides a comprehensive view of all order flows in the Nammaooru Shop Management System, including self-pickup, home delivery, payment processing, and cancellations.
+This document provides a comprehensive view of all order flows in the Nammaooru Thiru Software System, including self-pickup, home delivery, payment processing, and cancellations.
 
 ---
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "========================================="
-echo "  Deploying Shop Management System"
+echo "  Deploying Thiru Software System"
 echo "========================================="
 
 cd /opt/shop-management

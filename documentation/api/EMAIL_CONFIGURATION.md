@@ -1,7 +1,7 @@
 # Email Configuration Documentation
 
 ## Overview
-This document explains the email configuration for the NammaOoru Shop Management System, including SMTP setup, OTP functionality, and troubleshooting steps.
+This document explains the email configuration for the NammaOoru Thiru Software System, including SMTP setup, OTP functionality, and troubleshooting steps.
 
 ## Current Configuration
 
