@@ -1,0 +1,62 @@
+-- Combined SQL Scripts for Category and Product Sort Order
+-- Execute this file using your database client
+
+-- ====================================
+-- PART 1: Update Category Sort Order
+-- ====================================
+UPDATE product_categories SET sort_order = 1 WHERE name = 'Vegetables';
+UPDATE product_categories SET sort_order = 2 WHERE name = 'Fruits';
+UPDATE product_categories SET sort_order = 3 WHERE name = 'Dry Fruits & Nuts';
+UPDATE product_categories SET sort_order = 4 WHERE name = 'Milk';
+UPDATE product_categories SET sort_order = 5 WHERE name = 'Dairy & Curd';
+UPDATE product_categories SET sort_order = 6 WHERE name = 'Milk Alternatives';
+UPDATE product_categories SET sort_order = 7 WHERE name = 'Rice';
+UPDATE product_categories SET sort_order = 8 WHERE name = 'Flours & Sooji';
+UPDATE product_categories SET sort_order = 9 WHERE name = 'Dals & Pulses';
+UPDATE product_categories SET sort_order = 10 WHERE name = 'Millets & Grains';
+UPDATE product_categories SET sort_order = 11 WHERE name = 'Cooking Oils';
+UPDATE product_categories SET sort_order = 12 WHERE name = 'Spice Powders';
+UPDATE product_categories SET sort_order = 13 WHERE name = 'Whole Spices';
+UPDATE product_categories SET sort_order = 14 WHERE name = 'Salt & Spices';
+UPDATE product_categories SET sort_order = 15 WHERE name = 'Seasoning & Paste';
+UPDATE product_categories SET sort_order = 16 WHERE name = 'Bakery & Breads';
+UPDATE product_categories SET sort_order = 17 WHERE name = 'Breakfast & Staples';
+UPDATE product_categories SET sort_order = 18 WHERE name = 'Coffee & Tea';
+UPDATE product_categories SET sort_order = 19 WHERE name = 'Sweeteners & Sugar';
+UPDATE product_categories SET sort_order = 20 WHERE name = 'Frozen & Ready to Eat';
+UPDATE product_categories SET sort_order = 21 WHERE name = 'Pasta & Noodles';
+UPDATE product_categories SET sort_order = 22 WHERE name = 'Ready to Cook';
+UPDATE product_categories SET sort_order = 23 WHERE name = 'Ready to Eat';
+UPDATE product_categories SET sort_order = 24 WHERE name = 'Biscuits';
+UPDATE product_categories SET sort_order = 25 WHERE name = 'Chips & Crisps';
+UPDATE product_categories SET sort_order = 26 WHERE name = 'Health Snacks';
+UPDATE product_categories SET sort_order = 27 WHERE name = 'Namkeen & Savories';
+UPDATE product_categories SET sort_order = 28 WHERE name = 'Snacks & Papads';
+UPDATE product_categories SET sort_order = 29 WHERE name = 'Beverages & Health';
+UPDATE product_categories SET sort_order = 30 WHERE name = 'Soft Drinks & Soda';
+UPDATE product_categories SET sort_order = 31 WHERE name = 'Water & Juices';
+UPDATE product_categories SET sort_order = 32 WHERE name = 'Nuts & Seeds';
+UPDATE product_categories SET sort_order = 33 WHERE name = 'Pickles & Sauces';
+UPDATE product_categories SET sort_order = 34 WHERE name = 'Bath & Body';
+UPDATE product_categories SET sort_order = 35 WHERE name = 'Face Care';
+UPDATE product_categories SET sort_order = 36 WHERE name = 'Hair Care';
+UPDATE product_categories SET sort_order = 37 WHERE name = 'Men''s Grooming';
+UPDATE product_categories SET sort_order = 38 WHERE name = 'Oral Care';
+UPDATE product_categories SET sort_order = 39 WHERE name = 'Skin Care';
+UPDATE product_categories SET sort_order = 40 WHERE name = 'Cleaning & Household';
+UPDATE product_categories SET sort_order = 41 WHERE name = 'Dishwashing';
+UPDATE product_categories SET sort_order = 42 WHERE name = 'Kitchen & Dining';
+UPDATE product_categories SET sort_order = 43 WHERE name = 'Laundry & Fabric';
+UPDATE product_categories SET sort_order = 44 WHERE name = 'Pooja & Household';
+UPDATE product_categories SET sort_order = 45 WHERE name = 'Baby Care';
+UPDATE product_categories SET sort_order = 46 WHERE name = 'First Aid & Hygiene';
+UPDATE product_categories SET sort_order = 47 WHERE name = 'Women''s Hygiene';
+UPDATE product_categories SET sort_order = 48 WHERE name = 'Baking & Cooking';
+UPDATE product_categories SET sort_order = 49 WHERE name = 'Confectionery';
+UPDATE product_categories SET sort_order = 50 WHERE name = 'Dried Foods';
+UPDATE product_categories SET sort_order = 51 WHERE name = 'Herbs & Leaves';
+UPDATE product_categories SET sort_order = 52 WHERE name = 'Pest Control';
+UPDATE product_categories SET sort_order = 53 WHERE name = 'Traditional Sweets';
+
+-- Verify the changes
+SELECT id, name, sort_order FROM product_categories ORDER BY sort_order NULLS LAST, name;
