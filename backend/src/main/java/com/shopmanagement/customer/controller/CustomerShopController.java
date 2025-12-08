@@ -70,7 +70,10 @@ public class CustomerShopController {
         
         log.info("Customer fetching products for shop: {} - page: {}, size: {}, category: {}, search: {}", shopId, page, size, category, search);
         
-        Pageable pageable = PageRequest.of(page, size, Sort.by("isFeatured").descending().and(Sort.by("customName")));
+        Pageable pageable = PageRequest.of(page, size,
+            Sort.by(Sort.Order.asc("displayOrder").nullsLast())
+                .and(Sort.by(Sort.Order.desc("isFeatured")))
+                .and(Sort.by(Sort.Order.asc("customName"))));
         
         // Only fetch available products for customers
         Page<ShopProductResponse> products = shopProductService.getAvailableShopProducts(shopId, search, category, pageable);
@@ -96,6 +99,17 @@ public class CustomerShopController {
         List<String> categoryNames = shopProductService.getShopProductCategories(shopId);
         List<CategoryResponse> categories = categoryNames.stream()
                 .map(categoryName -> createCategoryResponse(categoryName, shopId))
+                .sorted((c1, c2) -> {
+                    // Sort by database sortOrder, then by name
+                    Optional<ProductCategory> cat1 = categoryRepository.findByName(c1.getName());
+                    Optional<ProductCategory> cat2 = categoryRepository.findByName(c2.getName());
+
+                    int sort1 = cat1.map(ProductCategory::getSortOrder).orElse(999);
+                    int sort2 = cat2.map(ProductCategory::getSortOrder).orElse(999);
+
+                    int sortCompare = Integer.compare(sort1, sort2);
+                    return sortCompare != 0 ? sortCompare : c1.getName().compareTo(c2.getName());
+                })
                 .toList();
 
         return ResponseEntity.ok(ApiResponse.success(categories, "Categories fetched successfully"));

@@ -124,12 +124,15 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final baseUrl = '${EnvConfig.fullApiUrl}/shops/${widget.shopId}/products/mobile-list';
-      final uri = Uri.parse(baseUrl).replace(queryParameters: {
+      final baseUrl = '${EnvConfig.fullApiUrl}/customer/shops/${widget.shopId}/products';
+      final Map<String, String> queryParams = {
         'page': '0',
-        'categoryId': _selectedCategoryId,
         'size': _pageSize.toString(),
-      }).toString();
+      };
+      if (_selectedCategory != null && _selectedCategory != 'All') {
+        queryParams['category'] = _selectedCategory;
+      }
+      final uri = Uri.parse(baseUrl).replace(queryParameters: queryParams).toString();
 
       final response = await http.get(Uri.parse(uri));
 
@@ -155,12 +158,15 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
 
     try {
       _currentPage++;
-      final baseUrl = '${EnvConfig.fullApiUrl}/shops/${widget.shopId}/products/mobile-list';
-      final uri = Uri.parse(baseUrl).replace(queryParameters: {
+      final baseUrl = '${EnvConfig.fullApiUrl}/customer/shops/${widget.shopId}/products';
+      final Map<String, String> queryParams = {
         'page': _currentPage.toString(),
-        'categoryId': _selectedCategoryId,
         'size': _pageSize.toString(),
-      }).toString();
+      };
+      if (_selectedCategory != null && _selectedCategory != 'All') {
+        queryParams['category'] = _selectedCategory;
+      }
+      final uri = Uri.parse(baseUrl).replace(queryParameters: queryParams).toString();
 
       final response = await http.get(Uri.parse(uri));
 

@@ -51,4 +51,15 @@ public class WebConfig implements WebMvcConfigurer {
         System.out.println("  URL Pattern: /uploads/** and /api/uploads/**");
         System.out.println("  File Location: " + uploadPath);
     }
+
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/**")
+                .allowedOriginPatterns("http://localhost:*", "https://*.nammaoorudelivary.in", "https://nammaoorudelivary.in")
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
+                .allowedHeaders("*")
+                .exposedHeaders("Authorization", "Content-Type", "X-Total-Count")
+                .allowCredentials(true)
+                .maxAge(3600);
+    }
 }
