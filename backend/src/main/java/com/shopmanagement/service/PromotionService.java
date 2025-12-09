@@ -95,52 +95,59 @@ public class PromotionService {
             return PromoCodeValidationResult.error("This promo code has reached its usage limit");
         }
 
-        // 7. Check first-time-only restriction (checks by customer ID, device UUID, or phone)
+        // 7. STRICT: Check first-time-only restriction
+        // Blocks if user has EVER used this promo (by customerId, deviceUuid, OR phone)
         if (promotion.getIsFirstTimeOnly()) {
             Boolean hasUsed = promotionUsageRepository.hasUsedPromotion(
                 promotion.getId(), customerId, deviceUuid, phone);
             if (hasUsed) {
-                return PromoCodeValidationResult.error("This promo code can only be used once per customer");
-            }
-        }
-
-        // 8. Check per-customer usage limit (tracks by customer ID, device UUID, or phone)
-        if (promotion.getUsageLimitPerCustomer() != null) {
-            Long usageCount;
-
-            if (customerId != null) {
-                // Registered customer: check by customer ID
-                usageCount = promotionUsageRepository.countByPromotionIdAndCustomerId(
-                    promotion.getId(), customerId);
-            } else if (deviceUuid != null) {
-                // Guest user: check by device UUID
-                usageCount = promotionUsageRepository.countByPromotionIdAndDeviceUuid(
-                    promotion.getId(), deviceUuid);
-            } else if (phone != null) {
-                // Fallback: check by phone number
-                usageCount = promotionUsageRepository.countByPromotionIdAndPhone(
-                    promotion.getId(), phone);
-            } else {
-                return PromoCodeValidationResult.error("Unable to validate promo code usage");
-            }
-
-            if (usageCount >= promotion.getUsageLimitPerCustomer()) {
                 return PromoCodeValidationResult.error(
-                    String.format("You have already used this promo code %d time(s). Maximum allowed: %d",
-                        usageCount, promotion.getUsageLimitPerCustomer())
-                );
+                    "This promo code can only be used once per customer. You have already used it. This promo code will never be available for your account again.");
             }
         }
 
-        // 9. Additional check: Prevent abuse by checking ALL identifiers
-        // If any identifier (customer ID, device UUID, phone) matches previous usage beyond limit
-        if (customerId != null && deviceUuid != null && phone != null &&
-            promotion.getUsageLimitPerCustomer() != null) {
-            Long totalUsage = promotionUsageRepository.countByPromotionAndAnyIdentifier(
-                promotion.getId(), customerId, deviceUuid, phone);
+        // 8. STRICT: Check per-customer usage limit
+        // Prevents ANY user (by customerId, deviceUuid, OR phone) from exceeding limit
+        // This prevents users from bypassing limits by switching between guest/registered modes
+        if (promotion.getUsageLimitPerCustomer() != null) {
+            // Check usage across ALL user identifiers (customerId, deviceUuid, phone)
+            // If ANY identifier matches previous usage, count it
+            Long totalUsage = 0L;
 
+            if (customerId != null || deviceUuid != null || phone != null) {
+                // Use the comprehensive check that looks across all identifiers
+                totalUsage = promotionUsageRepository.countByPromotionAndAnyIdentifier(
+                    promotion.getId(), customerId, deviceUuid, phone);
+            }
+
+            if (totalUsage <= 0 && customerId != null) {
+                // Fallback: Check by customer ID only
+                totalUsage = promotionUsageRepository.countByPromotionIdAndCustomerId(
+                    promotion.getId(), customerId);
+            }
+
+            if (totalUsage <= 0 && deviceUuid != null) {
+                // Fallback: Check by device UUID only
+                totalUsage = promotionUsageRepository.countByPromotionIdAndDeviceUuid(
+                    promotion.getId(), deviceUuid);
+            }
+
+            if (totalUsage <= 0 && phone != null) {
+                // Fallback: Check by phone only
+                totalUsage = promotionUsageRepository.countByPromotionIdAndPhone(
+                    promotion.getId(), phone);
+            }
+
+            if (totalUsage <= 0 && customerId == null && deviceUuid == null && phone == null) {
+                return PromoCodeValidationResult.error("Unable to validate promo code usage. Please login to continue.");
+            }
+
+            // REJECT if usage limit reached
             if (totalUsage >= promotion.getUsageLimitPerCustomer()) {
-                return PromoCodeValidationResult.error("This device or account has already used this promo code");
+                return PromoCodeValidationResult.error(
+                    String.format("You have already used this promo code %d time(s). Maximum allowed: %d. This promo code is no longer available for your account.",
+                        totalUsage, promotion.getUsageLimitPerCustomer())
+                );
             }
         }
 
@@ -200,13 +207,68 @@ public class PromotionService {
 
     /**
      * Get all active promotions visible to customers
+     * Filters out promotions that the user has already used (based on order history)
+     *
+     * @param shopId Shop ID for shop-specific promotions
+     * @param customerId Customer ID (optional)
+     * @param phone Customer phone (optional)
+     * @return List of active promotions that the user is eligible to use
      */
     @Transactional(readOnly = true)
-    public List<Promotion> getActivePromotions(Long shopId) {
+    public List<Promotion> getActivePromotions(Long shopId, Long customerId, String phone) {
+        List<Promotion> allPromotions;
+
         if (shopId != null) {
-            return promotionRepository.findActiveByShopId(shopId, LocalDateTime.now());
+            allPromotions = promotionRepository.findActiveByShopId(shopId, LocalDateTime.now());
+        } else {
+            allPromotions = promotionRepository.findAllPublicActive(LocalDateTime.now());
         }
-        return promotionRepository.findAllPublicActive(LocalDateTime.now());
+
+        // If no user identifiers provided, return all promotions (for unauthenticated users)
+        if (customerId == null && phone == null) {
+            return allPromotions;
+        }
+
+        // Filter out promotions that the user has already used
+        return allPromotions.stream()
+                .filter(promotion -> {
+                    // Check if promotion has usage restrictions
+                    boolean hasRestrictions = promotion.getIsFirstTimeOnly() ||
+                                            promotion.getUsageLimitPerCustomer() != null;
+
+                    if (!hasRestrictions) {
+                        return true; // No restrictions, show to everyone
+                    }
+
+                    // Check if user has already used this promotion (by customerId or phone)
+                    Boolean hasUsed = promotionUsageRepository.hasUsedPromotion(
+                        promotion.getId(), customerId, null, phone);
+
+                    if (hasUsed && promotion.getIsFirstTimeOnly()) {
+                        return false; // First-time-only promo already used, hide it
+                    }
+
+                    // Check per-customer usage limit
+                    if (promotion.getUsageLimitPerCustomer() != null) {
+                        Long usageCount;
+
+                        if (customerId != null) {
+                            usageCount = promotionUsageRepository.countByPromotionIdAndCustomerId(
+                                promotion.getId(), customerId);
+                        } else {
+                            usageCount = promotionUsageRepository.countByPromotionIdAndPhone(
+                                promotion.getId(), phone);
+                        }
+
+                        // Hide if user has reached the usage limit
+                        if (usageCount >= promotion.getUsageLimitPerCustomer()) {
+                            return false;
+                        }
+                    }
+
+                    return true; // Show this promotion
+                })
+                .toList();
     }
 
     /**

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/services/promo_code_service.dart';
-import '../../../core/services/device_info_service.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/auth/auth_provider.dart';
 
@@ -31,7 +30,6 @@ class PromoCodeWidget extends StatefulWidget {
 class _PromoCodeWidgetState extends State<PromoCodeWidget> {
   final TextEditingController _promoController = TextEditingController();
   final PromoCodeService _promoService = PromoCodeService();
-  final DeviceInfoService _deviceService = DeviceInfoService();
 
   bool _isValidating = false;
   bool _isExpanded = false;
@@ -56,6 +54,8 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
     try {
       final promos = await _promoService.getActivePromotions(
         shopId: widget.shopId,
+        customerId: widget.customerId,
+        phone: widget.customerPhone,
       );
       setState(() {
         _availablePromos = promos;
@@ -110,15 +110,12 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
     setState(() => _isValidating = true);
 
     try {
-      // Get device UUID
-      final deviceUuid = await _deviceService.getDeviceUuid();
-
-      // Validate promo code
+      // Validate promo code (user-based validation only)
       final result = await _promoService.validatePromoCode(
         promoCode: code.trim().toUpperCase(),
         orderAmount: widget.orderAmount,
         customerId: widget.customerId,
-        deviceUuid: deviceUuid,
+        deviceUuid: null, // User-based validation only
         phone: widget.customerPhone,
         shopId: widget.shopId,
       );

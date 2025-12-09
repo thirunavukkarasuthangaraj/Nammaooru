@@ -13,6 +13,7 @@ import '../../../core/localization/language_provider.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../core/services/promo_code_service.dart';
+import '../../../core/auth/auth_service.dart';
 import 'cart_screen.dart';
 
 class ShopDetailsModernScreen extends StatefulWidget {
@@ -77,8 +78,13 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
     });
 
     try {
+      // Get user ID from auth if logged in (for filtering used promos)
+      final customerId = await AuthService.getCurrentUserId();
+
       final promotions = await _promoService.getActivePromotions(
         shopId: widget.shopId.toString(),
+        customerId: customerId,
+        phone: null, // Phone can be null, backend will filter by customerId
       );
       if (mounted) {
         setState(() {

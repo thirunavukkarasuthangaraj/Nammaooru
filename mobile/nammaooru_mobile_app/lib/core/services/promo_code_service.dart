@@ -63,11 +63,25 @@ class PromoCodeService {
   }
 
   /// Get all active promotions
-  Future<List<PromoCode>> getActivePromotions({String? shopId}) async {
+  /// Filters out promotions that the user has already used (based on orders)
+  ///
+  /// @param shopId Shop ID for shop-specific promotions
+  /// @param customerId Customer ID (optional, for filtering used promos)
+  /// @param phone Customer phone (optional, for filtering used promos)
+  Future<List<PromoCode>> getActivePromotions({
+    String? shopId,
+    String? customerId,
+    String? phone,
+  }) async {
     try {
-      final url = shopId != null
-          ? Uri.parse('$_baseUrl/promotions/active?shopId=$shopId')
-          : Uri.parse('$_baseUrl/promotions/active');
+      // Build URL with query parameters
+      final queryParams = <String, String>{};
+      if (shopId != null) queryParams['shopId'] = shopId;
+      if (customerId != null) queryParams['customerId'] = customerId;
+      if (phone != null) queryParams['phone'] = phone;
+
+      final url = Uri.parse('$_baseUrl/promotions/active')
+          .replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
 
       final response = await http.get(url);
 

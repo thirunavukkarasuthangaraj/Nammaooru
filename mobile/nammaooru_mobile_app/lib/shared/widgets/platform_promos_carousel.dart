@@ -6,11 +6,15 @@ import 'promo_card_banner.dart';
 class PlatformPromosCarousel extends StatefulWidget {
   final Color? primaryColor;
   final VoidCallback? onPromoTap;
+  final String? customerId;
+  final String? phone;
 
   const PlatformPromosCarousel({
     super.key,
     this.primaryColor,
     this.onPromoTap,
+    this.customerId,
+    this.phone,
   });
 
   @override
@@ -26,7 +30,10 @@ class _PlatformPromosCarouselState extends State<PlatformPromosCarousel> {
   @override
   void initState() {
     super.initState();
-    _promosFuture = _promoService.getActivePromotions();
+    _promosFuture = _promoService.getActivePromotions(
+      customerId: widget.customerId,
+      phone: widget.phone,
+    );
     _pageController = PageController();
   }
 

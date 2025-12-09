@@ -91,12 +91,22 @@ public class PromotionController {
     /**
      * Get active promotions - PUBLIC API
      * Returns promotions that customers can see and use
+     * Filters out promotions that the user has already used (based on order history)
+     *
+     * @param shopId Shop ID for shop-specific promotions (optional)
+     * @param customerId Customer ID (optional, for filtering used promos)
+     * @param phone Customer phone (optional, for filtering used promos)
      */
     @GetMapping("/active")
     public ResponseEntity<Map<String, Object>> getActivePromotions(
-            @RequestParam(required = false) Long shopId) {
+            @RequestParam(required = false) Long shopId,
+            @RequestParam(required = false) Long customerId,
+            @RequestParam(required = false) String phone) {
 
-        List<Promotion> promotions = promotionService.getActivePromotions(shopId);
+        log.debug("Fetching active promotions for shopId: {}, customerId: {}, phone: {}",
+                shopId, customerId, phone);
+
+        List<Promotion> promotions = promotionService.getActivePromotions(shopId, customerId, phone);
 
         Map<String, Object> response = new HashMap<>();
         response.put("statusCode", "0000");
