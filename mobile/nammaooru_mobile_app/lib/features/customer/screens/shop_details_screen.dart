@@ -174,7 +174,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       final response = await _shopApi.getShopProducts(
         shopId: widget.shopId.toString(),
         page: 0,
-        size: 100,
+        size: 2000, // Load all products at once
         // Don't pass any filters - we'll filter client-side
       );
 

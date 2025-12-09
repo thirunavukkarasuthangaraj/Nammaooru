@@ -32,7 +32,7 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
 
   // Pagination state
   int _currentPage = 0;
-  int _pageSize = 10; // Default for general browsing
+  int _pageSize = 2000; // Load all products at once
   bool _isLoading = false;
   bool _hasMore = true;
   List<Map<String, dynamic>> _products = [];
@@ -54,8 +54,8 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
     _selectedCategory = widget.categoryName;
     _selectedCategoryId = widget.categoryId;
 
-    // Adjust page size based on category selection
-    _pageSize = _selectedCategoryId != null ? 20 : 10;
+    // Load all products at once
+    _pageSize = 2000;
 
     // Load categories from API
     _loadCategories();
@@ -84,7 +84,12 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
       // Placeholder: Add 'All' category at the beginning
       setState(() {
         _categories = [
-          {'id': null, 'name': 'All', 'imageUrl': 'https://images.unsplash.com/photo-1543168256-8133d1f3d731?w=400'},
+          {
+            'id': null,
+            'name': 'All',
+            'imageUrl':
+                'https://images.unsplash.com/photo-1543168256-8133d1f3d731?w=400'
+          },
         ];
         _categoriesLoading = false;
       });
@@ -111,10 +116,15 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent * 0.8) {
-      if (_hasMore && !_isLoading) {
-        _loadMoreProducts();
-      }
+    // Only trigger when scrolling vertically near the bottom
+    if (!_scrollController.hasClients) return;
+
+    final pixels = _scrollController.position.pixels;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+
+    // Trigger pagination when reaching 90% of scroll (closer to bottom)
+    if (pixels >= maxScroll * 0.9 && _hasMore && !_isLoading) {
+      _loadMoreProducts();
     }
   }
 
@@ -124,7 +134,8 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final baseUrl = '${EnvConfig.fullApiUrl}/customer/shops/${widget.shopId}/products';
+      final baseUrl =
+          '${EnvConfig.fullApiUrl}/customer/shops/${widget.shopId}/products';
       final Map<String, String> queryParams = {
         'page': '0',
         'size': _pageSize.toString(),
@@ -132,15 +143,17 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
       if (_selectedCategory != null && _selectedCategory != 'All') {
         queryParams['category'] = _selectedCategory;
       }
-      final uri = Uri.parse(baseUrl).replace(queryParameters: queryParams).toString();
+      final uri =
+          Uri.parse(baseUrl).replace(queryParameters: queryParams).toString();
 
       final response = await http.get(Uri.parse(uri));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         setState(() {
-          _products = List<Map<String, dynamic>>.from(data['data']['products'] ?? []);
-          _hasMore = data['data']['hasNext'] ?? false;
+          _products =
+              List<Map<String, dynamic>>.from(data['data']['content'] ?? []);
+          _hasMore = !(data['data']['last'] ?? true);
           _currentPage = 0;
           _isLoading = false;
         });
@@ -152,13 +165,21 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
   }
 
   Future<void> _loadMoreProducts() async {
-    if (_isLoading || !_hasMore) return;
+    print(
+        '📥 _loadMoreProducts called! _isLoading=$_isLoading, _hasMore=$_hasMore');
+    if (_isLoading || !_hasMore) {
+      print('📥 Returning early: _isLoading=$_isLoading, _hasMore=$_hasMore');
+      return;
+    }
 
+    print('📥 Setting _isLoading=true');
     setState(() => _isLoading = true);
 
     try {
       _currentPage++;
-      final baseUrl = '${EnvConfig.fullApiUrl}/customer/shops/${widget.shopId}/products';
+      print('📥 Loading page $_currentPage with size $_pageSize');
+      final baseUrl =
+          '${EnvConfig.fullApiUrl}/customer/shops/${widget.shopId}/products';
       final Map<String, String> queryParams = {
         'page': _currentPage.toString(),
         'size': _pageSize.toString(),
@@ -166,20 +187,28 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
       if (_selectedCategory != null && _selectedCategory != 'All') {
         queryParams['category'] = _selectedCategory;
       }
-      final uri = Uri.parse(baseUrl).replace(queryParameters: queryParams).toString();
+      final uri =
+          Uri.parse(baseUrl).replace(queryParameters: queryParams).toString();
+      print('📥 Fetching URI: $uri');
 
       final response = await http.get(Uri.parse(uri));
+      print('📥 Response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        final newProducts =
+            List<Map<String, dynamic>>.from(data['data']['content'] ?? []);
+        final isLast = data['data']['last'] ?? true;
+        print('📥 Loaded ${newProducts.length} products. isLast=$isLast');
         setState(() {
-          _products.addAll(List<Map<String, dynamic>>.from(data['data']['products'] ?? []));
-          _hasMore = data['data']['hasNext'] ?? false;
+          _products.addAll(newProducts);
+          _hasMore = !isLast;
           _isLoading = false;
+          print('📥 Total products now: ${_products.length}');
         });
       }
     } catch (e) {
-      print('Error loading more products: $e');
+      print('❌ Error loading more products: $e');
       setState(() => _isLoading = false);
     }
   }
@@ -240,7 +269,8 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: Text('${_selectedCategory} Products', style: TextStyle(color: Colors.white, fontSize: 18)),
+        title: Text('${_selectedCategory} Products',
+            style: TextStyle(color: Colors.white, fontSize: 18)),
         backgroundColor: Colors.green,
         iconTheme: IconThemeData(color: Colors.white),
         leading: GestureDetector(
@@ -264,10 +294,14 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                       color: Colors.red,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                    constraints:
+                        const BoxConstraints(minWidth: 16, minHeight: 16),
                     child: Text(
                       '${cartProvider.itemCount}',
-                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -294,15 +328,17 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                   child: SizedBox(
                     width: double.infinity,
                     child: TextField(
-                    decoration: InputDecoration(
-                      hintText: 'Search products...',
-                      prefixIcon: const Icon(Icons.search, color: Colors.green),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Colors.green),
+                      decoration: InputDecoration(
+                        hintText: 'Search products...',
+                        prefixIcon:
+                            const Icon(Icons.search, color: Colors.green),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(color: Colors.green),
+                        ),
+                        contentPadding:
+                            const EdgeInsets.symmetric(vertical: 10),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                    ),
                     ),
                   ),
                 ),
@@ -326,7 +362,9 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                           SizedBox(width: 8),
                           Text(
                             'Voice Search',
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
@@ -371,7 +409,7 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                 //             },
                 //           ),
                 // ),
-                // const SizedBox(height: 8),
+                // const SizedBox(height: 8),~
               ],
             ),
           ),
@@ -382,75 +420,68 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
           Expanded(
             child: _isLoading && _products.isEmpty
                 ? const Center(child: CircularProgressIndicator())
-                : NotificationListener<ScrollNotification>(
-                    onNotification: (scrollNotification) {
-                      if (scrollNotification is ScrollEndNotification) {
-                        double pixels = scrollNotification.metrics.pixels;
-                        double maxScroll = scrollNotification.metrics.maxScrollExtent;
-
-                        // Load more when 80% scrolled
-                        if (pixels > maxScroll * 0.8 && _hasMore && !_isLoading) {
-                          _loadMoreProducts();
-                        }
-                      }
-                      return false;
-                    },
-                    child: ListView(
-                      controller: _scrollController,
-                      padding: EdgeInsets.zero,
-                      children: [
-                        // BANNER (hides on scroll)
-                        Container(
-                          height: 150,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Colors.green, Colors.green[700]!],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                          ),
-                          child: Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.local_offer, color: Colors.white, size: 40),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Special Offers Today',
-                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white),
-                                ),
-                              ],
-                            ),
+                : ListView(
+                    controller: _scrollController,
+                    padding: EdgeInsets.zero,
+                    children: [
+                      // BANNER (hides on scroll)
+                      Container(
+                        height: 150,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Colors.green, Colors.green[700]!],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
                         ),
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.local_offer,
+                                  color: Colors.white, size: 40),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Special Offers Today',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleLarge
+                                    ?.copyWith(color: Colors.white),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
 
-                        // PRODUCTS GRID
-                        if (_products.isEmpty && !_isLoading)
-                          Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(32),
-                              child: Text('No products available', style: Theme.of(context).textTheme.titleMedium),
-                            ),
-                          )
-                        else
-                          GridView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            padding: const EdgeInsets.all(12),
-                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              childAspectRatio: 0.65,
-                              crossAxisSpacing: 10,
-                              mainAxisSpacing: 10,
-                            ),
-                            itemCount: _products.length,
-                            itemBuilder: (context, index) {
-                              final product = _products[index];
-                              final productId = product['id'].toString();
-                              final quantity = _productQuantities[productId] ?? 0;
-                              final stock = product['stockQuantity'] as int? ?? 0;
-                              final isOutOfStock = stock == 0;
-                              final isLowStock = stock > 0 && stock <= 5;
+                      // PRODUCTS GRID
+                      if (_products.isEmpty && !_isLoading)
+                        Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(32),
+                            child: Text('No products available',
+                                style: Theme.of(context).textTheme.titleMedium),
+                          ),
+                        )
+                      else
+                        GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          padding: const EdgeInsets.all(12),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            childAspectRatio: 0.65,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 10,
+                          ),
+                          itemCount: _products.length,
+                          itemBuilder: (context, index) {
+                            final product = _products[index];
+                            final productId = product['id'].toString();
+                            final quantity = _productQuantities[productId] ?? 0;
+                            final stock = product['stockQuantity'] as int? ?? 0;
+                            final isOutOfStock = stock == 0;
+                            final isLowStock = stock > 0 && stock <= 5;
 
                             return Card(
                               elevation: 2,
@@ -466,26 +497,43 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                                     child: Stack(
                                       children: [
                                         ClipRRect(
-                                          borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+                                          borderRadius: BorderRadius.vertical(
+                                              top: Radius.circular(8)),
                                           child: Image.network(
-                                            product['primaryImageUrl'] != null && product['primaryImageUrl'].toString().isNotEmpty
-                                                ? (product['primaryImageUrl'].toString().startsWith('http')
+                                            product['primaryImageUrl'] !=
+                                                        null &&
+                                                    product['primaryImageUrl']
+                                                        .toString()
+                                                        .isNotEmpty
+                                                ? (product['primaryImageUrl']
+                                                        .toString()
+                                                        .startsWith('http')
                                                     ? product['primaryImageUrl']
                                                     : '${EnvConfig.baseUrl}${product['primaryImageUrl']}')
                                                 : '',
                                             width: double.infinity,
                                             height: double.infinity,
                                             fit: BoxFit.cover,
-                                            errorBuilder: (context, error, stackTrace) => Container(
+                                            errorBuilder:
+                                                (context, error, stackTrace) =>
+                                                    Container(
                                               decoration: BoxDecoration(
-                                                color: isOutOfStock ? Colors.grey[300] : Colors.grey[200],
-                                                borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+                                                color: isOutOfStock
+                                                    ? Colors.grey[300]
+                                                    : Colors.grey[200],
+                                                borderRadius:
+                                                    BorderRadius.vertical(
+                                                        top:
+                                                            Radius.circular(8)),
                                               ),
                                               child: Center(
                                                 child: Icon(
-                                                  _getCategoryIcon(product['category']),
+                                                  _getCategoryIcon(
+                                                      product['category']),
                                                   size: 40,
-                                                  color: isOutOfStock ? Colors.grey[500] : Colors.grey[400],
+                                                  color: isOutOfStock
+                                                      ? Colors.grey[500]
+                                                      : Colors.grey[400],
                                                 ),
                                               ),
                                             ),
@@ -496,17 +544,23 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                                           top: 8,
                                           right: 8,
                                           child: Container(
-                                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            padding: EdgeInsets.symmetric(
+                                                horizontal: 8, vertical: 4),
                                             decoration: BoxDecoration(
-                                              color: isOutOfStock ? Colors.red :
-                                                    isLowStock ? Colors.orange :
-                                                    Colors.green,
-                                              borderRadius: BorderRadius.circular(12),
+                                              color: isOutOfStock
+                                                  ? Colors.red
+                                                  : isLowStock
+                                                      ? Colors.orange
+                                                      : Colors.green,
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
                                             ),
                                             child: Text(
-                                              isOutOfStock ? 'Out of Stock' :
-                                              isLowStock ? 'Only $stock left' :
-                                              '$stock in stock',
+                                              isOutOfStock
+                                                  ? 'Out of Stock'
+                                                  : isLowStock
+                                                      ? 'Only $stock left'
+                                                      : '$stock in stock',
                                               style: TextStyle(
                                                 color: Colors.white,
                                                 fontSize: 10,
@@ -525,14 +579,19 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                                     child: Padding(
                                       padding: const EdgeInsets.all(8),
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            product['displayName'] ?? product['name'] ?? 'Product',
+                                            product['displayName'] ??
+                                                product['name'] ??
+                                                'Product',
                                             style: TextStyle(
                                               fontSize: 13,
                                               fontWeight: FontWeight.bold,
-                                              color: isOutOfStock ? Colors.grey : Colors.black,
+                                              color: isOutOfStock
+                                                  ? Colors.grey
+                                                  : Colors.black,
                                             ),
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
@@ -550,7 +609,9 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                                             style: TextStyle(
                                               fontSize: 16,
                                               fontWeight: FontWeight.bold,
-                                              color: isOutOfStock ? Colors.grey : Colors.green,
+                                              color: isOutOfStock
+                                                  ? Colors.grey
+                                                  : Colors.green,
                                             ),
                                           ),
                                           const Spacer(),
@@ -559,10 +620,13 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                                           if (isOutOfStock)
                                             Container(
                                               width: double.infinity,
-                                              padding: const EdgeInsets.symmetric(vertical: 8),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      vertical: 8),
                                               decoration: BoxDecoration(
                                                 color: Colors.grey[300],
-                                                borderRadius: BorderRadius.circular(4),
+                                                borderRadius:
+                                                    BorderRadius.circular(4),
                                               ),
                                               child: Text(
                                                 'OUT OF STOCK',
@@ -577,18 +641,32 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                                           else if (quantity > 0)
                                             Container(
                                               decoration: BoxDecoration(
-                                                color: Colors.green.withOpacity(0.1),
-                                                borderRadius: BorderRadius.circular(4),
-                                                border: Border.all(color: Colors.green),
+                                                color: Colors.green
+                                                    .withOpacity(0.1),
+                                                borderRadius:
+                                                    BorderRadius.circular(4),
+                                                border: Border.all(
+                                                    color: Colors.green),
                                               ),
                                               child: Row(
-                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment
+                                                        .spaceBetween,
                                                 children: [
                                                   InkWell(
-                                                    onTap: () => _updateQuantity(productId, -1, stock),
+                                                    onTap: () =>
+                                                        _updateQuantity(
+                                                            productId,
+                                                            -1,
+                                                            stock),
                                                     child: Container(
-                                                      padding: const EdgeInsets.all(4),
-                                                      child: const Icon(Icons.remove, color: Colors.green, size: 18),
+                                                      padding:
+                                                          const EdgeInsets.all(
+                                                              4),
+                                                      child: const Icon(
+                                                          Icons.remove,
+                                                          color: Colors.green,
+                                                          size: 18),
                                                     ),
                                                   ),
                                                   Column(
@@ -598,27 +676,38 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                                                         style: const TextStyle(
                                                           color: Colors.green,
                                                           fontSize: 14,
-                                                          fontWeight: FontWeight.bold,
+                                                          fontWeight:
+                                                              FontWeight.bold,
                                                         ),
                                                       ),
                                                       if (quantity == stock)
                                                         const Text(
                                                           'Max',
                                                           style: TextStyle(
-                                                            color: Colors.orange,
+                                                            color:
+                                                                Colors.orange,
                                                             fontSize: 9,
-                                                            fontWeight: FontWeight.bold,
+                                                            fontWeight:
+                                                                FontWeight.bold,
                                                           ),
                                                         ),
                                                     ],
                                                   ),
                                                   InkWell(
-                                                    onTap: () => _updateQuantity(productId, 1, stock),
+                                                    onTap: () =>
+                                                        _updateQuantity(
+                                                            productId,
+                                                            1,
+                                                            stock),
                                                     child: Container(
-                                                      padding: const EdgeInsets.all(4),
+                                                      padding:
+                                                          const EdgeInsets.all(
+                                                              4),
                                                       child: Icon(
                                                         Icons.add,
-                                                        color: quantity < stock ? Colors.green : Colors.grey,
+                                                        color: quantity < stock
+                                                            ? Colors.green
+                                                            : Colors.grey,
                                                         size: 18,
                                                       ),
                                                     ),
@@ -628,13 +717,17 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                                             )
                                           else
                                             InkWell(
-                                              onTap: () => _updateQuantity(productId, 1, stock),
+                                              onTap: () => _updateQuantity(
+                                                  productId, 1, stock),
                                               child: Container(
                                                 width: double.infinity,
-                                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        vertical: 8),
                                                 decoration: BoxDecoration(
                                                   color: Colors.green,
-                                                  borderRadius: BorderRadius.circular(4),
+                                                  borderRadius:
+                                                      BorderRadius.circular(4),
                                                 ),
                                                 child: const Text(
                                                   'ADD',
@@ -656,35 +749,36 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                             );
                           },
                         ),
-                    // LOADING INDICATOR (bottom for infinite scroll)
-                    if (_isLoading && _products.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Center(
-                          child: Column(
-                            children: const [
-                              CircularProgressIndicator(),
-                              SizedBox(height: 8),
-                              Text('Loading more...', style: TextStyle(color: Colors.grey)),
-                            ],
+                      // LOADING INDICATOR (bottom for infinite scroll)
+                      if (_isLoading && _products.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Center(
+                            child: Column(
+                              children: const [
+                                CircularProgressIndicator(),
+                                SizedBox(height: 8),
+                                Text('Loading more...',
+                                    style: TextStyle(color: Colors.grey)),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
 
-                    // NO MORE PRODUCTS
-                    if (!_hasMore && _products.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Center(
-                          child: Text(
-                            'No more products',
-                            style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                      // NO MORE PRODUCTS
+                      if (!_hasMore && _products.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Center(
+                            child: Text(
+                              'No more products',
+                              style: TextStyle(
+                                  color: Colors.grey[500], fontSize: 14),
+                            ),
                           ),
                         ),
-                      ),
-                  ],
-                ),
-              ),
+                    ],
+                  ),
           ),
         ],
       ),
@@ -751,7 +845,8 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                             ),
                           ),
                           SizedBox(width: 8),
-                          Icon(Icons.arrow_forward, color: Colors.white, size: 18),
+                          Icon(Icons.arrow_forward,
+                              color: Colors.white, size: 18),
                         ],
                       ),
                     ),
@@ -775,7 +870,8 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
         shopId: widget.shopId,
         onProductSelected: (product) {
           // Add product to cart
-          _updateQuantity(product['id'].toString(), 1, product['stockQuantity'] ?? 0);
+          _updateQuantity(
+              product['id'].toString(), 1, product['stockQuantity'] ?? 0);
 
           // Show confirmation
           ScaffoldMessenger.of(context).showSnackBar(
@@ -875,20 +971,24 @@ class _VoiceSearchDialogState extends State<VoiceSearchDialog> {
     setState(() => _isSearching = true);
 
     try {
-      final baseUrl = '${EnvConfig.baseUrl}/api/v1/products/search/voice/grouped';
-      final uri = Uri.parse(baseUrl).replace(queryParameters: {'q': query}).toString();
+      final baseUrl =
+          '${EnvConfig.baseUrl}/api/v1/products/search/voice/grouped';
+      final uri =
+          Uri.parse(baseUrl).replace(queryParameters: {'q': query}).toString();
 
       final response = await http.post(Uri.parse(uri));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final groupedResults = List<Map<String, dynamic>>.from(data['data'] ?? []);
+        final groupedResults =
+            List<Map<String, dynamic>>.from(data['data'] ?? []);
 
         // Flatten grouped results into single list
         List<Map<String, dynamic>> allProducts = [];
         for (var group in groupedResults) {
           if (group['products'] != null) {
-            allProducts.addAll(List<Map<String, dynamic>>.from(group['products']));
+            allProducts
+                .addAll(List<Map<String, dynamic>>.from(group['products']));
           }
         }
 
@@ -924,220 +1024,242 @@ class _VoiceSearchDialogState extends State<VoiceSearchDialog> {
                 Align(
                   alignment: Alignment.topLeft,
                   child: IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                    icon:
+                        const Icon(Icons.close, color: Colors.white, size: 28),
                     onPressed: widget.onClose,
                   ),
                 ),
 
                 const Spacer(),
 
-              // Listening state or results
-              if (_isListening) ...[
-                // Listening animation
-                const Text(
-                  'Listening...',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w300,
+                // Listening state or results
+                if (_isListening) ...[
+                  // Listening animation
+                  const Text(
+                    'Listening...',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w300,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 60),
-                // Animated microphone
-                Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.red,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.red.withOpacity(0.3),
-                        blurRadius: 30,
-                        spreadRadius: 10,
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.mic,
-                    color: Colors.white,
-                    size: 60,
-                  ),
-                ),
-                const SizedBox(height: 40),
-                Text(
-                  _spokenText.isEmpty ? 'Speak now...' : _spokenText,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 16,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ] else if (_isSearching) ...[
-                const CircularProgressIndicator(color: Colors.white),
-                const SizedBox(height: 20),
-                const Text(
-                  'Searching products...',
-                  style: TextStyle(color: Colors.white, fontSize: 18),
-                ),
-              ] else if (_voiceSearchResults.isNotEmpty) ...[
-                // Results list
-                Expanded(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () {}, // Absorb taps to prevent dismissal
-                    child: Container(
-                      margin: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.search, color: Colors.blue),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  _spokenText,
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.mic, color: Colors.red),
-                                onPressed: _startVoiceListening,
-                              ),
-                            ],
-                          ),
+                  const SizedBox(height: 60),
+                  // Animated microphone
+                  Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.red,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.red.withOpacity(0.3),
+                          blurRadius: 30,
+                          spreadRadius: 10,
                         ),
-                        const Divider(height: 1),
-                        Expanded(
-                          child: ListView.builder(
-                            padding: const EdgeInsets.all(16),
-                            itemCount: _voiceSearchResults.length,
-                            itemBuilder: (context, index) {
-                              final product = _voiceSearchResults[index];
-                              final stock = product['stockQuantity'] as int? ?? 0;
-                              final isOutOfStock = stock == 0;
-
-                              return Container(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: isOutOfStock ? Colors.grey[300]! : Colors.blue[200]!,
-                                ),
-                                borderRadius: BorderRadius.circular(8),
-                                color: isOutOfStock ? Colors.grey[100] : Colors.blue[50],
-                              ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.mic,
+                      color: Colors.white,
+                      size: 60,
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                  Text(
+                    _spokenText.isEmpty ? 'Speak now...' : _spokenText,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 16,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ] else if (_isSearching) ...[
+                  const CircularProgressIndicator(color: Colors.white),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Searching products...',
+                    style: TextStyle(color: Colors.white, fontSize: 18),
+                  ),
+                ] else if (_voiceSearchResults.isNotEmpty) ...[
+                  // Results list
+                  Expanded(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {}, // Absorb taps to prevent dismissal
+                      child: Container(
+                        margin: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Column(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(16),
                               child: Row(
                                 children: [
-                                  // Product Image
-                                  Container(
-                                    width: 60,
-                                    height: 60,
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey[300],
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(4),
-                                      child: product['primaryImageUrl'] != null
-                                          ? Image.network(
-                                              product['primaryImageUrl'],
-                                              fit: BoxFit.cover,
-                                              errorBuilder: (context, error, stackTrace) =>
-                                                  Icon(Icons.shopping_bag, color: Colors.grey[500]),
-                                            )
-                                          : Icon(Icons.shopping_bag, color: Colors.grey[500]),
+                                  const Icon(Icons.search, color: Colors.blue),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      _spokenText,
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
+                                  IconButton(
+                                    icon: const Icon(Icons.mic,
+                                        color: Colors.red),
+                                    onPressed: _startVoiceListening,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Divider(height: 1),
+                            Expanded(
+                              child: ListView.builder(
+                                padding: const EdgeInsets.all(16),
+                                itemCount: _voiceSearchResults.length,
+                                itemBuilder: (context, index) {
+                                  final product = _voiceSearchResults[index];
+                                  final stock =
+                                      product['stockQuantity'] as int? ?? 0;
+                                  final isOutOfStock = stock == 0;
 
-                                  // Product Details
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                  return Container(
+                                    margin: const EdgeInsets.only(bottom: 8),
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: isOutOfStock
+                                            ? Colors.grey[300]!
+                                            : Colors.blue[200]!,
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                      color: isOutOfStock
+                                          ? Colors.grey[100]
+                                          : Colors.blue[50],
+                                    ),
+                                    child: Row(
                                       children: [
-                                        Text(
-                                          product['displayName'] ?? product['name'] ?? 'Product',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 14,
+                                        // Product Image
+                                        Container(
+                                          width: 60,
+                                          height: 60,
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey[300],
+                                            borderRadius:
+                                                BorderRadius.circular(4),
                                           ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        Text(
-                                          '₹${product['price'] ?? 0}',
-                                          style: const TextStyle(
-                                            color: Colors.green,
-                                            fontWeight: FontWeight.bold,
+                                          child: ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(4),
+                                            child: product['primaryImageUrl'] !=
+                                                    null
+                                                ? Image.network(
+                                                    product['primaryImageUrl'],
+                                                    fit: BoxFit.cover,
+                                                    errorBuilder: (context,
+                                                            error,
+                                                            stackTrace) =>
+                                                        Icon(Icons.shopping_bag,
+                                                            color: Colors
+                                                                .grey[500]),
+                                                  )
+                                                : Icon(Icons.shopping_bag,
+                                                    color: Colors.grey[500]),
                                           ),
                                         ),
-                                        if (isOutOfStock)
-                                          const Text(
-                                            'Out of Stock',
-                                            style: TextStyle(color: Colors.red, fontSize: 12),
-                                          )
-                                        else
-                                          Text(
-                                            '$stock in stock',
-                                            style: TextStyle(
-                                              color: Colors.grey[600],
-                                              fontSize: 12,
-                                            ),
+                                        const SizedBox(width: 12),
+
+                                        // Product Details
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                product['displayName'] ??
+                                                    product['name'] ??
+                                                    'Product',
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 14,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              Text(
+                                                '₹${product['price'] ?? 0}',
+                                                style: const TextStyle(
+                                                  color: Colors.green,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              if (isOutOfStock)
+                                                const Text(
+                                                  'Out of Stock',
+                                                  style: TextStyle(
+                                                      color: Colors.red,
+                                                      fontSize: 12),
+                                                )
+                                              else
+                                                Text(
+                                                  '$stock in stock',
+                                                  style: TextStyle(
+                                                    color: Colors.grey[600],
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+
+                                        // Add Button
+                                        if (!isOutOfStock)
+                                          IconButton(
+                                            icon: const Icon(Icons.add_circle,
+                                                color: Colors.blue, size: 28),
+                                            onPressed: () {
+                                              widget.onProductSelected(product);
+                                            },
                                           ),
                                       ],
                                     ),
-                                  ),
-
-                                  // Add Button
-                                  if (!isOutOfStock)
-                                    IconButton(
-                                      icon: const Icon(Icons.add_circle, color: Colors.blue, size: 28),
-                                      onPressed: () {
-                                        widget.onProductSelected(product);
-                                      },
-                                    ),
-                                ],
+                                  );
+                                },
                               ),
-                            );
-                        },
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ] else ...[
+                  // No results state
+                  const Text(
+                    'No products found',
+                    style: TextStyle(color: Colors.white70, fontSize: 18),
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton.icon(
+                    onPressed: _startVoiceListening,
+                    icon: const Icon(Icons.mic),
+                    label: const Text('Try Again'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 32, vertical: 16),
                     ),
                   ),
-                ),
-          ] else ...[
-            // No results state
-            const Text(
-              'No products found',
-              style: TextStyle(color: Colors.white70, fontSize: 18),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
-              onPressed: _startVoiceListening,
-              icon: const Icon(Icons.mic),
-              label: const Text('Try Again'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              ),
-            ),
-          ],
+                ],
 
-          const Spacer(),
-        ],
-      ),
+                const Spacer(),
+              ],
+            ),
           ),
         ),
       ),
