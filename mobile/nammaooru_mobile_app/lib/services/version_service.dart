@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:nammaooru_mobile_app/core/config/api_config.dart';
+import 'package:nammaooru_mobile_app/core/config/env_config.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 class VersionService {
@@ -13,11 +13,11 @@ class VersionService {
     try {
       print('🔍 VersionService: Checking version for $currentVersion');
 
-      // Check if we should perform version check (not too frequent)
-      if (!await _shouldCheckVersion()) {
-        print('⏰ VersionService: Skipping check - too soon (check every 6 hours)');
-        return null;
-      }
+      // TEMPORARY: Always check for testing (removed 6-hour interval)
+      // if (!await _shouldCheckVersion()) {
+      //   print('⏰ VersionService: Skipping check - too soon (check every 6 hours)');
+      //   return null;
+      // }
 
       // Determine platform - default to ANDROID for web testing
       final platform = _getPlatform();
@@ -26,7 +26,7 @@ class VersionService {
       // Get base URL without /api suffix
       final baseUrl = kIsWeb
           ? 'http://localhost:8080'
-          : ApiConfig.baseUrl.replaceAll(RegExp(r'/api$'), '');
+          : EnvConfig.baseUrl; // Uses hardcoded production URL: https://api.nammaoorudelivary.in
       final uri = Uri.parse('$baseUrl/api/app-version/check')
           .replace(queryParameters: {
         'appName': 'CUSTOMER_APP',
@@ -52,15 +52,20 @@ class VersionService {
         // Save last check time
         await _saveLastCheckTime();
 
-        // Return version info if update is required or available
+        print('✅ VersionService: API called successfully! Response: $data');
+        print('   updateAvailable=${data['updateAvailable']}, isMandatory=${data['isMandatory']}');
+
+        // Only return data if update is actually required or available
         if (data['updateRequired'] == true || data['updateAvailable'] == true) {
           print('✅ VersionService: Update available! Returning data');
           return data;
         } else {
           print('ℹ️ VersionService: No update needed');
+          return null;
         }
       }
 
+      print('❌ VersionService: Bad response status: ${response.statusCode}');
       return null;
     } catch (e) {
       print('❌ VersionService Error: $e');

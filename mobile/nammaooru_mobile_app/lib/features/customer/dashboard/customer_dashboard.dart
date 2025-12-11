@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../core/localization/language_provider.dart';
@@ -22,9 +23,10 @@ import '../screens/google_maps_location_picker_screen.dart';
 import '../screens/notifications_screen.dart';
 import '../../../core/services/location_service.dart';
 import '../../../core/services/address_service.dart';
-import '../../../core/services/app_update_service.dart';
 import '../widgets/address_selection_dialog.dart';
 import '../../../shared/widgets/platform_promos_carousel.dart';
+import '../../../services/version_service.dart';
+import '../../../shared/widgets/update_dialog.dart';
 
 class CustomerDashboard extends StatefulWidget {
   const CustomerDashboard({super.key});
@@ -49,17 +51,10 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   void initState() {
     super.initState();
     print('🔵 CustomerDashboard initState called');
+    _checkVersionOnStartup();
     _loadDashboardData();
     _getCurrentLocationOnStartup();
-    _checkForAppUpdates();
-  }
-
-  Future<void> _checkForAppUpdates() async {
-    // Delay the version check to let the UI load first
-    await Future.delayed(const Duration(seconds: 2));
-    if (mounted) {
-      AppUpdateService.showUpdateDialogIfNeeded(context);
-    }
+    // App version checking is handled globally in app.dart, no need for duplicate check here
   }
 
   Future<void> _getCurrentLocationOnStartup() async {
@@ -285,8 +280,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           return;
         }
         final bool shouldPop = await _onWillPop();
-        if (shouldPop && context.mounted) {
-          Navigator.of(context).pop();
+        if (shouldPop) {
+          // Exit the app when user presses back twice on home screen
+          SystemNavigator.pop();
         }
       },
       child: Scaffold(
@@ -325,6 +321,58 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         ),
       ),
     );
+  }
+
+  // Automatic version check on dashboard startup
+  Future<void> _checkVersionOnStartup() async {
+    try {
+      print('🔄 Starting version check...');
+      final packageInfo = await PackageInfo.fromPlatform();
+      final currentVersion = packageInfo.version;
+      print('📱 Current app version: $currentVersion');
+
+      final versionInfo = await VersionService.checkVersion(currentVersion);
+      print('✅ Version check response: $versionInfo');
+
+      if (!mounted) {
+        print('⚠️ Widget not mounted, cannot show dialog');
+        return;
+      }
+
+      if (versionInfo != null) {
+        print('ℹ️ Update available! Showing dialog...');
+        // Show update dialog only if update is available
+        final isMandatory = versionInfo['isMandatory'] ?? false;
+
+        // Add small delay to ensure context is ready
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        if (!mounted) {
+          print('⚠️ Widget unmounted during delay');
+          return;
+        }
+
+        showDialog(
+          context: context,
+          barrierDismissible: !isMandatory, // Prevent dismissing mandatory updates by tapping outside
+          builder: (context) => UpdateDialog(
+            currentVersion: currentVersion,
+            newVersion: versionInfo['currentVersion'] ?? 'Unknown',
+            releaseNotes: versionInfo['releaseNotes'] ?? '',
+            updateUrl: versionInfo['updateUrl'] ?? '',
+            isMandatory: isMandatory,
+            updateRequired: versionInfo['updateRequired'] ?? false,
+          ),
+        );
+        print('✅ Dialog shown successfully');
+      } else {
+        print('ℹ️ No update needed or check skipped');
+      }
+      // If versionInfo is null, no update needed - do nothing (silent success)
+    } catch (e) {
+      // Silent fail for version check - don't bother user with errors
+      print('❌ Version check failed: $e');
+    }
   }
 
   Widget _buildSliverAppBar() {
