@@ -85,11 +85,33 @@
               </mat-card-title>
             </mat-card-header>
             <mat-card-content>
+              <!-- Saved Addresses Selector -->
+              <div class="saved-addresses-section" *ngIf="savedAddresses.length > 0">
+                <h4>Select from saved addresses</h4>
+                <div class="saved-addresses-list">
+                  <mat-card *ngFor="let address of savedAddresses"
+                            class="saved-address-card"
+                            (click)="selectAddress(address)">
+                    <mat-card-content>
+                      <div class="address-type">
+                        <mat-icon>{{ address.isDefault ? 'star' : 'location_on' }}</mat-icon>
+                        <strong>{{address.contactName}}</strong>
+                      </div>
+                      <p class="address-text">{{address.address}}</p>
+                      <p class="address-details">{{address.city}}, {{address.state}} - {{address.postalCode}}</p>
+                      <p class="phone-number">{{address.phone}}</p>
+                    </mat-card-content>
+                  </mat-card>
+                </div>
+                <mat-divider></mat-divider>
+                <p class="or-text">Or enter a new address below</p>
+              </div>
+
               <mat-form-field appearance="outline" class="form-field full-width">
                 <mat-label>Street Address</mat-label>
                 <mat-icon matPrefix>home</mat-icon>
-                <textarea matInput 
-                          formControlName="streetAddress" 
+                <textarea matInput
+                          formControlName="streetAddress"
                           placeholder="House no., Building, Street, Area"
                           rows="2"></textarea>
                 <mat-error *ngIf="checkoutForm.get('streetAddress')?.hasError('required')">

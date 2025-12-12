@@ -52,27 +52,60 @@
         </button>
       </mat-card-header>
       <mat-card-content>
-        <div class="addresses-list" *ngIf="addresses.length > 0">
+        <div class="loading-state" *ngIf="loading">
+          <mat-spinner diameter="40"></mat-spinner>
+          <p>Loading addresses...</p>
+        </div>
+
+        <div class="addresses-list" *ngIf="!loading && addresses.length > 0">
           <div class="address-item" *ngFor="let address of addresses; let i = index">
+            <div class="address-header">
+              <div class="address-type-badge" [class.default]="address.isDefault">
+                <mat-icon>{{ address.addressType === 'Home' ? 'home' : address.addressType === 'Work' ? 'work' : 'location_on' }}</mat-icon>
+                <span>{{address.addressType}}</span>
+                <mat-icon class="default-icon" *ngIf="address.isDefault">star</mat-icon>
+              </div>
+            </div>
             <div class="address-info">
-              <h4>{{address.label}}</h4>
-              <p>{{address.fullAddress}}</p>
-              <p class="phone">{{address.phone}}</p>
+              <div class="address-details">
+                <p class="contact-name">
+                  <mat-icon>person</mat-icon>
+                  {{address.contactPersonName}}
+                </p>
+                <p class="contact-phone">
+                  <mat-icon>phone</mat-icon>
+                  {{address.contactMobileNumber}}
+                </p>
+                <p class="full-address">
+                  <mat-icon>location_on</mat-icon>
+                  <span>
+                    <span *ngIf="address.flatHouse">{{address.flatHouse}}, </span>
+                    <span *ngIf="address.floor">Floor {{address.floor}}, </span>
+                    <span *ngIf="address.street">{{address.street}}, </span>
+                    {{address.area}}<span *ngIf="address.village">, {{address.village}}</span>
+                    <br>
+                    <span *ngIf="address.landmark">Near {{address.landmark}}, </span>
+                    {{address.city}}, {{address.state}} - {{address.pincode}}
+                  </span>
+                </p>
+              </div>
             </div>
             <div class="address-actions">
-              <button mat-icon-button (click)="editAddress(i)">
+              <button mat-icon-button (click)="editAddress(i)" matTooltip="Edit Address">
                 <mat-icon>edit</mat-icon>
               </button>
-              <button mat-icon-button color="warn" (click)="deleteAddress(i)">
+              <button mat-icon-button color="warn" (click)="deleteAddress(i)" matTooltip="Delete Address">
                 <mat-icon>delete</mat-icon>
               </button>
             </div>
           </div>
         </div>
-        <div class="empty-state" *ngIf="addresses.length === 0">
+
+        <div class="empty-state" *ngIf="!loading && addresses.length === 0">
           <mat-icon>location_off</mat-icon>
           <p>No saved addresses</p>
           <button mat-raised-button color="primary" (click)="addAddress()">
+            <mat-icon>add</mat-icon>
             Add Your First Address
           </button>
         </div>

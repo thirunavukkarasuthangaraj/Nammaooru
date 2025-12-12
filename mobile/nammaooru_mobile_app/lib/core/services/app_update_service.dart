@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../config/env_config.dart';
 
 class AppUpdateService {
   static const String APP_NAME = 'CUSTOMER_APP';
-  static const String APP_VERSION = '1.0.0'; // Update this with each release
 
   /// Check if app update is available
   static Future<Map<String, dynamic>?> checkForUpdate() async {
@@ -18,12 +18,22 @@ class AppUpdateService {
         return null;
       }
 
+      // Get current app version from package info
+      final packageInfo = await PackageInfo.fromPlatform();
+      final currentVersion = packageInfo.version;
+
+      print('Checking for update: Current version = $currentVersion');
+
       final platform = defaultTargetPlatform == TargetPlatform.android ? 'ANDROID' : 'IOS';
       final url = Uri.parse(
-        '${EnvConfig.apiUrl}/api/app-version/check?appName=$APP_NAME&platform=$platform&currentVersion=$APP_VERSION'
+        '${EnvConfig.apiUrl}/api/app-version/check?appName=$APP_NAME&platform=$platform&currentVersion=$currentVersion'
       );
 
+      print('Update check URL: $url');
+
       final response = await http.get(url);
+
+      print('Update check response: ${response.statusCode} - ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);

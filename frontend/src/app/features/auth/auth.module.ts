@@ -16,6 +16,7 @@ import { HttpClientModule } from '@angular/common/http';
 
 import { AuthRoutingModule } from './auth-routing.module';
 import { RegisterComponent } from './components/register/register.component';
+import { VerifyOtpComponent } from './components/verify-otp/verify-otp.component';
 import { AuthLayoutComponent } from './components/auth-layout/auth-layout.component';
 import { ForgotPasswordComponent } from './components/forgot-password/forgot-password.component';
 import { ChangePasswordComponent } from './components/change-password/change-password.component';
@@ -23,6 +24,7 @@ import { ChangePasswordComponent } from './components/change-password/change-pas
 @NgModule({
   declarations: [
     RegisterComponent,
+    VerifyOtpComponent,
     AuthLayoutComponent,
     ForgotPasswordComponent,
     ChangePasswordComponent

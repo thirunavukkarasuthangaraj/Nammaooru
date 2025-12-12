@@ -7,6 +7,7 @@ import { CartService } from './cart.service';
 import { Router } from '@angular/router';
 import Swal from 'sweetalert2';
 import { ApiResponse, ApiResponseHelper } from '../../../core/models/api-response.model';
+import { AddressService, DeliveryLocation } from './address.service';
 
 export interface DeliveryAddress {
   contactName: string;
@@ -22,22 +23,41 @@ export interface DeliveryAddress {
 export interface OrderRequest {
   customerId: number;
   shopId: number;
-  orderItems: OrderItem[];  // Changed from items to orderItems
-  deliveryAddress: string;
-  deliveryCity: string;
-  deliveryState: string;
-  deliveryPostalCode: string;
-  deliveryPhone: string;
-  deliveryContactName: string;
+  deliveryType?: string;
+  items: OrderItem[];
+  deliveryAddress: DeliveryAddressRequest;
   paymentMethod: string;
+  subtotal?: number;
+  deliveryFee?: number;
+  discount?: number;
+  total?: number;
   notes?: string;
-  discountAmount?: number;
+  customerInfo?: CustomerInfo;
+  customerToken?: string;
+}
+
+export interface DeliveryAddressRequest {
+  streetAddress: string;
+  landmark?: string;
+  city: string;
+  state: string;
+  pincode: string;
+}
+
+export interface CustomerInfo {
+  customerId?: number;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email?: string;
 }
 
 export interface OrderItem {
-  shopProductId: number;
+  productId: number;  // Changed from shopProductId to match backend DTO
+  productName: string;
+  price: number;
   quantity: number;
-  specialInstructions?: string;
+  unit?: string;
 }
 
 export interface OrderResponse {
@@ -59,7 +79,8 @@ export class CheckoutService {
   constructor(
     private http: HttpClient,
     private cartService: CartService,
-    private router: Router
+    private router: Router,
+    private addressService: AddressService
   ) {}
 
   placeOrder(deliveryAddress: DeliveryAddress, paymentMethod: string, notes?: string): Observable<OrderResponse> {
@@ -77,26 +98,41 @@ export class CheckoutService {
       return of(null as any);
     }
 
-    // Calculate discount if any
-    const discountAmount = cart.discount || 0;
+    // Calculate totals
+    const discount = cart.discount || 0;
+    const deliveryFee = 40;
 
     const orderRequest: OrderRequest = {
       customerId: customerId,
       shopId: cart.shopId!,
-      orderItems: cart.items.map(item => ({
-        shopProductId: item.productId,
+      deliveryType: 'HOME_DELIVERY',
+      items: cart.items.map(item => ({
+        productId: item.productId,
+        productName: item.productName,
+        price: item.price,
         quantity: item.quantity,
-        specialInstructions: ''
+        unit: item.unit || 'unit'
       })),
-      deliveryAddress: deliveryAddress.address,
-      deliveryCity: deliveryAddress.city,
-      deliveryState: deliveryAddress.state,
-      deliveryPostalCode: deliveryAddress.postalCode,
-      deliveryPhone: deliveryAddress.phone,
-      deliveryContactName: deliveryAddress.contactName,
+      deliveryAddress: {
+        streetAddress: deliveryAddress.address,
+        landmark: deliveryAddress.landmark || '',
+        city: deliveryAddress.city,
+        state: deliveryAddress.state,
+        pincode: deliveryAddress.postalCode
+      },
       paymentMethod: paymentMethod,
+      subtotal: cart.subtotal,
+      deliveryFee: deliveryFee,
+      discount: discount,
+      total: cart.total,
       notes: notes || '',
-      discountAmount: discountAmount
+      customerInfo: {
+        customerId: customerId,
+        firstName: deliveryAddress.contactName.split(' ')[0] || '',
+        lastName: deliveryAddress.contactName.split(' ').slice(1).join(' ') || '',
+        phone: deliveryAddress.phone,
+        email: ''
+      }
     };
 
     console.log('Placing order with request:', orderRequest);
@@ -113,20 +149,7 @@ export class CheckoutService {
         if (response && response.id) {
           // Clear cart after successful order
           this.cartService.clearCart();
-          
-          // Show success message
-          Swal.fire({
-            title: 'Order Placed Successfully!',
-            text: `Your order #${response.orderNumber} has been placed.`,
-            icon: 'success',
-            confirmButtonText: 'View Orders'
-          }).then((result) => {
-            if (result.isConfirmed) {
-              this.router.navigate(['/customer/orders']);
-            } else {
-              this.router.navigate(['/customer/shops']);
-            }
-          });
+          // Don't show SweetAlert or navigate here - let the component handle it
         }
       }),
       catchError(error => {
@@ -161,21 +184,42 @@ export class CheckoutService {
   }
 
   getSavedAddresses(): Observable<DeliveryAddress[]> {
-    const customerId = this.getCustomerId();
-    if (!customerId) {
-      return of([]);
-    }
-
-    return this.http.get<ApiResponse<DeliveryAddress[]>>(`${environment.apiUrl}/customers/${customerId}/addresses`).pipe(
-      map(response => {
-        if (ApiResponseHelper.isError(response)) {
-          const errorMessage = ApiResponseHelper.getErrorMessage(response);
-          throw new Error(errorMessage);
-        }
-        return response.data;
-      }),
+    // Use AddressService to get delivery locations and convert to DeliveryAddress format
+    return this.addressService.getAddresses().pipe(
+      map(locations => this.convertToDeliveryAddresses(locations)),
       catchError(() => of([]))
     );
+  }
+
+  /**
+   * Convert DeliveryLocation to DeliveryAddress format for checkout
+   */
+  private convertToDeliveryAddresses(locations: DeliveryLocation[]): DeliveryAddress[] {
+    return locations.map(location => ({
+      contactName: location.contactPersonName,
+      phone: location.contactMobileNumber,
+      address: this.buildFullAddress(location),
+      city: location.city,
+      state: location.state,
+      postalCode: location.pincode,
+      landmark: location.landmark,
+      isDefault: location.isDefault
+    }));
+  }
+
+  /**
+   * Build full address string from DeliveryLocation
+   */
+  private buildFullAddress(location: DeliveryLocation): string {
+    const parts = [];
+
+    if (location.flatHouse) parts.push(location.flatHouse);
+    if (location.floor) parts.push(`Floor ${location.floor}`);
+    if (location.street) parts.push(location.street);
+    if (location.area) parts.push(location.area);
+    if (location.village) parts.push(location.village);
+
+    return parts.join(', ');
   }
 
   saveAddress(address: DeliveryAddress): Observable<DeliveryAddress> {
@@ -225,26 +269,20 @@ export class CheckoutService {
       try {
         const userData = JSON.parse(user);
         console.log('User data from localStorage:', userData);
-        
-        // For testing, use a hardcoded customer ID if user is customer1
-        if (userData.username === 'customer1') {
-          console.log('Using hardcoded customer ID for customer1: 56');
-          return 56; // Use customer ID 56 for testing (actual customer ID in DB)
-        }
-        
-        // Use user ID as customer ID (backend should handle this mapping)
-        // In a proper implementation, the backend would return the customer ID with login response
-        const customerId = userData.id || userData.userId || 1; // Default to 1 if not found
-        console.log('Extracted customer ID (using user ID):', customerId);
-        
+
+        // Use user ID as a placeholder (backend will determine actual customer ID from auth token)
+        // The backend ignores the customerId sent in the request and uses the authenticated user's customer record
+        const customerId = userData.id || userData.userId || 1;
+        console.log('Using user ID as customer ID placeholder:', customerId);
+
         return customerId;
       } catch (e) {
         console.error('Error parsing user data:', e);
-        return 1; // Return default customer ID for testing
+        return 1;
       }
     }
     console.log('No user data in localStorage, using default customer ID');
-    return 1; // Return default customer ID for testing
+    return 1;
   }
 
   calculateDeliveryTime(shopId: number): Observable<string> {
@@ -287,41 +325,45 @@ export class CheckoutService {
 
     // Calculate delivery fee based on delivery type
     const deliveryFee = deliveryType === 'SELF_PICKUP' ? 0 : 50;
-    const discountAmount = cart.discount || 0;
+    const discount = cart.discount || 0;
 
-    // For self-pickup, use minimal address info
-    const orderRequest: any = {
+    const orderRequest: OrderRequest = {
       customerId: customerId,
       shopId: cart.shopId!,
       deliveryType: deliveryType,
-      orderItems: cart.items.map(item => ({
-        shopProductId: item.productId,
+      items: cart.items.map(item => ({
+        productId: item.productId,
+        productName: item.productName,
+        price: item.price,
         quantity: item.quantity,
-        specialInstructions: ''
+        unit: item.unit || 'unit'
       })),
+      deliveryAddress: deliveryType === 'HOME_DELIVERY' && deliveryAddress ? {
+        streetAddress: deliveryAddress.address,
+        landmark: deliveryAddress.landmark || '',
+        city: deliveryAddress.city,
+        state: deliveryAddress.state,
+        pincode: deliveryAddress.postalCode
+      } : {
+        streetAddress: 'SELF_PICKUP',
+        city: 'N/A',
+        state: 'N/A',
+        pincode: '000000'
+      },
       paymentMethod: paymentMethod,
+      subtotal: cart.subtotal,
+      deliveryFee: deliveryFee,
+      discount: discount,
+      total: cart.total,
       notes: notes || '',
-      discountAmount: discountAmount,
-      deliveryFee: deliveryFee
+      customerInfo: deliveryAddress ? {
+        customerId: customerId,
+        firstName: deliveryAddress.contactName.split(' ')[0] || '',
+        lastName: deliveryAddress.contactName.split(' ').slice(1).join(' ') || '',
+        phone: deliveryAddress.phone,
+        email: ''
+      } : undefined
     };
-
-    // Add delivery address only for HOME_DELIVERY
-    if (deliveryType === 'HOME_DELIVERY' && deliveryAddress) {
-      orderRequest.deliveryAddress = deliveryAddress.address;
-      orderRequest.deliveryCity = deliveryAddress.city;
-      orderRequest.deliveryState = deliveryAddress.state;
-      orderRequest.deliveryPostalCode = deliveryAddress.postalCode;
-      orderRequest.deliveryPhone = deliveryAddress.phone;
-      orderRequest.deliveryContactName = deliveryAddress.contactName;
-    } else if (deliveryType === 'SELF_PICKUP') {
-      // For self-pickup, set minimal address info
-      orderRequest.deliveryAddress = 'SELF_PICKUP';
-      orderRequest.deliveryCity = 'N/A';
-      orderRequest.deliveryState = 'N/A';
-      orderRequest.deliveryPostalCode = '000000';
-      orderRequest.deliveryPhone = deliveryAddress?.phone || '';
-      orderRequest.deliveryContactName = deliveryAddress?.contactName || '';
-    }
 
     console.log('Placing order with delivery type:', deliveryType);
     console.log('Order request:', orderRequest);
@@ -338,24 +380,7 @@ export class CheckoutService {
         if (response && response.id) {
           // Clear cart after successful order
           this.cartService.clearCart();
-
-          // Show success message based on delivery type
-          const message = deliveryType === 'SELF_PICKUP'
-            ? `Your order #${response.orderNumber} is ready! Come to the shop to collect it.`
-            : `Your order #${response.orderNumber} will be delivered to your address.`;
-
-          Swal.fire({
-            title: 'Order Placed Successfully!',
-            text: message,
-            icon: 'success',
-            confirmButtonText: 'View Orders'
-          }).then((result) => {
-            if (result.isConfirmed) {
-              this.router.navigate(['/customer/orders']);
-            } else {
-              this.router.navigate(['/customer/shops']);
-            }
-          });
+          // Don't show SweetAlert or navigate here - let the component handle it
         }
       }),
       catchError(error => {

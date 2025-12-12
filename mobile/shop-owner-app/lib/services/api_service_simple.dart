@@ -430,27 +430,43 @@ class ApiService {
     }
   }
 
-  // Get Categories (same endpoint as Angular frontend)
+  // Get Categories (using shop categories endpoint to get imageUrl)
   static Future<ApiResponse> getCategories() async {
     try {
       final headers = await _getAuthHeaders();
-      final queryParams = <String, String>{
-        'page': '0',
-        'size': '100',
-        'isActive': 'true',
-        'sortBy': 'name',
-        'sortDirection': 'ASC',
-      };
 
-      final uri = Uri.parse('$baseUrl/products/categories')
-          .replace(queryParameters: queryParams);
+      // First get shop ID
+      final shopResponse = await http.get(
+        Uri.parse('$baseUrl/shops/my-shop'),
+        headers: headers,
+      ).timeout(timeout);
+
+      if (shopResponse.statusCode != 200) {
+        return ApiResponse.error('Failed to fetch shop info');
+      }
+
+      final shopData = jsonDecode(shopResponse.body);
+      if (shopData['statusCode'] != '0000' || shopData['data'] == null) {
+        return ApiResponse.error('Invalid shop response');
+      }
+
+      final shopId = shopData['data']['id']; // Use numeric id, not shopId
+
+      // Get categories for this shop (returns imageUrl instead of iconUrl)
+      // Load all categories at once (size=2000) instead of paginated
+      final uri = Uri.parse('$baseUrl/customer/shops/$shopId/categories?size=2000');
+
+      print('🔄 Fetching all shop categories: $uri');
 
       final response = await http
           .get(uri, headers: headers)
           .timeout(timeout);
 
+      print('📥 Shop categories API response: ${response.statusCode}');
+
       return _handleResponse(response);
     } catch (e) {
+      print('❌ Error fetching categories: $e');
       return ApiResponse.error('Network error: ${e.toString()}');
     }
   }

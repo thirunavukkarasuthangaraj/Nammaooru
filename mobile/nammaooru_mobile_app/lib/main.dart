@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'app/app.dart';
-import 'core/auth/auth_provider.dart';
+import 'core/auth/auth_provider.dart'; // Use the main auth provider
 import 'shared/providers/cart_provider.dart';
 import 'core/localization/language_provider.dart';
 import 'features/auth/providers/forgot_password_provider.dart';

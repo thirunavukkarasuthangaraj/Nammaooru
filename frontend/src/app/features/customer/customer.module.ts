@@ -18,6 +18,8 @@ import { MatBadgeModule } from '@angular/material/badge';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatDialogModule } from '@angular/material/dialog';
+import { MatTabsModule } from '@angular/material/tabs';
 
 import { CustomerRoutingModule } from './customer-routing.module';
 import { ShopListComponent } from './components/shop-list/shop-list.component';
@@ -29,6 +31,8 @@ import { OrderConfirmationComponent } from './components/order-confirmation/orde
 import { OrdersListComponent } from './components/orders-list/orders-list.component';
 import { CustomerDashboardComponent } from './components/customer-dashboard/customer-dashboard.component';
 import { CustomerProfileComponent } from './components/customer-profile/customer-profile.component';
+import { AddressDialogComponent } from './components/address-dialog/address-dialog.component';
+import { NotificationsComponent } from './components/notifications/notifications.component';
 
 @NgModule({
   declarations: [
@@ -40,7 +44,9 @@ import { CustomerProfileComponent } from './components/customer-profile/customer
     OrderConfirmationComponent,
     OrdersListComponent,
     CustomerDashboardComponent,
-    CustomerProfileComponent
+    CustomerProfileComponent,
+    AddressDialogComponent,
+    NotificationsComponent
   ],
   imports: [
     CommonModule,
@@ -63,7 +69,9 @@ import { CustomerProfileComponent } from './components/customer-profile/customer
     MatBadgeModule,
     MatChipsModule,
     MatDividerModule,
-    MatSlideToggleModule
+    MatSlideToggleModule,
+    MatDialogModule,
+    MatTabsModule
   ]
 })
 export class CustomerModule { }

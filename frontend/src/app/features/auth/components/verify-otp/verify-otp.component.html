@@ -1,0 +1,81 @@
+<div class="login-container">
+  <!-- Background Image with Overlay -->
+  <div class="background-image">
+    <img
+      src="assets/images/background.png"
+      alt="Fresh vegetables background"
+      class="bg-img">
+    <div class="overlay"></div>
+  </div>
+
+  <!-- Content Wrapper -->
+  <div class="content-wrapper">
+    <!-- Logo and Brand -->
+    <div class="brand-section">
+      <h1 class="brand-title">NammaOoru</h1>
+      <p class="brand-tagline">Verify your account to continue</p>
+    </div>
+
+    <!-- OTP Verification Form Card -->
+    <div class="form-card">
+      <div class="form-header">
+        <div class="verify-icon">✉️</div>
+        <h2>Verify Your Account</h2>
+        <p class="subtitle">We've sent a 6-digit code to</p>
+        <p class="contact-info">{{ email || mobileNumber }}</p>
+      </div>
+
+      <form [formGroup]="otpForm" (ngSubmit)="onSubmit()" class="otp-form">
+        <!-- OTP Field -->
+        <div class="form-field">
+          <label for="otp">Enter OTP*</label>
+          <div class="input-wrapper">
+            <input
+              id="otp"
+              type="text"
+              formControlName="otp"
+              placeholder="0 0 0 0 0 0"
+              maxlength="6"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              autocomplete="one-time-code"
+              [class.error]="otpForm.get('otp')?.invalid && otpForm.get('otp')?.touched">
+          </div>
+          <span class="error-message" *ngIf="otpForm.get('otp')?.invalid && otpForm.get('otp')?.touched">
+            {{ otpForm.get('otp')?.hasError('required') ? 'OTP is required' : 'Please enter a valid 6-digit OTP' }}
+          </span>
+        </div>
+
+        <!-- Submit Button -->
+        <button
+          type="submit"
+          class="submit-button"
+          [disabled]="isLoading || !otpForm.valid">
+          <mat-spinner *ngIf="isLoading" diameter="20"></mat-spinner>
+          <span *ngIf="!isLoading">Verify OTP</span>
+          <span *ngIf="isLoading">Verifying...</span>
+        </button>
+
+        <!-- Resend OTP -->
+        <div class="resend-section">
+          <p>Didn't receive the code?</p>
+          <button
+            type="button"
+            (click)="resendOtp()"
+            [disabled]="resendCooldown > 0"
+            class="resend-link">
+            <span *ngIf="resendCooldown === 0">Resend OTP</span>
+            <span *ngIf="resendCooldown > 0">Resend in {{ resendCooldown }}s</span>
+          </button>
+        </div>
+
+        <!-- Back to Login Link -->
+        <p class="signup-link">
+          <a routerLink="/auth/login" class="back-link">
+            ← Back to Login
+          </a>
+        </p>
+      </form>
+    </div>
+  </div>
+</div>

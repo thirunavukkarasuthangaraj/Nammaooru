@@ -9,6 +9,7 @@ import { OrderConfirmationComponent } from './components/order-confirmation/orde
 import { OrdersListComponent } from './components/orders-list/orders-list.component';
 import { CustomerDashboardComponent } from './components/customer-dashboard/customer-dashboard.component';
 import { CustomerProfileComponent } from './components/customer-profile/customer-profile.component';
+import { NotificationsComponent } from './components/notifications/notifications.component';
 
 const routes: Routes = [
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
@@ -18,6 +19,7 @@ const routes: Routes = [
   { path: 'cart', component: ShoppingCartComponent },
   { path: 'checkout', component: CheckoutComponent },
   { path: 'orders', component: OrdersListComponent },
+  { path: 'notifications', component: NotificationsComponent },
   { path: 'track-order/:orderNumber', component: OrderTrackingComponent },
   { path: 'order-confirmation', component: OrderConfirmationComponent },
   { path: 'profile', component: CustomerProfileComponent }

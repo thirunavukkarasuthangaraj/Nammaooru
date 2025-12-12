@@ -1,0 +1,337 @@
+.notifications-page {
+  min-height: 100vh;
+  background: #f5f5f5;
+  padding-bottom: 20px;
+}
+
+// Page Header
+.page-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  margin-bottom: 16px;
+  border-radius: 0;
+
+  .header-container {
+    padding: 20px 24px 0 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    .header-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+
+      .notifications-icon {
+        font-size: 28px;
+        width: 28px;
+        height: 28px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 500;
+      }
+    }
+
+    .mark-all-btn {
+      color: white;
+
+      mat-icon {
+        font-size: 24px;
+        width: 24px;
+        height: 24px;
+      }
+    }
+  }
+
+  ::ng-deep {
+    .notification-tabs {
+      .mat-tab-header {
+        border-bottom: none;
+      }
+
+      .mat-tab-labels {
+        background: transparent;
+      }
+
+      .mat-tab-label {
+        color: rgba(255, 255, 255, 0.7);
+        min-width: 90px;
+        padding: 0 16px;
+        opacity: 1;
+        font-size: 13px;
+
+        mat-icon {
+          margin-right: 6px;
+          font-size: 20px;
+          width: 20px;
+          height: 20px;
+        }
+
+        &.mat-tab-label-active {
+          color: white;
+          opacity: 1;
+          font-weight: 600;
+        }
+      }
+
+      .mat-ink-bar {
+        background-color: white;
+        height: 3px;
+      }
+    }
+  }
+}
+
+// Main Content
+.notifications-content {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+// Loading State
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+
+  mat-spinner {
+    margin-bottom: 16px;
+  }
+
+  p {
+    color: #666;
+    font-size: 14px;
+  }
+}
+
+// Empty State
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  text-align: center;
+
+  .empty-icon {
+    font-size: 80px;
+    width: 80px;
+    height: 80px;
+    color: #ccc;
+    margin-bottom: 16px;
+  }
+
+  h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #333;
+    margin: 0 0 8px 0;
+  }
+
+  p {
+    font-size: 14px;
+    color: #666;
+    margin: 0;
+    max-width: 400px;
+  }
+}
+
+// Notifications List
+.notifications-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  .notification-card {
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0;
+    border-left: 4px solid transparent;
+
+    &.unread {
+      border-left-color: #667eea;
+      background-color: #f8f9ff;
+    }
+
+    &:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      transform: translateY(-2px);
+    }
+
+    mat-card-content {
+      padding: 16px;
+
+      .notification-header {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 12px;
+
+        .notification-icon-wrapper {
+          flex-shrink: 0;
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          .notification-icon {
+            color: white;
+            font-size: 24px;
+            width: 24px;
+            height: 24px;
+          }
+        }
+
+        .notification-content {
+          flex: 1;
+          min-width: 0;
+
+          .notification-title-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+
+            .notification-title {
+              font-size: 16px;
+              font-weight: 600;
+              color: #1a1a1a;
+              margin: 0;
+              flex: 1;
+            }
+
+            .notification-badge {
+              width: 10px;
+              height: 10px;
+              background-color: #667eea;
+              border-radius: 50%;
+              flex-shrink: 0;
+            }
+          }
+
+          .notification-message {
+            font-size: 14px;
+            color: #666;
+            margin: 0 0 12px 0;
+            line-height: 1.5;
+          }
+
+          .notification-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+
+            .notification-time {
+              display: flex;
+              align-items: center;
+              gap: 4px;
+              font-size: 12px;
+              color: #999;
+
+              mat-icon {
+                font-size: 16px;
+                width: 16px;
+                height: 16px;
+              }
+            }
+
+            .notification-type {
+              font-size: 11px;
+              font-weight: 600;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+            }
+          }
+        }
+      }
+
+      .order-link {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid #e0e0e0;
+
+        button {
+          font-size: 13px;
+          font-weight: 500;
+
+          mat-icon {
+            font-size: 18px;
+            width: 18px;
+            height: 18px;
+            margin-right: 4px;
+          }
+        }
+      }
+    }
+  }
+}
+
+// Responsive
+@media (max-width: 768px) {
+  .page-header {
+    .header-container {
+      padding: 16px 16px 0 16px;
+
+      .header-title {
+        h1 {
+          font-size: 20px;
+        }
+
+        .notifications-icon {
+          font-size: 24px;
+          width: 24px;
+          height: 24px;
+        }
+      }
+    }
+  }
+
+  .notifications-content {
+    padding: 0 12px;
+  }
+
+  .notifications-list {
+    .notification-card {
+      mat-card-content {
+        padding: 12px;
+
+        .notification-header {
+          gap: 12px;
+
+          .notification-icon-wrapper {
+            width: 40px;
+            height: 40px;
+
+            .notification-icon {
+              font-size: 20px;
+              width: 20px;
+              height: 20px;
+            }
+          }
+
+          .notification-content {
+            .notification-title-row {
+              .notification-title {
+                font-size: 15px;
+              }
+            }
+
+            .notification-message {
+              font-size: 13px;
+            }
+          }
+        }
+      }
+    }
+  }
+}

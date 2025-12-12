@@ -4,6 +4,7 @@ import { Subject, takeUntil } from 'rxjs';
 import { Location } from '@angular/common';
 import { CartService, Cart, CartItem } from '../../services/cart.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { getImageUrl } from '../../../../core/utils/image-url.util';
 
 @Component({
   selector: 'app-shopping-cart',
@@ -125,5 +126,29 @@ export class ShoppingCartComponent implements OnInit, OnDestroy {
 
   goBack(): void {
     this.location.back();
+  }
+
+  /**
+   * Get product image URL with proper fallback
+   */
+  getProductImageUrl(imageUrl: string | null | undefined): string {
+    if (!imageUrl || imageUrl === '') {
+      return '/assets/images/product-placeholder.jpg';
+    }
+
+    // If image starts with /assets, return as is (local asset)
+    if (imageUrl.startsWith('/assets')) {
+      return imageUrl;
+    }
+
+    return getImageUrl(imageUrl);
+  }
+
+  /**
+   * Handle image load error - fallback to placeholder
+   */
+  onImageError(event: Event): void {
+    const imgElement = event.target as HTMLImageElement;
+    imgElement.src = '/assets/images/product-placeholder.jpg';
   }
 }

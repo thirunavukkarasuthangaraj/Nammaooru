@@ -327,51 +327,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: VillageTheme.primaryGradient,
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              AppBar(
-                title: const Text(
-                  'My Profile',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (bool didPop) async {
+        if (didPop) return;
+        // Navigate to dashboard instead of exiting
+        if (context.mounted) {
+          context.go('/');
+        }
+      },
+      child: Scaffold(
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: VillageTheme.primaryGradient,
+          ),
+          child: SafeArea(
+            child: Column(
+              children: [
+                AppBar(
+                  title: const Text(
+                    'My Profile',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
                   ),
+                  backgroundColor: Colors.transparent,
+                  iconTheme: const IconThemeData(color: Colors.white),
+                  elevation: 0,
+                  centerTitle: true,
                 ),
-                backgroundColor: Colors.transparent,
-                iconTheme: const IconThemeData(color: Colors.white),
-                elevation: 0,
-                centerTitle: true,
-              ),
-              Expanded(
-                child: _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : SingleChildScrollView(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          children: [
-                            _buildProfileHeader(),
-                            const SizedBox(height: 24),
-                            _buildUserDetailsCard(),
-                            const SizedBox(height: 24),
-                            _buildAccountActionsCard(),
-                            const SizedBox(height: 24),
-                            _buildSystemInfoCard(),
-                            const SizedBox(height: 24),
-                            _buildContactSupportCard(),
-                            const SizedBox(height: 32),
-                            _buildLogoutButton(),
-                          ],
+                Expanded(
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : SingleChildScrollView(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            children: [
+                              _buildProfileHeader(),
+                              const SizedBox(height: 24),
+                              _buildUserDetailsCard(),
+                              const SizedBox(height: 24),
+                              _buildAccountActionsCard(),
+                              const SizedBox(height: 24),
+                              _buildSystemInfoCard(),
+                              const SizedBox(height: 24),
+                              _buildContactSupportCard(),
+                              const SizedBox(height: 32),
+                              _buildLogoutButton(),
+                            ],
+                          ),
                         ),
-                      ),
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

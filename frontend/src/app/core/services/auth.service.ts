@@ -53,9 +53,55 @@ export class AuthService {
   }
 
   register(userData: RegisterRequest): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.API_URL}/register`, userData, { withCredentials: true })
+    return this.http.post<ApiResponse<AuthResponse>>(`${this.API_URL}/register`, userData, { withCredentials: true })
       .pipe(
-        tap(response => this.setSession(response)),
+        map(response => {
+          // Check if response is successful
+          if (ApiResponseHelper.isError(response)) {
+            const errorMessage = ApiResponseHelper.getErrorMessage(response);
+            throw new Error(errorMessage);
+          }
+          // Don't auto-login after registration, user needs to verify OTP first
+          return response.data;
+        }),
+        catchError(error => {
+          this.handleAuthError(error);
+          return throwError(() => error);
+        })
+      );
+  }
+
+  // OTP verification methods for registration
+  verifyOtp(verifyData: { email: string; mobileNumber: string; otp: string }): Observable<AuthResponse> {
+    return this.http.post<ApiResponse<AuthResponse>>(`${this.API_URL}/verify-otp`, verifyData, { withCredentials: true })
+      .pipe(
+        map(response => {
+          if (ApiResponseHelper.isError(response)) {
+            const errorMessage = ApiResponseHelper.getErrorMessage(response);
+            throw new Error(errorMessage);
+          }
+          return response.data;
+        }),
+        tap(authData => {
+          // After OTP verification, set the session
+          this.setSession(authData);
+        }),
+        catchError(error => {
+          this.handleAuthError(error);
+          return throwError(() => error);
+        })
+      );
+  }
+
+  resendOtp(resendData: { email: string; mobileNumber: string }): Observable<any> {
+    return this.http.post<ApiResponse<any>>(`${this.API_URL}/resend-otp`, resendData, { withCredentials: true })
+      .pipe(
+        tap(response => {
+          if (ApiResponseHelper.isError(response)) {
+            const errorMessage = ApiResponseHelper.getErrorMessage(response);
+            throw new Error(errorMessage);
+          }
+        }),
         catchError(error => {
           this.handleAuthError(error);
           return throwError(() => error);

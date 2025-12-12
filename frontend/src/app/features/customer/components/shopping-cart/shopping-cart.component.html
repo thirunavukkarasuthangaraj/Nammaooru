@@ -53,8 +53,9 @@
           <mat-card-content>
             <div class="cart-item" *ngFor="let item of cartItems; let last = last">
               <div class="item-image">
-                <img [src]="item.productImage || '/assets/images/product-placeholder.svg'" 
-                     [alt]="item.productName">
+                <img [src]="getProductImageUrl(item.productImage)"
+                     [alt]="item.productName"
+                     (error)="onImageError($event)">
               </div>
               
               <div class="item-details">

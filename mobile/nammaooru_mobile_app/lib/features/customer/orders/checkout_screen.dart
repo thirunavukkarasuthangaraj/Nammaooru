@@ -88,13 +88,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     {'key': 'SELF_PICKUP', 'label': 'Self Pickup', 'icon': '🏪'},
   ];
   final List<String> _paymentMethods = ['CASH_ON_DELIVERY'];
-  final List<Map<String, String>> _deliverySlots = [
-    {'key': 'ASAP', 'label': 'ASAP (30-45 mins)'},
-    {'key': 'SLOT1', 'label': 'Today 6:00 PM - 8:00 PM'},
-    {'key': 'SLOT2', 'label': 'Today 8:00 PM - 10:00 PM'},
-    {'key': 'SLOT3', 'label': 'Tomorrow 10:00 AM - 12:00 PM'},
-    {'key': 'SLOT4', 'label': 'Tomorrow 2:00 PM - 4:00 PM'},
-  ];
 
   @override
   void initState() {
@@ -1039,10 +1032,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         style: const TextStyle(color: Colors.black, fontSize: 14),
                         decoration: const InputDecoration(
                           labelText: 'Pincode *',
-                          labelStyle: TextStyle(fontSize: 12),
+                          labelStyle: TextStyle(fontSize: 12, color: Colors.black87),
+                          hintText: 'Enter 6-digit pincode',
+                          hintStyle: TextStyle(fontSize: 12, color: Colors.black45),
                           contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                           isDense: true,
                           counterText: '',
+                          filled: true,
+                          fillColor: Colors.white,
                         ),
                         keyboardType: TextInputType.number,
                         maxLength: 6,
@@ -1055,31 +1052,30 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       ),
                       const SizedBox(height: 12),
 
-                      // Delivery Slot
+                      // Delivery Time - Fixed to ASAP (30-40 mins)
                       const Text('Delivery Time', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87), maxLines: 1, overflow: TextOverflow.ellipsis),
                       const SizedBox(height: 8),
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: _deliverySlots.map((slot) {
-                          return RadioListTile<String>(
-                            title: Text(
-                              slot['label']!,
-                              style: const TextStyle(color: Colors.black87, fontSize: 12, fontWeight: FontWeight.w500),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: VillageTheme.primaryGreen.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: VillageTheme.primaryGreen.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          children: const [
+                            Icon(Icons.access_time, size: 18, color: VillageTheme.primaryGreen),
+                            SizedBox(width: 8),
+                            Text(
+                              'ASAP (30-40 mins)',
+                              style: TextStyle(
+                                color: Colors.black87,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
-                            value: slot['key']!,
-                            groupValue: _selectedDeliverySlot,
-                            onChanged: (value) {
-                              setState(() {
-                                _selectedDeliverySlot = value!;
-                              });
-                            },
-                            contentPadding: EdgeInsets.zero,
-                            visualDensity: VisualDensity.compact,
-                            activeColor: VillageTheme.primaryGreen,
-                          );
-                        }).toList(),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 10),
 

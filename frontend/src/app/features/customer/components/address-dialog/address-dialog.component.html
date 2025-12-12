@@ -1,0 +1,131 @@
+<h2 mat-dialog-title>{{ dialogTitle }}</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="addressForm" class="address-form">
+
+    <!-- Address Type -->
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Address Type</mat-label>
+      <mat-select formControlName="addressType">
+        <mat-option *ngFor="let type of addressTypes" [value]="type.value">
+          {{ type.label }}
+        </mat-option>
+      </mat-select>
+      <mat-error *ngIf="addressForm.get('addressType')?.hasError('required')">
+        {{ getErrorMessage('addressType') }}
+      </mat-error>
+    </mat-form-field>
+
+    <!-- Contact Information -->
+    <div class="form-section">
+      <h3 class="section-title">Contact Information</h3>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Contact Person Name</mat-label>
+        <mat-icon matPrefix>person</mat-icon>
+        <input matInput formControlName="contactPersonName" placeholder="Enter name">
+        <mat-error *ngIf="addressForm.get('contactPersonName')?.invalid">
+          {{ getErrorMessage('contactPersonName') }}
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Contact Mobile Number</mat-label>
+        <mat-icon matPrefix>phone</mat-icon>
+        <input matInput formControlName="contactMobileNumber" placeholder="Enter 10-digit mobile number">
+        <mat-error *ngIf="addressForm.get('contactMobileNumber')?.invalid">
+          {{ getErrorMessage('contactMobileNumber') }}
+        </mat-error>
+      </mat-form-field>
+    </div>
+
+    <!-- Address Details -->
+    <div class="form-section">
+      <h3 class="section-title">Address Details</h3>
+
+      <div class="form-row">
+        <mat-form-field appearance="outline" class="half-width">
+          <mat-label>Flat/House Number</mat-label>
+          <input matInput formControlName="flatHouse" placeholder="Enter flat/house number">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="half-width">
+          <mat-label>Floor</mat-label>
+          <input matInput formControlName="floor" placeholder="Enter floor">
+        </mat-form-field>
+      </div>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Street</mat-label>
+        <input matInput formControlName="street" placeholder="Enter street name">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Area/Locality *</mat-label>
+        <mat-icon matPrefix>location_on</mat-icon>
+        <input matInput formControlName="area" placeholder="Enter area or locality">
+        <mat-error *ngIf="addressForm.get('area')?.invalid">
+          {{ getErrorMessage('area') }}
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Village</mat-label>
+        <input matInput formControlName="village" placeholder="Enter village name">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Landmark</mat-label>
+        <input matInput formControlName="landmark" placeholder="Enter nearby landmark">
+      </mat-form-field>
+    </div>
+
+    <!-- City, State, Pincode -->
+    <div class="form-section">
+      <h3 class="section-title">Location</h3>
+
+      <div class="form-row">
+        <mat-form-field appearance="outline" class="half-width">
+          <mat-label>City *</mat-label>
+          <input matInput formControlName="city" placeholder="Enter city">
+          <mat-error *ngIf="addressForm.get('city')?.invalid">
+            {{ getErrorMessage('city') }}
+          </mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="half-width">
+          <mat-label>State *</mat-label>
+          <input matInput formControlName="state" placeholder="Enter state">
+          <mat-error *ngIf="addressForm.get('state')?.invalid">
+            {{ getErrorMessage('state') }}
+          </mat-error>
+        </mat-form-field>
+      </div>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Pincode *</mat-label>
+        <mat-icon matPrefix>mail</mat-icon>
+        <input matInput formControlName="pincode" placeholder="Enter 6-digit pincode">
+        <mat-error *ngIf="addressForm.get('pincode')?.invalid">
+          {{ getErrorMessage('pincode') }}
+        </mat-error>
+      </mat-form-field>
+    </div>
+
+    <!-- Set as Default -->
+    <div class="form-section">
+      <mat-checkbox formControlName="isDefault" color="primary">
+        Set as default address
+      </mat-checkbox>
+    </div>
+
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()">Cancel</button>
+  <button mat-raised-button color="primary" (click)="onSave()" [disabled]="addressForm.invalid">
+    <mat-icon>save</mat-icon>
+    Save Address
+  </button>
+</mat-dialog-actions>

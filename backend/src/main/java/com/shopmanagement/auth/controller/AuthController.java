@@ -11,10 +11,12 @@ import com.shopmanagement.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.shopmanagement.service.EmailService;
 import com.shopmanagement.service.EmailOtpService;
+import com.shopmanagement.service.MobileOtpService;
 import com.shopmanagement.service.AuthService;
 import com.shopmanagement.service.TokenBlacklistService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -288,6 +290,61 @@ public class AuthController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(
                 ApiResponse.error(ResponseConstants.GENERAL_ERROR, "OTP verification failed: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/resend-otp")
+    public ResponseEntity<ApiResponse<String>> resendOtp(@RequestBody Map<String, String> request) {
+        try {
+            String email = request.get("email");
+            String mobileNumber = request.get("mobileNumber");
+
+            // Accept either email or mobile number
+            if ((email == null || email.trim().isEmpty()) && (mobileNumber == null || mobileNumber.trim().isEmpty())) {
+                return ResponseEntity.badRequest().body(
+                    ApiResponse.error(ResponseConstants.REQUIRED_FIELD_MISSING, "Email or mobile number is required"));
+            }
+
+            // Find user by mobile number or email
+            User user = null;
+            if (mobileNumber != null && !mobileNumber.trim().isEmpty()) {
+                user = authService.findUserByMobileNumber(mobileNumber);
+            } else if (email != null && !email.trim().isEmpty()) {
+                user = authService.findUserByEmail(email);
+            }
+
+            if (user == null) {
+                return ResponseEntity.badRequest().body(
+                    ApiResponse.error(ResponseConstants.USER_NOT_FOUND, "User not found"));
+            }
+
+            // Resend OTP via SMS
+            if (user.getMobileNumber() != null && !user.getMobileNumber().isEmpty()) {
+                com.shopmanagement.dto.mobile.MobileOtpRequest otpRequest =
+                    com.shopmanagement.dto.mobile.MobileOtpRequest.builder()
+                        .mobileNumber(user.getMobileNumber())
+                        .purpose("REGISTRATION")
+                        .deviceType("WEB")
+                        .deviceId("web-otp-verification")
+                        .build();
+
+                Map<String, Object> otpResult = mobileOtpService.generateAndSendOtp(otpRequest);
+                boolean otpSent = (Boolean) otpResult.getOrDefault("success", false);
+
+                if (otpSent) {
+                    return ResponseEntity.ok(ApiResponse.success("OTP sent successfully to your mobile number", "OTP sent successfully"));
+                } else {
+                    return ResponseEntity.badRequest().body(
+                        ApiResponse.error(ResponseConstants.GENERAL_ERROR, "Failed to send OTP"));
+                }
+            } else {
+                return ResponseEntity.badRequest().body(
+                    ApiResponse.error(ResponseConstants.REQUIRED_FIELD_MISSING, "Mobile number not found for this user"));
+            }
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                ApiResponse.error(ResponseConstants.GENERAL_ERROR, "Failed to resend OTP: " + e.getMessage()));
         }
     }
 

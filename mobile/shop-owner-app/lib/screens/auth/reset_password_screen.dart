@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/app_config.dart';
 import '../../widgets/modern_button.dart';
+import '../dashboard/main_navigation.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   final String identifier;
@@ -56,12 +58,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         // Password reset successfully
         _showSuccess(data['message'] ?? 'Password reset successfully!');
 
-        // Navigate back to login screen
-        await Future.delayed(const Duration(seconds: 2));
+        // Wait a moment to show success message
+        await Future.delayed(const Duration(seconds: 1));
         if (!mounted) return;
 
-        // Pop all screens and return to login
-        Navigator.of(context).popUntil((route) => route.isFirst);
+        // Auto login with new credentials
+        await _autoLogin();
       } else {
         _showError(data['message'] ?? 'Failed to reset password. Please try again.');
       }
@@ -74,6 +76,103 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Future<void> _autoLogin() async {
+    try {
+      debugPrint('Auto-login with identifier: ${widget.identifier}');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'identifier': widget.identifier,
+          'password': _newPasswordController.text,
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+      debugPrint('Auto-login response: $data');
+
+      if (!mounted) return;
+
+      if (response.statusCode == 200 && data['statusCode'] == '0000') {
+        // Login successful
+        final token = data['data']?['accessToken']?.toString() ??
+            data['data']?['token']?.toString() ??
+            '';
+
+        // Check user role - only SHOP_OWNER allowed
+        final String? userRole = data['data']?['role']?.toString();
+        debugPrint('User role: $userRole');
+
+        if (userRole != 'SHOP_OWNER') {
+          debugPrint('Access denied: User role is not SHOP_OWNER');
+          if (!mounted) return;
+          _showError('Access Denied: This app is only for shop owners.');
+
+          await Future.delayed(const Duration(seconds: 2));
+          if (!mounted) return;
+
+          int count = 0;
+          Navigator.of(context).popUntil((route) {
+            count++;
+            return count == 3;
+          });
+          return;
+        }
+
+        // Save token and user data
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('auth_token', token);
+        await prefs.setString('user_data', jsonEncode(data['data']));
+
+        debugPrint('Token saved, navigating to dashboard...');
+
+        // Small delay to ensure state is saved
+        await Future.delayed(const Duration(milliseconds: 300));
+        if (!mounted) return;
+
+        // Navigate to dashboard and remove all previous routes
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (context) => MainNavigation(
+              userName: data['data']['username'] ?? 'Shop Owner',
+              token: token,
+            ),
+          ),
+          (route) => false,
+        );
+      } else {
+        debugPrint('Auto-login failed: ${data['message']}');
+        if (!mounted) return;
+        _showError('Password reset successful. Please login manually.');
+
+        // Navigate back to login screen
+        await Future.delayed(const Duration(seconds: 2));
+        if (!mounted) return;
+
+        int count = 0;
+        Navigator.of(context).popUntil((route) {
+          count++;
+          return count == 3;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error during auto-login: $e');
+      if (!mounted) return;
+      _showError('Password reset successful. Please login manually.');
+
+      // Navigate back to login screen
+      await Future.delayed(const Duration(seconds: 2));
+      if (!mounted) return;
+
+      int count = 0;
+      Navigator.of(context).popUntil((route) {
+        count++;
+        return count == 3;
+      });
     }
   }
 
@@ -160,8 +259,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                       if (value == null || value.isEmpty) {
                         return 'Please enter a password';
                       }
-                      if (value.length < 6) {
-                        return 'Password must be at least 6 characters';
+                      if (value.length < 8) {
+                        return 'Password must be at least 8 characters';
                       }
                       return null;
                     },

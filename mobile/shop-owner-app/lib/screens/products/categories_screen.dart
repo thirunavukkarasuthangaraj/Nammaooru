@@ -32,33 +32,48 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         final categoriesData = data['data'] ?? data;
         final content = categoriesData['content'] ?? categoriesData ?? [];
 
+        print('📦 Categories API Response:');
+        print('Total categories: ${content is List ? content.length : 0}');
+        if (content is List && content.isNotEmpty) {
+          print('First category sample: ${content[0]}');
+        }
+
         final List<Map<String, dynamic>> categoryList = [];
         if (content is List) {
           for (var cat in content) {
             final iconUrl = cat['iconUrl'] ?? '';
-            // Check if iconUrl is a file path or emoji
-            final isImagePath = iconUrl.isNotEmpty && (iconUrl.startsWith('/') || iconUrl.startsWith('http'));
+            final imageUrl = iconUrl.isNotEmpty && (iconUrl.startsWith('/') || iconUrl.startsWith('http'))
+                ? iconUrl
+                : null;
+
+            print('📂 Category: ${cat['name']}, iconUrl: $iconUrl, imageUrl: $imageUrl, productCount: ${cat['productCount']}');
 
             categoryList.add({
               'name': cat['name'] ?? 'Unknown',
+              'displayName': cat['nameTamil'] != null && cat['nameTamil'].toString().isNotEmpty
+                  ? '${cat['name']} / ${cat['nameTamil']}'
+                  : cat['name'] ?? 'Unknown',
               'count': cat['productCount'] ?? 0,
-              'icon': isImagePath ? _getCategoryIcon(cat['name'] ?? '') : iconUrl,
-              'imageUrl': isImagePath ? iconUrl : null,
+              'icon': _getCategoryIcon(cat['name'] ?? ''),
+              'iconEmoji': iconUrl.isNotEmpty && !iconUrl.contains('/') && !iconUrl.contains('http') ? iconUrl : null,
+              'imageUrl': imageUrl,
               'id': cat['id'],
-              'products': cat['products'] ?? [],
+              'color': _getCategoryColor(cat['name'] ?? ''),
             });
           }
         }
 
+        print('✅ Processed ${categoryList.length} categories');
         setState(() {
           _categories = categoryList;
           _isLoading = false;
         });
       } else {
+        print('❌ API response failed or no data');
         setState(() => _isLoading = false);
       }
     } catch (e) {
-      print('Error loading categories: $e');
+      print('❌ Error loading categories: $e');
       setState(() => _isLoading = false);
     }
   }
@@ -177,12 +192,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                           itemCount: _categories.length,
                           itemBuilder: (context, index) {
                             final category = _categories[index];
-                            return _buildModernCategoryCard(
-                              category['name'] as String,
-                              category['count'] as int,
-                              category['imageUrl'] as String?,
-                              category['icon'] as String,
-                            );
+                            return _buildModernCategoryCard(category);
                           },
                         ),
                       ],
@@ -192,13 +202,14 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     );
   }
 
-  Widget _buildModernCategoryCard(String categoryName, int productCount, String? imageUrl, String icon) {
-    final categoryColor = _getCategoryColor(categoryName);
-    final category = _categories.firstWhere(
-      (c) => c['name'] == categoryName,
-      orElse: () => {},
-    );
-    final products = category['products'] as List? ?? [];
+  Widget _buildModernCategoryCard(Map<String, dynamic> category) {
+    final categoryName = category['name'] as String;
+    final displayName = category['displayName'] as String;
+    final productCount = category['count'] as int;
+    final imageUrl = category['imageUrl'] as String?;
+    final iconEmoji = category['iconEmoji'] as String?;
+    final icon = category['icon'] as String;
+    final categoryColor = category['color'] as Color;
 
     return InkWell(
       onTap: () => _navigateToCategoryProducts(categoryName, productCount),
@@ -235,7 +246,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Product Images Grid (2x2) with Gradient Overlay
+            // Category Image/Icon Display
             Expanded(
               child: Stack(
                 children: [
@@ -245,7 +256,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [
-                          categoryColor.withOpacity(0.1),
+                          categoryColor.withOpacity(0.15),
                           categoryColor.withOpacity(0.05),
                         ],
                       ),
@@ -261,60 +272,35 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                               topRight: Radius.circular(20),
                             ),
                             child: Image.network(
-                              imageUrl.startsWith('http') ? imageUrl : 'http://localhost:8080$imageUrl',
+                              imageUrl.startsWith('http')
+                                  ? imageUrl
+                                  : 'http://localhost:8080${imageUrl.startsWith('/') ? imageUrl : '/$imageUrl'}',
                               fit: BoxFit.cover,
                               width: double.infinity,
+                              height: double.infinity,
                               errorBuilder: (context, error, stackTrace) {
-                                print('Error loading image: $imageUrl - $error');
-                                return _buildProductImageGrid(products, icon, categoryColor);
+                                print('❌ Error loading category image: $imageUrl');
+                                print('   Error details: $error');
+                                return _buildFallbackIcon(iconEmoji, icon, categoryColor);
                               },
                               loadingBuilder: (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return Container(
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        categoryColor.withOpacity(0.1),
-                                        categoryColor.withOpacity(0.05),
-                                      ],
-                                    ),
-                                  ),
-                                  child: Center(
-                                    child: CircularProgressIndicator(
-                                      color: categoryColor,
-                                      value: loadingProgress.expectedTotalBytes != null
-                                          ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                          : null,
-                                    ),
+                                if (loadingProgress == null) {
+                                  print('✅ Category image loaded: $imageUrl');
+                                  return child;
+                                }
+                                return Center(
+                                  child: CircularProgressIndicator(
+                                    color: categoryColor,
+                                    strokeWidth: 2,
+                                    value: loadingProgress.expectedTotalBytes != null
+                                        ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                        : null,
                                   ),
                                 );
                               },
                             ),
                           )
-                        : _buildProductImageGrid(products, icon, categoryColor),
-                  ),
-                  // Gradient overlay for better text readability
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: categoryColor.withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Text(
-                        icon,
-                        style: const TextStyle(fontSize: 20),
-                      ),
-                    ),
+                        : _buildFallbackIcon(iconEmoji, icon, categoryColor),
                   ),
                 ],
               ),
@@ -334,13 +320,13 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    categoryName,
+                    displayName,
                     style: TextStyle(
-                      fontSize: 15,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                       color: Colors.grey[900],
                       height: 1.2,
-                      letterSpacing: 0.3,
+                      letterSpacing: 0.2,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -402,6 +388,46 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  // Build fallback icon when image is not available
+  Widget _buildFallbackIcon(String? iconEmoji, String defaultIcon, Color categoryColor) {
+    final displayIcon = iconEmoji ?? defaultIcon;
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: RadialGradient(
+          center: Alignment.center,
+          radius: 0.8,
+          colors: [
+            categoryColor.withOpacity(0.2),
+            categoryColor.withOpacity(0.1),
+            categoryColor.withOpacity(0.05),
+          ],
+        ),
+      ),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.95),
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: categoryColor.withOpacity(0.25),
+                blurRadius: 15,
+                spreadRadius: 3,
+              ),
+            ],
+          ),
+          child: Text(
+            displayIcon,
+            style: const TextStyle(fontSize: 42),
+            textAlign: TextAlign.center,
+          ),
         ),
       ),
     );

@@ -17,7 +17,8 @@ class InventoryScreen extends StatefulWidget {
   State<InventoryScreen> createState() => _InventoryScreenState();
 }
 
-class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProviderStateMixin {
+class _InventoryScreenState extends State<InventoryScreen>
+    with SingleTickerProviderStateMixin {
   List<dynamic> _products = [];
   List<dynamic> _filteredProducts = [];
   bool _isLoading = true;
@@ -29,7 +30,7 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
 
   // Pagination
   int _currentPage = 0;
-  final int _pageSize = 20;
+  final int _pageSize = 2000;
   bool _hasMoreData = true;
 
   // Statistics
@@ -56,7 +57,8 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
       // Load more when user is 200 pixels from bottom
       if (!_isLoadingMore && _hasMoreData) {
         _loadMoreProducts();
@@ -99,7 +101,8 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
       final token = prefs.getString('auth_token') ?? widget.token;
 
       final response = await http.get(
-        Uri.parse('${AppConfig.apiBaseUrl}/shop-products/my-products?page=$_currentPage&size=$_pageSize'),
+        Uri.parse(
+            '${AppConfig.apiBaseUrl}/shop-products/my-products?page=$_currentPage&size=$_pageSize'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -147,7 +150,8 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
       _currentPage++;
 
       final response = await http.get(
-        Uri.parse('${AppConfig.apiBaseUrl}/shop-products/my-products?page=$_currentPage&size=$_pageSize'),
+        Uri.parse(
+            '${AppConfig.apiBaseUrl}/shop-products/my-products?page=$_currentPage&size=$_pageSize'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -243,8 +247,14 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
     // Apply search filter
     if (_searchQuery.isNotEmpty) {
       filtered = filtered.where((product) {
-        final name = (product['displayName'] ?? product['name'] ?? '').toString().toLowerCase();
-        final category = (product['masterProduct']?['category']?['name'] ?? product['category'] ?? '').toString().toLowerCase();
+        final name = (product['displayName'] ?? product['name'] ?? '')
+            .toString()
+            .toLowerCase();
+        final category = (product['masterProduct']?['category']?['name'] ??
+                product['category'] ??
+                '')
+            .toString()
+            .toLowerCase();
         final query = _searchQuery.toLowerCase();
         return name.contains(query) || category.contains(query);
       }).toList();
@@ -258,8 +268,10 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
   Future<void> _updateStock(dynamic product) async {
     final currentStock = product['stockQuantity'] ?? 0;
     final currentMinStock = product['minStockLevel'] ?? 5;
-    final TextEditingController stockController = TextEditingController(text: currentStock.toString());
-    final TextEditingController minStockController = TextEditingController(text: currentMinStock.toString());
+    final TextEditingController stockController =
+        TextEditingController(text: currentStock.toString());
+    final TextEditingController minStockController =
+        TextEditingController(text: currentMinStock.toString());
 
     final price = product['price'] ?? 0.0;
 
@@ -286,7 +298,8 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
                           color: AppTheme.primary.withOpacity(0.1),
                           borderRadius: AppTheme.roundedMedium,
                         ),
-                        child: Icon(Icons.inventory_2, color: AppTheme.primary, size: 28),
+                        child: Icon(Icons.inventory_2,
+                            color: AppTheme.primary, size: 28),
                       ),
                       const SizedBox(width: AppTheme.space16),
                       Expanded(
@@ -295,11 +308,14 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
                           children: [
                             Text(
                               'Update Stock',
-                              style: AppTheme.h4.copyWith(fontWeight: FontWeight.bold),
+                              style: AppTheme.h4
+                                  .copyWith(fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: AppTheme.space4),
                             Text(
-                              product['displayName'] ?? product['name'] ?? 'Product',
+                              product['displayName'] ??
+                                  product['name'] ??
+                                  'Product',
                               style: AppTheme.bodyMedium.copyWith(
                                 color: AppTheme.textSecondary,
                               ),
@@ -341,7 +357,9 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              product['masterProduct']?['category']?['name'] ?? product['category'] ?? 'Uncategorized',
+                              product['masterProduct']?['category']?['name'] ??
+                                  product['category'] ??
+                                  'Uncategorized',
                               style: AppTheme.bodySmall.copyWith(
                                 color: AppTheme.textSecondary,
                               ),
@@ -362,7 +380,8 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.currency_rupee, size: 14, color: AppTheme.success),
+                                  Icon(Icons.currency_rupee,
+                                      size: 14, color: AppTheme.success),
                                   Text(
                                     '${price.toStringAsFixed(0)} per unit',
                                     style: AppTheme.bodySmall.copyWith(
@@ -396,7 +415,8 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
                     style: AppTheme.bodyLarge,
                     decoration: InputDecoration(
                       hintText: 'Enter stock quantity',
-                      prefixIcon: Icon(Icons.inventory, color: AppTheme.primary),
+                      prefixIcon:
+                          Icon(Icons.inventory, color: AppTheme.primary),
                       suffixText: 'units',
                       filled: true,
                       fillColor: AppTheme.background,
@@ -410,7 +430,8 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: AppTheme.roundedMedium,
-                        borderSide: BorderSide(color: AppTheme.primary, width: 2),
+                        borderSide:
+                            BorderSide(color: AppTheme.primary, width: 2),
                       ),
                       contentPadding: EdgeInsets.symmetric(
                         horizontal: AppTheme.space16,
@@ -436,12 +457,15 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
                     style: AppTheme.bodyLarge,
                     decoration: InputDecoration(
                       hintText: 'Alert threshold',
-                      prefixIcon: Icon(Icons.warning_amber, color: AppTheme.warning),
+                      prefixIcon:
+                          Icon(Icons.warning_amber, color: AppTheme.warning),
                       suffixText: 'units',
                       filled: true,
                       fillColor: AppTheme.background,
-                      helperText: 'You\'ll be notified when stock falls below this level',
-                      helperStyle: AppTheme.bodySmall.copyWith(color: AppTheme.textSecondary),
+                      helperText:
+                          'You\'ll be notified when stock falls below this level',
+                      helperStyle: AppTheme.bodySmall
+                          .copyWith(color: AppTheme.textSecondary),
                       border: OutlineInputBorder(
                         borderRadius: AppTheme.roundedMedium,
                         borderSide: BorderSide(color: AppTheme.borderLight),
@@ -452,7 +476,8 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: AppTheme.roundedMedium,
-                        borderSide: BorderSide(color: AppTheme.warning, width: 2),
+                        borderSide:
+                            BorderSide(color: AppTheme.warning, width: 2),
                       ),
                       contentPadding: EdgeInsets.symmetric(
                         horizontal: AppTheme.space16,
@@ -484,20 +509,26 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
                           variant: ButtonVariant.primary,
                           size: ButtonSize.large,
                           onPressed: () async {
-                            final newStock = int.tryParse(stockController.text) ?? currentStock;
-                            final newMinStock = int.tryParse(minStockController.text) ?? currentMinStock;
+                            final newStock =
+                                int.tryParse(stockController.text) ??
+                                    currentStock;
+                            final newMinStock =
+                                int.tryParse(minStockController.text) ??
+                                    currentMinStock;
 
                             if (newStock < 0) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text('Stock quantity cannot be negative'),
+                                  content:
+                                      Text('Stock quantity cannot be negative'),
                                   backgroundColor: AppTheme.error,
                                 ),
                               );
                               return;
                             }
 
-                            await _saveStockUpdate(product['id'], newStock, newMinStock);
+                            await _saveStockUpdate(
+                                product['id'], newStock, newMinStock);
                             Navigator.pop(context);
                           },
                         ),
@@ -513,7 +544,8 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
     );
   }
 
-  Future<void> _saveStockUpdate(int productId, int newStock, int minStock) async {
+  Future<void> _saveStockUpdate(
+      int productId, int newStock, int minStock) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token') ?? widget.token;
@@ -556,7 +588,8 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: Text('Inventory Management', style: AppTheme.h4.copyWith(fontWeight: FontWeight.w600)),
+        title: Text('Inventory Management',
+            style: AppTheme.h4.copyWith(fontWeight: FontWeight.w600)),
         backgroundColor: AppTheme.surface,
         elevation: 0,
         actions: [
@@ -571,18 +604,22 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
             children: [
               // Search Bar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppTheme.space16, vertical: AppTheme.space8),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppTheme.space16, vertical: AppTheme.space8),
                 child: TextField(
                   decoration: InputDecoration(
                     hintText: 'Search products...',
-                    prefixIcon: Icon(Icons.search, color: AppTheme.textSecondary),
+                    prefixIcon:
+                        Icon(Icons.search, color: AppTheme.textSecondary),
                     filled: true,
                     fillColor: AppTheme.background,
                     border: OutlineInputBorder(
                       borderRadius: AppTheme.roundedMedium,
                       borderSide: BorderSide.none,
                     ),
-                    contentPadding: EdgeInsets.symmetric(horizontal: AppTheme.space16, vertical: AppTheme.space12),
+                    contentPadding: EdgeInsets.symmetric(
+                        horizontal: AppTheme.space16,
+                        vertical: AppTheme.space12),
                   ),
                   onChanged: (value) {
                     setState(() {
@@ -649,11 +686,13 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey[300]),
+                                Icon(Icons.inventory_2_outlined,
+                                    size: 64, color: Colors.grey[300]),
                                 const SizedBox(height: AppTheme.space16),
                                 Text(
                                   'No products found',
-                                  style: AppTheme.h5.copyWith(color: AppTheme.textSecondary),
+                                  style: AppTheme.h5
+                                      .copyWith(color: AppTheme.textSecondary),
                                 ),
                               ],
                             ),
@@ -661,14 +700,17 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
                         : ListView.builder(
                             controller: _scrollController,
                             padding: const EdgeInsets.all(AppTheme.space16),
-                            itemCount: _filteredProducts.length + (_isLoadingMore ? 1 : 0),
+                            itemCount: _filteredProducts.length +
+                                (_isLoadingMore ? 1 : 0),
                             itemBuilder: (context, index) {
                               if (index == _filteredProducts.length) {
                                 // Loading indicator at the bottom
                                 return Center(
                                   child: Padding(
-                                    padding: const EdgeInsets.all(AppTheme.space16),
-                                    child: CircularProgressIndicator(color: AppTheme.primary),
+                                    padding:
+                                        const EdgeInsets.all(AppTheme.space16),
+                                    child: CircularProgressIndicator(
+                                        color: AppTheme.primary),
                                   ),
                                 );
                               }
@@ -686,9 +728,9 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
   Widget _buildProductImage(dynamic product, Color statusColor) {
     // Try multiple field names for image URL (same as products_screen.dart)
     final primaryImageUrl = product['primaryImageUrl'] ??
-                           product['image'] ??
-                           product['imageUrl'] ??
-                           product['masterProduct']?['primaryImageUrl'];
+        product['image'] ??
+        product['imageUrl'] ??
+        product['masterProduct']?['primaryImageUrl'];
 
     final fullUrl = AppConfig.getImageUrl(primaryImageUrl);
 
@@ -706,7 +748,8 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
           return Center(
             child: CircularProgressIndicator(
               value: loadingProgress.expectedTotalBytes != null
-                  ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                  ? loadingProgress.cumulativeBytesLoaded /
+                      loadingProgress.expectedTotalBytes!
                   : null,
               strokeWidth: 2,
               color: statusColor,
@@ -720,7 +763,8 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
     return Icon(Icons.inventory_2, color: statusColor, size: 30);
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+      String label, String value, IconData icon, Color color) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -750,9 +794,12 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: AppTheme.bodySmall.copyWith(color: AppTheme.textSecondary)),
+                  Text(label,
+                      style: AppTheme.bodySmall
+                          .copyWith(color: AppTheme.textSecondary)),
                   const SizedBox(height: AppTheme.space4),
-                  Text(value, style: AppTheme.h5.copyWith(fontWeight: FontWeight.bold)),
+                  Text(value,
+                      style: AppTheme.h5.copyWith(fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
@@ -832,15 +879,21 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      product['displayName'] ?? product['name'] ?? 'Unknown Product',
-                      style: AppTheme.bodyLarge.copyWith(fontWeight: FontWeight.w600),
+                      product['displayName'] ??
+                          product['name'] ??
+                          'Unknown Product',
+                      style: AppTheme.bodyLarge
+                          .copyWith(fontWeight: FontWeight.w600),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: AppTheme.space4),
                     Text(
-                      product['masterProduct']?['category']?['name'] ?? product['category'] ?? 'Uncategorized',
-                      style: AppTheme.bodySmall.copyWith(color: AppTheme.textSecondary),
+                      product['masterProduct']?['category']?['name'] ??
+                          product['category'] ??
+                          'Uncategorized',
+                      style: AppTheme.bodySmall
+                          .copyWith(color: AppTheme.textSecondary),
                     ),
                     const SizedBox(height: AppTheme.space8),
                     Row(
@@ -857,7 +910,8 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
                         const SizedBox(width: AppTheme.space8),
                         Text(
                           '₹${price.toStringAsFixed(0)}/unit',
-                          style: AppTheme.bodySmall.copyWith(color: AppTheme.textSecondary),
+                          style: AppTheme.bodySmall
+                              .copyWith(color: AppTheme.textSecondary),
                         ),
                       ],
                     ),
@@ -870,7 +924,8 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: AppTheme.space8, vertical: AppTheme.space4),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: AppTheme.space8, vertical: AppTheme.space4),
                     decoration: BoxDecoration(
                       color: statusColor.withOpacity(0.1),
                       borderRadius: AppTheme.roundedSmall,
@@ -886,7 +941,8 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
                   const SizedBox(height: AppTheme.space8),
                   Text(
                     'Value: ₹${inventoryValue.toStringAsFixed(0)}',
-                    style: AppTheme.bodySmall.copyWith(color: AppTheme.textSecondary),
+                    style: AppTheme.bodySmall
+                        .copyWith(color: AppTheme.textSecondary),
                   ),
                   const SizedBox(height: AppTheme.space4),
                   Icon(Icons.edit, color: AppTheme.primary, size: 20),

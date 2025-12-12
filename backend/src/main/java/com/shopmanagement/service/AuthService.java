@@ -214,7 +214,12 @@ public class AuthService {
     }
     
     public User findUserByEmail(String email) {
-        return userRepository.findByEmail(email).orElse(null);
+        if (email == null) {
+            return null;
+        }
+        // Normalize email to lowercase to match registration behavior
+        String normalizedEmail = email.toLowerCase().trim();
+        return userRepository.findByEmail(normalizedEmail).orElse(null);
     }
 
     public User findUserByMobileNumber(String mobileNumber) {

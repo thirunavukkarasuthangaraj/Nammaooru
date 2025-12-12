@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../services/shop_api_service.dart';
+import '../../../services/voice_search_service.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/localization/app_localizations.dart';
@@ -27,10 +28,12 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
   final ShopApiService _shopApi = ShopApiService();
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final VoiceSearchService _voiceSearchService = VoiceSearchService();
 
   List<dynamic> _shops = [];
   List<dynamic> _filteredShops = [];
   bool _isLoading = true;
+  bool _isListening = false;
   String _sortBy = 'name';
   bool _openNowOnly = false;
   double _maxDistance = 10.0;
@@ -129,13 +132,51 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
     });
   }
 
+  Future<void> _startVoiceSearch() async {
+    setState(() => _isListening = true);
+
+    try {
+      // Use voice service to listen for Tamil or English speech
+      final result = await _voiceSearchService.listen();
+
+      if (result != null && result.isNotEmpty) {
+        setState(() {
+          _searchController.text = result;
+          _filterShops();
+        });
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(_voiceSearchService.lastError ?? 'No speech detected'),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } finally {
+      setState(() => _isListening = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      appBar: AppBar(
+        backgroundColor: const Color(0xFFF5F5F5),
+        appBar: AppBar(
         title: Text(
           widget.categoryTitle ?? 'Grocery',
           style: const TextStyle(
@@ -185,19 +226,40 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
               size: 22,
               color: Colors.grey,
             ),
-            suffixIcon: _searchController.text.isNotEmpty
-                ? IconButton(
+            suffixIcon: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Microphone icon for voice search
+                IconButton(
+                  icon: Icon(
+                    _isListening ? Icons.mic : Icons.mic_none,
+                    color: _isListening ? const Color(0xFF4CAF50) : Colors.grey,
+                    size: 22,
+                  ),
+                  onPressed: _isListening ? null : _startVoiceSearch,
+                  tooltip: 'Voice search',
+                ),
+                // Clear or location icon
+                if (_searchController.text.isNotEmpty)
+                  IconButton(
                     icon: const Icon(Icons.clear, color: Colors.grey, size: 20),
+                    padding: EdgeInsets.zero,
                     onPressed: () {
                       _searchController.clear();
                       _filterShops();
                     },
                   )
-                : const Icon(
-                  Icons.location_on_outlined,
-                  size: 20,
-                  color: Color(0xFFFF9800),
-                ),
+                else
+                  const Padding(
+                    padding: EdgeInsets.only(right: 12.0),
+                    child: Icon(
+                      Icons.location_on_outlined,
+                      size: 20,
+                      color: Color(0xFFFF9800),
+                    ),
+                  ),
+              ],
+            ),
             border: InputBorder.none,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,

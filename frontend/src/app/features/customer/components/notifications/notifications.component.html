@@ -1,0 +1,96 @@
+<div class="notifications-page">
+  <!-- Page Header with Filter Tabs -->
+  <mat-card class="page-header">
+    <div class="header-container">
+      <div class="header-title">
+        <mat-icon class="notifications-icon">notifications</mat-icon>
+        <h1>Notifications</h1>
+      </div>
+
+      <!-- Mark All as Read Button -->
+      <button mat-icon-button class="mark-all-btn"
+              (click)="markAllAsRead()"
+              *ngIf="notifications.length > 0"
+              matTooltip="Mark all as read">
+        <mat-icon>done_all</mat-icon>
+      </button>
+    </div>
+
+    <!-- Filter Tabs -->
+    <mat-tab-group [selectedIndex]="getSelectedTabIndex()"
+                   (selectedIndexChange)="onFilterChange(filterTabs[$event].key)"
+                   class="notification-tabs">
+      <mat-tab *ngFor="let tab of filterTabs">
+        <ng-template mat-tab-label>
+          <mat-icon>{{tab.icon}}</mat-icon>
+          <span>{{tab.label}}</span>
+        </ng-template>
+      </mat-tab>
+    </mat-tab-group>
+  </mat-card>
+
+  <!-- Main Content -->
+  <div class="notifications-content">
+
+    <!-- Loading State -->
+    <div *ngIf="loading" class="loading-container">
+      <mat-spinner></mat-spinner>
+      <p>Loading notifications...</p>
+    </div>
+
+    <!-- Empty State -->
+    <div *ngIf="!loading && notifications.length === 0" class="empty-state">
+      <mat-icon class="empty-icon">notifications_none</mat-icon>
+      <h2>No Notifications</h2>
+      <p>You don't have any notifications yet. We'll notify you when there's something new!</p>
+    </div>
+
+    <!-- Notifications List -->
+    <div *ngIf="!loading && notifications.length > 0" class="notifications-list">
+      <mat-card class="notification-card"
+                *ngFor="let notification of notifications"
+                [class.unread]="!notification.isRead"
+                (click)="markAsRead(notification)">
+        <mat-card-content>
+          <!-- Notification Header -->
+          <div class="notification-header">
+            <div class="notification-icon-wrapper"
+                 [style.background-color]="getNotificationColor(notification)">
+              <mat-icon class="notification-icon">{{getNotificationIcon(notification)}}</mat-icon>
+            </div>
+
+            <div class="notification-content">
+              <div class="notification-title-row">
+                <h3 class="notification-title">{{notification.title}}</h3>
+                <span class="notification-badge" *ngIf="!notification.isRead"></span>
+              </div>
+
+              <p class="notification-message">{{notification.message}}</p>
+
+              <div class="notification-footer">
+                <span class="notification-time">
+                  <mat-icon>schedule</mat-icon>
+                  {{formatDate(notification.createdAt)}}
+                </span>
+
+                <span class="notification-type"
+                      [style.color]="getNotificationColor(notification)">
+                  {{notification.type}}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Order Link (if order-related notification) -->
+          <div class="order-link" *ngIf="notification.orderId && notification.orderNumber">
+            <button mat-stroked-button color="primary"
+                    (click)="$event.stopPropagation(); viewOrder(notification)">
+              <mat-icon>receipt_long</mat-icon>
+              View Order #{{notification.orderNumber}}
+            </button>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </div>
+</div>

@@ -24,20 +24,24 @@ class ProductsScreen extends StatefulWidget {
 
 class _ProductsScreenState extends State<ProductsScreen> {
   List<dynamic> _products = [];
+  List<dynamic> _categories = [];
   bool _isLoading = true;
   bool _isLoadingMore = false;
+  bool _isLoadingCategories = false;
   bool _hasMore = true;
   int _currentPage = 0;
   final int _pageSize = 20;
   late ScrollController _scrollController;
   String _searchQuery = '';
-  String _selectedCategory = 'All';
+  String? _selectedCategoryId;
+  String? _selectedCategoryName;
   final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _scrollController = ScrollController()..addListener(_onScroll);
+    _loadCategories();
     _fetchProducts();
   }
 
@@ -46,6 +50,62 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
     if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
       _loadMore();
+    }
+  }
+
+  Future<void> _loadCategories() async {
+    setState(() => _isLoadingCategories = true);
+
+    try {
+      final response = await ApiService.getCategories();
+
+      if (response.isSuccess && response.data != null) {
+        final data = response.data;
+        // Shop categories API returns list directly under 'data', not paginated with 'content'
+        final categoriesList = data['data'];
+        final content = (categoriesList is List) ? categoriesList : [];
+
+        print('📦 Products Screen - Categories loaded: ${content.length}');
+
+        final List<dynamic> categoryList = [];
+
+        // Add "All" category first
+        categoryList.add({
+          'id': null,
+          'name': 'All',
+          'displayName': 'All Items',
+          'iconUrl': '📦',
+          'productCount': _products.length,
+        });
+
+        if (content is List) {
+          for (var cat in content) {
+            // Use imageUrl from shop categories API (customer endpoint)
+            final imageUrl = cat['imageUrl'] ?? cat['iconUrl'] ?? '';
+            print('  📂 Category: ${cat['name']}, imageUrl: "$imageUrl", productCount: ${cat['productCount']}');
+
+            categoryList.add({
+              'id': cat['id'],
+              'name': cat['name'] ?? 'Unknown',
+              'displayName': cat['displayName'] ?? cat['name'] ?? 'Unknown',
+              'iconUrl': imageUrl, // Keep key as iconUrl for compatibility with UI
+              'productCount': cat['productCount'] ?? 0,
+            });
+          }
+        }
+
+        print('✅ Loaded ${categoryList.length} categories for Products screen');
+
+        setState(() {
+          _categories = categoryList;
+          _isLoadingCategories = false;
+        });
+      } else {
+        setState(() => _isLoadingCategories = false);
+      }
+    } catch (e) {
+      print('❌ Error loading categories: $e');
+      setState(() => _isLoadingCategories = false);
     }
   }
 
@@ -177,27 +237,19 @@ class _ProductsScreenState extends State<ProductsScreen> {
     });
   }
 
-  List<String> get _categories {
-    final categories = <String>{'All'};
-    for (var product in _products) {
-      final category = product['masterProduct']?['category']?['name'] ?? product['category'];
-      if (category != null) {
-        categories.add(category.toString());
-      }
-    }
-    return categories.toList();
-  }
-
   List<dynamic> get _filteredProducts {
     return _products.where((product) {
       final name = (product['displayName'] ?? product['name'] ?? '').toString().toLowerCase();
-      final category = (product['masterProduct']?['category']?['name'] ?? product['category'] ?? '').toString();
+      final productCategoryName = (product['masterProduct']?['category']?['name'] ?? product['category'] ?? '').toString();
 
       final matchesSearch = _searchQuery.isEmpty ||
         name.contains(_searchQuery.toLowerCase()) ||
-        category.toLowerCase().contains(_searchQuery.toLowerCase());
+        productCategoryName.toLowerCase().contains(_searchQuery.toLowerCase());
 
-      final matchesCategory = _selectedCategory == 'All' || category == _selectedCategory;
+      // Filter by category: null means "All", otherwise match by name
+      final matchesCategory = _selectedCategoryName == null ||
+                               _selectedCategoryName == 'All' ||
+                               productCategoryName == _selectedCategoryName;
 
       return matchesSearch && matchesCategory;
     }).toList();
@@ -295,29 +347,133 @@ class _ProductsScreenState extends State<ProductsScreen> {
             ),
           ),
 
-          // Category Filter Chips
+          // Category Filter with Images
           if (_categories.isNotEmpty)
             Container(
-              height: 60,
-              padding: const EdgeInsets.symmetric(horizontal: AppTheme.space16),
-              color: AppTheme.surface,
+              height: 100,
+              margin: const EdgeInsets.symmetric(vertical: 8),
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
                 itemCount: _categories.length,
                 itemBuilder: (context, index) {
                   final category = _categories[index];
-                  final isSelected = _selectedCategory == category;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: AppTheme.space8),
-                    child: ModernChip(
-                      label: category,
-                      selected: isSelected,
-                      icon: isSelected ? Icons.check : null,
-                      onTap: () {
-                        setState(() {
-                          _selectedCategory = category;
-                        });
-                      },
+                  final categoryId = category['id']?.toString();
+                  final categoryName = category['name']?.toString() ?? 'Category';
+                  final displayName = category['displayName']?.toString() ?? categoryName;
+                  final iconUrl = category['iconUrl']?.toString() ?? '';
+                  final isSelected = _selectedCategoryId == categoryId;
+
+                  print('🎨 Rendering category: $categoryName, iconUrl: "$iconUrl"');
+
+                  // Check if iconUrl is an emoji or image path
+                  final bool isEmoji = iconUrl.isNotEmpty &&
+                                       !iconUrl.contains('/') &&
+                                       !iconUrl.contains('http');
+                  final bool hasImage = iconUrl.isNotEmpty &&
+                                       (iconUrl.startsWith('/') || iconUrl.startsWith('http'));
+
+                  if (hasImage) {
+                    print('  🖼️ Has image: $iconUrl');
+                  } else if (isEmoji) {
+                    print('  😀 Has emoji: $iconUrl');
+                  } else {
+                    print('  📦 Using fallback icon');
+                  }
+
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedCategoryId = categoryId;
+                        _selectedCategoryName = categoryId == null ? null : categoryName;
+                      });
+                    },
+                    child: Container(
+                      width: 85,
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppTheme.primary.withOpacity(0.15)
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: isSelected
+                            ? Border.all(color: AppTheme.primary, width: 2)
+                            : Border.all(color: Colors.grey.withOpacity(0.3), width: 1),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Category Image/Icon/Emoji
+                          Container(
+                            width: 50,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              color: isSelected
+                                  ? AppTheme.primary.withOpacity(0.1)
+                                  : Colors.grey.withOpacity(0.1),
+                            ),
+                            child: hasImage
+                                ? ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: Image.network(
+                                      iconUrl.startsWith('http')
+                                          ? iconUrl
+                                          : 'http://localhost:8080${iconUrl.startsWith('/') ? iconUrl : '/$iconUrl'}',
+                                      width: 50,
+                                      height: 50,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) {
+                                        print('  ❌ Image load error for $categoryName: $error');
+                                        return Center(
+                                          child: Text(
+                                            isEmoji ? iconUrl : '📦',
+                                            style: const TextStyle(fontSize: 28),
+                                          ),
+                                        );
+                                      },
+                                      loadingBuilder: (context, child, loadingProgress) {
+                                        if (loadingProgress == null) {
+                                          print('  ✅ Image loaded for $categoryName');
+                                          return child;
+                                        }
+                                        return const Center(
+                                          child: SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(strokeWidth: 2),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  )
+                                : Center(
+                                    child: Text(
+                                      isEmoji ? iconUrl : '📦',
+                                      style: const TextStyle(fontSize: 28),
+                                    ),
+                                  ),
+                          ),
+                          const SizedBox(height: 4),
+                          // Category Name
+                          Flexible(
+                            child: Text(
+                              displayName,
+                              style: TextStyle(
+                                color: isSelected ? AppTheme.primary : Colors.grey[800],
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                                fontSize: 9,
+                                height: 1.1,
+                              ),
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 },
@@ -488,6 +644,59 @@ class _ProductsScreenState extends State<ProductsScreen> {
     );
   }
 
+  // Normalize unit values to match dropdown options
+  String _normalizeUnit(String? unit) {
+    if (unit == null || unit.isEmpty) return 'piece';
+
+    final normalized = unit.toLowerCase().trim();
+
+    // Map common variations to standard units
+    final Map<String, String> unitMappings = {
+      'pcs': 'piece',
+      'pc': 'piece',
+      'pieces': 'piece',
+      'g': 'gram',
+      'gm': 'gram',
+      'gms': 'gram',
+      'grams': 'gram',
+      'kilogram': 'kg',
+      'kgs': 'kg',
+      'kilograms': 'kg',
+      'l': 'liter',
+      'litre': 'liter',
+      'litres': 'liter',
+      'liters': 'liter',
+      'milliliter': 'ml',
+      'millilitre': 'ml',
+      'milliliters': 'ml',
+      'millilitres': 'ml',
+      'packs': 'pack',
+      'packet': 'pack',
+      'packets': 'pack',
+      'bottles': 'bottle',
+      'btl': 'bottle',
+      'boxes': 'box',
+      'bx': 'box',
+      'dzn': 'dozen',
+      'doz': 'dozen',
+      'units': 'unit',
+    };
+
+    // Check if the normalized unit is in mappings
+    if (unitMappings.containsKey(normalized)) {
+      return unitMappings[normalized]!;
+    }
+
+    // Check if it's already a valid option
+    const validUnits = ['piece', 'gram', 'kg', 'liter', 'ml', 'pack', 'bottle', 'box', 'dozen', 'unit'];
+    if (validUnits.contains(normalized)) {
+      return normalized;
+    }
+
+    // Default to piece if unknown
+    return 'piece';
+  }
+
   void _showAddProductMenu(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -594,7 +803,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
     final minStockController = TextEditingController(text: (product['minStockLevel'] ?? 5).toString());
     // Check shop-specific unit first, then fall back to master product's unit
     final weightController = TextEditingController(text: (product['baseWeight'] ?? product['masterProduct']?['baseWeight'] ?? '').toString());
-    String selectedUnit = product['baseUnit'] ?? product['masterProduct']?['baseUnit'] ?? 'piece';
+
+    // Normalize unit value to match dropdown options
+    String rawUnit = product['baseUnit'] ?? product['masterProduct']?['baseUnit'] ?? 'piece';
+    String selectedUnit = _normalizeUnit(rawUnit);
 
     final result = await showDialog<bool>(
       context: context,
@@ -673,14 +885,16 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   helperText: 'Select unit type',
                 ),
                 items: const [
-                  DropdownMenuItem(value: 'piece', child: Text('Piece')),
-                  DropdownMenuItem(value: 'gram', child: Text('Gram')),
+                  DropdownMenuItem(value: 'piece', child: Text('Piece / PCS')),
+                  DropdownMenuItem(value: 'gram', child: Text('Gram (g)')),
                   DropdownMenuItem(value: 'kg', child: Text('Kilogram (KG)')),
-                  DropdownMenuItem(value: 'liter', child: Text('Liter')),
+                  DropdownMenuItem(value: 'liter', child: Text('Liter (L)')),
                   DropdownMenuItem(value: 'ml', child: Text('Milliliter (ML)')),
                   DropdownMenuItem(value: 'pack', child: Text('Pack')),
                   DropdownMenuItem(value: 'bottle', child: Text('Bottle')),
                   DropdownMenuItem(value: 'box', child: Text('Box')),
+                  DropdownMenuItem(value: 'dozen', child: Text('Dozen')),
+                  DropdownMenuItem(value: 'unit', child: Text('Unit')),
                 ],
                 onChanged: (value) {
                   setState(() {

@@ -1,16 +1,18 @@
+import 'package:flutter/foundation.dart' show kReleaseMode;
+
 class ApiConfig {
-  // Base URL for API calls
+  // Base URL for API calls (Development/Local)
   static const String baseUrl = 'http://172.25.224.1:8080/api';
 
-  // Web URL for Chrome testing
-  static const String webBaseUrl = 'http://172.25.224.1:8080/api';
+  // Web URL for Chrome testing - using production
+  static const String webBaseUrl = 'https://api.nammaoorudelivary.in/api';
 
-  // Production URL (LOCAL TESTING)
-  static const String prodBaseUrl = 'http://172.25.224.1:8080/api';
+  // Production URL
+  static const String prodBaseUrl = 'https://api.nammaoorudelivary.in/api';
 
   // Environment detection
   static bool get isWeb => identical(0, 0.0);
-  static bool get isProduction => false; // LOCAL MODE
+  static bool get isProduction => kReleaseMode; // FIXED: Use kReleaseMode for release builds
 
   // Get appropriate base URL based on environment
   static String get apiUrl {

@@ -60,45 +60,135 @@
   }
 }
 
+.loading-state {
+  text-align: center;
+  padding: 40px;
+
+  mat-spinner {
+    margin: 0 auto 16px;
+  }
+
+  p {
+    color: #666;
+    font-size: 14px;
+  }
+}
+
 .addresses-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
   .address-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    margin-bottom: 12px;
-    
-    &:last-child {
-      margin-bottom: 0;
+    background: #fff;
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 20px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+
+    &:hover {
+      border-color: #667eea;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+      transform: translateY(-2px);
     }
-    
-    .address-info {
-      flex: 1;
-      
-      h4 {
-        font-size: 16px;
-        font-weight: 500;
-        margin: 0 0 4px 0;
-        color: #333;
-      }
-      
-      p {
-        margin: 2px 0;
-        color: #666;
+
+    .address-header {
+      margin-bottom: 16px;
+
+      .address-type-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 20px;
         font-size: 14px;
-        
-        &.phone {
-          font-weight: 500;
-          color: #333;
+        font-weight: 500;
+
+        &.default {
+          background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+        }
+
+        mat-icon {
+          font-size: 18px;
+          width: 18px;
+          height: 18px;
+        }
+
+        .default-icon {
+          margin-left: 4px;
+          font-size: 16px;
+          width: 16px;
+          height: 16px;
         }
       }
     }
-    
+
+    .address-info {
+      flex: 1;
+
+      .address-details {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+
+        p {
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+          margin: 0;
+          color: #333;
+          font-size: 14px;
+          line-height: 1.6;
+
+          mat-icon {
+            color: #667eea;
+            font-size: 20px;
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+            margin-top: 2px;
+          }
+
+          &.contact-name {
+            font-weight: 600;
+            font-size: 16px;
+            color: #333;
+          }
+
+          &.contact-phone {
+            font-weight: 500;
+            color: #48bb78;
+          }
+
+          &.full-address {
+            color: #666;
+
+            span {
+              flex: 1;
+            }
+          }
+        }
+      }
+    }
+
     .address-actions {
       display: flex;
       gap: 8px;
+      justify-content: flex-end;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #f0f0f0;
+
+      button {
+        min-width: 40px;
+
+        &:hover {
+          background: rgba(102, 126, 234, 0.1);
+        }
+      }
     }
   }
 }

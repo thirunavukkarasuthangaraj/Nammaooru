@@ -1,21 +1,24 @@
 <div class="orders-page">
-  <!-- Page Header -->
+  <!-- Page Header with Tabs -->
   <mat-card class="page-header">
     <div class="header-container">
-      <button mat-stroked-button color="primary" class="back-button" (click)="continueShopping()">
-        <mat-icon>arrow_back</mat-icon>
-        Continue Shopping
-      </button>
       <div class="header-title">
         <mat-icon class="orders-icon">receipt_long</mat-icon>
         <h1>My Orders</h1>
       </div>
     </div>
+
+    <!-- Status Tabs -->
+    <mat-tab-group [selectedIndex]="getSelectedTabIndex()"
+                   (selectedIndexChange)="onTabChange(statusTabs[$event].key)"
+                   class="order-tabs">
+      <mat-tab *ngFor="let tab of statusTabs" [label]="tab.label"></mat-tab>
+    </mat-tab-group>
   </mat-card>
 
   <!-- Main Content -->
   <div class="orders-content">
-    
+
     <!-- Loading State -->
     <div *ngIf="loading" class="loading-container">
       <mat-spinner></mat-spinner>
@@ -24,84 +27,77 @@
 
     <!-- Empty State -->
     <div *ngIf="!loading && orders.length === 0" class="empty-state">
-      <mat-card class="empty-card">
-        <mat-icon class="empty-icon">shopping_basket</mat-icon>
-        <h2>No Orders Yet</h2>
-        <p>You haven't placed any orders yet. Start shopping to see your orders here!</p>
-        <button mat-raised-button color="primary" (click)="continueShopping()">
-          <mat-icon>store</mat-icon>
-          Start Shopping
-        </button>
-      </mat-card>
+      <mat-icon class="empty-icon">shopping_bag</mat-icon>
+      <h2>No Orders Yet</h2>
+      <p>You haven't placed any orders yet. Start shopping to see your orders here!</p>
+      <button mat-raised-button color="primary" (click)="continueShopping()">
+        <mat-icon>store</mat-icon>
+        Start Shopping
+      </button>
     </div>
 
     <!-- Orders List -->
     <div *ngIf="!loading && orders.length > 0" class="orders-list">
-      <mat-card class="order-card" *ngFor="let order of orders">
-        <mat-card-header>
-          <mat-card-title>
-            Order #{{order.orderNumber}}
-            <mat-chip [color]="getStatusColor(order.status)" selected>
-              <mat-icon class="status-icon">{{getStatusIcon(order.status)}}</mat-icon>
-              {{order.status}}
-            </mat-chip>
-          </mat-card-title>
-          <mat-card-subtitle>
-            Placed on {{order.createdAt | date:'medium'}}
-          </mat-card-subtitle>
-        </mat-card-header>
-        
-        <mat-card-content>
-          <div class="order-details">
-            <div class="shop-info">
-              <mat-icon>store</mat-icon>
-              <span>{{order.shopName || 'Shop'}}</span>
+      <mat-card class="order-card" *ngFor="let order of orders" [class.expanded]="isOrderExpanded(order)">
+        <mat-card-content (click)="viewOrderDetails(order)">
+          <!-- Order Header -->
+          <div class="order-header">
+            <div class="order-info">
+              <div class="order-number">Order #{{order.orderNumber}}</div>
+              <div class="order-date">{{formatDate(order.createdAt)}}</div>
             </div>
-            <div class="order-total">
-              <span class="label">Total:</span>
-              <span class="amount">₹{{order.totalAmount}}</span>
+            <div class="status-chip" [style.background-color]="getStatusColor(order.status)">
+              {{order.status}}
             </div>
           </div>
-          
-          <div class="order-items" *ngIf="order.items && order.items.length > 0">
-            <div class="item" *ngFor="let item of order.items.slice(0, 3)">
-              <span class="item-name">{{item.productName}}</span>
-              <span class="item-quantity">x{{item.quantity}}</span>
+
+          <!-- Order Items Summary -->
+          <div class="order-summary">
+            <div class="items-summary">
+              <span class="items-count">{{order.items?.length || 0}} item{{(order.items?.length || 0) > 1 ? 's' : ''}}</span>
+              <span class="items-preview">{{getItemsPreview(order)}}</span>
             </div>
-            <div class="more-items" *ngIf="order.items.length > 3">
-              +{{order.items.length - 3}} more items
+          </div>
+
+          <!-- Expandable Order Details -->
+          <div class="order-details" *ngIf="isOrderExpanded(order)">
+            <div class="details-header">
+              <mat-icon>receipt</mat-icon>
+              <span>Order Items</span>
+            </div>
+            <div class="items-list">
+              <div class="order-item" *ngFor="let item of order.items">
+                <img class="item-image"
+                     [src]="item.productImageUrl || '/assets/images/product-placeholder.jpg'"
+                     [alt]="item.productName"
+                     (error)="onImageError($event)">
+                <div class="item-info">
+                  <div class="item-name">{{item.productName}}</div>
+                  <div class="item-quantity">Qty: {{item.quantity}}</div>
+                </div>
+                <div class="item-price">₹{{item.totalPrice || (item.unitPrice * item.quantity)}}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Order Footer -->
+          <div class="order-footer">
+            <div class="amount-section">
+              <div class="total-amount">₹{{order.totalAmount}}</div>
+              <div class="payment-method">{{formatPaymentMethod(order.paymentMethod)}}</div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons" (click)="$event.stopPropagation()">
+              <button mat-stroked-button color="warn" class="compact-btn"
+                      *ngIf="canCancelOrder(order)"
+                      (click)="cancelOrder(order)">
+                <mat-icon>cancel</mat-icon>
+                Cancel
+              </button>
             </div>
           </div>
         </mat-card-content>
-        
-        <mat-card-actions>
-          <div class="action-buttons">
-            <button mat-button color="primary" (click)="trackOrder(order)">
-              <mat-icon>local_shipping</mat-icon>
-              Track Order
-            </button>
-            <button mat-button (click)="viewOrderDetails(order)">
-              <mat-icon>receipt</mat-icon>
-              View Details
-            </button>
-            <button mat-button 
-                    *ngIf="canCancelOrder(order)" 
-                    color="warn" 
-                    (click)="cancelOrder(order)"
-                    class="cancel-btn">
-              <mat-icon>cancel</mat-icon>
-              Cancel Order
-            </button>
-            <button mat-button 
-                    *ngIf="order.status === 'DELIVERED'" 
-                    color="accent"
-                    (click)="reorderItems(order)"
-                    class="reorder-btn">
-              <mat-icon>refresh</mat-icon>
-              Reorder
-            </button>
-          </div>
-        </mat-card-actions>
       </mat-card>
     </div>
   </div>

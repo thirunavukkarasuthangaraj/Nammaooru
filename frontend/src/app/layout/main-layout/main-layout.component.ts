@@ -312,45 +312,15 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     }
   ];
 
-  // Customer menu items
+  // Customer menu items - Simplified to 4 core features
   customerMenuItems = [
     {
       category: 'Main',
       items: [
-        { title: 'Browse Shops', icon: 'store', route: '/customer/shops', badge: null },
-        { title: 'All Products', icon: 'shopping_bag', route: '/products', badge: null }
-      ]
-    },
-    {
-      category: 'Orders',
-      items: [
-        { title: 'My Orders', icon: 'receipt_long', route: '/customer/orders', badge: null },
-        { title: 'Track Order', icon: 'local_shipping', route: '/customer/track', badge: null },
-        { title: 'Order History', icon: 'history', route: '/customer/order-history', badge: null }
-      ]
-    },
-    {
-      category: 'Shopping',
-      items: [
-        { title: 'My Cart', icon: 'shopping_cart', route: '/customer/cart', badge: null },
-        { title: 'Wishlist', icon: 'favorite', route: '/customer/wishlist', badge: null },
-        { title: 'Recently Viewed', icon: 'visibility', route: '/customer/recent', badge: null }
-      ]
-    },
-    {
-      category: 'Account',
-      items: [
-        { title: 'My Profile', icon: 'person', route: '/customer/profile', badge: null },
-        { title: 'Addresses', icon: 'location_on', route: '/customer/addresses', badge: null },
-        { title: 'Payment Methods', icon: 'payment', route: '/customer/payments', badge: null },
-        { title: 'Settings', icon: 'settings', route: '/settings', badge: null }
-      ]
-    },
-    {
-      category: 'Support',
-      items: [
-        { title: 'Help Center', icon: 'help', route: '/customer/help', badge: null },
-        { title: 'Contact Us', icon: 'support_agent', route: '/customer/contact', badge: null }
+        { title: 'Shop Browser', icon: 'store', route: '/customer/shops', badge: null },
+        { title: 'Orders', icon: 'receipt_long', route: '/customer/orders', badge: null },
+        { title: 'Cart', icon: 'shopping_cart', route: '/customer/cart', badge: null },
+        { title: 'Profile & Address', icon: 'person', route: '/customer/profile', badge: null }
       ]
     }
   ];

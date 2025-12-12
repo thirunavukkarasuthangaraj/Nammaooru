@@ -29,7 +29,7 @@ export class RegisterComponent implements OnInit {
       lastName: ['', [Validators.required, Validators.minLength(2)]],
       email: ['', [Validators.required, Validators.email]],
       mobile: ['', [Validators.required, Validators.pattern(/^[+]?[\d\s\-()]{10,}$/)]],
-      password: ['', [Validators.required, Validators.minLength(6)]]
+      password: ['', [Validators.required, Validators.minLength(8)]]
     });
   }
 
@@ -70,13 +70,20 @@ export class RegisterComponent implements OnInit {
       this.authService.register(registerData).subscribe({
         next: (response) => {
           this.isLoading = false;
-          this.snackBar.open('Registration successful!', 'Close', {
-            duration: 3000,
+          this.snackBar.open('Registration successful! Please verify your email with the OTP sent.', 'Close', {
+            duration: 5000,
             horizontalPosition: 'end',
             verticalPosition: 'top',
             panelClass: ['success-snackbar']
           });
-          this.redirectBasedOnRole();
+
+          // Navigate to OTP verification screen
+          this.router.navigate(['/auth/verify-otp'], {
+            queryParams: {
+              email: formData.email,
+              mobile: formData.mobile
+            }
+          });
         },
         error: (error) => {
           this.isLoading = false;

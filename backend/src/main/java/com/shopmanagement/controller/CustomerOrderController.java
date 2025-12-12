@@ -108,15 +108,17 @@ public class CustomerOrderController {
             
             // Find or create customer for this user
             // First try to find by mobile number (since that's unique), then by email
+            log.info("Searching for customer by mobile: {}", authenticatedUser.getMobileNumber());
             Optional<Customer> customerOpt = customerService.findCustomerByEmailOrMobile(authenticatedUser.getMobileNumber());
             if (!customerOpt.isPresent()) {
+                log.info("Customer not found by mobile, trying email: {}", authenticatedUser.getEmail());
                 customerOpt = customerService.findCustomerByEmailOrMobile(authenticatedUser.getEmail());
             }
-            
+
             Customer customer;
             if (customerOpt.isPresent()) {
                 customer = customerOpt.get();
-                log.debug("Found existing customer ID: {} with mobile: {} and email: {}", 
+                log.info("✓ Found existing customer ID: {} with mobile: {} and email: {}",
                          customer.getId(), customer.getMobileNumber(), customer.getEmail());
             } else {
                 // Create a customer record for this user
@@ -238,41 +240,56 @@ public class CustomerOrderController {
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String status,
             Authentication authentication) {
-        
+
         try {
+            log.info("========== GET MY ORDERS REQUEST ==========");
+            log.info("Request params - customerId: {}, page: {}, size: {}, status: {}", customerId, page, size, status);
+            log.info("Authentication: {}", authentication != null ? authentication.getName() : "null");
+
             Long finalCustomerId = customerId;
-            
+
             // If no customerId provided, get from authenticated user
             if (finalCustomerId == null && authentication != null && authentication.isAuthenticated()) {
                 String username = authentication.getName();
+                log.info("Looking up user with username: {}", username);
+
                 User authenticatedUser = userRepository.findByUsername(username).orElse(null);
                 if (authenticatedUser != null) {
+                    log.info("Found authenticated user - ID: {}, Email: {}, Mobile: {}",
+                             authenticatedUser.getId(), authenticatedUser.getEmail(), authenticatedUser.getMobileNumber());
+
                     // Find customer by email or mobile number
+                    log.info("Searching for customer by email: {}", authenticatedUser.getEmail());
                     Optional<Customer> customerOpt = customerService.findCustomerByEmailOrMobile(authenticatedUser.getEmail());
                     if (!customerOpt.isPresent()) {
+                        log.info("Customer not found by email, trying mobile: {}", authenticatedUser.getMobileNumber());
                         customerOpt = customerService.findCustomerByEmailOrMobile(authenticatedUser.getMobileNumber());
                     }
                     if (customerOpt.isPresent()) {
                         finalCustomerId = customerOpt.get().getId();
-                        log.info("Found customer ID {} for authenticated user {}", finalCustomerId, username);
+                        log.info("✓ Found customer ID {} for authenticated user {}", finalCustomerId, username);
                     } else {
-                        log.warn("No customer record found for authenticated user: {}", username);
+                        log.warn("✗ No customer record found for authenticated user: {} (email: {}, mobile: {})",
+                                 username, authenticatedUser.getEmail(), authenticatedUser.getMobileNumber());
                         return ResponseUtil.success(Page.empty(), "No orders found");
                     }
                 } else {
-                    log.error("Authenticated user not found: {}", username);
+                    log.error("✗ Authenticated user not found in database: {}", username);
                     return ResponseUtil.error("User not found");
                 }
             }
-            
-            log.info("Getting orders for customer ID: {} with status filter: {}", finalCustomerId, status);
+
+            log.info("Fetching orders for customer ID: {} with status filter: {}", finalCustomerId, status);
 
             Page<OrderResponse> orders = orderService.getOrdersByCustomer(finalCustomerId, page, size, status);
-            
+
+            log.info("✓ Retrieved {} orders for customer ID: {}", orders.getTotalElements(), finalCustomerId);
+            log.info("==========================================");
+
             return ResponseUtil.success(orders, "Orders retrieved successfully");
-            
+
         } catch (Exception e) {
-            log.error("Error retrieving customer orders", e);
+            log.error("✗ Error retrieving customer orders", e);
             return ResponseUtil.error("Failed to retrieve orders");
         }
     }

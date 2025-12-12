@@ -200,4 +200,17 @@
       </mat-card>
     </div>
   </div>
+
+  <!-- Floating Cart Button (Right Side) -->
+  <button mat-fab
+          extended
+          color="accent"
+          class="floating-cart-button"
+          *ngIf="cartItemCount > 0"
+          (click)="goToCart()">
+    <mat-icon>shopping_cart</mat-icon>
+    <span class="cart-text">
+      {{cartItemCount}} {{cartItemCount === 1 ? 'item' : 'items'}} | ₹{{cartTotal}}
+    </span>
+  </button>
 </div>

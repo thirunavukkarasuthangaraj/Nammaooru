@@ -160,12 +160,27 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         next: async (response) => {
           if (response && response.id) {
             this.orderResponse = response;
-            this.orderPlaced = true;
             this.placingOrder = false;
+
+            // Show success message
+            Swal.fire({
+              title: 'Order Placed Successfully!',
+              text: `Your order #${response.orderNumber} has been placed.`,
+              icon: 'success',
+              confirmButtonText: 'View Orders',
+              showCancelButton: true,
+              cancelButtonText: 'Continue Shopping'
+            }).then((result) => {
+              if (result.isConfirmed) {
+                this.router.navigate(['/customer/orders']);
+              } else {
+                this.router.navigate(['/customer/shops']);
+              }
+            });
 
             // Send Firebase notification
             await this.sendOrderNotification(response);
-            
+
             // Process payment if not COD
             if (this.selectedPaymentMethod !== 'CASH_ON_DELIVERY') {
               this.processPayment(response.id);

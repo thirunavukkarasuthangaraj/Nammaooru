@@ -5,6 +5,15 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { environment } from '../../../../../environments/environment';
 import Swal from 'sweetalert2';
 
+interface OrderItem {
+  id: number;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  productImageUrl?: string;
+}
+
 interface Order {
   id: number;
   orderNumber: string;
@@ -12,7 +21,9 @@ interface Order {
   totalAmount: number;
   status: string;
   createdAt: string;
-  items: any[];
+  paymentMethod: string;
+  orderItems?: OrderItem[];
+  items?: any[];  // For backward compatibility
 }
 
 @Component({
@@ -23,6 +34,18 @@ interface Order {
 export class OrdersListComponent implements OnInit {
   orders: Order[] = [];
   loading = false;
+  selectedStatus: string | null = null;
+  expandedOrderId: number | null = null;
+
+  statusTabs = [
+    { key: null, label: 'All' },
+    { key: 'PENDING', label: 'Pending' },
+    { key: 'CONFIRMED', label: 'Confirmed' },
+    { key: 'PREPARING', label: 'Preparing' },
+    { key: 'OUT_FOR_DELIVERY', label: 'Out for Delivery' },
+    { key: 'DELIVERED', label: 'Delivered' },
+    { key: 'CANCELLED', label: 'Cancelled' }
+  ];
 
   constructor(
     private router: Router,
@@ -34,46 +57,73 @@ export class OrdersListComponent implements OnInit {
     this.loadOrders();
   }
 
+  onTabChange(status: string | null): void {
+    this.selectedStatus = status;
+    this.loadOrders();
+  }
+
   loadOrders(): void {
     this.loading = true;
-    const user = JSON.parse(localStorage.getItem('shop_management_user') || localStorage.getItem('currentUser') || '{}');
-    let customerId = user.customerId || user.id;
-    
-    // For testing with customer1, use hardcoded customer ID
-    if (user.username === 'customer1') {
-      customerId = 56; // Use the correct customer ID from database
+
+    // Use the correct API endpoint - backend gets customerId from authentication
+    const token = localStorage.getItem('shop_management_token');
+    const headers: { [key: string]: string } = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
-    
-    if (customerId) {
-      this.http.get<any>(`${environment.apiUrl}/orders/customer/${customerId}`)
-        .subscribe({
-          next: (response) => {
-            this.orders = response.content || [];
-            this.loading = false;
-          },
-          error: (error) => {
-            console.error('Error loading orders:', error);
-            // For testing, show mock order if API fails
-            this.orders = [
-              {
-                id: 1,
-                orderNumber: 'ORD-2024-TEST01',
-                shopName: 'Test Grocery Store',
-                totalAmount: 565,
-                status: 'CONFIRMED',
-                createdAt: new Date().toISOString(),
-                items: [
-                  { productName: 'Coffee Beans Arabica', quantity: 1 },
-                  { productName: 'Dell Laptop XPS 13', quantity: 1 }
-                ]
-              }
-            ];
-            this.loading = false;
+
+    // Add status filter to API call
+    const statusParam = this.selectedStatus ? `?status=${this.selectedStatus}` : '';
+
+    console.log('Fetching orders with status:', this.selectedStatus);
+    console.log('API URL:', `${environment.apiUrl}/customer/orders${statusParam}`);
+    console.log('Headers:', headers);
+
+    this.http.get<any>(`${environment.apiUrl}/customer/orders${statusParam}`, { headers })
+      .subscribe({
+        next: (response) => {
+          console.log('Orders API response:', response);
+          console.log('Response type:', typeof response);
+          console.log('Response keys:', Object.keys(response || {}));
+
+          // Backend returns statusCode "0000" for success, not a success boolean
+          if (response && response.statusCode === "0000" && response.data) {
+            console.log('Response data:', response.data);
+            console.log('Response data.content:', response.data.content);
+
+            // response.data is a Page object with content array
+            const rawOrders = response.data.content || [];
+            console.log('Raw orders count:', rawOrders.length);
+
+            // Map orderItems to items for template compatibility
+            this.orders = rawOrders.map((order: any) => ({
+              ...order,
+              items: order.orderItems || order.items || []
+            }));
+            console.log('Processed orders:', this.orders);
+          } else if (Array.isArray(response)) {
+            // Handle case where response is directly an array
+            console.log('Response is an array, processing directly');
+            this.orders = response.map((order: any) => ({
+              ...order,
+              items: order.orderItems || order.items || []
+            }));
+          } else {
+            console.log('No orders found in response or error occurred');
+            console.log('StatusCode:', response?.statusCode);
+            this.orders = [];
           }
-        });
-    } else {
-      this.loading = false;
-    }
+          this.loading = false;
+        },
+        error: (error) => {
+          console.error('Error loading orders:', error);
+          console.error('Error status:', error.status);
+          console.error('Error message:', error.message);
+          this.orders = [];
+          this.loading = false;
+          this.snackBar.open('Failed to load orders', 'Close', { duration: 3000 });
+        }
+      });
   }
 
   trackOrder(order: Order): void {
@@ -86,16 +136,16 @@ export class OrdersListComponent implements OnInit {
 
   getStatusColor(status: string): string {
     const statusColors: { [key: string]: string } = {
-      'PENDING': 'warn',
-      'CONFIRMED': 'primary',
-      'PREPARING': 'accent',
-      'READY_FOR_PICKUP': 'primary',
-      'OUT_FOR_DELIVERY': 'primary',
-      'DELIVERED': 'primary',
-      'CANCELLED': 'warn',
-      'REFUNDED': 'warn'
+      'PENDING': '#FF9800',      // Orange
+      'CONFIRMED': '#2196F3',    // Blue
+      'PREPARING': '#9C27B0',    // Purple
+      'READY_FOR_PICKUP': '#2196F3',
+      'OUT_FOR_DELIVERY': '#2196F3',
+      'DELIVERED': '#4CAF50',    // Green
+      'CANCELLED': '#F44336',    // Red
+      'REFUNDED': '#F44336'
     };
-    return statusColors[status] || 'basic';
+    return statusColors[status] || '#9E9E9E';
   }
 
   getStatusIcon(status: string): string {
@@ -110,6 +160,50 @@ export class OrdersListComponent implements OnInit {
       'REFUNDED': 'money_off'
     };
     return statusIcons[status] || 'info';
+  }
+
+  formatDate(dateString: string): string {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) {
+      return `Today, ${this.formatTime(date)}`;
+    } else if (diffDays === 1) {
+      return `Yesterday, ${this.formatTime(date)}`;
+    } else if (diffDays < 7) {
+      return `${diffDays} days ago`;
+    } else {
+      return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
+    }
+  }
+
+  formatTime(date: Date): string {
+    let hour = date.getHours();
+    const minute = date.getMinutes();
+    const period = hour >= 12 ? 'PM' : 'AM';
+    hour = hour > 12 ? hour - 12 : hour;
+    hour = hour === 0 ? 12 : hour;
+    return `${hour}:${minute.toString().padStart(2, '0')} ${period}`;
+  }
+
+  getItemsPreview(order: Order): string {
+    if (!order.items || order.items.length === 0) {
+      return '';
+    }
+    const items = order.items.slice(0, 2);
+    const names = items.map(item => item.productName).join(', ');
+    return order.items.length > 2 ? names + '...' : names;
+  }
+
+  getSelectedTabIndex(): number {
+    return this.statusTabs.findIndex(tab => tab.key === this.selectedStatus);
+  }
+
+  formatPaymentMethod(paymentMethod: string): string {
+    if (!paymentMethod) return '';
+    return paymentMethod.replace(/_/g, ' ');
   }
 
   canCancelOrder(order: Order): boolean {
@@ -159,8 +253,8 @@ export class OrdersListComponent implements OnInit {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    this.http.put(`${environment.apiUrl}/orders/${order.id}/cancel?reason=${encodeURIComponent(reason)}`, 
-      {},
+    this.http.post(`${environment.apiUrl}/customer/orders/${order.id}/cancel`,
+      { reason: reason },
       { headers }
     ).subscribe({
       next: (response) => {
@@ -209,7 +303,20 @@ export class OrdersListComponent implements OnInit {
   }
 
   viewOrderDetails(order: Order): void {
-    // Navigate to order details page
-    this.router.navigate(['/customer/order-details', order.id]);
+    // Toggle expansion of order details
+    if (this.expandedOrderId === order.id) {
+      this.expandedOrderId = null;
+    } else {
+      this.expandedOrderId = order.id;
+    }
+  }
+
+  isOrderExpanded(order: Order): boolean {
+    return this.expandedOrderId === order.id;
+  }
+
+  onImageError(event: Event): void {
+    const target = event.target as HTMLImageElement;
+    target.src = '/assets/images/product-placeholder.jpg';
   }
 }

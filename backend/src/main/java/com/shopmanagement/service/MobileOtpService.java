@@ -202,31 +202,52 @@ public class MobileOtpService {
     // Resend OTP
     public Map<String, Object> resendOtp(String mobileNumber, String purpose, String deviceId) {
         log.info("Resending OTP for mobile: {} and purpose: {}", mobileNumber, purpose);
-        
+
         try {
-            // Check rate limiting
             MobileOtp.OtpPurpose otpPurpose = MobileOtp.OtpPurpose.valueOf(purpose);
-            LocalDateTime fromTime = LocalDateTime.now().minusMinutes(rateLimitMinutes);
-            
-            Long recentOtpCount = otpRepository.countOtpsSentInTimeFrame(mobileNumber, otpPurpose, fromTime);
-            if (recentOtpCount > 0) {
-                return Map.of(
-                    "success", false,
-                    "message", "Please wait before requesting another OTP",
-                    "errorCode", "RATE_LIMIT_EXCEEDED",
-                    "canRetryAfter", rateLimitMinutes * 60
-                );
+
+            // Check if there's a valid OTP that can still be attempted
+            Optional<MobileOtp> validOtp = otpRepository.findValidOtp(mobileNumber, otpPurpose, LocalDateTime.now());
+
+            boolean canUseExistingOtp = false;
+            if (validOtp.isPresent()) {
+                MobileOtp otp = validOtp.get();
+                // Check if the OTP can still be attempted (not max attempts reached)
+                if (otp.canAttempt()) {
+                    canUseExistingOtp = true;
+                    log.info("Valid OTP exists for mobile: {} that can still be attempted", mobileNumber);
+                } else {
+                    log.info("Valid OTP exists but max attempts reached for mobile: {}", mobileNumber);
+                }
             }
-            
+
+            // Only apply rate limiting if there's a usable OTP
+            if (canUseExistingOtp) {
+                LocalDateTime fromTime = LocalDateTime.now().minusMinutes(rateLimitMinutes);
+                Long recentOtpCount = otpRepository.countOtpsSentInTimeFrame(mobileNumber, otpPurpose, fromTime);
+                if (recentOtpCount > 0) {
+                    return Map.of(
+                        "success", false,
+                        "message", "Please wait before requesting another OTP",
+                        "errorCode", "RATE_LIMIT_EXCEEDED",
+                        "canRetryAfter", rateLimitMinutes * 60
+                    );
+                }
+            }
+
+            // Invalidate all previous OTPs before generating new one
+            log.info("Invalidating previous OTPs for mobile: {} and purpose: {}", mobileNumber, otpPurpose);
+            otpRepository.deactivatePreviousOtps(mobileNumber, otpPurpose);
+
             // Create resend request
             MobileOtpRequest resendRequest = MobileOtpRequest.builder()
                     .mobileNumber(mobileNumber)
                     .purpose(purpose)
                     .deviceId(deviceId)
                     .build();
-            
+
             return generateAndSendOtp(resendRequest);
-            
+
         } catch (Exception e) {
             log.error("Error resending OTP for mobile: {}", mobileNumber, e);
             return Map.of(
@@ -240,13 +261,27 @@ public class MobileOtpService {
     // Validate rate limiting
     private void validateRateLimit(MobileOtpRequest request) {
         MobileOtp.OtpPurpose purpose = MobileOtp.OtpPurpose.valueOf(request.getPurpose());
-        
-        // Check requests in the last few minutes
-        LocalDateTime fromTime = LocalDateTime.now().minusMinutes(rateLimitMinutes);
-        Long recentCount = otpRepository.countOtpsSentInTimeFrame(request.getMobileNumber(), purpose, fromTime);
-        
-        if (recentCount > 0) {
-            throw new RuntimeException("Please wait " + rateLimitMinutes + " minutes before requesting another OTP");
+
+        // Check if there's a valid OTP that can still be attempted
+        Optional<MobileOtp> validOtp = otpRepository.findValidOtp(request.getMobileNumber(), purpose, LocalDateTime.now());
+
+        boolean canUseExistingOtp = false;
+        if (validOtp.isPresent()) {
+            MobileOtp otp = validOtp.get();
+            // Check if the OTP can still be attempted (not max attempts reached)
+            if (otp.canAttempt()) {
+                canUseExistingOtp = true;
+            }
+        }
+
+        // Only enforce rate limit if there's a usable existing OTP
+        if (canUseExistingOtp) {
+            LocalDateTime fromTime = LocalDateTime.now().minusMinutes(rateLimitMinutes);
+            Long recentCount = otpRepository.countOtpsSentInTimeFrame(request.getMobileNumber(), purpose, fromTime);
+
+            if (recentCount > 0) {
+                throw new RuntimeException("Please wait " + rateLimitMinutes + " minutes before requesting another OTP");
+            }
         }
         
         // Check hourly limit

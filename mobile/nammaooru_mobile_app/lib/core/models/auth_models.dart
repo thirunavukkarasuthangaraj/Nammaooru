@@ -30,17 +30,27 @@ class RegisterRequest {
 class LoginRequest {
   final String username;
   final String password;
+  final String? identifier; // Can be email or mobile number
 
   LoginRequest({
     required this.username,
     required this.password,
+    this.identifier,
   });
 
   Map<String, dynamic> toJson() {
-    return {
-      'username': username,
+    final json = {
       'password': password,
     };
+
+    // Prefer identifier over username if provided
+    if (identifier != null && identifier!.isNotEmpty) {
+      json['identifier'] = identifier!;
+    } else {
+      json['username'] = username;
+    }
+
+    return json;
   }
 }
 

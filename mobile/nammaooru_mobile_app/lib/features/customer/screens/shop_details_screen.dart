@@ -286,6 +286,16 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                               ),
                             ),
                           ),
+                          // Voice Search Icon in toolbar
+                          IconButton(
+                            icon: Icon(
+                              _isVoiceSearching ? Icons.mic : Icons.mic_none,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                            onPressed: _isVoiceSearching ? null : _showVoiceSearchDialog,
+                            tooltip: 'Voice Search',
+                          ),
                         ],
                       ),
                     ),
@@ -297,109 +307,126 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                 ),
       floatingActionButton: Consumer<CartProvider>(
         builder: (context, cartProvider, child) {
-          // Only show floating button when cart has items
-          if (cartProvider.isEmpty) {
-            return const SizedBox.shrink();
-          }
-
-          return Container(
-            margin: const EdgeInsets.only(bottom: 16),
-            child: Material(
-              elevation: 8,
-              borderRadius: BorderRadius.circular(28),
-              child: InkWell(
-                onTap: () {
-                  context.push('/customer/cart');
-                },
-                borderRadius: BorderRadius.circular(28),
-                child: Container(
-                  height: 56,
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        VillageTheme.primaryGreen,
-                        VillageTheme.primaryGreen.withBlue(150),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(28),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          const Icon(
-                            Icons.shopping_cart,
-                            color: Colors.white,
-                            size: 24,
-                          ),
-                          Positioned(
-                            right: -8,
-                            top: -8,
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: Colors.red,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white,
-                                  width: 2,
-                                ),
-                              ),
-                              constraints: const BoxConstraints(
-                                minWidth: 20,
-                                minHeight: 20,
-                              ),
-                              child: Text(
-                                '${cartProvider.itemCount}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'View Cart',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.25),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '₹${cartProvider.total.toStringAsFixed(0)}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              // Voice Search Floating Button (always visible)
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                child: FloatingActionButton(
+                  heroTag: 'voice_search_fab',
+                  onPressed: _isVoiceSearching ? null : _showVoiceSearchDialog,
+                  backgroundColor: VillageTheme.primaryGreen,
+                  child: Icon(
+                    _isVoiceSearching ? Icons.mic : Icons.mic_none,
+                    color: Colors.white,
+                    size: 28,
                   ),
                 ),
               ),
-            ),
+              // View Cart Button (only when cart has items)
+              if (!cartProvider.isEmpty)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  child: Material(
+                    elevation: 8,
+                    borderRadius: BorderRadius.circular(28),
+                    child: InkWell(
+                      onTap: () {
+                        context.push('/customer/cart');
+                      },
+                      borderRadius: BorderRadius.circular(28),
+                      child: Container(
+                        height: 56,
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              VillageTheme.primaryGreen,
+                              VillageTheme.primaryGreen.withBlue(150),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(28),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                const Icon(
+                                  Icons.shopping_cart,
+                                  color: Colors.white,
+                                  size: 24,
+                                ),
+                                Positioned(
+                                  right: -8,
+                                  top: -8,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    constraints: const BoxConstraints(
+                                      minWidth: 20,
+                                      minHeight: 20,
+                                    ),
+                                    child: Text(
+                                      '${cartProvider.itemCount}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'View Cart',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.25),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                '₹${cartProvider.total.toStringAsFixed(0)}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           );
         },
       ),
@@ -1672,6 +1699,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     bool isSearching = false;
     String searchStatus = ''; // Track: 'listening', 'searching'
     String? searchQuery;
+    final scrollController = ScrollController(); // Add scroll controller to ensure list starts at top
+    final parentContext = context; // Capture parent context for Provider access
 
     showDialog(
       context: context,
@@ -1750,6 +1779,10 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                               searchStatus = '';
                               voiceResults = results;
                             });
+                            // Scroll to top of results list
+                            if (results.isNotEmpty && scrollController.hasClients) {
+                              scrollController.jumpTo(0);
+                            }
                           },
                           child: Container(
                             padding: const EdgeInsets.all(16),
@@ -1819,12 +1852,13 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                           const SizedBox(height: 8),
                           Flexible(
                             child: ListView.builder(
+                              controller: scrollController, // Use scroll controller to start at top
                               shrinkWrap: true,
                               itemCount: voiceResults.length,
                               itemBuilder: (context, index) {
                                 final product = voiceResults[index];
                                 final inStock = product['inStock'] ?? product['isAvailable'] ?? true;
-                                final languageProvider = Provider.of<LanguageProvider>(context);
+                                final languageProvider = Provider.of<LanguageProvider>(parentContext, listen: false);
                                 final displayName = languageProvider.getDisplayName(product);
                                 final price = product['price'] ?? 0;
                                 String? imageUrl = product['primaryImageUrl'] ?? product['masterProduct']?['primaryImageUrl'];
@@ -1845,13 +1879,14 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                                     title: Text(displayName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
                                     subtitle: Text('₹$price', style: const TextStyle(fontSize: 12, color: Color(0xFF2E7D32), fontWeight: FontWeight.bold)),
                                     trailing: inStock
-                                        ? Consumer<CartProvider>(
-                                            builder: (context, cartProvider, child) {
+                                        ? Builder(
+                                            builder: (builderContext) {
+                                              final cartProvider = Provider.of<CartProvider>(parentContext);
                                               final productId = product['id'].toString();
                                               final qty = cartProvider.getQuantity(productId);
                                               final productModel = ProductModel(
                                                 id: productId, name: displayName, description: '', price: price,
-                                                category: '', shopId: widget.shopId.toString(), shopName: widget.shop?['name'] ?? 'Shop',
+                                                category: '', shopId: _shop?['shopId']?.toString() ?? widget.shopId.toString(), shopName: _shop?['name']?.toString() ?? widget.shop?['name'] ?? 'Shop',
                                                 images: imageUrl != null ? [imageUrl] : [], stockQuantity: product['stockQuantity'] ?? 999,
                                                 createdAt: DateTime.now(), updatedAt: DateTime.now(),
                                               );
@@ -1859,7 +1894,21 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                                                 return SizedBox(
                                                   width: 50, height: 28,
                                                   child: ElevatedButton(
-                                                    onPressed: () => cartProvider.addToCart(productModel),
+                                                    onPressed: () async {
+                                                      print('🛒 Voice Search: Adding ${productModel.name} to cart');
+                                                      print('🛒 Voice Search: ShopId=${productModel.shopId}');
+                                                      try {
+                                                        final success = await cartProvider.addToCart(productModel);
+                                                        print('🛒 Voice Search: Add result=$success');
+                                                        if (success) {
+                                                          setState(() {}); // Trigger dialog rebuild
+                                                        } else {
+                                                          print('❌ Voice Search: Failed to add to cart');
+                                                        }
+                                                      } catch (e) {
+                                                        print('❌ Voice Search: Error adding to cart: $e');
+                                                      }
+                                                    },
                                                     style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2E7D32), padding: EdgeInsets.zero),
                                                     child: const Text('ADD', style: TextStyle(fontSize: 10, color: Colors.white)),
                                                   ),
@@ -1871,16 +1920,28 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                                                 child: Row(
                                                   mainAxisSize: MainAxisSize.min,
                                                   children: [
-                                                    GestureDetector(onTap: () => cartProvider.decreaseQuantity(productId), child: const Padding(padding: EdgeInsets.symmetric(horizontal: 6), child: Icon(Icons.remove, color: Colors.white, size: 16))),
+                                                    GestureDetector(
+                                                      onTap: () {
+                                                        cartProvider.decreaseQuantity(productId);
+                                                        setState(() {}); // Trigger dialog rebuild
+                                                      },
+                                                      child: const Padding(padding: EdgeInsets.symmetric(horizontal: 6), child: Icon(Icons.remove, color: Colors.white, size: 16)),
+                                                    ),
                                                     Text('$qty', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-                                                    GestureDetector(onTap: () => cartProvider.increaseQuantity(productId), child: const Padding(padding: EdgeInsets.symmetric(horizontal: 6), child: Icon(Icons.add, color: Colors.white, size: 16))),
+                                                    GestureDetector(
+                                                      onTap: () {
+                                                        cartProvider.increaseQuantity(productId);
+                                                        setState(() {}); // Trigger dialog rebuild
+                                                      },
+                                                      child: const Padding(padding: EdgeInsets.symmetric(horizontal: 6), child: Icon(Icons.add, color: Colors.white, size: 16)),
+                                                    ),
                                                   ],
                                                 ),
                                               );
                                             },
                                           )
                                         : const Text('Out', style: TextStyle(fontSize: 10, color: Colors.red)),
-                                    onTap: () => Navigator.pop(dialogContext),
+                                    // Removed onTap to keep dialog open when clicking products
                                   ),
                                 );
                               },
@@ -1935,6 +1996,10 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                               searchStatus = '';
                               voiceResults = results;
                             });
+                            // Scroll to top of results list
+                            if (results.isNotEmpty && scrollController.hasClients) {
+                              scrollController.jumpTo(0);
+                            }
                           },
                           icon: const Icon(Icons.mic, size: 16),
                           label: const Text('Try Again', style: TextStyle(fontSize: 12)),

@@ -3,8 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:ui';
 import '../providers/forgot_password_provider.dart';
-import '../../../core/providers/auth_provider.dart';
-import '../../../core/models/auth_models.dart';
+import '../../../core/auth/auth_provider.dart';
 import 'dart:async';
 
 class ForgotPasswordScreen extends StatefulWidget {
@@ -544,8 +543,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         if (value == null || value.isEmpty) {
           return 'Please enter a password';
         }
-        if (value.length < 6) {
-          return 'Password must be at least 6 characters';
+        if (value.length < 8) {
+          return 'Password must be at least 8 characters';
         }
         return null;
       },
@@ -556,7 +555,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           fontSize: 14,
           fontWeight: FontWeight.w500,
         ),
-        hintText: 'Minimum 6 characters',
+        hintText: 'Minimum 8 characters',
         hintStyle: const TextStyle(
           color: Color(0xFF999999),
           fontSize: 16,
@@ -759,39 +758,81 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         _passwordController.text,
       );
 
-      if (mounted) {
-        if (success) {
+      if (!mounted) return;
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Password updated successfully! Logging you in...'),
+            backgroundColor: Color(0xFF4CAF50),
+            duration: Duration(seconds: 1),
+          ),
+        );
+
+        // Wait for snackbar to be visible
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (!mounted) return;
+
+        // Auto-login after successful password reset
+        debugPrint('🔐 Starting auto-login process...');
+        debugPrint('📧 Mobile number: ${provider.email}');
+
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+        debugPrint('🔑 Calling login with mobile number and new password...');
+
+        try {
+          // Use the old AuthProvider's login method (email, password)
+          final loginSuccess = await authProvider.login(
+            provider.email,  // mobile number
+            _passwordController.text,  // new password
+          );
+
+          debugPrint('✅ Login result: $loginSuccess');
+
+          if (!mounted) return;
+
+          if (loginSuccess) {
+            debugPrint('🎉 Login successful! Navigating to dashboard...');
+            debugPrint('🏠 Home route: ${authProvider.getHomeRoute()}');
+
+            // Small delay to ensure state is updated
+            await Future.delayed(const Duration(milliseconds: 300));
+            if (!mounted) return;
+
+            // Navigate to appropriate dashboard based on user role
+            context.go(authProvider.getHomeRoute());
+            debugPrint('🚀 Navigation completed');
+          } else {
+            debugPrint('❌ Login failed: ${authProvider.errorMessage}');
+            // If auto-login fails, redirect to login screen
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(authProvider.errorMessage ?? 'Please login with your new password'),
+                backgroundColor: const Color(0xFFFF9800),
+              ),
+            );
+
+            await Future.delayed(const Duration(seconds: 1));
+            if (!mounted) return;
+
+            context.go('/login');
+          }
+        } catch (e) {
+          debugPrint('Auto-login error: $e');
+          if (!mounted) return;
+
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Password updated successfully! Logging you in...'),
-              backgroundColor: Color(0xFF4CAF50),
-              duration: Duration(seconds: 2),
+              content: Text('Password reset successful. Please login with your new password'),
+              backgroundColor: Color(0xFFFF9800),
             ),
           );
 
-          // Auto-login after successful password reset
-          final authProvider = Provider.of<AuthProvider>(context, listen: false);
-          final loginRequest = LoginRequest(
-            username: provider.email,
-            password: _passwordController.text,
-          );
-          final loginSuccess = await authProvider.login(loginRequest);
+          await Future.delayed(const Duration(seconds: 1));
+          if (!mounted) return;
 
-          if (mounted) {
-            if (loginSuccess) {
-              // Navigate to customer dashboard after auto-login
-              context.go('/customer/dashboard');
-            } else {
-              // If auto-login fails, redirect to login screen
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Please login with your new password'),
-                  backgroundColor: Color(0xFFFF9800),
-                ),
-              );
-              context.go('/login');
-            }
-          }
+          context.go('/login');
         }
       }
     }

@@ -1,79 +1,56 @@
--- Update category sort order
--- Order: Grocery, Masala, Oil, Atta, Milk, Vegetables, Others
+-- Update category sort order based on Grocery_App_Final_Order_With_Images.xlsx
+-- Exact order as per Excel file
 
--- 1. Grocery/Staples categories (sort_order 1-5)
-UPDATE product_categories
-SET sort_order = 1, updated_at = NOW()
-WHERE name IN ('Staples', 'Rice', 'Dals & Pulses', 'Canned Goods', 'Dried Goods',
-               'Salt & Sugar', 'Syrups & Sweeteners', 'Millets');
-
--- 2. Masala/Spices categories (sort_order 6-10)
-UPDATE product_categories
-SET sort_order = 6, updated_at = NOW()
-WHERE name IN ('Spices', 'Masala Mixes', 'Pickles & Pastes', 'Sauces & Condiments');
-
--- 3. Oil categories (sort_order 11-15)
-UPDATE product_categories
-SET sort_order = 11, updated_at = NOW()
-WHERE name IN ('Cooking Oil');
-
--- 4. Atta/Flour categories (sort_order 16-20)
-UPDATE product_categories
-SET sort_order = 16, updated_at = NOW()
-WHERE name IN ('Flours & Grains', 'Pasta & Vermicelli', 'Ready Mixes',
-               'Breakfast Cereals', 'Baking Needs');
-
--- 5. Milk/Dairy categories (sort_order 21-30)
-UPDATE product_categories
-SET sort_order = 21, updated_at = NOW()
-WHERE LOWER(name) LIKE '%milk%' OR LOWER(name) LIKE '%dairy%' OR LOWER(name) LIKE '%curd%'
-   OR LOWER(name) LIKE '%yogurt%' OR LOWER(name) LIKE '%paneer%' OR LOWER(name) LIKE '%cheese%'
-   OR LOWER(name) LIKE '%butter%' OR name LIKE 'Frozen & Dairy';
-
--- 6. Vegetables categories (sort_order 31-35)
-UPDATE product_categories
-SET sort_order = 31, updated_at = NOW()
-WHERE LOWER(name) LIKE '%vegetable%' OR LOWER(name) LIKE '%veggie%';
-
--- 7. Fruits (sort_order 36-40)
-UPDATE product_categories
-SET sort_order = 36, updated_at = NOW()
-WHERE LOWER(name) LIKE '%fruit%' OR name = 'Dry Fruits & Nuts';
-
--- 8. Beverages (sort_order 41-50)
-UPDATE product_categories
-SET sort_order = 41, updated_at = NOW()
-WHERE LOWER(name) LIKE '%beverage%' OR LOWER(name) LIKE '%drink%' OR LOWER(name) LIKE '%juice%'
-   OR LOWER(name) LIKE '%tea%' OR LOWER(name) LIKE '%coffee%' OR name IN ('Tea', 'Coffee', 'Health Drinks', 'Juices & Drinks');
-
--- 9. Snacks (sort_order 51-60)
-UPDATE product_categories
-SET sort_order = 51, updated_at = NOW()
-WHERE LOWER(name) LIKE '%snack%' OR LOWER(name) LIKE '%chips%' OR LOWER(name) LIKE '%biscuit%'
-   OR LOWER(name) LIKE '%cookie%' OR name IN ('Biscuits & Cookies', 'Chips & Crisps', 'Savory Snacks (Namkeen)', 'Confectionery');
-
--- 10. Bakery (sort_order 61-70)
-UPDATE product_categories
-SET sort_order = 61, updated_at = NOW()
-WHERE LOWER(name) LIKE '%bakery%' OR LOWER(name) LIKE '%bread%' OR LOWER(name) LIKE '%cake%'
-   OR name IN ('Bakery & Rusks', 'Bakery & Bread');
-
--- 11. Personal Care (sort_order 71-80)
-UPDATE product_categories
-SET sort_order = 71, updated_at = NOW()
-WHERE LOWER(name) LIKE '%personal%' OR LOWER(name) LIKE '%care%' OR LOWER(name) LIKE '%hygiene%'
-   OR LOWER(name) LIKE '%cosmetic%' OR LOWER(name) LIKE '%grooming%'
-   OR name IN ('Hair Care', 'Oral Care', 'Body Care', 'Skin Care', 'Hand Care',
-               'Shoe Care', 'Personal Care', 'Automotive Care', 'Feminine Hygiene',
-               'Baby Care', 'Men''s Grooming', 'Bathing Soap', 'Body Wash', 'Bathing Accessories');
-
--- 12. Household (sort_order 81-90)
-UPDATE product_categories
-SET sort_order = 81, updated_at = NOW()
-WHERE LOWER(name) LIKE '%household%' OR LOWER(name) LIKE '%cleaning%' OR LOWER(name) LIKE '%laundry%'
-   OR name IN ('Cleaning & Household', 'Household & Misc', 'Laundry', 'Pest Control', 'Disposable Items');
-
--- All other categories (sort_order 100)
-UPDATE product_categories
-SET sort_order = 100, updated_at = NOW()
-WHERE sort_order = 0 OR sort_order IS NULL;
+UPDATE product_categories SET sort_order = 1 WHERE name = 'Vegetables';
+UPDATE product_categories SET sort_order = 2 WHERE name = 'Fruits';
+UPDATE product_categories SET sort_order = 3 WHERE name = 'Dry Fruits & Nuts';
+UPDATE product_categories SET sort_order = 4 WHERE name = 'Milk';
+UPDATE product_categories SET sort_order = 5 WHERE name = 'Dairy & Curd';
+UPDATE product_categories SET sort_order = 6 WHERE name = 'Milk Alternatives';
+UPDATE product_categories SET sort_order = 7 WHERE name = 'Rice';
+UPDATE product_categories SET sort_order = 8 WHERE name = 'Flours & Sooji';
+UPDATE product_categories SET sort_order = 9 WHERE name = 'Dals & Pulses';
+UPDATE product_categories SET sort_order = 10 WHERE name = 'Millets & Grains';
+UPDATE product_categories SET sort_order = 11 WHERE name = 'Cooking Oils';
+UPDATE product_categories SET sort_order = 12 WHERE name = 'Spice Powders';
+UPDATE product_categories SET sort_order = 13 WHERE name = 'Whole Spices';
+UPDATE product_categories SET sort_order = 14 WHERE name = 'Salt & Spices';
+UPDATE product_categories SET sort_order = 15 WHERE name = 'Seasoning & Paste';
+UPDATE product_categories SET sort_order = 16 WHERE name = 'Bakery & Breads';
+UPDATE product_categories SET sort_order = 17 WHERE name = 'Breakfast & Staples';
+UPDATE product_categories SET sort_order = 18 WHERE name = 'Coffee & Tea';
+UPDATE product_categories SET sort_order = 19 WHERE name = 'Sweeteners & Sugar';
+UPDATE product_categories SET sort_order = 20 WHERE name = 'Frozen & Ready to Eat';
+UPDATE product_categories SET sort_order = 21 WHERE name = 'Pasta & Noodles';
+UPDATE product_categories SET sort_order = 22 WHERE name = 'Ready to Cook';
+UPDATE product_categories SET sort_order = 23 WHERE name = 'Ready to Eat';
+UPDATE product_categories SET sort_order = 24 WHERE name = 'Biscuits';
+UPDATE product_categories SET sort_order = 25 WHERE name = 'Chips & Crisps';
+UPDATE product_categories SET sort_order = 26 WHERE name = 'Health Snacks';
+UPDATE product_categories SET sort_order = 27 WHERE name = 'Namkeen & Savories';
+UPDATE product_categories SET sort_order = 28 WHERE name = 'Snacks & Papads';
+UPDATE product_categories SET sort_order = 29 WHERE name = 'Beverages & Health';
+UPDATE product_categories SET sort_order = 30 WHERE name = 'Soft Drinks & Soda';
+UPDATE product_categories SET sort_order = 31 WHERE name = 'Water & Juices';
+UPDATE product_categories SET sort_order = 32 WHERE name = 'Nuts & Seeds';
+UPDATE product_categories SET sort_order = 33 WHERE name = 'Pickles & Sauces';
+UPDATE product_categories SET sort_order = 34 WHERE name = 'Bath & Body';
+UPDATE product_categories SET sort_order = 35 WHERE name = 'Face Care';
+UPDATE product_categories SET sort_order = 36 WHERE name = 'Hair Care';
+UPDATE product_categories SET sort_order = 37 WHERE name = 'Men''s Grooming';
+UPDATE product_categories SET sort_order = 38 WHERE name = 'Oral Care';
+UPDATE product_categories SET sort_order = 39 WHERE name = 'Skin Care';
+UPDATE product_categories SET sort_order = 40 WHERE name = 'Cleaning & Household';
+UPDATE product_categories SET sort_order = 41 WHERE name = 'Dishwashing';
+UPDATE product_categories SET sort_order = 42 WHERE name = 'Kitchen & Dining';
+UPDATE product_categories SET sort_order = 43 WHERE name = 'Laundry & Fabric';
+UPDATE product_categories SET sort_order = 44 WHERE name = 'Pooja & Household';
+UPDATE product_categories SET sort_order = 45 WHERE name = 'Baby Care';
+UPDATE product_categories SET sort_order = 46 WHERE name = 'First Aid & Hygiene';
+UPDATE product_categories SET sort_order = 47 WHERE name = 'Women''s Hygiene';
+UPDATE product_categories SET sort_order = 48 WHERE name = 'Baking & Cooking';
+UPDATE product_categories SET sort_order = 49 WHERE name = 'Confectionery';
+UPDATE product_categories SET sort_order = 50 WHERE name = 'Dried Foods';
+UPDATE product_categories SET sort_order = 51 WHERE name = 'Herbs & Leaves';
+UPDATE product_categories SET sort_order = 52 WHERE name = 'Pest Control';
+UPDATE product_categories SET sort_order = 53 WHERE name = 'Traditional Sweets';

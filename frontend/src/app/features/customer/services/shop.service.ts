@@ -54,20 +54,33 @@ export class ShopService {
           // Handle paginated response
           if (response.data && response.data.content) {
             // Transform backend shop data to frontend format
-            const shops = response.data.content.map((shop: any) => ({
-              id: shop.id,
-              name: shop.name,
-              description: shop.description || shop.businessName || '',
-              image: shop.logo || '/assets/images/shop-placeholder.jpg',
-              isOpen: shop.isActive || true,
-              rating: shop.rating || 4.5,
-              distance: '2.5',
-              deliveryTime: '30-45',
-              deliveryFee: shop.deliveryFee || 40,
-              categories: [shop.businessType || 'General'],
-              address: `${shop.city}, ${shop.state}`,
-              phone: shop.ownerPhone || ''
-            }));
+            const shops = response.data.content.map((shop: any) => {
+              // Find logo from images array (imageType === 'LOGO' or isPrimary === true)
+              let logoUrl = '/assets/images/shop-placeholder.jpg';
+              if (shop.images && shop.images.length > 0) {
+                const logoImage = shop.images.find((img: any) =>
+                  img.imageType === 'LOGO' || img.isPrimary === true
+                );
+                if (logoImage && logoImage.imageUrl) {
+                  logoUrl = logoImage.imageUrl;
+                }
+              }
+
+              return {
+                id: shop.id,
+                name: shop.name,
+                description: shop.description || shop.businessName || '',
+                image: logoUrl,
+                isOpen: shop.isActive || true,
+                rating: shop.rating || 4.5,
+                distance: '2.5',
+                deliveryTime: '30-45',
+                deliveryFee: shop.deliveryFee || 40,
+                categories: [shop.businessType || 'General'],
+                address: `${shop.city}, ${shop.state}`,
+                phone: shop.ownerPhone || ''
+              };
+            });
             return of(shops);
           }
           return of([]);

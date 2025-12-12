@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/models/order_model.dart';
@@ -225,7 +226,40 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
 
     // Show login prompt for guest users
     if (!authProvider.isAuthenticated) {
-      return Scaffold(
+      return PopScope(
+        canPop: false,
+        onPopInvoked: (bool didPop) async {
+          if (didPop) return;
+          // Navigate to dashboard instead of exiting
+          if (context.mounted) {
+            context.go('/');
+          }
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            title: Text(
+              languageProvider.showTamil ? 'எனது ஆர்டர்கள்' : 'My Orders',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            backgroundColor: Colors.green.shade700,
+            foregroundColor: Colors.white,
+          ),
+          body: _buildLoginPrompt(),
+        ),
+      );
+    }
+
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (bool didPop) async {
+        if (didPop) return;
+        // Navigate to dashboard instead of exiting
+        if (context.mounted) {
+          context.go('/');
+        }
+      },
+      child: Scaffold(
         appBar: AppBar(
           title: Text(
             languageProvider.showTamil ? 'எனது ஆர்டர்கள்' : 'My Orders',
@@ -234,39 +268,26 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
           ),
           backgroundColor: Colors.green.shade700,
           foregroundColor: Colors.white,
+          bottom: TabBar(
+            controller: _tabController,
+            isScrollable: true,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
+            indicatorColor: Colors.white,
+            labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            unselectedLabelStyle: const TextStyle(fontSize: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            tabs: _orderTabs.map((tab) => Tab(text: _getTabLabel(tab['key']!, languageProvider.showTamil))).toList(),
+          ),
         ),
-        body: _buildLoginPrompt(),
-      );
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          languageProvider.showTamil ? 'எனது ஆர்டர்கள்' : 'My Orders',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        backgroundColor: Colors.green.shade700,
-        foregroundColor: Colors.white,
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          indicatorColor: Colors.white,
-          labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-          unselectedLabelStyle: const TextStyle(fontSize: 12),
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          tabs: _orderTabs.map((tab) => Tab(text: _getTabLabel(tab['key']!, languageProvider.showTamil))).toList(),
-        ),
+        body: _isLoading && _ordersResponse.orders.isEmpty
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null && _ordersResponse.orders.isEmpty
+                ? _buildErrorWidget()
+                : _ordersResponse.orders.isEmpty
+                    ? _buildEmptyOrdersWidget()
+                    : _buildOrdersList(),
       ),
-      body: _isLoading && _ordersResponse.orders.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null && _ordersResponse.orders.isEmpty
-              ? _buildErrorWidget()
-              : _ordersResponse.orders.isEmpty
-                  ? _buildEmptyOrdersWidget()
-                  : _buildOrdersList(),
     );
   }
 
