@@ -12,8 +12,20 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 }
 
+// Load Flutter version from local.properties
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader('UTF-8') { reader ->
+        localProperties.load(reader)
+    }
+}
+def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
+def flutterVersionName = localProperties.getProperty('flutter.versionName')
+
 android {
     namespace "com.nammaooru.app"
+    // Compile SDK 36 required by plugins (doesn't affect device compatibility)
     compileSdk 36
 
     compileOptions {
@@ -28,10 +40,13 @@ android {
 
     defaultConfig {
         applicationId "com.nammaooru.app"
+        // Support Android 5.0 (Lollipop) and above - covers 99%+ devices including Redmi
         minSdkVersion flutter.minSdkVersion
-        targetSdkVersion 35
-        versionCode 23
-        versionName "1.2.3"
+        // Target Android 14 for better compatibility
+        targetSdkVersion 34
+        // Let Flutter manage version from pubspec.yaml
+        versionCode flutterVersionCode.toInteger()
+        versionName flutterVersionName
         // Enable multidex for large apps
         multiDexEnabled true
     }

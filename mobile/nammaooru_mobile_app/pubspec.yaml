@@ -1,7 +1,7 @@
 name: nammaooru_mobile_app
 description: NammaOoru Multi-Service Delivery Platform - Flutter Mobile App
 publish_to: 'none'
-version: 1.1.8+25
+version: 1.1.8+26
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
