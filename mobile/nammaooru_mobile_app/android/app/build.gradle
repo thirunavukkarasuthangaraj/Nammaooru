@@ -42,8 +42,8 @@ android {
         applicationId "com.nammaooru.app"
         // Support Android 5.0 (Lollipop) and above - covers 99%+ devices including Redmi
         minSdkVersion flutter.minSdkVersion
-        // Target Android 14 for better compatibility
-        targetSdkVersion 34
+        // Target Android 15 - Required by Play Store (August 2024+)
+        targetSdkVersion 35
         // Let Flutter manage version from pubspec.yaml
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
