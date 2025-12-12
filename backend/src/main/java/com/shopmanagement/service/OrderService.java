@@ -63,6 +63,8 @@ public class OrderService {
     private final NotificationRepository notificationRepository;
     private final DeliveryConfirmationService deliveryConfirmationService;
     private final OrderAssignmentRepository orderAssignmentRepository;
+    private final PromotionService promotionService;
+    private final com.shopmanagement.repository.PromotionRepository promotionRepository;
 
     public OrderService(
             OrderRepository orderRepository,
@@ -77,7 +79,9 @@ public class OrderService {
             UserFcmTokenRepository userFcmTokenRepository,
             NotificationRepository notificationRepository,
             OrderAssignmentRepository orderAssignmentRepository,
-            @Lazy DeliveryConfirmationService deliveryConfirmationService) {
+            @Lazy DeliveryConfirmationService deliveryConfirmationService,
+            PromotionService promotionService,
+            com.shopmanagement.repository.PromotionRepository promotionRepository) {
         this.orderRepository = orderRepository;
         this.customerRepository = customerRepository;
         this.userRepository = userRepository;
@@ -91,6 +95,8 @@ public class OrderService {
         this.notificationRepository = notificationRepository;
         this.orderAssignmentRepository = orderAssignmentRepository;
         this.deliveryConfirmationService = deliveryConfirmationService;
+        this.promotionService = promotionService;
+        this.promotionRepository = promotionRepository;
     }
     
     @Transactional
@@ -1035,7 +1041,11 @@ public class OrderService {
                     // Get product image - fallback to master product images if order item doesn't have one
                     String productImageUrl = item.getProductImageUrl();
                     if (productImageUrl == null || productImageUrl.isEmpty()) {
-                        if (masterProduct.getImages() != null && !masterProduct.getImages().isEmpty()) {
+                        // Try primary image URL first
+                        productImageUrl = masterProduct.getPrimaryImageUrl();
+                        // If still empty, try images collection
+                        if ((productImageUrl == null || productImageUrl.isEmpty()) &&
+                            masterProduct.getImages() != null && !masterProduct.getImages().isEmpty()) {
                             productImageUrl = masterProduct.getImages().iterator().next().getImageUrl();
                         }
                     }
@@ -1300,6 +1310,45 @@ public class OrderService {
         order.setOrderItems(orderItems);
 
         Order savedOrder = orderRepository.save(order);
+
+        // Record promo code usage if promo code was applied
+        if (request.getPromoCode() != null && !request.getPromoCode().trim().isEmpty() &&
+            request.getPromotionId() != null) {
+            try {
+                log.info("Recording promo code usage: {} for order: {}", request.getPromoCode(), savedOrder.getOrderNumber());
+
+                // Find the promotion
+                com.shopmanagement.entity.Promotion promotion = promotionRepository.findById(request.getPromotionId())
+                    .orElseThrow(() -> new RuntimeException("Promotion not found: " + request.getPromotionId()));
+
+                // Determine if this is customer's first order
+                long customerOrderCount = orderRepository.countByCustomerId(customer.getId());
+                Boolean isFirstOrder = customerOrderCount <= 1; // This order is already saved, so count includes it
+
+                // Record the promotion usage with all identifiers
+                promotionService.recordPromotionUsage(
+                    promotion,
+                    customer,
+                    savedOrder,
+                    request.getDeviceUuid(), // Device UUID from request
+                    customer.getMobileNumber(), // Customer phone
+                    customer.getEmail(), // Customer email
+                    request.getDiscount(), // Discount amount applied
+                    request.getSubtotal(), // Order subtotal before discount
+                    isFirstOrder,
+                    null, // IP address (not available here)
+                    null  // User agent (not available here)
+                );
+
+                log.info("✅ Promo code usage recorded successfully: {} for customer: {}",
+                    request.getPromoCode(), customer.getId());
+
+            } catch (Exception e) {
+                log.error("❌ Failed to record promo code usage: {}", e.getMessage(), e);
+                // Don't fail the order creation if promo recording fails
+                // The order is already created, we just log the error
+            }
+        }
 
         // Send FCM push notification to shop owner
         try {

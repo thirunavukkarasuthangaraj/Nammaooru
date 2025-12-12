@@ -95,29 +95,39 @@ public class PromotionService {
             return PromoCodeValidationResult.error("This promo code has reached its usage limit");
         }
 
-        // 7. STRICT: Check first-time-only restriction
-        // Blocks if user has EVER used this promo (by customerId, deviceUuid, OR phone)
-        if (promotion.getIsFirstTimeOnly()) {
-            Boolean hasUsed = promotionUsageRepository.hasUsedPromotion(
-                promotion.getId(), customerId, deviceUuid, phone);
-            if (hasUsed) {
-                return PromoCodeValidationResult.error(
-                    "This promo code can only be used once per customer. You have already used it. This promo code will never be available for your account again.");
-            }
+        // 7. CRITICAL: Check if promo code is already used in any pending/active order
+        // This prevents users from applying the same promo code to multiple orders before completion
+        // Validates by customerId and phone only (deviceUuid removed as it can change)
+        Boolean hasActivePendingOrder = promotionUsageRepository.hasActivePendingOrderWithPromotion(
+            promotion.getId(), customerId, null, phone);
+        if (hasActivePendingOrder) {
+            return PromoCodeValidationResult.error(
+                "This promo code is already applied to one of your pending orders. " +
+                "Please wait for that order to be completed before using this promo code again.");
         }
 
-        // 8. STRICT: Check per-customer usage limit
-        // Prevents ANY user (by customerId, deviceUuid, OR phone) from exceeding limit
-        // This prevents users from bypassing limits by switching between guest/registered modes
+        // 8. MANDATORY: ALWAYS enforce one-time-per-user validation for ALL promo codes
+        // This ensures that every promo code can only be used ONCE per user, regardless of settings
+        // Blocks if user has EVER used this promo (by customerId OR phone - deviceUuid removed)
+        Boolean hasUsed = promotionUsageRepository.hasUsedPromotion(
+            promotion.getId(), customerId, null, phone);
+        if (hasUsed) {
+            return PromoCodeValidationResult.error(
+                "This promo code can only be used once per customer. You have already used it. " +
+                "This promo code will never be available for your account again.");
+        }
+
+        // 9. STRICT: Check per-customer usage limit (if configured)
+        // Prevents ANY user (by customerId OR phone) from exceeding limit
+        // Note: This is redundant now since we enforce one-time-per-user above, but kept for flexibility
         if (promotion.getUsageLimitPerCustomer() != null) {
-            // Check usage across ALL user identifiers (customerId, deviceUuid, phone)
-            // If ANY identifier matches previous usage, count it
+            // Check usage across user identifiers (customerId, phone - deviceUuid removed)
             Long totalUsage = 0L;
 
-            if (customerId != null || deviceUuid != null || phone != null) {
-                // Use the comprehensive check that looks across all identifiers
+            if (customerId != null || phone != null) {
+                // Use the comprehensive check that looks across identifiers
                 totalUsage = promotionUsageRepository.countByPromotionAndAnyIdentifier(
-                    promotion.getId(), customerId, deviceUuid, phone);
+                    promotion.getId(), customerId, null, phone);
             }
 
             if (totalUsage <= 0 && customerId != null) {
@@ -126,20 +136,14 @@ public class PromotionService {
                     promotion.getId(), customerId);
             }
 
-            if (totalUsage <= 0 && deviceUuid != null) {
-                // Fallback: Check by device UUID only
-                totalUsage = promotionUsageRepository.countByPromotionIdAndDeviceUuid(
-                    promotion.getId(), deviceUuid);
-            }
-
             if (totalUsage <= 0 && phone != null) {
                 // Fallback: Check by phone only
                 totalUsage = promotionUsageRepository.countByPromotionIdAndPhone(
                     promotion.getId(), phone);
             }
 
-            if (totalUsage <= 0 && customerId == null && deviceUuid == null && phone == null) {
-                return PromoCodeValidationResult.error("Unable to validate promo code usage. Please login to continue.");
+            if (totalUsage <= 0 && customerId == null && phone == null) {
+                return PromoCodeValidationResult.error("Unable to validate promo code usage. Please provide phone number or login to continue.");
             }
 
             // REJECT if usage limit reached

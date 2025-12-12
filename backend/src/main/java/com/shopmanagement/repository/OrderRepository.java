@@ -156,4 +156,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     // Get total revenue by shop and date (includes PAID orders and DELIVERED/COMPLETED orders for COD)
     @Query("SELECT SUM(o.totalAmount) FROM Order o WHERE o.shop.id = :shopId AND o.createdAt >= :startDate AND (o.paymentStatus = 'PAID' OR o.status IN ('DELIVERED', 'COMPLETED'))")
     BigDecimal getTotalRevenueByShopAndDate(@Param("shopId") Long shopId, @Param("startDate") LocalDateTime startDate);
+
+    // Count total orders by customer (for determining first-time customers)
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.customer.id = :customerId")
+    Long countByCustomerId(@Param("customerId") Long customerId);
 }

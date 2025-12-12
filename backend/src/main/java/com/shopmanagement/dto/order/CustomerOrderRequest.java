@@ -19,6 +19,11 @@ public class CustomerOrderRequest {
     private String notes;
     private CustomerInfoRequest customerInfo;
     private String customerToken; // Firebase token for notifications
+
+    // Promo code fields
+    private String promoCode; // The promo code applied (if any)
+    private Long promotionId; // The promotion ID (if promo code was applied)
+    private String deviceUuid; // Device UUID for tracking promo usage
     
     @Data
     public static class OrderItemRequest {

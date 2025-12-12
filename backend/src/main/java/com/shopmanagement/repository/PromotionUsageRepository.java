@@ -89,4 +89,20 @@ public interface PromotionUsageRepository extends JpaRepository<PromotionUsage, 
            "AND pu.customer.id = :customerId ORDER BY pu.usedAt DESC")
     List<PromotionUsage> findByPromotionIdAndCustomerId(@Param("promotionId") Long promotionId,
                                                          @Param("customerId") Long customerId);
+
+    /**
+     * Check if promotion is used in any active/pending order by customer ID, device UUID, or phone
+     * Active orders are those NOT in DELIVERED, COMPLETED, CANCELLED, or REFUNDED status
+     */
+    @Query("SELECT CASE WHEN COUNT(pu) > 0 THEN true ELSE false END " +
+           "FROM PromotionUsage pu " +
+           "WHERE pu.promotion.id = :promotionId " +
+           "AND ((:customerId IS NOT NULL AND pu.customer.id = :customerId) " +
+           "OR (:deviceUuid IS NOT NULL AND pu.deviceUuid = :deviceUuid) " +
+           "OR (:phone IS NOT NULL AND pu.customerPhone = :phone)) " +
+           "AND pu.order.status NOT IN ('DELIVERED', 'COMPLETED', 'CANCELLED', 'REFUNDED')")
+    Boolean hasActivePendingOrderWithPromotion(@Param("promotionId") Long promotionId,
+                                                @Param("customerId") Long customerId,
+                                                @Param("deviceUuid") String deviceUuid,
+                                                @Param("phone") String phone);
 }
