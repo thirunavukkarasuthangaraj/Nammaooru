@@ -2,10 +2,10 @@ class AppConfig {
   // ============================================
   // SINGLE SOURCE OF TRUTH - CHANGE ONLY HERE!
   // ============================================
-  static const String _devBaseUrl = 'http://192.168.1.7:8080'; // Local network IP for mobile device testing
-  static const String _prodBaseUrl = 'https://nammaoorudelivary.in';
+  static const String _devBaseUrl = 'http://192.168.1.5:8080'; // Local backend for mobile testing
+  static const String _prodBaseUrl = 'https://api.nammaoorudelivary.in';
 
-  static const bool _isProduction = true; // PRODUCTION MODE
+  static const bool _isProduction = false; // DEV MODE - Testing with localhost
 
   // All URLs derived from single source
   static String get baseUrl => _isProduction ? _prodBaseUrl : _devBaseUrl;

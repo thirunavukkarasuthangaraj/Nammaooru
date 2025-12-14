@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../../../core/providers/delivery_partner_provider.dart';
-// import '../../../services/firebase_notification_service.dart';  // Commented for web testing
+import '../../../services/notification_api_service.dart';
 import '../../dashboard/screens/dashboard_screen.dart';
 import '../../profile/screens/force_password_change_screen.dart';
 import 'forgot_password_screen.dart';
@@ -28,26 +30,30 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _setupNotifications() async {
-    // Commented for web testing
-    // try {
-    //   // Get FCM token
-    //   final fcmToken = await FirebaseNotificationService.getToken();
-    //   if (fcmToken != null) {
-    //     debugPrint('FCM Token obtained for delivery partner: $fcmToken');
+    if (kIsWeb) {
+      debugPrint('Notifications setup skipped for web');
+      return;
+    }
 
-    //     // Subscribe to delivery partner topics
-    //     final partnerId = _emailController.text.replaceAll('@', '_').replaceAll('.', '_');
-    //     await FirebaseNotificationService.subscribeToDeliveryPartnerTopics(
-    //       partnerId,
-    //       'default_zone', // You can get actual zone from user data
-    //     );
+    try {
+      // Get FCM token
+      final fcmToken = await FirebaseMessaging.instance.getToken();
+      if (fcmToken != null) {
+        debugPrint('FCM Token obtained for delivery partner: $fcmToken');
 
-    //     debugPrint('Subscribed to delivery partner topics');
-    //   }
-    // } catch (e) {
-    //   debugPrint('Error setting up notifications: $e');
-    // }
-    debugPrint('Notifications setup skipped for web');
+        // Send token to backend
+        final notificationService = NotificationApiService();
+        final result = await notificationService.updateDeliveryPartnerFcmToken(fcmToken);
+
+        if (result['statusCode'] == '2000') {
+          debugPrint('FCM token successfully sent to backend');
+        } else {
+          debugPrint('Failed to send FCM token: ${result['message']}');
+        }
+      }
+    } catch (e) {
+      debugPrint('Error setting up notifications: $e');
+    }
   }
 
   Future<void> _handleLogin() async {
@@ -127,8 +133,6 @@ class _LoginScreenState extends State<LoginScreen> {
               _buildLoginButton(),
               const SizedBox(height: 24),
               _buildForgotPasswordLink(),
-              const SizedBox(height: 32),
-              _buildDemoLogin(),
               const SizedBox(height: 40),
               _buildTerms(),
             ],
@@ -378,7 +382,7 @@ class _LoginScreenState extends State<LoginScreen> {
         const SizedBox(height: 12),
         OutlinedButton(
           onPressed: () {
-            _emailController.text = 'delivery@nammaooru.com';
+            _emailController.text = 'noreplaynammaoorudelivery@gmail.com';
             _passwordController.text = 'password123';
             _handleLogin();
           },

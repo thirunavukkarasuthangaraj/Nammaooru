@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart' show kReleaseMode;
 
 class ApiConfig {
   // Base URL for API calls (Development/Local)
-  static const String baseUrl = 'http://172.25.224.1:8080/api';
+  static const String baseUrl = 'http://192.168.1.5:8080/api';
 
   // Web URL for Chrome testing - using production
   static const String webBaseUrl = 'https://api.nammaoorudelivary.in/api';

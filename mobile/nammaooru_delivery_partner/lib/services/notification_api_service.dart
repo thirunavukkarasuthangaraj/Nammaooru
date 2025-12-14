@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import '../core/api/api_config.dart';
+import '../core/config/app_config.dart';
 import '../core/storage/local_storage.dart';
 
 class NotificationApiService {
@@ -25,7 +25,7 @@ class NotificationApiService {
       }
 
       final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/api/delivery-partner/notifications/fcm-token'),
+        Uri.parse('${AppConfig.mobileApiUrl}/notifications/fcm-token'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -70,7 +70,7 @@ class NotificationApiService {
       }
 
       final response = await http.delete(
-        Uri.parse('${ApiConfig.baseUrl}/api/delivery-partner/notifications/fcm-token?token=$fcmToken'),
+        Uri.parse('${AppConfig.mobileApiUrl}/notifications/fcm-token?token=$fcmToken'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -108,7 +108,7 @@ class NotificationApiService {
       }
 
       final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/api/delivery-partner/notifications/test-push'),
+        Uri.parse('${AppConfig.mobileApiUrl}/notifications/test-push'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -146,7 +146,7 @@ class NotificationApiService {
       }
 
       final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/api/delivery-partner/availability'),
+        Uri.parse('${AppConfig.mobileApiUrl}/availability'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -189,7 +189,7 @@ class NotificationApiService {
       }
 
       final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/api/delivery-partner/notifications'),
+        Uri.parse('${AppConfig.mobileApiUrl}/notifications'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -227,7 +227,7 @@ class NotificationApiService {
       }
 
       final response = await http.put(
-        Uri.parse('${ApiConfig.baseUrl}/api/delivery-partner/notifications/$notificationId/read'),
+        Uri.parse('${AppConfig.mobileApiUrl}/notifications/$notificationId/read'),
         headers: {
           'Authorization': 'Bearer $token',
         },
