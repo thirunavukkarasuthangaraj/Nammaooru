@@ -496,6 +496,77 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     });
   }
 
+  // Handover SELF_PICKUP order to customer
+  handoverSelfPickup(orderId: number): void {
+    this.swal.confirm(
+      'Handover Order',
+      'Are you sure you want to handover this order to the customer?',
+      'Yes, Handover',
+      'Cancel'
+    ).then((result) => {
+      if (result.isConfirmed) {
+        this.swal.loading('Processing handover...');
+        this.orderService.handoverSelfPickup(orderId).subscribe({
+          next: (response) => {
+            const orderIndex = this.orders.findIndex(o => o.id === orderId);
+            if (orderIndex !== -1) {
+              this.orders[orderIndex].status = 'SELF_PICKUP_COLLECTED';
+              this.updateOrderLists();
+            }
+            this.swal.close();
+            this.swal.success('Order Handed Over!', 'Order has been successfully handed over to the customer.');
+            this.loadOrders();
+          },
+          error: (error) => {
+            console.error('Error handing over order:', error);
+            this.swal.close();
+            this.swal.error('Error', error.error?.message || 'Failed to handover order. Please try again.');
+          }
+        });
+      }
+    });
+  }
+
+  // Verify pickup OTP for HOME_DELIVERY order
+  verifyPickupOTP(orderId: number): void {
+    this.swal.input(
+      'Verify Pickup OTP',
+      'Enter the 4-digit OTP shown by the delivery partner:',
+      'text',
+      '',
+      'Verify',
+      'Cancel'
+    ).then((result) => {
+      if (result.isConfirmed && result.value) {
+        const otp = result.value.trim();
+
+        if (otp.length !== 4) {
+          this.swal.error('Invalid OTP', 'Please enter a valid 4-digit OTP.');
+          return;
+        }
+
+        this.swal.loading('Verifying OTP...');
+        this.orderService.verifyPickupOTP(orderId, otp).subscribe({
+          next: (response) => {
+            const orderIndex = this.orders.findIndex(o => o.id === orderId);
+            if (orderIndex !== -1) {
+              this.orders[orderIndex].status = 'OUT_FOR_DELIVERY';
+              this.updateOrderLists();
+            }
+            this.swal.close();
+            this.swal.success('OTP Verified!', 'Order handed over to delivery partner successfully.');
+            this.loadOrders();
+          },
+          error: (error) => {
+            console.error('Error verifying OTP:', error);
+            this.swal.close();
+            this.swal.error('Invalid OTP', error.error?.message || 'The OTP you entered is incorrect. Please try again.');
+          }
+        });
+      }
+    });
+  }
+
   quickAccept(order: ShopOwnerOrder): void {
     this.acceptOrder(order);
   }

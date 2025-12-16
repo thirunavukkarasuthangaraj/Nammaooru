@@ -14,10 +14,11 @@ export interface ShopOwnerOrder {
   customerEmail: string;
   customerAddress: string;
   deliveryAddress?: string;
+  deliveryType?: 'HOME_DELIVERY' | 'SELF_PICKUP';
   items: OrderItem[];
   totalAmount: number;
   createdAt: string;
-  status: 'PENDING' | 'CONFIRMED' | 'PREPARING' | 'READY_FOR_PICKUP' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'CANCELLED';
+  status: 'PENDING' | 'CONFIRMED' | 'PREPARING' | 'READY_FOR_PICKUP' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'CANCELLED' | 'SELF_PICKUP_COLLECTED';
   paymentStatus: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
   paymentMethod: string;
   estimatedDeliveryTime?: string;
@@ -26,6 +27,7 @@ export interface ShopOwnerOrder {
   shopId: number;
   couponCode?: string;
   discountAmount?: number;
+  assignedToDeliveryPartner?: boolean;
   assignedDriver?: {
     id: number;
     name: string;
@@ -228,6 +230,33 @@ export class ShopOwnerOrderService {
 
   markDelivered(orderId: number): Observable<ShopOwnerOrder> {
     return this.updateOrderStatus(orderId, 'DELIVERED');
+  }
+
+  // Handover SELF_PICKUP order to customer
+  handoverSelfPickup(orderId: number): Observable<any> {
+    return this.http.post<any>(
+      `${this.apiUrl}/orders/${orderId}/handover-self-pickup`,
+      {}
+    ).pipe(
+      catchError((error) => {
+        console.error('Error handing over self-pickup order:', error);
+        throw error;
+      })
+    );
+  }
+
+  // Verify pickup OTP for HOME_DELIVERY order
+  verifyPickupOTP(orderId: number, otp: string): Observable<any> {
+    const body = { otp };
+    return this.http.post<any>(
+      `${this.apiUrl}/orders/${orderId}/verify-pickup-otp`,
+      body
+    ).pipe(
+      catchError((error) => {
+        console.error('Error verifying pickup OTP:', error);
+        throw error;
+      })
+    );
   }
 
   getPendingOrders(shopId: number): Observable<ShopOwnerOrder[]> {

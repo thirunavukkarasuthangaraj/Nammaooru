@@ -398,6 +398,29 @@ $white: #ffffff;
   }
 }
 
+// Delivery Type Badge
+.delivery-type-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-right: 8px;
+
+  &.self-pickup-badge {
+    background: rgba(#2196F3, 0.1);
+    color: #2196F3;
+    border: 1px solid #2196F3;
+  }
+
+  &.home-delivery-badge {
+    background: rgba(#FF9800, 0.1);
+    color: #FF9800;
+    border: 1px solid #FF9800;
+  }
+}
+
 // Customer Section
 .customer-section {
   display: flex;
@@ -712,6 +735,24 @@ $white: #ffffff;
 
     &:hover {
       background: $primary-lighter;
+    }
+  }
+
+  &.success-btn {
+    background: #4CAF50;
+    color: white;
+
+    &:hover {
+      background: darken(#4CAF50, 10%);
+    }
+  }
+
+  &.warning-btn {
+    background: #FF9800;
+    color: white;
+
+    &:hover {
+      background: darken(#FF9800, 10%);
     }
   }
 }

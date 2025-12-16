@@ -108,6 +108,11 @@
           <button class="header-btn details-header-btn" (click)="viewOrderDetails(order)" title="View Details">
             <span style="font-size: 12px;">View</span>
           </button>
+          <!-- Delivery Type Badge -->
+          <div *ngIf="order.deliveryType" class="delivery-type-badge"
+               [ngClass]="order.deliveryType === 'SELF_PICKUP' ? 'self-pickup-badge' : 'home-delivery-badge'">
+            {{ order.deliveryType === 'SELF_PICKUP' ? 'PICKUP' : 'DELIVERY' }}
+          </div>
           <div class="status-badge" [ngClass]="getStatusClass(order.status)">
             {{ getStatusLabel(order.status) }}
           </div>
@@ -249,7 +254,25 @@
           <button class="action-btn print-btn" (click)="printOrder(order.id)">
             Print Order
           </button>
-          <button class="action-btn assign-btn" (click)="assignDelivery(order.id)">
+
+          <!-- SELF_PICKUP: Show Handover button -->
+          <button *ngIf="order.deliveryType === 'SELF_PICKUP'"
+                  class="action-btn success-btn"
+                  (click)="handoverSelfPickup(order.id)">
+            Handover to Customer
+          </button>
+
+          <!-- HOME_DELIVERY: Show Verify OTP button if assigned to partner -->
+          <button *ngIf="order.deliveryType === 'HOME_DELIVERY' && order.assignedToDeliveryPartner"
+                  class="action-btn warning-btn"
+                  (click)="verifyPickupOTP(order.id)">
+            Verify Pickup OTP
+          </button>
+
+          <!-- HOME_DELIVERY: Show Assign button if not yet assigned -->
+          <button *ngIf="order.deliveryType === 'HOME_DELIVERY' && !order.assignedToDeliveryPartner"
+                  class="action-btn assign-btn"
+                  (click)="assignDelivery(order.id)">
             Assign Delivery
           </button>
         </ng-container>
