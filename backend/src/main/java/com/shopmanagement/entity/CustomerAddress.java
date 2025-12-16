@@ -37,7 +37,23 @@ public class CustomerAddress {
     
     @Column(length = 200)
     private String addressLine2;
-    
+
+    // Detailed address fields
+    @Column(length = 100)
+    private String flatHouse; // Flat/House number/Building name
+
+    @Column(length = 50)
+    private String floor;
+
+    @Column(length = 100)
+    private String street;
+
+    @Column(length = 100)
+    private String area; // Area/Sector/Locality
+
+    @Column(length = 100)
+    private String village;
+
     @Column(length = 100)
     private String landmark;
     
