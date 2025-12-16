@@ -45,8 +45,8 @@ public class Order {
     private PaymentMethod paymentMethod;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = true)  // Temporarily nullable for initial migration
-    private DeliveryType deliveryType = DeliveryType.HOME_DELIVERY;
+    @Column(name = "delivery_type", nullable = true)
+    private DeliveryType deliveryType;
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal subtotal;
@@ -154,7 +154,7 @@ public class Order {
             orderNumber = "ORD" + System.currentTimeMillis();
         }
     }
-    
+
     public boolean canBeCancelled() {
         // Allow customers to cancel at any time before delivery/completion, regardless of delivery partner assignment
         return status != OrderStatus.DELIVERED &&

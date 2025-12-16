@@ -937,6 +937,7 @@ public class ShopService {
                 .totalAmount(order.getTotalAmount())
                 .notes(order.getNotes())
                 .cancellationReason(order.getCancellationReason())
+                .deliveryType(order.getDeliveryType() != null ? order.getDeliveryType().name() : null)
                 .deliveryAddress(order.getDeliveryAddress())
                 .deliveryCity(order.getDeliveryCity())
                 .deliveryState(order.getDeliveryState())

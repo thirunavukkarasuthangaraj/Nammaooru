@@ -45,6 +45,7 @@ public class OrderResponse {
     private String cancellationReason;
     
     // Delivery Information
+    private String deliveryType;
     private String deliveryAddress;
     private String deliveryCity;
     private String deliveryState;
@@ -52,7 +53,7 @@ public class OrderResponse {
     private String deliveryPhone;
     private String deliveryContactName;
     private String fullDeliveryAddress;
-    
+
     private LocalDateTime estimatedDeliveryTime;
     private LocalDateTime actualDeliveryTime;
     

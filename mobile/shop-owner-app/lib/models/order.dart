@@ -269,15 +269,15 @@ class OrderItem {
 
   factory OrderItem.fromJson(Map<String, dynamic> json) {
     return OrderItem(
-      productId: json['productId'] ?? '',
+      productId: json['productId'] ?? json['shopProductId']?.toString() ?? '',
       productName: json['productName'] ?? '',
       quantity: json['quantity'] ?? 0,
       unitPrice: (json['unitPrice'] ?? 0).toDouble(),
-      total: (json['total'] ?? 0).toDouble(),
+      total: (json['total'] ?? json['totalPrice'] ?? 0).toDouble(),
       image: json['image'],
-      notes: json['notes'],
+      notes: json['notes'] ?? json['specialInstructions'],
       customizations: json['customizations'],
-      productImage: json['productImage'] ?? json['image'],
+      productImage: json['productImageUrl'] ?? json['productImage'] ?? json['image'],
       price: (json['price'] ?? json['unitPrice'] ?? 0).toDouble(),
     );
   }

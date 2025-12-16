@@ -6,11 +6,17 @@ import com.shopmanagement.entity.User.RideStatus;
 import com.shopmanagement.entity.Order;
 import com.shopmanagement.entity.OrderAssignment;
 import com.shopmanagement.entity.DeliveryPartnerLocation;
+import com.shopmanagement.entity.UserFcmToken;
 import com.shopmanagement.service.UserService;
 import com.shopmanagement.service.OrderAssignmentService;
 import com.shopmanagement.service.JwtService;
 import com.shopmanagement.repository.OrderRepository;
+import com.shopmanagement.repository.OrderAssignmentRepository;
 import com.shopmanagement.repository.DeliveryPartnerLocationRepository;
+import com.shopmanagement.repository.UserFcmTokenRepository;
+import com.shopmanagement.repository.UserRepository;
+import com.shopmanagement.dto.ApiResponse;
+import com.shopmanagement.dto.fcm.FcmTokenRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -55,6 +61,15 @@ public class DeliveryPartnerController {
 
     @Autowired
     private OrderRepository orderRepository;
+
+    @Autowired
+    private UserFcmTokenRepository userFcmTokenRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private OrderAssignmentRepository orderAssignmentRepository;
 
     @PostMapping("/login")
     public ResponseEntity<Map<String, Object>> login(@RequestBody Map<String, String> request) {
@@ -143,21 +158,84 @@ public class DeliveryPartnerController {
         }
     }
 
+    @PostMapping("/notifications/fcm-token")
+    public ResponseEntity<?> updateFcmToken(@RequestBody FcmTokenRequest request) {
+        try {
+            // Get current user
+            Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            String username = auth.getName();
+
+            Optional<User> userOpt = userRepository.findByUsername(username);
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.ok(ApiResponse.error("User not found"));
+            }
+
+            User user = userOpt.get();
+            log.info("Updating FCM token for delivery partner: {} (ID: {})", username, user.getId());
+
+            // Check if token already exists for this user
+            Optional<UserFcmToken> existingToken = userFcmTokenRepository
+                    .findByUserIdAndFcmToken(user.getId(), request.getFcmToken());
+
+            UserFcmToken fcmToken;
+            if (existingToken.isPresent()) {
+                // Update existing token
+                fcmToken = existingToken.get();
+                fcmToken.setIsActive(true);
+                fcmToken.setUpdatedAt(LocalDateTime.now());
+                if (request.getDeviceType() != null) {
+                    fcmToken.setDeviceType(request.getDeviceType());
+                }
+                if (request.getDeviceId() != null) {
+                    fcmToken.setDeviceId(request.getDeviceId());
+                }
+            } else {
+                // Deactivate old tokens for the same device if deviceId is provided
+                if (request.getDeviceId() != null) {
+                    userFcmTokenRepository.findByUserIdAndIsActiveTrue(user.getId())
+                            .stream()
+                            .filter(token -> request.getDeviceId().equals(token.getDeviceId()))
+                            .forEach(token -> {
+                                token.setIsActive(false);
+                                userFcmTokenRepository.save(token);
+                            });
+                }
+
+                // Create new token
+                fcmToken = new UserFcmToken();
+                fcmToken.setUserId(user.getId());
+                fcmToken.setFcmToken(request.getFcmToken());
+                fcmToken.setDeviceType(request.getDeviceType() != null ? request.getDeviceType() : "android");
+                fcmToken.setDeviceId(request.getDeviceId());
+                fcmToken.setIsActive(true);
+            }
+
+            userFcmTokenRepository.save(fcmToken);
+
+            log.info("FCM token saved successfully for delivery partner: {}", user.getId());
+
+            return ResponseEntity.ok(ApiResponse.success("FCM token updated successfully", null));
+        } catch (Exception e) {
+            log.error("Error updating FCM token for delivery partner", e);
+            return ResponseEntity.ok(ApiResponse.error("Failed to update FCM token: " + e.getMessage()));
+        }
+    }
+
     @GetMapping("/profile/{partnerId}")
     public ResponseEntity<Map<String, Object>> getProfile(@PathVariable String partnerId) {
         try {
             Long id = Long.parseLong(partnerId);
             Optional<User> userOpt = userService.findById(id);
-            
+
             if (userOpt.isEmpty()) {
                 Map<String, Object> response = new HashMap<>();
                 response.put("success", false);
                 response.put("message", "User not found");
                 return ResponseEntity.badRequest().body(response);
             }
-            
+
             User user = userOpt.get();
-            
+
             // Check if user is a delivery partner
             if (user.getRole() != UserRole.DELIVERY_PARTNER) {
                 Map<String, Object> response = new HashMap<>();
@@ -165,7 +243,7 @@ public class DeliveryPartnerController {
                 response.put("message", "Access denied");
                 return ResponseEntity.badRequest().body(response);
             }
-            
+
             Map<String, Object> profile = new HashMap<>();
             profile.put("partnerId", user.getId());
 
@@ -176,12 +254,22 @@ public class DeliveryPartnerController {
 
             profile.put("email", user.getEmail());
             profile.put("phoneNumber", user.getMobileNumber());
-            profile.put("isOnline", true); // Default for now
-            profile.put("isAvailable", true); // Default for now
+            profile.put("isOnline", user.getIsOnline() != null ? user.getIsOnline() : false);
+            profile.put("isAvailable", user.getIsAvailable() != null ? user.getIsAvailable() : false);
+
+            // Get earnings, total deliveries, and rating from OrderAssignmentRepository
+            Double totalEarnings = orderAssignmentRepository.getTotalEarningsByPartnerId(id);
+            Long totalDeliveries = orderAssignmentRepository.countCompletedAssignmentsByPartnerId(id);
+            Double averageRating = orderAssignmentRepository.getAverageRatingByPartnerId(id);
+
+            profile.put("earnings", totalEarnings != null ? totalEarnings : 0.0);
+            profile.put("totalDeliveries", totalDeliveries != null ? totalDeliveries : 0);
+            profile.put("rating", averageRating != null ? averageRating : 0.0);
+
             profile.put("success", true);
-            
+
             return ResponseEntity.ok(profile);
-            
+
         } catch (NumberFormatException e) {
             Map<String, Object> response = new HashMap<>();
             response.put("success", false);
@@ -224,6 +312,7 @@ public class DeliveryPartnerController {
                     orderData.put("paymentMethod", assignment.getOrder().getPaymentMethod().name());
                     orderData.put("paymentStatus", assignment.getOrder().getPaymentStatus().name());
                     orderData.put("pickupOtp", assignment.getOrder().getPickupOtp());
+                    orderData.put("deliveryType", assignment.getOrder().getDeliveryType() != null ? assignment.getOrder().getDeliveryType().name() : null);
                     orders.add(orderData);
                 }
             }
@@ -294,6 +383,7 @@ public class DeliveryPartnerController {
                 orderData.put("paymentMethod", assignment.getOrder().getPaymentMethod().name());
                 orderData.put("paymentStatus", assignment.getOrder().getPaymentStatus().name());
                 orderData.put("pickupOtp", assignment.getOrder().getPickupOtp());
+                orderData.put("deliveryType", assignment.getOrder().getDeliveryType() != null ? assignment.getOrder().getDeliveryType().name() : null);
                 orderData.put("assignmentId", assignment.getId().toString()); // Include assignmentId for location tracking
                 orders.add(orderData);
             }
@@ -971,6 +1061,7 @@ public class DeliveryPartnerController {
                 orderData.put("customerPhone", assignment.getOrder().getCustomer().getMobileNumber());
                 orderData.put("shopName", assignment.getOrder().getShop().getName());
                 orderData.put("shopAddress", assignment.getOrder().getShop().getAddressLine1());
+                orderData.put("deliveryType", assignment.getOrder().getDeliveryType() != null ? assignment.getOrder().getDeliveryType().name() : null);
                 orderData.put("deliveredAt", assignment.getDeliveryCompletedAt() != null ? assignment.getDeliveryCompletedAt().toString() : null);
                 orders.add(orderData);
             }

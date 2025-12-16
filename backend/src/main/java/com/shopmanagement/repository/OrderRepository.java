@@ -110,7 +110,14 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query("SELECT o FROM Order o LEFT JOIN FETCH o.orderItems LEFT JOIN FETCH o.customer LEFT JOIN FETCH o.shop WHERE o.orderNumber = :orderNumber")
     Optional<Order> findByOrderNumberWithOrderItems(@Param("orderNumber") String orderNumber);
     
-    @Query("SELECT DISTINCT o FROM Order o LEFT JOIN FETCH o.orderItems LEFT JOIN FETCH o.customer LEFT JOIN FETCH o.shop WHERE o.shop.id = :shopId")
+    @Query("SELECT DISTINCT o FROM Order o " +
+           "LEFT JOIN FETCH o.orderItems oi " +
+           "LEFT JOIN FETCH oi.shopProduct sp " +
+           "LEFT JOIN FETCH sp.masterProduct mp " +
+           "LEFT JOIN FETCH mp.images " +
+           "LEFT JOIN FETCH o.customer " +
+           "LEFT JOIN FETCH o.shop " +
+           "WHERE o.shop.id = :shopId")
     Page<Order> findByShopIdWithOrderItems(@Param("shopId") Long shopId, Pageable pageable);
     
     @Query("SELECT DISTINCT o FROM Order o LEFT JOIN FETCH o.orderItems LEFT JOIN FETCH o.customer LEFT JOIN FETCH o.shop WHERE o.customer.id = :customerId")
@@ -119,7 +126,14 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query("SELECT DISTINCT o FROM Order o LEFT JOIN FETCH o.orderItems LEFT JOIN FETCH o.customer LEFT JOIN FETCH o.shop WHERE o.status = :status")
     Page<Order> findByStatusWithOrderItems(@Param("status") Order.OrderStatus status, Pageable pageable);
 
-    @Query("SELECT DISTINCT o FROM Order o LEFT JOIN FETCH o.orderItems LEFT JOIN FETCH o.customer LEFT JOIN FETCH o.shop WHERE o.shop.id = :shopId AND o.status = :status")
+    @Query("SELECT DISTINCT o FROM Order o " +
+           "LEFT JOIN FETCH o.orderItems oi " +
+           "LEFT JOIN FETCH oi.shopProduct sp " +
+           "LEFT JOIN FETCH sp.masterProduct mp " +
+           "LEFT JOIN FETCH mp.images " +
+           "LEFT JOIN FETCH o.customer " +
+           "LEFT JOIN FETCH o.shop " +
+           "WHERE o.shop.id = :shopId AND o.status = :status")
     Page<Order> findByShopIdAndStatusWithOrderItems(@Param("shopId") Long shopId, @Param("status") Order.OrderStatus status, Pageable pageable);
 
     // For shop owner app - includes orderAssignments for assignedToDeliveryPartner check

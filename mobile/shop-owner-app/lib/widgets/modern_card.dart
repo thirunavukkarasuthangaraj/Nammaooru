@@ -457,9 +457,18 @@ class OrderCard extends StatelessWidget {
   final String status;
   final DateTime orderDate;
   final int itemCount;
+  final List<dynamic>? items; // Add items parameter
+  final String? deliveryType; // Add delivery type
+  final bool isLoading; // Add loading state
   final VoidCallback? onTap;
   final VoidCallback? onAccept;
   final VoidCallback? onReject;
+  final VoidCallback? onStartPreparing;
+  final VoidCallback? onMarkReady;
+  final VoidCallback? onOutForDelivery;
+  final VoidCallback? onMarkDelivered;
+  final VoidCallback? onHandoverSelfPickup; // For SELF_PICKUP orders at READY_FOR_PICKUP
+  final VoidCallback? onVerifyPickupOTP; // For HOME_DELIVERY orders at READY_FOR_PICKUP
 
   const OrderCard({
     Key? key,
@@ -469,9 +478,18 @@ class OrderCard extends StatelessWidget {
     required this.status,
     required this.orderDate,
     required this.itemCount,
+    this.items, // Add items parameter
+    this.deliveryType, // Add delivery type
+    this.isLoading = false, // Default to false
     this.onTap,
     this.onAccept,
     this.onReject,
+    this.onStartPreparing,
+    this.onMarkReady,
+    this.onOutForDelivery,
+    this.onMarkDelivered,
+    this.onHandoverSelfPickup,
+    this.onVerifyPickupOTP,
   }) : super(key: key);
 
   Color _getStatusColor() {
@@ -538,6 +556,155 @@ class OrderCard extends StatelessWidget {
     }
   }
 
+  Widget _buildActionButton({
+    required String label,
+    required VoidCallback onPressed,
+    required Color backgroundColor,
+    required Color textColor,
+  }) {
+    return InkWell(
+      onTap: isLoading ? null : onPressed,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppTheme.space12,
+          vertical: AppTheme.space8,
+        ),
+        decoration: BoxDecoration(
+          color: isLoading ? backgroundColor.withOpacity(0.6) : backgroundColor,
+          borderRadius: AppTheme.roundedSmall,
+        ),
+        child: isLoading
+            ? SizedBox(
+                width: 60,
+                height: 16,
+                child: Center(
+                  child: SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(textColor),
+                    ),
+                  ),
+                ),
+              )
+            : Text(
+                label,
+                style: TextStyle(
+                  color: textColor,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+      ),
+    );
+  }
+
+  Widget _buildActionButtons() {
+    final statusLower = status.toLowerCase().replaceAll('_', ' ');
+
+    switch (statusLower) {
+      case 'pending':
+        if (onAccept != null || onReject != null) {
+          return Row(
+            children: [
+              if (onReject != null)
+                _buildActionButton(
+                  label: 'Reject',
+                  onPressed: onReject!,
+                  backgroundColor: AppTheme.error.withOpacity(0.1),
+                  textColor: AppTheme.error,
+                ),
+              if (onAccept != null && onReject != null)
+                const SizedBox(width: AppTheme.space8),
+              if (onAccept != null)
+                _buildActionButton(
+                  label: 'Accept',
+                  onPressed: onAccept!,
+                  backgroundColor: AppTheme.success,
+                  textColor: AppTheme.textWhite,
+                ),
+            ],
+          );
+        }
+        break;
+
+      case 'confirmed':
+      case 'accepted':
+        if (onStartPreparing != null) {
+          return _buildActionButton(
+            label: 'Start Preparing',
+            onPressed: onStartPreparing!,
+            backgroundColor: AppTheme.info,
+            textColor: AppTheme.textWhite,
+          );
+        }
+        break;
+
+      case 'preparing':
+        // At PREPARING status, shop owners can ONLY mark as READY_FOR_PICKUP
+        // For HOME_DELIVERY: This triggers auto-assignment to delivery partner
+        // For SELF_PICKUP: Customer will come to pick up
+        // Shop owners should NOT be able to skip to OUT_FOR_DELIVERY
+        final isSelfPickup = deliveryType?.toUpperCase() == 'SELF_PICKUP';
+
+        if (onMarkReady != null) {
+          return _buildActionButton(
+            label: isSelfPickup ? 'Ready for Pickup' : 'Ready',
+            onPressed: onMarkReady!,
+            backgroundColor: AppTheme.success,
+            textColor: AppTheme.textWhite,
+          );
+        }
+        break;
+
+      case 'ready for pickup':
+      case 'ready':
+        final isSelfPickup = deliveryType?.toUpperCase() == 'SELF_PICKUP';
+
+        if (isSelfPickup && onHandoverSelfPickup != null) {
+          // SELF_PICKUP: Show "Handover to Customer" button
+          return _buildActionButton(
+            label: 'Handover',
+            onPressed: onHandoverSelfPickup!,
+            backgroundColor: AppTheme.success,
+            textColor: AppTheme.textWhite,
+          );
+        } else if (!isSelfPickup && onVerifyPickupOTP != null) {
+          // HOME_DELIVERY: Show "Verify Pickup OTP" button
+          return _buildActionButton(
+            label: 'Verify OTP',
+            onPressed: onVerifyPickupOTP!,
+            backgroundColor: Colors.orange,
+            textColor: AppTheme.textWhite,
+          );
+        } else if (onMarkDelivered != null) {
+          // Fallback to old behavior
+          return _buildActionButton(
+            label: isSelfPickup ? 'Picked Up' : 'Mark Delivered',
+            onPressed: onMarkDelivered!,
+            backgroundColor: AppTheme.success,
+            textColor: AppTheme.textWhite,
+          );
+        }
+        break;
+
+      case 'out for delivery':
+        // OUT_FOR_DELIVERY orders can only be delivered by the driver
+        // Shop owners should NOT have a button to mark as delivered
+        // This prevents bypassing the driver delivery flow
+        break;
+
+      case 'delivered':
+      case 'cancelled':
+      case 'rejected':
+        // No action buttons for completed/cancelled orders
+        break;
+    }
+
+    return const SizedBox.shrink();
+  }
+
   @override
   Widget build(BuildContext context) {
     final statusColor = _getStatusColor();
@@ -563,13 +730,66 @@ class OrderCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          '#$orderNumber',
-                          style: AppTheme.h6.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                '#$orderNumber',
+                                style: AppTheme.h6.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: AppTheme.space8),
+                            // Delivery type badge
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: (deliveryType?.toUpperCase() == 'SELF_PICKUP')
+                                    ? AppTheme.info.withOpacity(0.1)
+                                    : AppTheme.primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(
+                                  color: (deliveryType?.toUpperCase() == 'SELF_PICKUP')
+                                      ? AppTheme.info
+                                      : AppTheme.primary,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    (deliveryType?.toUpperCase() == 'SELF_PICKUP')
+                                        ? Icons.storefront
+                                        : Icons.delivery_dining,
+                                    size: 12,
+                                    color: (deliveryType?.toUpperCase() == 'SELF_PICKUP')
+                                        ? AppTheme.info
+                                        : AppTheme.primary,
+                                  ),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    (deliveryType?.toUpperCase() == 'SELF_PICKUP')
+                                        ? 'PICKUP'
+                                        : 'DELIVERY',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                      color: (deliveryType?.toUpperCase() == 'SELF_PICKUP')
+                                          ? AppTheme.info
+                                          : AppTheme.primary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: AppTheme.space4),
                         Text(
@@ -619,6 +839,127 @@ class OrderCard extends StatelessWidget {
                   ],
                 ),
               ),
+              const SizedBox(height: AppTheme.space12),
+              // Product Images Preview
+              if (items != null && items!.isNotEmpty)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ...items!.take(1).map((item) {
+                      final productName = item['productName'] ?? '';
+                      final productImage = item['productImageUrl'] ?? item['productImage'] ?? '';
+                      final quantity = item['quantity'] ?? 0;
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: AppTheme.space8),
+                        padding: const EdgeInsets.all(AppTheme.space8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.surface.withOpacity(0.5),
+                          borderRadius: AppTheme.roundedSmall,
+                          border: Border.all(
+                            color: AppTheme.borderLight,
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            // Product Image
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(6),
+                              child: productImage.isNotEmpty
+                                  ? Image.network(
+                                      productImage.startsWith('http')
+                                          ? productImage
+                                          : 'http://localhost:8080$productImage',
+                                      width: 50,
+                                      height: 50,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) => Container(
+                                        width: 50,
+                                        height: 50,
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            colors: [AppTheme.primary.withOpacity(0.7), AppTheme.primary],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          ),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            productName.isNotEmpty ? productName[0].toUpperCase() : '?',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 24,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                  : Container(
+                                      width: 50,
+                                      height: 50,
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [AppTheme.primary.withOpacity(0.7), AppTheme.primary],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          productName.isNotEmpty ? productName[0].toUpperCase() : '?',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 24,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                            ),
+                            const SizedBox(width: AppTheme.space12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    productName,
+                                    style: AppTheme.bodyMedium.copyWith(
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Qty: $quantity',
+                                    style: AppTheme.bodySmall.copyWith(
+                                      color: AppTheme.textHint,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    if (items!.length > 1)
+                      Padding(
+                        padding: const EdgeInsets.only(left: AppTheme.space8),
+                        child: Text(
+                          '+${items!.length - 1} more item${items!.length - 1 > 1 ? 's' : ''}',
+                          style: AppTheme.bodySmall.copyWith(
+                            color: AppTheme.textHint,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               const Divider(height: AppTheme.space24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -669,58 +1010,8 @@ class OrderCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: AppTheme.space8),
-                  if (status.toLowerCase() == 'pending' &&
-                      (onAccept != null || onReject != null))
-                    Row(
-                      children: [
-                        if (onReject != null)
-                          InkWell(
-                            onTap: onReject,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: AppTheme.space12,
-                                vertical: AppTheme.space8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppTheme.error.withOpacity(0.1),
-                                borderRadius: AppTheme.roundedSmall,
-                              ),
-                              child: const Text(
-                                'Reject',
-                                style: TextStyle(
-                                  color: AppTheme.error,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ),
-                          ),
-                        if (onAccept != null) ...[
-                          const SizedBox(width: AppTheme.space8),
-                          InkWell(
-                            onTap: onAccept,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: AppTheme.space12,
-                                vertical: AppTheme.space8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppTheme.success,
-                                borderRadius: AppTheme.roundedSmall,
-                              ),
-                              child: const Text(
-                                'Accept',
-                                style: TextStyle(
-                                  color: AppTheme.textWhite,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
+                  // Status-specific action buttons
+                  _buildActionButtons(),
                 ],
               ),
             ],

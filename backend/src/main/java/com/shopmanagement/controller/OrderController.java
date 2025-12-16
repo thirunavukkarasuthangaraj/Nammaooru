@@ -263,46 +263,37 @@ public class OrderController {
                 return ResponseUtil.error("Invalid OTP. Please check with the delivery partner.");
             }
 
+            // VALIDATION: This endpoint is ONLY for HOME_DELIVERY orders
+            // SELF_PICKUP orders must use /handover-self-pickup endpoint instead
+            if (order.getDeliveryType() != Order.DeliveryType.HOME_DELIVERY) {
+                return ResponseUtil.error(
+                    "Pickup OTP verification is only for HOME_DELIVERY orders. " +
+                    "For SELF_PICKUP orders, use the handover endpoint instead."
+                );
+            }
+
             // OTP is valid - set verified timestamp
             order.setPickupOtpVerifiedAt(java.time.LocalDateTime.now());
 
-            // Check delivery type - SELF_PICKUP goes directly to DELIVERED
-            String finalStatus;
-            String successMessage;
+            // Home delivery: hand over to delivery partner, mark as OUT_FOR_DELIVERY
+            order.setStatus(Order.OrderStatus.OUT_FOR_DELIVERY);
 
-            if (order.getDeliveryType() == Order.DeliveryType.SELF_PICKUP) {
-                // Self-pickup: customer collects from shop, mark as DELIVERED immediately
-                order.setStatus(Order.OrderStatus.DELIVERED);
-                order.setActualDeliveryTime(java.time.LocalDateTime.now());
+            // Update the OrderAssignment status to PICKED_UP so delivery partner can see it
+            Optional<OrderAssignment> assignmentOpt = orderAssignmentRepository.findByOrderIdAndStatus(
+                orderId, OrderAssignment.AssignmentStatus.ACCEPTED);
 
-                // Mark payment as PAID if it's Cash on Delivery
-                if (order.getPaymentMethod() == Order.PaymentMethod.CASH_ON_DELIVERY) {
-                    order.setPaymentStatus(Order.PaymentStatus.PAID);
-                    log.info("✅ Payment marked as PAID for self-pickup order {}", orderId);
-                }
-
-                finalStatus = "DELIVERED";
-                successMessage = "Order handed over to customer successfully";
-                log.info("✅ Self-pickup order {} marked as DELIVERED", orderId);
+            if (assignmentOpt.isPresent()) {
+                OrderAssignment assignment = assignmentOpt.get();
+                assignment.setStatus(OrderAssignment.AssignmentStatus.PICKED_UP);
+                orderAssignmentRepository.save(assignment);
+                log.info("✅ OrderAssignment status updated to PICKED_UP for order {}", orderId);
             } else {
-                // Home delivery: hand over to delivery partner, mark as OUT_FOR_DELIVERY
-                order.setStatus(Order.OrderStatus.OUT_FOR_DELIVERY);
-
-                // Update the OrderAssignment status to PICKED_UP so delivery partner can see it
-                Optional<OrderAssignment> assignmentOpt = orderAssignmentRepository.findByOrderIdAndStatus(
-                    orderId, OrderAssignment.AssignmentStatus.ACCEPTED);
-
-                if (assignmentOpt.isPresent()) {
-                    OrderAssignment assignment = assignmentOpt.get();
-                    assignment.setStatus(OrderAssignment.AssignmentStatus.PICKED_UP);
-                    orderAssignmentRepository.save(assignment);
-                    log.info("✅ OrderAssignment status updated to PICKED_UP for order {}", orderId);
-                }
-
-                finalStatus = "OUT_FOR_DELIVERY";
-                successMessage = "Order handed over to delivery partner successfully";
-                log.info("✅ Home delivery order {} marked as OUT_FOR_DELIVERY", orderId);
+                log.warn("⚠️  No accepted OrderAssignment found for order {}", orderId);
             }
+
+            String finalStatus = "OUT_FOR_DELIVERY";
+            String successMessage = "Order handed over to delivery partner successfully";
+            log.info("✅ Home delivery order {} marked as OUT_FOR_DELIVERY", orderId);
 
             orderRepository.save(order);
 

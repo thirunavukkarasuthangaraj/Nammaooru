@@ -7,6 +7,7 @@ import '../../utils/js_helper.dart' if (dart.library.html) '../../utils/js_helpe
 import '../../utils/app_theme.dart';
 import '../../widgets/modern_card.dart';
 import '../../widgets/modern_button.dart';
+import 'order_details_screen.dart';
 
 class OrdersScreen extends StatefulWidget {
   final String token;
@@ -32,8 +33,9 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
   DateTime? _endDate;
   Timer? _pollingTimer;
   int _previousPendingCount = 0;
+  Set<String> _updatingOrders = {}; // Track orders being updated
 
-  final List<String> _statusFilters = ['ALL', 'PENDING', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'];
+  final List<String> _statusFilters = ['ALL', 'SELF_PICKUP', 'PENDING', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'];
 
   @override
   void initState() {
@@ -77,10 +79,15 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
     }
 
     try {
+      // Don't pass SELF_PICKUP as status filter (it's a delivery type filter)
+      final statusFilter = (_selectedFilter != 'ALL' && _selectedFilter != 'SELF_PICKUP')
+          ? _selectedFilter
+          : null;
+
       final response = await ApiService.getShopOrders(
         page: 0,
         size: _pageSize,
-        status: _selectedFilter != 'ALL' ? _selectedFilter : null,
+        status: statusFilter,
       );
 
       print('Shop Orders API response: ${response.isSuccess}');
@@ -216,10 +223,15 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
 
     try {
       final nextPage = _currentPage + 1;
+      // Don't pass SELF_PICKUP as status filter (it's a delivery type filter)
+      final statusFilter = (_selectedFilter != 'ALL' && _selectedFilter != 'SELF_PICKUP')
+          ? _selectedFilter
+          : null;
+
       final response = await ApiService.getShopOrders(
         page: nextPage,
         size: _pageSize,
-        status: _selectedFilter != 'ALL' ? _selectedFilter : null,
+        status: statusFilter,
       );
 
       if (response.isSuccess && response.data != null) {
@@ -337,7 +349,18 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
   }
 
   List<dynamic> get _filteredOrders {
-    return _orders;
+    // Special filter for SELF_PICKUP - show ONLY self-pickup orders
+    if (_selectedFilter == 'SELF_PICKUP') {
+      return _orders.where((order) =>
+        order['deliveryType']?.toString().toUpperCase() == 'SELF_PICKUP'
+      ).toList();
+    }
+
+    // For ALL other status tabs - EXCLUDE self-pickup orders
+    // Only show HOME_DELIVERY orders in status tabs
+    return _orders.where((order) =>
+      order['deliveryType']?.toString().toUpperCase() != 'SELF_PICKUP'
+    ).toList();
   }
 
   Color _getStatusColor(String status) {
@@ -356,6 +379,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
   String _getStatusText(String status) {
     switch (status) {
       case 'ALL': return 'All';
+      case 'SELF_PICKUP': return 'Self Pickup';
       case 'PENDING': return 'Pending';
       case 'CONFIRMED': return 'Confirmed';
       case 'PREPARING': return 'Preparing';
@@ -377,6 +401,13 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
   }
 
   Future<void> _updateOrderStatus(dynamic order, String newStatus) async {
+    final orderId = order['id'].toString();
+
+    // Add loading state
+    setState(() {
+      _updatingOrders.add(orderId);
+    });
+
     // Stop notification sound when accepting/confirming order
     if (kIsWeb && (newStatus == 'CONFIRMED' || newStatus == 'PREPARING')) {
       js_helper.stopNotificationSound();
@@ -384,7 +415,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
 
     try {
       final response = await ApiService.updateOrderStatus(
-        order['id'].toString(),
+        orderId,
         newStatus,
       );
 
@@ -396,11 +427,18 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
 
           final allIndex = _allOrders.indexWhere((o) => o['id'] == order['id']);
           if (allIndex != -1) _allOrders[allIndex]['status'] = newStatus;
+
+          // Remove loading state
+          _updatingOrders.remove(orderId);
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Order ${order['orderNumber']} updated to ${_getStatusText(newStatus)}'), backgroundColor: Colors.green),
         );
       } else {
+        setState(() {
+          // Remove loading state
+          _updatingOrders.remove(orderId);
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to update order: ${response.error ?? 'Unknown error'}'), backgroundColor: Colors.red),
         );
@@ -415,6 +453,9 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
 
         final allIndex = _allOrders.indexWhere((o) => o['id'] == order['id']);
         if (allIndex != -1) _allOrders[allIndex]['status'] = newStatus;
+
+        // Remove loading state
+        _updatingOrders.remove(orderId);
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Order ${order['orderNumber']} updated locally'), backgroundColor: Colors.orange),
@@ -957,18 +998,57 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                         );
                       }
                       final order = _filteredOrders[index];
+                      final orderStatus = (order['status'] ?? 'PENDING').toString();
+                      final deliveryType = order['deliveryType']?.toString();
+                      final orderId = order['id']?.toString() ?? '';
+                      final isUpdating = _updatingOrders.contains(orderId);
+
                       return OrderCard(
                         orderNumber: order['orderNumber'] ?? 'Unknown Order',
                         customerName: order['customerName'] ?? 'Unknown Customer',
-                        status: order['status'] ?? 'PENDING',
+                        status: orderStatus,
                         totalAmount: (order['totalAmount'] ?? 0).toDouble(),
                         orderDate: order['createdAt'] != null
                             ? DateTime.parse(order['createdAt'])
                             : DateTime.now(),
                         itemCount: (order['items'] as List?)?.length ?? 0,
-                        onTap: () => _showOrderActions(order),
-                        onAccept: order['status'] == 'PENDING' ? () => _updateOrderStatus(order, 'CONFIRMED') : null,
-                        onReject: order['status'] == 'PENDING' ? () => _updateOrderStatus(order, 'CANCELLED') : null,
+                        items: order['items'] as List?, // Pass items to show product details
+                        deliveryType: deliveryType, // Pass delivery type
+                        isLoading: isUpdating, // Pass loading state
+                        onTap: () {
+                          // Navigate to order details screen
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => OrderDetailsScreen(
+                                orderId: order['id']?.toString() ?? order['orderNumber'] ?? '',
+                                orderData: order,
+                              ),
+                            ),
+                          );
+                        },
+                        // PENDING status: Show Accept/Reject buttons
+                        onAccept: orderStatus == 'PENDING' ? () => _updateOrderStatus(order, 'CONFIRMED') : null,
+                        onReject: orderStatus == 'PENDING' ? () => _updateOrderStatus(order, 'CANCELLED') : null,
+
+                        // CONFIRMED status: Show Start Preparing button
+                        onStartPreparing: orderStatus == 'CONFIRMED' ? () => _updateOrderStatus(order, 'PREPARING') : null,
+
+                        // PREPARING status: Only show Ready button (no skipping to OUT_FOR_DELIVERY)
+                        onMarkReady: orderStatus == 'PREPARING' ? () => _updateOrderStatus(order, 'READY_FOR_PICKUP') : null,
+                        onOutForDelivery: null, // Shop owners cannot skip to OUT_FOR_DELIVERY
+
+                        // READY_FOR_PICKUP status: Show specific buttons based on delivery type
+                        onHandoverSelfPickup: (orderStatus == 'READY_FOR_PICKUP' && deliveryType == 'SELF_PICKUP')
+                            ? () => _handoverSelfPickupOrder(order)
+                            : null,
+                        onVerifyPickupOTP: (orderStatus == 'READY_FOR_PICKUP' && deliveryType == 'HOME_DELIVERY')
+                            ? () => _showOTPVerificationDialog(order)
+                            : null,
+
+                        // OUT_FOR_DELIVERY status: No buttons (only driver can deliver)
+                        // Shop owners cannot mark HOME_DELIVERY orders as delivered
+                        onMarkDelivered: null,
                       );
                     },
                   ),

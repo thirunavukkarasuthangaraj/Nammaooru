@@ -11,8 +11,9 @@ import '../../widgets/verify_pickup_otp_dialog.dart';
 
 class OrderDetailsScreen extends StatelessWidget {
   final String orderId;
+  final Map<String, dynamic>? orderData;
 
-  const OrderDetailsScreen({super.key, required this.orderId});
+  const OrderDetailsScreen({super.key, required this.orderId, this.orderData});
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +25,9 @@ class OrderDetailsScreen extends StatelessWidget {
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      body: Consumer<OrderProvider>(
+      body: orderData != null
+        ? _buildOrderDetails(context, orderData!)
+        : Consumer<OrderProvider>(
         builder: (context, orderProvider, child) {
           final order = orderProvider.orders.firstWhere(
             (o) => o.id == orderId,
@@ -72,6 +75,207 @@ class OrderDetailsScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildOrderDetails(BuildContext context, Map<String, dynamic> orderData) {
+    final items = orderData['items'] as List? ?? [];
+    final subtotal = (orderData['subtotal'] ?? orderData['totalAmount'] ?? 0).toDouble();
+    final deliveryFee = (orderData['deliveryFee'] ?? 0).toDouble();
+    final total = (orderData['totalAmount'] ?? orderData['total'] ?? 0).toDouble();
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppSizes.padding),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Order Header Card
+          Card(
+            margin: const EdgeInsets.only(bottom: 0),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Order #${orderData['orderNumber']}',
+                    style: AppTextStyles.heading2,
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Placed on ${orderData['createdAt'] ?? ''}', style: AppTextStyles.caption),
+                      _buildStatusChipFromString(orderData['status'] ?? 'PENDING'),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Customer Info Card
+          Card(
+            margin: const EdgeInsets.only(bottom: 0),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Customer Information', style: AppTextStyles.heading3),
+                  const SizedBox(height: 16),
+                  _buildInfoRow(Icons.person, 'Name', orderData['customerName'] ?? 'Unknown'),
+                  const SizedBox(height: 12),
+                  _buildInfoRow(Icons.phone, 'Phone', orderData['customerPhone'] ?? 'Not provided', isPhone: true),
+                  const SizedBox(height: 12),
+                  _buildInfoRow(Icons.location_on, 'Address', orderData['address'] ?? 'Not provided'),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Order Items Card
+          Card(
+            margin: const EdgeInsets.only(bottom: 0),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Order Items', style: AppTextStyles.heading3),
+                  const SizedBox(height: 16),
+                  ...items.map((item) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: (item['productImageUrl'] ?? '').isNotEmpty
+                              ? Image.network(
+                                  'http://localhost:8080${item['productImageUrl']}',
+                                  width: 60,
+                                  height: 60,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) => Container(
+                                    width: 60,
+                                    height: 60,
+                                    color: AppColors.primary.withOpacity(0.1),
+                                    child: const Icon(Icons.image, color: Colors.grey),
+                                  ),
+                                )
+                              : Container(
+                                  width: 60,
+                                  height: 60,
+                                  color: AppColors.primary.withOpacity(0.1),
+                                  child: const Icon(Icons.image, color: Colors.grey),
+                                ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(item['productName'] ?? '', style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w500)),
+                              const SizedBox(height: 4),
+                              Text('Qty: ${item['quantity']} × ₹${item['unitPrice']}', style: AppTextStyles.caption),
+                            ],
+                          ),
+                        ),
+                        Text('₹${item['totalPrice'] ?? 0}', style: AppTextStyles.heading3),
+                      ],
+                    ),
+                  )).toList(),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Order Summary Card
+          Card(
+            margin: const EdgeInsets.only(bottom: 0),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Order Summary', style: AppTextStyles.heading3),
+                  const SizedBox(height: 16),
+                  _buildSummaryRow('Subtotal', '₹${subtotal.toStringAsFixed(2)}'),
+                  const SizedBox(height: 8),
+                  _buildSummaryRow('Delivery Fee', '₹${deliveryFee.toStringAsFixed(2)}'),
+                  const Divider(height: 24),
+                  _buildSummaryRow('Total', '₹${total.toStringAsFixed(2)}', isTotal: true),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24), // Add spacing at the bottom
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusChipFromString(String status) {
+    Color color;
+    switch (status) {
+      case 'PENDING':
+        color = Colors.orange;
+        break;
+      case 'CONFIRMED':
+        color = Colors.blue;
+        break;
+      case 'PREPARING':
+        color = Colors.purple;
+        break;
+      case 'READY':
+      case 'READY_FOR_PICKUP':
+        color = Colors.green;
+        break;
+      case 'OUT_FOR_DELIVERY':
+        color = Colors.indigo;
+        break;
+      case 'DELIVERED':
+        color = Colors.green;
+        break;
+      case 'CANCELLED':
+        color = Colors.red;
+        break;
+      default:
+        color = Colors.grey;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color),
+      ),
+      child: Text(
+        status,
+        style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12),
+      ),
+    );
+  }
+
+  Widget _buildSummaryRow(String label, String value, {bool isTotal = false}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: isTotal ? AppTextStyles.heading3 : AppTextStyles.body,
+        ),
+        Text(
+          value,
+          style: isTotal
+              ? AppTextStyles.heading3.copyWith(color: AppColors.primary)
+              : AppTextStyles.body,
+        ),
+      ],
+    );
+  }
+
   Widget _buildOrderHeader(Order order) {
     return Card(
       child: Padding(
@@ -79,24 +283,24 @@ class OrderDetailsScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Text(
+                  'Order #${order.id}',
+                  style: AppTextStyles.heading2,
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Order #${order.id}',
-                      style: AppTextStyles.heading2,
-                    ),
-                    const SizedBox(height: 4),
                     Text(
                       'Placed on ${_formatDate(order.orderDate ?? order.createdAt)}',
                       style: AppTextStyles.caption,
                     ),
+                    _buildStatusChip(order.status),
                   ],
                 ),
-                _buildStatusChip(order.status),
               ],
             ),
             if (order.estimatedDelivery != null) ...[
@@ -230,19 +434,47 @@ class OrderDetailsScreen extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Center(
-              child: Text(
-                item.productImage ?? '📦',
-                style: const TextStyle(fontSize: 20),
-              ),
-            ),
+          // Product Image
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: item.productImage != null && item.productImage!.isNotEmpty
+                ? Image.network(
+                    item.productImage!,
+                    width: 60,
+                    height: 60,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      width: 60,
+                      height: 60,
+                      color: AppColors.primary.withOpacity(0.1),
+                      child: const Icon(Icons.image_not_supported, size: 30, color: Colors.grey),
+                    ),
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Container(
+                        width: 60,
+                        height: 60,
+                        color: AppColors.primary.withOpacity(0.1),
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            value: loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                : null,
+                            strokeWidth: 2,
+                          ),
+                        ),
+                      );
+                    },
+                  )
+                : Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.shopping_bag, size: 30, color: Colors.grey),
+                  ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -252,6 +484,8 @@ class OrderDetailsScreen extends StatelessWidget {
                 Text(
                   item.productName,
                   style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w500),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -303,33 +537,6 @@ class OrderDetailsScreen extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildSummaryRow(String label, String value, {bool isTotal = false}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: isTotal
-              ? AppTextStyles.body.copyWith(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
-                )
-              : AppTextStyles.body,
-        ),
-        Text(
-          value,
-          style: isTotal
-              ? AppTextStyles.body.copyWith(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
-                  color: AppColors.primary,
-                )
-              : AppTextStyles.body.copyWith(fontWeight: FontWeight.w500),
-        ),
-      ],
     );
   }
 

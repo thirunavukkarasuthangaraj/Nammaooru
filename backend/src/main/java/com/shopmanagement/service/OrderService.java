@@ -361,14 +361,24 @@ public class OrderService {
     @Transactional
     public OrderResponse updateOrderStatus(Long orderId, Order.OrderStatus status) {
         log.info("Updating order status: {} to {}", orderId, status);
-        
+
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
-        
+
+        // VALIDATION: Shop owners cannot mark HOME_DELIVERY orders as DELIVERED
+        // Only delivery partners can mark HOME_DELIVERY orders as DELIVERED (via OTP verification)
+        if (status == Order.OrderStatus.DELIVERED &&
+            order.getDeliveryType() == Order.DeliveryType.HOME_DELIVERY) {
+            throw new RuntimeException(
+                "HOME_DELIVERY orders cannot be marked as DELIVERED by shop owner. " +
+                "Only delivery partner can mark as delivered after customer OTP verification."
+            );
+        }
+
         Order.OrderStatus oldStatus = order.getStatus();
         order.setStatus(status);
         order.setUpdatedBy(getCurrentUsername());
-        
+
         if (status == Order.OrderStatus.DELIVERED) {
             order.setActualDeliveryTime(LocalDateTime.now());
         }
@@ -386,7 +396,9 @@ public class OrderService {
         }
 
         // Auto-assign delivery partner when order is ready for pickup (separate transaction)
-        if (status == Order.OrderStatus.READY_FOR_PICKUP) {
+        // ONLY for HOME_DELIVERY orders - SELF_PICKUP orders don't need a delivery partner
+        if (status == Order.OrderStatus.READY_FOR_PICKUP &&
+            order.getDeliveryType() == Order.DeliveryType.HOME_DELIVERY) {
             // Use a separate thread to avoid transaction rollback issues
             CompletableFuture.runAsync(() -> {
                 try {
@@ -414,6 +426,9 @@ public class OrderService {
                     log.error("Failed to auto-assign delivery partner for order: {}", order.getOrderNumber(), e);
                 }
             });
+        } else if (status == Order.OrderStatus.READY_FOR_PICKUP &&
+                   order.getDeliveryType() == Order.DeliveryType.SELF_PICKUP) {
+            log.info("Order {} is SELF_PICKUP - skipping delivery partner assignment", order.getOrderNumber());
         }
         
         // Track if push notification was sent successfully
@@ -1087,6 +1102,7 @@ public class OrderService {
         log.info("📦 Mapping order {}: assignedToDeliveryPartner param={}, from order={}, final={}",
                 order.getOrderNumber(), assignedToDeliveryPartner,
                 order.getAssignedToDeliveryPartner(), isAssigned);
+        log.info("🚚 deliveryType for order {}: {}", order.getId(), order.getDeliveryType());
 
         return OrderResponse.builder()
                 .id(order.getId())
@@ -1108,6 +1124,7 @@ public class OrderService {
                 .totalAmount(order.getTotalAmount())
                 .notes(order.getNotes())
                 .cancellationReason(order.getCancellationReason())
+                .deliveryType(order.getDeliveryType() != null ? order.getDeliveryType().name() : null)
                 .deliveryAddress(order.getDeliveryAddress())
                 .deliveryCity(order.getDeliveryCity())
                 .deliveryState(order.getDeliveryState())
@@ -1133,7 +1150,8 @@ public class OrderService {
                 .itemCount(order.getOrderItems().size())
                 .build();
     }
-    
+
+
     @Transactional
     public OrderResponse createCustomerOrder(CustomerOrderRequest request) {
         log.info("Creating customer order for shop: {}", request.getShopId());

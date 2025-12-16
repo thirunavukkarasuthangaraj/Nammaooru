@@ -2,7 +2,7 @@ class AppConfig {
   // ============================================
   // SINGLE SOURCE OF TRUTH - CHANGE ONLY HERE!
   // ============================================
-  static const String _devBaseUrl = 'http://192.168.1.5:8080'; // Local backend for mobile testing
+  static const String _devBaseUrl = 'http://localhost:8080'; // Local backend for mobile testing
   static const String _prodBaseUrl = 'https://api.nammaoorudelivary.in';
 
   static const bool _isProduction = false; // DEV MODE - Testing with localhost
