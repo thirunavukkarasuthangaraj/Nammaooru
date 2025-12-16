@@ -62,6 +62,7 @@ class AddressApiService {
     String? flatHouse,
     String? floor,
     String? street,
+    String? area,
     String? village,
     String? contactPersonName,
     String? contactMobileNumber,
@@ -72,12 +73,13 @@ class AddressApiService {
         'flatHouse': flatHouse ?? '',
         'floor': floor ?? '',
         'street': street ?? '',
-        'area': fullAddress,
+        'area': area ?? fullAddress,
         'village': village ?? '',
         'landmark': details,
         'city': city ?? 'Tirupattur', // Use actual detected city
         'state': state ?? 'Tamil Nadu', // Use actual detected state
         'pincode': pincode != null && pincode.isNotEmpty ? pincode : '635601', // Must be 6-digit pincode
+        'fullAddress': fullAddress,
         'latitude': latitude,
         'longitude': longitude,
         'isDefault': isDefault,
@@ -136,21 +138,62 @@ class AddressApiService {
     required double latitude,
     required double longitude,
     required bool isDefault,
+    String? city,
+    String? state,
+    String? pincode,
+    String? flatHouse,
+    String? floor,
+    String? street,
+    String? area,
+    String? village,
+    String? contactPersonName,
+    String? contactMobileNumber,
   }) async {
     try {
-      // Note: Update endpoint may need to be implemented in backend
-      final response = await ApiClient.put('$_baseUrl/delivery-locations/$addressId', data: {
+      final requestData = {
         'addressType': label,
-        'flatHouse': '',
-        'area': fullAddress,
+        'flatHouse': flatHouse ?? '',
+        'floor': floor ?? '',
+        'street': street ?? '',
+        'area': area ?? '',
+        'village': village ?? '',
         'landmark': details,
-        'city': 'Chennai',
-        'state': 'Tamil Nadu',
-        'pincode': '600001',
+        'city': city ?? 'Tirupattur',
+        'state': state ?? 'Tamil Nadu',
+        'pincode': pincode != null && pincode.isNotEmpty ? pincode : '635601',
+        'fullAddress': fullAddress,
         'latitude': latitude,
         'longitude': longitude,
         'isDefault': isDefault,
-      });
+        'contactPersonName': contactPersonName,
+        'contactMobileNumber': contactMobileNumber,
+      };
+
+      print('Updating address request: $requestData');
+
+      final response = await ApiClient.put('$_baseUrl/delivery-locations/$addressId', data: requestData);
+
+      print('Update address response status: ${response.statusCode}');
+      print('Update address response data: ${response.data}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final responseData = response.data;
+        if (responseData is Map<String, dynamic>) {
+          final statusCode = responseData['statusCode']?.toString();
+          if (statusCode == '0000') {
+            return {
+              'success': true,
+              'data': responseData['data'],
+              'message': responseData['message'] ?? 'Address updated successfully',
+            };
+          } else {
+            return {
+              'success': false,
+              'message': responseData['message'] ?? 'Failed to update address',
+            };
+          }
+        }
+      }
 
       return {
         'success': true,
@@ -158,6 +201,7 @@ class AddressApiService {
         'message': 'Address updated successfully',
       };
     } catch (e) {
+      print('Exception in updateAddress: $e');
       return {
         'success': false,
         'message': 'Failed to update address: $e',

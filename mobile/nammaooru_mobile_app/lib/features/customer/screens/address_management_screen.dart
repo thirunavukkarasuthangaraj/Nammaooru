@@ -10,7 +10,9 @@ import '../../../core/services/address_service.dart';
 import '../widgets/address_selection_dialog.dart';
 
 class AddressManagementScreen extends StatefulWidget {
-  const AddressManagementScreen({super.key});
+  final bool autoOpenManualForm;
+
+  const AddressManagementScreen({super.key, this.autoOpenManualForm = false});
 
   @override
   State<AddressManagementScreen> createState() => _AddressManagementScreenState();
@@ -24,6 +26,15 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
   void initState() {
     super.initState();
     _loadAddresses();
+
+    // Auto-open manual form if requested
+    if (widget.autoOpenManualForm) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _showAddAddressDialog();
+        }
+      });
+    }
   }
 
   Future<void> _loadAddresses() async {
@@ -49,10 +60,21 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
 
           setState(() {
             _addresses = addresses.map((addr) => Map<String, dynamic>.from(addr)).toList();
+
+            // Sort addresses: default address first, then others
+            _addresses.sort((a, b) {
+              final aIsDefault = a['isDefault'] == true;
+              final bIsDefault = b['isDefault'] == true;
+
+              if (aIsDefault && !bIsDefault) return -1; // a comes first
+              if (!aIsDefault && bIsDefault) return 1;  // b comes first
+              return 0; // keep original order for non-default addresses
+            });
+
             _isLoading = false;
           });
 
-          print('UI updated with ${_addresses.length} addresses');
+          print('UI updated with ${_addresses.length} addresses (sorted with default first)');
 
           // Cache the addresses for offline access
           if (_addresses.isNotEmpty) {
@@ -99,213 +121,444 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
 
   void _showAddAddressDialog() {
     final formKey = GlobalKey<FormState>();
-    final labelController = TextEditingController();
-    final addressController = TextEditingController();
-    final detailsController = TextEditingController();
+    String selectedLabel = 'Home';
+    final flatHouseController = TextEditingController();
+    final floorController = TextEditingController();
+    final streetController = TextEditingController();
+    final areaController = TextEditingController();
+    final villageController = TextEditingController();
+    final landmarkController = TextEditingController();
+    final cityController = TextEditingController(text: 'Tirupattur');
+    final stateController = TextEditingController(text: 'Tamil Nadu');
+    final pincodeController = TextEditingController();
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 400),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Icon(Icons.add_location, color: AppColors.primary, size: 18),
-                      ),
-                      const SizedBox(width: 10),
-                      const Expanded(
-                        child: Text(
-                          'Add New Address',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(Icons.close, color: Colors.black54, size: 20),
-                        constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
-                        padding: EdgeInsets.zero,
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.grey.shade100,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: labelController,
-                    decoration: InputDecoration(
-                      labelText: 'Label (e.g., Home, Office)',
-                      labelStyle: const TextStyle(color: Colors.black54, fontSize: 12),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: AppColors.primary),
-                      ),
-                      prefixIcon: Icon(Icons.label_outline, color: AppColors.primary, size: 18),
-                      filled: true,
-                      fillColor: Colors.grey.shade50,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                      isDense: true,
-                    ),
-                    style: const TextStyle(color: Colors.black87, fontSize: 13),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter a label';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: addressController,
-                    decoration: InputDecoration(
-                      labelText: 'Complete Address',
-                      labelStyle: const TextStyle(color: Colors.black54, fontSize: 12),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: AppColors.primary),
-                      ),
-                      prefixIcon: Icon(Icons.location_on_outlined, color: AppColors.primary, size: 18),
-                      filled: true,
-                      fillColor: Colors.grey.shade50,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                      isDense: true,
-                    ),
-                    style: const TextStyle(color: Colors.black87, fontSize: 13),
-                    maxLines: 2,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter the address';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: detailsController,
-                    decoration: InputDecoration(
-                      labelText: 'Additional Details (Optional)',
-                      labelStyle: const TextStyle(color: Colors.black54, fontSize: 12),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: AppColors.primary),
-                      ),
-                      prefixIcon: Icon(Icons.info_outline, color: AppColors.primary, size: 18),
-                      filled: true,
-                      fillColor: Colors.grey.shade50,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                      isDense: true,
-                    ),
-                    style: const TextStyle(color: Colors.black87, fontSize: 13),
-                    maxLines: 2,
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 400, maxHeight: 600),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: SingleChildScrollView(
+                  child: Form(
+                    key: formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Icon(Icons.add_location, color: AppColors.primary, size: 18),
                             ),
-                          ),
-                          child: const Text(
-                            'Cancel',
-                            style: TextStyle(color: Colors.black54, fontSize: 13),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                            const SizedBox(width: 10),
+                            const Expanded(
+                              child: Text(
+                                'Add New Address',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              icon: const Icon(Icons.close, color: Colors.black54, size: 20),
+                              constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                              padding: EdgeInsets.zero,
+                              style: IconButton.styleFrom(
+                                backgroundColor: Colors.grey.shade100,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            if (formKey.currentState!.validate()) {
-                              Navigator.of(context).pop();
-                              await _addAddress(
-                                labelController.text,
-                                addressController.text,
-                                detailsController.text,
-                              );
+                        const SizedBox(height: 16),
+                        DropdownButtonFormField<String>(
+                          value: selectedLabel,
+                          decoration: InputDecoration(
+                            labelText: 'Label',
+                            labelStyle: const TextStyle(color: Colors.black54, fontSize: 12),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(color: Colors.grey.shade300),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(color: Colors.grey.shade300),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(color: AppColors.primary),
+                            ),
+                            prefixIcon: Icon(Icons.label_outline, color: AppColors.primary, size: 18),
+                            filled: true,
+                            fillColor: Colors.grey.shade50,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            isDense: true,
+                          ),
+                          style: const TextStyle(color: Colors.black87, fontSize: 13),
+                          items: ['Home', 'Office', 'Other'].map((String value) {
+                            return DropdownMenuItem<String>(
+                              value: value,
+                              child: Text(value),
+                            );
+                          }).toList(),
+                          onChanged: (String? newValue) {
+                            if (newValue != null) {
+                              setState(() {
+                                selectedLabel = newValue;
+                              });
                             }
                           },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                        ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: flatHouseController,
+                      decoration: InputDecoration(
+                        labelText: 'Flat / House no. / Building name',
+                        labelStyle: const TextStyle(color: Colors.black54, fontSize: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: AppColors.primary),
+                        ),
+                        prefixIcon: Icon(Icons.home_outlined, color: AppColors.primary, size: 18),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        isDense: true,
+                      ),
+                      style: const TextStyle(color: Colors.black87, fontSize: 13),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: floorController,
+                      decoration: InputDecoration(
+                        labelText: 'Floor (optional)',
+                        labelStyle: const TextStyle(color: Colors.black54, fontSize: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: AppColors.primary),
+                        ),
+                        prefixIcon: Icon(Icons.layers_outlined, color: AppColors.primary, size: 18),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        isDense: true,
+                      ),
+                      style: const TextStyle(color: Colors.black87, fontSize: 13),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: streetController,
+                      decoration: InputDecoration(
+                        labelText: 'Street Name',
+                        labelStyle: const TextStyle(color: Colors.black54, fontSize: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: AppColors.primary),
+                        ),
+                        prefixIcon: Icon(Icons.signpost, color: AppColors.primary, size: 18),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        isDense: true,
+                      ),
+                      style: const TextStyle(color: Colors.black87, fontSize: 13),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: areaController,
+                      decoration: InputDecoration(
+                        labelText: 'Area / Sector / Locality',
+                        labelStyle: const TextStyle(color: Colors.black54, fontSize: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: AppColors.primary),
+                        ),
+                        prefixIcon: Icon(Icons.map_outlined, color: AppColors.primary, size: 18),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        isDense: true,
+                      ),
+                      style: const TextStyle(color: Colors.black87, fontSize: 13),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: villageController,
+                      decoration: InputDecoration(
+                        labelText: 'Village',
+                        labelStyle: const TextStyle(color: Colors.black54, fontSize: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: AppColors.primary),
+                        ),
+                        prefixIcon: Icon(Icons.nature_people, color: AppColors.primary, size: 18),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        isDense: true,
+                      ),
+                      style: const TextStyle(color: Colors.black87, fontSize: 13),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: landmarkController,
+                      decoration: InputDecoration(
+                        labelText: 'Nearby landmark (optional)',
+                        labelStyle: const TextStyle(color: Colors.black54, fontSize: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: AppColors.primary),
+                        ),
+                        prefixIcon: Icon(Icons.place_outlined, color: AppColors.primary, size: 18),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        isDense: true,
+                      ),
+                      style: const TextStyle(color: Colors.black87, fontSize: 13),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: cityController,
+                            decoration: InputDecoration(
+                              labelText: 'City',
+                              labelStyle: const TextStyle(color: Colors.black54, fontSize: 12),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(color: Colors.grey.shade300),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(color: Colors.grey.shade300),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(color: AppColors.primary),
+                              ),
+                              prefixIcon: Icon(Icons.location_city, color: AppColors.primary, size: 18),
+                              filled: true,
+                              fillColor: Colors.grey.shade50,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              isDense: true,
                             ),
-                            elevation: 2,
-                          ),
-                          child: const Text(
-                            'Save',
-                            style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: Colors.black87, fontSize: 13),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Required';
+                              }
+                              return null;
+                            },
                           ),
                         ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextFormField(
+                            controller: stateController,
+                            decoration: InputDecoration(
+                              labelText: 'State',
+                              labelStyle: const TextStyle(color: Colors.black54, fontSize: 12),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(color: Colors.grey.shade300),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(color: Colors.grey.shade300),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(color: AppColors.primary),
+                              ),
+                              filled: true,
+                              fillColor: Colors.grey.shade50,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              isDense: true,
+                            ),
+                            style: const TextStyle(color: Colors.black87, fontSize: 13),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Required';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: pincodeController,
+                      decoration: InputDecoration(
+                        labelText: 'Pincode',
+                        labelStyle: const TextStyle(color: Colors.black54, fontSize: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: AppColors.primary),
+                        ),
+                        prefixIcon: Icon(Icons.pin_drop_outlined, color: AppColors.primary, size: 18),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        isDense: true,
                       ),
-                    ],
+                      style: const TextStyle(color: Colors.black87, fontSize: 13),
+                      keyboardType: TextInputType.number,
+                      maxLength: 6,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Pincode is required';
+                        }
+                        if (value.length != 6) {
+                          return 'Enter valid 6-digit pincode';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: const Text(
+                              'Cancel',
+                              style: TextStyle(color: Colors.black54, fontSize: 13),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              if (formKey.currentState!.validate()) {
+                                Navigator.of(context).pop();
+                                await _addAddressDetailed(
+                                  selectedLabel,
+                                  flatHouseController.text,
+                                  floorController.text,
+                                  streetController.text,
+                                  areaController.text,
+                                  villageController.text,
+                                  landmarkController.text,
+                                  cityController.text,
+                                  stateController.text,
+                                  pincodeController.text,
+                                );
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              elevation: 2,
+                            ),
+                            child: const Text(
+                              'Save',
+                              style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                      ],
+                    ),
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
@@ -316,22 +569,16 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
     final formKey = GlobalKey<FormState>();
     final labelController = TextEditingController(text: address['addressType'] ?? '');
 
-    // Build the address text from available fields
-    String addressText = '';
-    final List<String> addressParts = [];
-    if (address['flatHouse'] != null && address['flatHouse'].toString().isNotEmpty) {
-      addressParts.add(address['flatHouse']);
-    }
-    if (address['street'] != null && address['street'].toString().isNotEmpty) {
-      addressParts.add(address['street']);
-    }
-    if (address['area'] != null && address['area'].toString().isNotEmpty) {
-      addressParts.add(address['area']);
-    }
-    addressText = addressParts.join(', ');
-
-    final addressController = TextEditingController(text: addressText);
-    final detailsController = TextEditingController(text: address['landmark'] ?? '');
+    // Initialize all field controllers with existing address data
+    final flatHouseController = TextEditingController(text: address['flatHouse'] ?? '');
+    final floorController = TextEditingController(text: address['floor'] ?? '');
+    final streetController = TextEditingController(text: address['street'] ?? '');
+    final areaController = TextEditingController(text: address['area'] ?? '');
+    final villageController = TextEditingController(text: address['village'] ?? '');
+    final landmarkController = TextEditingController(text: address['landmark'] ?? '');
+    final cityController = TextEditingController(text: address['city'] ?? 'Tirupattur');
+    final stateController = TextEditingController(text: address['state'] ?? 'Tamil Nadu');
+    final pincodeController = TextEditingController(text: (address['postalCode'] ?? address['pincode'] ?? '').toString());
 
     showDialog(
       context: context,
@@ -340,201 +587,599 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
           backgroundColor: Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: Container(
-            constraints: const BoxConstraints(maxWidth: 400),
+            constraints: const BoxConstraints(maxWidth: 400, maxHeight: 600),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Icon(Icons.edit_location, color: AppColors.primary, size: 18),
-                      ),
-                      const SizedBox(width: 10),
-                      const Expanded(
-                        child: Text(
-                          'Edit Address',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(Icons.close, color: Colors.black54, size: 20),
-                        constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
-                        padding: EdgeInsets.zero,
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.grey.shade100,
-                          shape: RoundedRectangleBorder(
+            child: SingleChildScrollView(
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(6),
                           ),
+                          child: Icon(Icons.edit_location, color: AppColors.primary, size: 18),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: labelController,
-                    decoration: InputDecoration(
-                      labelText: 'Label (e.g., Home, Office)',
-                      labelStyle: const TextStyle(color: Colors.black54, fontSize: 12),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: AppColors.primary),
-                      ),
-                      prefixIcon: Icon(Icons.label_outline, color: AppColors.primary, size: 18),
-                      filled: true,
-                      fillColor: Colors.grey.shade50,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                      isDense: true,
-                    ),
-                    style: const TextStyle(color: Colors.black87, fontSize: 13),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter a label';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: addressController,
-                    decoration: InputDecoration(
-                      labelText: 'Complete Address',
-                      labelStyle: const TextStyle(color: Colors.black54, fontSize: 12),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: AppColors.primary),
-                      ),
-                      prefixIcon: Icon(Icons.location_on_outlined, color: AppColors.primary, size: 18),
-                      filled: true,
-                      fillColor: Colors.grey.shade50,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                      isDense: true,
-                    ),
-                    style: const TextStyle(color: Colors.black87, fontSize: 13),
-                    maxLines: 2,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter the address';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: detailsController,
-                    decoration: InputDecoration(
-                      labelText: 'Additional Details (Optional)',
-                      labelStyle: const TextStyle(color: Colors.black54, fontSize: 12),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: AppColors.primary),
-                      ),
-                      prefixIcon: Icon(Icons.info_outline, color: AppColors.primary, size: 18),
-                      filled: true,
-                      fillColor: Colors.grey.shade50,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                      isDense: true,
-                    ),
-                    style: const TextStyle(color: Colors.black87, fontSize: 13),
-                    maxLines: 2,
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextButton(
+                        const SizedBox(width: 10),
+                        const Expanded(
+                          child: Text(
+                            'Edit Address',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        IconButton(
                           onPressed: () => Navigator.of(context).pop(),
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          icon: const Icon(Icons.close, color: Colors.black54, size: 20),
+                          constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                          padding: EdgeInsets.zero,
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.grey.shade100,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(6),
                             ),
                           ),
-                          child: const Text(
-                            'Cancel',
-                            style: TextStyle(color: Colors.black54, fontSize: 13),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: labelController,
+                      decoration: InputDecoration(
+                        labelText: 'Label (e.g., Home, Office)',
+                        labelStyle: const TextStyle(color: Colors.black54, fontSize: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: AppColors.primary),
+                        ),
+                        prefixIcon: Icon(Icons.label_outline, color: AppColors.primary, size: 18),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        isDense: true,
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            if (formKey.currentState!.validate()) {
-                              Navigator.of(context).pop();
-                              await _updateAddress(
-                                index,
-                                labelController.text,
-                                addressController.text,
-                                detailsController.text,
-                              );
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                      style: const TextStyle(color: Colors.black87, fontSize: 13),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter a label';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: flatHouseController,
+                      decoration: InputDecoration(
+                        labelText: 'Flat / House no. / Building name',
+                        labelStyle: const TextStyle(color: Colors.black54, fontSize: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: AppColors.primary),
+                        ),
+                        prefixIcon: Icon(Icons.home_outlined, color: AppColors.primary, size: 18),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        isDense: true,
+                      ),
+                      style: const TextStyle(color: Colors.black87, fontSize: 13),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: floorController,
+                      decoration: InputDecoration(
+                        labelText: 'Floor (optional)',
+                        labelStyle: const TextStyle(color: Colors.black54, fontSize: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: AppColors.primary),
+                        ),
+                        prefixIcon: Icon(Icons.layers_outlined, color: AppColors.primary, size: 18),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        isDense: true,
+                      ),
+                      style: const TextStyle(color: Colors.black87, fontSize: 13),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: streetController,
+                      decoration: InputDecoration(
+                        labelText: 'Street Name',
+                        labelStyle: const TextStyle(color: Colors.black54, fontSize: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: AppColors.primary),
+                        ),
+                        prefixIcon: Icon(Icons.signpost, color: AppColors.primary, size: 18),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        isDense: true,
+                      ),
+                      style: const TextStyle(color: Colors.black87, fontSize: 13),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: areaController,
+                      decoration: InputDecoration(
+                        labelText: 'Area / Sector / Locality',
+                        labelStyle: const TextStyle(color: Colors.black54, fontSize: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: AppColors.primary),
+                        ),
+                        prefixIcon: Icon(Icons.map_outlined, color: AppColors.primary, size: 18),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        isDense: true,
+                      ),
+                      style: const TextStyle(color: Colors.black87, fontSize: 13),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: villageController,
+                      decoration: InputDecoration(
+                        labelText: 'Village',
+                        labelStyle: const TextStyle(color: Colors.black54, fontSize: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: AppColors.primary),
+                        ),
+                        prefixIcon: Icon(Icons.nature_people, color: AppColors.primary, size: 18),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        isDense: true,
+                      ),
+                      style: const TextStyle(color: Colors.black87, fontSize: 13),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: landmarkController,
+                      decoration: InputDecoration(
+                        labelText: 'Nearby landmark (optional)',
+                        labelStyle: const TextStyle(color: Colors.black54, fontSize: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: AppColors.primary),
+                        ),
+                        prefixIcon: Icon(Icons.place_outlined, color: AppColors.primary, size: 18),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        isDense: true,
+                      ),
+                      style: const TextStyle(color: Colors.black87, fontSize: 13),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: cityController,
+                            decoration: InputDecoration(
+                              labelText: 'City',
+                              labelStyle: const TextStyle(color: Colors.black54, fontSize: 12),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(color: Colors.grey.shade300),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(color: Colors.grey.shade300),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(color: AppColors.primary),
+                              ),
+                              prefixIcon: Icon(Icons.location_city, color: AppColors.primary, size: 18),
+                              filled: true,
+                              fillColor: Colors.grey.shade50,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              isDense: true,
                             ),
-                            elevation: 2,
-                          ),
-                          child: const Text(
-                            'Update',
-                            style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: Colors.black87, fontSize: 13),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Required';
+                              }
+                              return null;
+                            },
                           ),
                         ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextFormField(
+                            controller: stateController,
+                            decoration: InputDecoration(
+                              labelText: 'State',
+                              labelStyle: const TextStyle(color: Colors.black54, fontSize: 12),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(color: Colors.grey.shade300),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(color: Colors.grey.shade300),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(color: AppColors.primary),
+                              ),
+                              filled: true,
+                              fillColor: Colors.grey.shade50,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              isDense: true,
+                            ),
+                            style: const TextStyle(color: Colors.black87, fontSize: 13),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Required';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: pincodeController,
+                      decoration: InputDecoration(
+                        labelText: 'Pincode',
+                        labelStyle: const TextStyle(color: Colors.black54, fontSize: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: AppColors.primary),
+                        ),
+                        prefixIcon: Icon(Icons.pin_drop_outlined, color: AppColors.primary, size: 18),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        isDense: true,
                       ),
-                    ],
-                  ),
-                ],
+                      style: const TextStyle(color: Colors.black87, fontSize: 13),
+                      keyboardType: TextInputType.number,
+                      maxLength: 6,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Pincode is required';
+                        }
+                        if (value.length != 6) {
+                          return 'Enter valid 6-digit pincode';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: const Text(
+                              'Cancel',
+                              style: TextStyle(color: Colors.black54, fontSize: 13),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              if (formKey.currentState!.validate()) {
+                                Navigator.of(context).pop();
+                                await _updateAddress(
+                                  index,
+                                  labelController.text,
+                                  flatHouseController.text,
+                                  floorController.text,
+                                  streetController.text,
+                                  areaController.text,
+                                  villageController.text,
+                                  landmarkController.text,
+                                  cityController.text,
+                                  stateController.text,
+                                  pincodeController.text,
+                                );
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              elevation: 2,
+                            ),
+                            child: const Text(
+                              'Update',
+                              style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showAddAddressOptions() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(Icons.add_location_alt, color: AppColors.primary, size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'Add New Address',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close, color: Colors.black54),
+                      padding: EdgeInsets.zero,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Choose how you want to add your delivery address:',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.black54,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                // Option 1: Enter Manually
+                InkWell(
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _showAddAddressDialog();
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: AppColors.primary, width: 2),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(Icons.edit_note, color: AppColors.primary, size: 32),
+                        ),
+                        const SizedBox(width: 16),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Enter Manually',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'Type your address details',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.black54,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.arrow_forward_ios, color: AppColors.primary, size: 16),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Option 2: Select from Map
+                InkWell(
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _openMapPickerForNewAddress();
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: Colors.green, width: 2),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.green.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.map, color: Colors.green, size: 32),
+                        ),
+                        const SizedBox(width: 16),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    'Select from Map',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Icon(Icons.star, color: Colors.amber, size: 16),
+                                ],
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'Pinpoint your exact location',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.black54,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.arrow_forward_ios, color: Colors.green, size: 16),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         );
@@ -603,6 +1248,130 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
     } catch (e) {
       if (mounted) {
         Helpers.showSnackBar(context, 'Error opening location picker: $e', isError: true);
+      }
+    }
+  }
+
+  Future<void> _addAddressDetailed(
+    String label,
+    String flatHouse,
+    String floor,
+    String street,
+    String area,
+    String village,
+    String landmark,
+    String city,
+    String state,
+    String pincode,
+  ) async {
+    try {
+      // Build full address from components for geocoding
+      List<String> addressParts = [];
+      if (flatHouse.trim().isNotEmpty) {
+        addressParts.add(flatHouse.trim());
+      }
+      if (floor.trim().isNotEmpty) {
+        addressParts.add('Floor ${floor.trim()}');
+      }
+      if (street.trim().isNotEmpty) {
+        addressParts.add(street.trim());
+      }
+      if (area.trim().isNotEmpty) {
+        addressParts.add(area.trim());
+      }
+      if (village.trim().isNotEmpty) {
+        addressParts.add(village.trim());
+      }
+      if (city.trim().isNotEmpty) {
+        addressParts.add(city.trim());
+      }
+      if (state.trim().isNotEmpty) {
+        addressParts.add(state.trim());
+      }
+      if (pincode.trim().isNotEmpty) {
+        addressParts.add(pincode.trim());
+      }
+      String fullAddress = addressParts.join(', ');
+
+      print('Adding detailed address: $label - $fullAddress');
+
+      // Geocode the address to get real lat/long coordinates
+      double latitude = 13.0827; // Default fallback
+      double longitude = 80.2707; // Default fallback
+
+      try {
+        // Try to get coordinates from the full address
+        final locations = await locationFromAddress(fullAddress);
+        if (locations.isNotEmpty) {
+          latitude = locations.first.latitude;
+          longitude = locations.first.longitude;
+          print('✅ Geocoded address to: $latitude, $longitude');
+        } else {
+          print('⚠️ Could not geocode address, using fallback coordinates');
+        }
+      } catch (e) {
+        print('⚠️ Geocoding failed: $e, using fallback coordinates');
+      }
+
+      // Get contact info from LocalStorage (saved from profile)
+      final firstName = await LocalStorage.getString('firstName') ?? '';
+      final lastName = await LocalStorage.getString('lastName') ?? '';
+      final phoneNumber = await LocalStorage.getString('phoneNumber') ?? '';
+      final contactPersonName = '$firstName $lastName'.trim();
+
+      final result = await AddressApiService.addAddress(
+        label: label,
+        fullAddress: fullAddress,
+        details: landmark,
+        latitude: latitude,
+        longitude: longitude,
+        isDefault: _addresses.isEmpty,
+        city: city,
+        state: state,
+        pincode: pincode,
+        flatHouse: flatHouse,
+        floor: floor,
+        street: street,
+        area: area,
+        village: village,
+        contactPersonName: contactPersonName.isNotEmpty ? contactPersonName : null,
+        contactMobileNumber: phoneNumber.isNotEmpty ? phoneNumber : null,
+      );
+
+      print('Add address result: $result');
+
+      if (mounted) {
+        if (result['success']) {
+          // Force refresh the address list from API
+          setState(() {
+            _isLoading = true;
+          });
+
+          await _loadAddresses(); // This will update _addresses and setState
+
+          // Double-check that addresses are loaded
+          if (_addresses.isNotEmpty) {
+            print('Successfully loaded ${_addresses.length} addresses after adding');
+            // Update cache with the new address list
+            await LocalStorage.setList('user_addresses', _addresses);
+            Helpers.showSnackBar(context, result['message'] ?? 'Address added successfully!');
+          } else {
+            print('No addresses found after adding - trying to reload again');
+            // Try one more time
+            await Future.delayed(const Duration(milliseconds: 500));
+            await _loadAddresses();
+          }
+        } else {
+          Helpers.showSnackBar(context, result['message'] ?? 'Failed to add address', isError: true);
+        }
+      }
+    } catch (e) {
+      print('Error adding address: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        Helpers.showSnackBar(context, 'Error adding address: $e', isError: true);
       }
     }
   }
@@ -702,21 +1471,77 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
     }
   }
 
-  Future<void> _updateAddress(int index, String label, String address, String details) async {
+  Future<void> _updateAddress(
+    int index,
+    String label,
+    String flatHouse,
+    String floor,
+    String street,
+    String area,
+    String village,
+    String landmark,
+    String city,
+    String state,
+    String pincode,
+  ) async {
     try {
       final addressId = _addresses[index]['id'] as int;
       final currentAddress = _addresses[index];
 
-      print('Updating address $addressId: $label - $address');
+      // Build full address from components for display
+      List<String> addressParts = [];
+      if (flatHouse.trim().isNotEmpty) {
+        addressParts.add(flatHouse.trim());
+      }
+      if (floor.trim().isNotEmpty) {
+        addressParts.add('Floor ${floor.trim()}');
+      }
+      if (street.trim().isNotEmpty) {
+        addressParts.add(street.trim());
+      }
+      if (area.trim().isNotEmpty) {
+        addressParts.add(area.trim());
+      }
+      if (village.trim().isNotEmpty) {
+        addressParts.add(village.trim());
+      }
+      if (city.trim().isNotEmpty) {
+        addressParts.add(city.trim());
+      }
+      if (state.trim().isNotEmpty) {
+        addressParts.add(state.trim());
+      }
+      if (pincode.trim().isNotEmpty) {
+        addressParts.add(pincode.trim());
+      }
+      String fullAddress = addressParts.join(', ');
+
+      print('Updating address $addressId: $label - $fullAddress');
+
+      // Get contact info from LocalStorage (saved from profile)
+      final firstName = await LocalStorage.getString('firstName') ?? '';
+      final lastName = await LocalStorage.getString('lastName') ?? '';
+      final phoneNumber = await LocalStorage.getString('phoneNumber') ?? '';
+      final contactPersonName = '$firstName $lastName'.trim();
 
       final result = await AddressApiService.updateAddress(
         addressId: addressId,
         label: label,
-        fullAddress: address,
-        details: details,
+        fullAddress: fullAddress,
+        details: landmark,
         latitude: currentAddress['latitude'] ?? 13.0827,
         longitude: currentAddress['longitude'] ?? 80.2707,
         isDefault: currentAddress['isDefault'] ?? false,
+        city: city,
+        state: state,
+        pincode: pincode,
+        flatHouse: flatHouse,
+        floor: floor,
+        street: street,
+        area: area,
+        village: village,
+        contactPersonName: contactPersonName.isNotEmpty ? contactPersonName : null,
+        contactMobileNumber: phoneNumber.isNotEmpty ? phoneNumber : null,
       );
 
       print('Update address result: $result');
@@ -939,7 +1764,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
               ],
             ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _openMapPickerForNewAddress,
+        onPressed: _showAddAddressDialog,  // Directly open manual form, map option hidden for now
         backgroundColor: AppColors.primary,
         child: const Icon(Icons.add, color: Colors.white, size: 24),
       ),

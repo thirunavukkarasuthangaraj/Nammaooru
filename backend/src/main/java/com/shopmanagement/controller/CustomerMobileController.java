@@ -55,8 +55,13 @@ public class CustomerMobileController {
                 DeliveryLocationResponse location = DeliveryLocationResponse.builder()
                         .id(address.getId())
                         .addressType(address.getAddressType())
-                        .flatHouse(address.getAddressLine2()) // Fixed: flatHouse from addressLine2
-                        .area(address.getAddressLine1())      // Fixed: area from addressLine1
+                        .flatHouse(address.getFlatHouse())
+                        .floor(address.getFloor())
+                        .street(address.getStreet())
+                        .area(address.getArea())
+                        .village(address.getVillage())
+                        .addressLine1(address.getAddressLine1()) // For mobile app compatibility
+                        .addressLine2(address.getAddressLine2()) // For mobile app compatibility
                         .landmark(address.getLandmark())
                         .city(address.getCity())
                         .state(address.getState())
@@ -66,6 +71,8 @@ public class CustomerMobileController {
                         .longitude(address.getLongitude())
                         .isDefault(address.getIsDefault())
                         .isActive(address.getIsActive())
+                        .contactPersonName(address.getContactPersonName())
+                        .contactMobileNumber(address.getContactMobileNumber())
                         .displayLabel(address.getAddressType() + " - " + address.getCity())
                         .shortAddress(address.getCity() + ", " + address.getState())
                         .build();
@@ -109,12 +116,32 @@ public class CustomerMobileController {
                 }
             }
 
+            // Build addressLine1 and addressLine2 for backward compatibility
+            StringBuilder addressLine1 = new StringBuilder();
+            if (request.getArea() != null && !request.getArea().isEmpty()) {
+                addressLine1.append(request.getArea());
+            }
+
+            StringBuilder addressLine2 = new StringBuilder();
+            if (request.getFlatHouse() != null && !request.getFlatHouse().isEmpty()) {
+                addressLine2.append(request.getFlatHouse());
+            }
+            if (request.getFloor() != null && !request.getFloor().isEmpty()) {
+                if (addressLine2.length() > 0) addressLine2.append(", Floor ");
+                addressLine2.append(request.getFloor());
+            }
+
             // Create new address entity
             CustomerAddress address = CustomerAddress.builder()
                     .customer(customer)
                     .addressType(request.getAddressType())
-                    .addressLine1(request.getArea()) // Using area as primary address line
-                    .addressLine2(request.getFlatHouse()) // Using flatHouse as secondary
+                    .flatHouse(request.getFlatHouse())
+                    .floor(request.getFloor())
+                    .street(request.getStreet())
+                    .area(request.getArea())
+                    .village(request.getVillage())
+                    .addressLine1(addressLine1.toString())
+                    .addressLine2(addressLine2.toString())
                     .landmark(request.getLandmark())
                     .city(request.getCity() != null ? request.getCity() : "Tirupattur")
                     .state(request.getState() != null ? request.getState() : "Tamil Nadu")
@@ -123,6 +150,8 @@ public class CustomerMobileController {
                     .longitude(request.getLongitude())
                     .isDefault(request.getIsDefault() != null ? request.getIsDefault() : false)
                     .isActive(true)
+                    .contactPersonName(request.getContactPersonName())
+                    .contactMobileNumber(request.getContactMobileNumber())
                     .createdBy(customer.getEmail())
                     .updatedBy(customer.getEmail())
                     .build();
@@ -134,8 +163,13 @@ public class CustomerMobileController {
             DeliveryLocationResponse response = DeliveryLocationResponse.builder()
                     .id(savedAddress.getId())
                     .addressType(savedAddress.getAddressType())
-                    .flatHouse(savedAddress.getAddressLine2())
-                    .area(savedAddress.getAddressLine1())
+                    .flatHouse(savedAddress.getFlatHouse())
+                    .floor(savedAddress.getFloor())
+                    .street(savedAddress.getStreet())
+                    .area(savedAddress.getArea())
+                    .village(savedAddress.getVillage())
+                    .addressLine1(savedAddress.getAddressLine1()) // For mobile app compatibility
+                    .addressLine2(savedAddress.getAddressLine2()) // For mobile app compatibility
                     .landmark(savedAddress.getLandmark())
                     .city(savedAddress.getCity())
                     .state(savedAddress.getState())
@@ -145,7 +179,9 @@ public class CustomerMobileController {
                     .longitude(savedAddress.getLongitude())
                     .isDefault(savedAddress.getIsDefault())
                     .isActive(savedAddress.getIsActive())
-                    .displayLabel(savedAddress.getAddressLabel() + " - " + savedAddress.getCity())
+                    .contactPersonName(savedAddress.getContactPersonName())
+                    .contactMobileNumber(savedAddress.getContactMobileNumber())
+                    .displayLabel(savedAddress.getAddressType() + " - " + savedAddress.getCity())
                     .shortAddress(savedAddress.getCity() + ", " + savedAddress.getState())
                     .build();
 
@@ -166,30 +202,93 @@ public class CustomerMobileController {
         try {
             log.info("Updating delivery location with ID: {}", id);
 
-            // For now, return a sample response - in a real implementation,
-            // this would update in the database
+            // Find existing address
+            CustomerAddress address = customerAddressRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Delivery location not found"));
+
+            // Update fields
+            address.setAddressType(request.getAddressType());
+            address.setFlatHouse(request.getFlatHouse());
+            address.setFloor(request.getFloor());
+            address.setStreet(request.getStreet());
+            address.setArea(request.getArea());
+            address.setVillage(request.getVillage());
+
+            // Build addressLine1 and addressLine2 for backward compatibility
+            StringBuilder addressLine1 = new StringBuilder();
+            if (request.getArea() != null && !request.getArea().isEmpty()) {
+                addressLine1.append(request.getArea());
+            }
+            if (addressLine1.length() > 0) {
+                address.setAddressLine1(addressLine1.toString());
+            }
+
+            StringBuilder addressLine2 = new StringBuilder();
+            if (request.getFlatHouse() != null && !request.getFlatHouse().isEmpty()) {
+                addressLine2.append(request.getFlatHouse());
+            }
+            if (request.getFloor() != null && !request.getFloor().isEmpty()) {
+                if (addressLine2.length() > 0) addressLine2.append(", Floor ");
+                addressLine2.append(request.getFloor());
+            }
+            if (addressLine2.length() > 0) {
+                address.setAddressLine2(addressLine2.toString());
+            }
+
+            address.setLandmark(request.getLandmark());
+            address.setCity(request.getCity());
+            address.setState(request.getState());
+            address.setPostalCode(request.getPincode());
+            address.setLatitude(request.getLatitude());
+            address.setLongitude(request.getLongitude());
+            address.setIsDefault(request.getIsDefault() != null ? request.getIsDefault() : false);
+            address.setContactPersonName(request.getContactPersonName());
+            address.setContactMobileNumber(request.getContactMobileNumber());
+            address.setUpdatedBy("system");
+
+            // Save updated address
+            CustomerAddress savedAddress = customerAddressRepository.save(address);
+
+            // Build response - map database fields back to mobile app fields
+            String fullAddress = String.format("%s, %s, Near %s, %s, %s - %s",
+                    savedAddress.getAddressLine1(),
+                    savedAddress.getAddressLine2() != null ? savedAddress.getAddressLine2() : "",
+                    savedAddress.getLandmark() != null ? savedAddress.getLandmark() : "",
+                    savedAddress.getCity(),
+                    savedAddress.getState(),
+                    savedAddress.getPostalCode());
+
             DeliveryLocationResponse response = DeliveryLocationResponse.builder()
-                    .id(id)
-                    .addressType(request.getAddressType())
-                    .flatHouse(request.getFlatHouse())
-                    .floor(request.getFloor())
-                    .area(request.getArea())
-                    .landmark(request.getLandmark())
-                    .city(request.getCity())
-                    .state(request.getState())
-                    .pincode(request.getPincode())
-                    .fullAddress(String.format("%s, %s, %s %s",
-                            request.getArea(), request.getCity(), request.getState(), request.getPincode()))
-                    .latitude(request.getLatitude())
-                    .longitude(request.getLongitude())
-                    .isDefault(request.getIsDefault())
-                    .isActive(true)
-                    .displayLabel(request.getAddressType() + " - " + request.getArea())
-                    .shortAddress(request.getArea() + ", " + request.getCity())
+                    .id(savedAddress.getId())
+                    .addressType(savedAddress.getAddressType())
+                    .flatHouse(savedAddress.getFlatHouse())
+                    .floor(savedAddress.getFloor())
+                    .street(savedAddress.getStreet())
+                    .area(savedAddress.getArea())
+                    .village(savedAddress.getVillage())
+                    .addressLine1(savedAddress.getAddressLine1()) // For mobile app compatibility
+                    .addressLine2(savedAddress.getAddressLine2()) // For mobile app compatibility
+                    .landmark(savedAddress.getLandmark())
+                    .city(savedAddress.getCity())
+                    .state(savedAddress.getState())
+                    .pincode(savedAddress.getPostalCode())
+                    .fullAddress(savedAddress.getFullAddress())
+                    .latitude(savedAddress.getLatitude())
+                    .longitude(savedAddress.getLongitude())
+                    .isDefault(savedAddress.getIsDefault())
+                    .isActive(savedAddress.getIsActive())
+                    .contactPersonName(savedAddress.getContactPersonName())
+                    .contactMobileNumber(savedAddress.getContactMobileNumber())
+                    .displayLabel(savedAddress.getAddressType() + " - " + savedAddress.getCity())
+                    .shortAddress(savedAddress.getCity() + ", " + savedAddress.getState())
                     .build();
 
             return ResponseEntity.ok(ApiResponse.success(response, "Delivery location updated successfully"));
 
+        } catch (RuntimeException e) {
+            log.error("Error updating delivery location with ID: {}: {}", id, e.getMessage());
+            return ResponseEntity.status(404)
+                    .body(ApiResponse.error(e.getMessage(), "LOCATION_NOT_FOUND"));
         } catch (Exception e) {
             log.error("Error updating delivery location with ID: {}", id, e);
             return ResponseEntity.status(500)
@@ -230,6 +329,52 @@ public class CustomerMobileController {
             log.error("Error deleting delivery location with ID: {}", id, e);
             return ResponseEntity.status(500)
                     .body(ApiResponse.error("Failed to delete delivery location", "DELETE_LOCATION_ERROR"));
+        }
+    }
+
+    @PutMapping("/delivery-locations/{id}/default")
+    // @PreAuthorize("hasRole('CUSTOMER') or hasRole('USER')")
+    public ResponseEntity<ApiResponse<String>> setDefaultAddress(@PathVariable Long id) {
+        try {
+            log.info("Setting default address with ID: {}", id);
+
+            Customer customer = getCurrentCustomer();
+            if (customer == null) {
+                return ResponseEntity.status(401)
+                    .body(ApiResponse.error("User not authenticated", "AUTHENTICATION_ERROR"));
+            }
+
+            // Find the address that belongs to this customer
+            Optional<CustomerAddress> addressOpt = customerAddressRepository.findByIdAndCustomerId(id, customer.getId());
+            if (addressOpt.isEmpty()) {
+                return ResponseEntity.status(404)
+                    .body(ApiResponse.error("Address not found or doesn't belong to current user", "ADDRESS_NOT_FOUND"));
+            }
+
+            // First, set all addresses for this customer to non-default
+            List<CustomerAddress> allAddresses = customerAddressRepository.findByCustomerIdAndIsActive(customer.getId(), true);
+            for (CustomerAddress addr : allAddresses) {
+                if (addr.getIsDefault()) {
+                    addr.setIsDefault(false);
+                    addr.setUpdatedBy(customer.getEmail());
+                    customerAddressRepository.save(addr);
+                    log.info("Removed default status from address ID: {}", addr.getId());
+                }
+            }
+
+            // Set the selected address as default
+            CustomerAddress address = addressOpt.get();
+            address.setIsDefault(true);
+            address.setUpdatedBy(customer.getEmail());
+            customerAddressRepository.save(address);
+
+            log.info("Address {} set as default successfully for customer {}", id, customer.getId());
+            return ResponseEntity.ok(ApiResponse.success("", "Default address updated successfully"));
+
+        } catch (Exception e) {
+            log.error("Error setting default address with ID: {}", id, e);
+            return ResponseEntity.status(500)
+                    .body(ApiResponse.error("Failed to set default address", "SET_DEFAULT_ERROR"));
         }
     }
 

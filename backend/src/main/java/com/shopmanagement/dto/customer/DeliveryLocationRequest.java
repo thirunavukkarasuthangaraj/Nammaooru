@@ -17,10 +17,13 @@ public class DeliveryLocationRequest {
 
     private String flatHouse;
     private String floor;
+    private String street;
 
     @NotBlank(message = "Area is required")
     @Size(max = 200, message = "Area cannot exceed 200 characters")
     private String area;
+
+    private String village;
 
     @Size(max = 100, message = "Landmark cannot exceed 100 characters")
     private String landmark;
@@ -45,4 +48,8 @@ public class DeliveryLocationRequest {
     // Additional fields that might come from mobile app
     private String fullAddress;
     private String details;
+
+    // Contact information
+    private String contactPersonName;
+    private String contactMobileNumber;
 }

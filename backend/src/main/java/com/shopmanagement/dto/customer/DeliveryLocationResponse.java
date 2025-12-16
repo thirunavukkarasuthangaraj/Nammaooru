@@ -17,7 +17,11 @@ public class DeliveryLocationResponse {
     private String addressType;
     private String flatHouse;
     private String floor;
+    private String street;
     private String area;
+    private String village;
+    private String addressLine1; // For mobile app compatibility
+    private String addressLine2; // For mobile app compatibility
     private String landmark;
     private String city;
     private String state;
@@ -27,6 +31,10 @@ public class DeliveryLocationResponse {
     private Double longitude;
     private Boolean isDefault;
     private Boolean isActive;
+
+    // Contact information
+    private String contactPersonName;
+    private String contactMobileNumber;
 
     // Timestamps
     private String createdBy;

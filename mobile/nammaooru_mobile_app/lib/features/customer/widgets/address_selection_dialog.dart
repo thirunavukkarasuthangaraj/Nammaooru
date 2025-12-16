@@ -41,6 +41,136 @@ class _AddressSelectionDialogState extends State<AddressSelectionDialog> {
     }
   }
 
+  Future<void> _showAddAddressOptionsDialog(BuildContext context) async {
+    await showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: VillageTheme.primaryGreen.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(Icons.add_location_alt, color: VillageTheme.primaryGreen, size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'Add New Address',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      icon: const Icon(Icons.close, color: Colors.black54),
+                      padding: EdgeInsets.zero,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Choose how you want to add your delivery address:',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.black54,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                // Option 1: Enter Manually (Only option for now)
+                InkWell(
+                  onTap: () async {
+                    Navigator.of(dialogContext).pop(); // Close the options dialog
+                    // Small delay to ensure dialog is closed
+                    await Future.delayed(const Duration(milliseconds: 100));
+                    if (context.mounted) {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AddressManagementScreen(autoOpenManualForm: true),
+                        ),
+                      );
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: VillageTheme.primaryGreen, width: 2),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: VillageTheme.primaryGreen.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: VillageTheme.primaryGreen.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(Icons.edit_note, color: VillageTheme.primaryGreen, size: 32),
+                        ),
+                        const SizedBox(width: 16),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Enter Manually',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'Type your address details',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.black54,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.arrow_forward_ios, color: VillageTheme.primaryGreen, size: 16),
+                      ],
+                    ),
+                  ),
+                ),
+                // Map option hidden for now - will be enabled later
+                // const SizedBox(height: 12),
+                // InkWell(...),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -97,26 +227,24 @@ class _AddressSelectionDialogState extends State<AddressSelectionDialog> {
 
             const SizedBox(height: 16),
 
-            // Add New Address Button
+            // Add New Address Button - Directly open manual form (map option hidden)
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: () async {
-                  Navigator.of(context).pop();
-                  // Directly open map picker for new address
-                  final result = await Navigator.push(
+                  // Directly navigate to address management with auto-open form
+                  await Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => GoogleMapsLocationPickerScreen(
-                        currentLocation: widget.currentLocation,
-                      ),
+                      builder: (context) => const AddressManagementScreen(autoOpenManualForm: true),
                     ),
                   );
-                  if (result != null) {
-                    widget.onLocationSelected(result);
+                  // After returning, close this dialog
+                  if (mounted) {
+                    Navigator.of(context).pop();
                   }
                 },
-                icon: const Icon(Icons.map),
+                icon: const Icon(Icons.edit_note),
                 label: const Text('Add New Address'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: VillageTheme.primaryGreen,

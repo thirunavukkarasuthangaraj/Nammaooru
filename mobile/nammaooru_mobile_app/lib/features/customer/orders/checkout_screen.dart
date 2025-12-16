@@ -12,6 +12,7 @@ import '../../../core/auth/auth_provider.dart';
 import '../../../core/auth/auth_service.dart';
 import '../../../core/auth/jwt_helper.dart';
 import '../../../core/storage/secure_storage.dart';
+import '../../../core/storage/local_storage.dart';
 import '../../../core/services/order_service.dart';
 import '../../../core/services/location_service.dart';
 import '../../../core/services/address_service.dart';
@@ -22,6 +23,7 @@ import '../../../core/services/device_info_service.dart';
 import '../../../core/api/api_client.dart';
 import '../widgets/promo_code_widget.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../screens/address_management_screen.dart';
 // import 'order_confirmation_screen.dart'; // Temporarily commented
 
 class CheckoutScreen extends StatefulWidget {
@@ -92,11 +94,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       _checkAuthentication();
-      _loadUserData();
+      await _loadUserData(); // Load profile data first
+      await _loadSavedAddresses(); // Then load addresses
     });
-    _loadSavedAddresses();
   }
 
   Future<void> _loadUserData() async {
@@ -261,7 +263,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             (addr) => addr.isDefault,
             orElse: () => _savedAddresses.first,
           );
-          _loadAddressToFields(defaultAddress);
+          await _loadAddressToFields(defaultAddress);
           setState(() {
             _selectedSavedAddress = defaultAddress;
           });
@@ -281,7 +283,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             (addr) => addr.isDefault,
             orElse: () => localAddresses.first,
           );
-          _loadAddressToFields(defaultAddress);
+          await _loadAddressToFields(defaultAddress);
           setState(() {
             _selectedSavedAddress = defaultAddress;
           });
@@ -302,7 +304,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           (addr) => addr.isDefault,
           orElse: () => addresses.first,
         );
-        _loadAddressToFields(defaultAddress);
+        await _loadAddressToFields(defaultAddress);
         setState(() {
           _selectedSavedAddress = defaultAddress;
         });
@@ -312,11 +314,40 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
-  void _loadAddressToFields(SavedAddress address) {
+  Future<void> _loadAddressToFields(SavedAddress address) async {
     print('🔍 Loading address to fields: name=${address.name}, lastName=${address.lastName}, phone=${address.phone}');
-    _nameController.text = address.name;
-    _lastNameController.text = address.lastName;
-    _phoneController.text = address.phone;
+
+    // Only load name and phone from address if they exist, otherwise preserve current values or use profile
+    if (address.name.isNotEmpty) {
+      _nameController.text = address.name;
+    } else if (_nameController.text.isEmpty) {
+      // Only load from profile if field is currently empty
+      final firstName = await LocalStorage.getString('firstName') ?? '';
+      if (firstName.isNotEmpty) {
+        _nameController.text = firstName;
+      }
+    }
+
+    if (address.lastName.isNotEmpty) {
+      _lastNameController.text = address.lastName;
+    } else if (_lastNameController.text.isEmpty) {
+      // Only load from profile if field is currently empty
+      final lastName = await LocalStorage.getString('lastName') ?? '';
+      if (lastName.isNotEmpty) {
+        _lastNameController.text = lastName;
+      }
+    }
+
+    if (address.phone.isNotEmpty) {
+      _phoneController.text = address.phone;
+    } else if (_phoneController.text.isEmpty) {
+      // Only load from profile if field is currently empty
+      final phoneNumber = await LocalStorage.getString('phoneNumber') ?? '';
+      if (phoneNumber.isNotEmpty) {
+        _phoneController.text = phoneNumber;
+      }
+    }
+
     _addressLine1Controller.text = address.addressLine1;
     _addressLine2Controller.text = address.addressLine2;
     _landmarkController.text = address.landmark;
@@ -336,7 +367,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       _selectedState = 'Tamil Nadu'; // Default to Tamil Nadu if not found
     }
 
-    _selectedAddressType = address.addressType;
+    // Convert address type to uppercase to match radio button values
+    _selectedAddressType = address.addressType.toUpperCase();
   }
 
   Future<void> _saveCurrentAddress() async {
@@ -630,20 +662,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                               // Add New Address Button
                               if (index == _savedAddresses.length) {
                                 return GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedSavedAddress = null;
-                                      _nameController.clear();
-                                      _lastNameController.clear();
-                                      _phoneController.clear();
-                                      _addressLine1Controller.clear();
-                                      _addressLine2Controller.clear();
-                                      _landmarkController.clear();
-                                      _pincodeController.clear();
-                                      _selectedAddressType = 'HOME';
-                                      _selectedCity = 'Tirupattur';
-                                      _selectedState = 'Tamil Nadu';
-                                    });
+                                  onTap: () async {
+                                    // Navigate to address management screen with auto-open manual form
+                                    await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => const AddressManagementScreen(autoOpenManualForm: true),
+                                      ),
+                                    );
+                                    // Reload addresses after returning
+                                    await _loadSavedAddresses();
                                   },
                                   child: Container(
                                     width: 140,
@@ -690,10 +718,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                               final isSelected = _selectedSavedAddress?.id == address.id;
 
                               return GestureDetector(
-                                onTap: () {
+                                onTap: () async {
+                                  await _loadAddressToFields(address);
                                   setState(() {
                                     _selectedSavedAddress = address;
-                                    _loadAddressToFields(address);
                                   });
                                 },
                                 child: Container(
