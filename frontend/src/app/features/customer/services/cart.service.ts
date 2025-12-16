@@ -201,9 +201,19 @@ export class CartService {
     this.saveCart(currentCart);
   }
 
+  updateDeliveryFee(deliveryFee: number): void {
+    const currentCart = this.cartSubject.value;
+    currentCart.deliveryFee = deliveryFee;
+    this.updateCartTotals(currentCart);
+    this.saveCart(currentCart);
+  }
+
   private updateCartTotals(cart: Cart): void {
     cart.subtotal = cart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    cart.deliveryFee = cart.items.length > 0 ? this.DELIVERY_FEE : 0;
+    // Use existing deliveryFee if set, otherwise use default
+    if (cart.deliveryFee === undefined || cart.deliveryFee === null) {
+      cart.deliveryFee = cart.items.length > 0 ? this.DELIVERY_FEE : 0;
+    }
     cart.total = cart.subtotal - cart.discount + cart.deliveryFee;
   }
 

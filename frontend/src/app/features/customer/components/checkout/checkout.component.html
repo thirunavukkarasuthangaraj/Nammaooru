@@ -20,7 +20,42 @@
         
         <!-- Left Column: Form Fields -->
         <div class="form-column">
-          
+
+          <!-- Delivery Type Selection -->
+          <mat-card class="form-section">
+            <mat-card-header>
+              <mat-card-title>
+                <mat-icon>local_shipping</mat-icon>
+                Delivery Method
+              </mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <mat-radio-group [(ngModel)]="selectedDeliveryType"
+                               (change)="onDeliveryTypeChange(selectedDeliveryType)"
+                               [ngModelOptions]="{standalone: true}"
+                               class="delivery-type-group">
+                <mat-radio-button value="HOME_DELIVERY" class="delivery-option">
+                  <div class="delivery-option-content">
+                    <mat-icon>home</mat-icon>
+                    <div class="delivery-option-text">
+                      <strong>Home Delivery</strong>
+                      <p>Get it delivered to your doorstep (₹50 delivery fee)</p>
+                    </div>
+                  </div>
+                </mat-radio-button>
+                <mat-radio-button value="SELF_PICKUP" class="delivery-option">
+                  <div class="delivery-option-content">
+                    <mat-icon>store</mat-icon>
+                    <div class="delivery-option-text">
+                      <strong>Self Pickup</strong>
+                      <p>Pick up from the store (No delivery fee)</p>
+                    </div>
+                  </div>
+                </mat-radio-button>
+              </mat-radio-group>
+            </mat-card-content>
+          </mat-card>
+
           <!-- Customer Information -->
           <mat-card class="form-section">
             <mat-card-header>
@@ -76,8 +111,8 @@
             </mat-card-content>
           </mat-card>
 
-          <!-- Delivery Address -->
-          <mat-card class="form-section">
+          <!-- Delivery Address (Only for HOME_DELIVERY) -->
+          <mat-card class="form-section" *ngIf="selectedDeliveryType === 'HOME_DELIVERY'">
             <mat-card-header>
               <mat-card-title>
                 <mat-icon>location_on</mat-icon>
@@ -222,7 +257,8 @@
                 </div>
                 <div class="price-row">
                   <span>Delivery Fee:</span>
-                  <span>₹{{cart.deliveryFee || 40}}</span>
+                  <span *ngIf="selectedDeliveryType === 'SELF_PICKUP'" style="color: #4caf50; font-weight: 600;">FREE</span>
+                  <span *ngIf="selectedDeliveryType === 'HOME_DELIVERY'">₹{{cart.deliveryFee || 50}}</span>
                 </div>
                 <div class="price-row discount" *ngIf="cart.discount > 0">
                   <span>Discount:</span>
@@ -276,16 +312,24 @@
           <mat-card class="delivery-info-card">
             <mat-card-content>
               <div class="delivery-header">
-                <mat-icon>local_shipping</mat-icon>
-                <h4>Delivery Information</h4>
+                <mat-icon>{{ selectedDeliveryType === 'SELF_PICKUP' ? 'store' : 'local_shipping' }}</mat-icon>
+                <h4>{{ selectedDeliveryType === 'SELF_PICKUP' ? 'Pickup Information' : 'Delivery Information' }}</h4>
               </div>
-              <div class="info-item">
+              <div class="info-item" *ngIf="selectedDeliveryType === 'HOME_DELIVERY'">
                 <mat-icon>schedule</mat-icon>
                 <span>Estimated delivery in 30-45 minutes</span>
               </div>
-              <div class="info-item">
+              <div class="info-item" *ngIf="selectedDeliveryType === 'SELF_PICKUP'">
+                <mat-icon>schedule</mat-icon>
+                <span>Ready for pickup in 20-30 minutes</span>
+              </div>
+              <div class="info-item" *ngIf="selectedDeliveryType === 'HOME_DELIVERY'">
                 <mat-icon>verified_user</mat-icon>
                 <span>Safe & contactless delivery</span>
+              </div>
+              <div class="info-item" *ngIf="selectedDeliveryType === 'SELF_PICKUP'">
+                <mat-icon>verified_user</mat-icon>
+                <span>Collect from store when ready</span>
               </div>
               <div class="info-item">
                 <mat-icon>support_agent</mat-icon>

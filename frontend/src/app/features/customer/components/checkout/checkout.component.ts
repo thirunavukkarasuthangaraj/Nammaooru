@@ -32,6 +32,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   orderResponse: any = null;
   savedAddresses: DeliveryAddress[] = [];
   selectedPaymentMethod = 'CASH_ON_DELIVERY';
+  selectedDeliveryType: 'HOME_DELIVERY' | 'SELF_PICKUP' = 'HOME_DELIVERY';
   estimatedDeliveryTime = '30-45 minutes';
   promoCode = '';
   promoDiscount = 0;
@@ -59,8 +60,10 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       if (cart.items.length === 0) {
         this.router.navigate(['/customer/shops']);
       }
+      // Update cart with delivery fee based on delivery type
+      this.updateDeliveryFee();
     });
-    
+
     this.loadSavedAddresses();
     // Set default delivery time (API endpoint not available)
     this.estimatedDeliveryTime = '30-45 minutes';
@@ -110,6 +113,39 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       pincode: address.postalCode
     });
   }
+
+  onDeliveryTypeChange(deliveryType: 'HOME_DELIVERY' | 'SELF_PICKUP'): void {
+    this.selectedDeliveryType = deliveryType;
+
+    // Update form validators based on delivery type
+    const addressFields = ['streetAddress', 'city', 'state', 'pincode'];
+
+    if (deliveryType === 'SELF_PICKUP') {
+      // Make address fields optional for self-pickup
+      addressFields.forEach(field => {
+        this.checkoutForm.get(field)?.clearValidators();
+        this.checkoutForm.get(field)?.updateValueAndValidity();
+      });
+    } else {
+      // Make address fields required for home delivery
+      this.checkoutForm.get('streetAddress')?.setValidators([Validators.required, Validators.minLength(10)]);
+      this.checkoutForm.get('city')?.setValidators([Validators.required]);
+      this.checkoutForm.get('state')?.setValidators([Validators.required]);
+      this.checkoutForm.get('pincode')?.setValidators([Validators.required, Validators.pattern(/^\d{6}$/)]);
+
+      addressFields.forEach(field => {
+        this.checkoutForm.get(field)?.updateValueAndValidity();
+      });
+    }
+
+    // Update delivery fee
+    this.updateDeliveryFee();
+  }
+
+  updateDeliveryFee(): void {
+    const deliveryFee = this.selectedDeliveryType === 'SELF_PICKUP' ? 0 : 50;
+    this.cartService.updateDeliveryFee(deliveryFee);
+  }
   
   calculateDeliveryTime(): void {
     // Set default delivery time (API endpoint not available)
@@ -140,21 +176,32 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     this.placingOrder = true;
 
     const formValue = this.checkoutForm.value;
-    const deliveryAddress: DeliveryAddress = {
-      contactName: `${formValue.firstName} ${formValue.lastName}`.trim(),
-      phone: formValue.phone,
-      address: formValue.streetAddress,
-      city: formValue.city,
-      state: formValue.state,
-      postalCode: formValue.pincode,
-      landmark: formValue.landmark || ''
-    };
-    
+
+    // For SELF_PICKUP, delivery address is optional
+    let deliveryAddress: DeliveryAddress | null = null;
+    if (this.selectedDeliveryType === 'HOME_DELIVERY') {
+      deliveryAddress = {
+        contactName: `${formValue.firstName} ${formValue.lastName}`.trim(),
+        phone: formValue.phone,
+        address: formValue.streetAddress,
+        city: formValue.city,
+        state: formValue.state,
+        postalCode: formValue.pincode,
+        landmark: formValue.landmark || ''
+      };
+    }
+
     console.log('Checkout form values:', formValue);
+    console.log('Delivery type:', this.selectedDeliveryType);
     console.log('Delivery address:', deliveryAddress);
 
-    // Place order
-    this.checkoutService.placeOrder(deliveryAddress, this.selectedPaymentMethod, formValue.notes)
+    // Place order with delivery type
+    this.checkoutService.placeOrderWithDeliveryType(
+      this.selectedDeliveryType,
+      deliveryAddress,
+      this.selectedPaymentMethod,
+      formValue.notes
+    )
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: async (response) => {
@@ -163,9 +210,13 @@ export class CheckoutComponent implements OnInit, OnDestroy {
             this.placingOrder = false;
 
             // Show success message
+            const deliveryMessage = this.selectedDeliveryType === 'SELF_PICKUP'
+              ? 'You can collect your order from the store once it\'s ready.'
+              : `Your order #${response.orderNumber} will be delivered soon.`;
+
             Swal.fire({
               title: 'Order Placed Successfully!',
-              text: `Your order #${response.orderNumber} has been placed.`,
+              text: deliveryMessage,
               icon: 'success',
               confirmButtonText: 'View Orders',
               showCancelButton: true,
