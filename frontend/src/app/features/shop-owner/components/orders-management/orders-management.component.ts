@@ -529,21 +529,27 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
 
   // Verify pickup OTP for HOME_DELIVERY order
   verifyPickupOTP(orderId: number): void {
-    this.swal.input(
-      'Verify Pickup OTP',
-      'Enter the 4-digit OTP shown by the delivery partner:',
-      'text',
-      '',
-      'Verify',
-      'Cancel'
-    ).then((result) => {
+    this.swal.custom({
+      title: 'Verify Pickup OTP',
+      text: 'Enter the 4-digit OTP shown by the delivery partner:',
+      input: 'text',
+      inputPlaceholder: 'Enter 4-digit OTP...',
+      showCancelButton: true,
+      confirmButtonText: 'Verify',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#FF9800',
+      inputValidator: (value) => {
+        if (!value) {
+          return 'You need to enter the OTP!';
+        }
+        if (value.trim().length !== 4) {
+          return 'Please enter a valid 4-digit OTP';
+        }
+        return null;
+      }
+    }).then((result: any) => {
       if (result.isConfirmed && result.value) {
         const otp = result.value.trim();
-
-        if (otp.length !== 4) {
-          this.swal.error('Invalid OTP', 'Please enter a valid 4-digit OTP.');
-          return;
-        }
 
         this.swal.loading('Verifying OTP...');
         this.orderService.verifyPickupOTP(orderId, otp).subscribe({
