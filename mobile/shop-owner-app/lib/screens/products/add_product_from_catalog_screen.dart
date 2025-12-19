@@ -86,7 +86,7 @@ class _AddProductFromCatalogScreenState extends State<AddProductFromCatalogScree
     return Scaffold(
       appBar: AppBar(
         title: const Text('Add Product from Catalog'),
-        backgroundColor: AppColors.primary,
+        backgroundColor: const Color(0xFF4CAF50), // Green color
         foregroundColor: Colors.white,
       ),
       body: Column(

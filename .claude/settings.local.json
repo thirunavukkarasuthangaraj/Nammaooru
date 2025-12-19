@@ -106,7 +106,11 @@
       "Bash(elif [ -f \"gradlew\" ])",
       "Bash(then ./gradlew bootRun)",
       "Bash(else echo \"No build tool found\")",
-      "Bash(fi)"
+      "Bash(fi)",
+      "Bash(git push:*)",
+      "Bash(python3:*)",
+      "Bash(powershell -Command \"\n$content = Get-Content ''lib/screens/notifications/notifications_screen.dart'' -Raw\n$oldText = @''\n      appBar: AppBar\\(\n        automaticallyImplyLeading: false,\n        title: Row\\(\n''@\n$newText = @''\n      appBar: AppBar\\(\n        automaticallyImplyLeading: false,\n        leading: IconButton\\(\n          icon: const Icon\\(Icons.arrow_back, color: AppTheme.textWhite\\),\n          onPressed: widget.onBackToDashboard,\n        \\),\n        title: Row\\(\n''@\n$content = $content.Replace\\($oldText, $newText\\)\nSet-Content ''lib/screens/notifications/notifications_screen.dart'' -Value $content -NoNewline\nWrite-Host ''Added back button to notifications screen''\n\")",
+      "Bash(mvn compile:*)"
     ],
     "deny": [],
     "ask": [],

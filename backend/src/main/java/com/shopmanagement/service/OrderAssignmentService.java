@@ -548,16 +548,42 @@ public class OrderAssignmentService {
         partner.setLastActivity(LocalDateTime.now());
         userRepository.save(partner);
 
-        // Send delivery notification email
+        // Send delivery notification email with order items and total
         try {
-            emailService.sendDeliveryNotificationEmail(
+            // Build order items list for email
+            java.util.List<java.util.Map<String, Object>> orderItemsForEmail = order.getOrderItems().stream()
+                .map(item -> {
+                    java.util.Map<String, Object> itemMap = new java.util.HashMap<>();
+                    itemMap.put("productName", item.getProductName());
+                    itemMap.put("quantity", item.getQuantity());
+                    itemMap.put("unitPrice", item.getUnitPrice().doubleValue());
+                    itemMap.put("totalPrice", item.getTotalPrice().doubleValue());
+
+                    // Get product image URL if available
+                    if (item.getShopProduct() != null && item.getShopProduct().getMasterProduct() != null) {
+                        String imageUrl = item.getShopProduct().getMasterProduct().getPrimaryImageUrl();
+                        if (imageUrl != null && !imageUrl.isEmpty()) {
+                            if (!imageUrl.startsWith("http")) {
+                                imageUrl = "https://api.nammaoorudelivary.in" + imageUrl;
+                            }
+                        }
+                        itemMap.put("productImageUrl", imageUrl);
+                    }
+                    return itemMap;
+                })
+                .collect(java.util.stream.Collectors.toList());
+
+            emailService.sendDeliverySummaryEmail(
                 order.getCustomer().getEmail(),
                 order.getCustomer().getFirstName() + " " + order.getCustomer().getLastName(),
                 order.getOrderNumber(),
                 assignment.getDeliveryPartner().getFirstName() + " " + assignment.getDeliveryPartner().getLastName(),
-                order.getShop().getName()
+                order.getShop().getName(),
+                orderItemsForEmail,
+                order.getTotalAmount().doubleValue()
             );
-            log.info("Delivery notification email sent to customer {}", order.getCustomer().getEmail());
+            log.info("Delivery summary email sent to customer {} with {} items",
+                order.getCustomer().getEmail(), orderItemsForEmail.size());
         } catch (Exception e) {
             log.error("Failed to send delivery notification email: {}", e.getMessage());
         }

@@ -62,11 +62,13 @@ class ShopNotification {
 }
 
 class NotificationsScreen extends StatefulWidget {
+  final VoidCallback? onBackToDashboard;
   final String token;
 
   const NotificationsScreen({
     super.key,
     required this.token,
+    this.onBackToDashboard,
   });
 
   @override
@@ -377,6 +379,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       backgroundColor: AppTheme.background,
       appBar: AppBar(
         automaticallyImplyLeading: false,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppTheme.textWhite),
+          onPressed: widget.onBackToDashboard,
+        ),
         title: Row(
           children: [
             Text('Notifications', style: AppTheme.h5.copyWith(color: AppTheme.textWhite)),

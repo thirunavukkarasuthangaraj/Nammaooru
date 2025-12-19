@@ -22,24 +22,10 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation> {
   int _selectedIndex = 0;
 
-  late List<Widget> _screens;
-
-  @override
-  void initState() {
-    super.initState();
-    _screens = [
-      DashboardHomeScreen(
-        userName: widget.userName,
-        token: widget.token,
-      ),
-      ProductsScreen(token: widget.token),
-      OrdersScreen(token: widget.token),
-      NotificationsScreen(token: widget.token),
-      ProfileScreen(
-        userName: widget.userName,
-        token: widget.token,
-      ),
-    ];
+  void _goToDashboard() {
+    setState(() {
+      _selectedIndex = 0;
+    });
   }
 
   void _onItemTapped(int index) {
@@ -50,10 +36,25 @@ class _MainNavigationState extends State<MainNavigation> {
 
   @override
   Widget build(BuildContext context) {
+    final screens = [
+      DashboardHomeScreen(
+        userName: widget.userName,
+        token: widget.token,
+      ),
+      ProductsScreen(token: widget.token, onBackToDashboard: _goToDashboard),
+      OrdersScreen(token: widget.token, onBackToDashboard: _goToDashboard),
+      NotificationsScreen(token: widget.token, onBackToDashboard: _goToDashboard),
+      ProfileScreen(
+        userName: widget.userName,
+        token: widget.token,
+        onBackToDashboard: _goToDashboard,
+      ),
+    ];
+
     return Scaffold(
       body: IndexedStack(
         index: _selectedIndex,
-        children: _screens,
+        children: screens,
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,

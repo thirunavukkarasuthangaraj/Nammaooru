@@ -15,10 +15,12 @@ import 'categories_screen.dart';
 
 class ProductsScreen extends StatefulWidget {
   final String token;
+  final VoidCallback? onBackToDashboard;
 
   const ProductsScreen({
     super.key,
     required this.token,
+    this.onBackToDashboard,
   });
 
   @override
@@ -314,6 +316,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
         return Scaffold(
           backgroundColor: AppTheme.background,
           appBar: AppBar(
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: widget.onBackToDashboard,
+            ),
             title: Text(languageProvider.products, style: AppTheme.h5.copyWith(color: Colors.white)),
             backgroundColor: Colors.green.shade700,
             foregroundColor: Colors.white,

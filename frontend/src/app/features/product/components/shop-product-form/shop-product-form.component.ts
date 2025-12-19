@@ -441,7 +441,7 @@ import { getImageUrl as getImageUrlUtil } from '../../../../core/utils/image-url
     .form-wrapper {
       min-height: 100vh;
       padding: 20px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
       display: flex;
       align-items: flex-start;
       justify-content: center;
@@ -457,7 +457,7 @@ import { getImageUrl as getImageUrlUtil } from '../../../../core/utils/image-url
     }
 
     .form-header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: #4CAF50;
       color: white;
       padding: 24px;
     }
@@ -551,7 +551,7 @@ import { getImageUrl as getImageUrlUtil } from '../../../../core/utils/image-url
 
     .section-icon {
       margin-right: 12px;
-      color: #667eea;
+      color: #4CAF50;
     }
 
     .form-grid {
@@ -635,7 +635,7 @@ import { getImageUrl as getImageUrlUtil } from '../../../../core/utils/image-url
     }
 
     .checkbox-icon {
-      color: #667eea;
+      color: #4CAF50;
     }
 
     .checkbox-title {

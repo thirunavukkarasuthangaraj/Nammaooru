@@ -263,7 +263,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Create New Product'),
-        backgroundColor: AppColors.primary,
+        backgroundColor: const Color(0xFF4CAF50), // Green color
         foregroundColor: Colors.white,
       ),
       body: Form(

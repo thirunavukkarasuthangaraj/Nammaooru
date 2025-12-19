@@ -283,7 +283,7 @@ import Swal from 'sweetalert2';
     .form-wrapper {
       min-height: 100vh;
       padding: 20px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
       display: flex;
       align-items: flex-start;
       justify-content: center;
@@ -299,7 +299,7 @@ import Swal from 'sweetalert2';
     }
 
     .form-header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: #4CAF50;
       color: white;
       padding: 0;
       display: flex;
@@ -392,7 +392,7 @@ import Swal from 'sweetalert2';
 
     .section-icon {
       margin-right: 12px;
-      color: #667eea;
+      color: #4CAF50;
       font-size: 20px;
       width: 20px;
       height: 20px;
@@ -460,8 +460,8 @@ import Swal from 'sweetalert2';
     }
 
     .feature-checkbox:hover {
-      background: #e8f0fe;
-      border-color: #1976d2;
+      background: #e8f5e9;
+      border-color: #4CAF50;
     }
 
     .checkbox-content {
@@ -471,7 +471,7 @@ import Swal from 'sweetalert2';
     }
 
     .checkbox-icon {
-      color: #667eea;
+      color: #4CAF50;
       font-size: 20px;
       width: 20px;
       height: 20px;
@@ -512,7 +512,7 @@ import Swal from 'sweetalert2';
       padding: 8px 32px;
       border-radius: 8px;
       font-weight: 600;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
       display: flex;
       align-items: center;
       gap: 8px;
@@ -562,8 +562,8 @@ import Swal from 'sweetalert2';
     }
 
     .file-selection-area:hover, .file-selection-area.drag-over {
-      border-color: #667eea;
-      background: #f5f7ff;
+      border-color: #4CAF50;
+      background: #f1f8e9;
     }
 
     .upload-content {
@@ -686,11 +686,11 @@ import Swal from 'sweetalert2';
 
     /* Focus states */
     .mat-mdc-form-field.mat-focused .mat-mdc-form-field-outline-thick {
-      color: #667eea;
+      color: #4CAF50;
     }
 
     .mat-mdc-form-field.mat-focused .mat-mdc-floating-label {
-      color: #667eea;
+      color: #4CAF50;
     }
   `]
 })

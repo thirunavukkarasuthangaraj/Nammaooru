@@ -13,8 +13,9 @@ import '../../providers/language_provider.dart';
 class ProfileScreen extends StatefulWidget {
   final String userName;
   final String token;
+  final VoidCallback? onBackToDashboard;
 
-  const ProfileScreen({super.key, required this.userName, required this.token});
+  const ProfileScreen({super.key, required this.userName, required this.token, this.onBackToDashboard});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -56,8 +57,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           setState(() {
             _shopName = shop['name'] ?? widget.userName;
-            _email = shop['email'] ?? shop['owner']?['email'] ?? 'N/A';
-            _phoneNumber = shop['phone'] ?? shop['phoneNumber'] ?? 'N/A';
+            _email = shop['ownerEmail'] ?? shop['email'] ?? shop['owner']?['email'] ?? 'N/A';
+            _phoneNumber = shop['ownerPhone'] ?? shop['phone'] ?? shop['phoneNumber'] ?? 'N/A';
             _city = shop['city'] ?? '';
             _pincode = shop['pincode'] ?? '';
             _shopAddress = '${shop['address'] ?? ''}'.trim();
@@ -145,6 +146,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                 child: Row(
                   children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      onPressed: widget.onBackToDashboard,
+                    ),
                     const Expanded(
                       child: Text(
                         'Profile',
@@ -155,6 +160,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         textAlign: TextAlign.center,
                       ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.logout, color: Colors.white),
+                      onPressed: _logout,
+                      tooltip: 'Logout',
                     ),
                   ],
                 ),
@@ -619,3 +629,4 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 }
+

@@ -13,8 +13,9 @@ import 'order_details_screen.dart';
 
 class OrdersScreen extends StatefulWidget {
   final String token;
+  final VoidCallback? onBackToDashboard;
 
-  const OrdersScreen({super.key, required this.token});
+  const OrdersScreen({super.key, required this.token, this.onBackToDashboard});
 
   @override
   State<OrdersScreen> createState() => _OrdersScreenState();
@@ -925,7 +926,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
           appBar: AppBar(
             leading: IconButton(
               icon: const Icon(Icons.arrow_back, color: Colors.white),
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: widget.onBackToDashboard,
             ),
             title: Text(
               languageProvider.orders,

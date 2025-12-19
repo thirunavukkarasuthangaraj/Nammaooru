@@ -116,7 +116,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(isEditing ? 'Edit Product' : 'Add Product'),
-        backgroundColor: AppColors.primary,
+        backgroundColor: const Color(0xFF4CAF50), // Green color
         foregroundColor: Colors.white,
         actions: [
           TextButton(
