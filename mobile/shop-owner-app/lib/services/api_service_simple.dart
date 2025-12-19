@@ -771,6 +771,39 @@ class ApiService {
     }
   }
 
+  // Notification methods
+  static Future<ApiResponse> markNotificationAsRead(int notificationId) async {
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http
+          .put(
+            Uri.parse('$baseUrl/notifications/$notificationId/read'),
+            headers: headers,
+          )
+          .timeout(timeout);
+
+      return _handleResponse(response);
+    } catch (e) {
+      return ApiResponse.error('Network error: ${e.toString()}');
+    }
+  }
+
+  static Future<ApiResponse> markAllNotificationsAsRead(int userId) async {
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http
+          .put(
+            Uri.parse('$baseUrl/notifications/user/$userId/read-all'),
+            headers: headers,
+          )
+          .timeout(timeout);
+
+      return _handleResponse(response);
+    } catch (e) {
+      return ApiResponse.error('Network error: ${e.toString()}');
+    }
+  }
+
   static ApiResponse _handleResponse(http.Response response) {
     try {
       final data = json.decode(response.body);

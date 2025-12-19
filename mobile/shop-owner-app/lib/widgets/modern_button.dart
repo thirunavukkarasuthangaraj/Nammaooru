@@ -325,39 +325,75 @@ class ModernFAB extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Nice green gradient for FAB
+    final greenGradient = LinearGradient(
+      colors: [Colors.green.shade600, Colors.green.shade800],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    );
+
     if (label != null) {
-      // Extended FAB
-      return FloatingActionButton.extended(
-        onPressed: onPressed,
-        icon: Icon(icon),
-        label: Text(label!),
-        backgroundColor: useGradient ? null : AppTheme.primary,
-        elevation: 4,
+      // Extended FAB with green gradient
+      return Container(
+        decoration: BoxDecoration(
+          gradient: useGradient ? greenGradient : null,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.green.withOpacity(0.4),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Material(
+          color: useGradient ? Colors.transparent : Colors.green.shade700,
+          borderRadius: BorderRadius.circular(28),
+          child: InkWell(
+            onTap: onPressed,
+            borderRadius: BorderRadius.circular(28),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, color: Colors.white, size: 22),
+                  const SizedBox(width: 10),
+                  Text(
+                    label!,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       );
     } else {
-      // Regular FAB
-      if (useGradient) {
-        return Container(
-          decoration: BoxDecoration(
-            gradient: AppTheme.primaryGradient,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: AppTheme.shadowLarge,
-          ),
-          child: FloatingActionButton(
-            onPressed: onPressed,
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            child: Icon(icon, color: AppTheme.textWhite),
-          ),
-        );
-      } else {
-        return FloatingActionButton(
+      // Regular FAB with green gradient
+      return Container(
+        decoration: BoxDecoration(
+          gradient: useGradient ? greenGradient : null,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.green.withOpacity(0.4),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: FloatingActionButton(
           onPressed: onPressed,
-          backgroundColor: AppTheme.primary,
-          elevation: 4,
-          child: Icon(icon),
-        );
-      }
+          backgroundColor: useGradient ? Colors.transparent : Colors.green.shade700,
+          elevation: 0,
+          child: Icon(icon, color: Colors.white),
+        ),
+      );
     }
   }
 }

@@ -17,8 +17,10 @@ class LocationService {
     try {
       print('🌍 GOOGLE API REQUEST: lat=$latitude, lng=$longitude');
 
+      // Add result_type to prioritize locality (village/town) results
       final url = 'https://maps.googleapis.com/maps/api/geocode/json?'
                   'latlng=$latitude,$longitude&'
+                  'result_type=street_address|route|neighborhood|locality|sublocality&'
                   'key=$_googleApiKey';
 
       final response = await http.get(Uri.parse(url));
@@ -26,9 +28,21 @@ class LocationService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         print('📍 GOOGLE API RESPONSE: ${data['status']}');
+        print('📍 Total results: ${data['results'].length}');
 
         if (data['status'] == 'OK' && data['results'].isNotEmpty) {
-          final result = data['results'][0];
+          // Try to find the best result - prefer locality over neighborhood
+          var result = data['results'][0];
+
+          // Look for a result with locality type (actual village/town)
+          for (var res in data['results']) {
+            final types = res['types'] as List;
+            if (types.contains('locality') || types.contains('sublocality_level_1')) {
+              result = res;
+              print('✅ Found locality type result, using that instead');
+              break;
+            }
+          }
           final addressComponents = result['address_components'] as List;
 
           String streetNumber = '';
@@ -95,6 +109,21 @@ class LocationService {
             }
           }
 
+          // Determine best 'name' for the location (village/area name)
+          // Priority: neighborhood > subLocalityLevel3 > subLocalityLevel2 > subLocality > locality
+          String locationName = '';
+          if (neighborhood.isNotEmpty) {
+            locationName = neighborhood;
+          } else if (subLocalityLevel3.isNotEmpty) {
+            locationName = subLocalityLevel3;
+          } else if (subLocalityLevel2.isNotEmpty) {
+            locationName = subLocalityLevel2;
+          } else if (subLocality.isNotEmpty) {
+            locationName = subLocality;
+          } else if (locality.isNotEmpty) {
+            locationName = locality;
+          }
+
           print('🏠 GOOGLE API PARSED DATA:');
           print('  - streetNumber: $streetNumber');
           print('  - route (street name): $route');
@@ -108,13 +137,16 @@ class LocationService {
           print('  - postalCode: $postalCode');
           print('  - country: $country');
           print('  - FINAL streetName: $streetName');
+          print('  - FINAL locationName: $locationName');
           print('  - formatted_address: ${result['formatted_address']}');
 
           return {
+            'name': locationName, // Best name for village/area
             'streetName': streetName,
             'streetNumber': houseNumber,
             'street': streetName, // Keep for backward compatibility
             'subLocality': subLocality,
+            'neighborhood': neighborhood,
             'locality': locality.isNotEmpty ? locality : 'Tirupattur',
             'administrativeArea': administrativeArea.isNotEmpty ? administrativeArea : 'Tamil Nadu',
             'postalCode': postalCode,

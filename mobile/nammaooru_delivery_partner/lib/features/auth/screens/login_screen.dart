@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import '../../../core/providers/delivery_partner_provider.dart';
-import '../../../services/notification_api_service.dart';
 import '../../dashboard/screens/dashboard_screen.dart';
 import '../../profile/screens/force_password_change_screen.dart';
 import 'forgot_password_screen.dart';
@@ -27,33 +24,6 @@ class _LoginScreenState extends State<LoginScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
-  }
-
-  Future<void> _setupNotifications() async {
-    if (kIsWeb) {
-      debugPrint('Notifications setup skipped for web');
-      return;
-    }
-
-    try {
-      // Get FCM token
-      final fcmToken = await FirebaseMessaging.instance.getToken();
-      if (fcmToken != null) {
-        debugPrint('FCM Token obtained for delivery partner: $fcmToken');
-
-        // Send token to backend
-        final notificationService = NotificationApiService();
-        final result = await notificationService.updateDeliveryPartnerFcmToken(fcmToken);
-
-        if (result['statusCode'] == '2000') {
-          debugPrint('FCM token successfully sent to backend');
-        } else {
-          debugPrint('Failed to send FCM token: ${result['message']}');
-        }
-      }
-    } catch (e) {
-      debugPrint('Error setting up notifications: $e');
-    }
   }
 
   Future<void> _handleLogin() async {
@@ -82,10 +52,6 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       } else {
         // Normal login - go to dashboard
-
-        // Get FCM token and send to backend
-        _setupNotifications();
-
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const DashboardScreen()),

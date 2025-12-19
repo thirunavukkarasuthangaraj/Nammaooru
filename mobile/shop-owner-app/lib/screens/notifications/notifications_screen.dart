@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/api_service_simple.dart';
 import '../../services/sound_service.dart';
+import '../../services/storage_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/app_config.dart';
 import '../../widgets/modern_button.dart';
@@ -266,38 +267,81 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  void _markAsRead(ShopNotification notification) {
+  Future<void> _markAsRead(ShopNotification notification) async {
     if (notification.status == 'unread') {
-      setState(() {
-        final index = _notifications.indexWhere((n) => n.id == notification.id);
-        if (index != -1) {
-          _notifications[index] = notification.copyWith(
-            status: 'read',
-            readAt: DateTime.now(),
+      try {
+        // Call API to persist read status
+        final response = await ApiService.markNotificationAsRead(notification.id);
+
+        if (response.isSuccess) {
+          setState(() {
+            final index = _notifications.indexWhere((n) => n.id == notification.id);
+            if (index != -1) {
+              _notifications[index] = notification.copyWith(
+                status: 'read',
+                readAt: DateTime.now(),
+              );
+            }
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Notification marked as read')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to mark as read: ${response.error}')),
           );
         }
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Notification marked as read')),
-      );
+      } catch (e) {
+        print('Error marking notification as read: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      }
     }
   }
 
-  void _markAllAsRead() {
-    setState(() {
-      _notifications = _notifications.map((notification) {
-        if (notification.status == 'unread') {
-          return notification.copyWith(
-            status: 'read',
-            readAt: DateTime.now(),
-          );
-        }
-        return notification;
-      }).toList();
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('All notifications marked as read')),
-    );
+  Future<void> _markAllAsRead() async {
+    try {
+      // Get user ID from storage
+      final user = StorageService.getUser();
+      if (user == null || user['id'] == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('User not found. Please log in again.')),
+        );
+        return;
+      }
+
+      final userId = user['id'] as int;
+
+      // Call API to persist read status for all notifications
+      final response = await ApiService.markAllNotificationsAsRead(userId);
+
+      if (response.isSuccess) {
+        setState(() {
+          _notifications = _notifications.map((notification) {
+            if (notification.status == 'unread') {
+              return notification.copyWith(
+                status: 'read',
+                readAt: DateTime.now(),
+              );
+            }
+            return notification;
+          }).toList();
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('All notifications marked as read')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to mark all as read: ${response.error}')),
+        );
+      }
+    } catch (e) {
+      print('Error marking all notifications as read: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    }
   }
 
   List<ShopNotification> _getFilteredNotifications() {
@@ -560,13 +604,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Order Items (${orderItems.length})',
-                      style: AppTheme.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimary,
+                    Flexible(
+                      child: Text(
+                        'Order Items (${orderItems.length})',
+                        style: AppTheme.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: AppTheme.space12,
@@ -614,7 +662,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               borderRadius: BorderRadius.circular(8),
                               child: imageUrl != null && imageUrl.toString().isNotEmpty
                                   ? Image.network(
-                                      imageUrl.toString(),
+                                      imageUrl.toString().startsWith('http')
+                                          ? imageUrl.toString()
+                                          : '${AppConfig.serverBaseUrl}${imageUrl.toString()}',
                                       fit: BoxFit.cover,
                                       errorBuilder: (context, error, stackTrace) {
                                         return const Icon(
@@ -932,23 +982,29 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Customer',
-                              style: AppTheme.bodySmall.copyWith(
-                                color: AppTheme.textSecondary,
+                        Flexible(
+                          flex: 1,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Customer',
+                                style: AppTheme.bodySmall.copyWith(
+                                  color: AppTheme.textSecondary,
+                                ),
                               ),
-                            ),
-                            Text(
-                              orderData['customerName'] ?? 'N/A',
-                              style: AppTheme.bodyMedium.copyWith(
-                                fontWeight: FontWeight.w600,
+                              Text(
+                                orderData['customerName'] ?? 'N/A',
+                                style: AppTheme.bodyMedium.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
+                        const SizedBox(width: 12),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
@@ -1003,7 +1059,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             borderRadius: BorderRadius.circular(8),
                             child: imageUrl != null && imageUrl.toString().isNotEmpty
                                 ? Image.network(
-                                    imageUrl.toString(),
+                                    imageUrl.toString().startsWith('http')
+                                        ? imageUrl.toString()
+                                        : '${AppConfig.serverBaseUrl}${imageUrl.toString()}',
                                     fit: BoxFit.cover,
                                     errorBuilder: (context, error, stackTrace) {
                                       return const Icon(Icons.inventory_2, size: 24, color: Colors.grey);

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../providers/language_provider.dart';
 import '../../services/api_service_simple.dart';
+import '../../services/voice_search_service.dart';
 import '../../utils/app_config.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/modern_card.dart';
@@ -30,12 +33,14 @@ class _ProductsScreenState extends State<ProductsScreen> {
   bool _isLoadingCategories = false;
   bool _hasMore = true;
   int _currentPage = 0;
-  final int _pageSize = 20;
+  final int _pageSize = 2000;
   late ScrollController _scrollController;
   String _searchQuery = '';
   String? _selectedCategoryId;
   String? _selectedCategoryName;
   final TextEditingController _searchController = TextEditingController();
+  final VoiceSearchService _voiceService = VoiceSearchService();
+  OverlayEntry? _voiceSearchOverlay;
 
   @override
   void initState() {
@@ -51,6 +56,29 @@ class _ProductsScreenState extends State<ProductsScreen> {
     if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
       _loadMore();
     }
+  }
+
+  String _getCategoryEmoji(String categoryName) {
+    final name = categoryName.toLowerCase();
+    if (name.contains('vegetable')) return '🥬';
+    if (name.contains('fruit')) return '🍎';
+    if (name.contains('dry fruit') || name.contains('nut')) return '🥜';
+    if (name.contains('milk') || name.contains('dairy')) return '🥛';
+    if (name.contains('rice') || name.contains('grain')) return '🌾';
+    if (name.contains('snack')) return '🍿';
+    if (name.contains('beverage') || name.contains('drink')) return '🥤';
+    if (name.contains('spice') || name.contains('masala')) return '🌶️';
+    if (name.contains('oil')) return '🫒';
+    if (name.contains('medicine') || name.contains('health')) return '💊';
+    if (name.contains('personal care') || name.contains('beauty')) return '🧴';
+    if (name.contains('home care') || name.contains('clean')) return '🧹';
+    if (name.contains('grocery')) return '🛒';
+    if (name.contains('egg')) return '🥚';
+    if (name.contains('bread') || name.contains('baker')) return '🍞';
+    if (name.contains('frozen')) return '🧊';
+    if (name.contains('meat') || name.contains('chicken')) return '🍗';
+    if (name.contains('fish') || name.contains('seafood')) return '🐟';
+    return '📦';
   }
 
   Future<void> _loadCategories() async {
@@ -88,7 +116,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
               'id': cat['id'],
               'name': cat['name'] ?? 'Unknown',
               'displayName': cat['displayName'] ?? cat['name'] ?? 'Unknown',
-              'iconUrl': imageUrl, // Keep key as iconUrl for compatibility with UI
+              'iconUrl': imageUrl.isNotEmpty ? imageUrl : _getCategoryEmoji(cat['name'] ?? 'Unknown'),
               'productCount': cat['productCount'] ?? 0,
             });
           }
@@ -281,71 +309,52 @@ class _ProductsScreenState extends State<ProductsScreen> {
     final padding = ResponsiveLayout.getResponsivePadding(context);
     final screenWidth = MediaQuery.of(context).size.width;
 
-    return Scaffold(
-      backgroundColor: AppTheme.background,
-      appBar: AppBar(
-        title: Text('Products', style: AppTheme.h5),
-        elevation: 0,
-        actions: [
-          ModernIconButton(
-            icon: Icons.category,
-            onPressed: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const CategoriesScreen(),
-                ),
-              );
-              _fetchProducts();
-            },
-            size: 48,
+    return Consumer<LanguageProvider>(
+      builder: (context, languageProvider, child) {
+        return Scaffold(
+          backgroundColor: AppTheme.background,
+          appBar: AppBar(
+            title: Text(languageProvider.products, style: AppTheme.h5.copyWith(color: Colors.white)),
+            backgroundColor: Colors.green.shade700,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            ],
           ),
-          const SizedBox(width: AppTheme.space8),
-          ModernIconButton(
-            icon: Icons.add,
-            onPressed: () async {
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const AddProductFromCatalogScreen(),
+          body: Column(
+            children: [
+              // Search Bar
+              Container(
+                padding: padding,
+                color: AppTheme.surface,
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: languageProvider.searchProducts,
+                    prefixIcon: Icon(Icons.search, color: Colors.green.shade700),
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_searchQuery.isNotEmpty)
+                          IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _searchQuery = '');
+                            },
+                          ),
+                        IconButton(
+                          icon: Icon(Icons.mic, color: Colors.green.shade700),
+                          onPressed: _showVoiceSearchDialog,
+                          tooltip: languageProvider.getText('Voice Search', 'குரல் தேடல்'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  onChanged: (value) {
+                    setState(() => _searchQuery = value);
+                  },
                 ),
-              );
-
-              if (result == true) {
-                _fetchProducts();
-              }
-            },
-            size: 48,
-          ),
-          const SizedBox(width: AppTheme.space8),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Search Bar
-          Container(
-            padding: padding,
-            color: AppTheme.surface,
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search products...',
-                prefixIcon: const Icon(Icons.search, color: AppTheme.primary),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() => _searchQuery = '');
-                        },
-                      )
-                    : null,
               ),
-              onChanged: (value) {
-                setState(() => _searchQuery = value);
-              },
-            ),
-          ),
 
           // Category Filter with Images
           if (_categories.isNotEmpty)
@@ -419,18 +428,17 @@ class _ProductsScreenState extends State<ProductsScreen> {
                                 ? ClipRRect(
                                     borderRadius: BorderRadius.circular(10),
                                     child: Image.network(
-                                      iconUrl.startsWith('http')
-                                          ? iconUrl
-                                          : 'http://localhost:8080${iconUrl.startsWith('/') ? iconUrl : '/$iconUrl'}',
+                                      AppConfig.getImageUrl(iconUrl),
                                       width: 50,
                                       height: 50,
                                       fit: BoxFit.cover,
                                       errorBuilder: (context, error, stackTrace) {
                                         print('  ❌ Image load error for $categoryName: $error');
                                         return Center(
-                                          child: Text(
-                                            isEmoji ? iconUrl : '📦',
-                                            style: const TextStyle(fontSize: 28),
+                                          child: Icon(
+                                            Icons.category,
+                                            size: 28,
+                                            color: isSelected ? Colors.green.shade700 : Colors.grey.shade500,
                                           ),
                                         );
                                       },
@@ -449,10 +457,18 @@ class _ProductsScreenState extends State<ProductsScreen> {
                                       },
                                     ),
                                   )
-                                : Center(
+                                : isEmoji
+                                ? Center(
                                     child: Text(
-                                      isEmoji ? iconUrl : '📦',
-                                      style: const TextStyle(fontSize: 28),
+                                      iconUrl,
+                                      style: TextStyle(fontSize: 28),
+                                    ),
+                                  )
+                                : Center(
+                                    child: Icon(
+                                      Icons.category,
+                                      size: 28,
+                                      color: isSelected ? Colors.green.shade700 : Colors.grey.shade500,
                                     ),
                                   ),
                           ),
@@ -482,46 +498,46 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
           const SizedBox(height: AppTheme.space8),
 
-          // Products Grid
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _filteredProducts.isEmpty
-                    ? Center(
-                        child: Padding(
-                          padding: padding,
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.inventory_2_outlined,
-                                size: 80,
-                                color: AppTheme.textHint,
+              // Products Grid
+              Expanded(
+                child: _isLoading
+                    ? Center(child: CircularProgressIndicator(color: Colors.green.shade700))
+                    : _filteredProducts.isEmpty
+                        ? Center(
+                            child: Padding(
+                              padding: padding,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.inventory_2_outlined,
+                                    size: 80,
+                                    color: AppTheme.textHint,
+                                  ),
+                                  const SizedBox(height: AppTheme.space16),
+                                  Text(
+                                    languageProvider.noProducts,
+                                    style: AppTheme.h4.copyWith(color: AppTheme.textSecondary),
+                                  ),
+                                  const SizedBox(height: AppTheme.space8),
+                                  Text(
+                                    languageProvider.getText('Add your first product to get started', 'தொடங்க உங்கள் முதல் பொருளைச் சேர்க்கவும்'),
+                                    style: AppTheme.bodyMedium.copyWith(color: AppTheme.textHint),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: AppTheme.space24),
+                                  ModernButton(
+                                    text: languageProvider.addProduct,
+                                    icon: Icons.add,
+                                    variant: ButtonVariant.primary,
+                                    size: ButtonSize.large,
+                                    useGradient: true,
+                                    onPressed: () => _showAddProductMenu(context),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: AppTheme.space16),
-                              Text(
-                                'No products found',
-                                style: AppTheme.h4.copyWith(color: AppTheme.textSecondary),
-                              ),
-                              const SizedBox(height: AppTheme.space8),
-                              Text(
-                                'Add your first product to get started',
-                                style: AppTheme.bodyMedium.copyWith(color: AppTheme.textHint),
-                                textAlign: TextAlign.center,
-                              ),
-                              const SizedBox(height: AppTheme.space24),
-                              ModernButton(
-                                text: 'Add Product',
-                                icon: Icons.add,
-                                variant: ButtonVariant.primary,
-                                size: ButtonSize.large,
-                                useGradient: true,
-                                onPressed: () => _showAddProductMenu(context),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
+                            ),
+                          )
                     : RefreshIndicator(
                         onRefresh: _fetchProducts,
                         child: GridView.builder(
@@ -554,21 +570,25 @@ class _ProductsScreenState extends State<ProductsScreen> {
                           },
                         ),
                       ),
+              ),
+            ],
           ),
-        ],
-      ),
-      floatingActionButton: ModernFAB(
-        icon: Icons.add,
-        label: 'Add Product',
-        onPressed: () => _showAddProductMenu(context),
-        useGradient: true,
-      ),
+          floatingActionButton: ModernFAB(
+            icon: Icons.add,
+            label: languageProvider.addProduct,
+            onPressed: () => _showAddProductMenu(context),
+            useGradient: true,
+          ),
+        );
+      },
     );
   }
 
   Widget _buildProductCard(dynamic product) {
+    final languageProvider = context.read<LanguageProvider>();
     final primaryImageUrl = product['primaryImageUrl'] ?? product['image'];
-    final productName = product['displayName'] ?? product['name'] ?? 'Unknown Product';
+    // Use language provider to get Tamil name if available
+    final productName = languageProvider.getDisplayName(product);
     final category = product['masterProduct']?['category']?['name'] ?? product['category'] ?? 'Uncategorized';
     final price = product['price'] ?? 0;
     final originalPrice = product['originalPrice'];
@@ -581,7 +601,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
     final lowStock = product['lowStock'] ?? (stock < 10);
 
     return ProductCard(
-      name: productName,
+      name: productName.isNotEmpty ? productName : (product['displayName'] ?? product['name'] ?? 'Unknown Product'),
       category: category,
       price: price.toDouble(),
       originalPrice: originalPrice?.toDouble(),
@@ -1037,8 +1057,185 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
   @override
   void dispose() {
+    _voiceSearchOverlay?.remove();
     _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _showVoiceSearchDialog() {
+    _voiceSearchOverlay?.remove();
+
+    _voiceSearchOverlay = OverlayEntry(
+      builder: (context) => _VoiceSearchDialogWidget(
+        token: widget.token,
+        voiceService: _voiceService,
+        onSearchResult: (query) {
+          setState(() {
+            _searchQuery = query;
+            _searchController.text = query;
+          });
+        },
+        onClose: () {
+          _voiceSearchOverlay?.remove();
+          _voiceSearchOverlay = null;
+        },
+      ),
+    );
+
+    Overlay.of(context).insert(_voiceSearchOverlay!);
+  }
+}
+
+// Voice Search Dialog Widget
+class _VoiceSearchDialogWidget extends StatefulWidget {
+  final String token;
+  final VoiceSearchService voiceService;
+  final Function(String) onSearchResult;
+  final VoidCallback onClose;
+
+  const _VoiceSearchDialogWidget({
+    required this.token,
+    required this.voiceService,
+    required this.onSearchResult,
+    required this.onClose,
+  });
+
+  @override
+  State<_VoiceSearchDialogWidget> createState() => _VoiceSearchDialogWidgetState();
+}
+
+class _VoiceSearchDialogWidgetState extends State<_VoiceSearchDialogWidget> {
+  bool _isListening = false;
+  String _spokenText = '';
+  String _statusText = 'Tap to speak';
+
+  @override
+  void initState() {
+    super.initState();
+    _startVoiceListening();
+  }
+
+  @override
+  void dispose() {
+    widget.voiceService.stopListening();
+    super.dispose();
+  }
+
+  Future<void> _startVoiceListening() async {
+    setState(() {
+      _isListening = true;
+      _statusText = 'Listening...';
+    });
+
+    final spokenText = await widget.voiceService.listen();
+
+    setState(() {
+      _isListening = false;
+      _spokenText = spokenText ?? '';
+      _statusText = spokenText?.isNotEmpty == true
+          ? 'Searching for: $spokenText'
+          : 'No speech detected';
+    });
+
+    if (spokenText != null && spokenText.isNotEmpty) {
+      widget.onSearchResult(spokenText);
+      await Future.delayed(const Duration(milliseconds: 500));
+      widget.onClose();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.black54,
+      child: Center(
+        child: Container(
+          margin: const EdgeInsets.all(32),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Align(
+                alignment: Alignment.topRight,
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.grey),
+                  onPressed: widget.onClose,
+                ),
+              ),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _isListening
+                      ? Colors.green.shade100
+                      : Colors.grey.shade100,
+                  border: Border.all(
+                    color: _isListening ? Colors.green : Colors.grey.shade300,
+                    width: 3,
+                  ),
+                ),
+                child: Icon(
+                  _isListening ? Icons.mic : Icons.mic_none,
+                  size: 48,
+                  color: _isListening ? Colors.green : Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                _statusText,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: _isListening ? Colors.green : Colors.black87,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              if (_spokenText.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _spokenText,
+                    style: const TextStyle(color: Colors.black54),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 24),
+              if (!_isListening)
+                ElevatedButton.icon(
+                  onPressed: _startVoiceListening,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Try Again'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

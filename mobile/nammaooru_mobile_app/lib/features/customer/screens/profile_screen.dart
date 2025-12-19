@@ -175,6 +175,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 print('Error fetching addresses: $e');
               }
 
+              // Save individual profile fields to LocalStorage for checkout auto-fill
+              await LocalStorage.setString('firstName', userData['firstName'] ?? '');
+              await LocalStorage.setString('lastName', userData['lastName'] ?? '');
+              await LocalStorage.setString('phoneNumber', userData['mobileNumber'] ?? '');
+
               setState(() {
                 _userInfo = {
                   'userId': userData['id']?.toString() ?? 'N/A',

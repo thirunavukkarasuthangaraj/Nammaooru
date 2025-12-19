@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'dart:convert';
 import 'package:intl/intl.dart';
+import '../../providers/language_provider.dart';
 import '../../utils/app_config.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/modern_button.dart';
 import '../../widgets/modern_card.dart';
+import '../../services/voice_search_service.dart';
 
 class InventoryScreen extends StatefulWidget {
   final String token;
@@ -39,6 +42,11 @@ class _InventoryScreenState extends State<InventoryScreen>
   int _outOfStockCount = 0;
   double _totalInventoryValue = 0.0;
 
+  // Voice Search
+  final VoiceSearchService _voiceService = VoiceSearchService();
+  OverlayEntry? _voiceSearchOverlay;
+  final TextEditingController _searchController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -51,6 +59,8 @@ class _InventoryScreenState extends State<InventoryScreen>
 
   @override
   void dispose() {
+    _voiceSearchOverlay?.remove();
+    _searchController.dispose();
     _tabController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -583,145 +593,180 @@ class _InventoryScreenState extends State<InventoryScreen>
     }
   }
 
+  void _showVoiceSearchDialog() {
+    _voiceSearchOverlay?.remove();
+
+    _voiceSearchOverlay = OverlayEntry(
+      builder: (context) => _VoiceSearchDialogWidget(
+        token: widget.token,
+        voiceService: _voiceService,
+        onSearchResult: (query) {
+          setState(() {
+            _searchQuery = query;
+            _searchController.text = query;
+          });
+          _applyFilters();
+        },
+        onClose: () {
+          _voiceSearchOverlay?.remove();
+          _voiceSearchOverlay = null;
+        },
+      ),
+    );
+
+    Overlay.of(context).insert(_voiceSearchOverlay!);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.background,
-      appBar: AppBar(
-        title: Text('Inventory Management',
-            style: AppTheme.h4.copyWith(fontWeight: FontWeight.w600)),
-        backgroundColor: AppTheme.surface,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.refresh, color: AppTheme.textPrimary),
-            onPressed: _fetchInventoryData,
-          ),
-        ],
-        bottom: PreferredSize(
-          preferredSize: Size.fromHeight(110),
-          child: Column(
-            children: [
-              // Search Bar
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: AppTheme.space16, vertical: AppTheme.space8),
-                child: TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Search products...',
-                    prefixIcon:
-                        Icon(Icons.search, color: AppTheme.textSecondary),
-                    filled: true,
-                    fillColor: AppTheme.background,
-                    border: OutlineInputBorder(
-                      borderRadius: AppTheme.roundedMedium,
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: EdgeInsets.symmetric(
-                        horizontal: AppTheme.space16,
-                        vertical: AppTheme.space12),
-                  ),
-                  onChanged: (value) {
-                    setState(() {
-                      _searchQuery = value;
-                    });
-                    _applyFilters();
-                  },
-                ),
-              ),
-              // Tab Bar
-              TabBar(
-                controller: _tabController,
-                labelColor: AppTheme.primary,
-                unselectedLabelColor: AppTheme.textSecondary,
-                indicatorColor: AppTheme.primary,
-                tabs: [
-                  Tab(text: 'All ($_totalProducts)'),
-                  Tab(text: 'In Stock'),
-                  Tab(text: 'Low ($_lowStockCount)'),
-                  Tab(text: 'Out ($_outOfStockCount)'),
-                ],
+    return Consumer<LanguageProvider>(
+      builder: (context, languageProvider, child) {
+        return Scaffold(
+          backgroundColor: AppTheme.background,
+          appBar: AppBar(
+            title: Text(languageProvider.inventory,
+                style: AppTheme.h4.copyWith(fontWeight: FontWeight.w600, color: Colors.white)),
+            backgroundColor: Colors.green.shade700,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.refresh, color: Colors.white),
+                onPressed: _fetchInventoryData,
               ),
             ],
-          ),
-        ),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _fetchInventoryData,
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(110),
               child: Column(
                 children: [
-                  // Statistics Cards
-                  Container(
-                    color: AppTheme.surface,
-                    padding: const EdgeInsets.all(AppTheme.space16),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _buildStatCard(
-                            'Total Value',
-                            '₹${_totalInventoryValue.toStringAsFixed(0)}',
-                            Icons.account_balance_wallet,
-                            AppTheme.primary,
-                          ),
+                  // Search Bar
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: AppTheme.space16, vertical: AppTheme.space8),
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: languageProvider.searchProducts,
+                        prefixIcon:
+                            Icon(Icons.search, color: Colors.green.shade700),
+                        suffixIcon: IconButton(
+                          icon: Icon(Icons.mic, color: Colors.green.shade700),
+                          onPressed: _showVoiceSearchDialog,
+                          tooltip: languageProvider.getText('Voice Search', 'குரல் தேடல்'),
                         ),
-                        const SizedBox(width: AppTheme.space12),
-                        Expanded(
-                          child: _buildStatCard(
-                            'Products',
-                            '$_totalProducts',
-                            Icons.inventory_2,
-                            AppTheme.success,
-                          ),
+                        filled: true,
+                        fillColor: AppTheme.background,
+                        border: OutlineInputBorder(
+                          borderRadius: AppTheme.roundedMedium,
+                          borderSide: BorderSide.none,
                         ),
-                      ],
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: AppTheme.space16,
+                            vertical: AppTheme.space12),
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          _searchQuery = value;
+                        });
+                        _applyFilters();
+                      },
                     ),
                   ),
-
-                  // Products List
-                  Expanded(
-                    child: _filteredProducts.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.inventory_2_outlined,
-                                    size: 64, color: Colors.grey[300]),
-                                const SizedBox(height: AppTheme.space16),
-                                Text(
-                                  'No products found',
-                                  style: AppTheme.h5
-                                      .copyWith(color: AppTheme.textSecondary),
-                                ),
-                              ],
-                            ),
-                          )
-                        : ListView.builder(
-                            controller: _scrollController,
-                            padding: const EdgeInsets.all(AppTheme.space16),
-                            itemCount: _filteredProducts.length +
-                                (_isLoadingMore ? 1 : 0),
-                            itemBuilder: (context, index) {
-                              if (index == _filteredProducts.length) {
-                                // Loading indicator at the bottom
-                                return Center(
-                                  child: Padding(
-                                    padding:
-                                        const EdgeInsets.all(AppTheme.space16),
-                                    child: CircularProgressIndicator(
-                                        color: AppTheme.primary),
-                                  ),
-                                );
-                              }
-                              final product = _filteredProducts[index];
-                              return _buildProductCard(product);
-                            },
-                          ),
+                  // Tab Bar
+                  TabBar(
+                    controller: _tabController,
+                    labelColor: Colors.white,
+                    unselectedLabelColor: Colors.white70,
+                    indicatorColor: Colors.white,
+                    tabs: [
+                      Tab(text: '${languageProvider.all} ($_totalProducts)'),
+                      Tab(text: languageProvider.inStock),
+                      Tab(text: '${languageProvider.lowStock} ($_lowStockCount)'),
+                      Tab(text: '${languageProvider.outOfStock} ($_outOfStockCount)'),
+                    ],
                   ),
                 ],
               ),
             ),
+          ),
+          body: _isLoading
+              ? Center(child: CircularProgressIndicator(color: Colors.green.shade700))
+              : RefreshIndicator(
+                  onRefresh: _fetchInventoryData,
+                  child: Column(
+                    children: [
+                      // Statistics Cards
+                      Container(
+                        color: AppTheme.surface,
+                        padding: const EdgeInsets.all(AppTheme.space16),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: _buildStatCard(
+                                languageProvider.totalValue,
+                                '₹${_totalInventoryValue.toStringAsFixed(0)}',
+                                Icons.account_balance_wallet,
+                                Colors.green.shade700,
+                              ),
+                            ),
+                            const SizedBox(width: AppTheme.space12),
+                            Expanded(
+                              child: _buildStatCard(
+                                languageProvider.products,
+                                '$_totalProducts',
+                                Icons.inventory_2,
+                                AppTheme.success,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Products List
+                      Expanded(
+                        child: _filteredProducts.isEmpty
+                            ? Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.inventory_2_outlined,
+                                        size: 64, color: Colors.grey[300]),
+                                    const SizedBox(height: AppTheme.space16),
+                                    Text(
+                                      languageProvider.noProducts,
+                                      style: AppTheme.h5
+                                          .copyWith(color: AppTheme.textSecondary),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : ListView.builder(
+                                controller: _scrollController,
+                                padding: const EdgeInsets.all(AppTheme.space16),
+                                itemCount: _filteredProducts.length +
+                                    (_isLoadingMore ? 1 : 0),
+                                itemBuilder: (context, index) {
+                                  if (index == _filteredProducts.length) {
+                                    // Loading indicator at the bottom
+                                    return Center(
+                                      child: Padding(
+                                        padding:
+                                            const EdgeInsets.all(AppTheme.space16),
+                                        child: CircularProgressIndicator(
+                                            color: Colors.green.shade700),
+                                      ),
+                                    );
+                                  }
+                                  final product = _filteredProducts[index];
+                                  return _buildProductCard(product);
+                                },
+                              ),
+                      ),
+                    ],
+                  ),
+                ),
+        );
+      },
     );
   }
 
@@ -948,6 +993,193 @@ class _InventoryScreenState extends State<InventoryScreen>
                   Icon(Icons.edit, color: AppTheme.primary, size: 20),
                 ],
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================
+// VOICE SEARCH DIALOG WIDGET
+// ============================================
+class _VoiceSearchDialogWidget extends StatefulWidget {
+  final String token;
+  final VoiceSearchService voiceService;
+  final Function(String) onSearchResult;
+  final VoidCallback onClose;
+
+  const _VoiceSearchDialogWidget({
+    required this.token,
+    required this.voiceService,
+    required this.onSearchResult,
+    required this.onClose,
+  });
+
+  @override
+  State<_VoiceSearchDialogWidget> createState() => _VoiceSearchDialogWidgetState();
+}
+
+class _VoiceSearchDialogWidgetState extends State<_VoiceSearchDialogWidget> {
+  bool _isListening = false;
+  String _spokenText = '';
+  String _statusText = 'Tap to speak';
+
+  @override
+  void initState() {
+    super.initState();
+    _startVoiceListening();
+  }
+
+  @override
+  void dispose() {
+    widget.voiceService.stopListening();
+    super.dispose();
+  }
+
+  Future<void> _startVoiceListening() async {
+    setState(() {
+      _isListening = true;
+      _statusText = 'Listening...';
+    });
+
+    final spokenText = await widget.voiceService.listen();
+
+    setState(() {
+      _isListening = false;
+      _spokenText = spokenText ?? '';
+      _statusText = spokenText?.isNotEmpty == true
+          ? 'Searching for: $spokenText'
+          : 'No speech detected';
+    });
+
+    if (spokenText != null && spokenText.isNotEmpty) {
+      widget.onSearchResult(spokenText);
+      await Future.delayed(const Duration(milliseconds: 500));
+      widget.onClose();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.black54,
+      child: Center(
+        child: Container(
+          margin: const EdgeInsets.all(32),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: AppTheme.surface,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Close button
+              Align(
+                alignment: Alignment.topRight,
+                child: IconButton(
+                  icon: Icon(Icons.close, color: AppTheme.textSecondary),
+                  onPressed: widget.onClose,
+                ),
+              ),
+
+              // Microphone icon
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _isListening
+                      ? AppTheme.primary.withOpacity(0.2)
+                      : AppTheme.background,
+                  border: Border.all(
+                    color: _isListening ? AppTheme.primary : AppTheme.borderLight,
+                    width: 3,
+                  ),
+                ),
+                child: Icon(
+                  _isListening ? Icons.mic : Icons.mic_none,
+                  size: 48,
+                  color: _isListening ? AppTheme.primary : AppTheme.textSecondary,
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Status text
+              Text(
+                _statusText,
+                style: AppTheme.bodyLarge.copyWith(
+                  fontWeight: FontWeight.w500,
+                  color: _isListening ? AppTheme.primary : AppTheme.textPrimary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+
+              if (_spokenText.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.background,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _spokenText,
+                    style: AppTheme.bodyMedium.copyWith(
+                      color: AppTheme.textSecondary,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 24),
+
+              // Retry button
+              if (!_isListening)
+                ElevatedButton.icon(
+                  onPressed: _startVoiceListening,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Try Again'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+
+              // Listening indicator
+              if (_isListening)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(
+                    3,
+                    (index) => AnimatedContainer(
+                      duration: Duration(milliseconds: 300 + (index * 100)),
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppTheme.primary.withOpacity(0.6 + (index * 0.2)),
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),

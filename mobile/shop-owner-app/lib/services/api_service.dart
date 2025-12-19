@@ -461,6 +461,32 @@ class ApiService {
     }
   }
 
+  // Cancel order
+  static Future<ApiResponse> cancelOrder(String orderId, String reason) async {
+    if (_useMockData) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      return ApiResponse.success({
+        'message': 'Order cancelled successfully',
+        'orderId': orderId,
+        'status': 'CANCELLED'
+      });
+    }
+
+    try {
+      final response = await http
+          .put(
+            Uri.parse('$baseUrl${ApiEndpoints.orders}/$orderId/cancel'),
+            headers: _authHeaders,
+            body: json.encode({'reason': reason}),
+          )
+          .timeout(timeout);
+
+      return _handleResponse(response);
+    } catch (e) {
+      return ApiResponse.error('Network error: ${e.toString()}');
+    }
+  }
+
   // Auto-assign order to available delivery partner
   static Future<ApiResponse> autoAssignOrder(String orderId, String assignedBy) async {
     if (_useMockData) {
@@ -605,6 +631,21 @@ class ApiService {
       final response = await http
           .patch(
             Uri.parse('$baseUrl${ApiEndpoints.notifications}/$notificationId/read'),
+            headers: _authHeaders,
+          )
+          .timeout(timeout);
+
+      return _handleResponse(response);
+    } catch (e) {
+      return ApiResponse.error('Network error: ${e.toString()}');
+    }
+  }
+
+  static Future<ApiResponse> markAllNotificationsAsRead(String userId) async {
+    try {
+      final response = await http
+          .put(
+            Uri.parse('$baseUrl${ApiEndpoints.notifications}/user/$userId/read-all'),
             headers: _authHeaders,
           )
           .timeout(timeout);

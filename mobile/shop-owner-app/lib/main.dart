@@ -17,6 +17,7 @@ import 'widgets/modern_button.dart';
 import 'widgets/update_dialog.dart';
 import 'providers/product_provider.dart';
 import 'providers/language_provider.dart';
+import 'providers/order_provider.dart';
 import 'services/version_service.dart';
 import 'screens/auth/forgot_password_screen.dart';
 
@@ -200,6 +201,7 @@ class _MyAppState extends State<MyApp> {
       providers: [
         ChangeNotifierProvider(create: (_) => ProductProvider()),
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
+        ChangeNotifierProvider(create: (_) => OrderProvider()),
       ],
       child: MaterialApp(
         title: 'Shop Owner',

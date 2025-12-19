@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:provider/provider.dart';
 import '../../services/api_service_simple.dart';
 import '../../services/sound_service.dart';
 import '../../utils/js_helper.dart' if (dart.library.html) '../../utils/js_helper_web.dart' as js_helper;
 import '../../utils/app_theme.dart';
 import '../../widgets/modern_card.dart';
 import '../../widgets/modern_button.dart';
+import '../../providers/language_provider.dart';
 import 'order_details_screen.dart';
 
 class OrdersScreen extends StatefulWidget {
@@ -916,49 +918,55 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
   Widget build(BuildContext context) {
     final padding = ResponsiveLayout.getResponsivePadding(context);
 
-    return Scaffold(
-      backgroundColor: AppTheme.background,
-      appBar: AppBar(
-        title: Text('Orders', style: AppTheme.h5),
-        elevation: 0,
-        actions: [
-          ModernIconButton(
-            icon: _startDate != null || _endDate != null ? Icons.filter_alt : Icons.filter_alt_outlined,
-            onPressed: _selectDateRange,
-            size: 48,
-          ),
-          if (_startDate != null || _endDate != null)
-            ModernIconButton(
-              icon: Icons.clear,
-              onPressed: _clearDateFilter,
-              size: 48,
+    return Consumer<LanguageProvider>(
+      builder: (context, languageProvider, child) {
+        return Scaffold(
+          backgroundColor: AppTheme.background,
+          appBar: AppBar(
+            title: Text(
+              languageProvider.orders,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 18),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-          const SizedBox(width: AppTheme.space8),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          indicatorColor: AppTheme.primary,
-          labelColor: AppTheme.textPrimary,
-          unselectedLabelColor: AppTheme.textSecondary,
-          labelStyle: AppTheme.button.copyWith(fontSize: 13),
-          onTap: (index) {
-            setState(() => _selectedFilter = _statusFilters[index]);
-            _fetchOrders(); // Fetch from API with new filter
-          },
-          tabs: _statusFilters.map((status) {
-            return Tab(
-              child: ModernChip(
-                label: _getStatusText(status),
-                selected: _selectedFilter == status,
-                selectedColor: _getStatusColor(status),
+            backgroundColor: Colors.green.shade700,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            actions: [
+              IconButton(
+                icon: Icon(
+                  _startDate != null || _endDate != null ? Icons.filter_alt : Icons.filter_alt_outlined,
+                  color: Colors.white,
+                ),
+                onPressed: _selectDateRange,
               ),
-            );
-          }).toList(),
-        ),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+              if (_startDate != null || _endDate != null)
+                IconButton(
+                  icon: const Icon(Icons.clear, color: Colors.white),
+                  onPressed: _clearDateFilter,
+                ),
+              const SizedBox(width: 8),
+            ],
+            bottom: TabBar(
+              controller: _tabController,
+              isScrollable: true,
+              indicatorColor: Colors.white,
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.white70,
+              labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              unselectedLabelStyle: const TextStyle(fontSize: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              onTap: (index) {
+                setState(() => _selectedFilter = _statusFilters[index]);
+                _fetchOrders(); // Fetch from API with new filter
+              },
+              tabs: _statusFilters.map((status) {
+                return Tab(text: languageProvider.getOrderStatus(status));
+              }).toList(),
+            ),
+          ),
+          body: _isLoading
+          ? Center(child: CircularProgressIndicator(color: Colors.green.shade700))
           : _filteredOrders.isEmpty
               ? Center(
                   child: Padding(
@@ -969,12 +977,14 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                         Icon(Icons.receipt_long_outlined, size: 80, color: AppTheme.textHint),
                         const SizedBox(height: AppTheme.space16),
                         Text(
-                          _selectedFilter == 'ALL' ? 'No orders found' : 'No ${_selectedFilter.toLowerCase()} orders',
+                          _selectedFilter == 'ALL'
+                              ? languageProvider.getText('No orders found', 'ஆர்டர்கள் இல்லை')
+                              : languageProvider.getText('No ${_selectedFilter.toLowerCase()} orders', '${languageProvider.getOrderStatus(_selectedFilter)} ஆர்டர்கள் இல்லை'),
                           style: AppTheme.h4.copyWith(color: AppTheme.textSecondary),
                         ),
                         const SizedBox(height: AppTheme.space8),
                         Text(
-                          'Orders will appear here once placed',
+                          languageProvider.getText('Orders will appear here once placed', 'ஆர்டர்கள் இடப்பட்டவுடன் இங்கே தோன்றும்'),
                           style: AppTheme.bodyMedium.copyWith(color: AppTheme.textHint),
                           textAlign: TextAlign.center,
                         ),
@@ -1053,6 +1063,8 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                     },
                   ),
                 ),
+        );
+      },
     );
   }
 }

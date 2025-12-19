@@ -5,7 +5,7 @@ class AppConfig {
   static const String _devBaseUrl = 'http://localhost:8080'; // Local backend for mobile testing
   static const String _prodBaseUrl = 'https://api.nammaoorudelivary.in';
 
-  static const bool _isProduction = false; // DEV MODE - Testing with localhost
+  static const bool _isProduction = false; // LOCAL MODE - Using localhost server
 
   // All URLs derived from single source
   static String get baseUrl => _isProduction ? _prodBaseUrl : _devBaseUrl;

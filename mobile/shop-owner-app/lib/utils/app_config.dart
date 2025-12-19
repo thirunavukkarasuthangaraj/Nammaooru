@@ -90,7 +90,7 @@ class AppConfig {
     }
     return kIsProduction
         ? 'https://api.nammaoorudelivary.in/api'
-        : 'http://192.168.1.3:8080/api'; // your LAN IP for mobile testing
+        : 'http://localhost:8080/api'; // localhost for development
   }
 
   static String get serverBaseUrl {
@@ -101,7 +101,7 @@ class AppConfig {
     }
     return kIsProduction
         ? 'https://api.nammaoorudelivary.in'
-        : 'http://192.168.1.3:8080';
+        : 'http://localhost:8080';
   }
 
   // Separate image base URL for static file serving (without /api)
@@ -113,7 +113,7 @@ class AppConfig {
     }
     return kIsProduction
         ? 'https://api.nammaoorudelivary.in'
-        : 'http://192.168.1.3:8080';
+        : 'http://localhost:8080';
   }
 
   static String get webSocketUrl {
@@ -124,7 +124,7 @@ class AppConfig {
     }
     return kIsProduction
         ? 'wss://nammaoorudelivary.in/ws'
-        : 'ws://192.168.1.3:8080/ws';
+        : 'ws://localhost:8080/ws';
   }
 
   // ============================
@@ -143,6 +143,14 @@ class AppConfig {
     String cleanPath = imagePath.startsWith('/api/')
         ? imagePath.substring(4)  // Remove '/api' prefix
         : imagePath;
+    // Ensure path starts with /
+    if (!cleanPath.startsWith('/')) {
+      cleanPath = '/$cleanPath';
+    }
+    // Add /uploads prefix if not already present
+    if (!cleanPath.startsWith('/uploads/')) {
+      cleanPath = '/uploads$cleanPath';
+    }
     // Otherwise, prepend the image base URL (for static file serving)
     return '$imageBaseUrl$cleanPath';
   }

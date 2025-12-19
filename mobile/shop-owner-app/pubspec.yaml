@@ -1,7 +1,7 @@
 name: shop_owner_app
 description: NammaOoru Shop Owner App - Complete Flutter shop management app
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -37,6 +37,7 @@ dependencies:
   sqflite: ^2.3.0
   path_provider: ^2.1.1
   package_info_plus: ^8.0.0
+  speech_to_text: ^7.3.0
 
 dev_dependencies:
   flutter_test:

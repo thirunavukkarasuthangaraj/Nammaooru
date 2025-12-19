@@ -1,11 +1,14 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../../../core/providers/delivery_partner_provider.dart';
 import '../../../core/models/delivery_partner.dart';
 import '../../../core/models/simple_order_model.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../services/notification_api_service.dart';
 import '../../orders/screens/order_history_screen.dart';
 import '../../orders/screens/available_orders_screen.dart';
 import '../../orders/screens/active_orders_screen.dart';
@@ -29,6 +32,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _loadData();
+    _setupNotifications();
   }
 
   void _loadData() {
@@ -36,6 +40,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final provider = Provider.of<DeliveryPartnerProvider>(context, listen: false);
       await provider.loadDashboardData();
     });
+  }
+
+  Future<void> _setupNotifications() async {
+    if (kIsWeb) {
+      debugPrint('Notifications setup skipped for web');
+      return;
+    }
+
+    try {
+      // Get FCM token
+      final fcmToken = await FirebaseMessaging.instance.getToken();
+      if (fcmToken != null) {
+        debugPrint('FCM Token obtained for delivery partner: $fcmToken');
+
+        // Send token to backend
+        final notificationService = NotificationApiService();
+        final result = await notificationService.updateDeliveryPartnerFcmToken(fcmToken);
+
+        if (result['statusCode'] == '2000') {
+          debugPrint('FCM token successfully sent to backend');
+        } else {
+          debugPrint('Failed to send FCM token: ${result['message']}');
+        }
+      }
+    } catch (e) {
+      debugPrint('Error setting up notifications: $e');
+    }
   }
 
   void _onItemTapped(int index) {

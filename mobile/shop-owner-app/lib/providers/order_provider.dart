@@ -295,6 +295,7 @@ class OrderProvider extends ChangeNotifier {
             quantity: 4,
             unitPrice: 10.0,
             total: 40.0,
+            price: 10.0,
             image: '☕',
           ),
           OrderItem(
@@ -303,6 +304,7 @@ class OrderProvider extends ChangeNotifier {
             quantity: 7,
             unitPrice: 100.0,
             total: 700.0,
+            price: 100.0,
             image: '💊',
           ),
           OrderItem(
@@ -311,6 +313,7 @@ class OrderProvider extends ChangeNotifier {
             quantity: 3,
             unitPrice: 100.0,
             total: 300.0,
+            price: 100.0,
             image: '🏠',
           ),
         ],
@@ -319,6 +322,7 @@ class OrderProvider extends ChangeNotifier {
         deliveryFee: 30.0,
         discount: 50.0,
         total: 1072.0,
+        totalAmount: 1072.0,
         status: 'CONFIRMED',
         paymentStatus: 'PAID',
         paymentMethod: 'UPI',
@@ -348,6 +352,7 @@ class OrderProvider extends ChangeNotifier {
             quantity: 2,
             unitPrice: 100.0,
             total: 200.0,
+            price: 100.0,
             image: '🥔',
           ),
           OrderItem(
@@ -356,6 +361,7 @@ class OrderProvider extends ChangeNotifier {
             quantity: 1,
             unitPrice: 150.0,
             total: 150.0,
+            price: 150.0,
             image: '🌶️',
           ),
         ],
@@ -364,6 +370,7 @@ class OrderProvider extends ChangeNotifier {
         deliveryFee: 25.0,
         discount: 20.0,
         total: 372.5,
+        totalAmount: 372.5,
         status: 'PENDING',
         paymentStatus: 'PENDING',
         paymentMethod: 'COD',
@@ -391,6 +398,7 @@ class OrderProvider extends ChangeNotifier {
             quantity: 1,
             unitPrice: 100.0,
             total: 100.0,
+            price: 100.0,
             image: '💊',
           ),
         ],
@@ -399,6 +407,7 @@ class OrderProvider extends ChangeNotifier {
         deliveryFee: 20.0,
         discount: 0.0,
         total: 125.0,
+        totalAmount: 125.0,
         status: 'DELIVERED',
         paymentStatus: 'PAID',
         paymentMethod: 'Card',
@@ -429,6 +438,7 @@ class OrderProvider extends ChangeNotifier {
             quantity: 10,
             unitPrice: 10.0,
             total: 100.0,
+            price: 10.0,
             image: '☕',
           ),
           OrderItem(
@@ -437,6 +447,7 @@ class OrderProvider extends ChangeNotifier {
             quantity: 5,
             unitPrice: 100.0,
             total: 500.0,
+            price: 100.0,
             image: '🥔',
           ),
         ],
@@ -445,6 +456,7 @@ class OrderProvider extends ChangeNotifier {
         deliveryFee: 35.0,
         discount: 60.0,
         total: 605.0,
+        totalAmount: 605.0,
         status: 'PREPARING',
         paymentStatus: 'PAID',
         paymentMethod: 'UPI',
@@ -475,6 +487,7 @@ class OrderProvider extends ChangeNotifier {
             quantity: 2,
             unitPrice: 100.0,
             total: 200.0,
+            price: 100.0,
             image: '🏠',
           ),
           OrderItem(
@@ -483,6 +496,7 @@ class OrderProvider extends ChangeNotifier {
             quantity: 3,
             unitPrice: 150.0,
             total: 450.0,
+            price: 150.0,
             image: '🌶️',
           ),
         ],
@@ -491,6 +505,7 @@ class OrderProvider extends ChangeNotifier {
         deliveryFee: 40.0,
         discount: 65.0,
         total: 657.5,
+        totalAmount: 657.5,
         status: 'CANCELLED',
         paymentStatus: 'REFUNDED',
         paymentMethod: 'Card',
@@ -500,7 +515,7 @@ class OrderProvider extends ChangeNotifier {
       ),
     ];
 
-    _orders = mockOrders;
+    _orders = mockOrders.cast<Order>();
   }
 
   // Helper methods

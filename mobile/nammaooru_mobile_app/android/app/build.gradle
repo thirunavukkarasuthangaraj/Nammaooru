@@ -40,7 +40,7 @@ android {
 
     defaultConfig {
         applicationId "com.nammaooru.app"
-        // Support Android 5.0 (Lollipop) and above - covers 99%+ devices including Redmi
+        // CRITICAL: Override Flutter default (24) to support older Mi/Redmi phones
         minSdkVersion flutter.minSdkVersion
         // Target Android 15 - Required by Play Store (August 2024+)
         targetSdkVersion 35

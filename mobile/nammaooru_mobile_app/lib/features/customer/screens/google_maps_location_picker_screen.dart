@@ -44,6 +44,7 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
   bool _isLoadingLocation = false;
   bool _isLoadingMap = false;
   bool _isSearching = false;
+  String _userTypedSearchQuery = ''; // Store what user originally typed
 
   double? _selectedLatitude;
   double? _selectedLongitude;
@@ -154,34 +155,40 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
         String fullAddress = '';
         List<String> addressParts = [];
 
-        // Get street components
+        // Get all available components
+        String? name = address['name']; // Often contains village/area name
         String? streetNumber = address['streetNumber'];
         String? streetName = address['streetName'];
         String? subLocality = address['subLocality'];
         String? locality = address['locality'];
 
-        // Build street address part
-        if (streetName?.isNotEmpty == true) {
-          if (streetNumber?.isNotEmpty == true) {
-            // Has both number and street name: "3, Greams Road"
-            addressParts.add('$streetNumber, $streetName');
-          } else {
-            // Has only street name: "Greams Road"
-            addressParts.add(streetName!);
-          }
-        } else if (streetNumber?.isNotEmpty == true) {
-          // Has only street number (common in villages): "129"
-          // Store it as it's better than nothing
-          addressParts.add(streetNumber!);
+        // Prioritize readable address components
+        // 1. Use 'name' field if it's not a Plus Code and not same as locality
+        if (name?.isNotEmpty == true &&
+            !name!.contains('+') && // Not a Plus Code
+            name != locality) {
+          addressParts.add(name);
         }
 
-        // Add subLocality (area/neighborhood) if different from street name
+        // 2. Use subLocality (village/area) if available and different from name
         if (subLocality?.isNotEmpty == true &&
-            subLocality != streetName) {
+            subLocality != name &&
+            subLocality != locality) {
           addressParts.add(subLocality!);
         }
 
-        // Add locality (city)
+        // 3. Build street address part
+        if (streetName?.isNotEmpty == true) {
+          if (streetNumber?.isNotEmpty == true) {
+            addressParts.add('$streetNumber, $streetName');
+          } else {
+            addressParts.add(streetName!);
+          }
+        } else if (streetNumber?.isNotEmpty == true) {
+          addressParts.add(streetNumber!);
+        }
+
+        // 4. Add locality (city)
         if (locality?.isNotEmpty == true) {
           addressParts.add(locality!);
         }
@@ -189,6 +196,7 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
         fullAddress = addressParts.join(', ');
 
         print('📍 FORMATTED ADDRESS: $fullAddress');
+        print('  - Name: $name');
         print('  - Street Number: $streetNumber');
         print('  - Street Name: $streetName');
         print('  - SubLocality: $subLocality');
@@ -196,14 +204,17 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
 
         setState(() {
           _selectedAddress = fullAddress.isNotEmpty ? fullAddress : 'Selected Location';
-          // Store street: use street name if available, otherwise use street number (common in villages)
+          // Store street: use street name if available
           _selectedStreet = streetName?.isNotEmpty == true
               ? streetName!
               : (streetNumber ?? '');
-          _selectedCity = address['locality'] ?? 'Tirupattur'; // City from locality
-          _selectedVillage = address['subLocality'] ?? ''; // Village from subLocality
-          _selectedState = address['administrativeArea'] ?? 'Tamil Nadu'; // State from administrativeArea
-          _selectedPincode = address['postalCode'] ?? '600001';
+          _selectedCity = address['locality'] ?? 'Tirupattur';
+          // Use 'name' field for village if it's readable, otherwise use subLocality
+          _selectedVillage = (name?.isNotEmpty == true && !name!.contains('+'))
+              ? name!
+              : (address['subLocality'] ?? '');
+          _selectedState = address['administrativeArea'] ?? 'Tamil Nadu';
+          _selectedPincode = address['postalCode'] ?? '635601';
           _addressController.text = _selectedAddress;
         });
       }
@@ -213,10 +224,10 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
       if (mounted) {
         setState(() {
           _selectedAddress = 'Selected Location';
-          _selectedCity = 'Chennai';
+          _selectedCity = 'Tirupattur';
           _selectedVillage = '';
           _selectedState = 'Tamil Nadu';
-          _selectedPincode = '600001';
+          _selectedPincode = '635601';
           _addressController.text = _selectedAddress;
         });
       }
@@ -320,6 +331,7 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
       _selectedLatitude = position.latitude;
       _selectedLongitude = position.longitude;
       _showSuggestions = false; // Hide suggestions when map is tapped
+      _userTypedSearchQuery = ''; // Clear search query when manually tapping map
     });
     _updateMarker(position);
     FocusScope.of(context).unfocus();
@@ -354,6 +366,7 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
         _selectedLatitude = center.latitude;
         _selectedLongitude = center.longitude;
         _showSuggestions = false;
+        _userTypedSearchQuery = ''; // Clear search query when manually panning map
       });
 
       print('📍 Map stopped at center: ${center.latitude}, ${center.longitude}');
@@ -445,6 +458,13 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
   }
 
   void _onSearchChanged(String query) {
+    // Store user's original query (before it gets replaced with formatted address)
+    if (query.trim().isNotEmpty && !query.contains(',')) {
+      // Only store if it looks like user is typing (not a formatted address)
+      _userTypedSearchQuery = query.trim();
+      print('💾 Stored user query: $_userTypedSearchQuery');
+    }
+
     if (query.length > 2) {
       _searchPlaces(query);
     } else {
@@ -835,17 +855,56 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
       return;
     }
 
+    // Validate coordinates before saving
+    if (_selectedLatitude == null || _selectedLongitude == null ||
+        (_selectedLatitude == 0.0 && _selectedLongitude == 0.0)) {
+      Helpers.showSnackBar(context, 'Please wait for location to load or select a location on the map', isError: true);
+      return;
+    }
+
+    // Clean up village name - remove Plus Codes and numbers-only
+    String cleanVillage = _selectedVillage;
+
+    // Check if it's a Plus Code (contains +) or just numbers/symbols
+    if (cleanVillage.contains('+') ||
+        RegExp(r'^[0-9+\-\s]+$').hasMatch(cleanVillage) ||
+        cleanVillage.isEmpty) {
+      // Bad data - use what user originally typed in search box
+      if (_userTypedSearchQuery.isNotEmpty && !_userTypedSearchQuery.contains('+')) {
+        // Use user's original search query as village name
+        cleanVillage = _userTypedSearchQuery;
+        print('📝 Using user typed query as village: $cleanVillage');
+      } else {
+        // No valid user input - try extracting from current text (fallback)
+        String searchText = _addressController.text.trim();
+        if (searchText.isNotEmpty && !searchText.contains('+')) {
+          String firstPart = searchText.split(',').first.trim();
+          // Only use if it's not a number-only string
+          if (!RegExp(r'^[0-9+\-\s]+$').hasMatch(firstPart)) {
+            cleanVillage = firstPart;
+            print('📝 Using extracted text as village: $cleanVillage');
+          } else {
+            // Clear it so user must enter manually
+            cleanVillage = '';
+          }
+        } else {
+          // Clear it so user must enter manually
+          cleanVillage = '';
+        }
+      }
+    }
+
     // Show save address dialog
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       barrierDismissible: false,
       builder: (context) => SaveAddressDialog(
-        latitude: _selectedLatitude ?? 0.0,
-        longitude: _selectedLongitude ?? 0.0,
-        detectedAddress: _selectedVillage, // Pass area/locality as the detected address
+        latitude: _selectedLatitude!,
+        longitude: _selectedLongitude!,
+        detectedAddress: cleanVillage, // Pass cleaned area/locality
         detectedStreet: _selectedStreet, // Pass street name separately
         detectedCity: _selectedCity,
-        detectedVillage: _selectedVillage,
+        detectedVillage: cleanVillage, // Pass cleaned village name
         detectedState: _selectedState,
         detectedPincode: _selectedPincode,
       ),
@@ -922,7 +981,7 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
                   ),
                   cursorColor: VillageTheme.primaryGreen,
                   decoration: InputDecoration(
-                    hintText: 'Search for area, street or landmark',
+                    hintText: 'Type your village name (e.g., Mittur, Marimanikuppam)',
                     hintStyle: TextStyle(
                       color: Colors.grey.shade400,
                       fontSize: 15,

@@ -21,6 +21,7 @@ import '../screens/shop_details_screen.dart';
 import '../screens/location_picker_screen.dart';
 import '../screens/google_maps_location_picker_screen.dart';
 import '../screens/notifications_screen.dart';
+import '../screens/address_management_screen.dart';
 import '../../../core/services/location_service.dart';
 import '../../../core/services/address_service.dart';
 import '../widgets/address_selection_dialog.dart';
@@ -159,31 +160,233 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           ),
         );
       } else {
-        // If no saved addresses, open map picker to add first address
-        final selectedLocation = await Navigator.push<String>(
-          context,
-          MaterialPageRoute(
-            builder: (context) => GoogleMapsLocationPickerScreen(
-              currentLocation: _selectedLocation,
-            ),
-          ),
-        );
-
-        if (selectedLocation != null && selectedLocation != _selectedLocation) {
-          setState(() {
-            _selectedLocation = selectedLocation;
-          });
-
-          // Show confirmation
-          Helpers.showSnackBar(
-            context,
-            'Location updated to $selectedLocation',
-          );
-        }
+        // If no saved addresses, show choice dialog (Enter Manually vs Select from Map)
+        await _showAddAddressOptionsDialog();
       }
     } finally {
       _isLocationPickerOpen = false;
     }
+  }
+
+  Future<void> _showAddAddressOptionsDialog() async {
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: VillageTheme.primaryGreen.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(Icons.add_location_alt, color: VillageTheme.primaryGreen, size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'Add Delivery Address',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close, color: Colors.black54),
+                      padding: EdgeInsets.zero,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Choose how you want to add your delivery address:',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.black54,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                // Option 1: Enter Manually
+                InkWell(
+                  onTap: () async {
+                    Navigator.of(context).pop(); // Close options dialog
+                    await Future.delayed(const Duration(milliseconds: 100));
+                    if (mounted) {
+                      // Navigate to Address Management and auto-open manual form
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AddressManagementScreen(autoOpenManualForm: true),
+                        ),
+                      );
+                      if (result != null) {
+                        await AddressService.instance.getSavedAddresses();
+                        // Reload current location
+                        _getCurrentLocationOnStartup();
+                      }
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: VillageTheme.primaryGreen, width: 2),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: VillageTheme.primaryGreen.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: VillageTheme.primaryGreen.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(Icons.edit_note, color: VillageTheme.primaryGreen, size: 32),
+                        ),
+                        const SizedBox(width: 16),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Enter Manually',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'Type your address details',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.black54,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.arrow_forward_ios, color: VillageTheme.primaryGreen, size: 16),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Option 2: Select from Map
+                InkWell(
+                  onTap: () async {
+                    Navigator.of(context).pop();
+                    final selectedLocation = await Navigator.push<String>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => GoogleMapsLocationPickerScreen(
+                          currentLocation: _selectedLocation,
+                        ),
+                      ),
+                    );
+
+                    if (selectedLocation != null && selectedLocation != _selectedLocation) {
+                      setState(() {
+                        _selectedLocation = selectedLocation;
+                      });
+
+                      // Show confirmation
+                      Helpers.showSnackBar(
+                        context,
+                        'Location updated to $selectedLocation',
+                      );
+
+                      // Reload addresses to update the list
+                      await AddressService.instance.getSavedAddresses();
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: Colors.green, width: 2),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.green.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.map, color: Colors.green, size: 32),
+                        ),
+                        const SizedBox(width: 16),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    'Select from Map',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Icon(Icons.star, color: Colors.amber, size: 16),
+                                ],
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'Pinpoint your exact location',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.black54,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.arrow_forward_ios, color: Colors.green, size: 16),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
   
   Future<void> _loadDashboardData() async {

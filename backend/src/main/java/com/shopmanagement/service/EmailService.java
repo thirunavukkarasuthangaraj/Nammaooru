@@ -611,21 +611,40 @@ public class EmailService {
     @Async
     public void sendDeliveryNotificationEmail(String customerEmail, String customerName,
                                             String orderNumber, String deliveryPartnerName, String shopName) {
-        try {
-            Map<String, Object> variables = Map.of(
-                "customerName", customerName,
-                "orderNumber", orderNumber,
-                "deliveryPartnerName", deliveryPartnerName,
-                "shopName", shopName,
-                "supportEmail", emailProperties.getFrom()
-            );
+        // Call the full method with no order items (backward compatibility)
+        sendDeliverySummaryEmail(customerEmail, customerName, orderNumber, deliveryPartnerName, shopName, null, null);
+    }
 
-            String subject = "Order Delivered Successfully - " + orderNumber;
+    /**
+     * Send delivery summary email with order items and images
+     */
+    @Async
+    public void sendDeliverySummaryEmail(String customerEmail, String customerName,
+                                         String orderNumber, String deliveryPartnerName, String shopName,
+                                         java.util.List<java.util.Map<String, Object>> orderItems,
+                                         Double totalAmount) {
+        try {
+            java.util.Map<String, Object> variables = new java.util.HashMap<>();
+            variables.put("customerName", customerName);
+            variables.put("orderNumber", orderNumber);
+            variables.put("deliveryPartnerName", deliveryPartnerName != null ? deliveryPartnerName : "NammaOoru Delivery");
+            variables.put("shopName", shopName);
+            variables.put("supportEmail", emailProperties.getFrom());
+            variables.put("totalAmount", totalAmount != null ? totalAmount : 0.0);
+
+            // Add order items with images
+            if (orderItems != null && !orderItems.isEmpty()) {
+                variables.put("orderItems", orderItems);
+                log.info("📧 Delivery summary email includes {} order items with images", orderItems.size());
+            }
+
+            String subject = "✅ Order Delivered - " + orderNumber + " - NammaOoru";
             sendHtmlEmail(customerEmail, subject, "order-delivered", variables);
-            log.info("Delivery notification email sent to: {} for order: {}", customerEmail, orderNumber);
+            log.info("📧 Delivery summary email sent to: {} for order: {} with {} items",
+                     customerEmail, orderNumber, orderItems != null ? orderItems.size() : 0);
 
         } catch (Exception e) {
-            log.error("Failed to send delivery notification email to: {} for order: {}", customerEmail, orderNumber, e);
+            log.error("Failed to send delivery summary email to: {} for order: {}", customerEmail, orderNumber, e);
         }
     }
 

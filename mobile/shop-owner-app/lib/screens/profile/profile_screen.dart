@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'dart:convert';
 import '../auth/login_screen.dart';
 import '../settings/business_hours_screen.dart';
 import '../inventory/inventory_screen.dart';
 import '../promo_codes/promo_codes_screen.dart';
 import '../../utils/app_config.dart';
-import '../../utils/app_theme.dart';
-import '../../widgets/modern_button.dart';
-import '../../widgets/modern_card.dart';
+import '../../providers/language_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String userName;
@@ -26,6 +25,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _shopAddress = 'Shop Address Not Set';
   String _phoneNumber = 'Phone Not Set';
   String _email = 'Email Not Set';
+  String _city = '';
+  String _pincode = '';
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -56,12 +58,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _shopName = shop['name'] ?? widget.userName;
             _email = shop['email'] ?? shop['owner']?['email'] ?? 'N/A';
             _phoneNumber = shop['phone'] ?? shop['phoneNumber'] ?? 'N/A';
-            _shopAddress = '${shop['address'] ?? ''}, ${shop['city'] ?? ''} - ${shop['pincode'] ?? ''}';
+            _city = shop['city'] ?? '';
+            _pincode = shop['pincode'] ?? '';
+            _shopAddress = '${shop['address'] ?? ''}'.trim();
+            if (_city.isNotEmpty) {
+              _shopAddress += _shopAddress.isNotEmpty ? ', $_city' : _city;
+            }
+            if (_pincode.isNotEmpty) {
+              _shopAddress += ' - $_pincode';
+            }
+            _isLoading = false;
           });
+        } else {
+          setState(() => _isLoading = false);
         }
+      } else {
+        setState(() => _isLoading = false);
       }
     } catch (e) {
       print('Error loading profile data: $e');
+      setState(() => _isLoading = false);
     }
   }
 
@@ -69,27 +85,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: AppTheme.roundedLarge),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
-            Icon(Icons.logout, color: AppTheme.error),
-            const SizedBox(width: AppTheme.space8),
-            Text('Confirm Logout', style: AppTheme.h5),
+            Icon(Icons.logout, color: Colors.red.shade700),
+            const SizedBox(width: 8),
+            const Text('Confirm Logout', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           ],
         ),
-        content: Text('Are you sure you want to logout?', style: AppTheme.bodyMedium),
+        content: const Text('Are you sure you want to logout?'),
         actions: [
-          ModernButton(
-            text: 'Cancel',
-            variant: ButtonVariant.outline,
-            size: ButtonSize.medium,
+          TextButton(
             onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: TextStyle(color: Colors.grey.shade700)),
           ),
-          ModernButton(
-            text: 'Logout',
-            icon: Icons.logout,
-            variant: ButtonVariant.error,
-            size: ButtonSize.medium,
+          ElevatedButton(
             onPressed: () async {
               final prefs = await SharedPreferences.getInstance();
               await prefs.clear();
@@ -100,198 +110,512 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 (route) => false,
               );
             },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade700,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Logout'),
           ),
         ],
       ),
-    );
-  }
-
-  void _showComingSoon(String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature feature coming soon!')),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.background,
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: Text('Profile', style: AppTheme.h4.copyWith(fontWeight: FontWeight.w600)),
-        backgroundColor: AppTheme.surface,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.settings_outlined, color: AppTheme.textPrimary),
-            onPressed: () => _showComingSoon('Settings'),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.green.shade700,
+              Colors.green.shade600,
+              Colors.green.shade500,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // AppBar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Profile',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Content
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                    : SingleChildScrollView(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          children: [
+                            _buildProfileHeader(),
+                            const SizedBox(height: 20),
+                            _buildShopDetailsCard(),
+                            const SizedBox(height: 16),
+                            _buildSettingsCard(),
+                            const SizedBox(height: 16),
+                            _buildLanguageCard(),
+                            const SizedBox(height: 24),
+                            _buildLogoutButton(),
+                            const SizedBox(height: 20),
+                          ],
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileHeader() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
+      child: Column(
+        children: [
+          // Shop Icon
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [
+                  Colors.green.shade100,
+                  Colors.green.shade50,
+                ],
+              ),
+            ),
+            child: CircleAvatar(
+              radius: 45,
+              backgroundColor: Colors.white,
+              child: CircleAvatar(
+                radius: 40,
+                backgroundColor: Colors.green.shade50,
+                child: Icon(
+                  Icons.store,
+                  size: 45,
+                  color: Colors.green.shade700,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Shop Name
+          Text(
+            _shopName,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+
+          // Email
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.email_outlined, size: 16, color: Colors.grey.shade600),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  _email,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+
+          // Phone
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.phone_outlined, size: 16, color: Colors.grey.shade600),
+              const SizedBox(width: 6),
+              Text(
+                _phoneNumber,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Shop Owner Badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.green.shade600, Colors.green.shade700],
+              ),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.verified, size: 16, color: Colors.white),
+                SizedBox(width: 6),
+                Text(
+                  'Shop Owner',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShopDetailsCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Icon(Icons.store_mall_directory, color: Colors.green.shade700, size: 22),
+                const SizedBox(width: 10),
+                const Text(
+                  'Shop Details',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          _buildDetailRow(Icons.location_on_outlined, 'Address', _shopAddress),
+          _buildDetailRow(Icons.location_city_outlined, 'City', _city.isNotEmpty ? _city : 'Not set'),
+          _buildDetailRow(Icons.pin_drop_outlined, 'Pincode', _pincode.isNotEmpty ? _pincode : 'Not set'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: Colors.grey.shade600),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingsCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Icon(Icons.settings, color: Colors.green.shade700, size: 22),
+                const SizedBox(width: 10),
+                const Text(
+                  'Settings',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          _buildSettingsItem(
+            Icons.access_time,
+            'Business Hours',
+            'Set your shop timings',
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => BusinessHoursScreen(token: widget.token)),
+              );
+            },
+          ),
+          _buildSettingsItem(
+            Icons.inventory_2,
+            'Inventory',
+            'Manage your products',
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => InventoryScreen(token: widget.token)),
+              );
+            },
+          ),
+          _buildSettingsItem(
+            Icons.local_offer,
+            'Promo Codes',
+            'Create discount offers',
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const PromoCodesScreen()),
+              );
+            },
+          ),
+          _buildSettingsItem(
+            Icons.payment,
+            'Payment Settings',
+            'Configure payment methods',
+            () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Payment Settings coming soon!')),
+              );
+            },
+          ),
+          _buildSettingsItem(
+            Icons.analytics,
+            'Analytics',
+            'View sales reports',
+            () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Analytics coming soon!')),
+              );
+            },
+          ),
+          _buildSettingsItem(
+            Icons.help_outline,
+            'Support',
+            'Get help',
+            () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Support coming soon!')),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingsItem(IconData icon, String title, String subtitle, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
           children: [
-            // Profile Header
             Container(
-              width: double.infinity,
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AppTheme.surface,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: Offset(0, 2),
-                  ),
-                ],
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(8),
               ),
-              padding: const EdgeInsets.all(AppTheme.space24),
+              child: Icon(icon, size: 20, color: Colors.green.shade700),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppTheme.primary.withOpacity(0.1),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
                     ),
-                    child: const Icon(Icons.store, size: 40, color: AppTheme.primary),
                   ),
-                  const SizedBox(height: AppTheme.space16),
                   Text(
-                    _shopName,
-                    style: AppTheme.h3.copyWith(fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: AppTheme.space8),
-                  Text(
-                    _email,
-                    style: AppTheme.bodyMedium.copyWith(color: AppTheme.textSecondary),
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                    ),
                   ),
                 ],
               ),
             ),
-
-            const SizedBox(height: AppTheme.space16),
-
-            // Contact Information
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: AppTheme.space16),
-              decoration: BoxDecoration(
-                color: AppTheme.surface,
-                borderRadius: AppTheme.roundedLarge,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  _buildModernInfoTile(Icons.phone, 'Phone', _phoneNumber),
-                  Divider(height: 1, color: AppTheme.borderLight),
-                  _buildModernInfoTile(Icons.location_on, 'Address', _shopAddress),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: AppTheme.space16),
-
-            // Settings & Options
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: AppTheme.space16),
-              decoration: BoxDecoration(
-                color: AppTheme.surface,
-                borderRadius: AppTheme.roundedLarge,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  _buildMenuTile(Icons.access_time, 'Business Hours', () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => BusinessHoursScreen(token: widget.token)),
-                    );
-                  }),
-                  Divider(height: 1, color: AppTheme.borderLight),
-                  _buildMenuTile(Icons.payment, 'Payment Settings', () => _showComingSoon('Payment Settings')),
-                  Divider(height: 1, color: AppTheme.borderLight),
-                  _buildMenuTile(Icons.inventory_2, 'Inventory', () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => InventoryScreen(token: widget.token)),
-                    );
-                  }),
-                  Divider(height: 1, color: AppTheme.borderLight),
-                  _buildMenuTile(Icons.local_offer, 'Promo Codes', () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const PromoCodesScreen()),
-                    );
-                  }),
-                  Divider(height: 1, color: AppTheme.borderLight),
-                  _buildMenuTile(Icons.analytics, 'Analytics', () => _showComingSoon('Analytics')),
-                  Divider(height: 1, color: AppTheme.borderLight),
-                  _buildMenuTile(Icons.help_outline, 'Support', () => _showComingSoon('Support')),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: AppTheme.space24),
-
-            // Logout Button
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppTheme.space16),
-              child: ModernButton(
-                text: 'Logout',
-                icon: Icons.logout,
-                variant: ButtonVariant.error,
-                size: ButtonSize.large,
-                fullWidth: true,
-                onPressed: _logout,
-              ),
-            ),
-
-            const SizedBox(height: AppTheme.space20),
+            Icon(Icons.chevron_right, color: Colors.grey.shade400),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildModernInfoTile(IconData icon, String label, String value) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: AppTheme.space20, vertical: AppTheme.space8),
-      leading: Container(
-        padding: const EdgeInsets.all(AppTheme.space12),
-        decoration: BoxDecoration(
-          color: AppTheme.primary.withOpacity(0.1),
-          borderRadius: AppTheme.roundedMedium,
-        ),
-        child: Icon(icon, color: AppTheme.primary, size: 20),
-      ),
-      title: Text(label, style: AppTheme.caption.copyWith(color: AppTheme.textSecondary)),
-      subtitle: Padding(
-        padding: const EdgeInsets.only(top: 4),
-        child: Text(value, style: AppTheme.bodyMedium.copyWith(fontWeight: FontWeight.w500)),
-      ),
+  Widget _buildLanguageCard() {
+    return Consumer<LanguageProvider>(
+      builder: (context, languageProvider, child) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.language, size: 22, color: Colors.green.shade700),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        languageProvider.getText('Language', 'மொழி'),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      Text(
+                        languageProvider.currentLanguage == 'ta' ? 'தமிழ்' : 'English',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: languageProvider.currentLanguage == 'ta',
+                  onChanged: (value) {
+                    languageProvider.setLanguage(value ? 'ta' : 'en');
+                  },
+                  activeColor: Colors.green.shade700,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildMenuTile(IconData icon, String title, VoidCallback onTap) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: AppTheme.space20, vertical: AppTheme.space12),
-      leading: Icon(icon, color: AppTheme.primary, size: 24),
-      title: Text(title, style: AppTheme.bodyMedium.copyWith(fontWeight: FontWeight.w500)),
-      trailing: Icon(Icons.chevron_right, color: AppTheme.textHint, size: 20),
-      onTap: onTap,
+  Widget _buildLogoutButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: _logout,
+        icon: const Icon(Icons.logout),
+        label: const Text('Logout', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.red.shade600,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          elevation: 2,
+        ),
+      ),
     );
   }
 }

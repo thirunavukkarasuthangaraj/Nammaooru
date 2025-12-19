@@ -718,7 +718,7 @@ class OrderCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: AppTheme.roundedLarge,
         child: Padding(
-          padding: const EdgeInsets.all(AppTheme.space16),
+          padding: const EdgeInsets.all(AppTheme.space12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1067,7 +1067,7 @@ class InfoCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: AppTheme.roundedLarge,
         child: Padding(
-          padding: const EdgeInsets.all(AppTheme.space16),
+          padding: const EdgeInsets.all(AppTheme.space12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

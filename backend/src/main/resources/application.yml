@@ -38,11 +38,11 @@ spring:
     hibernate:
       # Use 'update' for dev, 'validate' for production
       ddl-auto: ${JPA_DDL_AUTO:validate}
-    show-sql: ${JPA_SHOW_SQL:false}
+    show-sql: ${JPA_SHOW_SQL:true}
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: ${HIBERNATE_FORMAT_SQL:false}
+        format_sql: ${HIBERNATE_FORMAT_SQL:true}
         jdbc:
           time_zone: ${HIBERNATE_TIMEZONE:Asia/Kolkata}
     open-in-view: false
@@ -97,7 +97,8 @@ logging:
   level:
     com.shopmanagement: ${LOG_LEVEL_APP:WARN}
     org.springframework.security: WARN
-    org.hibernate.SQL: WARN
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
     org.hibernate: WARN
     org.springframework: ${LOG_LEVEL_SPRING:INFO}
   pattern:
@@ -176,6 +177,11 @@ app:
     product-images: ${PRODUCT_IMAGES_PATH:/opt/shop-management/uploads/products}
     max-file-size: 10MB
     allowed-types: pdf,jpg,jpeg,png,docx,doc,webp
+  api:
+    # API base URL for image serving in emails
+    # Production default: https://api.nammaoorudelivary.in
+    # For local dev, override with: API_BASE_URL=http://localhost:8080
+    base-url: ${API_BASE_URL:https://api.nammaoorudelivary.in}
   frontend:
     # Production default: https://nammaoorudelivary.in
     # For local dev, override with: FRONTEND_BASE_URL=http://localhost:4200

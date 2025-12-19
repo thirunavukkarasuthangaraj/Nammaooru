@@ -61,6 +61,20 @@ class StorageService {
     return null;
   }
 
+  // Shop data management
+  static Future<void> saveShop(Map<String, dynamic> shop) async {
+    final shopJson = json.encode(shop);
+    await prefs.setString('shop_data', shopJson);
+  }
+
+  static Map<String, dynamic>? getShop() {
+    final shopJson = prefs.getString('shop_data');
+    if (shopJson != null) {
+      return json.decode(shopJson) as Map<String, dynamic>;
+    }
+    return null;
+  }
+
   // Login state management
   static Future<void> setLoggedIn(bool isLoggedIn) async {
     await prefs.setBool(_keyIsLoggedIn, isLoggedIn);

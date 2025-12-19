@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_config.dart';
+import '../storage/local_storage.dart';
 
 class ApiService {
   static String get _baseUrl => AppConfig.apiUrl;
@@ -14,8 +15,7 @@ class ApiService {
 
   // Headers with authentication token
   Future<Map<String, String>> _getHeaders() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey);
+    final token = await LocalStorage.getToken();
 
     return {
       'Content-Type': 'application/json',
@@ -71,8 +71,11 @@ class ApiService {
 
     // Save token and partner ID if login successful
     if (data['success'] == true) {
+      await LocalStorage.setToken(data['token']);
+      await LocalStorage.setUserId(data['partnerId'].toString());
+
+      // Still save partner ID to SharedPreferences for backward compatibility
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_tokenKey, data['token']);
       await prefs.setString(_partnerIdKey, data['partnerId'].toString());
     }
 
@@ -80,8 +83,10 @@ class ApiService {
   }
 
   Future<void> logout() async {
+    await LocalStorage.removeToken();
+
+    // Also clear SharedPreferences for backward compatibility
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_tokenKey);
     await prefs.remove(_partnerIdKey);
   }
 

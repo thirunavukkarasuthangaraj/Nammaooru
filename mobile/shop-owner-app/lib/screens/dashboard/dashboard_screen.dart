@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'dart:convert';
 import '../auth/login_screen.dart';
+import '../../providers/language_provider.dart';
 import '../../services/api_service_simple.dart';
 import '../notifications/notifications_screen.dart';
 import '../orders/orders_screen.dart';
@@ -261,47 +263,52 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
     final gridColumns = ResponsiveLayout.getGridColumns(context);
     final padding = ResponsiveLayout.getResponsivePadding(context);
 
-    return Scaffold(
-      backgroundColor: AppTheme.background,
-      appBar: AppBar(
-        title: Text('Dashboard', style: AppTheme.h5),
-        elevation: 0,
-        actions: [
-          Badge(
-            label: Text('$_unreadNotificationCount'),
-            isLabelVisible: _unreadNotificationCount > 0,
-            child: ModernIconButton(
-              icon: Icons.notifications,
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => NotificationsScreen(token: widget.token),
+    return Consumer<LanguageProvider>(
+      builder: (context, languageProvider, child) {
+        return Scaffold(
+          backgroundColor: AppTheme.background,
+          appBar: AppBar(
+            title: Text(languageProvider.dashboard, style: AppTheme.h5.copyWith(color: Colors.white)),
+            backgroundColor: Colors.green.shade700,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            actions: [
+              Badge(
+                label: Text('$_unreadNotificationCount'),
+                isLabelVisible: _unreadNotificationCount > 0,
+                child: ModernIconButton(
+                  icon: Icons.notifications,
+                  iconColor: Colors.white,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => NotificationsScreen(token: widget.token),
+                      ),
+                    );
+                  },
+                  size: 48,
+                ),
+              ),
+              const SizedBox(width: AppTheme.space8),
+              PopupMenuButton(
+                icon: const Icon(Icons.more_vert, color: Colors.white),
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    child: Text(languageProvider.settings),
+                    onTap: () {},
                   ),
-                );
-              },
-              size: 48,
-            ),
-          ),
-          const SizedBox(width: AppTheme.space8),
-          PopupMenuButton(
-            icon: const Icon(Icons.more_vert),
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                child: const Text('Settings'),
-                onTap: () {},
+                  PopupMenuItem(
+                    child: Text(languageProvider.logout),
+                    onTap: _logout,
+                  ),
+                ],
               ),
-              PopupMenuItem(
-                child: const Text('Logout'),
-                onTap: _logout,
-              ),
+              const SizedBox(width: AppTheme.space8),
             ],
           ),
-          const SizedBox(width: AppTheme.space8),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          body: _isLoading
+          ? Center(child: CircularProgressIndicator(color: Colors.green.shade700))
           : RefreshIndicator(
               onRefresh: _fetchDashboardData,
               child: SingleChildScrollView(
@@ -314,7 +321,11 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                     Container(
                       padding: const EdgeInsets.all(AppTheme.space20),
                       decoration: BoxDecoration(
-                        gradient: AppTheme.primaryGradient,
+                        gradient: LinearGradient(
+                          colors: [Colors.green.shade700, Colors.green.shade500],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
                         borderRadius: AppTheme.roundedLarge,
                         boxShadow: AppTheme.shadowMedium,
                       ),
@@ -325,7 +336,7 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Welcome back,',
+                                  languageProvider.getText('Welcome back,', 'மீண்டும் வருக,'),
                                   style: AppTheme.bodyMedium.copyWith(
                                     color: AppTheme.textWhite.withOpacity(0.9),
                                   ),
@@ -374,52 +385,52 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                           : (gridColumns > 2 ? 1.85 : 1.55),
                       children: [
                         StatCard(
-                          title: 'Today\'s Orders',
+                          title: languageProvider.todayOrders,
                           value: _stats['todayOrders'].toString(),
                           icon: Icons.shopping_cart,
                           color: AppTheme.secondary,
-                          subtitle: 'Orders today',
+                          subtitle: languageProvider.getText('Orders today', 'இன்றைய ஆர்டர்கள்'),
                           useGradient: true,
                           onTap: _navigateToOrders,
                         ),
                         StatCard(
-                          title: 'Pending Orders',
+                          title: languageProvider.pendingOrders,
                           value: _stats['pendingOrders'].toString(),
                           icon: Icons.pending_actions,
                           color: AppTheme.warning,
-                          subtitle: 'Awaiting action',
+                          subtitle: languageProvider.getText('Awaiting action', 'செயலுக்கு காத்திருக்கிறது'),
                           useGradient: true,
                           onTap: _navigateToOrders,
                         ),
                         StatCard(
-                          title: 'Total Orders',
+                          title: languageProvider.getText('Total Orders', 'மொத்த ஆர்டர்கள்'),
                           value: _stats['totalOrders'].toString(),
                           icon: Icons.receipt_long,
                           color: const Color(0xFF5E35B1),
-                          subtitle: 'All time',
+                          subtitle: languageProvider.getText('All time', 'அனைத்து நேரமும்'),
                           onTap: _navigateToOrders,
                         ),
                         StatCard(
-                          title: 'Today\'s Revenue',
+                          title: languageProvider.getText("Today's Revenue", 'இன்றைய வருவாய்'),
                           value: '₹${_stats['todayRevenue']}',
                           icon: Icons.attach_money,
                           color: AppTheme.success,
-                          subtitle: 'Today\'s earnings',
+                          subtitle: languageProvider.getText("Today's earnings", 'இன்றைய வருமானம்'),
                           useGradient: true,
                         ),
                         StatCard(
-                          title: 'Monthly Revenue',
+                          title: languageProvider.getText('Monthly Revenue', 'மாத வருவாய்'),
                           value: '₹${_stats['monthlyRevenue']}',
                           icon: Icons.trending_up,
                           color: const Color(0xFF00897B),
-                          subtitle: 'This month',
+                          subtitle: languageProvider.getText('This month', 'இந்த மாதம்'),
                         ),
                         StatCard(
-                          title: 'Total Products',
+                          title: languageProvider.totalProducts,
                           value: _stats['totalProducts'].toString(),
                           icon: Icons.inventory_2,
                           color: AppTheme.accent,
-                          subtitle: 'In inventory',
+                          subtitle: languageProvider.getText('In inventory', 'சரக்கில்'),
                         ),
                       ],
                     ),
@@ -466,14 +477,14 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Payments & Settlements',
+                                      languageProvider.paymentSettings,
                                       style: AppTheme.h6,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                     const SizedBox(height: AppTheme.space4),
                                     Text(
-                                      'Track your order payments and platform settlements',
+                                      languageProvider.getText('Track your order payments and platform settlements', 'உங்கள் ஆர்டர் பணம் மற்றும் தளம் செட்டில்மென்ட்களை கண்காணிக்கவும்'),
                                       style: AppTheme.bodySmall,
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
@@ -559,7 +570,7 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                                       Row(
                                         children: [
                                           Text(
-                                            'Inventory Alert',
+                                            languageProvider.getText('Inventory Alert', 'சரக்கு எச்சரிக்கை'),
                                             style: AppTheme.h6.copyWith(
                                               color: AppTheme.error,
                                               fontWeight: FontWeight.bold,
@@ -588,7 +599,7 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                                       const SizedBox(height: AppTheme.space8),
                                       if (_stats['outOfStockProducts'] > 0)
                                         Text(
-                                          '${_stats['outOfStockProducts']} out of stock • ${_stats['lowStockProducts']} low stock',
+                                          languageProvider.getText('${_stats['outOfStockProducts']} out of stock • ${_stats['lowStockProducts']} low stock', '${_stats['outOfStockProducts']} கையிருப்பில் இல்லை • ${_stats['lowStockProducts']} குறைந்த கையிருப்பு'),
                                           style: AppTheme.bodySmall.copyWith(
                                             color: AppTheme.error,
                                             fontWeight: FontWeight.w500,
@@ -598,7 +609,7 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                                         )
                                       else
                                         Text(
-                                          '${_stats['lowStockProducts']} products running low on stock',
+                                          languageProvider.getText('${_stats['lowStockProducts']} products running low on stock', '${_stats['lowStockProducts']} பொருட்கள் கையிருப்பு குறைகிறது'),
                                           style: AppTheme.bodySmall.copyWith(
                                             color: AppTheme.warning,
                                             fontWeight: FontWeight.w500,
@@ -608,14 +619,14 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                                         ),
                                     ] else ...[
                                       Text(
-                                        'Inventory Management',
+                                        languageProvider.inventory,
                                         style: AppTheme.h6,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                       const SizedBox(height: AppTheme.space4),
                                       Text(
-                                        'Manage stock levels and track inventory for your products',
+                                        languageProvider.getText('Manage stock levels and track inventory for your products', 'உங்கள் பொருட்களுக்கான சரக்கு நிலைகளை நிர்வகித்து கண்காணிக்கவும்'),
                                         style: AppTheme.bodySmall,
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
@@ -678,14 +689,14 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Promo Codes',
+                                      languageProvider.promoCodes,
                                       style: AppTheme.h6,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                     const SizedBox(height: AppTheme.space4),
                                     Text(
-                                      'Create and manage promotional offers for your shop',
+                                      languageProvider.getText('Create and manage promotional offers for your shop', 'உங்கள் கடைக்கான சலுகை சலுகைகளை உருவாக்கி நிர்வகிக்கவும்'),
                                       style: AppTheme.bodySmall,
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
@@ -706,9 +717,9 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Recent Orders', style: AppTheme.h5),
+                        Text(languageProvider.getText('Recent Orders', 'சமீபத்திய ஆர்டர்கள்'), style: AppTheme.h5),
                         ModernButton(
-                          text: 'View All',
+                          text: languageProvider.getText('View All', 'அனைத்தையும் பார்'),
                           variant: ButtonVariant.text,
                           size: ButtonSize.small,
                           onPressed: _navigateToOrders,
@@ -732,7 +743,7 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                                 ),
                                 const SizedBox(height: AppTheme.space12),
                                 Text(
-                                  'No recent orders',
+                                  languageProvider.getText('No recent orders', 'சமீபத்திய ஆர்டர்கள் இல்லை'),
                                   style: AppTheme.bodyMedium.copyWith(
                                     color: AppTheme.textSecondary,
                                   ),
@@ -806,6 +817,8 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                 ),
               ),
             ),
+        );
+      },
     );
   }
 

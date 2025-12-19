@@ -34,6 +34,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -49,6 +50,9 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 public class OrderService {
+
+    @Value("${app.api.base-url:http://localhost:8080}")
+    private String apiBaseUrl;
 
     private final OrderRepository orderRepository;
     private final CustomerRepository customerRepository;
@@ -493,27 +497,56 @@ public class OrderService {
             log.error("❌ Failed to send push notification for status update", e);
         }
 
-        // Send email notification (always for non-PREPARING, or as fallback for PREPARING if push failed)
-        boolean shouldSendEmail = (status != Order.OrderStatus.PREPARING) ||
-                                  (status == Order.OrderStatus.PREPARING && !pushNotificationSent);
+        // Send email ONLY for final delivery summary (DELIVERED or SELF_PICKUP_COLLECTED)
+        // FCM push notifications handle all other status updates
+        boolean isDeliverySummary = (status == Order.OrderStatus.DELIVERED ||
+                                     status == Order.OrderStatus.SELF_PICKUP_COLLECTED);
 
-        if (shouldSendEmail) {
+        if (isDeliverySummary) {
             try {
-                if (status == Order.OrderStatus.PREPARING) {
-                    log.info("📧 Sending email as fallback for PREPARING status (push notification failed) for order: {}", order.getOrderNumber());
+                log.info("📧 Sending delivery summary email with order items for order: {} (status: {})", order.getOrderNumber(), status.name());
+
+                // Build order items list with images for email
+                List<Map<String, Object>> orderItemsForEmail = order.getOrderItems().stream()
+                    .map(item -> {
+                        Map<String, Object> itemMap = new java.util.HashMap<>();
+                        itemMap.put("productName", item.getProductName());
+                        itemMap.put("quantity", item.getQuantity());
+                        itemMap.put("unitPrice", item.getPrice().doubleValue());
+                        itemMap.put("totalPrice", item.getTotalPrice().doubleValue());
+                        // Build full image URL for email using configured API base URL
+                        String imageUrl = item.getProductImageUrl();
+                        if (imageUrl != null && !imageUrl.isEmpty()) {
+                            if (!imageUrl.startsWith("http")) {
+                                imageUrl = apiBaseUrl + imageUrl;
+                            }
+                            itemMap.put("productImageUrl", imageUrl);
+                        }
+                        return itemMap;
+                    })
+                    .collect(Collectors.toList());
+
+                // Get delivery partner name if assigned
+                String deliveryPartnerName = null;
+                if (order.getAssignedDeliveryPartner() != null) {
+                    deliveryPartnerName = order.getAssignedDeliveryPartner().getFullName();
                 }
-                emailService.sendOrderStatusUpdateEmail(
+
+                emailService.sendDeliverySummaryEmail(
                     order.getCustomer().getEmail(),
                     order.getCustomer().getFullName(),
                     order.getOrderNumber(),
-                    oldStatus.name(),
-                    status.name()
+                    deliveryPartnerName,
+                    order.getShop().getName(),
+                    orderItemsForEmail,
+                    order.getTotalAmount().doubleValue()
                 );
             } catch (Exception e) {
-                log.error("Failed to send order status update email", e);
+                log.error("Failed to send delivery summary email", e);
             }
         } else {
-            log.info("📱 Skipping email for PREPARING status - push notification was sent successfully for order: {}", order.getOrderNumber());
+            log.info("📱 FCM handles notification for {} status - no email sent for order: {}",
+                     status.name(), order.getOrderNumber());
         }
         
         // Auto-send invoice when order is delivered (Email + WhatsApp)

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../shared/models/notification_model.dart';
 import '../../../services/notification_api_service.dart';
 import '../../../services/firebase_notification_service.dart';
@@ -77,6 +78,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             // Sort by latest first
             _notifications.sort((a, b) => b.createdAt.compareTo(a.createdAt));
           });
+
+          // Apply stored read status for Firebase notifications
+          await _applyStoredReadStatus();
         } else {
           // Fallback to demo data if API response is unexpected
           _loadDemoNotifications();
@@ -99,7 +103,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  void _loadDemoNotifications() {
+  Future<void> _loadDemoNotifications() async {
     // Show only Firebase local notifications, no demo data
     final firebaseNotifications = FirebaseNotificationService.getLocalNotifications();
     setState(() {
@@ -107,54 +111,74 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       // Sort by newest first
       _notifications.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     });
+
+    // Apply stored read status for Firebase notifications
+    await _applyStoredReadStatus();
   }
 
   Future<void> _markAsRead(NotificationModel notification) async {
     if (notification.isRead) return;
 
+    // Check if this is a backend notification (numeric ID) or Firebase-only notification
+    final isBackendNotification = _isNumericId(notification.id);
+
     try {
-      // Call API to mark as read
-      final response = await _notificationApi.markAsRead(notification.id);
+      // Only call backend API for notifications with numeric IDs
+      if (isBackendNotification) {
+        final response = await _notificationApi.markAsRead(notification.id);
 
-      if (mounted) {
-        setState(() {
-          final index = _notifications.indexWhere((n) => n.id == notification.id);
-          if (index != -1) {
-            _notifications[index] = NotificationModel(
-              id: notification.id,
-              title: notification.title,
-              body: notification.body,
-              type: notification.type,
-              createdAt: notification.createdAt,
-              isRead: true,
-              data: notification.data,
-            );
+        if (mounted) {
+          if (response['statusCode'] == '0000') {
+            // Reload notifications from backend to get updated status
+            await _loadNotifications();
+          } else {
+            // If API call failed, just update UI locally
+            setState(() {
+              _updateNotificationReadStatus(notification.id, true);
+            });
+            Helpers.showSnackBar(context, 'Marked as read locally', isError: false);
           }
-        });
-
-        if (response['statusCode'] != '0000') {
-          // Show error message if API call failed but still update UI
-          Helpers.showSnackBar(context, 'Marked as read locally', isError: false);
+        }
+      } else {
+        // Firebase-only notification - update UI locally and persist to shared preferences
+        if (mounted) {
+          setState(() {
+            _updateNotificationReadStatus(notification.id, true);
+          });
+          // Store in shared preferences for persistence
+          await _saveReadNotificationId(notification.id);
         }
       }
     } catch (e) {
       // Still update UI even if API fails
       if (mounted) {
         setState(() {
-          final index = _notifications.indexWhere((n) => n.id == notification.id);
-          if (index != -1) {
-            _notifications[index] = NotificationModel(
-              id: notification.id,
-              title: notification.title,
-              body: notification.body,
-              type: notification.type,
-              createdAt: notification.createdAt,
-              isRead: true,
-              data: notification.data,
-            );
-          }
+          _updateNotificationReadStatus(notification.id, true);
         });
+        if (!isBackendNotification) {
+          await _saveReadNotificationId(notification.id);
+        }
       }
+    }
+  }
+
+  bool _isNumericId(String id) {
+    if (id.isEmpty) return false;
+    return int.tryParse(id) != null;
+  }
+
+  void _updateNotificationReadStatus(String notificationId, bool isRead) {
+    final index = _notifications.indexWhere((n) => n.id == notificationId);
+    if (index != -1) {
+      _notifications[index] = NotificationModel(
+        id: _notifications[index].id,
+        title: _notifications[index].title,
+        body: _notifications[index].body,
+        type: _notifications[index].type,
+        createdAt: _notifications[index].createdAt,
+        isRead: isRead,
+        data: _notifications[index].data,
+      );
     }
   }
 
@@ -162,28 +186,67 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     setState(() => _isMarkingAllRead = true);
 
     try {
-      // Call API to mark all as read
-      final response = await _notificationApi.markAllAsRead();
+      // Check if there are any backend notifications (with numeric IDs)
+      final hasBackendNotifications = _notifications.any((n) => _isNumericId(n.id) && !n.isRead);
+      final hasFirebaseNotifications = _notifications.any((n) => !_isNumericId(n.id) && !n.isRead);
 
-      if (mounted) {
-        setState(() {
-          _notifications = _notifications.map((notification) =>
-            NotificationModel(
-              id: notification.id,
-              title: notification.title,
-              body: notification.body,
-              type: notification.type,
-              createdAt: notification.createdAt,
-              isRead: true,
-              data: notification.data,
-            )
-          ).toList();
-        });
+      // Call API to mark all backend notifications as read
+      if (hasBackendNotifications) {
+        final response = await _notificationApi.markAllAsRead();
 
-        if (response['statusCode'] == '0000') {
+        if (mounted) {
+          if (response['statusCode'] == '0000') {
+            // Save Firebase notification IDs to shared preferences
+            if (hasFirebaseNotifications) {
+              for (var notification in _notifications) {
+                if (!_isNumericId(notification.id)) {
+                  await _saveReadNotificationId(notification.id);
+                }
+              }
+            }
+            // Reload notifications to get updated status from backend
+            await _loadNotifications();
+            Helpers.showSnackBar(context, 'All notifications marked as read');
+          } else {
+            // If API failed, update UI locally
+            setState(() {
+              _notifications = _notifications.map((notification) =>
+                NotificationModel(
+                  id: notification.id,
+                  title: notification.title,
+                  body: notification.body,
+                  type: notification.type,
+                  createdAt: notification.createdAt,
+                  isRead: true,
+                  data: notification.data,
+                )
+              ).toList();
+            });
+            Helpers.showSnackBar(context, 'Marked as read locally', isError: false);
+          }
+        }
+      } else if (hasFirebaseNotifications) {
+        // Only Firebase notifications - update UI locally and persist
+        if (mounted) {
+          for (var notification in _notifications) {
+            if (!_isNumericId(notification.id)) {
+              await _saveReadNotificationId(notification.id);
+            }
+          }
+          setState(() {
+            _notifications = _notifications.map((notification) =>
+              NotificationModel(
+                id: notification.id,
+                title: notification.title,
+                body: notification.body,
+                type: notification.type,
+                createdAt: notification.createdAt,
+                isRead: true,
+                data: notification.data,
+              )
+            ).toList();
+          });
           Helpers.showSnackBar(context, 'All notifications marked as read');
-        } else {
-          Helpers.showSnackBar(context, 'Marked as read locally', isError: false);
         }
       }
     } catch (e) {
@@ -209,6 +272,54 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       if (mounted) {
         setState(() => _isMarkingAllRead = false);
       }
+    }
+  }
+
+  // Save Firebase notification ID as read in shared preferences
+  Future<void> _saveReadNotificationId(String notificationId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final readIds = prefs.getStringList('read_notification_ids') ?? [];
+      if (!readIds.contains(notificationId)) {
+        readIds.add(notificationId);
+        await prefs.setStringList('read_notification_ids', readIds);
+      }
+    } catch (e) {
+      // Ignore errors in saving to shared preferences
+    }
+  }
+
+  // Get list of read Firebase notification IDs from shared preferences
+  Future<Set<String>> _getReadNotificationIds() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final readIds = prefs.getStringList('read_notification_ids') ?? [];
+      return readIds.toSet();
+    } catch (e) {
+      return {};
+    }
+  }
+
+  // Apply stored read status to Firebase notifications
+  Future<void> _applyStoredReadStatus() async {
+    final readIds = await _getReadNotificationIds();
+    if (readIds.isNotEmpty) {
+      setState(() {
+        _notifications = _notifications.map((notification) {
+          if (readIds.contains(notification.id)) {
+            return NotificationModel(
+              id: notification.id,
+              title: notification.title,
+              body: notification.body,
+              type: notification.type,
+              createdAt: notification.createdAt,
+              isRead: true,
+              data: notification.data,
+            );
+          }
+          return notification;
+        }).toList();
+      });
     }
   }
 

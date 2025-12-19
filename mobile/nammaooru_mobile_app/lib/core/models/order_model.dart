@@ -79,6 +79,8 @@ class Order {
         return 'Out for Delivery';
       case 'DELIVERED':
         return 'Delivered';
+      case 'SELF_PICKUP_COLLECTED':
+        return 'Collected';
       case 'CANCELLED':
         return 'Cancelled';
       case 'REFUNDED':
@@ -99,6 +101,7 @@ class Order {
       case 'OUT_FOR_DELIVERY':
         return 'purple';
       case 'DELIVERED':
+      case 'SELF_PICKUP_COLLECTED':
         return 'green';
       case 'CANCELLED':
       case 'REFUNDED':

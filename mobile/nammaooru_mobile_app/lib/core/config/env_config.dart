@@ -3,8 +3,6 @@ class EnvConfig {
   // DEVELOPMENT: Local development - Point to localhost
   // static const String baseUrl = 'http://localhost:8080';
   // static const String apiUrl = 'http://localhost:8080'; // Alias for compatibility
-
-  // Image base URL (frontend domain for serving images)
   // static const String imageBaseUrl = 'http://localhost:8080';
 
   // PRODUCTION: Use your deployed server

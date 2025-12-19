@@ -152,8 +152,12 @@ class LanguageProvider with ChangeNotifier {
         return getText('Out for Delivery', 'விநியோகத்திற்காக');
       case 'DELIVERED':
         return getText('Delivered', 'வழங்கப்பட்டது');
+      case 'SELF_PICKUP_COLLECTED':
+        return getText('Collected', 'எடுக்கப்பட்டது');
       case 'CANCELLED':
         return getText('Cancelled', 'ரத்து செய்யப்பட்டது');
+      case 'REFUNDED':
+        return getText('Refunded', 'திருப்பியளிக்கப்பட்டது');
       default:
         return status;
     }
