@@ -512,7 +512,7 @@ public class OrderService {
                         Map<String, Object> itemMap = new java.util.HashMap<>();
                         itemMap.put("productName", item.getProductName());
                         itemMap.put("quantity", item.getQuantity());
-                        itemMap.put("unitPrice", item.getPrice().doubleValue());
+                        itemMap.put("unitPrice", item.getUnitPrice().doubleValue());
                         itemMap.put("totalPrice", item.getTotalPrice().doubleValue());
                         // Build full image URL for email using configured API base URL
                         String imageUrl = item.getProductImageUrl();
@@ -528,9 +528,6 @@ public class OrderService {
 
                 // Get delivery partner name if assigned
                 String deliveryPartnerName = null;
-                if (order.getAssignedDeliveryPartner() != null) {
-                    deliveryPartnerName = order.getAssignedDeliveryPartner().getFullName();
-                }
 
                 emailService.sendDeliverySummaryEmail(
                     order.getCustomer().getEmail(),

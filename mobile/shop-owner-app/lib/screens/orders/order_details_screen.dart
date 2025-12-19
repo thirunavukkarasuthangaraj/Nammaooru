@@ -26,10 +26,10 @@ class OrderDetailsScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           'Order #${orderData?['orderNumber'] ?? orderId}',
-          style: const TextStyle(fontWeight: FontWeight.w600),
+          style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
         ),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.grey.shade900,
+        backgroundColor: Colors.green.shade700,
+        foregroundColor: Colors.white,
         elevation: 0,
         actions: [
           // Call customer button in app bar
@@ -1007,7 +1007,7 @@ class OrderDetailsScreen extends StatelessWidget {
                       label: const Text('Accept Order'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.success,
-                        foregroundColor: Colors.grey.shade900,
+                        foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
@@ -1039,7 +1039,7 @@ class OrderDetailsScreen extends StatelessWidget {
                       label: const Text('Mark as Packed'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.orange,
-                        foregroundColor: Colors.grey.shade900,
+                        foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
@@ -1086,7 +1086,7 @@ class OrderDetailsScreen extends StatelessWidget {
                     label: const Text('Handover to Customer'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
-                      foregroundColor: Colors.grey.shade900,
+                      foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                   ),
@@ -1101,7 +1101,7 @@ class OrderDetailsScreen extends StatelessWidget {
                     label: const Text('Verify Pickup OTP'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.orange,
-                      foregroundColor: Colors.grey.shade900,
+                      foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                   ),
@@ -1308,7 +1308,7 @@ class OrderDetailsScreen extends StatelessWidget {
                     },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.error,
-                foregroundColor: Colors.grey.shade900,
+                foregroundColor: Colors.white,
                 disabledBackgroundColor: Colors.grey[300],
               ),
               child: const Text('Confirm Cancellation'),
@@ -1610,7 +1610,7 @@ class OrderDetailsScreen extends StatelessWidget {
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.green,
-              foregroundColor: Colors.grey.shade900,
+              foregroundColor: Colors.white,
             ),
             child: const Text('Handover'),
           ),

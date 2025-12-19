@@ -318,7 +318,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
             backgroundColor: Colors.green.shade700,
             foregroundColor: Colors.white,
             elevation: 0,
-            ],
           ),
           body: Column(
             children: [

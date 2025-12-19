@@ -923,9 +923,13 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
         return Scaffold(
           backgroundColor: AppTheme.background,
           appBar: AppBar(
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
             title: Text(
               languageProvider.orders,
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 18),
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 18, color: Colors.white),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
