@@ -336,10 +336,10 @@ public class BulkProductImportService {
             ShopProductRequest shopProductRequest = buildShopProductRequest(request, masterProduct.getId());
             ShopProductResponse shopProduct = shopProductService.addProductToShop(shopId, shopProductRequest);
 
-            // Handle image upload
+            // Handle image upload - use masterProduct.getId() NOT shopProduct.getId()
             String imageStatus = "No image";
             if (request.getImagePath() != null && !request.getImagePath().isEmpty()) {
-                imageStatus = handleImageUpload(shopProduct.getId(), request.getImagePath(),
+                imageStatus = handleImageUpload(masterProduct.getId(), request.getImagePath(),
                                                 request.getImageFolder(), images);
             }
 
