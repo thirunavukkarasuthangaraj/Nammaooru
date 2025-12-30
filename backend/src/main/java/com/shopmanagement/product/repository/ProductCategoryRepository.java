@@ -18,6 +18,10 @@ public interface ProductCategoryRepository extends JpaRepository<ProductCategory
     // Find by basic properties
     Optional<ProductCategory> findBySlug(String slug);
     Optional<ProductCategory> findByName(String name);
+
+    // Case-insensitive lookup for bulk import
+    @Query("SELECT c FROM ProductCategory c WHERE LOWER(c.name) = LOWER(:name)")
+    Optional<ProductCategory> findByNameIgnoreCase(@Param("name") String name);
     List<ProductCategory> findByIsActiveTrue();
     List<ProductCategory> findByIsActiveTrueOrderBySortOrder();
 

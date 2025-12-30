@@ -248,17 +248,45 @@ public class BulkProductImportService {
      */
     private Long lookupCategoryByName(String categoryName) {
         try {
-            Optional<ProductCategory> category = productCategoryRepository.findByName(categoryName);
+            if (categoryName == null || categoryName.trim().isEmpty()) {
+                log.warn("Category name is empty, using default category");
+                // Try to find a default category or create one
+                Optional<ProductCategory> defaultCat = productCategoryRepository.findByNameIgnoreCase("Uncategorized");
+                if (defaultCat.isPresent()) {
+                    return defaultCat.get().getId();
+                }
+                // Create default category
+                ProductCategory newCategory = ProductCategory.builder()
+                        .name("Uncategorized")
+                        .slug("uncategorized")
+                        .description("Uncategorized products")
+                        .isActive(true)
+                        .sortOrder(999)
+                        .createdBy("BULK_IMPORT")
+                        .updatedBy("BULK_IMPORT")
+                        .build();
+                ProductCategory saved = productCategoryRepository.save(newCategory);
+                return saved.getId();
+            }
+
+            // Try case-insensitive lookup first
+            Optional<ProductCategory> category = productCategoryRepository.findByNameIgnoreCase(categoryName.trim());
             if (category.isPresent()) {
+                log.info("Found category '{}' with ID: {}", categoryName, category.get().getId());
                 return category.get().getId();
             }
 
             // Auto-create category if it doesn't exist
             log.info("Category '{}' not found, auto-creating...", categoryName);
+            String slug = categoryName.toLowerCase()
+                    .replaceAll("[^a-z0-9\\s-]", "")
+                    .replaceAll("\\s+", "-")
+                    .replaceAll("-+", "-");
+
             ProductCategory newCategory = ProductCategory.builder()
-                    .name(categoryName)
-                    .slug(categoryName.toLowerCase().replaceAll("\\s+", "-"))
-                    .description(categoryName)
+                    .name(categoryName.trim())
+                    .slug(slug)
+                    .description(categoryName.trim())
                     .isActive(true)
                     .sortOrder(0)
                     .createdBy("BULK_IMPORT")
@@ -268,7 +296,7 @@ public class BulkProductImportService {
             log.info("Category auto-created with ID: {}", saved.getId());
             return saved.getId();
         } catch (Exception e) {
-            log.error("Error looking up/creating category '{}': {}", categoryName, e.getMessage());
+            log.error("Error looking up/creating category '{}': {}", categoryName, e.getMessage(), e);
             return null;
         }
     }
