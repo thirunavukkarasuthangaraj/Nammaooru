@@ -202,9 +202,14 @@ public class ShopOwnerProductController {
     @PostMapping("/bulk-delete")
     @PreAuthorize("hasRole('SHOP_OWNER') or hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> bulkDeleteProducts(
-            @RequestBody Map<String, List<Long>> request) {
+            @RequestBody Map<String, Object> request) {
 
-        List<Long> productIds = request.get("productIds");
+        // Handle Integer to Long conversion (Jackson deserializes numbers as Integer)
+        @SuppressWarnings("unchecked")
+        List<Number> rawIds = (List<Number>) request.get("productIds");
+        List<Long> productIds = rawIds != null
+                ? rawIds.stream().map(Number::longValue).toList()
+                : null;
 
         if (productIds == null || productIds.isEmpty()) {
             return ResponseEntity.badRequest().body(ApiResponse.error(
