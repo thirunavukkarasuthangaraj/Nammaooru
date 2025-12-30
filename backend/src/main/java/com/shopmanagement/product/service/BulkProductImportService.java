@@ -166,77 +166,53 @@ public class BulkProductImportService {
 
     /**
      * Parse a single row from Excel
-     * Column mapping matches the actual Excel file structure (WITH Search Query and Download Link):
-     * A: name, B: nameTamil, C: description, D: descriptionTamil, E: categoryName, F: brand, G: sku,
-     * H: Search Query (SKIP), I: Download Link (SKIP), J: baseUnit, K: baseWeight, L: originalPrice,
-     * M: sellingPrice, N: discountPercentage, O: costPrice, P: stockQuantity, Q: minStockLevel,
-     * R: maxStockLevel, S: trackInventory, T: status, U: isFeatured, V: isAvailable, W: tags,
-     * X: specifications, Y: imagePath, Z: imageFolder
+     * Column mapping for ACTUAL Excel file (Grocery_Import_Ready.xlsx):
+     * 0: Item Name, 1: tamil name, 2: descriptionTamil, 3: Category, 4: brand, 5: sku,
+     * 6: Search Query (SKIP), 7: Download Link (SKIP), 8: baseUnit, 9: baseWeight,
+     * 10: originalPrice, 11: sellingPrice, 12: discountPercentage, 13: costPrice,
+     * 14: stockQuantity, 15: minStockLevel, 16: maxStockLevel, 17: trackInventory,
+     * 18: status, 19: isFeatured, 20: isAvailable, 21: tags, 22: specifications,
+     * 23: imagePath, 24: imageFolder
      */
     private BulkImportRequest parseRow(Row row, int rowNumber) {
-        String categoryName = getCellValueAsString(row.getCell(4));  // Column E (0-indexed as 4)
+        String categoryName = getCellValueAsString(row.getCell(3));  // Column D (index 3) = Category
         // ALWAYS call lookupCategoryByName - it handles null/empty and returns a valid ID
         Long categoryId = lookupCategoryByName(categoryName);
 
         // Read all values
-        String name = getCellValueAsString(row.getCell(0));
-        String tags = getCellValueAsString(row.getCell(22));  // Fixed: Column W (index 22)
+        String name = getCellValueAsString(row.getCell(0));        // Column A = Item Name
+        String tags = getCellValueAsString(row.getCell(21));       // Column V = tags
 
         // Log each row with key values
-        log.info("parseRow #{}: name='{}', categoryId={}, tags='{}'", rowNumber, name, categoryId, tags);
+        log.info("parseRow #{}: name='{}', category='{}', categoryId={}", rowNumber, name, categoryName, categoryId);
 
         return BulkImportRequest.builder()
                 .rowNumber(rowNumber)
-                // Column 0 (A): Product Name
-                .name(name)
-                // Column 1 (B): Product Name (Tamil)
-                .nameTamil(getCellValueAsString(row.getCell(1)))
-                // Column 2 (C): Description
-                .description(getCellValueAsString(row.getCell(2)))
-                // Column 3 (D): Description (Tamil) - stored but not used
-                // Column 4 (E): Category Name (looked up to get ID)
-                .categoryId(categoryId)
-                // Column 5 (F): Brand
-                .brand(getCellValueAsString(row.getCell(5)))
-                // Column 6 (G): SKU
-                .sku(getCellValueAsString(row.getCell(6)))
-                // Column 7 (H): Search Query (SKIP - not used)
-                // Column 8 (I): Download Link (SKIP - not used)
-                // Column 9 (J): Base Unit (e.g., kg, pieces, liters)
-                .baseUnit(getCellValueAsString(row.getCell(9)))
-                // Column 10 (K): Base Weight
-                .baseWeight(getCellValueAsBigDecimal(row.getCell(10)))
-                // Column 11 (L): Original Price (MRP)
-                .originalPrice(getCellValueAsBigDecimal(row.getCell(11)))
-                // Column 12 (M): Selling Price
-                .sellingPrice(getCellValueAsBigDecimal(row.getCell(12)))
-                // Column 13 (N): Discount Percentage
-                .discountPercentage(getCellValueAsBigDecimal(row.getCell(13)))
-                // Column 14 (O): Cost Price
-                .costPrice(getCellValueAsBigDecimal(row.getCell(14)))
-                // Column 15 (P): Stock Quantity
-                .stockQuantity(getCellValueAsInteger(row.getCell(15)))
-                // Column 16 (Q): Min Stock Level
-                .minStockLevel(getCellValueAsInteger(row.getCell(16)))
-                // Column 17 (R): Max Stock Level
-                .maxStockLevel(getCellValueAsInteger(row.getCell(17)))
-                // Column 18 (S): Track Inventory (true/false)
-                .trackInventory(getCellValueAsBoolean(row.getCell(18)))
-                // Column 19 (T): Status (ACTIVE, INACTIVE, etc.)
-                .status(getCellValueAsString(row.getCell(19)))
-                // Column 20 (U): Is Featured
-                .isFeatured(getCellValueAsBoolean(row.getCell(20)))
-                // Column 21 (V): Is Available
-                .isAvailable(getCellValueAsBoolean(row.getCell(21)))
-                // Column 22 (W): Tags (comma-separated)
-                .tags(tags)
-                // Column 23 (X): Specifications
-                .specifications(getCellValueAsString(row.getCell(23)))
-                // Column 24 (Y): Image Path (filename)
-                .imagePath(getCellValueAsString(row.getCell(24)))
-                // Column 25 (Z): Image Folder (subfolder name, optional)
-                .imageFolder(getCellValueAsString(row.getCell(25)))
-                // Note: barcode field removed as column H is now Search Query
+                .name(name)                                                    // 0: Item Name
+                .nameTamil(getCellValueAsString(row.getCell(1)))              // 1: tamil name
+                .description(getCellValueAsString(row.getCell(2)))            // 2: descriptionTamil (used as description)
+                .categoryId(categoryId)                                        // 3: Category (looked up)
+                .brand(getCellValueAsString(row.getCell(4)))                  // 4: brand
+                .sku(getCellValueAsString(row.getCell(5)))                    // 5: sku
+                // 6: Search Query (SKIP)
+                // 7: Download Link (SKIP)
+                .baseUnit(getCellValueAsString(row.getCell(8)))               // 8: baseUnit
+                .baseWeight(getCellValueAsBigDecimal(row.getCell(9)))         // 9: baseWeight
+                .originalPrice(getCellValueAsBigDecimal(row.getCell(10)))     // 10: originalPrice
+                .sellingPrice(getCellValueAsBigDecimal(row.getCell(11)))      // 11: sellingPrice
+                .discountPercentage(getCellValueAsBigDecimal(row.getCell(12)))// 12: discountPercentage
+                .costPrice(getCellValueAsBigDecimal(row.getCell(13)))         // 13: costPrice
+                .stockQuantity(getCellValueAsInteger(row.getCell(14)))        // 14: stockQuantity
+                .minStockLevel(getCellValueAsInteger(row.getCell(15)))        // 15: minStockLevel
+                .maxStockLevel(getCellValueAsInteger(row.getCell(16)))        // 16: maxStockLevel
+                .trackInventory(getCellValueAsBoolean(row.getCell(17)))       // 17: trackInventory
+                .status(getCellValueAsString(row.getCell(18)))                // 18: status
+                .isFeatured(getCellValueAsBoolean(row.getCell(19)))           // 19: isFeatured
+                .isAvailable(getCellValueAsBoolean(row.getCell(20)))          // 20: isAvailable
+                .tags(tags)                                                    // 21: tags
+                .specifications(getCellValueAsString(row.getCell(22)))        // 22: specifications
+                .imagePath(getCellValueAsString(row.getCell(23)))             // 23: imagePath
+                .imageFolder(getCellValueAsString(row.getCell(24)))           // 24: imageFolder
                 .barcode(null)
                 .build();
     }
