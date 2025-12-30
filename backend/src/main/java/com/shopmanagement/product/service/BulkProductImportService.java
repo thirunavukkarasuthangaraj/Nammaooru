@@ -175,10 +175,8 @@ public class BulkProductImportService {
      */
     private BulkImportRequest parseRow(Row row, int rowNumber) {
         String categoryName = getCellValueAsString(row.getCell(4));  // Column E (0-indexed as 4)
-        Long categoryId = null;
-        if (categoryName != null && !categoryName.isEmpty()) {
-            categoryId = lookupCategoryByName(categoryName);
-        }
+        // ALWAYS call lookupCategoryByName - it handles null/empty and returns a valid ID
+        Long categoryId = lookupCategoryByName(categoryName);
 
         // Read all values
         String name = getCellValueAsString(row.getCell(0));
