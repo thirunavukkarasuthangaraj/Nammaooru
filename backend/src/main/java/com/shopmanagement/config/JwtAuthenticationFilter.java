@@ -1,12 +1,17 @@
 package com.shopmanagement.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shopmanagement.service.JwtService;
 import com.shopmanagement.service.TokenBlacklistService;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.security.SignatureException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -17,6 +22,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
@@ -60,18 +68,33 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // Check if token is blacklisted
         if (tokenBlacklistService.isTokenBlacklisted(jwt)) {
             System.out.println("JWT Filter - Token is blacklisted!");
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.getWriter().write("Token has been invalidated");
+            sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "TOKEN_INVALIDATED",
+                    "Session has been logged out. Please login again.", path);
             return;
         }
 
         try {
             username = jwtService.extractUsername(jwt);
             System.out.println("JWT Filter - Username extracted: " + username);
+        } catch (ExpiredJwtException e) {
+            System.out.println("JWT Filter - TOKEN EXPIRED: " + e.getMessage());
+            sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "TOKEN_EXPIRED",
+                    "Your session has expired. Please login again.", path);
+            return;
+        } catch (MalformedJwtException e) {
+            System.out.println("JWT Filter - MALFORMED TOKEN: " + e.getMessage());
+            sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "TOKEN_MALFORMED",
+                    "Invalid token format. Please login again.", path);
+            return;
+        } catch (SignatureException e) {
+            System.out.println("JWT Filter - INVALID SIGNATURE: " + e.getMessage());
+            sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "TOKEN_INVALID_SIGNATURE",
+                    "Token signature is invalid. Please login again.", path);
+            return;
         } catch (Exception e) {
             System.out.println("JWT Filter - Failed to extract username: " + e.getMessage());
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.getWriter().write("Invalid token");
+            sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "TOKEN_INVALID",
+                    "Invalid token. Please login again.", path);
             return;
         }
 
@@ -99,5 +122,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         }
         filterChain.doFilter(request, response);
+    }
+
+    private void sendErrorResponse(HttpServletResponse response, int status, String errorCode,
+                                   String message, String path) throws IOException {
+        response.setStatus(status);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+
+        Map<String, Object> errorBody = new HashMap<>();
+        errorBody.put("statusCode", errorCode);
+        errorBody.put("message", message);
+        errorBody.put("path", path);
+        errorBody.put("timestamp", LocalDateTime.now().toString());
+
+        ObjectMapper mapper = new ObjectMapper();
+        response.getWriter().write(mapper.writeValueAsString(errorBody));
     }
 }

@@ -21,12 +21,32 @@
         margin: 0;
         color: #666;
         font-size: 0.875rem;
+
+        .selection-count {
+          color: #d32f2f;
+        }
       }
     }
     
     .header-actions {
       display: flex;
       gap: 12px;
+      align-items: center;
+
+      .bulk-delete-btn {
+        animation: fadeIn 0.2s ease-in-out;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(-4px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
     }
   }
 
@@ -102,6 +122,13 @@
         vertical-align: middle;
       }
       
+      // Select checkbox column
+      .mat-column-select {
+        width: 48px;
+        max-width: 48px;
+        padding-right: 0 !important;
+      }
+
       // Image column
       .product-image {
         width: 60px;

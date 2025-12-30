@@ -1,4 +1,4 @@
-package com.example.nammaooru_delivery_partner
+package com.nammaooru.delivery
 
 import io.flutter.embedding.android.FlutterActivity
 

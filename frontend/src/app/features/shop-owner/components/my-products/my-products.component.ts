@@ -90,7 +90,7 @@ export class MyProductsComponent implements OnInit, OnDestroy {
   currentPageIndex = 0;
   
   // Table columns
-  displayedColumns: string[] = ['image', 'name', 'price', 'stock', 'status', 'actions'];
+  displayedColumns: string[] = ['select', 'image', 'name', 'price', 'stock', 'status', 'actions'];
 
   constructor(
     private router: Router,
@@ -699,7 +699,7 @@ export class MyProductsComponent implements OnInit, OnDestroy {
 
     if (confirm(`Are you sure you want to delete ${product.customName}?`)) {
       console.log('Deleting product:', product.id);
-      
+
       this.http.delete(`${this.apiUrl}/shop-products/${product.id}`)
         .pipe(takeUntil(this.destroy$))
         .subscribe({
@@ -715,6 +715,89 @@ export class MyProductsComponent implements OnInit, OnDestroy {
           }
         });
     }
+  }
+
+  bulkDeleteProducts(): void {
+    if (this.selectedProducts.length === 0) {
+      this.snackBar.open('Please select products to delete', 'Close', { duration: 2000 });
+      return;
+    }
+
+    const count = this.selectedProducts.length;
+    const productNames = this.selectedProducts.slice(0, 3).map(p => p.customName).join(', ');
+    const displayNames = count > 3 ? `${productNames} and ${count - 3} more` : productNames;
+
+    if (!confirm(`Are you sure you want to delete ${count} product(s)?\n\n${displayNames}\n\nThis action cannot be undone.`)) {
+      return;
+    }
+
+    if (this.usingFallbackData) {
+      // Remove from local array for demo
+      const selectedIds = this.selectedProducts.map(p => p.id);
+      this.products = this.products.filter(p => !selectedIds.includes(p.id));
+      this.clearProductSelection();
+      this.applyFilters();
+      this.snackBar.open(`${count} products deleted (demo mode)`, 'Close', { duration: 2000 });
+      return;
+    }
+
+    // Delete products via API
+    const productIds = this.selectedProducts.map(p => p.id);
+    console.log('Bulk deleting products:', productIds);
+
+    this.http.post(`${this.apiUrl}/shop-products/bulk-delete`, { productIds })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          console.log('Products deleted successfully');
+          this.products = this.products.filter(p => !productIds.includes(p.id));
+          this.clearProductSelection();
+          this.applyFilters();
+          this.snackBar.open(`${count} products deleted successfully`, 'Close', { duration: 3000 });
+        },
+        error: (error) => {
+          console.error('Error bulk deleting products:', error);
+          // Fallback: delete one by one
+          this.bulkDeleteOneByOne(productIds);
+        }
+      });
+  }
+
+  private bulkDeleteOneByOne(productIds: number[]): void {
+    let successCount = 0;
+    let errorCount = 0;
+    const total = productIds.length;
+
+    const deleteNext = (index: number) => {
+      if (index >= productIds.length) {
+        // All done
+        this.products = this.products.filter(p => !productIds.slice(0, successCount).includes(p.id));
+        this.clearProductSelection();
+        this.applyFilters();
+
+        if (errorCount === 0) {
+          this.snackBar.open(`${successCount} products deleted successfully`, 'Close', { duration: 3000 });
+        } else {
+          this.snackBar.open(`Deleted ${successCount} products, ${errorCount} failed`, 'Close', { duration: 5000 });
+        }
+        return;
+      }
+
+      this.http.delete(`${this.apiUrl}/shop-products/${productIds[index]}`)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: () => {
+            successCount++;
+            deleteNext(index + 1);
+          },
+          error: () => {
+            errorCount++;
+            deleteNext(index + 1);
+          }
+        });
+    };
+
+    deleteNext(0);
   }
 
   addNewProduct(): void {
@@ -797,10 +880,13 @@ export class MyProductsComponent implements OnInit, OnDestroy {
   }
 
   toggleSelectAll(): void {
-    if (this.selectAll) {
-      this.selectedProducts = [...this.filteredProducts];
-    } else {
+    // Toggle: if all selected, deselect all; otherwise select all
+    if (this.selectedProducts.length === this.filteredProducts.length) {
       this.selectedProducts = [];
+      this.selectAll = false;
+    } else {
+      this.selectedProducts = [...this.filteredProducts];
+      this.selectAll = true;
     }
   }
 

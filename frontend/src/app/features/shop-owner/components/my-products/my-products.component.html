@@ -3,15 +3,28 @@
   <div class="products-header">
     <div class="header-left">
       <h1>My Products</h1>
-      <p>{{ products.length }} products in your shop • {{ filteredProducts.length }} showing</p>
+      <p>
+        {{ products.length }} products in your shop • {{ filteredProducts.length }} showing
+        <span *ngIf="selectedProducts.length > 0" class="selection-count">
+          • <strong>{{ selectedProducts.length }} selected</strong>
+        </span>
+      </p>
     </div>
     <div class="header-actions">
-    
+      <!-- Bulk Delete Button - shown when products are selected -->
+      <button mat-raised-button color="warn"
+              *ngIf="selectedProducts.length > 0"
+              (click)="bulkDeleteProducts()"
+              class="bulk-delete-btn">
+        <mat-icon>delete</mat-icon>
+        Delete Selected ({{ selectedProducts.length }})
+      </button>
+
       <button mat-raised-button color="primary" (click)="addNewProduct()">
         <mat-icon>add</mat-icon>
         Add Custom Product
       </button>
-      
+
     </div>
   </div>
 
@@ -59,7 +72,25 @@
   <div class="products-list" *ngIf="!loading">
     <mat-card class="list-container">
       <table mat-table [dataSource]="filteredProducts | slice: currentPageIndex * pageSize : (currentPageIndex + 1) * pageSize" class="products-table">
-        
+
+        <!-- Select Checkbox Column -->
+        <ng-container matColumnDef="select">
+          <th mat-header-cell *matHeaderCellDef>
+            <mat-checkbox
+              [checked]="filteredProducts.length > 0 && selectedProducts.length === filteredProducts.length"
+              [indeterminate]="selectedProducts.length > 0 && selectedProducts.length < filteredProducts.length"
+              (change)="toggleSelectAll()">
+            </mat-checkbox>
+          </th>
+          <td mat-cell *matCellDef="let product">
+            <mat-checkbox
+              [checked]="isProductSelected(product)"
+              (change)="toggleProductSelection(product)"
+              (click)="$event.stopPropagation()">
+            </mat-checkbox>
+          </td>
+        </ng-container>
+
         <!-- Image Column -->
         <ng-container matColumnDef="image">
           <th mat-header-cell *matHeaderCellDef> </th>

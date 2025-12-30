@@ -165,36 +165,100 @@ public class ShopOwnerProductController {
     @DeleteMapping("/{productId}")
     @PreAuthorize("hasRole('SHOP_OWNER') or hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteProduct(@PathVariable Long productId) {
-        
+
         log.info("Deleting product {} for current user", productId);
-        
+
         // Get current user's shop
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String currentUsername = authentication.getName();
-        
+
         try {
             Shop currentShop = shopService.getShopByOwner(currentUsername);
-            
+
             if (currentShop == null) {
                 log.warn("No shop found for user: {}", currentUsername);
                 return ResponseEntity.badRequest().body(ApiResponse.error(
                         "No shop found for current user. Please ensure you have a shop registered."
                 ));
             }
-            
+
             shopProductService.removeProductFromShop(currentShop.getId(), productId);
-            
+
             log.info("Product deleted successfully for shop: {} (owner: {})", currentShop.getId(), currentUsername);
-            
+
             return ResponseEntity.ok(ApiResponse.success(
                     (Void) null,
                     "Product deleted successfully"
             ));
-            
+
         } catch (Exception e) {
             log.error("Error deleting product {} for user: {}", productId, currentUsername, e);
             return ResponseEntity.badRequest().body(ApiResponse.error(
                     "Error deleting product: " + e.getMessage()
+            ));
+        }
+    }
+
+    @PostMapping("/bulk-delete")
+    @PreAuthorize("hasRole('SHOP_OWNER') or hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> bulkDeleteProducts(
+            @RequestBody Map<String, List<Long>> request) {
+
+        List<Long> productIds = request.get("productIds");
+
+        if (productIds == null || productIds.isEmpty()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(
+                    "No product IDs provided for deletion"
+            ));
+        }
+
+        log.info("Bulk deleting {} products for current user", productIds.size());
+
+        // Get current user's shop
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = authentication.getName();
+
+        try {
+            Shop currentShop = shopService.getShopByOwner(currentUsername);
+
+            if (currentShop == null) {
+                log.warn("No shop found for user: {}", currentUsername);
+                return ResponseEntity.badRequest().body(ApiResponse.error(
+                        "No shop found for current user. Please ensure you have a shop registered."
+                ));
+            }
+
+            int successCount = 0;
+            int errorCount = 0;
+
+            for (Long productId : productIds) {
+                try {
+                    shopProductService.removeProductFromShop(currentShop.getId(), productId);
+                    successCount++;
+                } catch (Exception e) {
+                    log.error("Error deleting product {} during bulk delete: {}", productId, e.getMessage());
+                    errorCount++;
+                }
+            }
+
+            log.info("Bulk delete completed for shop: {} (owner: {}) - success: {}, errors: {}",
+                    currentShop.getId(), currentUsername, successCount, errorCount);
+
+            Map<String, Object> result = Map.of(
+                    "totalRequested", productIds.size(),
+                    "successCount", successCount,
+                    "errorCount", errorCount
+            );
+
+            return ResponseEntity.ok(ApiResponse.success(
+                    result,
+                    String.format("%d products deleted successfully", successCount)
+            ));
+
+        } catch (Exception e) {
+            log.error("Error in bulk delete for user: {}", currentUsername, e);
+            return ResponseEntity.badRequest().body(ApiResponse.error(
+                    "Error deleting products: " + e.getMessage()
             ));
         }
     }

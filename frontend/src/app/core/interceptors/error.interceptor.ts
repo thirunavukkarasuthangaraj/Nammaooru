@@ -27,13 +27,27 @@ export class ErrorInterceptor implements HttpInterceptor {
           errorMessage = error.message;
         }
 
+        // Check for specific token error codes
+        const statusCode = error.error?.statusCode;
+
         switch (error.status) {
           case 401:
-            errorMessage = 'Invalid credentials or session expired';
+            // Handle specific token errors
+            if (statusCode === 'TOKEN_EXPIRED') {
+              errorMessage = '⏰ Session Expired! Please login again.';
+            } else if (statusCode === 'TOKEN_INVALIDATED') {
+              errorMessage = '🔒 Session logged out. Please login again.';
+            } else if (statusCode === 'TOKEN_MALFORMED' || statusCode === 'TOKEN_INVALID') {
+              errorMessage = '❌ Invalid session. Please login again.';
+            } else if (statusCode === 'TOKEN_INVALID_SIGNATURE') {
+              errorMessage = '🔐 Security error. Please login again.';
+            } else {
+              errorMessage = error.error?.message || 'Session expired. Please login again.';
+            }
             this.authService.logout();
             break;
           case 403:
-            errorMessage = 'You don\'t have permission to access this resource';
+            errorMessage = error.error?.message || 'You don\'t have permission to access this resource';
             break;
           case 404:
             errorMessage = 'Resource not found';
@@ -48,12 +62,14 @@ export class ErrorInterceptor implements HttpInterceptor {
 
         // Don't show snackbar for auth endpoints or customer endpoints to avoid duplicate messages
         if (!request.url.includes('/auth/') && !request.url.includes('/customer/')) {
-          // Only show error for non-customer routes
+          // Longer duration for auth errors so user can read the message
+          const duration = error.status === 401 ? 8000 : 5000;
+
           this.snackBar.open(errorMessage, 'Close', {
-            duration: 5000,
-            horizontalPosition: 'end',
+            duration: duration,
+            horizontalPosition: 'center',
             verticalPosition: 'top',
-            panelClass: ['error-snackbar']
+            panelClass: error.status === 401 ? ['error-snackbar', 'auth-error'] : ['error-snackbar']
           });
         }
 
