@@ -69,7 +69,10 @@ public class MasterProductService {
     public MasterProductResponse createProduct(MasterProductRequest request) {
         log.info("Creating master product: {}", request.getName());
 
-        // Get category
+        // Get category - handle null categoryId
+        if (request.getCategoryId() == null) {
+            throw new RuntimeException("Category ID is required. Please provide a valid category.");
+        }
         ProductCategory category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + request.getCategoryId()));
 

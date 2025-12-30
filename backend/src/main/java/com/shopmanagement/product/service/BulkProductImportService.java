@@ -245,48 +245,43 @@ public class BulkProductImportService {
 
     /**
      * Look up category ID by category name, auto-create if not found
+     * NEVER returns null - always returns a valid category ID
      */
     private Long lookupCategoryByName(String categoryName) {
         try {
             if (categoryName == null || categoryName.trim().isEmpty()) {
                 log.warn("Category name is empty, using default category");
-                // Try to find a default category or create one
-                Optional<ProductCategory> defaultCat = productCategoryRepository.findByNameIgnoreCase("Uncategorized");
-                if (defaultCat.isPresent()) {
-                    return defaultCat.get().getId();
-                }
-                // Create default category
-                ProductCategory newCategory = ProductCategory.builder()
-                        .name("Uncategorized")
-                        .slug("uncategorized")
-                        .description("Uncategorized products")
-                        .isActive(true)
-                        .sortOrder(999)
-                        .createdBy("BULK_IMPORT")
-                        .updatedBy("BULK_IMPORT")
-                        .build();
-                ProductCategory saved = productCategoryRepository.save(newCategory);
-                return saved.getId();
+                return getOrCreateDefaultCategory();
             }
 
+            String trimmedName = categoryName.trim();
+
             // Try case-insensitive lookup first
-            Optional<ProductCategory> category = productCategoryRepository.findByNameIgnoreCase(categoryName.trim());
+            Optional<ProductCategory> category = productCategoryRepository.findByNameIgnoreCase(trimmedName);
             if (category.isPresent()) {
-                log.info("Found category '{}' with ID: {}", categoryName, category.get().getId());
+                log.info("Found category '{}' with ID: {}", trimmedName, category.get().getId());
                 return category.get().getId();
             }
 
             // Auto-create category if it doesn't exist
-            log.info("Category '{}' not found, auto-creating...", categoryName);
-            String slug = categoryName.toLowerCase()
+            log.info("Category '{}' not found, auto-creating...", trimmedName);
+            String slug = trimmedName.toLowerCase()
                     .replaceAll("[^a-z0-9\\s-]", "")
                     .replaceAll("\\s+", "-")
                     .replaceAll("-+", "-");
 
+            // Ensure slug is unique
+            String baseSlug = slug;
+            int counter = 1;
+            while (productCategoryRepository.existsBySlug(slug)) {
+                slug = baseSlug + "-" + counter;
+                counter++;
+            }
+
             ProductCategory newCategory = ProductCategory.builder()
-                    .name(categoryName.trim())
+                    .name(trimmedName)
                     .slug(slug)
-                    .description(categoryName.trim())
+                    .description(trimmedName)
                     .isActive(true)
                     .sortOrder(0)
                     .createdBy("BULK_IMPORT")
@@ -297,7 +292,43 @@ public class BulkProductImportService {
             return saved.getId();
         } catch (Exception e) {
             log.error("Error looking up/creating category '{}': {}", categoryName, e.getMessage(), e);
-            return null;
+            // FALLBACK: Never return null - use default category
+            return getOrCreateDefaultCategory();
+        }
+    }
+
+    /**
+     * Get or create a default "Uncategorized" category - guaranteed to return a valid ID
+     */
+    private Long getOrCreateDefaultCategory() {
+        try {
+            Optional<ProductCategory> defaultCat = productCategoryRepository.findByNameIgnoreCase("Uncategorized");
+            if (defaultCat.isPresent()) {
+                return defaultCat.get().getId();
+            }
+
+            // Create default category
+            ProductCategory newCategory = ProductCategory.builder()
+                    .name("Uncategorized")
+                    .slug("uncategorized-" + System.currentTimeMillis())
+                    .description("Uncategorized products")
+                    .isActive(true)
+                    .sortOrder(999)
+                    .createdBy("BULK_IMPORT")
+                    .updatedBy("BULK_IMPORT")
+                    .build();
+            ProductCategory saved = productCategoryRepository.save(newCategory);
+            log.info("Default 'Uncategorized' category created with ID: {}", saved.getId());
+            return saved.getId();
+        } catch (Exception e) {
+            log.error("CRITICAL: Failed to create default category: {}", e.getMessage(), e);
+            // Last resort - try to find ANY category
+            List<ProductCategory> anyCategory = productCategoryRepository.findAll();
+            if (!anyCategory.isEmpty()) {
+                log.warn("Using first available category as fallback: {}", anyCategory.get(0).getName());
+                return anyCategory.get(0).getId();
+            }
+            throw new RuntimeException("No categories available and cannot create one. Please create at least one category first.");
         }
     }
 
