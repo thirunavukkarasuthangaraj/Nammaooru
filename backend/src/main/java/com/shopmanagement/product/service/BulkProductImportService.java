@@ -514,9 +514,8 @@ public class BulkProductImportService {
                 log.warn("Image file not found at: {} (path will be saved anyway)", imageFilePath);
             }
 
-            // Get the master product
-            MasterProduct masterProduct = masterProductRepository.findById(productId)
-                    .orElseThrow(() -> new RuntimeException("Product not found"));
+            // Get reference to master product (doesn't query DB - avoids transaction issues)
+            MasterProduct masterProduct = masterProductRepository.getReferenceById(productId);
 
             // Check if this image already exists for this product
             long existingImageCount = masterProductImageRepository.countByMasterProductId(productId);
@@ -526,7 +525,7 @@ public class BulkProductImportService {
             MasterProductImage productImage = MasterProductImage.builder()
                     .masterProduct(masterProduct)
                     .imageUrl(imageUrl)
-                    .altText(masterProduct.getName())
+                    .altText(imagePath)  // Use imagePath as alt text to avoid lazy loading
                     .isPrimary(isPrimary)
                     .sortOrder((int) existingImageCount)
                     .createdBy("BULK_IMPORT")
