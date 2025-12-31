@@ -18,7 +18,7 @@ class NotificationApiService {
       if (token == null) {
         debugPrint('No auth token found');
         return {
-          'statusCode': '4001',
+          'success': false,
           'message': 'Not authenticated',
           'data': null,
         };
@@ -38,19 +38,25 @@ class NotificationApiService {
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        final body = jsonDecode(response.body);
+        // Convert backend response format to include success field
+        return {
+          'success': body['success'] ?? false,
+          'message': body['message'] ?? 'Unknown',
+          'data': body['data'],
+        };
       } else {
         debugPrint('Failed to update FCM token: ${response.statusCode}');
         return {
-          'statusCode': '5000',
-          'message': 'Failed to update FCM token',
+          'success': false,
+          'message': 'Failed to update FCM token (HTTP ${response.statusCode})',
           'data': null,
         };
       }
     } catch (e) {
       debugPrint('Error updating FCM token: $e');
       return {
-        'statusCode': '5000',
+        'success': false,
         'message': 'Error: $e',
         'data': null,
       };

@@ -58,10 +58,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final notificationService = NotificationApiService();
         final result = await notificationService.updateDeliveryPartnerFcmToken(fcmToken);
 
-        if (result['statusCode'] == '2000') {
-          debugPrint('FCM token successfully sent to backend');
+        if (result['success'] == true) {
+          debugPrint('✅ FCM token successfully sent to backend');
         } else {
-          debugPrint('Failed to send FCM token: ${result['message']}');
+          debugPrint('❌ Failed to send FCM token: ${result['message']}');
         }
       }
     } catch (e) {

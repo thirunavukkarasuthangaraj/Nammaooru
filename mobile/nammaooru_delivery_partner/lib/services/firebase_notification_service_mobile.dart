@@ -226,7 +226,7 @@ class FirebaseNotificationService {
       // Call delivery partner specific endpoint
       final response = await NotificationApiService.instance.updateDeliveryPartnerFcmToken(token);
 
-      if (response['statusCode'] == '0000') {
+      if (response['success'] == true) {
         debugPrint('✅ FCM token sent to backend successfully');
       } else {
         debugPrint('❌ Failed to send FCM token: ${response['message']}');
