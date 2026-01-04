@@ -186,7 +186,7 @@ public class ShopController {
     @PreAuthorize("hasRole('SHOP_OWNER')")
     public ResponseEntity<ApiResponse<ShopResponse>> getMyShop(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
-            return ResponseUtil.error(ResponseConstants.UNAUTHORIZED, "User not authenticated");
+            return ResponseUtil.unauthorized();
         }
 
         String username = authentication.getName();
@@ -195,12 +195,12 @@ public class ShopController {
         try {
             ShopResponse shop = shopService.getShopByOwnerUsername(username);
             if (shop == null) {
-                return ResponseUtil.error(ResponseConstants.RESOURCE_NOT_FOUND, "No shop found for this user");
+                return ResponseUtil.notFound("No shop found for this user");
             }
             return ResponseUtil.success(shop, "Shop retrieved successfully");
         } catch (Exception e) {
             log.error("Error getting shop for user {}: {}", username, e.getMessage());
-            return ResponseUtil.error(ResponseConstants.GENERAL_ERROR, "Failed to get shop: " + e.getMessage());
+            return ResponseUtil.error("Failed to get shop: " + e.getMessage());
         }
     }
 
