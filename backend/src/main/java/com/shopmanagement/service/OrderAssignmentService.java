@@ -432,17 +432,14 @@ public class OrderAssignmentService {
 
                     if (!tokens.isEmpty()) {
                         String partnerName = partner.getFirstName() != null ? partner.getFirstName() : "Delivery partner";
-                        String title = "Driver Rejected Order";
-                        String message = partnerName + " rejected order #" + order.getOrderNumber() + ". Reason: " + reason + ". Order is back to Ready for Pickup status.";
+                        String message = partnerName + " rejected the order. Reason: " + reason + ". Order is back to Ready for Pickup.";
 
                         for (UserFcmToken tokenEntity : tokens) {
                             try {
-                                firebaseNotificationService.sendOrderNotification(
+                                firebaseNotificationService.sendDeliveryNotification(
                                     order.getOrderNumber(),
-                                    "DRIVER_REJECTED",
-                                    tokenEntity.getFcmToken(),
-                                    title,
-                                    message
+                                    message,
+                                    tokenEntity.getFcmToken()
                                 );
                                 log.info("✅ Sent rejection notification to shop owner for order {}", order.getOrderNumber());
                                 break; // One successful notification is enough
