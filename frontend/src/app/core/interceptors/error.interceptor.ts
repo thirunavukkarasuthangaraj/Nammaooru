@@ -20,7 +20,7 @@ export class ErrorInterceptor implements HttpInterceptor {
         if (error.status === 0 && error.statusText === 'Unknown Error') {
           // Check if it's a user-initiated abort
           if (error.message?.includes('abort') || error.message?.includes('cancel') ||
-              error.message?.includes('interrupt') || error.name === 'AbortError') {
+              error.message?.includes('interrupt') || error.message?.includes('Interrupted')) {
             console.log('Request aborted by user');
             return throwError(() => error);
           }
