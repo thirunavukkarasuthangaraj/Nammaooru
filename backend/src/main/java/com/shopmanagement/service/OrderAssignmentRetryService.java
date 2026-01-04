@@ -105,6 +105,22 @@ public class OrderAssignmentRetryService {
     private void processUnassignedOrder(Order order) {
         Long orderId = order.getId();
 
+        // Re-fetch order to get current status (in case it was cancelled)
+        Order currentOrder = orderRepository.findById(orderId).orElse(null);
+        if (currentOrder == null) {
+            log.info("Order {} no longer exists, clearing tracking", orderId);
+            clearOrderTracking(orderId);
+            return;
+        }
+
+        // Check if order is still READY_FOR_PICKUP (not cancelled or other status)
+        if (currentOrder.getStatus() != Order.OrderStatus.READY_FOR_PICKUP) {
+            log.info("Order {} status changed to {}, clearing tracking and skipping",
+                currentOrder.getOrderNumber(), currentOrder.getStatus());
+            clearOrderTracking(orderId);
+            return;
+        }
+
         // Track first attempt time
         firstAttemptTime.putIfAbsent(orderId, LocalDateTime.now());
         LocalDateTime firstAttempt = firstAttemptTime.get(orderId);
