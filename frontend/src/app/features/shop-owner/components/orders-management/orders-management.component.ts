@@ -432,7 +432,15 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
           error: (error) => {
             console.error('Error cancelling order:', error);
             this.swal.close();
-            this.swal.error('Error', 'Failed to cancel order. Please try again.');
+            // Extract proper error message
+            let errorMsg = 'Failed to cancel order. Please try again.';
+            if (error?.error?.message) {
+              errorMsg = error.error.message;
+            } else if (error?.message && typeof error.message === 'string' &&
+                       !error.message.includes('Http failure')) {
+              errorMsg = error.message;
+            }
+            this.swal.error('Error', errorMsg);
           }
         });
       }

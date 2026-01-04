@@ -16,15 +16,28 @@ export class ErrorInterceptor implements HttpInterceptor {
   intercept(request: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
     return next.handle(request).pipe(
       catchError((error: HttpErrorResponse) => {
+        // Ignore aborted requests (user navigated away, closed browser, etc.)
+        if (error.status === 0 && error.statusText === 'Unknown Error') {
+          // Check if it's a user-initiated abort
+          if (error.message?.includes('abort') || error.message?.includes('cancel') ||
+              error.message?.includes('interrupt') || error.name === 'AbortError') {
+            console.log('Request aborted by user');
+            return throwError(() => error);
+          }
+        }
+
         let errorMessage = 'An unexpected error occurred';
-        
-        if (error.error?.message) {
+
+        if (error.error?.message && typeof error.error.message === 'string') {
           errorMessage = error.error.message;
         } else if (error.error?.validationErrors) {
           const validationErrors = Object.values(error.error.validationErrors).join(', ');
           errorMessage = `Validation errors: ${validationErrors}`;
-        } else if (error.message) {
-          errorMessage = error.message;
+        } else if (error.message && typeof error.message === 'string') {
+          // Don't show technical browser error messages to user
+          if (!error.message.includes('Http failure') && !error.message.includes('Unknown Error')) {
+            errorMessage = error.message;
+          }
         }
 
         // Check for specific token error codes
