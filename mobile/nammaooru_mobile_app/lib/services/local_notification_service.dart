@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'dart:io' show Platform;
+import '../app/routes.dart';
 
 class LocalNotificationService {
   static final LocalNotificationService _instance = LocalNotificationService._internal();
@@ -57,13 +58,30 @@ class LocalNotificationService {
 
   /// Handle notification tap
   void _onNotificationTapped(NotificationResponse response) {
-    debugPrint('🔔 Notification tapped: ${response.payload}');
+    debugPrint('🔔 Local notification tapped: ${response.payload}');
 
     // Handle navigation based on payload
     if (response.payload != null && response.payload!.isNotEmpty) {
-      // You can use a global navigator or callback to handle navigation
-      // For now, just log the action
-      debugPrint('Navigate to: ${response.payload}');
+      final payload = response.payload!;
+      debugPrint('Navigate to: $payload');
+
+      // Parse payload and navigate accordingly
+      if (payload.startsWith('order/')) {
+        // Navigate to orders screen
+        AppRouter.router.go('/customer/orders');
+      } else if (payload.startsWith('delivery/')) {
+        // Navigate to orders/tracking screen
+        AppRouter.router.go('/customer/orders');
+      } else if (payload == 'promotions') {
+        // Navigate to notifications screen for promotions
+        AppRouter.router.go('/notifications');
+      } else {
+        // Default: navigate to notifications screen
+        AppRouter.router.go('/notifications');
+      }
+    } else {
+      // No payload, go to notifications screen
+      AppRouter.router.go('/notifications');
     }
   }
 

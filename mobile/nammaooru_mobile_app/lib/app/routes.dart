@@ -13,12 +13,17 @@ import '../features/customer/screens/shop_details_screen.dart';
 // import '../features/customer/screens/shop_details_clean.dart';
 import '../features/customer/screens/profile_screen.dart';
 import '../features/customer/screens/address_management_screen.dart';
+import '../features/customer/screens/notifications_screen.dart';
 import '../features/customer/cart/cart_screen.dart';
 import '../features/customer/screens/orders_screen.dart';
 // import '../features/delivery_fee_test/delivery_fee_test_screen.dart'; // Temporarily disabled
 
 class AppRouter {
+  // Global navigator key for navigation from services
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
   static final GoRouter router = GoRouter(
+    navigatorKey: navigatorKey,
     initialLocation: '/',
     redirect: RoleGuard.redirectLogic,
     routes: [
@@ -52,6 +57,10 @@ class AppRouter {
       GoRoute(
         path: '/customer/cart',
         builder: (context, state) => const CartScreen(),
+      ),
+      GoRoute(
+        path: '/notifications',
+        builder: (context, state) => const NotificationsScreen(),
       ),
       ShellRoute(
         builder: (context, state, child) {

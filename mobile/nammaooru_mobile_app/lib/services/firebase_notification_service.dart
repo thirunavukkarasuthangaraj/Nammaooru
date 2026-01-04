@@ -2,6 +2,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../shared/models/notification_model.dart';
+import '../app/routes.dart';
 import 'notification_api_service.dart';
 import 'local_notification_service.dart';
 
@@ -221,26 +222,49 @@ class FirebaseNotificationService {
 
   /// Handle notification tap actions
   static void _handleNotificationTap(NotificationModel notification) {
+    debugPrint('🔔 Handling notification tap: ${notification.type}');
+
+    // Get the navigator context
+    final navigatorState = AppRouter.navigatorKey.currentState;
+    if (navigatorState == null) {
+      debugPrint('❌ Navigator state is null, cannot navigate');
+      return;
+    }
+
     // Navigate based on notification type
     switch (notification.type.toLowerCase()) {
       case 'order':
-        // Navigate to order details
-        debugPrint('Navigate to order: ${notification.data?['orderId']}');
+      case 'order_update':
+        // Navigate to orders screen
+        debugPrint('Navigate to orders: ${notification.data?['orderId']}');
+        AppRouter.router.go('/customer/orders');
         break;
       case 'delivery':
-        // Navigate to delivery tracking
+      case 'delivery_update':
+        // Navigate to orders/tracking
         debugPrint('Navigate to delivery: ${notification.data?['deliveryId']}');
+        AppRouter.router.go('/customer/orders');
         break;
       case 'shop':
         // Navigate to shop details
         debugPrint('Navigate to shop: ${notification.data?['shopId']}');
+        final shopId = notification.data?['shopId'];
+        if (shopId != null) {
+          AppRouter.router.go('/customer/shop/$shopId');
+        } else {
+          AppRouter.router.go('/notifications');
+        }
         break;
       case 'promotion':
-        // Navigate to offers page
+      case 'promo':
+        // Navigate to notifications to see the promo
         debugPrint('Navigate to promotions');
+        AppRouter.router.go('/notifications');
         break;
       default:
+        // Navigate to notifications screen for all other types
         debugPrint('Navigate to notifications list');
+        AppRouter.router.go('/notifications');
         break;
     }
   }

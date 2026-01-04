@@ -20,16 +20,47 @@ import 'providers/language_provider.dart';
 import 'providers/order_provider.dart';
 import 'services/version_service.dart';
 import 'screens/auth/forgot_password_screen.dart';
+import 'screens/notifications/notifications_screen.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
 final AudioPlayer audioPlayer = AudioPlayer();
+
+// Global navigator key for navigation from notifications
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+// Store pending notification payload
+String? _pendingNotificationPayload;
 
 // Background message handler
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   print('Handling background message: ${message.messageId}');
+}
+
+// Handle notification tap
+void _onNotificationTapped(NotificationResponse response) {
+  print('🔔 Notification tapped: ${response.payload}');
+  _pendingNotificationPayload = response.payload;
+  _navigateToNotifications();
+}
+
+// Navigate to notifications screen
+void _navigateToNotifications() async {
+  final navigator = navigatorKey.currentState;
+  if (navigator != null) {
+    // Get token from shared preferences
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token') ?? '';
+
+    if (token.isNotEmpty) {
+      navigator.push(
+        MaterialPageRoute(builder: (context) => NotificationsScreen(token: token)),
+      );
+    }
+    _pendingNotificationPayload = null;
+  }
 }
 
 void main() async {
@@ -50,7 +81,10 @@ void main() async {
           AndroidInitializationSettings('@mipmap/ic_launcher');
       const InitializationSettings initializationSettings =
           InitializationSettings(android: initializationSettingsAndroid);
-      await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+      await flutterLocalNotificationsPlugin.initialize(
+        initializationSettings,
+        onDidReceiveNotificationResponse: _onNotificationTapped,
+      );
 
       // Create notification channel for new orders
       const AndroidNotificationChannel channel = AndroidNotificationChannel(
@@ -120,6 +154,19 @@ void main() async {
         }
       });
 
+      // Handle notification tap when app is opened from background/terminated state
+      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+        print('🔔 Notification opened app from background: ${message.messageId}');
+        _navigateToNotifications();
+      });
+
+      // Check if app was launched from a notification (terminated state)
+      RemoteMessage? initialMessage = await messaging.getInitialMessage();
+      if (initialMessage != null) {
+        print('🔔 App launched from notification: ${initialMessage.messageId}');
+        _pendingNotificationPayload = initialMessage.data['orderId'] ?? 'notification';
+      }
+
       // Get FCM token
       String? token = await messaging.getToken();
       print('FCM Token: $token');
@@ -147,6 +194,16 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     _checkAppVersion();
+    _checkPendingNotification();
+  }
+
+  void _checkPendingNotification() {
+    // Check for pending notification after short delay to let navigation initialize
+    Future.delayed(const Duration(seconds: 3), () {
+      if (_pendingNotificationPayload != null && mounted) {
+        _navigateToNotifications();
+      }
+    });
   }
 
   Future<void> _checkAppVersion() async {
@@ -205,6 +262,7 @@ class _MyAppState extends State<MyApp> {
       ],
       child: MaterialApp(
         title: 'Shop Owner',
+        navigatorKey: navigatorKey,
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         home: const LoginScreen(),

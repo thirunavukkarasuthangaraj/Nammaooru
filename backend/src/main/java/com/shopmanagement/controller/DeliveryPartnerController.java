@@ -161,17 +161,25 @@ public class DeliveryPartnerController {
     @PostMapping("/notifications/fcm-token")
     public ResponseEntity<?> updateFcmToken(@RequestBody FcmTokenRequest request) {
         try {
-            // Get current user
+            // Get current user from security context
             Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
-            String username = auth.getName();
+            String usernameOrEmail = auth.getName();
 
-            Optional<User> userOpt = userRepository.findByUsername(username);
+            log.info("FCM token update request - principal: {}", usernameOrEmail);
+
+            // Try to find user by username first, then by email as fallback
+            Optional<User> userOpt = userRepository.findByUsername(usernameOrEmail);
             if (userOpt.isEmpty()) {
+                // Fallback: try finding by email (in case JWT contains email)
+                userOpt = userRepository.findByEmail(usernameOrEmail);
+            }
+            if (userOpt.isEmpty()) {
+                log.warn("User not found for FCM token update - principal: {}", usernameOrEmail);
                 return ResponseEntity.ok(ApiResponse.error("User not found"));
             }
 
             User user = userOpt.get();
-            log.info("Updating FCM token for delivery partner: {} (ID: {})", username, user.getId());
+            log.info("Updating FCM token for delivery partner: {} (ID: {})", usernameOrEmail, user.getId());
 
             // Check if token already exists for this user
             Optional<UserFcmToken> existingToken = userFcmTokenRepository

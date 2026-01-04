@@ -420,6 +420,42 @@ public class OrderAssignmentService {
 
         log.info("Assignment {} rejected by partner {}. Order {} reset to READY_FOR_PICKUP",
                  assignmentId, partnerId, order.getId());
+
+        // Send push notification to shop owner
+        try {
+            String shopOwnerEmail = order.getShop().getOwnerEmail();
+            if (shopOwnerEmail != null) {
+                User shopOwner = userRepository.findByEmail(shopOwnerEmail).orElse(null);
+                if (shopOwner != null) {
+                    List<UserFcmToken> tokens = userFcmTokenRepository.findActiveTokensByUserId(shopOwner.getId());
+                    log.info("📊 Found {} active FCM tokens for shop owner (user ID: {}) for rejection notification", tokens.size(), shopOwner.getId());
+
+                    if (!tokens.isEmpty()) {
+                        String partnerName = partner.getFirstName() != null ? partner.getFirstName() : "Delivery partner";
+                        String title = "Driver Rejected Order";
+                        String message = partnerName + " rejected order #" + order.getOrderNumber() + ". Reason: " + reason + ". Order is back to Ready for Pickup status.";
+
+                        for (UserFcmToken tokenEntity : tokens) {
+                            try {
+                                firebaseNotificationService.sendOrderNotification(
+                                    order.getOrderNumber(),
+                                    "DRIVER_REJECTED",
+                                    tokenEntity.getFcmToken(),
+                                    title,
+                                    message
+                                );
+                                log.info("✅ Sent rejection notification to shop owner for order {}", order.getOrderNumber());
+                                break; // One successful notification is enough
+                            } catch (Exception e) {
+                                log.warn("Failed to send notification to token: {}", e.getMessage());
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to send rejection notification to shop owner: {}", e.getMessage());
+        }
     }
 
     /**

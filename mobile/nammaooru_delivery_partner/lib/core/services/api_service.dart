@@ -420,8 +420,8 @@ class ApiService {
 
   // Utility Methods
   Future<bool> isLoggedIn() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_tokenKey) != null;
+    final token = await LocalStorage.getToken();
+    return token != null && token.isNotEmpty;
   }
 
   Future<String?> getPartnerId() async {

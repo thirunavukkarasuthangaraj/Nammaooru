@@ -8,6 +8,7 @@ import 'core/providers/location_provider.dart';
 import 'core/constants/app_theme.dart';
 import 'core/services/version_service.dart';
 import 'core/widgets/update_dialog.dart';
+import 'core/storage/local_storage.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/dashboard/screens/dashboard_screen.dart';
 import 'features/orders/screens/available_orders_screen.dart';
@@ -20,6 +21,10 @@ import 'firebase_mobile_init.dart' if (dart.library.html) 'firebase_web_stub.dar
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize LocalStorage (SharedPreferences) - MUST be called before using LocalStorage
+  await LocalStorage.init();
+  debugPrint('✅ LocalStorage initialized');
 
   // Initialize Firebase only on mobile platforms
   if (!kIsWeb) {

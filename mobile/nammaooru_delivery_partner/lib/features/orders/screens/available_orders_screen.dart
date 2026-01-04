@@ -47,8 +47,8 @@ class _AvailableOrdersScreenState extends State<AvailableOrdersScreen> {
     final locationProvider = Provider.of<LocationProvider>(context, listen: false);
 
     try {
-      // Get the assignment ID from the accept response
-      final response = await provider.acceptOrder(order.id);
+      // Use orderNumber for the API call (backend expects order number, not assignment ID)
+      final response = await provider.acceptOrder(order.orderNumber);
 
       if (response?['success'] == true) {
         final assignmentId = response?['assignmentId'];
@@ -86,7 +86,9 @@ class _AvailableOrdersScreenState extends State<AvailableOrdersScreen> {
 
         _loadAvailableOrders(); // Refresh the list
       } else {
-        throw Exception('Failed to accept order');
+        // Show actual error message from backend
+        final errorMsg = response?['message'] ?? 'Failed to accept order';
+        throw Exception(errorMsg);
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -102,18 +104,26 @@ class _AvailableOrdersScreenState extends State<AvailableOrdersScreen> {
     final provider = Provider.of<DeliveryPartnerProvider>(context, listen: false);
 
     try {
-      await provider.rejectOrder(order.id, 'Not available');
-      Navigator.pop(context); // Close bottom sheet
+      // Use orderNumber for the API call (backend expects order number, not assignment ID)
+      final success = await provider.rejectOrder(order.orderNumber, 'Not available');
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Order #${order.orderNumber} rejected'),
-          backgroundColor: Colors.orange,
-          duration: Duration(seconds: 2),
-        ),
-      );
+      if (success) {
+        Navigator.pop(context); // Close bottom sheet
 
-      _loadAvailableOrders(); // Refresh the list
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Order #${order.orderNumber} rejected'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 2),
+          ),
+        );
+
+        _loadAvailableOrders(); // Refresh the list
+      } else {
+        // Show actual error from provider
+        final errorMsg = provider.error ?? 'Failed to reject order';
+        throw Exception(errorMsg);
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
