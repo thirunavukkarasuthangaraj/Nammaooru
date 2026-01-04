@@ -132,13 +132,13 @@ public class OrderAssignmentRetryService {
         int currentAttempts = retryAttempts.getOrDefault(orderId, 0);
 
         log.info("Processing unassigned order: {} (Attempt: {}, Age: {} minutes)",
-            order.getOrderNumber(), currentAttempts + 1, minutesSinceFirst);
+            currentOrder.getOrderNumber(), currentAttempts + 1, minutesSinceFirst);
 
         // If we've been trying for more than maxOrderAgeMinutes, stop and send final alert
         if (minutesSinceFirst >= maxOrderAgeMinutes) {
             log.warn("Order {} has been unassigned for {} minutes. Stopping retry and sending final alert.",
-                order.getOrderNumber(), minutesSinceFirst);
-            sendFinalAlert(order, currentAttempts);
+                currentOrder.getOrderNumber(), minutesSinceFirst);
+            sendFinalAlert(currentOrder, currentAttempts);
             retryAttempts.remove(orderId);
             firstAttemptTime.remove(orderId);
             return;
@@ -153,14 +153,14 @@ public class OrderAssignmentRetryService {
 
             // Success!
             log.info("✅ Successfully assigned order {} to partner {} on attempt {}",
-                order.getOrderNumber(),
+                currentOrder.getOrderNumber(),
                 assignment.getDeliveryPartner().getEmail(),
                 currentAttempts + 1);
 
             // Send success notification if it took multiple attempts
             if (currentAttempts > 0) {
                 emailService.sendOrderAssignedAfterRetryNotification(
-                    order.getOrderNumber(),
+                    currentOrder.getOrderNumber(),
                     assignment.getDeliveryPartner().getFullName(),
                     adminEmail,
                     currentAttempts + 1
@@ -177,29 +177,29 @@ public class OrderAssignmentRetryService {
             retryAttempts.put(orderId, newAttemptCount);
 
             log.warn("Failed to assign order {} (Attempt {}/{}): {}",
-                order.getOrderNumber(), newAttemptCount, maxRetryAttempts, e.getMessage());
+                currentOrder.getOrderNumber(), newAttemptCount, maxRetryAttempts, e.getMessage());
 
             // If we've reached 3 minutes (3 attempts), send alert email
             if (newAttemptCount >= maxRetryAttempts) {
                 log.error("⚠️  Order {} failed auto-assignment after {} attempts. Sending alert to admin and shop owner.",
-                    order.getOrderNumber(), newAttemptCount);
+                    currentOrder.getOrderNumber(), newAttemptCount);
 
                 // Send alert to platform admin
                 emailService.sendNoPartnersAvailableAlert(
-                    order.getId(),
-                    order.getOrderNumber(),
-                    order.getShop().getName(),
+                    currentOrder.getId(),
+                    currentOrder.getOrderNumber(),
+                    currentOrder.getShop().getName(),
                     adminEmail,
                     newAttemptCount
                 );
 
                 // Send alert to shop owner
-                String shopOwnerEmail = order.getShop().getOwnerEmail();
+                String shopOwnerEmail = currentOrder.getShop().getOwnerEmail();
                 if (shopOwnerEmail != null && !shopOwnerEmail.isEmpty()) {
                     emailService.sendNoPartnersAvailableAlert(
-                        order.getId(),
-                        order.getOrderNumber(),
-                        order.getShop().getName(),
+                        currentOrder.getId(),
+                        currentOrder.getOrderNumber(),
+                        currentOrder.getShop().getName(),
                         shopOwnerEmail,
                         newAttemptCount
                     );
