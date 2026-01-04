@@ -147,8 +147,8 @@ export class ProductEditDialogComponent implements OnInit {
   }
   
   private uploadImageNow(file: File): void {
-    // Get shop ID from environment or localStorage
-    const shopId = parseInt(localStorage.getItem('current_shop_id') || '57', 10);
+    // Get shop ID from environment or localStorage - use string shopId directly
+    const shopId = localStorage.getItem('current_shop_id') || localStorage.getItem('current_shop_numeric_id') || '57';
     let productId = this.data.id;
     
     console.log('Upload Debug - Shop ID:', shopId);

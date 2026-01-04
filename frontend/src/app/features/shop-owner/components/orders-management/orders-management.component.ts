@@ -94,10 +94,10 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
   }
 
   loadOrdersFromCache(): void {
-    // Check cache first
+    // Check cache first - use string shopId directly (e.g., "SHOP-xxx")
     const cachedShopId = localStorage.getItem('current_shop_id');
     if (cachedShopId) {
-      this.shopId = parseInt(cachedShopId, 10);
+      this.shopId = cachedShopId as any; // Use string shopId directly
       console.log('Using cached shop ID:', this.shopId);
       this.loadOrders();
       return;
@@ -107,9 +107,9 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     console.log('No cached shop ID - calling /api/shops/my-shop');
     this.http.get<any>(`${environment.apiUrl}/shops/my-shop`).subscribe({
       next: (response) => {
-        if (response.data && response.data.id) {
-          this.shopId = response.data.id;
-          localStorage.setItem('current_shop_id', response.data.id.toString());
+        if (response.data && response.data.shopId) {
+          this.shopId = response.data.shopId as any; // Use string shopId
+          localStorage.setItem('current_shop_id', response.data.shopId);
           console.log('Got shop ID from API:', this.shopId);
           this.loadOrders();
         }

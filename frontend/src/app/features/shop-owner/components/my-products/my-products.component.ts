@@ -114,7 +114,11 @@ export class MyProductsComponent implements OnInit, OnDestroy {
       if (shop && shop.id && shop.id !== this.shopId) {
         // Update shop ID if we get a different one from context
         this.shopId = shop.id;
-        localStorage.setItem('current_shop_id', shop.id.toString());
+        // Store both string shopId and numeric id
+        if (shop.shopId) {
+          localStorage.setItem('current_shop_id', shop.shopId);
+        }
+        localStorage.setItem('current_shop_numeric_id', shop.id.toString());
         console.log('Updated shop ID from context:', this.shopId);
         this.loadProducts();
         this.loadCategories();
@@ -959,39 +963,24 @@ export class MyProductsComponent implements OnInit, OnDestroy {
   }
 
   browseMasterProducts(): void {
-    // Try to get shop ID from multiple sources
-    let effectiveShopId = this.shopId;
-    
+    // Try to get shop ID from multiple sources - use string shopId directly
+    let effectiveShopId: any = this.shopId;
+
     if (!effectiveShopId) {
-      // Try from localStorage
+      // Try from localStorage - use string shopId (e.g., "SHOP-xxx")
       const cachedShopId = localStorage.getItem('current_shop_id');
       if (cachedShopId) {
-        effectiveShopId = parseInt(cachedShopId, 10);
+        effectiveShopId = cachedShopId;
       }
     }
-    
+
     if (!effectiveShopId) {
-      // Use default for shopowner user or just use 57 as default
-      const userData = localStorage.getItem('shop_management_user');
-      if (userData) {
-        try {
-          const user = JSON.parse(userData);
-          // For any shop owner, use shop ID 57 as default
-          if (user.role === 'SHOP_OWNER' || user.username === 'shopowner') {
-            effectiveShopId = 57;
-            localStorage.setItem('current_shop_id', '57');
-          }
-        } catch (e) {
-          // If JSON parse fails, just use default
-          effectiveShopId = 57;
-        }
-      } else {
-        // No user data, just use default shop ID
-        effectiveShopId = 57;
-        localStorage.setItem('current_shop_id', '57');
-      }
+      // No shop ID available - user needs to login again
+      console.error('No shop ID found - user needs to login again');
+      this.snackBar.open('Please logout and login again to refresh your shop data', 'Close', { duration: 5000 });
+      return;
     }
-    
+
     // Update component's shopId if it was null
     if (!this.shopId) {
       this.shopId = effectiveShopId;

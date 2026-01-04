@@ -70,7 +70,7 @@ export class ShopOwnerOrderService {
     private authService: AuthService
   ) {}
 
-  getShopOrders(shopId: number, page: number = 0, size: number = 20): Observable<ShopOwnerOrder[]> {
+  getShopOrders(shopId: string | number, page: number = 0, size: number = 20): Observable<ShopOwnerOrder[]> {
     const params = new HttpParams()
       .set('page', page.toString())
       .set('size', size.toString());

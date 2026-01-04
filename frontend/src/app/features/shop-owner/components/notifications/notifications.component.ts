@@ -509,15 +509,14 @@ export class NotificationsComponent implements OnInit, OnDestroy {
   }
 
   private loadOrderNotifications() {
-    // Get shop ID from localStorage (same way as orders component)
-    const cachedShopId = localStorage.getItem('current_shop_id');
-    if (!cachedShopId) {
+    // Get shop ID from localStorage - use string shopId directly (e.g., "SHOP-xxx")
+    const shopId = localStorage.getItem('current_shop_id');
+    if (!shopId) {
       console.error('No shop ID found in localStorage');
       return of([]);
     }
-    const shopId = parseInt(cachedShopId, 10);
 
-    return this.orderService.getOrdersByShop(String(shopId || ''), 0, 50)
+    return this.orderService.getOrdersByShop(shopId, 0, 50)
       .pipe(
         switchMap(orderPage => {
           const allOrders = orderPage.data.content;
