@@ -656,9 +656,19 @@ public class ShopService {
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> getShopDashboard(String shopId) {
-        Shop shop = shopRepository.findByShopId(shopId)
-                .orElseThrow(() -> new ShopNotFoundException("Shop not found with shop ID: " + shopId));
+    public Map<String, Object> getShopDashboard(String shopIdOrId) {
+        Shop shop;
+
+        // Check if input is numeric (database ID) or string (shopId like "SHOP-xxx")
+        try {
+            Long numericId = Long.parseLong(shopIdOrId);
+            shop = shopRepository.findById(numericId)
+                    .orElseThrow(() -> new ShopNotFoundException("Shop not found with ID: " + shopIdOrId));
+        } catch (NumberFormatException e) {
+            // Not numeric, treat as shopId string
+            shop = shopRepository.findByShopId(shopIdOrId)
+                    .orElseThrow(() -> new ShopNotFoundException("Shop not found with shop ID: " + shopIdOrId));
+        }
 
         Map<String, Object> dashboard = new HashMap<>();
 
