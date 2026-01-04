@@ -104,8 +104,14 @@ class NotificationHandler {
       // Play sound and vibration
       await _handleNotificationSound(type);
 
-      // Update order if it's an order notification
-      if (orderId != null && type.contains('order')) {
+      // Update order if it's an order or delivery notification
+      if (orderId != null && (type.contains('order') || type.contains('delivery'))) {
+        final orderProvider = Provider.of<OrderProvider>(_context!, listen: false);
+        await orderProvider.loadOrders();
+      }
+
+      // Also refresh if no orderId but it's a delivery notification (driver rejection, etc.)
+      if (type.contains('delivery')) {
         final orderProvider = Provider.of<OrderProvider>(_context!, listen: false);
         await orderProvider.loadOrders();
       }
