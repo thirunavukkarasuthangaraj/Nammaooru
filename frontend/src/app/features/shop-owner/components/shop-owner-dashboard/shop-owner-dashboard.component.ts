@@ -1,590 +1,707 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Router } from '@angular/router';
 import { AuthService } from '@core/services/auth.service';
 import { ShopService } from '@core/services/shop.service';
 import { SoundService } from '@core/services/sound.service';
 import { OrderService } from '@core/services/order.service';
-import { User, UserRole } from '@core/models/auth.model';
-import { Shop } from '@core/models/shop.model';
+import { User } from '@core/models/auth.model';
 import { Observable, interval, Subscription } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../../../environments/environment';
+
+interface DashboardStats {
+  todayOrders: number;
+  totalOrders: number;
+  pendingOrders: number;
+  todayRevenue: number;
+  monthlyRevenue: number;
+  totalProducts: number;
+  lowStockProducts: number;
+  outOfStockProducts: number;
+}
 
 @Component({
   selector: 'app-shop-owner-dashboard',
   template: `
-    <div class="shop-owner-dashboard">
-      <!-- Welcome Header -->
+    <div class="dashboard-container">
+      <!-- Header Section -->
       <div class="dashboard-header">
-        <div class="welcome-section">
-          <h1 class="welcome-title">Welcome back, {{ (currentUser$ | async)?.username }}!</h1>
-          <p class="welcome-subtitle">Manage your shop with these essential tools</p>
+        <div class="header-content">
+          <span class="welcome-text">Welcome back,</span>
+          <h1 class="user-name">{{ (currentUser$ | async)?.username }}</h1>
+        </div>
+        <div class="header-actions">
+          <button mat-icon-button class="notification-btn" routerLink="/shop-owner/notifications">
+            <mat-icon [matBadge]="unreadNotificationCount"
+                     [matBadgeHidden]="unreadNotificationCount === 0"
+                     matBadgeColor="warn"
+                     matBadgeSize="small">notifications</mat-icon>
+          </button>
+          <button mat-icon-button (click)="refreshDashboard()" matTooltip="Refresh">
+            <mat-icon>refresh</mat-icon>
+          </button>
         </div>
       </div>
 
-      <!-- Main Menu Cards -->
-      <div class="main-menu-grid">
-        <!-- Notifications Card - NEW -->
-        <mat-card class="menu-card notifications-card" routerLink="/shop-owner/notifications">
-          <mat-card-content>
-            <div class="card-content">
-              <div class="card-icon notification-icon">
-                <mat-icon [matBadge]="unreadNotificationCount"
-                         [matBadgeHidden]="unreadNotificationCount === 0"
-                         matBadgeColor="warn"
-                         matBadgeSize="small">notifications</mat-icon>
-              </div>
-              <div class="card-info">
-                <h3 class="card-title">Notifications</h3>
-                <p class="card-description">View all order notifications and updates</p>
-                <div class="notification-status" *ngIf="unreadNotificationCount > 0">
-                  <span class="badge-unread">{{ unreadNotificationCount }} unread</span>
-                </div>
-              </div>
-              <mat-icon class="arrow-icon">arrow_forward_ios</mat-icon>
-            </div>
-          </mat-card-content>
-        </mat-card>
-
-        <!-- Shop Profile -->
-        <mat-card class="menu-card profile-card" routerLink="/shop-owner/shop-profile">
-          <mat-card-content>
-            <div class="card-content">
-              <div class="card-icon">
-                <mat-icon>store</mat-icon>
-              </div>
-              <div class="card-info">
-                <h3 class="card-title">Shop Profile</h3>
-                <p class="card-description">Manage your shop information, business hours, and settings</p>
-              </div>
-              <mat-icon class="arrow-icon">arrow_forward_ios</mat-icon>
-            </div>
-          </mat-card-content>
-        </mat-card>
-
-        <!-- Shop Products -->
-        <mat-card class="menu-card products-card" routerLink="/shop-owner/my-products">
-          <mat-card-content>
-            <div class="card-content">
-              <div class="card-icon">
-                <mat-icon>inventory_2</mat-icon>
-              </div>
-              <div class="card-info">
-                <h3 class="card-title">Shop Products</h3>
-                <p class="card-description">Add, edit, and manage your product inventory</p>
-              </div>
-              <mat-icon class="arrow-icon">arrow_forward_ios</mat-icon>
-            </div>
-          </mat-card-content>
-        </mat-card>
-
-        <!-- Orders -->
-        <mat-card class="menu-card orders-card" routerLink="/shop-owner/orders-management">
-          <mat-card-content>
-            <div class="card-content">
-              <div class="card-icon">
-                <mat-icon>receipt_long</mat-icon>
-              </div>
-              <div class="card-info">
-                <h3 class="card-title">Orders</h3>
-                <p class="card-description">View and manage customer orders and order history</p>
-              </div>
-              <mat-icon class="arrow-icon">arrow_forward_ios</mat-icon>
-            </div>
-          </mat-card-content>
-        </mat-card>
+      <!-- Loading State -->
+      <div class="loading-container" *ngIf="isLoading">
+        <mat-spinner diameter="40"></mat-spinner>
       </div>
 
-      <!-- Quick Actions -->
-      <div class="quick-actions-section">
-        <h2 class="section-title">Quick Actions</h2>
-        <div class="quick-actions-grid">
-          <button mat-raised-button color="primary" class="quick-action-btn" routerLink="/shop-owner/add-product-modern">
-            <mat-icon>add_box</mat-icon>
-            <span>Create Product</span>
-          </button>
-          <button mat-raised-button color="accent" class="quick-action-btn" routerLink="/shop-owner/bulk-upload">
-            <mat-icon>upload_file</mat-icon>
-            <span>Bulk Product Upload</span>
-          </button>
+      <div class="dashboard-content" *ngIf="!isLoading">
+        <!-- Orders Overview Section -->
+        <div class="section">
+          <div class="section-title">
+            <mat-icon>shopping_cart</mat-icon>
+            <span>Orders Overview</span>
+          </div>
+          <div class="metrics-row three-col">
+            <div class="metric-card clickable" routerLink="/shop-owner/orders-management">
+              <div class="metric-icon blue">
+                <mat-icon>today</mat-icon>
+              </div>
+              <div class="metric-value blue">{{ stats.todayOrders }}</div>
+              <div class="metric-label">Today's Orders</div>
+            </div>
+            <div class="metric-card clickable"
+                 [class.highlight]="stats.pendingOrders > 0"
+                 routerLink="/shop-owner/orders-management">
+              <div class="metric-icon orange">
+                <mat-icon>pending_actions</mat-icon>
+              </div>
+              <div class="metric-value orange">{{ stats.pendingOrders }}</div>
+              <div class="metric-label">Pending</div>
+            </div>
+            <div class="metric-card clickable" routerLink="/shop-owner/orders-management">
+              <div class="metric-icon purple">
+                <mat-icon>receipt_long</mat-icon>
+              </div>
+              <div class="metric-value purple">{{ stats.totalOrders }}</div>
+              <div class="metric-label">Total Orders</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Revenue Section -->
+        <div class="section">
+          <div class="section-title">
+            <mat-icon>account_balance_wallet</mat-icon>
+            <span>Revenue</span>
+          </div>
+          <div class="revenue-row">
+            <div class="revenue-card green">
+              <div class="revenue-header">
+                <mat-icon>currency_rupee</mat-icon>
+                <span>Today</span>
+              </div>
+              <div class="revenue-value">
+                <span class="currency">₹</span>
+                <span class="amount">{{ formatCurrency(stats.todayRevenue) }}</span>
+              </div>
+            </div>
+            <div class="revenue-card teal">
+              <div class="revenue-header">
+                <mat-icon>calendar_month</mat-icon>
+                <span>This Month</span>
+              </div>
+              <div class="revenue-value">
+                <span class="currency">₹</span>
+                <span class="amount">{{ formatCurrency(stats.monthlyRevenue) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Inventory Section -->
+        <div class="section">
+          <div class="section-title">
+            <mat-icon>inventory_2</mat-icon>
+            <span>Inventory</span>
+          </div>
+          <div class="inventory-card clickable"
+               [class.alert]="hasStockAlert"
+               routerLink="/shop-owner/my-products">
+            <div class="inventory-stats">
+              <div class="inventory-stat">
+                <mat-icon class="purple">inventory_2</mat-icon>
+                <div class="stat-value purple">{{ stats.totalProducts }}</div>
+                <div class="stat-label">Total</div>
+              </div>
+              <div class="stat-divider"></div>
+              <div class="inventory-stat">
+                <mat-icon [class.orange]="stats.lowStockProducts > 0"
+                         [class.grey]="stats.lowStockProducts === 0">warning_amber</mat-icon>
+                <div class="stat-value"
+                     [class.orange]="stats.lowStockProducts > 0"
+                     [class.grey]="stats.lowStockProducts === 0">{{ stats.lowStockProducts }}</div>
+                <div class="stat-label">Low Stock</div>
+              </div>
+              <div class="stat-divider"></div>
+              <div class="inventory-stat">
+                <mat-icon [class.red]="stats.outOfStockProducts > 0"
+                         [class.grey]="stats.outOfStockProducts === 0">error_outline</mat-icon>
+                <div class="stat-value"
+                     [class.red]="stats.outOfStockProducts > 0"
+                     [class.grey]="stats.outOfStockProducts === 0">{{ stats.outOfStockProducts }}</div>
+                <div class="stat-label">Out of Stock</div>
+              </div>
+            </div>
+            <div class="alert-banner" *ngIf="hasStockAlert">
+              <mat-icon>warning_amber</mat-icon>
+              <span>Stock needs attention! Click to manage.</span>
+              <mat-icon>arrow_forward_ios</mat-icon>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Actions Section -->
+        <div class="section">
+          <div class="section-title">
+            <mat-icon>flash_on</mat-icon>
+            <span>Quick Actions</span>
+          </div>
+          <div class="actions-grid">
+            <div class="action-card" routerLink="/shop-owner/orders-management">
+              <div class="action-icon blue">
+                <mat-icon>receipt_long</mat-icon>
+              </div>
+              <span class="action-label">Orders</span>
+              <mat-icon class="action-arrow">arrow_forward_ios</mat-icon>
+            </div>
+            <div class="action-card" routerLink="/shop-owner/my-products">
+              <div class="action-icon purple">
+                <mat-icon>category</mat-icon>
+              </div>
+              <span class="action-label">Products</span>
+              <mat-icon class="action-arrow">arrow_forward_ios</mat-icon>
+            </div>
+            <div class="action-card" routerLink="/shop-owner/shop-profile">
+              <div class="action-icon green">
+                <mat-icon>store</mat-icon>
+              </div>
+              <span class="action-label">Shop Profile</span>
+              <mat-icon class="action-arrow">arrow_forward_ios</mat-icon>
+            </div>
+            <div class="action-card" routerLink="/shop-owner/notifications">
+              <div class="action-icon orange">
+                <mat-icon>notifications</mat-icon>
+              </div>
+              <span class="action-label">Notifications</span>
+              <mat-icon class="action-arrow">arrow_forward_ios</mat-icon>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   `,
   styles: [`
-    .shop-owner-dashboard {
-      padding: 24px;
-      background-color: #f5f5f5;
-      min-height: calc(100vh - 64px);
+    .dashboard-container {
+      min-height: 100vh;
+      background: #f5f7fa;
     }
 
     .dashboard-header {
-      text-align: center;
-      margin-bottom: 32px;
-      background: white;
-      padding: 32px 24px;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-
-    .welcome-title {
-      font-size: 2rem;
-      font-weight: 500;
-      margin: 0 0 8px 0;
-      color: #333;
-    }
-
-    .welcome-subtitle {
-      font-size: 1rem;
-      color: #666;
-      margin: 0;
-    }
-
-    .main-menu-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 20px;
-      margin-bottom: 32px;
-    }
-
-    .menu-card {
-      border-radius: 16px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      cursor: pointer;
-      transition: all 0.3s ease;
-      overflow: hidden;
-    }
-
-    .menu-card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-    }
-
-    .menu-card.notifications-card { border-left: 6px solid #e91e63; }
-    .menu-card.profile-card { border-left: 6px solid #4caf50; }
-    .menu-card.products-card { border-left: 6px solid #2196f3; }
-    .menu-card.orders-card { border-left: 6px solid #ff9800; }
-
-    .notification-icon {
-      position: relative;
-    }
-
-    .notification-status {
-      margin-top: 8px;
-    }
-
-    .badge-unread {
-      background: #e91e63;
-      color: white;
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 0.75rem;
-      font-weight: 500;
-    }
-
-    .card-content {
+      background: linear-gradient(135deg, #1B5E20 0%, #388E3C 100%);
+      padding: 24px 20px 32px;
       display: flex;
-      align-items: center;
-      gap: 20px;
-      padding: 24px;
+      justify-content: space-between;
+      align-items: flex-start;
     }
 
-    .card-icon {
-      background: linear-gradient(135deg, #667eea, #764ba2);
+    .header-content {
       color: white;
-      width: 64px;
-      height: 64px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
     }
 
-    .card-icon mat-icon {
-      font-size: 32px;
-      width: 32px;
-      height: 32px;
+    .welcome-text {
+      font-size: 14px;
+      opacity: 0.8;
     }
 
-    .card-info {
-      flex: 1;
-    }
-
-    .card-title {
-      font-size: 1.3rem;
+    .user-name {
+      font-size: 22px;
       font-weight: 600;
-      margin: 0 0 8px 0;
-      color: #333;
+      margin: 4px 0 0 0;
     }
 
-    .card-description {
-      font-size: 0.9rem;
-      color: #666;
-      margin: 0;
-      line-height: 1.4;
+    .header-actions {
+      display: flex;
+      gap: 4px;
     }
 
-    .arrow-icon {
-      color: #ccc;
-      font-size: 20px;
+    .header-actions button {
+      color: white;
     }
 
-    .quick-actions-section {
-      background: white;
-      padding: 24px;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    .notification-btn ::ng-deep .mat-badge-content {
+      background: #f44336;
+    }
+
+    .loading-container {
+      display: flex;
+      justify-content: center;
+      padding: 60px;
+    }
+
+    .dashboard-content {
+      padding: 16px;
+      margin-top: -16px;
+    }
+
+    .section {
+      margin-bottom: 24px;
     }
 
     .section-title {
-      font-size: 1.2rem;
-      font-weight: 500;
-      margin: 0 0 20px 0;
-      color: #333;
-      text-align: center;
-    }
-
-    .quick-actions-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-      max-width: 500px;
-      margin: 0 auto;
-    }
-
-    .quick-action-btn {
       display: flex;
-      flex-direction: column;
       align-items: center;
       gap: 8px;
-      padding: 20px;
-      height: auto;
-      min-height: 100px;
+      font-size: 16px;
+      font-weight: 600;
+      color: #212121;
+      margin-bottom: 12px;
+    }
+
+    .section-title mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+      color: #424242;
+    }
+
+    /* Metrics Row */
+    .metrics-row {
+      display: grid;
+      gap: 12px;
+    }
+
+    .metrics-row.three-col {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .metric-card {
+      background: white;
       border-radius: 12px;
+      padding: 16px 12px;
+      text-align: center;
+      border: 1px solid #e0e0e0;
+      transition: all 0.2s ease;
+    }
+
+    .metric-card.clickable {
+      cursor: pointer;
+    }
+
+    .metric-card.clickable:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .metric-card.highlight {
+      background: rgba(230, 81, 0, 0.1);
+      border-color: #E65100;
+      border-width: 2px;
+    }
+
+    .metric-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 8px;
+    }
+
+    .metric-icon mat-icon {
+      color: white;
+      font-size: 22px;
+      width: 22px;
+      height: 22px;
+    }
+
+    .metric-icon.blue { background: rgba(25, 118, 210, 0.15); }
+    .metric-icon.blue mat-icon { color: #1976D2; }
+    .metric-icon.orange { background: rgba(230, 81, 0, 0.15); }
+    .metric-icon.orange mat-icon { color: #E65100; }
+    .metric-icon.purple { background: rgba(123, 31, 162, 0.15); }
+    .metric-icon.purple mat-icon { color: #7B1FA2; }
+
+    .metric-value {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .metric-value.blue { color: #1976D2; }
+    .metric-value.orange { color: #E65100; }
+    .metric-value.purple { color: #7B1FA2; }
+
+    .metric-label {
+      font-size: 11px;
+      color: #757575;
+    }
+
+    /* Revenue Cards */
+    .revenue-row {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .revenue-card {
+      padding: 16px;
+      border-radius: 12px;
+      color: white;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .revenue-card.green {
+      background: linear-gradient(135deg, #2E7D32 0%, #43A047 100%);
+    }
+
+    .revenue-card.teal {
+      background: linear-gradient(135deg, #00796B 0%, #00897B 100%);
+    }
+
+    .revenue-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      opacity: 0.9;
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+
+    .revenue-header mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+
+    .revenue-value {
+      display: flex;
+      align-items: flex-start;
+    }
+
+    .revenue-value .currency {
+      font-size: 16px;
       font-weight: 500;
+      margin-right: 2px;
     }
 
-    .quick-action-btn mat-icon {
-      font-size: 28px;
-      width: 28px;
-      height: 28px;
+    .revenue-value .amount {
+      font-size: 26px;
+      font-weight: 700;
     }
 
-    .quick-action-btn span {
-      font-size: 0.9rem;
+    /* Inventory Card */
+    .inventory-card {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      border: 1px solid #e0e0e0;
+      transition: all 0.2s ease;
+    }
+
+    .inventory-card.clickable {
+      cursor: pointer;
+    }
+
+    .inventory-card.clickable:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .inventory-card.alert {
+      border-color: #FF9800;
+      border-width: 2px;
+    }
+
+    .inventory-stats {
+      display: flex;
+      align-items: center;
+    }
+
+    .inventory-stat {
+      flex: 1;
       text-align: center;
     }
 
-    /* Mobile Responsive */
-    @media (max-width: 768px) {
-      .shop-owner-dashboard {
-        padding: 16px;
-      }
-
-      .dashboard-header {
-        padding: 24px 16px;
-      }
-
-      .welcome-title {
-        font-size: 1.6rem;
-      }
-
-      .main-menu-grid {
-        grid-template-columns: 1fr;
-        gap: 16px;
-      }
-
-      .card-content {
-        padding: 20px;
-        gap: 16px;
-      }
-
-      .card-icon {
-        width: 56px;
-        height: 56px;
-      }
-
-      .card-icon mat-icon {
-        font-size: 28px;
-        width: 28px;
-        height: 28px;
-      }
-
-      .card-title {
-        font-size: 1.2rem;
-      }
-
-      .quick-actions-grid {
-        grid-template-columns: 1fr;
-        gap: 12px;
-      }
+    .inventory-stat mat-icon {
+      font-size: 22px;
+      width: 22px;
+      height: 22px;
+      margin-bottom: 6px;
     }
 
+    .inventory-stat .stat-value {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+
+    .inventory-stat .stat-label {
+      font-size: 10px;
+      color: #757575;
+    }
+
+    .stat-divider {
+      width: 1px;
+      height: 50px;
+      background: #e0e0e0;
+    }
+
+    .purple { color: #7B1FA2; }
+    .orange { color: #FF9800; }
+    .red { color: #f44336; }
+    .grey { color: #9e9e9e; }
+
+    .alert-banner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #FFF3E0;
+      padding: 8px 12px;
+      border-radius: 8px;
+      margin-top: 12px;
+    }
+
+    .alert-banner mat-icon:first-child {
+      color: #E65100;
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+
+    .alert-banner span {
+      flex: 1;
+      font-size: 12px;
+      font-weight: 500;
+      color: #E65100;
+    }
+
+    .alert-banner mat-icon:last-child {
+      color: #E65100;
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
+    }
+
+    /* Action Cards */
+    .actions-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .action-card {
+      background: white;
+      border-radius: 12px;
+      padding: 16px 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border: 1px solid #e0e0e0;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .action-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .action-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .action-icon mat-icon {
+      font-size: 22px;
+      width: 22px;
+      height: 22px;
+    }
+
+    .action-icon.blue { background: rgba(25, 118, 210, 0.15); }
+    .action-icon.blue mat-icon { color: #1976D2; }
+    .action-icon.purple { background: rgba(123, 31, 162, 0.15); }
+    .action-icon.purple mat-icon { color: #7B1FA2; }
+    .action-icon.green { background: rgba(46, 125, 50, 0.15); }
+    .action-icon.green mat-icon { color: #2E7D32; }
+    .action-icon.orange { background: rgba(230, 81, 0, 0.15); }
+    .action-icon.orange mat-icon { color: #E65100; }
+
+    .action-label {
+      flex: 1;
+      font-size: 14px;
+      font-weight: 600;
+      color: #212121;
+    }
+
+    .action-arrow {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+      color: #bdbdbd;
+    }
+
+    /* Responsive */
     @media (max-width: 480px) {
-      .card-content {
-        padding: 16px;
-        gap: 12px;
+      .metrics-row.three-col {
+        grid-template-columns: repeat(3, 1fr);
       }
 
-      .card-icon {
-        width: 48px;
-        height: 48px;
+      .metric-card {
+        padding: 12px 8px;
       }
 
-      .card-icon mat-icon {
-        font-size: 24px;
-        width: 24px;
-        height: 24px;
+      .metric-value {
+        font-size: 18px;
       }
 
-      .card-title {
-        font-size: 1.1rem;
+      .metric-label {
+        font-size: 9px;
       }
 
-      .card-description {
-        font-size: 0.8rem;
-      }
-
-      .quick-action-btn {
-        min-height: 80px;
-        padding: 16px;
-      }
-
-      .quick-action-btn mat-icon {
-        font-size: 24px;
-        width: 24px;
-        height: 24px;
+      .revenue-value .amount {
+        font-size: 22px;
       }
     }
   `]
 })
 export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
   currentUser$: Observable<User | null>;
-  loading = false;
+  isLoading = true;
   unreadNotificationCount = 0;
 
-  // Dashboard data from API
-  todaysRevenue = 0;
-  todaysOrders = 0;
-  totalProducts = 0;
-  lowStockCount = 0;
-  totalCustomers = 0;
-  newCustomers = 0;
-  previousOrderCount = 0;
+  stats: DashboardStats = {
+    todayOrders: 0,
+    totalOrders: 0,
+    pendingOrders: 0,
+    todayRevenue: 0,
+    monthlyRevenue: 0,
+    totalProducts: 0,
+    lowStockProducts: 0,
+    outOfStockProducts: 0,
+  };
 
-  recentOrders: any[] = [];
-  lowStockProducts: any[] = [];
-
-  // Auto-refresh subscription
   private refreshSubscription?: Subscription;
+  private previousOrderCount = 0;
 
   constructor(
     private authService: AuthService,
     private shopService: ShopService,
     private soundService: SoundService,
-    private orderService: OrderService
+    private orderService: OrderService,
+    private http: HttpClient,
+    private router: Router
   ) {
     this.currentUser$ = this.authService.currentUser$;
   }
 
+  get hasStockAlert(): boolean {
+    return this.stats.lowStockProducts > 0 || this.stats.outOfStockProducts > 0;
+  }
+
   ngOnInit(): void {
     this.loadDashboardData();
-    this.loadNotificationCount();
     this.startAutoRefresh();
   }
-  
+
   ngOnDestroy(): void {
     if (this.refreshSubscription) {
       this.refreshSubscription.unsubscribe();
     }
   }
 
-  private loadDashboardData(): void {
-    this.loading = true;
-    this.loadTodaysStats();
-    this.loadRecentOrders();
-    this.loadLowStockProducts();
-    this.loadCustomerStats();
-  }
+  loadDashboardData(): void {
+    this.isLoading = true;
+    let shopId = localStorage.getItem('current_shop_id');
 
-  private loadNotificationCount(): void {
-    // Get shop ID from localStorage (same way as orders and notifications components)
-    const cachedShopId = localStorage.getItem('current_shop_id');
-    if (cachedShopId) {
-      const shopId = parseInt(cachedShopId, 10);
-      this.orderService.getOrdersByShop(String(shopId), 0, 50)
+    // If no shopId, try to fetch it from my-shop endpoint
+    if (!shopId) {
+      this.http.get<any>(`${environment.apiUrl}/shops/my-shop`, { withCredentials: true })
         .subscribe({
-          next: (orderPage) => {
-            if (orderPage.data?.content) {
-              // Count pending orders and recent orders (last 24 hours) as unread
-              const pendingOrders = orderPage.data.content.filter((order: any) => order.status === 'PENDING');
-              const yesterday = new Date();
-              yesterday.setDate(yesterday.getDate() - 1);
-              const recentOrders = orderPage.data.content.filter((order: any) => {
-                const orderDate = new Date(order.createdAt);
-                return orderDate > yesterday;
-              });
-
-              // Use whichever count is higher
-              this.unreadNotificationCount = Math.max(pendingOrders.length, recentOrders.length);
-
-              // Play sound for new pending orders
-              if (pendingOrders.length > this.previousOrderCount && this.previousOrderCount > 0) {
-                this.soundService.playNotificationSound();
+          next: (response) => {
+            if (response.data && response.data.shopId) {
+              localStorage.setItem('current_shop_id', response.data.shopId);
+              if (response.data.id) {
+                localStorage.setItem('current_shop_numeric_id', response.data.id.toString());
               }
-              this.previousOrderCount = pendingOrders.length;
+              // Now load dashboard with the fetched shopId
+              this.fetchDashboardStats(response.data.shopId);
+            } else {
+              console.error('No shop found for this user');
+              this.isLoading = false;
             }
           },
           error: (error) => {
-            console.error('Error loading notification count:', error);
+            console.error('Error fetching shop:', error);
+            this.isLoading = false;
           }
         });
-    } else {
-      console.error('No shop ID found in localStorage for notification count');
+      return;
     }
+
+    this.fetchDashboardStats(shopId);
   }
 
-  private loadTodaysStats(): void {
-    // Mock data while backend is being fixed
-    this.todaysRevenue = 15420;
-    this.todaysOrders = 23;
-    this.totalProducts = 156;
-    this.lowStockCount = 8;
-  }
+  private fetchDashboardStats(shopId: string): void {
+    // Fetch dashboard data from API
+    this.http.get<any>(`${environment.apiUrl}/shops/${shopId}/dashboard`, { withCredentials: true })
+      .subscribe({
+        next: (response) => {
+          if (response.statusCode === '0000' && response.data) {
+            const orderMetrics = response.data.orderMetrics || {};
+            const productMetrics = response.data.productMetrics || {};
 
-  private loadRecentOrders(): void {
-    // Mock recent orders data
-    this.recentOrders = [
-      {
-        id: 'ORD-2025-001',
-        customerName: 'John Smith',
-        createdAt: new Date('2025-01-22T10:30:00'),
-        total: 850,
-        status: 'PENDING'
-      },
-      {
-        id: 'ORD-2025-002', 
-        customerName: 'Sarah Wilson',
-        createdAt: new Date('2025-01-22T09:15:00'),
-        total: 1200,
-        status: 'PROCESSING'
-      },
-      {
-        id: 'ORD-2025-003',
-        customerName: 'Mike Johnson', 
-        createdAt: new Date('2025-01-22T08:45:00'),
-        total: 675,
-        status: 'COMPLETED'
-      },
-      {
-        id: 'ORD-2025-004',
-        customerName: 'Emily Davis',
-        createdAt: new Date('2025-01-21T16:20:00'),
-        total: 950,
-        status: 'PROCESSING'
-      }
-    ];
-  }
+            this.stats = {
+              todayOrders: orderMetrics.todayOrders || 0,
+              totalOrders: orderMetrics.totalOrders || 0,
+              pendingOrders: orderMetrics.pendingOrders || 0,
+              todayRevenue: orderMetrics.todayRevenue || 0,
+              monthlyRevenue: orderMetrics.monthlyRevenue || 0,
+              totalProducts: productMetrics.totalProducts || 0,
+              lowStockProducts: productMetrics.lowStockProducts || 0,
+              outOfStockProducts: productMetrics.outOfStockProducts || 0,
+            };
 
-  private loadLowStockProducts(): void {
-    // Mock low stock products data
-    this.lowStockProducts = [
-      {
-        id: 1,
-        name: 'Organic Apples',
-        category: 'Fruits',
-        stock: 5,
-        imageUrl: 'https://images.unsplash.com/photo-1568702846914-96b305d2aaeb?w=100&h=100&fit=crop'
-      },
-      {
-        id: 2,
-        name: 'Fresh Bread',
-        category: 'Bakery', 
-        stock: 3,
-        imageUrl: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=100&h=100&fit=crop'
-      },
-      {
-        id: 3,
-        name: 'Whole Milk',
-        category: 'Dairy',
-        stock: 8,
-        imageUrl: 'https://images.unsplash.com/photo-1563636619-e9143da7973b?w=100&h=100&fit=crop'
-      }
-    ];
-    this.loading = false;
-  }
+            this.unreadNotificationCount = this.stats.pendingOrders;
 
-  private loadCustomerStats(): void {
-    // Mock customer stats
-    this.totalCustomers = 89;
-    this.newCustomers = 12;
-  }
-
-  updateStock(product: any): void {
-    // Navigate to product edit page or show update dialog
-    console.log('Updating stock for product:', product.name);
-    // TODO: Implement actual stock update functionality
-    // this.router.navigate(['/products/edit', product.id]);
-  }
-  
-  private startAutoRefresh(): void {
-    // Check for new orders every 30 seconds
-    this.refreshSubscription = interval(30000).subscribe(() => {
-      this.checkForNewOrders();
-      this.loadNotificationCount();
-    });
-  }
-
-  private checkForNewOrders(): void {
-    // Store the previous order count
-    const previousCount = this.recentOrders.length;
-    
-    // Simulate checking for new orders (in real app, this would call the API)
-    const newOrderChance = Math.random();
-    if (newOrderChance > 0.7) { // 30% chance of new order
-      const newOrder = {
-        id: `ORD-2025-${Math.floor(Math.random() * 1000)}`,
-        customerName: `Customer ${Math.floor(Math.random() * 100)}`,
-        createdAt: new Date(),
-        total: Math.floor(Math.random() * 2000) + 500,
-        status: 'PENDING'
-      };
-      
-      // Add new order to the beginning of the list
-      this.recentOrders.unshift(newOrder);
-      if (this.recentOrders.length > 5) {
-        this.recentOrders.pop(); // Keep only 5 recent orders
-      }
-      
-      // Update order count
-      this.todaysOrders++;
-      this.todaysRevenue += newOrder.total;
-      
-      // Play notification sound
-      this.soundService.playOrderNotification();
-      
-      // Show browser notification if permitted
-      this.showBrowserNotification(newOrder);
-    }
-  }
-  
-  private showBrowserNotification(order: any): void {
-    if ('Notification' in window && Notification.permission === 'granted') {
-      const notification = new Notification('New Order Received! 🛒', {
-        body: `Order #${order.id} from ${order.customerName} - ₹${order.total}`,
-        icon: '/assets/icons/order-icon.png',
-        badge: '/assets/icons/badge-icon.png',
-        tag: 'order-notification',
-        requireInteraction: false
+            // Play sound for new orders
+            if (this.stats.pendingOrders > this.previousOrderCount && this.previousOrderCount > 0) {
+              this.soundService.playNotificationSound();
+            }
+            this.previousOrderCount = this.stats.pendingOrders;
+          }
+          this.isLoading = false;
+        },
+        error: () => {
+          this.isLoading = false;
+        }
       });
-      
-      notification.onclick = () => {
-        window.focus();
-        notification.close();
-      };
-      
-      setTimeout(() => notification.close(), 5000);
-    } else if ('Notification' in window && Notification.permission === 'default') {
-      // Request permission if not already granted
-      Notification.requestPermission();
+  }
+
+  refreshDashboard(): void {
+    this.loadDashboardData();
+  }
+
+  formatCurrency(amount: number): string {
+    if (amount >= 100000) {
+      return (amount / 100000).toFixed(1) + 'L';
+    } else if (amount >= 1000) {
+      return (amount / 1000).toFixed(1) + 'K';
     }
+    return amount.toFixed(0);
+  }
+
+  private startAutoRefresh(): void {
+    // Refresh every 30 seconds
+    this.refreshSubscription = interval(30000).subscribe(() => {
+      this.loadDashboardData();
+    });
   }
 }
