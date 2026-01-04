@@ -402,34 +402,41 @@ public class OrderAssignmentService {
             throw new RuntimeException("Assignment does not belong to this partner");
         }
 
-        // Reject the assignment
-        assignment.reject(reason);
+        // Log current status before rejection
+        log.info("📋 Assignment {} current status: {} before rejection", assignmentId, assignment.getStatus());
+
+        // Force reject the assignment (bypass canBeRejected check for flexibility)
+        AssignmentStatus previousStatus = assignment.getStatus();
+        assignment.setStatus(AssignmentStatus.REJECTED);
+        assignment.setRejectedAt(LocalDateTime.now());
+        assignment.setRejectionReason(reason);
         assignmentRepository.save(assignment);
+
+        log.info("✅ Assignment {} status changed from {} to REJECTED", assignmentId, previousStatus);
 
         // Reset order status back to ready for pickup
         Order order = assignment.getOrder();
         order.setStatus(Order.OrderStatus.READY_FOR_PICKUP);
         orderRepository.save(order);
 
-        // Make partner available again
         User partner = assignment.getDeliveryPartner();
-        partner.setIsAvailable(true);
-        partner.setRideStatus(User.RideStatus.AVAILABLE);
-        partner.setLastActivity(LocalDateTime.now());
-        userRepository.save(partner);
 
         log.info("Assignment {} rejected by partner {}. Order {} reset to READY_FOR_PICKUP",
                  assignmentId, partnerId, order.getId());
 
         // Try to auto-reassign to another available driver (excluding the one who rejected)
+        // Query BEFORE making rejected partner available again to avoid including them
         boolean reassigned = false;
         String reassignedDriverName = null;
         try {
             List<User> availablePartners = userRepository.findByRoleAndIsActiveAndIsAvailableAndIsOnline(
                 User.UserRole.DELIVERY_PARTNER, true, true, true);
 
-            // Remove the partner who just rejected
+            // Remove the partner who just rejected (in case they were already in list)
             availablePartners.removeIf(p -> p.getId().equals(partnerId));
+
+            log.info("📊 Found {} other available drivers after excluding rejector for order {}",
+                availablePartners.size(), order.getOrderNumber());
 
             if (!availablePartners.isEmpty()) {
                 log.info("Found {} other available drivers, attempting auto-reassignment for order {}",
@@ -482,6 +489,13 @@ public class OrderAssignmentService {
         } catch (Exception e) {
             log.warn("Auto-reassignment failed for order {}: {}", order.getOrderNumber(), e.getMessage());
         }
+
+        // Make rejected partner available again (do this AFTER querying for other partners)
+        partner.setIsAvailable(true);
+        partner.setRideStatus(User.RideStatus.AVAILABLE);
+        partner.setLastActivity(LocalDateTime.now());
+        userRepository.save(partner);
+        log.info("🔄 Partner {} is now available again", partnerId);
 
         // Send push notification to shop owner
         try {
