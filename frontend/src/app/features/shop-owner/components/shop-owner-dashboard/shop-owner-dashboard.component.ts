@@ -619,34 +619,35 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
 
   loadDashboardData(): void {
     this.isLoading = true;
-    let shopId = localStorage.getItem('current_shop_id');
 
-    // If no shopId, try to fetch it from my-shop endpoint
-    if (!shopId) {
-      this.http.get<any>(`${environment.apiUrl}/shops/my-shop`, { withCredentials: true })
-        .subscribe({
-          next: (response) => {
-            if (response.data && response.data.shopId) {
-              localStorage.setItem('current_shop_id', response.data.shopId);
-              if (response.data.id) {
-                localStorage.setItem('current_shop_numeric_id', response.data.id.toString());
-              }
-              // Now load dashboard with the fetched shopId
-              this.fetchDashboardStats(response.data.shopId);
-            } else {
-              console.error('No shop found for this user');
-              this.isLoading = false;
+    // Always fetch fresh shopId from my-shop endpoint to ensure we have the correct value
+    this.http.get<any>(`${environment.apiUrl}/shops/my-shop`, { withCredentials: true })
+      .subscribe({
+        next: (response) => {
+          if (response.data && response.data.shopId) {
+            // Update localStorage with correct shopId
+            localStorage.setItem('current_shop_id', response.data.shopId);
+            if (response.data.id) {
+              localStorage.setItem('current_shop_numeric_id', response.data.id.toString());
             }
-          },
-          error: (error) => {
-            console.error('Error fetching shop:', error);
+            // Load dashboard with the fetched shopId
+            this.fetchDashboardStats(response.data.shopId);
+          } else {
+            console.error('No shop found for this user');
             this.isLoading = false;
           }
-        });
-      return;
-    }
-
-    this.fetchDashboardStats(shopId);
+        },
+        error: (error) => {
+          console.error('Error fetching shop:', error);
+          // Fallback to localStorage if API fails
+          const cachedShopId = localStorage.getItem('current_shop_id');
+          if (cachedShopId && cachedShopId.startsWith('SHOP-')) {
+            this.fetchDashboardStats(cachedShopId);
+          } else {
+            this.isLoading = false;
+          }
+        }
+      });
   }
 
   private fetchDashboardStats(shopId: string): void {
