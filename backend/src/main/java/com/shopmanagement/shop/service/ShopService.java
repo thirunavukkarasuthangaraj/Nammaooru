@@ -21,6 +21,9 @@ import com.shopmanagement.repository.OrderAssignmentRepository;
 import com.shopmanagement.product.repository.ShopProductRepository;
 import com.shopmanagement.product.entity.ShopProduct;
 import com.shopmanagement.dto.order.OrderResponse;
+import com.shopmanagement.service.FirebaseNotificationService;
+import com.shopmanagement.entity.UserFcmToken;
+import com.shopmanagement.repository.UserFcmTokenRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -58,6 +61,8 @@ public class ShopService {
     private final OrderRepository orderRepository;
     private final OrderAssignmentRepository orderAssignmentRepository;
     private final ShopProductRepository shopProductRepository;
+    private final FirebaseNotificationService firebaseNotificationService;
+    private final UserFcmTokenRepository userFcmTokenRepository;
     private final com.shopmanagement.service.BusinessHoursService businessHoursService;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
@@ -972,6 +977,112 @@ public class ShopService {
                 .totalPrice(orderItem.getTotalPrice())
                 .specialInstructions(orderItem.getSpecialInstructions())
                 .build();
+    }
+
+    /**
+     * Find and assign a driver for an order (called by shop owner to retry assignment)
+     */
+    @Transactional
+    public Map<String, Object> findDriverForOrder(String orderNumber) {
+        log.info("🔄 Shop owner requesting driver assignment for order: {}", orderNumber);
+
+        Map<String, Object> result = new HashMap<>();
+
+        // Find the order
+        Order order = orderRepository.findByOrderNumber(orderNumber)
+                .orElseThrow(() -> new RuntimeException("Order not found: " + orderNumber));
+
+        // Check if order is in READY_FOR_PICKUP status
+        if (order.getStatus() != Order.OrderStatus.READY_FOR_PICKUP) {
+            result.put("success", false);
+            result.put("message", "Order must be in READY_FOR_PICKUP status to assign driver");
+            return result;
+        }
+
+        // Check if there's already an active assignment
+        List<OrderAssignment.AssignmentStatus> activeStatuses = List.of(
+                OrderAssignment.AssignmentStatus.ASSIGNED,
+                OrderAssignment.AssignmentStatus.ACCEPTED,
+                OrderAssignment.AssignmentStatus.PICKED_UP,
+                OrderAssignment.AssignmentStatus.IN_TRANSIT
+        );
+
+        Optional<OrderAssignment> existingAssignment = orderAssignmentRepository
+                .findActiveAssignmentByOrderId(order.getId(), activeStatuses);
+
+        if (existingAssignment.isPresent()) {
+            result.put("success", false);
+            result.put("message", "Order already has an active driver assignment");
+            result.put("driverName", existingAssignment.get().getDeliveryPartner().getFirstName());
+            return result;
+        }
+
+        // Find available online drivers
+        List<User> availablePartners = userRepository.findByRoleAndIsActiveAndIsAvailableAndIsOnline(
+                User.UserRole.DELIVERY_PARTNER, true, true, true);
+
+        log.info("📊 Found {} available drivers for order {}", availablePartners.size(), orderNumber);
+
+        if (availablePartners.isEmpty()) {
+            result.put("success", false);
+            result.put("message", "No drivers available. Please try again later.");
+            result.put("availableDrivers", 0);
+            return result;
+        }
+
+        // Select best driver (first available for now, can be improved with distance calculation)
+        User selectedPartner = availablePartners.get(0);
+
+        // Create new assignment
+        BigDecimal deliveryFee = order.getDeliveryFee();
+        BigDecimal partnerCommission = deliveryFee != null ?
+                deliveryFee.multiply(BigDecimal.valueOf(0.8)) : BigDecimal.ZERO;
+
+        LocalDateTime now = LocalDateTime.now();
+        OrderAssignment newAssignment = OrderAssignment.builder()
+                .order(order)
+                .deliveryPartner(selectedPartner)
+                .status(OrderAssignment.AssignmentStatus.ASSIGNED)
+                .assignmentType(OrderAssignment.AssignmentType.MANUAL)
+                .assignedAt(now)
+                .deliveryFee(deliveryFee)
+                .partnerCommission(partnerCommission)
+                .assignmentNotes("Manually assigned by shop owner via Find Driver")
+                .createdBy("shop_owner")
+                .updatedBy("shop_owner")
+                .build();
+        newAssignment.setCreatedAt(now);
+        newAssignment.setUpdatedAt(now);
+        orderAssignmentRepository.save(newAssignment);
+
+        log.info("✅ Order {} assigned to driver {} (ID: {})",
+                orderNumber, selectedPartner.getFirstName(), selectedPartner.getId());
+
+        // Send notification to driver
+        try {
+            List<UserFcmToken> driverTokens = userFcmTokenRepository.findActiveTokensByUserId(selectedPartner.getId());
+            if (!driverTokens.isEmpty()) {
+                firebaseNotificationService.sendOrderAssignmentNotificationToDriver(
+                        order.getOrderNumber(),
+                        driverTokens.get(0).getFcmToken(),
+                        selectedPartner.getId(),
+                        order.getShop().getName(),
+                        order.getDeliveryAddress(),
+                        deliveryFee != null ? deliveryFee.doubleValue() : 0.0
+                );
+                log.info("📱 Notification sent to driver for order {}", orderNumber);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to send notification to driver: {}", e.getMessage());
+        }
+
+        result.put("success", true);
+        result.put("message", "Driver assigned successfully");
+        result.put("driverName", selectedPartner.getFirstName());
+        result.put("driverId", selectedPartner.getId());
+        result.put("assignmentId", newAssignment.getId());
+
+        return result;
     }
 
 }

@@ -794,6 +794,22 @@ class ApiService {
     }
   }
 
+  // Find driver for order (shop owner retry assignment)
+  static Future<ApiResponse> findDriverForOrder(String orderNumber) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/shops/orders/$orderNumber/find-driver'),
+            headers: _authHeaders,
+          )
+          .timeout(timeout);
+
+      return _handleResponse(response);
+    } catch (e) {
+      return ApiResponse.error('Network error: ${e.toString()}');
+    }
+  }
+
   // Dashboard endpoints (legacy - kept for backward compatibility)
   static Future<ApiResponse> getDashboardStats() async {
     if (_useMockData) {

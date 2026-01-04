@@ -565,4 +565,31 @@ class OrderProvider extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
   }
+
+  // Find driver for order (shop owner retry assignment)
+  Future<Map<String, dynamic>> findDriverForOrder(String orderNumber) async {
+    try {
+      print('🔍 Finding driver for order: $orderNumber');
+
+      final response = await ApiService.findDriverForOrder(orderNumber);
+
+      if (response.isSuccess) {
+        final data = response.data['data'] ?? response.data;
+        print('✅ Find driver result: $data');
+        return data;
+      } else {
+        print('❌ Find driver failed: ${response.error}');
+        return {
+          'success': false,
+          'message': response.error ?? 'Failed to find driver',
+        };
+      }
+    } catch (e) {
+      print('❌ Error finding driver: $e');
+      return {
+        'success': false,
+        'message': 'Error: ${e.toString()}',
+      };
+    }
+  }
 }

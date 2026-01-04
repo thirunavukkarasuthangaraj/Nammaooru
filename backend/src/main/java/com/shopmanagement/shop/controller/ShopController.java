@@ -447,4 +447,19 @@ public class ShopController {
         OrderResponse response = orderService.rejectOrder(orderId, reason);
         return ResponseUtil.success(response, "Order rejected successfully");
     }
+
+    @PostMapping("/orders/{orderNumber}/find-driver")
+    @PreAuthorize("hasRole('SHOP_OWNER') or hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> findDriverForOrder(
+            @PathVariable String orderNumber) {
+
+        log.info("Shop requesting to find driver for order: {}", orderNumber);
+        Map<String, Object> result = shopService.findDriverForOrder(orderNumber);
+
+        if ((Boolean) result.get("success")) {
+            return ResponseUtil.success(result, "Driver assigned successfully");
+        } else {
+            return ResponseUtil.success(result, (String) result.get("message"));
+        }
+    }
 }

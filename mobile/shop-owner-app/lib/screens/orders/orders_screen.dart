@@ -466,6 +466,52 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
     }
   }
 
+  Future<void> _findDriverForOrder(dynamic order) async {
+    final orderNumber = order['orderNumber'];
+
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      final orderProvider = Provider.of<OrderProvider>(context, listen: false);
+      final result = await orderProvider.findDriverForOrder(orderNumber);
+
+      Navigator.pop(context); // Close loading
+
+      if (result['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Driver ${result['driverName']} assigned to order!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        // Refresh orders
+        await orderProvider.loadOrders();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'No drivers available'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    } catch (e) {
+      Navigator.pop(context); // Close loading
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   void _showOTPVerificationDialog(dynamic order) {
     final TextEditingController otpController = TextEditingController();
 
@@ -890,9 +936,21 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                         ),
                         SizedBox(height: AppTheme.space4),
                         Text(
-                          'The system is assigning a delivery partner to this order',
+                          'No driver assigned yet. Tap below to find one.',
                           textAlign: TextAlign.center,
                           style: AppTheme.bodySmall.copyWith(color: AppTheme.textSecondary),
+                        ),
+                        SizedBox(height: AppTheme.space12),
+                        ModernButton(
+                          text: 'Find Driver',
+                          icon: Icons.local_shipping,
+                          variant: ButtonVariant.primary,
+                          size: ButtonSize.medium,
+                          fullWidth: true,
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _findDriverForOrder(order);
+                          },
                         ),
                       ],
                     ),
