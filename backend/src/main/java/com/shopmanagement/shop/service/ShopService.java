@@ -244,6 +244,29 @@ public class ShopService {
         return shopMapper.toResponse(shop);
     }
 
+    @Transactional(readOnly = true)
+    public ShopResponse getShopByOwnerUsername(String username) {
+        log.info("Looking up shop for owner username: {}", username);
+
+        // First find the user by username
+        User user = userRepository.findByUsername(username).orElse(null);
+        if (user == null) {
+            log.warn("User not found: {}", username);
+            return null;
+        }
+
+        // Find shop by owner email (shop links to user via email)
+        Shop shop = shopRepository.findByOwnerEmail(user.getEmail()).orElse(null);
+
+        if (shop == null) {
+            log.warn("No shop found for user: {} (email: {})", username, user.getEmail());
+            return null;
+        }
+
+        log.info("Found shop {} for user {}", shop.getName(), username);
+        return shopMapper.toResponse(shop);
+    }
+
     public ShopResponse updateShop(Long id, ShopUpdateRequest request) {
         log.info("Updating shop with ID: {}", id);
         

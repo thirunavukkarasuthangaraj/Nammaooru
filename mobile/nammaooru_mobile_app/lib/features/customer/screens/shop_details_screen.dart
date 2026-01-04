@@ -13,6 +13,7 @@ import '../../../core/localization/language_provider.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../core/config/api_config.dart';
+import '../../../core/services/promo_code_service.dart';
 import 'cart_screen.dart';
 import 'shop_products_screen.dart';
 
@@ -33,6 +34,7 @@ class ShopDetailsScreen extends StatefulWidget {
 class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
   final ShopApiService _shopApi = ShopApiService();
   final VoiceSearchService _voiceSearch = VoiceSearchService();
+  final PromoCodeService _promoService = PromoCodeService();
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final PageController _couponPageController = PageController();
@@ -45,11 +47,13 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
   List<dynamic> _allProducts =
       []; // Store all products for client-side filtering
   List<dynamic> _categories = [];
+  List<dynamic> _promotions = []; // Store promotions from API
   String? _selectedCategory;
   String? _selectedCategoryName; // Store category name for filtering
   bool _isLoadingShop = false;
   bool _isLoadingProducts = false;
   bool _isLoadingCategories = false;
+  bool _isLoadingPromotions = false;
   bool _isVoiceSearching = false;
   bool _hasError = false;
   String? _errorMessage;
@@ -61,6 +65,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     _loadShopDetails();
     _loadCategories();
     _loadProducts();
+    _loadPromotions();
     _searchController.addListener(_onSearchChanged);
     _startCouponAutoSlide();
   }
@@ -76,8 +81,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
 
   void _startCouponAutoSlide() {
     _couponAutoSlideTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      if (_couponPageController.hasClients) {
-        final nextPage = (_currentCouponPage + 1) % 3; // 3 coupons total
+      if (_couponPageController.hasClients && _promotions.isNotEmpty) {
+        final nextPage = (_currentCouponPage + 1) % _promotions.length;
         _couponPageController.animateToPage(
           nextPage,
           duration: const Duration(milliseconds: 400),
@@ -85,6 +90,33 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
         );
       }
     });
+  }
+
+  Future<void> _loadPromotions() async {
+    setState(() {
+      _isLoadingPromotions = true;
+    });
+
+    try {
+      final promos = await _promoService.getActivePromotions(
+        shopId: widget.shopId.toString(),
+      );
+
+      if (mounted) {
+        setState(() {
+          _promotions = promos;
+          _isLoadingPromotions = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading promotions: $e');
+      if (mounted) {
+        setState(() {
+          _promotions = [];
+          _isLoadingPromotions = false;
+        });
+      }
+    }
   }
 
   Future<void> _loadCategories() async {
@@ -285,16 +317,6 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                          ),
-                          // Voice Search Icon in toolbar
-                          IconButton(
-                            icon: Icon(
-                              _isVoiceSearching ? Icons.mic : Icons.mic_none,
-                              color: Colors.white,
-                              size: 24,
-                            ),
-                            onPressed: _isVoiceSearching ? null : _showVoiceSearchDialog,
-                            tooltip: 'Voice Search',
                           ),
                         ],
                       ),
@@ -836,13 +858,6 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
           },
           tooltip: 'Search',
         ),
-        IconButton(
-          icon: const Icon(Icons.mic, color: Colors.red, size: 28),
-          onPressed: () {
-            _showVoiceSearchDialog();
-          },
-          tooltip: 'Voice Search (Tamil/English)',
-        ),
       ],
     );
   }
@@ -997,22 +1012,33 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
   }
 
   Widget _buildCouponSection() {
-    final coupons = [
-      {
-        'code': 'SAVE50',
-        'offer': '₹50 OFF above ₹500',
-        'color': VillageTheme.primaryGreen,
-      },
-      {
-        'code': 'FIRST10',
-        'offer': '10% OFF first order',
-        'color': Colors.orange,
-      },
-      {
-        'code': 'FREEDEL',
-        'offer': 'Free Delivery ₹300+',
-        'color': Colors.blue,
-      },
+    // If loading, show a small loading indicator
+    if (_isLoadingPromotions) {
+      return Container(
+        height: 100,
+        margin: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 8),
+        child: const Center(
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
+
+    // If no promotions from API, hide the section
+    if (_promotions.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    // Color palette for promotions
+    final colors = [
+      VillageTheme.primaryGreen,
+      Colors.orange,
+      Colors.blue,
+      Colors.purple,
+      Colors.teal,
     ];
 
     return Container(
@@ -1028,10 +1054,32 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                   _currentCouponPage = index;
                 });
               },
-              itemCount: coupons.length,
+              itemCount: _promotions.length,
               itemBuilder: (context, index) {
-                final coupon = coupons[index];
-                final cardColor = coupon['color'] as Color;
+                final promo = _promotions[index];
+                final cardColor = colors[index % colors.length];
+
+                // Build offer text from promo data
+                final code = promo['code']?.toString() ?? 'PROMO';
+                final discountType = promo['discountType']?.toString() ?? 'PERCENTAGE';
+                final discountValue = promo['discountValue'] ?? 0;
+                final minOrderAmount = promo['minOrderAmount'] ?? 0;
+
+                String offerText;
+                if (discountType == 'PERCENTAGE') {
+                  offerText = '${discountValue.toStringAsFixed(0)}% OFF';
+                } else if (discountType == 'FIXED') {
+                  offerText = '₹${discountValue.toStringAsFixed(0)} OFF';
+                } else if (discountType == 'FREE_DELIVERY') {
+                  offerText = 'Free Delivery';
+                } else {
+                  offerText = promo['description']?.toString() ?? 'Special Offer';
+                }
+
+                if (minOrderAmount > 0) {
+                  offerText += ' above ₹${minOrderAmount.toStringAsFixed(0)}';
+                }
+
                 return Container(
                   margin: const EdgeInsets.symmetric(horizontal: 8),
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -1067,7 +1115,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              coupon['code'] as String,
+                              code,
                               style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,
@@ -1077,7 +1125,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                             ),
                             const SizedBox(height: 3),
                             Text(
-                              coupon['offer'] as String,
+                              offerText,
                               style: const TextStyle(
                                 fontSize: 11,
                                 color: Colors.white,
@@ -1100,7 +1148,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(
-              coupons.length,
+              _promotions.length,
               (index) => Container(
                 margin: const EdgeInsets.symmetric(horizontal: 3),
                 width: 6,

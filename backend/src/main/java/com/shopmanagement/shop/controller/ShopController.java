@@ -23,6 +23,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -179,6 +180,28 @@ public class ShopController {
         response.put("count", featuredShops.size());
 
         return ResponseUtil.success(response, "Featured shops retrieved successfully");
+    }
+
+    @GetMapping("/my-shop")
+    @PreAuthorize("hasRole('SHOP_OWNER')")
+    public ResponseEntity<ApiResponse<ShopResponse>> getMyShop(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseUtil.error(ResponseConstants.UNAUTHORIZED, "User not authenticated");
+        }
+
+        String username = authentication.getName();
+        log.info("Getting shop for user: {}", username);
+
+        try {
+            ShopResponse shop = shopService.getShopByOwnerUsername(username);
+            if (shop == null) {
+                return ResponseUtil.error(ResponseConstants.RESOURCE_NOT_FOUND, "No shop found for this user");
+            }
+            return ResponseUtil.success(shop, "Shop retrieved successfully");
+        } catch (Exception e) {
+            log.error("Error getting shop for user {}: {}", username, e.getMessage());
+            return ResponseUtil.error(ResponseConstants.GENERAL_ERROR, "Failed to get shop: " + e.getMessage());
+        }
     }
 
     @GetMapping("/approvals")
