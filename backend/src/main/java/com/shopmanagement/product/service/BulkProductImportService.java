@@ -560,10 +560,12 @@ public class BulkProductImportService {
 
             // Get reference to master product
             MasterProduct masterProduct = masterProductRepository.getReferenceById(productId);
+            log.info("IMAGE UPLOAD: productId={}, imageUrl={}, folder={}", productId, imageUrl, folder);
 
             // Check if this exact image URL already exists for this product
             Optional<MasterProductImage> existingImage = masterProductImageRepository
                     .findByMasterProductIdAndImageUrl(productId, imageUrl);
+            log.info("IMAGE UPLOAD: existingImage found={}", existingImage.isPresent());
 
             if (existingImage.isPresent()) {
                 // Image already exists - make sure it's set as primary
@@ -594,7 +596,9 @@ public class BulkProductImportService {
                     .createdBy("BULK_IMPORT")
                     .build();
 
-            masterProductImageRepository.save(productImage);
+            MasterProductImage savedImage = masterProductImageRepository.save(productImage);
+            log.info("IMAGE UPLOAD: SAVED new image id={}, isPrimary={}, url={}",
+                     savedImage.getId(), savedImage.getIsPrimary(), savedImage.getImageUrl());
 
             String status = fileExists ? "Linked as primary" : "Linked as primary (file not found)";
             log.info("Image saved for product {}: {} - {}", productId, imageUrl, status);

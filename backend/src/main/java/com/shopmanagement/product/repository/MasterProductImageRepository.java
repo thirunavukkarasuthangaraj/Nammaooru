@@ -27,7 +27,8 @@ public interface MasterProductImageRepository extends JpaRepository<MasterProduc
     Optional<MasterProductImage> findByMasterProductIdAndImageUrl(Long masterProductId, String imageUrl);
 
     // Clear all primary flags for a product (used before setting new primary)
-    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
+    @org.springframework.transaction.annotation.Transactional
     @Query("UPDATE MasterProductImage img SET img.isPrimary = false WHERE img.masterProduct.id = :productId")
     void clearPrimaryForProduct(@Param("productId") Long productId);
 }
