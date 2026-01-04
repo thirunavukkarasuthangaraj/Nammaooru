@@ -8,6 +8,7 @@ import com.shopmanagement.product.entity.ShopProduct;
 import com.shopmanagement.product.repository.MasterProductImageRepository;
 import com.shopmanagement.product.repository.MasterProductRepository;
 import com.shopmanagement.product.repository.ProductCategoryRepository;
+import com.shopmanagement.product.repository.ShopProductRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
@@ -41,6 +42,7 @@ public class BulkProductImportService {
     private final MasterProductRepository masterProductRepository;
     private final MasterProductImageRepository masterProductImageRepository;
     private final ProductCategoryRepository productCategoryRepository;
+    private final ShopProductRepository shopProductRepository;
 
     @Value("${app.upload.dir}")
     private String uploadDir;
@@ -326,6 +328,7 @@ public class BulkProductImportService {
     /**
      * Process shop product import with independent transaction
      * Uses REQUIRES_NEW so each product import can succeed/fail independently
+     * SUPPORTS UPSERT: If product exists, update image. If not, create product.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public BulkImportResponse.ImportResult processShopProductImport(Long shopId,
@@ -335,11 +338,14 @@ public class BulkProductImportService {
             // First, check if master product exists or create it
             MasterProductRequest masterProductRequest = buildMasterProductRequest(request);
             MasterProductResponse masterProduct;
+            boolean isExistingProduct = false;
 
             try {
                 // Try to find existing master product by SKU
                 if (request.getSku() != null && !request.getSku().isEmpty()) {
                     masterProduct = masterProductService.getProductBySku(request.getSku());
+                    isExistingProduct = true;
+                    log.info("Found existing master product by SKU: {}", request.getSku());
                 } else {
                     // Create new master product
                     masterProduct = masterProductService.createProduct(masterProductRequest);
@@ -349,23 +355,40 @@ public class BulkProductImportService {
                 masterProduct = masterProductService.createProduct(masterProductRequest);
             }
 
-            // Create shop product
-            ShopProductRequest shopProductRequest = buildShopProductRequest(request, masterProduct.getId());
-            ShopProductResponse shopProduct = shopProductService.addProductToShop(shopId, shopProductRequest);
+            // Check if shop already has this product
+            Long shopProductId = null;
+            Optional<ShopProduct> existingShopProduct = shopProductRepository
+                    .findByShopIdAndMasterProductId(shopId, masterProduct.getId());
 
-            // Handle image upload - use masterProduct.getId() NOT shopProduct.getId()
+            if (existingShopProduct.isPresent()) {
+                // Shop already has this product - just update the image
+                shopProductId = existingShopProduct.get().getId();
+                log.info("Shop already has product (ID: {}), updating image only", shopProductId);
+            } else {
+                // Create new shop product
+                ShopProductRequest shopProductRequest = buildShopProductRequest(request, masterProduct.getId());
+                ShopProductResponse shopProduct = shopProductService.addProductToShop(shopId, shopProductRequest);
+                shopProductId = shopProduct.getId();
+                log.info("Created new shop product with ID: {}", shopProductId);
+            }
+
+            // Handle image upload - ALWAYS update image for master product
             String imageStatus = "No image";
             if (request.getImagePath() != null && !request.getImagePath().isEmpty()) {
                 imageStatus = handleImageUpload(masterProduct.getId(), request.getImagePath(),
                                                 request.getImageFolder(), images);
             }
 
+            String message = existingShopProduct.isPresent()
+                    ? "Product exists - image updated"
+                    : "Product imported successfully";
+
             return BulkImportResponse.ImportResult.builder()
                     .rowNumber(request.getRowNumber())
                     .productName(request.getName())
                     .status("SUCCESS")
-                    .message("Product imported successfully")
-                    .productId(shopProduct.getId())
+                    .message(message)
+                    .productId(shopProductId)
                     .imageUploadStatus(imageStatus)
                     .build();
 
