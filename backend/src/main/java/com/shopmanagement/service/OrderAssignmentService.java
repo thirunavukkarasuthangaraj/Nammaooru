@@ -421,6 +421,68 @@ public class OrderAssignmentService {
         log.info("Assignment {} rejected by partner {}. Order {} reset to READY_FOR_PICKUP",
                  assignmentId, partnerId, order.getId());
 
+        // Try to auto-reassign to another available driver (excluding the one who rejected)
+        boolean reassigned = false;
+        String reassignedDriverName = null;
+        try {
+            List<User> availablePartners = userRepository.findByRoleAndIsActiveAndIsAvailableAndIsOnline(
+                User.UserRole.DELIVERY_PARTNER, true, true, true);
+
+            // Remove the partner who just rejected
+            availablePartners.removeIf(p -> p.getId().equals(partnerId));
+
+            if (!availablePartners.isEmpty()) {
+                log.info("Found {} other available drivers, attempting auto-reassignment for order {}",
+                    availablePartners.size(), order.getOrderNumber());
+
+                // Select another partner and create new assignment
+                User newPartner = selectBestAvailablePartner(availablePartners);
+
+                BigDecimal deliveryFee = order.getDeliveryFee();
+                BigDecimal partnerCommission = calculatePartnerCommission(deliveryFee);
+
+                LocalDateTime now = LocalDateTime.now();
+                OrderAssignment newAssignment = OrderAssignment.builder()
+                    .order(order)
+                    .deliveryPartner(newPartner)
+                    .assignedBy(partner) // Previous partner triggered this
+                    .status(AssignmentStatus.ASSIGNED)
+                    .assignmentType(AssignmentType.AUTO)
+                    .assignedAt(now)
+                    .deliveryFee(deliveryFee)
+                    .partnerCommission(partnerCommission)
+                    .assignmentNotes("Auto-reassigned after rejection by " + (partner.getFirstName() != null ? partner.getFirstName() : "driver"))
+                    .createdBy("system")
+                    .updatedBy("system")
+                    .build();
+                newAssignment.setCreatedAt(now);
+                newAssignment.setUpdatedAt(now);
+                assignmentRepository.save(newAssignment);
+
+                reassigned = true;
+                reassignedDriverName = newPartner.getFirstName() != null ? newPartner.getFirstName() : "Another driver";
+
+                // Send notification to new driver
+                List<UserFcmToken> newDriverTokens = userFcmTokenRepository.findActiveTokensByUserId(newPartner.getId());
+                if (!newDriverTokens.isEmpty()) {
+                    firebaseNotificationService.sendOrderAssignmentNotificationToDriver(
+                        order.getOrderNumber(),
+                        newDriverTokens.get(0).getFcmToken(),
+                        newPartner.getId(),
+                        order.getShop().getName(),
+                        order.getDeliveryAddress(),
+                        deliveryFee != null ? deliveryFee.doubleValue() : 0.0
+                    );
+                }
+
+                log.info("✅ Order {} auto-reassigned to driver {} after rejection", order.getOrderNumber(), newPartner.getId());
+            } else {
+                log.info("No other available drivers for order {}. Shop owner needs to wait.", order.getOrderNumber());
+            }
+        } catch (Exception e) {
+            log.warn("Auto-reassignment failed for order {}: {}", order.getOrderNumber(), e.getMessage());
+        }
+
         // Send push notification to shop owner
         try {
             String shopOwnerEmail = order.getShop().getOwnerEmail();
@@ -428,11 +490,16 @@ public class OrderAssignmentService {
                 User shopOwner = userRepository.findByEmail(shopOwnerEmail).orElse(null);
                 if (shopOwner != null) {
                     List<UserFcmToken> tokens = userFcmTokenRepository.findActiveTokensByUserId(shopOwner.getId());
-                    log.info("📊 Found {} active FCM tokens for shop owner (user ID: {}) for rejection notification", tokens.size(), shopOwner.getId());
+                    log.info("📊 Found {} active FCM tokens for shop owner for order {}", tokens.size(), order.getOrderNumber());
 
                     if (!tokens.isEmpty()) {
                         String partnerName = partner.getFirstName() != null ? partner.getFirstName() : "Delivery partner";
-                        String message = partnerName + " rejected the order. Reason: " + reason + ". Order is back to Ready for Pickup.";
+                        String message;
+                        if (reassigned) {
+                            message = partnerName + " rejected. Order auto-reassigned to " + reassignedDriverName + ".";
+                        } else {
+                            message = partnerName + " rejected. No other drivers available. Please wait or try manual assignment.";
+                        }
 
                         for (UserFcmToken tokenEntity : tokens) {
                             try {
@@ -442,7 +509,7 @@ public class OrderAssignmentService {
                                     tokenEntity.getFcmToken()
                                 );
                                 log.info("✅ Sent rejection notification to shop owner for order {}", order.getOrderNumber());
-                                break; // One successful notification is enough
+                                break;
                             } catch (Exception e) {
                                 log.warn("Failed to send notification to token: {}", e.getMessage());
                             }
