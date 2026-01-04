@@ -102,31 +102,152 @@ export class BulkImportService {
   }
 
   /**
-   * Generate sample CSV content
+   * Generate sample CSV content - Standard Template Format
+   *
+   * Column Mapping (matches backend BulkProductImportService):
+   * A(0):  name           - Product name (required)
+   * B(1):  nameTamil      - Tamil name
+   * C(2):  description    - Product description
+   * D(3):  category       - Category name (auto-created if not exists)
+   * E(4):  brand          - Brand name
+   * F(5):  sku            - SKU code (used to find existing products)
+   * G(6):  searchQuery    - (SKIP - for internal use)
+   * H(7):  downloadLink   - (SKIP - for internal use)
+   * I(8):  baseUnit       - Unit of measurement (kg, piece, etc.)
+   * J(9):  baseWeight     - Weight value
+   * K(10): originalPrice  - MRP/Original price
+   * L(11): sellingPrice   - Selling price
+   * M(12): discountPct    - Discount percentage
+   * N(13): costPrice      - Cost price
+   * O(14): stockQuantity  - Current stock
+   * P(15): minStockLevel  - Minimum stock alert level
+   * Q(16): maxStockLevel  - Maximum stock level
+   * R(17): trackInventory - Track inventory (TRUE/FALSE)
+   * S(18): status         - ACTIVE/INACTIVE
+   * T(19): isFeatured     - Featured product (TRUE/FALSE)
+   * U(20): isAvailable    - Available for sale (TRUE/FALSE)
+   * V(21): reserved       - (SKIP - reserved for future use)
+   * W(22): tags           - Comma-separated tags
+   * X(23): specifications - Product specifications
+   * Y(24): imagePath      - Image filename (e.g., product.jpg)
+   * Z(25): imageFolder    - Subfolder under /uploads/products/master/
    */
   private generateSampleCSV(): string {
+    // Standard header format - 26 columns (A to Z)
     const headers = [
-      'name', 'description', 'categoryId', 'brand', 'sku', 'barcode',
-      'baseUnit', 'baseWeight', 'originalPrice', 'sellingPrice', 'discountPercentage',
-      'costPrice', 'stockQuantity', 'minStockLevel', 'maxStockLevel', 'trackInventory',
-      'status', 'isFeatured', 'isAvailable', 'tags', 'specifications', 'imagePath', 'imageFolder'
+      'name',           // A(0) - Required
+      'nameTamil',      // B(1)
+      'description',    // C(2)
+      'category',       // D(3) - Required (auto-created if not exists)
+      'brand',          // E(4)
+      'sku',            // F(5)
+      'searchQuery',    // G(6) - SKIP
+      'downloadLink',   // H(7) - SKIP
+      'baseUnit',       // I(8)
+      'baseWeight',     // J(9)
+      'originalPrice',  // K(10)
+      'sellingPrice',   // L(11)
+      'discountPct',    // M(12)
+      'costPrice',      // N(13)
+      'stockQuantity',  // O(14)
+      'minStockLevel',  // P(15)
+      'maxStockLevel',  // Q(16)
+      'trackInventory', // R(17)
+      'status',         // S(18)
+      'isFeatured',     // T(19)
+      'isAvailable',    // U(20)
+      'reserved',       // V(21) - SKIP
+      'tags',           // W(22)
+      'specifications', // X(23)
+      'imagePath',      // Y(24) - Image filename
+      'imageFolder'     // Z(25) - Subfolder name
     ];
 
+    // Sample data rows
     const sampleData = [
       [
-        'Fresh Tomatoes', 'Organic tomatoes from local farms', '1', 'FreshFarm', '', '',
-        'kg', '1', '100', '90', '10', '80', '100', '10', '500', 'TRUE',
-        'ACTIVE', 'FALSE', 'TRUE', 'organic,fresh,local', 'Rich in Vitamin C', 'tomato.jpg', 'vegetables'
+        'Fresh Tomatoes',           // name
+        'தக்காளி',                  // nameTamil
+        'Organic tomatoes from local farms',  // description
+        'Vegetables',               // category
+        'FreshFarm',                // brand
+        'VEG-TOM-001',              // sku
+        '',                         // searchQuery (skip)
+        '',                         // downloadLink (skip)
+        'kg',                       // baseUnit
+        '1',                        // baseWeight
+        '100',                      // originalPrice
+        '90',                       // sellingPrice
+        '10',                       // discountPct
+        '80',                       // costPrice
+        '100',                      // stockQuantity
+        '10',                       // minStockLevel
+        '500',                      // maxStockLevel
+        'TRUE',                     // trackInventory
+        'ACTIVE',                   // status
+        'FALSE',                    // isFeatured
+        'TRUE',                     // isAvailable
+        '',                         // reserved (skip)
+        'organic,fresh,local',      // tags
+        'Rich in Vitamin C',        // specifications
+        'tomato.jpg',               // imagePath
+        'vegetables'                // imageFolder
       ],
       [
-        'Red Onions', 'Premium quality red onions', '1', 'FreshFarm', '', '',
-        'kg', '1', '80', '70', '12.5', '60', '150', '20', '600', 'TRUE',
-        'ACTIVE', 'FALSE', 'TRUE', 'fresh,organic', 'Good for cooking', 'onion.jpg', 'vegetables'
+        'Basmati Rice 1kg',
+        'பாசுமதி அரிசி',
+        'Premium aged basmati rice',
+        'Groceries',
+        'IndiaGate',
+        'GRO-RICE-001',
+        '',
+        '',
+        'kg',
+        '1',
+        '200',
+        '180',
+        '10',
+        '160',
+        '200',
+        '20',
+        '1000',
+        'TRUE',
+        'ACTIVE',
+        'TRUE',
+        'TRUE',
+        '',
+        'premium,aged,basmati',
+        'Aged for 2 years',
+        'rice.jpg',
+        'groceries'
       ],
       [
-        'Basmati Rice 1kg', 'Premium aged basmati rice', '2', 'IndiaGate', '', '8901491100014',
-        'kg', '1', '200', '180', '10', '160', '200', '20', '1000', 'TRUE',
-        'ACTIVE', 'TRUE', 'TRUE', 'premium,aged', 'Aged for 2 years', 'rice.jpg', 'groceries'
+        'Amul Butter 500g',
+        'அமுல் வெண்ணெய்',
+        'Fresh dairy butter',
+        'Dairy Products',
+        'Amul',
+        'DAI-BUT-001',
+        '',
+        '',
+        'gram',
+        '500',
+        '280',
+        '260',
+        '7',
+        '240',
+        '50',
+        '10',
+        '200',
+        'TRUE',
+        'ACTIVE',
+        'FALSE',
+        'TRUE',
+        '',
+        'dairy,butter,fresh',
+        'Keep refrigerated',
+        'butter.jpg',
+        'dairy'
       ]
     ];
 

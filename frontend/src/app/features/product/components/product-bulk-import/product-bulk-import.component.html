@@ -49,7 +49,7 @@
             <div class="step-number" [innerHTML]="isSuperAdmin ? '3' : '2'"></div>
             <div class="step-content">
               <h4><mat-icon>edit</mat-icon> Fill Product Details</h4>
-              <p>Open the template in Excel and fill in your product information. Required fields: name, categoryId, imagePath, imageFolder.</p>
+              <p>Open the template in Excel and fill in your product information. Required: <strong>name (A), category (D), imagePath (Y)</strong>. Categories are auto-created if not found.</p>
               <div class="info-box">
                 <mat-icon>info</mat-icon>
                 <span>Save as Excel Workbook (.xlsx) format</span>
@@ -226,42 +226,98 @@
           </mat-expansion-panel-header>
 
           <div class="help-content">
-            <h4><mat-icon>table_chart</mat-icon> Excel Template Columns</h4>
+            <h4><mat-icon>table_chart</mat-icon> Excel Template Columns (A-Z)</h4>
             <div class="columns-grid">
               <div class="column-item required">
-                <strong>name</strong>
-                <span>Product name</span>
+                <strong>A: name</strong>
+                <span>Product name (Required)</span>
               </div>
               <div class="column-item">
-                <strong>description</strong>
+                <strong>B: nameTamil</strong>
+                <span>Tamil name</span>
+              </div>
+              <div class="column-item">
+                <strong>C: description</strong>
                 <span>Product description</span>
               </div>
               <div class="column-item required">
-                <strong>categoryId</strong>
-                <span>Category ID</span>
+                <strong>D: category</strong>
+                <span>Category name (auto-created)</span>
               </div>
               <div class="column-item">
-                <strong>originalPrice</strong>
+                <strong>E: brand</strong>
+                <span>Brand name</span>
+              </div>
+              <div class="column-item">
+                <strong>F: sku</strong>
+                <span>SKU code</span>
+              </div>
+              <div class="column-item skip">
+                <strong>G-H: (Skip)</strong>
+                <span>Reserved columns</span>
+              </div>
+              <div class="column-item">
+                <strong>I: baseUnit</strong>
+                <span>Unit (kg, piece, gram)</span>
+              </div>
+              <div class="column-item">
+                <strong>J: baseWeight</strong>
+                <span>Weight value</span>
+              </div>
+              <div class="column-item">
+                <strong>K: originalPrice</strong>
                 <span>MRP/Original price</span>
               </div>
               <div class="column-item">
-                <strong>sellingPrice</strong>
+                <strong>L: sellingPrice</strong>
                 <span>Selling price</span>
               </div>
               <div class="column-item">
-                <strong>discountPercentage</strong>
+                <strong>M: discountPct</strong>
                 <span>Discount %</span>
               </div>
               <div class="column-item">
-                <strong>stockQuantity</strong>
+                <strong>N: costPrice</strong>
+                <span>Cost price</span>
+              </div>
+              <div class="column-item">
+                <strong>O: stockQuantity</strong>
                 <span>Available stock</span>
               </div>
-              <div class="column-item required">
-                <strong>imagePath</strong>
-                <span>Image filename (tomato.jpg)</span>
+              <div class="column-item">
+                <strong>P-Q: stockLevels</strong>
+                <span>Min/Max stock levels</span>
+              </div>
+              <div class="column-item">
+                <strong>R: trackInventory</strong>
+                <span>TRUE/FALSE</span>
+              </div>
+              <div class="column-item">
+                <strong>S: status</strong>
+                <span>ACTIVE/INACTIVE</span>
+              </div>
+              <div class="column-item">
+                <strong>T-U: flags</strong>
+                <span>isFeatured, isAvailable</span>
+              </div>
+              <div class="column-item skip">
+                <strong>V: (Skip)</strong>
+                <span>Reserved</span>
+              </div>
+              <div class="column-item">
+                <strong>W: tags</strong>
+                <span>Comma-separated tags</span>
+              </div>
+              <div class="column-item">
+                <strong>X: specifications</strong>
+                <span>Product specs</span>
               </div>
               <div class="column-item required">
-                <strong>imageFolder</strong>
+                <strong>Y: imagePath</strong>
+                <span>Image filename (tomato.jpg)</span>
+              </div>
+              <div class="column-item">
+                <strong>Z: imageFolder</strong>
                 <span>Folder name (vegetables)</span>
               </div>
             </div>

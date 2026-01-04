@@ -5,10 +5,10 @@ import { MatSort } from '@angular/material/sort';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTabChangeEvent } from '@angular/material/tabs';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { takeUntil, debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { environment } from '../../../../../environments/environment';
 import { ShopContextService } from '../../services/shop-context.service';
 import { getImageUrl as getImageUrlUtil } from '../../../../core/utils/image-url.util';
@@ -60,8 +60,9 @@ interface ShopProduct {
 })
 export class MyProductsComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
+  private searchSubject$ = new Subject<string>();
   private apiUrl = environment.apiUrl;
-  
+
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
@@ -70,11 +71,12 @@ export class MyProductsComponent implements OnInit, OnDestroy {
   filteredProducts: ShopProduct[] = [];
   categories: string[] = [];
   loading = false;
+  searching = false;
   usingFallbackData = false;
 
-  
+
   shopId: number | null = null;
-  
+
   // Filter controls
   searchTerm = '';
   selectedCategory = '';
@@ -106,7 +108,19 @@ export class MyProductsComponent implements OnInit, OnDestroy {
     console.log('Loading products for current authenticated user');
     this.loadProducts();
     this.loadCategories();
-    
+
+    // Subscribe to search input with debounce for client-side filtering (like mobile app)
+    this.searchSubject$.pipe(
+      debounceTime(300),
+      distinctUntilChanged(),
+      takeUntil(this.destroy$)
+    ).subscribe(searchTerm => {
+      this.searchTerm = searchTerm;
+      this.searching = true;
+      this.applyFilters(); // Filter locally (like mobile app does)
+      this.searching = false;
+    });
+
     // Then also subscribe to shop context for updates
     this.shopContext.shop$.pipe(
       takeUntil(this.destroy$)
@@ -120,7 +134,7 @@ export class MyProductsComponent implements OnInit, OnDestroy {
         this.loadCategories();
       }
     });
-    
+
     // Trigger shop context refresh in background
     setTimeout(() => {
       this.shopContext.refreshShop();
@@ -134,9 +148,15 @@ export class MyProductsComponent implements OnInit, OnDestroy {
 
   loadProducts(): void {
     this.loading = true;
-    console.log('Loading products for authenticated user');
-    
-    this.http.get<any>(`${this.apiUrl}/shop-products/my-products`)
+    this.searching = false;
+    console.log('Loading ALL products for authenticated user');
+
+    // Load ALL products (unlimited) like mobile app does, then filter client-side
+    const params = new HttpParams()
+      .set('page', '0')
+      .set('size', '100000');  // Unlimited - load all products
+
+    this.http.get<any>(`${this.apiUrl}/shop-products/my-products`, { params })
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
@@ -146,26 +166,33 @@ export class MyProductsComponent implements OnInit, OnDestroy {
           // Backend returns ApiResponse<Page<ShopProductResponse>>
           // So structure is: response.data.content
           let products = [];
-          
+          let serverTotalElements = 0;
+
+          console.log('=== API RESPONSE DEBUG ===');
+          console.log('Full response:', JSON.stringify(response, null, 2));
+
           if (response && response.data) {
             if (response.data.content) {
               // Paginated response
               products = response.data.content;
-              console.log('Found paginated products:', products.length);
+              serverTotalElements = response.data.totalElements || products.length;
+              console.log('Paginated response - content length:', products.length, 'totalElements:', serverTotalElements);
             } else if (Array.isArray(response.data)) {
               // Array response
               products = response.data;
-              console.log('Found array products:', products.length);
+              serverTotalElements = products.length;
+              console.log('Array response - length:', products.length);
             } else {
               console.log('Unexpected response structure:', response.data);
             }
           } else if (Array.isArray(response)) {
             // Direct array response
             products = response;
-            console.log('Found direct array products:', products.length);
+            serverTotalElements = products.length;
+            console.log('Direct array response - length:', products.length);
           }
-          
-          console.log('Products to process:', products);
+
+          console.log('Products to display:', products.length);
           
           // Map API response to component interface
           this.products = products.map((p: any) => {
@@ -199,13 +226,15 @@ export class MyProductsComponent implements OnInit, OnDestroy {
             };
           });
           
-          this.filteredProducts = [...this.products];
-          this.totalProducts = this.products.length;
           this.usingFallbackData = false;
           // Clear previous selections when reloading products
           this.selectedProducts = [];
           this.selectAll = false;
+          // Apply client-side filters (like mobile app does)
           this.applyFilters();
+          this.loadCategories();
+          this.updateSelectAllState();
+          this.currentPageIndex = 0;
           this.loading = false;
         },
         error: (error) => {
@@ -308,9 +337,12 @@ export class MyProductsComponent implements OnInit, OnDestroy {
           // Clear previous selections when using fallback data
           this.selectedProducts = [];
           this.selectAll = false;
-          this.applyFilters();
+          this.loadCategories();
+          this.updateSelectAllState();
+          this.currentPageIndex = 0;
           this.loading = false;
-          
+          this.searching = false;
+
           this.snackBar.open('Products loaded (API unavailable - showing sample data)', 'Close', { 
             duration: 5000,
             panelClass: ['warning-snackbar']
@@ -329,11 +361,16 @@ export class MyProductsComponent implements OnInit, OnDestroy {
   }
 
   applyFilters(): void {
+    const searchLower = this.searchTerm?.toLowerCase().trim() || '';
+
     this.filteredProducts = this.products.filter(product => {
-      const matchesSearch = !this.searchTerm ||
-        product.customName.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        product.description?.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        product.sku?.toLowerCase().includes(this.searchTerm.toLowerCase());
+      // Search matching (same logic as mobile app - search name, category)
+      const matchesSearch = !searchLower ||
+        (product.customName || '').toLowerCase().includes(searchLower) ||
+        (product.masterProductName || '').toLowerCase().includes(searchLower) ||
+        (product.category || '').toLowerCase().includes(searchLower) ||
+        (product.description || '').toLowerCase().includes(searchLower) ||
+        (product.sku || '').toLowerCase().includes(searchLower);
 
       const matchesCategory = !this.selectedCategory || product.category === this.selectedCategory;
       const matchesStatus = !this.selectedStatus ||
@@ -452,22 +489,23 @@ export class MyProductsComponent implements OnInit, OnDestroy {
     this.searchTerm = '';
     this.selectedCategory = '';
     this.selectedStatus = '';
-    this.applyFilters();
+    this.applyFilters(); // Clear filters locally (like mobile app)
   }
 
   onSearchChange(event: any): void {
-    this.searchTerm = event.target.value;
-    this.applyFilters();
+    const value = event.target.value;
+    // Trigger client-side search with debounce
+    this.searchSubject$.next(value);
   }
 
   onCategoryChange(category: string): void {
     this.selectedCategory = category;
-    this.applyFilters();
+    this.applyFilters(); // Client-side filtering (like mobile app)
   }
 
   onStatusChange(status: string): void {
     this.selectedStatus = status;
-    this.applyFilters();
+    this.applyFilters(); // Client-side filtering (like mobile app)
   }
 
   updateProductStatus(product: ShopProduct, status: boolean): void {

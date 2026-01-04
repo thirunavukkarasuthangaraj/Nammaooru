@@ -166,53 +166,70 @@ public class BulkProductImportService {
 
     /**
      * Parse a single row from Excel
-     * Column mapping for ACTUAL Excel file (Grocery_Import_Ready.xlsx):
-     * 0: Item Name, 1: tamil name, 2: descriptionTamil, 3: Category, 4: brand, 5: sku,
-     * 6: Search Query (SKIP), 7: Download Link (SKIP), 8: baseUnit, 9: baseWeight,
-     * 10: originalPrice, 11: sellingPrice, 12: discountPercentage, 13: costPrice,
-     * 14: stockQuantity, 15: minStockLevel, 16: maxStockLevel, 17: trackInventory,
-     * 18: status, 19: isFeatured, 20: isAvailable, 21: tags, 22: specifications,
-     * 23: imagePath, 24: imageFolder
+     * Standard Column Mapping (0-indexed):
+     * A(0):  name           - Product name (required)
+     * B(1):  nameTamil      - Tamil name
+     * C(2):  description    - Product description
+     * D(3):  category       - Category name (auto-created if not exists)
+     * E(4):  brand          - Brand name
+     * F(5):  sku            - SKU code (used to find existing products)
+     * G(6):  (SKIP)         - Search Query
+     * H(7):  (SKIP)         - Download Link
+     * I(8):  baseUnit       - Unit of measurement (kg, piece, etc.)
+     * J(9):  baseWeight     - Weight value
+     * K(10): originalPrice  - MRP/Original price
+     * L(11): sellingPrice   - Selling price
+     * M(12): discountPct    - Discount percentage
+     * N(13): costPrice      - Cost price
+     * O(14): stockQuantity  - Current stock
+     * P(15): minStockLevel  - Minimum stock alert level
+     * Q(16): maxStockLevel  - Maximum stock level
+     * R(17): trackInventory - Track inventory (TRUE/FALSE)
+     * S(18): status         - ACTIVE/INACTIVE
+     * T(19): isFeatured     - Featured product (TRUE/FALSE)
+     * U(20): isAvailable    - Available for sale (TRUE/FALSE)
+     * V(21): (SKIP)         - Reserved/Empty
+     * W(22): tags           - Comma-separated tags
+     * X(23): specifications - Product specifications
+     * Y(24): imagePath      - Image filename (e.g., product.jpg)
+     * Z(25): imageFolder    - Subfolder under /uploads/products/master/
      */
     private BulkImportRequest parseRow(Row row, int rowNumber) {
-        String categoryName = getCellValueAsString(row.getCell(3));  // Column D (index 3) = Category
-        // ALWAYS call lookupCategoryByName - it handles null/empty and returns a valid ID
+        String categoryName = getCellValueAsString(row.getCell(3));  // D: Category
         Long categoryId = lookupCategoryByName(categoryName);
 
-        // Read all values
-        String name = getCellValueAsString(row.getCell(0));        // Column A = Item Name
-        String tags = getCellValueAsString(row.getCell(21));       // Column V = tags
+        String name = getCellValueAsString(row.getCell(0));          // A: Item Name
+        String tags = getCellValueAsString(row.getCell(22));         // W: tags
+        String imagePath = getCellValueAsString(row.getCell(24));    // Y: imagePath
+        String imageFolder = getCellValueAsString(row.getCell(25));  // Z: imageFolder
 
-        // Log each row with key values
-        log.info("parseRow #{}: name='{}', category='{}', categoryId={}", rowNumber, name, categoryName, categoryId);
+        log.info("parseRow #{}: name='{}', category='{}', imagePath='{}'", rowNumber, name, categoryName, imagePath);
 
         return BulkImportRequest.builder()
                 .rowNumber(rowNumber)
-                .name(name)                                                    // 0: Item Name
-                .nameTamil(getCellValueAsString(row.getCell(1)))              // 1: tamil name
-                .description(getCellValueAsString(row.getCell(2)))            // 2: descriptionTamil (used as description)
-                .categoryId(categoryId)                                        // 3: Category (looked up)
-                .brand(getCellValueAsString(row.getCell(4)))                  // 4: brand
-                .sku(getCellValueAsString(row.getCell(5)))                    // 5: sku
-                // 6: Search Query (SKIP)
-                // 7: Download Link (SKIP)
-                .baseUnit(getCellValueAsString(row.getCell(8)))               // 8: baseUnit
-                .baseWeight(getCellValueAsBigDecimal(row.getCell(9)))         // 9: baseWeight
-                .originalPrice(getCellValueAsBigDecimal(row.getCell(10)))     // 10: originalPrice
-                .sellingPrice(getCellValueAsBigDecimal(row.getCell(11)))      // 11: sellingPrice
-                .discountPercentage(getCellValueAsBigDecimal(row.getCell(12)))// 12: discountPercentage
-                .costPrice(getCellValueAsBigDecimal(row.getCell(13)))         // 13: costPrice
-                .stockQuantity(getCellValueAsInteger(row.getCell(14)))        // 14: stockQuantity
-                .minStockLevel(getCellValueAsInteger(row.getCell(15)))        // 15: minStockLevel
-                .maxStockLevel(getCellValueAsInteger(row.getCell(16)))        // 16: maxStockLevel
-                .trackInventory(getCellValueAsBoolean(row.getCell(17)))       // 17: trackInventory
-                .status(getCellValueAsString(row.getCell(18)))                // 18: status
-                .isFeatured(getCellValueAsBoolean(row.getCell(19)))           // 19: isFeatured
-                .isAvailable(getCellValueAsBoolean(row.getCell(20)))          // 20: isAvailable
-                .tags(tags)                                                    // 21: tags
-                .specifications(getCellValueAsString(row.getCell(22)))        // 22: specifications
-                .imagePath(getCellValueAsString(row.getCell(23)))             // 23: imagePath
-                .imageFolder(getCellValueAsString(row.getCell(24)))           // 24: imageFolder
+                .name(name)                                                    // A(0)
+                .nameTamil(getCellValueAsString(row.getCell(1)))              // B(1)
+                .description(getCellValueAsString(row.getCell(2)))            // C(2)
+                .categoryId(categoryId)                                        // D(3)
+                .brand(getCellValueAsString(row.getCell(4)))                  // E(4)
+                .sku(getCellValueAsString(row.getCell(5)))                    // F(5)
+                .baseUnit(getCellValueAsString(row.getCell(8)))               // I(8)
+                .baseWeight(getCellValueAsBigDecimal(row.getCell(9)))         // J(9)
+                .originalPrice(getCellValueAsBigDecimal(row.getCell(10)))     // K(10)
+                .sellingPrice(getCellValueAsBigDecimal(row.getCell(11)))      // L(11)
+                .discountPercentage(getCellValueAsBigDecimal(row.getCell(12)))// M(12)
+                .costPrice(getCellValueAsBigDecimal(row.getCell(13)))         // N(13)
+                .stockQuantity(getCellValueAsInteger(row.getCell(14)))        // O(14)
+                .minStockLevel(getCellValueAsInteger(row.getCell(15)))        // P(15)
+                .maxStockLevel(getCellValueAsInteger(row.getCell(16)))        // Q(16)
+                .trackInventory(getCellValueAsBoolean(row.getCell(17)))       // R(17)
+                .status(getCellValueAsString(row.getCell(18)))                // S(18)
+                .isFeatured(getCellValueAsBoolean(row.getCell(19)))           // T(19)
+                .isAvailable(getCellValueAsBoolean(row.getCell(20)))          // U(20)
+                .tags(tags)                                                    // W(22)
+                .specifications(getCellValueAsString(row.getCell(23)))        // X(23)
+                .imagePath(imagePath)                                          // Y(24)
+                .imageFolder(imageFolder)                                      // Z(25)
                 .barcode(null)
                 .build();
     }
@@ -478,6 +495,10 @@ public class BulkProductImportService {
      * Handle image upload for master product
      * Reads image from pre-copied folder structure: master/products/{folder}/{imageName}
      * Saves image reference to master_product_images table
+     *
+     * For BULK IMPORT/UPDATE:
+     * - If image already exists with same URL, ensure it's set as primary
+     * - If new image, set as primary and demote existing primary
      */
     private String handleImageUpload(Long productId, String imagePath, String imageFolder,
                                      List<MultipartFile> images) {
@@ -499,11 +520,11 @@ public class BulkProductImportService {
             if (folder.isEmpty()) {
                 // Images directly under products/master folder
                 imageFolderPath = Paths.get(productImagesPath, "master");
-                imageUrl = "/uploads/products/master/" + imagePath;
+                imageUrl = "/uploads/products/master/" + imagePath.trim();
             } else {
                 // Images in subfolder under products/master
                 imageFolderPath = Paths.get(productImagesPath, "master", folder);
-                imageUrl = "/uploads/products/master/" + folder + "/" + imagePath;
+                imageUrl = "/uploads/products/master/" + folder + "/" + imagePath.trim();
             }
 
             Path imageFilePath = imageFolderPath.resolve(imagePath.trim());
@@ -514,31 +535,50 @@ public class BulkProductImportService {
                 log.warn("Image file not found at: {} (path will be saved anyway)", imageFilePath);
             }
 
-            // Get reference to master product (doesn't query DB - avoids transaction issues)
+            // Get reference to master product
             MasterProduct masterProduct = masterProductRepository.getReferenceById(productId);
 
-            // Check if this image already exists for this product
-            long existingImageCount = masterProductImageRepository.countByMasterProductId(productId);
-            boolean isPrimary = (existingImageCount == 0); // First image is primary
+            // Check if this exact image URL already exists for this product
+            Optional<MasterProductImage> existingImage = masterProductImageRepository
+                    .findByMasterProductIdAndImageUrl(productId, imageUrl);
 
-            // Create and save image record (even if file doesn't exist yet)
+            if (existingImage.isPresent()) {
+                // Image already exists - make sure it's set as primary
+                MasterProductImage img = existingImage.get();
+                if (!Boolean.TRUE.equals(img.getIsPrimary())) {
+                    // Clear all primary flags for this product
+                    masterProductImageRepository.clearPrimaryForProduct(productId);
+                    img.setIsPrimary(true);
+                    masterProductImageRepository.save(img);
+                    log.info("Existing image set as primary for product {}: {}", productId, imageUrl);
+                    return "Updated to primary: " + imageUrl;
+                }
+                return "Already primary: " + imageUrl;
+            }
+
+            // New image - clear existing primary and add this as primary
+            masterProductImageRepository.clearPrimaryForProduct(productId);
+
+            long existingImageCount = masterProductImageRepository.countByMasterProductId(productId);
+
+            // Create and save new image record as PRIMARY
             MasterProductImage productImage = MasterProductImage.builder()
                     .masterProduct(masterProduct)
                     .imageUrl(imageUrl)
-                    .altText(imagePath)  // Use imagePath as alt text to avoid lazy loading
-                    .isPrimary(isPrimary)
-                    .sortOrder((int) existingImageCount)
+                    .altText(imagePath.trim())
+                    .isPrimary(true)  // Always primary for bulk import
+                    .sortOrder(0)     // Primary image at top
                     .createdBy("BULK_IMPORT")
                     .build();
 
             masterProductImageRepository.save(productImage);
 
-            String status = fileExists ? "Linked" : "Linked (file not found)";
-            log.info("Image reference saved for product {}: {} - {}", productId, imageUrl, status);
+            String status = fileExists ? "Linked as primary" : "Linked as primary (file not found)";
+            log.info("Image saved for product {}: {} - {}", productId, imageUrl, status);
             return status + ": " + imageUrl;
 
         } catch (Exception e) {
-            log.error("Error handling image for product {}: {}", productId, e.getMessage());
+            log.error("Error handling image for product {}: {}", productId, e.getMessage(), e);
             return "Image link failed: " + e.getMessage();
         }
     }

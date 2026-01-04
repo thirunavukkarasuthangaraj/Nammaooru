@@ -20,6 +20,14 @@ public interface MasterProductImageRepository extends JpaRepository<MasterProduc
     Optional<MasterProductImage> findPrimaryImageByProductId(@Param("productId") Long productId);
     
     void deleteByMasterProductId(Long masterProductId);
-    
+
     long countByMasterProductId(Long masterProductId);
+
+    // Find image by product ID and URL (for checking duplicates)
+    Optional<MasterProductImage> findByMasterProductIdAndImageUrl(Long masterProductId, String imageUrl);
+
+    // Clear all primary flags for a product (used before setting new primary)
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("UPDATE MasterProductImage img SET img.isPrimary = false WHERE img.masterProduct.id = :productId")
+    void clearPrimaryForProduct(@Param("productId") Long productId);
 }
