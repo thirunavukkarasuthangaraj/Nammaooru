@@ -27,6 +27,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -43,6 +45,9 @@ public class BulkProductImportService {
     private final MasterProductImageRepository masterProductImageRepository;
     private final ProductCategoryRepository productCategoryRepository;
     private final ShopProductRepository shopProductRepository;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Value("${app.upload.dir}")
     private String uploadDir;
@@ -358,6 +363,10 @@ public class BulkProductImportService {
                 masterProduct = masterProductService.createProduct(masterProductRequest);
             }
 
+            // Flush to ensure master product is persisted before adding images
+            entityManager.flush();
+            log.info("Flushed master product ID: {} to database", masterProduct.getId());
+
             // Check if shop already has this product
             Long shopProductId = null;
             Optional<ShopProduct> existingShopProduct = shopProductRepository
@@ -572,9 +581,11 @@ public class BulkProductImportService {
                 log.warn("Image file not found at: {} (path will be saved anyway)", imageFilePath);
             }
 
-            // Get reference to master product
-            MasterProduct masterProduct = masterProductRepository.getReferenceById(productId);
-            log.info("IMAGE UPLOAD: productId={}, imageUrl={}, folder={}", productId, imageUrl, folder);
+            // Get actual master product entity (not just reference)
+            MasterProduct masterProduct = masterProductRepository.findById(productId)
+                    .orElseThrow(() -> new RuntimeException("Master product not found: " + productId));
+            log.info("IMAGE UPLOAD: productId={}, imageUrl={}, folder={}, productName='{}'",
+                     productId, imageUrl, folder, masterProduct.getName());
 
             // Check if this exact image URL already exists for this product
             Optional<MasterProductImage> existingImage = masterProductImageRepository
