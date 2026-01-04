@@ -344,14 +344,14 @@ export class AuthService {
     }).subscribe({
       next: (response) => {
         if (response.data) {
-          // Store shopId (string like "SHOP-xxx") for API calls
-          if (response.data.shopId) {
-            localStorage.setItem('current_shop_id', response.data.shopId);
-            console.log('Shop ID stored for shop owner:', response.data.shopId);
-          }
-          // Also store numeric ID for other use cases
+          // Store numeric ID (old behavior)
           if (response.data.id) {
-            localStorage.setItem('current_shop_numeric_id', response.data.id.toString());
+            localStorage.setItem('current_shop_id', response.data.id.toString());
+            console.log('Shop ID stored for shop owner:', response.data.id);
+          }
+          // Store string shopId ONLY for dashboard API
+          if (response.data.shopId) {
+            localStorage.setItem('current_shop_string_id', response.data.shopId);
           }
         }
       },

@@ -114,11 +114,7 @@ export class MyProductsComponent implements OnInit, OnDestroy {
       if (shop && shop.id && shop.id !== this.shopId) {
         // Update shop ID if we get a different one from context
         this.shopId = shop.id;
-        // Store both string shopId and numeric id
-        if (shop.shopId) {
-          localStorage.setItem('current_shop_id', shop.shopId);
-        }
-        localStorage.setItem('current_shop_numeric_id', shop.id.toString());
+        localStorage.setItem('current_shop_id', shop.id.toString());
         console.log('Updated shop ID from context:', this.shopId);
         this.loadProducts();
         this.loadCategories();
@@ -967,10 +963,10 @@ export class MyProductsComponent implements OnInit, OnDestroy {
     let effectiveShopId: any = this.shopId;
 
     if (!effectiveShopId) {
-      // Try from localStorage - use string shopId (e.g., "SHOP-xxx")
+      // Try from localStorage - use numeric ID
       const cachedShopId = localStorage.getItem('current_shop_id');
       if (cachedShopId) {
-        effectiveShopId = cachedShopId;
+        effectiveShopId = parseInt(cachedShopId, 10);
       }
     }
 

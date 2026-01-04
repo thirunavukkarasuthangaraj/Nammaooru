@@ -509,7 +509,7 @@ export class NotificationsComponent implements OnInit, OnDestroy {
   }
 
   private loadOrderNotifications() {
-    // Get shop ID from localStorage - use string shopId directly (e.g., "SHOP-xxx")
+    // Get numeric shop ID from localStorage
     const shopId = localStorage.getItem('current_shop_id');
     if (!shopId) {
       console.error('No shop ID found in localStorage');

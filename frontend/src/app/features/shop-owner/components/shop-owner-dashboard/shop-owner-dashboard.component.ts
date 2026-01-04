@@ -625,12 +625,13 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response) => {
           if (response.data && response.data.shopId) {
-            // Update localStorage with correct shopId
-            localStorage.setItem('current_shop_id', response.data.shopId);
+            // Store numeric ID in current_shop_id for other APIs
             if (response.data.id) {
-              localStorage.setItem('current_shop_numeric_id', response.data.id.toString());
+              localStorage.setItem('current_shop_id', response.data.id.toString());
             }
-            // Load dashboard with the fetched shopId
+            // Store string shopId for dashboard API
+            localStorage.setItem('current_shop_string_id', response.data.shopId);
+            // Load dashboard with the fetched string shopId
             this.fetchDashboardStats(response.data.shopId);
           } else {
             console.error('No shop found for this user');
@@ -640,9 +641,9 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
         error: (error) => {
           console.error('Error fetching shop:', error);
           // Fallback to localStorage if API fails
-          const cachedShopId = localStorage.getItem('current_shop_id');
-          if (cachedShopId && cachedShopId.startsWith('SHOP-')) {
-            this.fetchDashboardStats(cachedShopId);
+          const cachedStringId = localStorage.getItem('current_shop_string_id');
+          if (cachedStringId) {
+            this.fetchDashboardStats(cachedStringId);
           } else {
             this.isLoading = false;
           }

@@ -66,14 +66,9 @@ export class ShopContextService {
         console.log('Shop loaded for current user:', shop);
         this.shopSubject.next(shop);
         this.loadingSubject.next(false);
-        // Cache shop ID for quick access - store both string shopId and numeric id
-        if (shop) {
-          if (shop.shopId) {
-            localStorage.setItem('current_shop_id', shop.shopId);
-          }
-          if (shop.id) {
-            localStorage.setItem('current_shop_numeric_id', shop.id.toString());
-          }
+        // Cache numeric shop ID for quick access
+        if (shop && shop.id) {
+          localStorage.setItem('current_shop_id', shop.id.toString());
         }
       }),
       catchError(error => {
@@ -107,12 +102,7 @@ export class ShopContextService {
         if (userShop) {
           console.log('Shop found by owner username:', userShop);
           this.shopSubject.next(userShop);
-          if (userShop.shopId) {
-            localStorage.setItem('current_shop_id', userShop.shopId);
-          }
-          if (userShop.id) {
-            localStorage.setItem('current_shop_numeric_id', userShop.id.toString());
-          }
+          localStorage.setItem('current_shop_id', userShop.id.toString());
         } else {
           // For shopowner1, use shop ID 11 as fallback
           if (username === 'shopowner1') {
@@ -141,13 +131,7 @@ export class ShopContextService {
       tap(shop => {
         console.log('Shop loaded by ID:', shop);
         this.shopSubject.next(shop);
-        // Store both string shopId and numeric id
-        if (shop.shopId) {
-          localStorage.setItem('current_shop_id', shop.shopId);
-        }
-        if (shop.id) {
-          localStorage.setItem('current_shop_numeric_id', shop.id.toString());
-        }
+        localStorage.setItem('current_shop_id', shop.id.toString());
       }),
       catchError(error => {
         console.error('Error loading shop by ID:', error);
@@ -171,18 +155,9 @@ export class ShopContextService {
     const shop = this.shopSubject.value;
     if (shop) return shop.id;
 
-    // Try from localStorage as fallback - use numeric ID
-    const cachedNumericId = localStorage.getItem('current_shop_numeric_id');
-    if (cachedNumericId) {
-      return parseInt(cachedNumericId, 10);
-    }
-
-    // Legacy fallback - try current_shop_id if it's numeric
+    // Try from localStorage as fallback
     const cachedId = localStorage.getItem('current_shop_id');
-    if (cachedId && !isNaN(parseInt(cachedId, 10))) {
-      return parseInt(cachedId, 10);
-    }
-    return null;
+    return cachedId ? parseInt(cachedId, 10) : null;
   }
 
   /**
