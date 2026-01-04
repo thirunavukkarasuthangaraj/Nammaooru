@@ -941,6 +941,15 @@ public class DeliveryPartnerController {
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("No accepted assignment found for this order and partner"));
 
+            // Check if shop owner has verified the pickup OTP
+            Order order = assignment.getOrder();
+            if (order.getPickupOtpVerifiedAt() == null) {
+                response.put("success", false);
+                response.put("message", "Shop owner has not verified the pickup OTP yet. Please ask them to verify first.");
+                response.put("otpRequired", true);
+                return ResponseEntity.badRequest().body(response);
+            }
+
             // Mark as picked up
             OrderAssignment updatedAssignment = orderAssignmentService.markPickedUp(assignment.getId(), partnerId);
 
