@@ -52,7 +52,9 @@ public class BulkProductImportService {
 
     /**
      * Import products from Excel for shop owners
+     * NOTE: @Transactional added to ensure all operations are in transaction context
      */
+    @Transactional
     public BulkImportResponse importProductsForShop(Long shopId, MultipartFile excelFile,
                                                      List<MultipartFile> images) {
         log.info("Starting bulk import for shop: {}", shopId);
@@ -95,6 +97,7 @@ public class BulkProductImportService {
     /**
      * Import master products (admin only)
      */
+    @Transactional
     public BulkImportResponse importMasterProducts(MultipartFile excelFile, List<MultipartFile> images) {
         log.info("Starting bulk master product import");
 
@@ -374,9 +377,13 @@ public class BulkProductImportService {
 
             // Handle image upload - ALWAYS update image for master product
             String imageStatus = "No image";
+            log.info("Checking image upload condition: imagePath='{}', isEmpty={}",
+                     request.getImagePath(), request.getImagePath() == null ? "null" : request.getImagePath().isEmpty());
             if (request.getImagePath() != null && !request.getImagePath().isEmpty()) {
                 imageStatus = handleImageUpload(masterProduct.getId(), request.getImagePath(),
                                                 request.getImageFolder(), images);
+            } else {
+                log.warn("Skipping image upload: imagePath is null or empty for product '{}'", request.getName());
             }
 
             String message = existingShopProduct.isPresent()
@@ -416,9 +423,13 @@ public class BulkProductImportService {
 
             // Handle image upload
             String imageStatus = "No image";
+            log.info("[Master] Checking image upload: imagePath='{}', isEmpty={}",
+                     request.getImagePath(), request.getImagePath() == null ? "null" : request.getImagePath().isEmpty());
             if (request.getImagePath() != null && !request.getImagePath().isEmpty()) {
                 imageStatus = handleImageUpload(masterProduct.getId(), request.getImagePath(),
                                                 request.getImageFolder(), images);
+            } else {
+                log.warn("[Master] Skipping image upload: imagePath is null or empty for product '{}'", request.getName());
             }
 
             return BulkImportResponse.ImportResult.builder()
@@ -525,8 +536,11 @@ public class BulkProductImportService {
      */
     private String handleImageUpload(Long productId, String imagePath, String imageFolder,
                                      List<MultipartFile> images) {
+        log.info("handleImageUpload called: productId={}, imagePath='{}', imageFolder='{}'",
+                 productId, imagePath, imageFolder);
         try {
             if (imagePath == null || imagePath.trim().isEmpty()) {
+                log.warn("handleImageUpload: imagePath is null or empty, skipping");
                 return "No image specified";
             }
 
@@ -596,9 +610,9 @@ public class BulkProductImportService {
                     .createdBy("BULK_IMPORT")
                     .build();
 
-            MasterProductImage savedImage = masterProductImageRepository.save(productImage);
-            log.info("IMAGE UPLOAD: SAVED new image id={}, isPrimary={}, url={}",
-                     savedImage.getId(), savedImage.getIsPrimary(), savedImage.getImageUrl());
+            MasterProductImage savedImage = masterProductImageRepository.saveAndFlush(productImage);
+            log.info("IMAGE UPLOAD: SAVED new image id={}, isPrimary={}, url={}, productId={}",
+                     savedImage.getId(), savedImage.getIsPrimary(), savedImage.getImageUrl(), productId);
 
             String status = fileExists ? "Linked as primary" : "Linked as primary (file not found)";
             log.info("Image saved for product {}: {} - {}", productId, imageUrl, status);
