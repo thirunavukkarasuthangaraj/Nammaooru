@@ -406,7 +406,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   }
 
   private checkScreenSize(): void {
-    this.isMobile = window.innerWidth < 768;
+    // Match CSS media query at 1024px where sidebar is hidden
+    this.isMobile = window.innerWidth <= 1024;
     if (this.isMobile) {
       this.isSidebarCollapsed = true;
     }
