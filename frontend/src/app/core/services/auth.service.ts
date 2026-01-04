@@ -343,9 +343,16 @@ export class AuthService {
       withCredentials: true
     }).subscribe({
       next: (response) => {
-        if (response.data && response.data.id) {
-          localStorage.setItem('current_shop_id', response.data.id.toString());
-          console.log('Shop ID stored for shop owner:', response.data.id);
+        if (response.data) {
+          // Store shopId (string like "SHOP-xxx") for API calls
+          if (response.data.shopId) {
+            localStorage.setItem('current_shop_id', response.data.shopId);
+            console.log('Shop ID stored for shop owner:', response.data.shopId);
+          }
+          // Also store numeric ID for other use cases
+          if (response.data.id) {
+            localStorage.setItem('current_shop_numeric_id', response.data.id.toString());
+          }
         }
       },
       error: (error) => {
