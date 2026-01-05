@@ -62,10 +62,8 @@ public class BulkProductImportService {
 
     /**
      * Import products from Excel for shop owners
-     * Uses NOT_SUPPORTED to ensure no transaction context exists
-     * Each product import uses REQUIRES_NEW for independent transactions
+     * NO transaction management - each service call handles its own transaction
      */
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public BulkImportResponse importProductsForShop(Long shopId, MultipartFile excelFile,
                                                      List<MultipartFile> images) {
         log.info("Starting bulk import for shop: {}", shopId);
@@ -108,9 +106,8 @@ public class BulkProductImportService {
 
     /**
      * Import master products (admin only)
-     * Uses NOT_SUPPORTED to ensure no transaction context exists
+     * NO transaction management - each service call handles its own transaction
      */
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public BulkImportResponse importMasterProducts(MultipartFile excelFile, List<MultipartFile> images) {
         log.info("Starting bulk master product import");
 
@@ -344,11 +341,8 @@ public class BulkProductImportService {
     }
 
     /**
-     * Process shop product import with independent transaction
-     * Uses REQUIRES_NEW so each product import can succeed/fail independently
-     * SUPPORTS UPSERT: If product exists, update image. If not, create product.
+     * Process single product - NO @Transactional, each service call is independent
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW, noRollbackFor = Exception.class)
     public BulkImportResponse.ImportResult processShopProductImport(Long shopId,
                                                                        BulkImportRequest request,
                                                                        List<MultipartFile> images) {
@@ -436,10 +430,8 @@ public class BulkProductImportService {
     }
 
     /**
-     * Process master product import with independent transaction
-     * Uses REQUIRES_NEW so each product import can succeed/fail independently
+     * Process master product - NO @Transactional, each service call is independent
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW, noRollbackFor = Exception.class)
     public BulkImportResponse.ImportResult processMasterProductImport(BulkImportRequest request,
                                                                          List<MultipartFile> images) {
         try {
