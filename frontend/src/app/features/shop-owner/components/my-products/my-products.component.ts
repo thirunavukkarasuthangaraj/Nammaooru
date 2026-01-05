@@ -26,6 +26,7 @@ interface MasterProduct {
   description?: string;
   baseUnit?: string;
   sku?: string;
+  tags?: string;
   category?: {
     id?: number;
     name?: string;
@@ -635,7 +636,10 @@ export class MyProductsComponent implements OnInit, OnDestroy {
         sku: product.sku,
         status: product.status,
         isAvailable: product.isAvailable,
-        imageUrl: product.imageUrl
+        imageUrl: product.imageUrl,
+        nameTamil: product.masterProduct?.nameTamil || '',
+        tags: product.masterProduct?.tags || '',
+        masterProductId: product.masterProduct?.id
       }
     });
 

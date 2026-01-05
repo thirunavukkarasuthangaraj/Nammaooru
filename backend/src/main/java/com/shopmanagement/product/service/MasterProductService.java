@@ -291,6 +291,7 @@ public class MasterProductService {
         }
     }
 
+public MasterProductResponse updateVoiceFields(Long id, String nameTamil, String tags) {        log.info("Updating voice fields for product {}: nameTamil={}, tags={}", id, nameTamil, tags);        MasterProduct product = masterProductRepository.findById(id)                .orElseThrow(() -> new RuntimeException("Master product not found: " + id));                if (nameTamil != null) {            product.setNameTamil(nameTamil);        }        if (tags != null) {            product.setTags(tags);        }        product.setUpdatedBy(getCurrentUsername());                MasterProduct saved = masterProductRepository.save(product);        return mapToResponse(saved);    }
     private String getCurrentUsername() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         return authentication != null ? authentication.getName() : "system";

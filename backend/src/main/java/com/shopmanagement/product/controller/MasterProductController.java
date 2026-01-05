@@ -185,4 +185,5 @@ public class MasterProductController {
                 "Brands fetched successfully"
         ));
     }
+@PatchMapping("/{id}/voice-fields")    public ResponseEntity<ApiResponse<MasterProductResponse>> updateVoiceFields(            @PathVariable Long id,            @RequestBody java.util.Map<String, String> fields) {        log.info("Updating voice fields for master product: {}", id);        String nameTamil = fields.get("nameTamil");        String tags = fields.get("tags");        MasterProductResponse product = masterProductService.updateVoiceFields(id, nameTamil, tags);        return ResponseEntity.ok(ApiResponse.success(                product,                "Voice fields updated successfully"        ));    }
 }
