@@ -395,14 +395,6 @@ public class ShopController {
         return ResponseUtil.success(stats, "Statistics retrieved successfully");
     }
 
-    @GetMapping("/my-shop")
-    @PreAuthorize("hasRole('SHOP_OWNER') or hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<ShopResponse>> getCurrentUserShop() {
-        log.info("Fetching current user's shop");
-        ShopResponse response = shopService.getCurrentUserShop();
-        return ResponseUtil.success(response, "Current user shop retrieved successfully");
-    }
-
     @GetMapping("/{shopId}/dashboard")
     @PreAuthorize("hasRole('SHOP_OWNER') or hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getShopDashboard(@PathVariable String shopId) {
