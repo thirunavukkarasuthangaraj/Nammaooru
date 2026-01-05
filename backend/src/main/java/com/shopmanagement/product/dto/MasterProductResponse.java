@@ -29,6 +29,7 @@ public class MasterProductResponse {
     private String baseUnit;
     private BigDecimal baseWeight;
     private String specifications;
+    private String tags;
     
     private MasterProduct.ProductStatus status;
     private Boolean isFeatured;
