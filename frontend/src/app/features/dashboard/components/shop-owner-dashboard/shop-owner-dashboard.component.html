@@ -1,213 +1,159 @@
-<div class="shop-owner-dashboard chennai-dashboard">
-  <!-- Header -->
-  <div class="dashboard-header chennai-header">
+<div class="dashboard-container">
+  <!-- Header Section -->
+  <div class="dashboard-header">
     <div class="header-content">
-      <h1>My Business Dashboard</h1>
-      <p>Manage your shop operations</p>
+      <span class="welcome-text">Welcome back,</span>
+      <h1 class="user-name">Shop Owner</h1>
     </div>
     <div class="header-actions">
       <button mat-raised-button (click)="refreshDashboard()">
         <mat-icon>refresh</mat-icon> Refresh
       </button>
-      <button mat-raised-button color="accent" (click)="exportReport('business')">
-        <mat-icon>download</mat-icon> Export Report
-      </button>
     </div>
   </div>
 
-  <!-- Quick Actions -->
-  <div class="quick-actions">
-    <button *ngFor="let action of quickActions" 
-            mat-raised-button 
-            class="action-button"
-            (click)="handleQuickAction(action.action)">
-      <mat-icon>{{ action.icon }}</mat-icon>
-      {{ action.label }}
-    </button>
-  </div>
-
-  <!-- Business Metrics -->
-  <div class="metrics-grid">
-    <mat-card class="metric-card chennai-card">
-      <mat-card-content>
-        <div class="metric-icon revenue">
-          <mat-icon>account_balance_wallet</mat-icon>
-        </div>
-        <div class="metric-info">
-          <h3>₹{{ businessMetrics.todayRevenue | number }}</h3>
-          <p>Today's Revenue</p>
-          <span class="growth">₹{{ businessMetrics.monthRevenue | number }} this month</span>
-        </div>
-      </mat-card-content>
-    </mat-card>
-
-    <mat-card class="metric-card chennai-card">
-      <mat-card-content>
-        <div class="metric-icon orders">
-          <mat-icon>shopping_cart</mat-icon>
-        </div>
-        <div class="metric-info">
-          <h3>{{ businessMetrics.pendingOrders }}</h3>
-          <p>Pending Orders</p>
-          <span class="count">{{ businessMetrics.totalOrders }} total today</span>
-        </div>
-      </mat-card-content>
-    </mat-card>
-
-    <mat-card class="metric-card chennai-card">
-      <mat-card-content>
-        <div class="metric-icon customers">
-          <mat-icon>people</mat-icon>
-        </div>
-        <div class="metric-info">
-          <h3>{{ businessMetrics.newCustomers }}</h3>
-          <p>New Customers</p>
-          <span class="count">{{ businessMetrics.repeatCustomers }}% repeat rate</span>
-        </div>
-      </mat-card-content>
-    </mat-card>
-
-    <mat-card class="metric-card chennai-card">
-      <mat-card-content>
-        <div class="metric-icon rating">
-          <mat-icon>star</mat-icon>
-        </div>
-        <div class="metric-info">
-          <h3>{{ businessMetrics.rating }}/5</h3>
-          <p>Shop Rating</p>
-          <span class="count">{{ reviewStats.total }} reviews</span>
-        </div>
-      </mat-card-content>
-    </mat-card>
-  </div>
-
-  <!-- Charts Section -->
-  <div class="charts-section">
-    <mat-card class="chart-card chennai-card">
-      <mat-card-header>
-        <mat-card-title>Revenue Trend</mat-card-title>
-        <button mat-button (click)="viewAnalytics()">View Details</button>
-      </mat-card-header>
-      <mat-card-content>
-        <canvas baseChart
-          [data]="revenueChartData"
-          [type]="'line'"
-          height="250">
-        </canvas>
-      </mat-card-content>
-    </mat-card>
-
-    <mat-card class="chart-card chennai-card">
-      <mat-card-header>
-        <mat-card-title>Order Distribution</mat-card-title>
-      </mat-card-header>
-      <mat-card-content>
-        <canvas baseChart
-          [data]="orderChartData"
-          [type]="'bar'"
-          height="250">
-        </canvas>
-      </mat-card-content>
-    </mat-card>
-
-    <mat-card class="chart-card chennai-card">
-      <mat-card-header>
-        <mat-card-title>Customer Types</mat-card-title>
-      </mat-card-header>
-      <mat-card-content>
-        <canvas baseChart
-          [data]="customerChartData"
-          [type]="'doughnut'"
-          height="250">
-        </canvas>
-      </mat-card-content>
-    </mat-card>
-  </div>
-
-  <!-- Orders & Inventory Section -->
-  <div class="main-content">
-    <mat-card class="orders-card chennai-card">
-      <mat-card-header>
-        <mat-card-title>Recent Orders</mat-card-title>
-        <span class="badge">{{ pendingOrders.length }} pending</span>
-      </mat-card-header>
-      <mat-card-content>
-        <mat-list>
-          <mat-list-item *ngFor="let order of recentOrders.slice(0, 5)">
-            <div matListItemTitle>Order #{{ order.id }}</div>
-            <div matListItemLine>{{ order.customer }} - ₹{{ order.amount | number }}</div>
-            <div matListItemMeta>
-              <button mat-button color="primary" (click)="acceptOrder(order.id)">Accept</button>
-              <button mat-button color="warn" (click)="rejectOrder(order.id)">Reject</button>
+  <div class="dashboard-content">
+    <!-- Orders Overview Section -->
+    <div class="section">
+      <div class="section-title">
+        <mat-icon>shopping_cart</mat-icon>
+        <span>Orders Overview</span>
+      </div>
+      <div class="metrics-row three-col">
+        <mat-card class="metric-card">
+          <mat-card-content>
+            <div class="metric-icon blue">
+              <mat-icon>today</mat-icon>
             </div>
-          </mat-list-item>
-        </mat-list>
-      </mat-card-content>
-    </mat-card>
+            <div class="metric-value blue">{{ businessMetrics.totalOrders }}</div>
+            <div class="metric-label">Today's Orders</div>
+          </mat-card-content>
+        </mat-card>
+        <mat-card class="metric-card" [class.highlight]="businessMetrics.pendingOrders > 0">
+          <mat-card-content>
+            <div class="metric-icon orange">
+              <mat-icon>pending_actions</mat-icon>
+            </div>
+            <div class="metric-value orange">{{ businessMetrics.pendingOrders }}</div>
+            <div class="metric-label">Pending</div>
+          </mat-card-content>
+        </mat-card>
+        <mat-card class="metric-card">
+          <mat-card-content>
+            <div class="metric-icon purple">
+              <mat-icon>receipt_long</mat-icon>
+            </div>
+            <div class="metric-value purple">{{ businessMetrics.completedOrders }}</div>
+            <div class="metric-label">Completed</div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </div>
 
-    <mat-card class="inventory-card chennai-card">
-      <mat-card-header>
-        <mat-card-title>Inventory Status</mat-card-title>
-        <button mat-button (click)="handleQuickAction('update-stock')">Update Stock</button>
-      </mat-card-header>
-      <mat-card-content>
-        <div class="inventory-summary">
-          <div class="inventory-item">
-            <span>Total Items</span>
-            <span class="value">{{ inventory.totalItems }}</span>
+    <!-- Revenue Section -->
+    <div class="section">
+      <div class="section-title">
+        <mat-icon>account_balance_wallet</mat-icon>
+        <span>Revenue</span>
+      </div>
+      <div class="revenue-row">
+        <div class="revenue-card green">
+          <div class="revenue-header">
+            <mat-icon>currency_rupee</mat-icon>
+            <span>Today</span>
           </div>
-          <div class="inventory-item">
-            <span>In Stock</span>
-            <span class="value success">{{ inventory.inStock }}</span>
-          </div>
-          <div class="inventory-item warning">
-            <span>Low Stock</span>
-            <span class="value">{{ inventory.lowStock }}</span>
-          </div>
-          <div class="inventory-item danger">
-            <span>Out of Stock</span>
-            <span class="value">{{ inventory.outOfStock }}</span>
+          <div class="revenue-value">
+            <span class="currency">₹</span>
+            <span class="amount">{{ businessMetrics.todayRevenue | number }}</span>
           </div>
         </div>
-      </mat-card-content>
-    </mat-card>
-  </div>
-
-  <!-- Notifications & Reviews -->
-  <div class="bottom-section">
-    <mat-card class="notifications-card chennai-card">
-      <mat-card-header>
-        <mat-card-title>Notifications</mat-card-title>
-      </mat-card-header>
-      <mat-card-content>
-        <div *ngFor="let notification of notifications.slice(0, 3)" class="notification-item">
-          <mat-icon [ngClass]="'icon-' + notification.type">
-            {{ notification.type === 'inventory' ? 'inventory' : 
-               notification.type === 'new_order' ? 'shopping_cart' : 'info' }}
-          </mat-icon>
-          <span>{{ notification.message }}</span>
-          <small>{{ notification.timestamp | date:'short' }}</small>
-        </div>
-      </mat-card-content>
-    </mat-card>
-
-    <mat-card class="reviews-card chennai-card">
-      <mat-card-header>
-        <mat-card-title>Recent Reviews</mat-card-title>
-      </mat-card-header>
-      <mat-card-content>
-        <div *ngFor="let review of recentReviews.slice(0, 3)" class="review-item">
-          <div class="review-rating">
-            <mat-icon *ngFor="let star of [1,2,3,4,5]" 
-                     [ngClass]="star <= review.rating ? 'star-filled' : 'star-empty'">
-              star
-            </mat-icon>
+        <div class="revenue-card teal">
+          <div class="revenue-header">
+            <mat-icon>calendar_month</mat-icon>
+            <span>This Month</span>
           </div>
-          <p>{{ review.comment }}</p>
-          <small>{{ review.customer }} - {{ review.date | date:'short' }}</small>
-          <button mat-button (click)="respondToReview(review.id)">Respond</button>
+          <div class="revenue-value">
+            <span class="currency">₹</span>
+            <span class="amount">{{ businessMetrics.monthRevenue | number }}</span>
+          </div>
         </div>
-      </mat-card-content>
-    </mat-card>
+      </div>
+    </div>
+
+    <!-- Inventory Section -->
+    <div class="section">
+      <div class="section-title">
+        <mat-icon>inventory_2</mat-icon>
+        <span>Inventory</span>
+      </div>
+      <mat-card class="inventory-card" [class.alert]="inventory.lowStock > 0 || inventory.outOfStock > 0">
+        <mat-card-content>
+          <div class="inventory-stats">
+            <div class="inventory-stat">
+              <mat-icon class="purple">inventory_2</mat-icon>
+              <div class="stat-value purple">{{ inventory.totalItems }}</div>
+              <div class="stat-label">Total Products</div>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="inventory-stat">
+              <mat-icon [class.orange]="inventory.lowStock > 0" [class.grey]="inventory.lowStock === 0">warning_amber</mat-icon>
+              <div class="stat-value" [class.orange]="inventory.lowStock > 0" [class.grey]="inventory.lowStock === 0">{{ inventory.lowStock }}</div>
+              <div class="stat-label">Low Stock</div>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="inventory-stat">
+              <mat-icon [class.red]="inventory.outOfStock > 0" [class.grey]="inventory.outOfStock === 0">error_outline</mat-icon>
+              <div class="stat-value" [class.red]="inventory.outOfStock > 0" [class.grey]="inventory.outOfStock === 0">{{ inventory.outOfStock }}</div>
+              <div class="stat-label">Out of Stock</div>
+            </div>
+          </div>
+          <div class="alert-banner" *ngIf="inventory.lowStock > 0 || inventory.outOfStock > 0">
+            <mat-icon>warning_amber</mat-icon>
+            <span>Stock needs attention! Click to manage.</span>
+            <mat-icon>arrow_forward_ios</mat-icon>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Quick Actions Section -->
+    <div class="section">
+      <div class="section-title">
+        <mat-icon>flash_on</mat-icon>
+        <span>Quick Actions</span>
+      </div>
+      <div class="actions-grid">
+        <mat-card class="action-card" *ngFor="let action of quickActions" (click)="handleQuickAction(action.action)">
+          <mat-card-content>
+            <div class="action-icon" [ngClass]="action.action">
+              <mat-icon>{{ action.icon }}</mat-icon>
+            </div>
+            <span class="action-label">{{ action.label }}</span>
+            <mat-icon class="action-arrow">arrow_forward_ios</mat-icon>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </div>
+
+    <!-- Recent Orders Section -->
+    <div class="section" *ngIf="recentOrders.length > 0">
+      <div class="section-title">
+        <mat-icon>history</mat-icon>
+        <span>Recent Orders</span>
+      </div>
+      <mat-card class="orders-card">
+        <mat-card-content>
+          <mat-list>
+            <mat-list-item *ngFor="let order of recentOrders.slice(0, 5)">
+              <div matListItemTitle>Order #{{ order.id }}</div>
+              <div matListItemLine>{{ order.customer }} - ₹{{ order.amount | number }}</div>
+              <div matListItemMeta>
+                <span class="status-badge" [ngClass]="order.status?.toLowerCase()">{{ order.status }}</span>
+              </div>
+            </mat-list-item>
+          </mat-list>
+        </mat-card-content>
+      </mat-card>
+    </div>
   </div>
 </div>

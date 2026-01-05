@@ -33,39 +33,45 @@
     <div class="filters-row-1">
       <mat-form-field appearance="outline" class="search-field">
         <mat-label>Search products...</mat-label>
-        <input matInput [(ngModel)]="searchTerm" (ngModelChange)="applyFilter()" placeholder="Search by name, category, or SKU">
-        <mat-icon matSuffix>search</mat-icon>
+        <input matInput
+               [value]="searchTerm"
+               (input)="onSearchChange($event)"
+               placeholder="Search all products by name, SKU, or description">
+        <mat-icon matSuffix *ngIf="!searching">search</mat-icon>
+        <mat-spinner matSuffix diameter="20" *ngIf="searching"></mat-spinner>
       </mat-form-field>
-      
+
       <div class="filter-controls">
         <mat-form-field appearance="outline">
           <mat-label>Category</mat-label>
-          <mat-select [(ngModel)]="selectedCategory" (selectionChange)="applyFilter()">
+          <mat-select [(ngModel)]="selectedCategory" (selectionChange)="onCategoryChange($event.value)">
             <mat-option value="">All Categories</mat-option>
             <mat-option *ngFor="let category of categories" [value]="category">
               {{ category }}
             </mat-option>
           </mat-select>
         </mat-form-field>
-        
+
         <mat-form-field appearance="outline">
           <mat-label>Status</mat-label>
-          <mat-select [(ngModel)]="selectedStatus" (selectionChange)="applyFilter()">
+          <mat-select [(ngModel)]="selectedStatus" (selectionChange)="onStatusChange($event.value)">
             <mat-option value="">All Status</mat-option>
             <mat-option value="ACTIVE">Active</mat-option>
             <mat-option value="INACTIVE">Inactive</mat-option>
-            <mat-option value="OUT_OF_STOCK">Out of Stock</mat-option>
+            <mat-option value="available">Available</mat-option>
+            <mat-option value="unavailable">Unavailable</mat-option>
           </mat-select>
         </mat-form-field>
       </div>
     </div>
-    
+
   </div>
 
         <!-- Loading State -->
         <div class="loading-container" *ngIf="loading">
           <mat-spinner diameter="40"></mat-spinner>
-          <p>Loading your products...</p>
+          <p *ngIf="!searchTerm">Loading your products...</p>
+          <p *ngIf="searchTerm">Searching for "{{ searchTerm }}"...</p>
         </div>
 
   <!-- Products List -->

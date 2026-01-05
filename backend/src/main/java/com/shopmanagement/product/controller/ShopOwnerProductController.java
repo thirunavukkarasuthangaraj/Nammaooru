@@ -37,20 +37,23 @@ public class ShopOwnerProductController {
     @GetMapping("/my-products")
     @PreAuthorize("hasRole('SHOP_OWNER') or hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Page<ShopProductResponse>>> getMyProducts(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "100") int size,
             @RequestParam(defaultValue = "updatedAt") String sortBy,
             @RequestParam(defaultValue = "DESC") String sortDirection) {
-        
-        log.info("Fetching my products for current user - page: {}, size: {}", page, size);
-        
+
+        log.info("Fetching my products for current user - search: {}, page: {}, size: {}", search, page, size);
+
         // Get current user's shop
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String currentUsername = authentication.getName();
-        
+
         try {
             Shop currentShop = shopService.getShopByOwner(currentUsername);
-            
+
             if (currentShop == null) {
                 log.warn("No shop found for user: {}", currentUsername);
                 return ResponseEntity.ok(ApiResponse.success(
@@ -58,23 +61,59 @@ public class ShopOwnerProductController {
                         "No shop found for current user"
                 ));
             }
-            
+
             Sort.Direction direction = sortDirection.equalsIgnoreCase("ASC") ? Sort.Direction.ASC : Sort.Direction.DESC;
             Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
 
-            // Filter out INACTIVE (soft-deleted) products
+            // Build specification with filters
             Specification<ShopProduct> spec = (root, query, cb) ->
                 cb.notEqual(root.get("status"), ShopProduct.ShopProductStatus.INACTIVE);
 
+            // Add search filter - handle null fields with coalesce
+            if (search != null && !search.trim().isEmpty()) {
+                String searchPattern = "%" + search.toLowerCase().trim() + "%";
+                spec = spec.and((root, query, cb) -> cb.or(
+                    cb.like(cb.lower(cb.coalesce(root.get("customName"), "")), searchPattern),
+                    cb.like(cb.lower(cb.coalesce(root.get("customDescription"), "")), searchPattern),
+                    cb.like(cb.lower(cb.coalesce(root.get("masterProduct").get("name"), "")), searchPattern),
+                    cb.like(cb.lower(cb.coalesce(root.get("masterProduct").get("nameTamil"), "")), searchPattern),
+                    cb.like(cb.lower(cb.coalesce(root.get("masterProduct").get("sku"), "")), searchPattern),
+                    cb.like(cb.lower(cb.coalesce(root.get("tags"), "")), searchPattern)
+                ));
+            }
+
+            // Add category filter
+            if (categoryId != null) {
+                spec = spec.and((root, query, cb) ->
+                    cb.equal(root.get("masterProduct").get("category").get("id"), categoryId));
+            }
+
+            // Add status filter
+            if (status != null && !status.trim().isEmpty()) {
+                if ("available".equalsIgnoreCase(status)) {
+                    spec = spec.and((root, query, cb) -> cb.equal(root.get("isAvailable"), true));
+                } else if ("unavailable".equalsIgnoreCase(status)) {
+                    spec = spec.and((root, query, cb) -> cb.equal(root.get("isAvailable"), false));
+                } else {
+                    try {
+                        ShopProduct.ShopProductStatus statusEnum = ShopProduct.ShopProductStatus.valueOf(status.toUpperCase());
+                        spec = spec.and((root, query, cb) -> cb.equal(root.get("status"), statusEnum));
+                    } catch (IllegalArgumentException e) {
+                        log.warn("Invalid status filter: {}", status);
+                    }
+                }
+            }
+
             Page<ShopProductResponse> products = shopProductService.getShopProducts(currentShop.getId(), spec, pageable);
-            
-            log.info("Found {} products for shop: {} (owner: {})", products.getTotalElements(), currentShop.getId(), currentUsername);
-            
+
+            log.info("Found {} products for shop: {} (owner: {}) with search: {}",
+                products.getTotalElements(), currentShop.getId(), currentUsername, search);
+
             return ResponseEntity.ok(ApiResponse.success(
                     products,
                     "My products fetched successfully"
             ));
-            
+
         } catch (Exception e) {
             log.error("Error fetching my products for user: {}", currentUsername, e);
             return ResponseEntity.ok(ApiResponse.success(

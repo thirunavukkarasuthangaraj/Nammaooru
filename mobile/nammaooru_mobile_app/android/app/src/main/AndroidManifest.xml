@@ -60,7 +60,7 @@
 
 
     <application
-        android:label="Ooru Express"
+        android:label="NammaOoru"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:allowBackup="false"

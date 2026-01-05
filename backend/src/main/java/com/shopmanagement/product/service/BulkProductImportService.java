@@ -214,7 +214,7 @@ public class BulkProductImportService {
      */
     private BulkImportRequest parseRow(Row row, int rowNumber) {
         String categoryName = getCellValueAsString(row.getCell(4));  // E: categoryName
-        Long categoryId = lookupCategoryByName(categoryName);
+        // DON'T lookup category here - do it inside the REQUIRES_NEW transaction
 
         String name = getCellValueAsString(row.getCell(0));          // A: Item Name
         String tags = getCellValueAsString(row.getCell(23));         // X: tags
@@ -228,7 +228,7 @@ public class BulkProductImportService {
                 .name(name)                                                    // A(0)
                 .nameTamil(getCellValueAsString(row.getCell(1)))              // B(1)
                 .description(getCellValueAsString(row.getCell(2)))            // C(2)
-                .categoryId(categoryId)                                        // E(4) - categoryName
+                .categoryName(categoryName)                                    // E(4) - store name, resolve inside transaction
                 .brand(getCellValueAsString(row.getCell(5)))                  // F(5)
                 .sku(getCellValueAsString(row.getCell(6)))                    // G(6)
                 .baseUnit(getCellValueAsString(row.getCell(9)))               // J(9)
@@ -351,6 +351,12 @@ public class BulkProductImportService {
                                                                        BulkImportRequest request,
                                                                        List<MultipartFile> images) {
         try {
+            // Resolve category name to ID inside this transaction
+            if (request.getCategoryId() == null && request.getCategoryName() != null) {
+                Long categoryId = lookupCategoryByName(request.getCategoryName());
+                request.setCategoryId(categoryId);
+            }
+
             // First, check if master product exists or create it
             MasterProductRequest masterProductRequest = buildMasterProductRequest(request);
             MasterProductResponse masterProduct;
@@ -435,6 +441,12 @@ public class BulkProductImportService {
     public BulkImportResponse.ImportResult processMasterProductImport(BulkImportRequest request,
                                                                          List<MultipartFile> images) {
         try {
+            // Resolve category name to ID inside this transaction
+            if (request.getCategoryId() == null && request.getCategoryName() != null) {
+                Long categoryId = lookupCategoryByName(request.getCategoryName());
+                request.setCategoryId(categoryId);
+            }
+
             MasterProductRequest masterProductRequest = buildMasterProductRequest(request);
             MasterProductResponse masterProduct = masterProductService.createProduct(masterProductRequest);
 

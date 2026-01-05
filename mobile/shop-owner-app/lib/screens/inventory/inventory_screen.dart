@@ -513,12 +513,8 @@ class _InventoryScreenState extends State<InventoryScreen>
                       ),
                       const SizedBox(width: AppTheme.space12),
                       Expanded(
-                        child: ModernButton(
-                          text: 'Update Stock',
-                          icon: Icons.save,
-                          variant: ButtonVariant.primary,
-                          size: ButtonSize.large,
-                          onPressed: () async {
+                        child: _UpdateStockButton(
+                          onUpdate: (setLoading) async {
                             final newStock =
                                 int.tryParse(stockController.text) ??
                                     currentStock;
@@ -534,12 +530,21 @@ class _InventoryScreenState extends State<InventoryScreen>
                                   backgroundColor: AppTheme.error,
                                 ),
                               );
-                              return;
+                              return false;
                             }
 
-                            await _saveStockUpdate(
+                            setLoading(true);
+
+                            final success = await _saveStockUpdate(
                                 product['id'], newStock, newMinStock);
-                            Navigator.pop(context);
+
+                            if (success && context.mounted) {
+                              Navigator.pop(context);
+                              return true;
+                            } else {
+                              setLoading(false);
+                              return false;
+                            }
                           },
                         ),
                       ),
@@ -554,11 +559,17 @@ class _InventoryScreenState extends State<InventoryScreen>
     );
   }
 
-  Future<void> _saveStockUpdate(
-      int productId, int newStock, int minStock) async {
+  Future<bool> _saveStockUpdate(
+      dynamic productId, int newStock, int minStock) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token') ?? widget.token;
+
+      print('=== STOCK UPDATE DEBUG ===');
+      print('Product ID: $productId (type: ${productId.runtimeType})');
+      print('New Stock: $newStock');
+      print('Min Stock Level: $minStock');
+      print('API URL: ${AppConfig.apiBaseUrl}/shop-products/$productId');
 
       final response = await http.put(
         Uri.parse('${AppConfig.apiBaseUrl}/shop-products/$productId'),
@@ -572,24 +583,42 @@ class _InventoryScreenState extends State<InventoryScreen>
         }),
       );
 
+      print('Response Status Code: ${response.statusCode}');
+      print('Response Body: ${response.body}');
+
       if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Stock updated successfully'),
-            backgroundColor: AppTheme.success,
-          ),
-        );
-        _fetchInventoryData();
+        final responseData = jsonDecode(response.body);
+        if (responseData['statusCode'] == '0000') {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Stock updated successfully'),
+                backgroundColor: AppTheme.success,
+              ),
+            );
+          }
+          _fetchInventoryData();
+          return true;
+        } else {
+          throw Exception(responseData['message'] ?? 'Failed to update stock');
+        }
+      } else if (response.statusCode == 400) {
+        final responseData = jsonDecode(response.body);
+        throw Exception(responseData['message'] ?? 'Bad request');
       } else {
-        throw Exception('Failed to update stock');
+        throw Exception('Failed to update stock: HTTP ${response.statusCode}');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error updating stock: $e'),
-          backgroundColor: AppTheme.error,
-        ),
-      );
+      print('Error updating stock: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: AppTheme.error,
+          ),
+        );
+      }
+      return false;
     }
   }
 
@@ -1184,6 +1213,39 @@ class _VoiceSearchDialogWidgetState extends State<_VoiceSearchDialogWidget> {
           ),
         ),
       ),
+    );
+  }
+}
+
+// Update Stock Button Widget with loading state
+class _UpdateStockButton extends StatefulWidget {
+  final Future<bool> Function(void Function(bool)) onUpdate;
+
+  const _UpdateStockButton({required this.onUpdate});
+
+  @override
+  State<_UpdateStockButton> createState() => _UpdateStockButtonState();
+}
+
+class _UpdateStockButtonState extends State<_UpdateStockButton> {
+  bool _isLoading = false;
+
+  void _setLoading(bool loading) {
+    if (mounted) {
+      setState(() {
+        _isLoading = loading;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ModernButton(
+      text: _isLoading ? 'Updating...' : 'Update Stock',
+      icon: _isLoading ? null : Icons.save,
+      variant: ButtonVariant.primary,
+      size: ButtonSize.large,
+      onPressed: _isLoading ? null : () => widget.onUpdate(_setLoading),
     );
   }
 }

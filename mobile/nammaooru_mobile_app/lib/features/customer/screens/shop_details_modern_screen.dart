@@ -318,15 +318,7 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
                             // Show search dialog for text search
                             _showSearchDialog();
                           },
-                          tooltip: 'Text Search',
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.mic, color: Colors.red, size: 28),
-                          onPressed: () {
-                            // Show voice search dialog
-                            _showVoiceSearchDialog();
-                          },
-                          tooltip: 'Voice Search (Tamil/English)',
+                          tooltip: 'Search',
                         ),
                       ],
                     ),

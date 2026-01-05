@@ -5,16 +5,13 @@ import 'package:provider/provider.dart';
 import 'dart:convert';
 import '../auth/login_screen.dart';
 import '../../providers/language_provider.dart';
-import '../../services/api_service_simple.dart';
 import '../notifications/notifications_screen.dart';
 import '../orders/orders_screen.dart';
 import '../payments/payments_screen.dart';
 import '../promo_codes/promo_codes_screen.dart';
 import '../inventory/inventory_screen.dart';
+import '../products/products_screen.dart';
 import '../../utils/app_config.dart';
-import '../../utils/app_theme.dart';
-import '../../widgets/modern_card.dart';
-import '../../widgets/modern_button.dart';
 import '../../core/services/app_update_service.dart';
 
 class DashboardHomeScreen extends StatefulWidget {
@@ -34,16 +31,14 @@ class DashboardHomeScreen extends StatefulWidget {
 class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
   Map<String, dynamic> _stats = {
     'todayOrders': 0,
-    'todayRevenue': 0.0,
-    'monthlyRevenue': 0.0,
-    'totalRevenue': 0.0,
     'totalOrders': 0,
     'pendingOrders': 0,
+    'todayRevenue': 0.0,
+    'monthlyRevenue': 0.0,
     'totalProducts': 0,
     'lowStockProducts': 0,
     'outOfStockProducts': 0,
   };
-  List<dynamic> _recentOrders = [];
   bool _isLoading = true;
   int _unreadNotificationCount = 0;
 
@@ -55,7 +50,6 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
   }
 
   Future<void> _checkForAppUpdates() async {
-    // Delay the version check to let the UI load first
     await Future.delayed(const Duration(seconds: 2));
     if (mounted) {
       AppUpdateService.showUpdateDialogIfNeeded(context);
@@ -64,20 +58,15 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
 
   Future<void> _fetchDashboardData() async {
     try {
-      // Get token from stored data
       final prefs = await SharedPreferences.getInstance();
       final storedToken = prefs.getString('auth_token');
       final token = storedToken ?? widget.token;
 
-      print('Using token: ${token.isNotEmpty ? "${token.substring(0, 30)}..." : "EMPTY"}');
-
       if (token.isEmpty) {
-        print('ERROR: Token is empty!');
         _setMockData();
         return;
       }
 
-      // Step 1: Fetch current user's shop to get the shopId (alphanumeric ID like SH616BAAB9)
       final myShopResponse = await http.get(
         Uri.parse('${AppConfig.apiBaseUrl}/shops/my-shop'),
         headers: {
@@ -86,26 +75,19 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
         },
       );
 
-      print('My Shop API response: ${myShopResponse.statusCode}');
-
       if (myShopResponse.statusCode != 200) {
-        print('Failed to fetch shop: ${myShopResponse.body}');
         _setMockData();
         return;
       }
 
       final myShopData = jsonDecode(myShopResponse.body);
       if (myShopData['statusCode'] != '0000' || myShopData['data'] == null) {
-        print('Invalid shop response: ${myShopResponse.body}');
         _setMockData();
         return;
       }
 
-      final shopId = myShopData['data']['shopId'];  // e.g., "SH616BAAB9"
-      final internalShopId = myShopData['data']['id'];  // e.g., 4
-      print('Shop ID: $shopId (internal: $internalShopId)');
+      final shopId = myShopData['data']['shopId'];
 
-      // Step 2: Fetch dashboard stats using shopId
       final dashboardResponse = await http.get(
         Uri.parse('${AppConfig.apiBaseUrl}/shops/$shopId/dashboard'),
         headers: {
@@ -114,20 +96,6 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
         },
       );
 
-      print('Dashboard API response: ${dashboardResponse.statusCode}');
-
-      // Step 3: Fetch recent orders using shopId
-      final ordersResponse = await http.get(
-        Uri.parse('${AppConfig.apiBaseUrl}/shops/$shopId/orders?page=0&size=5'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
-
-      print('Orders API response: ${ordersResponse.statusCode}');
-
-      // Process dashboard data
       if (dashboardResponse.statusCode == 200) {
         final dashboardData = jsonDecode(dashboardResponse.body);
 
@@ -136,17 +104,13 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
           final orderMetrics = data['orderMetrics'] ?? {};
           final productMetrics = data['productMetrics'] ?? {};
 
-          print('Parsed dashboard data - orderMetrics: $orderMetrics');
-          print('Parsed dashboard data - productMetrics: $productMetrics');
-
           setState(() {
             _stats = {
               'todayOrders': orderMetrics['todayOrders'] ?? 0,
-              'todayRevenue': (orderMetrics['todayRevenue'] ?? 0).toDouble(),
-              'monthlyRevenue': (orderMetrics['monthlyRevenue'] ?? 0).toDouble(),
-              'totalRevenue': (orderMetrics['totalRevenue'] ?? 0).toDouble(),
               'totalOrders': orderMetrics['totalOrders'] ?? 0,
               'pendingOrders': orderMetrics['pendingOrders'] ?? 0,
+              'todayRevenue': (orderMetrics['todayRevenue'] ?? 0).toDouble(),
+              'monthlyRevenue': (orderMetrics['monthlyRevenue'] ?? 0).toDouble(),
               'totalProducts': productMetrics['totalProducts'] ?? 0,
               'lowStockProducts': productMetrics['lowStockProducts'] ?? 0,
               'outOfStockProducts': productMetrics['outOfStockProducts'] ?? 0,
@@ -154,32 +118,11 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
             _unreadNotificationCount = orderMetrics['pendingOrders'] ?? 0;
             _isLoading = false;
           });
-          print('Stats updated: $_stats');
         }
-      }
-
-      // Process orders data
-      if (ordersResponse.statusCode == 200) {
-        final ordersData = jsonDecode(ordersResponse.body);
-
-        if (ordersData['statusCode'] == '0000' && ordersData['data'] != null) {
-          final orders = ordersData['data']['orders'] ?? [];
-          print('Parsed orders count: ${orders.length}');
-          setState(() {
-            _recentOrders = orders.take(5).toList();
-          });
-          print('Recent orders updated: ${_recentOrders.length} orders');
-        }
-      }
-
-      // If both APIs failed, use mock data
-      if (dashboardResponse.statusCode != 200 && ordersResponse.statusCode != 200) {
-        print('Both APIs failed, using mock data');
+      } else {
         _setMockData();
       }
-    } catch (e, stackTrace) {
-      print('Error fetching dashboard data: $e');
-      print('Stack trace: $stackTrace');
+    } catch (e) {
       _setMockData();
     }
   }
@@ -187,57 +130,32 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
   void _setMockData() {
     setState(() {
       _stats = {
-        'todayOrders': 12,
-        'todayRevenue': 5430.00,
-        'monthlyRevenue': 45200.00,
-        'totalRevenue': 125000.00,
-        'totalOrders': 150,
-        'pendingOrders': 3,
-        'totalProducts': 45,
+        'todayOrders': 0,
+        'totalOrders': 0,
+        'pendingOrders': 0,
+        'todayRevenue': 0.0,
+        'monthlyRevenue': 0.0,
+        'totalProducts': 0,
+        'lowStockProducts': 0,
+        'outOfStockProducts': 0,
       };
-      _recentOrders = [
-        {
-          'id': 1,
-          'orderNumber': 'ORD001',
-          'customerName': 'John Doe',
-          'totalAmount': 250.00,
-          'status': 'PENDING',
-          'createdAt': DateTime.now().toIso8601String(),
-        },
-        {
-          'id': 2,
-          'orderNumber': 'ORD002',
-          'customerName': 'Jane Smith',
-          'totalAmount': 180.00,
-          'status': 'CONFIRMED',
-          'createdAt': DateTime.now().subtract(const Duration(hours: 1)).toIso8601String(),
-        },
-      ];
       _isLoading = false;
     });
   }
 
   Future<void> _logout() async {
     try {
-      // Delete FCM token from backend
-      final response = await http.delete(
+      await http.delete(
         Uri.parse('${AppConfig.apiBaseUrl}/shop-owner/notifications/fcm-token'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ${widget.token}',
         },
       );
-
-      if (response.statusCode == 200) {
-        print('✅ FCM token deleted from backend');
-      } else {
-        print('⚠️ Failed to delete FCM token: ${response.statusCode}');
-      }
     } catch (e) {
-      print('❌ Error deleting FCM token: $e');
+      // Ignore logout errors
     }
 
-    // Clear local storage
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
 
@@ -249,604 +167,719 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
     );
   }
 
-  void _navigateToOrders() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => OrdersScreen(token: widget.token),
-      ),
-    );
+  String _formatCurrency(double amount) {
+    if (amount >= 100000) {
+      return '${(amount / 100000).toStringAsFixed(1)}L';
+    } else if (amount >= 1000) {
+      return '${(amount / 1000).toStringAsFixed(1)}K';
+    }
+    return amount.toStringAsFixed(0);
   }
 
   @override
   Widget build(BuildContext context) {
-    final gridColumns = ResponsiveLayout.getGridColumns(context);
-    final padding = ResponsiveLayout.getResponsivePadding(context);
+    final hasStockAlert = (_stats['lowStockProducts'] as int) > 0 ||
+                          (_stats['outOfStockProducts'] as int) > 0;
 
     return Consumer<LanguageProvider>(
       builder: (context, languageProvider, child) {
         return Scaffold(
-          backgroundColor: AppTheme.background,
-          appBar: AppBar(
-            title: Text(languageProvider.dashboard, style: AppTheme.h5.copyWith(color: Colors.white)),
-            backgroundColor: Colors.green.shade700,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            actions: [
-              Badge(
-                label: Text('$_unreadNotificationCount'),
-                isLabelVisible: _unreadNotificationCount > 0,
-                child: ModernIconButton(
-                  icon: Icons.notifications,
-                  iconColor: Colors.white,
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => NotificationsScreen(token: widget.token),
-                      ),
-                    );
-                  },
-                  size: 48,
-                ),
-              ),
-              const SizedBox(width: AppTheme.space8),
-              PopupMenuButton(
-                icon: const Icon(Icons.more_vert, color: Colors.white),
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    child: Text(languageProvider.settings),
-                    onTap: () {},
-                  ),
-                  PopupMenuItem(
-                    child: Text(languageProvider.logout),
-                    onTap: _logout,
-                  ),
-                ],
-              ),
-              const SizedBox(width: AppTheme.space8),
-            ],
-          ),
+          backgroundColor: const Color(0xFFF5F7FA),
           body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: Colors.green.shade700))
-          : RefreshIndicator(
-              onRefresh: _fetchDashboardData,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: padding,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Welcome Header
-                    Container(
-                      padding: const EdgeInsets.all(AppTheme.space20),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Colors.green.shade700, Colors.green.shade500],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+              ? const Center(
+                  child: CircularProgressIndicator(color: Color(0xFF2E7D32)),
+                )
+              : RefreshIndicator(
+                  onRefresh: _fetchDashboardData,
+                  color: const Color(0xFF2E7D32),
+                  child: CustomScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    slivers: [
+                      // Header
+                      SliverAppBar(
+                        expandedHeight: 160,
+                        floating: false,
+                        pinned: true,
+                        backgroundColor: const Color(0xFF2E7D32),
+                        flexibleSpace: FlexibleSpaceBar(
+                          background: Container(
+                            decoration: const BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [Color(0xFF1B5E20), Color(0xFF388E3C)],
+                              ),
+                            ),
+                            child: SafeArea(
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      languageProvider.getText('Welcome back,', 'வணக்கம்,'),
+                                      style: const TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      widget.userName,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
-                        borderRadius: AppTheme.roundedLarge,
-                        boxShadow: AppTheme.shadowMedium,
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  languageProvider.getText('Welcome back,', 'மீண்டும் வருக,'),
-                                  style: AppTheme.bodyMedium.copyWith(
-                                    color: AppTheme.textWhite.withOpacity(0.9),
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                        actions: [
+                          Stack(
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.notifications_outlined, color: Colors.white, size: 26),
+                                onPressed: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => NotificationsScreen(token: widget.token)),
                                 ),
-                                const SizedBox(height: AppTheme.space4),
-                                Text(
-                                  widget.userName,
-                                  style: AppTheme.h3.copyWith(
-                                    color: AppTheme.textWhite,
+                              ),
+                              if (_unreadNotificationCount > 0)
+                                Positioned(
+                                  right: 8,
+                                  top: 8,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                                    constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                                    child: Text(
+                                      '$_unreadNotificationCount',
+                                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                      textAlign: TextAlign.center,
+                                    ),
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              ],
-                            ),
+                            ],
                           ),
-                          Container(
-                            padding: const EdgeInsets.all(AppTheme.space12),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: AppTheme.roundedMedium,
-                            ),
-                            child: const Icon(
-                              Icons.store,
-                              size: 40,
-                              color: AppTheme.textWhite,
-                            ),
+                          IconButton(
+                            icon: const Icon(Icons.logout_outlined, color: Colors.white, size: 24),
+                            onPressed: () => _showLogoutDialog(context, languageProvider),
                           ),
+                          const SizedBox(width: 8),
                         ],
                       ),
-                    ),
 
-                    const SizedBox(height: AppTheme.space24),
-
-                    // Statistics Grid
-                    GridView.count(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      crossAxisCount: gridColumns > 2 ? 3 : 2,
-                      mainAxisSpacing: AppTheme.space12,
-                      crossAxisSpacing: AppTheme.space12,
-                      childAspectRatio: MediaQuery.of(context).size.width < 360
-                          ? 1.35
-                          : (gridColumns > 2 ? 1.85 : 1.55),
-                      children: [
-                        StatCard(
-                          title: languageProvider.todayOrders,
-                          value: _stats['todayOrders'].toString(),
-                          icon: Icons.shopping_cart,
-                          color: AppTheme.secondary,
-                          subtitle: languageProvider.getText('Orders today', 'இன்றைய ஆர்டர்கள்'),
-                          useGradient: true,
-                          onTap: _navigateToOrders,
-                        ),
-                        StatCard(
-                          title: languageProvider.pendingOrders,
-                          value: _stats['pendingOrders'].toString(),
-                          icon: Icons.pending_actions,
-                          color: AppTheme.warning,
-                          subtitle: languageProvider.getText('Awaiting action', 'செயலுக்கு காத்திருக்கிறது'),
-                          useGradient: true,
-                          onTap: _navigateToOrders,
-                        ),
-                        StatCard(
-                          title: languageProvider.getText('Total Orders', 'மொத்த ஆர்டர்கள்'),
-                          value: _stats['totalOrders'].toString(),
-                          icon: Icons.receipt_long,
-                          color: const Color(0xFF5E35B1),
-                          subtitle: languageProvider.getText('All time', 'அனைத்து நேரமும்'),
-                          onTap: _navigateToOrders,
-                        ),
-                        StatCard(
-                          title: languageProvider.getText("Today's Revenue", 'இன்றைய வருவாய்'),
-                          value: '₹${_stats['todayRevenue']}',
-                          icon: Icons.attach_money,
-                          color: AppTheme.success,
-                          subtitle: languageProvider.getText("Today's earnings", 'இன்றைய வருமானம்'),
-                          useGradient: true,
-                        ),
-                        StatCard(
-                          title: languageProvider.getText('Monthly Revenue', 'மாத வருவாய்'),
-                          value: '₹${_stats['monthlyRevenue']}',
-                          icon: Icons.trending_up,
-                          color: const Color(0xFF00897B),
-                          subtitle: languageProvider.getText('This month', 'இந்த மாதம்'),
-                        ),
-                        StatCard(
-                          title: languageProvider.totalProducts,
-                          value: _stats['totalProducts'].toString(),
-                          icon: Icons.inventory_2,
-                          color: AppTheme.accent,
-                          subtitle: languageProvider.getText('In inventory', 'சரக்கில்'),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: AppTheme.space24),
-
-                    // Payments & Settlements Card
-                    InfoCard(
-                      title: '',
-                      child: InkWell(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => PaymentsScreen(token: widget.token),
-                            ),
-                          );
-                        },
-                        borderRadius: AppTheme.roundedLarge,
+                      // Content
+                      SliverToBoxAdapter(
                         child: Padding(
-                          padding: const EdgeInsets.all(AppTheme.space20),
-                          child: Row(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                padding: const EdgeInsets.all(AppTheme.space16),
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [Color(0xFF2E7D32), Color(0xFF66BB6A)],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
+                              // Orders Overview Section
+                              _SectionTitle(
+                                title: languageProvider.getText('Orders Overview', 'ஆர்டர் கண்ணோட்டம்'),
+                                icon: Icons.shopping_cart_outlined,
+                              ),
+                              const SizedBox(height: 12),
+
+                              // Orders Stats Row
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _MetricCard(
+                                      label: languageProvider.getText("Today's Orders", 'இன்றைய ஆர்டர்கள்'),
+                                      value: '${_stats['todayOrders']}',
+                                      icon: Icons.today,
+                                      color: const Color(0xFF1976D2),
+                                      onTap: () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(builder: (context) => OrdersScreen(token: widget.token)),
+                                      ),
+                                    ),
                                   ),
-                                  borderRadius: AppTheme.roundedMedium,
-                                  boxShadow: AppTheme.shadowSmall,
-                                ),
-                                child: const Icon(
-                                  Icons.account_balance_wallet,
-                                  color: AppTheme.textWhite,
-                                  size: 32,
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _MetricCard(
+                                      label: languageProvider.getText('Pending', 'நிலுவை'),
+                                      value: '${_stats['pendingOrders']}',
+                                      icon: Icons.pending_actions,
+                                      color: const Color(0xFFE65100),
+                                      highlight: (_stats['pendingOrders'] as int) > 0,
+                                      onTap: () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(builder: (context) => OrdersScreen(token: widget.token)),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _MetricCard(
+                                      label: languageProvider.getText('Total', 'மொத்தம்'),
+                                      value: '${_stats['totalOrders']}',
+                                      icon: Icons.receipt_long,
+                                      color: const Color(0xFF5E35B1),
+                                      onTap: () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(builder: (context) => OrdersScreen(token: widget.token)),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+
+                              const SizedBox(height: 24),
+
+                              // Revenue Section
+                              _SectionTitle(
+                                title: languageProvider.getText('Revenue', 'வருவாய்'),
+                                icon: Icons.account_balance_wallet_outlined,
+                              ),
+                              const SizedBox(height: 12),
+
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _RevenueCard(
+                                      label: languageProvider.getText("Today", 'இன்று'),
+                                      value: _formatCurrency(_stats['todayRevenue'] as double),
+                                      icon: Icons.currency_rupee,
+                                      color: const Color(0xFF2E7D32),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _RevenueCard(
+                                      label: languageProvider.getText('This Month', 'இந்த மாதம்'),
+                                      value: _formatCurrency(_stats['monthlyRevenue'] as double),
+                                      icon: Icons.calendar_month,
+                                      color: const Color(0xFF00796B),
+                                    ),
+                                  ),
+                                ],
+                              ),
+
+                              const SizedBox(height: 24),
+
+                              // Inventory Section
+                              _SectionTitle(
+                                title: languageProvider.getText('Inventory', 'சரக்கு'),
+                                icon: Icons.inventory_2_outlined,
+                              ),
+                              const SizedBox(height: 12),
+
+                              // Stock Overview Card
+                              _InventoryCard(
+                                totalProducts: _stats['totalProducts'] as int,
+                                lowStock: _stats['lowStockProducts'] as int,
+                                outOfStock: _stats['outOfStockProducts'] as int,
+                                languageProvider: languageProvider,
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => InventoryScreen(token: widget.token)),
                                 ),
                               ),
-                              const SizedBox(width: AppTheme.space16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      languageProvider.paymentSettings,
-                                      style: AppTheme.h6,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: AppTheme.space4),
-                                    Text(
-                                      languageProvider.getText('Track your order payments and platform settlements', 'உங்கள் ஆர்டர் பணம் மற்றும் தளம் செட்டில்மென்ட்களை கண்காணிக்கவும்'),
-                                      style: AppTheme.bodySmall,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                ),
+
+                              const SizedBox(height: 24),
+
+                              // Quick Actions
+                              _SectionTitle(
+                                title: languageProvider.getText('Quick Actions', 'விரைவு செயல்கள்'),
+                                icon: Icons.flash_on_outlined,
                               ),
-                              const Icon(Icons.arrow_forward_ios, color: AppTheme.success),
+                              const SizedBox(height: 12),
+
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _ActionCard(
+                                      icon: Icons.receipt_long_outlined,
+                                      label: languageProvider.orders,
+                                      color: const Color(0xFF1976D2),
+                                      onTap: () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(builder: (context) => OrdersScreen(token: widget.token)),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _ActionCard(
+                                      icon: Icons.category_outlined,
+                                      label: languageProvider.getText('Products', 'பொருட்கள்'),
+                                      color: const Color(0xFF7B1FA2),
+                                      onTap: () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(builder: (context) => ProductsScreen(token: widget.token)),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _ActionCard(
+                                      icon: Icons.account_balance_wallet_outlined,
+                                      label: languageProvider.getText('Payments', 'பணம்'),
+                                      color: const Color(0xFF2E7D32),
+                                      onTap: () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(builder: (context) => PaymentsScreen(token: widget.token)),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _ActionCard(
+                                      icon: Icons.local_offer_outlined,
+                                      label: languageProvider.promoCodes,
+                                      color: const Color(0xFFE65100),
+                                      onTap: () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(builder: (context) => const PromoCodesScreen()),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+
+                              const SizedBox(height: 32),
                             ],
                           ),
                         ),
                       ),
-                    ),
-
-                    const SizedBox(height: AppTheme.space24),
-
-                    // Inventory Management Card
-                    InfoCard(
-                      title: '',
-                      child: InkWell(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => InventoryScreen(token: widget.token),
-                            ),
-                          );
-                        },
-                        borderRadius: AppTheme.roundedLarge,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: (_stats['lowStockProducts'] > 0 || _stats['outOfStockProducts'] > 0)
-                                ? [
-                                    AppTheme.error.withOpacity(0.1),
-                                    AppTheme.warning.withOpacity(0.1),
-                                  ]
-                                : [
-                                    AppTheme.accent.withOpacity(0.1),
-                                    AppTheme.primary.withOpacity(0.1),
-                                  ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: AppTheme.roundedLarge,
-                            border: Border.all(
-                              color: (_stats['lowStockProducts'] > 0 || _stats['outOfStockProducts'] > 0)
-                                ? AppTheme.error.withOpacity(0.3)
-                                : AppTheme.primary.withOpacity(0.2),
-                              width: 2,
-                            ),
-                          ),
-                          padding: const EdgeInsets.all(AppTheme.space20),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(AppTheme.space16),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: (_stats['lowStockProducts'] > 0 || _stats['outOfStockProducts'] > 0)
-                                      ? [AppTheme.error, AppTheme.warning]
-                                      : [AppTheme.accent, AppTheme.primary],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  borderRadius: AppTheme.roundedMedium,
-                                  boxShadow: AppTheme.shadowSmall,
-                                ),
-                                child: Icon(
-                                  (_stats['lowStockProducts'] > 0 || _stats['outOfStockProducts'] > 0)
-                                    ? Icons.warning_amber_rounded
-                                    : Icons.inventory_2,
-                                  color: AppTheme.textWhite,
-                                  size: 32,
-                                ),
-                              ),
-                              const SizedBox(width: AppTheme.space16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    if (_stats['lowStockProducts'] > 0 || _stats['outOfStockProducts'] > 0) ...[
-                                      Row(
-                                        children: [
-                                          Text(
-                                            languageProvider.getText('Inventory Alert', 'சரக்கு எச்சரிக்கை'),
-                                            style: AppTheme.h6.copyWith(
-                                              color: AppTheme.error,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          const SizedBox(width: AppTheme.space8),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: AppTheme.space8,
-                                              vertical: AppTheme.space4,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: AppTheme.error,
-                                              borderRadius: AppTheme.roundedSmall,
-                                            ),
-                                            child: Text(
-                                              '${_stats['lowStockProducts'] + _stats['outOfStockProducts']}',
-                                              style: AppTheme.bodySmall.copyWith(
-                                                color: AppTheme.textWhite,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: AppTheme.space8),
-                                      if (_stats['outOfStockProducts'] > 0)
-                                        Text(
-                                          languageProvider.getText('${_stats['outOfStockProducts']} out of stock • ${_stats['lowStockProducts']} low stock', '${_stats['outOfStockProducts']} கையிருப்பில் இல்லை • ${_stats['lowStockProducts']} குறைந்த கையிருப்பு'),
-                                          style: AppTheme.bodySmall.copyWith(
-                                            color: AppTheme.error,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                        )
-                                      else
-                                        Text(
-                                          languageProvider.getText('${_stats['lowStockProducts']} products running low on stock', '${_stats['lowStockProducts']} பொருட்கள் கையிருப்பு குறைகிறது'),
-                                          style: AppTheme.bodySmall.copyWith(
-                                            color: AppTheme.warning,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                    ] else ...[
-                                      Text(
-                                        languageProvider.inventory,
-                                        style: AppTheme.h6,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      const SizedBox(height: AppTheme.space4),
-                                      Text(
-                                        languageProvider.getText('Manage stock levels and track inventory for your products', 'உங்கள் பொருட்களுக்கான சரக்கு நிலைகளை நிர்வகித்து கண்காணிக்கவும்'),
-                                        style: AppTheme.bodySmall,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                              Icon(
-                                Icons.arrow_forward_ios,
-                                color: (_stats['lowStockProducts'] > 0 || _stats['outOfStockProducts'] > 0)
-                                  ? AppTheme.error
-                                  : AppTheme.primary,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: AppTheme.space16),
-
-                    // Promo Codes Card
-                    InfoCard(
-                      title: '',
-                      child: InkWell(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const PromoCodesScreen(),
-                            ),
-                          );
-                        },
-                        borderRadius: AppTheme.roundedLarge,
-                        child: Padding(
-                          padding: const EdgeInsets.all(AppTheme.space20),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(AppTheme.space16),
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [Color(0xFFFF6F00), Color(0xFFFFB74D)],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  borderRadius: AppTheme.roundedMedium,
-                                  boxShadow: AppTheme.shadowSmall,
-                                ),
-                                child: const Icon(
-                                  Icons.local_offer,
-                                  color: AppTheme.textWhite,
-                                  size: 32,
-                                ),
-                              ),
-                              const SizedBox(width: AppTheme.space16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      languageProvider.promoCodes,
-                                      style: AppTheme.h6,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: AppTheme.space4),
-                                    Text(
-                                      languageProvider.getText('Create and manage promotional offers for your shop', 'உங்கள் கடைக்கான சலுகை சலுகைகளை உருவாக்கி நிர்வகிக்கவும்'),
-                                      style: AppTheme.bodySmall,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const Icon(Icons.arrow_forward_ios, color: Color(0xFFFF6F00)),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: AppTheme.space24),
-
-                    // Recent Orders Section
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(languageProvider.getText('Recent Orders', 'சமீபத்திய ஆர்டர்கள்'), style: AppTheme.h5),
-                        ModernButton(
-                          text: languageProvider.getText('View All', 'அனைத்தையும் பார்'),
-                          variant: ButtonVariant.text,
-                          size: ButtonSize.small,
-                          onPressed: _navigateToOrders,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppTheme.space12),
-
-                    if (_recentOrders.isEmpty)
-                      InfoCard(
-                        title: '',
-                        child: Padding(
-                          padding: const EdgeInsets.all(AppTheme.space24),
-                          child: Center(
-                            child: Column(
-                              children: [
-                                Icon(
-                                  Icons.inbox_outlined,
-                                  size: 48,
-                                  color: AppTheme.textHint,
-                                ),
-                                const SizedBox(height: AppTheme.space12),
-                                Text(
-                                  languageProvider.getText('No recent orders', 'சமீபத்திய ஆர்டர்கள் இல்லை'),
-                                  style: AppTheme.bodyMedium.copyWith(
-                                    color: AppTheme.textSecondary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      )
-                    else
-                      ..._recentOrders.map((order) => Card(
-                        margin: const EdgeInsets.only(bottom: AppTheme.space12),
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: AppTheme.roundedLarge,
-                        ),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.all(AppTheme.space16),
-                          leading: CircleAvatar(
-                            radius: 28,
-                            backgroundColor: _getStatusColor(order['status']),
-                            child: Text(
-                              _getCustomerInitials(order['customerName']),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          title: Text(
-                            order['customerName'] ?? 'Unknown',
-                            style: AppTheme.h6,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          subtitle: Padding(
-                            padding: const EdgeInsets.only(top: AppTheme.space4),
-                            child: Text(
-                              'Order #${order['orderNumber']} • ₹${order['totalAmount']}',
-                              style: AppTheme.bodySmall,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          trailing: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppTheme.space12,
-                              vertical: AppTheme.space8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _getStatusColor(order['status']).withOpacity(0.1),
-                              borderRadius: AppTheme.roundedMedium,
-                              border: Border.all(
-                                color: _getStatusColor(order['status']),
-                                width: 1.5,
-                              ),
-                            ),
-                            child: Text(
-                              order['status'] ?? 'UNKNOWN',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: _getStatusColor(order['status']),
-                              ),
-                            ),
-                          ),
-                        ),
-                      )),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ),
         );
       },
     );
   }
 
-  Color _getStatusColor(String? status) {
-    switch (status) {
-      case 'PENDING': return Colors.orange;
-      case 'CONFIRMED': return Colors.blue;
-      case 'PREPARING': return Colors.purple;
-      case 'READY_FOR_PICKUP': return Colors.teal;
-      case 'OUT_FOR_DELIVERY': return Colors.indigo;
-      case 'DELIVERED': return Colors.green;
-      case 'CANCELLED': return Colors.red;
-      default: return Colors.grey;
-    }
+  void _showLogoutDialog(BuildContext context, LanguageProvider languageProvider) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(languageProvider.logout),
+        content: Text(languageProvider.getText(
+          'Are you sure you want to logout?',
+          'நீங்கள் வெளியேற விரும்புகிறீர்களா?',
+        )),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(languageProvider.getText('Cancel', 'ரத்து செய்')),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _logout();
+            },
+            child: Text(languageProvider.logout, style: const TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
   }
+}
 
-  String _getCustomerInitials(String? customerName) {
-    if (customerName == null || customerName.isEmpty) return '??';
+// Section Title Widget
+class _SectionTitle extends StatelessWidget {
+  final String title;
+  final IconData icon;
 
-    final nameParts = customerName.trim().split(' ');
-    if (nameParts.isEmpty) return '??';
+  const _SectionTitle({required this.title, required this.icon});
 
-    if (nameParts.length == 1) {
-      // Single name - take first 2 characters
-      return nameParts[0].substring(0, nameParts[0].length >= 2 ? 2 : 1).toUpperCase();
-    } else {
-      // Multiple names - take first letter of first two words
-      return '${nameParts[0][0]}${nameParts[1][0]}'.toUpperCase();
-    }
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: const Color(0xFF424242)),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF212121),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// Metric Card Widget
+class _MetricCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+  final bool highlight;
+  final VoidCallback? onTap;
+
+  const _MetricCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+    this.highlight = false,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: highlight ? color.withOpacity(0.1) : Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: highlight ? color : Colors.grey.shade200,
+              width: highlight ? 2 : 1,
+            ),
+          ),
+          child: Column(
+            children: [
+              Icon(icon, color: color, size: 24),
+              const SizedBox(height: 8),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.grey.shade600,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Revenue Card Widget
+class _RevenueCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  const _RevenueCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [color, color.withOpacity(0.8)],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: Colors.white.withOpacity(0.9), size: 20),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.9),
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '₹',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(width: 2),
+              Text(
+                value,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Inventory Card Widget
+class _InventoryCard extends StatelessWidget {
+  final int totalProducts;
+  final int lowStock;
+  final int outOfStock;
+  final LanguageProvider languageProvider;
+  final VoidCallback onTap;
+
+  const _InventoryCard({
+    required this.totalProducts,
+    required this.lowStock,
+    required this.outOfStock,
+    required this.languageProvider,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasAlert = lowStock > 0 || outOfStock > 0;
+
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: hasAlert ? Colors.orange.shade300 : Colors.grey.shade200,
+              width: hasAlert ? 2 : 1,
+            ),
+          ),
+          child: Column(
+            children: [
+              // Main Stats Row
+              Row(
+                children: [
+                  // Total Products
+                  Expanded(
+                    child: _InventoryStat(
+                      label: languageProvider.getText('Total', 'மொத்தம்'),
+                      value: '$totalProducts',
+                      color: const Color(0xFF7B1FA2),
+                      icon: Icons.inventory_2,
+                    ),
+                  ),
+                  Container(
+                    width: 1,
+                    height: 50,
+                    color: Colors.grey.shade200,
+                  ),
+                  // Low Stock
+                  Expanded(
+                    child: _InventoryStat(
+                      label: languageProvider.getText('Low Stock', 'குறைவான கையிருப்பு'),
+                      value: '$lowStock',
+                      color: lowStock > 0 ? Colors.orange : Colors.grey,
+                      icon: Icons.warning_amber_rounded,
+                    ),
+                  ),
+                  Container(
+                    width: 1,
+                    height: 50,
+                    color: Colors.grey.shade200,
+                  ),
+                  // Out of Stock
+                  Expanded(
+                    child: _InventoryStat(
+                      label: languageProvider.getText('Out of Stock', 'கையிருப்பு இல்லை'),
+                      value: '$outOfStock',
+                      color: outOfStock > 0 ? Colors.red : Colors.grey,
+                      icon: Icons.error_outline,
+                    ),
+                  ),
+                ],
+              ),
+
+              // Alert Banner
+              if (hasAlert) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          languageProvider.getText(
+                            'Stock needs attention! Tap to manage.',
+                            'கையிருப்பு கவனம் தேவை! நிர்வகிக்க தட்டவும்.',
+                          ),
+                          style: TextStyle(
+                            color: Colors.orange.shade800,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      Icon(Icons.arrow_forward_ios, color: Colors.orange.shade700, size: 14),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Inventory Stat Widget
+class _InventoryStat extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  final IconData icon;
+
+  const _InventoryStat({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 22),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            color: Colors.grey.shade600,
+          ),
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+  }
+}
+
+// Action Card Widget
+class _ActionCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ActionCard({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: color, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF212121),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios, color: Colors.grey.shade400, size: 16),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

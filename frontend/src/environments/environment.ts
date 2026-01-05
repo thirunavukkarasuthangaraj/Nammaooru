@@ -8,7 +8,7 @@ export const environment = {
   googleMapsApiKey: 'AIzaSyAr_uGbaOnhebjRyz7ohU6N-hWZJVV_R3U',
   websocketUrl: 'ws://localhost:8080/ws',
   version: packageInfo.version,
-  buildDate: new Date().toISOString(),
+  buildDate: new Date().toISOString(), 
   timezone: 'Asia/Kolkata', // Indian Standard Time
   defaultMapCenter: {
     lat: 12.9716, // Bangalore coordinates

@@ -20,6 +20,7 @@ public class BulkImportRequest {
     private String sku;
     private String barcode;
     private Long categoryId;
+    private String categoryName; // Store name, resolve to ID inside transaction
     private String brand;
     private String baseUnit;
     private BigDecimal baseWeight;

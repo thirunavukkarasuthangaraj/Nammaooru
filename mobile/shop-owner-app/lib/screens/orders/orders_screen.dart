@@ -9,6 +9,7 @@ import '../../utils/app_theme.dart';
 import '../../widgets/modern_card.dart';
 import '../../widgets/modern_button.dart';
 import '../../providers/language_provider.dart';
+import '../../providers/order_provider.dart';
 import 'order_details_screen.dart';
 
 class OrdersScreen extends StatefulWidget {
