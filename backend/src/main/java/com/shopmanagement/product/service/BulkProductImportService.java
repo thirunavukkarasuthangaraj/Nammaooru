@@ -62,9 +62,10 @@ public class BulkProductImportService {
 
     /**
      * Import products from Excel for shop owners
-     * NOTE: NO @Transactional here - each product import has its own REQUIRES_NEW transaction
-     * This prevents "rollback-only" errors when category lookups fail
+     * Uses NOT_SUPPORTED to ensure no transaction context exists
+     * Each product import uses REQUIRES_NEW for independent transactions
      */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public BulkImportResponse importProductsForShop(Long shopId, MultipartFile excelFile,
                                                      List<MultipartFile> images) {
         log.info("Starting bulk import for shop: {}", shopId);
@@ -107,8 +108,9 @@ public class BulkProductImportService {
 
     /**
      * Import master products (admin only)
-     * NOTE: NO @Transactional here - each product import has its own REQUIRES_NEW transaction
+     * Uses NOT_SUPPORTED to ensure no transaction context exists
      */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public BulkImportResponse importMasterProducts(MultipartFile excelFile, List<MultipartFile> images) {
         log.info("Starting bulk master product import");
 
