@@ -217,8 +217,8 @@ public class BulkProductImportService {
 
         String name = getCellValueAsString(row.getCell(0));          // A: Item Name
         String tags = getCellValueAsString(row.getCell(23));         // X: tags
-        String imagePath = getCellValueAsString(row.getCell(25));    // Z: imagePath
-        String imageFolder = getCellValueAsString(row.getCell(26));  // AA: imageFolder
+        String imagePath = getCellValueAsString(row.getCell(24));    // Y: imagePath (was in Z but user's Excel has it in Y)
+        String imageFolder = getCellValueAsString(row.getCell(25));  // Z: imageFolder
 
         log.info("parseRow #{}: name='{}', category='{}', imagePath='{}'", rowNumber, name, categoryName, imagePath);
 
@@ -244,9 +244,9 @@ public class BulkProductImportService {
                 .isFeatured(getCellValueAsBoolean(row.getCell(20)))           // U(20)
                 .isAvailable(getCellValueAsBoolean(row.getCell(21)))          // V(21)
                 .tags(tags)                                                    // X(23)
-                .specifications(getCellValueAsString(row.getCell(24)))        // Y(24)
-                .imagePath(imagePath)                                          // Z(25)
-                .imageFolder(imageFolder)                                      // AA(26)
+                .specifications(null)                                          // Not used in current Excel
+                .imagePath(imagePath)                                          // Y(24)
+                .imageFolder(imageFolder)                                      // Z(25)
                 .barcode(null)
                 .build();
     }
