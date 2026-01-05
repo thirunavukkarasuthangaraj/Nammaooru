@@ -898,6 +898,7 @@ export class MyProductsComponent implements OnInit, OnDestroy {
 
   onPageChange(event: any): void {
     this.currentPageIndex = event.pageIndex;
+    this.pageSize = event.pageSize;  // Update page size when user changes it
     console.log('Page changed:', event.pageIndex, 'Page size:', event.pageSize);
   }
 
