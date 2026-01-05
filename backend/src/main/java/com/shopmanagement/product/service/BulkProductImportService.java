@@ -46,6 +46,11 @@ public class BulkProductImportService {
     private final ProductCategoryRepository productCategoryRepository;
     private final ShopProductRepository shopProductRepository;
 
+    // Self-injection to ensure @Transactional works on internal method calls
+    @org.springframework.context.annotation.Lazy
+    @org.springframework.beans.factory.annotation.Autowired
+    private BulkProductImportService self;
+
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -76,7 +81,8 @@ public class BulkProductImportService {
             response.setTotalRows(requests.size());
 
             for (BulkImportRequest request : requests) {
-                BulkImportResponse.ImportResult result = processShopProductImport(shopId, request, images);
+                // Use self to invoke through Spring proxy (ensures @Transactional REQUIRES_NEW works)
+                BulkImportResponse.ImportResult result = self.processShopProductImport(shopId, request, images);
                 response.addResult(result);
 
                 if ("SUCCESS".equals(result.getStatus())) {
@@ -118,7 +124,8 @@ public class BulkProductImportService {
             response.setTotalRows(requests.size());
 
             for (BulkImportRequest request : requests) {
-                BulkImportResponse.ImportResult result = processMasterProductImport(request, images);
+                // Use self to invoke through Spring proxy (ensures @Transactional REQUIRES_NEW works)
+                BulkImportResponse.ImportResult result = self.processMasterProductImport(request, images);
                 response.addResult(result);
 
                 if ("SUCCESS".equals(result.getStatus())) {
