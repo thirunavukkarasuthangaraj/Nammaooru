@@ -373,9 +373,8 @@ public class BulkProductImportService {
                 masterProduct = masterProductService.createProduct(masterProductRequest);
             }
 
-            // Flush to ensure master product is persisted before adding images
-            entityManager.flush();
-            log.info("Flushed master product ID: {} to database", masterProduct.getId());
+            // masterProductService.createProduct() commits its own transaction
+            log.info("Master product ID: {} created/found", masterProduct.getId());
 
             // Check if shop already has this product
             Long shopProductId = null;
