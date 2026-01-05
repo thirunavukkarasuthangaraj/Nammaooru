@@ -348,7 +348,7 @@ public class BulkProductImportService {
      * Uses REQUIRES_NEW so each product import can succeed/fail independently
      * SUPPORTS UPSERT: If product exists, update image. If not, create product.
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRES_NEW, noRollbackFor = Exception.class)
     public BulkImportResponse.ImportResult processShopProductImport(Long shopId,
                                                                        BulkImportRequest request,
                                                                        List<MultipartFile> images) {
@@ -439,7 +439,7 @@ public class BulkProductImportService {
      * Process master product import with independent transaction
      * Uses REQUIRES_NEW so each product import can succeed/fail independently
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRES_NEW, noRollbackFor = Exception.class)
     public BulkImportResponse.ImportResult processMasterProductImport(BulkImportRequest request,
                                                                          List<MultipartFile> images) {
         try {
