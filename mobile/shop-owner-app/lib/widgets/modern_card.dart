@@ -1022,8 +1022,11 @@ class OrderCard extends StatelessWidget {
   }
 
   String _formatDate(DateTime date) {
+    // Server is in Germany (CET = UTC+1), convert to IST (UTC+5:30)
+    // Difference: IST - CET = 5:30 - 1:00 = 4:30 hours
+    final istDate = date.add(const Duration(hours: 4, minutes: 30));
     final now = DateTime.now();
-    final difference = now.difference(date);
+    final difference = now.difference(istDate);
 
     if (difference.inMinutes < 1) {
       return 'Just now';
@@ -1032,7 +1035,7 @@ class OrderCard extends StatelessWidget {
     } else if (difference.inDays < 1) {
       return '${difference.inHours}h ago';
     } else {
-      return '${date.day}/${date.month}/${date.year}';
+      return '${istDate.day}/${istDate.month}/${istDate.year}';
     }
   }
 }

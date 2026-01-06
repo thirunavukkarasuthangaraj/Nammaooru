@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/models/order_model.dart';
 import '../../../core/services/order_service.dart';
 import '../../../core/utils/image_url_helper.dart';
@@ -777,9 +778,13 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   Future<void> _reorderItems() async {
     try {
       final result = await _orderService.reorderItems(_order!.id);
-      
+
       if (result['success']) {
         _showSnackBar('Items added to cart', Colors.green);
+        // Navigate to cart after adding items
+        if (mounted) {
+          context.push('/customer/cart');
+        }
       } else {
         _showSnackBar(result['message'] ?? 'Failed to add items to cart', Colors.red);
       }

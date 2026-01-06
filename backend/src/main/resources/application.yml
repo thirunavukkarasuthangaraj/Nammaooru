@@ -111,7 +111,8 @@ logging:
 jwt:
   # IMPORTANT: Set JWT_SECRET environment variable in production
   secret: ${JWT_SECRET}
-  expiration: 86400000
+  # Token expiration: 365 days = 31536000000 ms (1 year for shop owners)
+  expiration: 31536000000
 
 firebase:
   project-id: ${FIREBASE_PROJECT_ID:namma-ooru-469119}

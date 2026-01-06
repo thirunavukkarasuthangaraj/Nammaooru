@@ -82,7 +82,13 @@ class AppConfig {
   //   Environment-Aware URLs
   // ============================
 
+  // Force production URLs for testing
+  static const bool _useProductionUrls = true;
+
   static String get apiBaseUrl {
+    if (_useProductionUrls) {
+      return 'https://api.nammaoorudelivary.in/api';
+    }
     if (kIsWeb) {
       return kIsProduction
           ? 'https://api.nammaoorudelivary.in/api'
@@ -94,6 +100,9 @@ class AppConfig {
   }
 
   static String get serverBaseUrl {
+    if (_useProductionUrls) {
+      return 'https://api.nammaoorudelivary.in';
+    }
     if (kIsWeb) {
       return kIsProduction
           ? 'https://api.nammaoorudelivary.in'
@@ -106,6 +115,9 @@ class AppConfig {
 
   // Separate image base URL for static file serving (without /api)
   static String get imageBaseUrl {
+    if (_useProductionUrls) {
+      return 'https://api.nammaoorudelivary.in';
+    }
     if (kIsWeb) {
       return kIsProduction
           ? 'https://api.nammaoorudelivary.in'
@@ -117,6 +129,9 @@ class AppConfig {
   }
 
   static String get webSocketUrl {
+    if (_useProductionUrls) {
+      return 'wss://nammaoorudelivary.in/ws';
+    }
     if (kIsWeb) {
       return kIsProduction
           ? 'wss://nammaoorudelivary.in/ws'

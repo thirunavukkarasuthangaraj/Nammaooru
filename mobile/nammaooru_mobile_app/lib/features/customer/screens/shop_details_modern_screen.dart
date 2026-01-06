@@ -1579,8 +1579,8 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Container(
-              width: MediaQuery.of(context).size.width * 0.9,
-              maxHeight: MediaQuery.of(context).size.height * 0.8,
+              width: MediaQuery.of(context).size.width,
+              maxHeight: MediaQuery.of(context).size.height * 0.95,
               padding: const EdgeInsets.all(16),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -1599,7 +1599,7 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
                       ),
                       const Spacer(),
                       IconButton(
-                        icon: Icon(Icons.close, color: isSearching ? Colors.grey : Colors.black),
+                        icon: Container(padding: const EdgeInsets.all(4), decoration: BoxDecoration(color: isSearching ? Colors.grey : Colors.red, shape: BoxShape.circle), child: Icon(Icons.close, size: 16, color: Colors.white)),
                         onPressed: isSearching ? null : () {
                           searchController.dispose();
                           Navigator.pop(context);

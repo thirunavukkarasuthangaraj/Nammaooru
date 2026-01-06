@@ -47,7 +47,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
   List<dynamic> _allProducts =
       []; // Store all products for client-side filtering
   List<dynamic> _categories = [];
-  List<dynamic> _promotions = []; // Store promotions from API
+  List<PromoCode> _promotions = []; // Store promotions from API
   String? _selectedCategory;
   String? _selectedCategoryName; // Store category name for filtering
   bool _isLoadingShop = false;
@@ -161,7 +161,11 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
   }
 
   Future<void> _loadShopDetails() async {
-    if (_shop != null) return;
+    if (_shop != null) {
+      // Update cart provider with shop's free delivery threshold
+      _updateCartFreeDelivery(_shop);
+      return;
+    }
 
     setState(() {
       _isLoadingShop = true;
@@ -178,6 +182,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
           _shop = response['data'];
           _isLoadingShop = false;
         });
+        // Update cart provider with shop's free delivery threshold
+        _updateCartFreeDelivery(_shop);
       }
     } catch (e) {
       if (mounted) {
@@ -189,6 +195,17 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
         Helpers.showSnackBar(context, 'Failed to load shop details',
             isError: true);
       }
+    }
+  }
+
+  void _updateCartFreeDelivery(Map<String, dynamic>? shop) {
+    if (shop == null) return;
+    final freeDeliveryAbove = (shop['freeDeliveryAbove'] ?? 0).toDouble();
+    print('🏪 Shop freeDeliveryAbove: $freeDeliveryAbove');
+    print('🏪 Shop images: ${shop['images']}');
+    if (freeDeliveryAbove > 0) {
+      final cartProvider = Provider.of<CartProvider>(context, listen: false);
+      cartProvider.setFreeDeliveryAbove(freeDeliveryAbove);
     }
   }
 
@@ -815,11 +832,124 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     return CustomScrollView(
       controller: _scrollController,
       slivers: [
+        SliverToBoxAdapter(child: _buildShopBanner()),
+        SliverToBoxAdapter(child: _buildFreeDeliveryBanner()),
         SliverToBoxAdapter(child: _buildCouponSection()),
         SliverToBoxAdapter(child: _buildHorizontalCategories()),
         SliverToBoxAdapter(child: _buildSearchBar()),
         _buildProductGrid(),
       ],
+    );
+  }
+
+  Widget _buildShopBanner() {
+    // Get banner image from shop images
+    final images = _shop?['images'] as List<dynamic>?;
+    if (images == null || images.isEmpty) return const SizedBox.shrink();
+
+    // Find banner image or primary image
+    String? bannerUrl;
+    for (final img in images) {
+      final imageType = img['imageType']?.toString()?.toUpperCase();
+      if (imageType == 'BANNER') {
+        bannerUrl = img['imageUrl']?.toString();
+        break;
+      }
+    }
+
+    // If no banner, try to find primary image
+    if (bannerUrl == null) {
+      for (final img in images) {
+        if (img['isPrimary'] == true) {
+          bannerUrl = img['imageUrl']?.toString();
+          break;
+        }
+      }
+    }
+
+    // If still no image, use first image
+    if (bannerUrl == null && images.isNotEmpty) {
+      bannerUrl = images.first['imageUrl']?.toString();
+    }
+
+    if (bannerUrl == null || bannerUrl.isEmpty) return const SizedBox.shrink();
+
+    final fullUrl = ImageUrlHelper.getFullImageUrl(bannerUrl);
+    print('🖼️ Shop banner URL: $fullUrl');
+
+    // Use FutureBuilder-like approach with Image - wrap entire widget
+    // so error state properly hides the container
+    return Padding(
+      padding: const EdgeInsets.only(left: 16, right: 16, top: 8),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.network(
+          fullUrl,
+          width: double.infinity,
+          height: 120,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            print('🖼️ Banner error: $error');
+            // Return zero-height widget on error
+            return const SizedBox(height: 0, width: 0);
+          },
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            // Show loading skeleton with fixed height
+            return Container(
+              height: 120,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Center(
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    value: loadingProgress.expectedTotalBytes != null
+                        ? loadingProgress.cumulativeBytesLoaded /
+                            loadingProgress.expectedTotalBytes!
+                        : null,
+                    color: VillageTheme.primaryGreen,
+                    strokeWidth: 2,
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFreeDeliveryBanner() {
+    final freeDeliveryAbove = (_shop?['freeDeliveryAbove'] ?? 0).toDouble();
+    if (freeDeliveryAbove <= 0) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2E7D32),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.local_shipping, color: Colors.white, size: 18),
+          const SizedBox(width: 8),
+          Text(
+            'Free Delivery above ₹${freeDeliveryAbove.toStringAsFixed(0)}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1012,23 +1142,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
   }
 
   Widget _buildCouponSection() {
-    // If loading, show a small loading indicator
-    if (_isLoadingPromotions) {
-      return Container(
-        height: 100,
-        margin: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 8),
-        child: const Center(
-          child: SizedBox(
-            width: 24,
-            height: 24,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ),
-      );
-    }
-
-    // If no promotions from API, hide the section
-    if (_promotions.isEmpty) {
+    // Hide section when loading or no promotions
+    if (_isLoadingPromotions || _promotions.isEmpty) {
       return const SizedBox.shrink();
     }
 
@@ -1059,21 +1174,21 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                 final promo = _promotions[index];
                 final cardColor = colors[index % colors.length];
 
-                // Build offer text from promo data
-                final code = promo['code']?.toString() ?? 'PROMO';
-                final discountType = promo['discountType']?.toString() ?? 'PERCENTAGE';
-                final discountValue = promo['discountValue'] ?? 0;
-                final minOrderAmount = promo['minOrderAmount'] ?? 0;
+                // PromoCode is a class, access properties directly
+                final code = promo.code;
+                final discountType = promo.type;
+                final discountValue = promo.discountValue;
+                final minOrderAmount = promo.minimumOrderAmount ?? 0;
 
                 String offerText;
                 if (discountType == 'PERCENTAGE') {
                   offerText = '${discountValue.toStringAsFixed(0)}% OFF';
-                } else if (discountType == 'FIXED') {
+                } else if (discountType == 'FIXED_AMOUNT') {
                   offerText = '₹${discountValue.toStringAsFixed(0)} OFF';
-                } else if (discountType == 'FREE_DELIVERY') {
+                } else if (discountType == 'FREE_SHIPPING') {
                   offerText = 'Free Delivery';
                 } else {
-                  offerText = promo['description']?.toString() ?? 'Special Offer';
+                  offerText = promo.description ?? 'Special Offer';
                 }
 
                 if (minOrderAmount > 0) {
@@ -1741,30 +1856,72 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     }
   }
 
-  void _showVoiceSearchDialog() {
-    // ✅ Declare variables OUTSIDE the builder so they persist!
+  void _showVoiceSearchDialog() async {
+    // ✅ Auto-start voice listening BEFORE showing dialog
+    // This ensures the mic opens immediately
+
+    final scrollController = ScrollController();
+    final parentContext = context;
+
+    // Show dialog with listening state
     List<dynamic> voiceResults = [];
-    bool isSearching = false;
-    String searchStatus = ''; // Track: 'listening', 'searching'
+    bool isSearching = true;
+    String searchStatus = 'listening';
     String? searchQuery;
-    final scrollController = ScrollController(); // Add scroll controller to ensure list starts at top
-    final parentContext = context; // Capture parent context for Provider access
+
+    // Start listening immediately (before dialog finishes rendering)
+    final listenFuture = _voiceSearch.listen();
 
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setState) {
+          // Handle the listen result
+          if (isSearching && searchStatus == 'listening') {
+            listenFuture.then((query) async {
+              if (query == null || query.trim().isEmpty) {
+                setState(() {
+                  isSearching = false;
+                  searchStatus = '';
+                });
+                return;
+              }
+
+              // Now searching
+              setState(() {
+                searchStatus = 'searching';
+                searchQuery = query;
+              });
+
+              // Search products
+              final results = await _voiceSearch.searchProducts(widget.shopId, query);
+
+              // Done
+              setState(() {
+                isSearching = false;
+                searchStatus = '';
+                voiceResults = results;
+              });
+              // Scroll to top of results list
+              if (results.isNotEmpty && scrollController.hasClients) {
+                scrollController.jumpTo(0);
+              }
+            });
+            // Change status to prevent re-triggering
+            searchStatus = 'waiting';
+          }
+
           return WillPopScope(
             onWillPop: () async => !isSearching,
-            child: Dialog(
+            child: Dialog(insetPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 24),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Container(
-                width: MediaQuery.of(context).size.width * 0.8,
+                width: double.infinity,
                 constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(context).size.height * 0.6,
+                  maxHeight: MediaQuery.of(context).size.height * 0.95,
                 ),
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -1783,14 +1940,14 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                         ),
                         GestureDetector(
                           onTap: isSearching ? null : () => Navigator.pop(dialogContext),
-                          child: Icon(Icons.close, size: 20, color: isSearching ? Colors.grey : Colors.black),
+                          child: Container(padding: const EdgeInsets.all(4), decoration: BoxDecoration(color: isSearching ? Colors.grey : Colors.red, shape: BoxShape.circle), child: Icon(Icons.close, size: 16, color: Colors.white)),
                         ),
                       ],
                     ),
                   const SizedBox(height: 16),
 
-                  // Simple Voice Button - Small & Compact
-                  if (!isSearching && voiceResults.isEmpty)
+                  // Voice Button - Only shown after results when user wants to search again
+                  if (!isSearching && voiceResults.isEmpty && searchQuery == null)
                     Column(
                       children: [
                         GestureDetector(
@@ -1888,7 +2045,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                       ],
                     ),
 
-                  // Search results - Compact
+                  // Search results - Clean UI
                   if (!isSearching && voiceResults.isNotEmpty)
                     Flexible(
                       child: Column(
@@ -1896,8 +2053,29 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (searchQuery != null && searchQuery!.isNotEmpty)
-                            Text('"$searchQuery" - ${voiceResults.length} found', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                          const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    '"$searchQuery" - ${voiceResults.length} found',
+                                    style: const TextStyle(fontSize: 13, color: Colors.grey),
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () => setState(() { voiceResults = []; searchQuery = null; }),
+                                  child: const Text(
+                                    'EDIT',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Color(0xFF2E7D32),
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          const SizedBox(height: 12),
                           Flexible(
                             child: ListView.builder(
                               controller: scrollController, // Use scroll controller to start at top
@@ -1909,24 +2087,75 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                                 final languageProvider = Provider.of<LanguageProvider>(parentContext, listen: false);
                                 final displayName = languageProvider.getDisplayName(product);
                                 final price = product['price'] ?? 0;
+                                final originalPrice = product['originalPrice'];
                                 String? imageUrl = product['primaryImageUrl'] ?? product['masterProduct']?['primaryImageUrl'];
                                 final fullImageUrl = imageUrl != null ? ImageUrlHelper.getFullImageUrl(imageUrl) : null;
 
                                 return Card(
                                   margin: const EdgeInsets.only(bottom: 8),
-                                  child: ListTile(
-                                    dense: true,
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    leading: ClipRRect(
-                                      borderRadius: BorderRadius.circular(6),
-                                      child: fullImageUrl != null
-                                          ? Image.network(fullImageUrl, width: 50, height: 50, fit: BoxFit.cover,
-                                              errorBuilder: (c, e, s) => Container(width: 50, height: 50, color: Colors.grey[200], child: const Icon(Icons.image, size: 24)))
-                                          : Container(width: 50, height: 50, color: Colors.grey[200], child: const Icon(Icons.image, size: 24)),
-                                    ),
-                                    title: Text(displayName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                    subtitle: Text('₹$price', style: const TextStyle(fontSize: 12, color: Color(0xFF2E7D32), fontWeight: FontWeight.bold)),
-                                    trailing: inStock
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  elevation: 1,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(12),
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        // Product Image
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(8),
+                                          child: fullImageUrl != null
+                                              ? Image.network(fullImageUrl, width: 70, height: 70, fit: BoxFit.cover,
+                                                  errorBuilder: (c, e, s) => Container(width: 70, height: 70, color: Colors.grey[200], child: const Icon(Icons.image, size: 30)))
+                                              : Container(width: 70, height: 70, color: Colors.grey[200], child: const Icon(Icons.image, size: 30)),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        // Product Details - Expanded to show full name
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              // Full Product Name - allows wrapping
+                                              Text(
+                                                displayName,
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                  height: 1.3,
+                                                ),
+                                                maxLines: 3,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              const SizedBox(height: 6),
+                                              // Price Row
+                                              Row(
+                                                children: [
+                                                  Text(
+                                                    '₹$price',
+                                                    style: const TextStyle(
+                                                      fontSize: 16,
+                                                      color: Color(0xFF2E7D32),
+                                                      fontWeight: FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                  if (originalPrice != null && originalPrice > price) ...[
+                                                    const SizedBox(width: 6),
+                                                    Text(
+                                                      '₹$originalPrice',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: Colors.grey[500],
+                                                        decoration: TextDecoration.lineThrough,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        // Add Button
+                                        inStock
                                         ? Builder(
                                             builder: (builderContext) {
                                               final cartProvider = Provider.of<CartProvider>(parentContext);
@@ -1988,20 +2217,74 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                                               );
                                             },
                                           )
-                                        : const Text('Out', style: TextStyle(fontSize: 10, color: Colors.red)),
-                                    // Removed onTap to keep dialog open when clicking products
+                                        : Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                            decoration: BoxDecoration(
+                                              color: Colors.grey[300],
+                                              borderRadius: BorderRadius.circular(6),
+                                            ),
+                                            child: const Text('Out of Stock', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                                          ),
+                                      ],
+                                    ),
                                   ),
                                 );
                               },
                             ),
                           ),
-                          // Try Again button
-                          const SizedBox(height: 8),
-                          Center(
-                            child: TextButton.icon(
-                              onPressed: () => setState(() { voiceResults = []; searchQuery = null; }),
-                              icon: const Icon(Icons.refresh, size: 16),
-                              label: const Text('Search Again', style: TextStyle(fontSize: 12)),
+                          // Search Again button - Outlined style
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: () async {
+                                // Clear previous results and start new voice search
+                                setState(() {
+                                  voiceResults = [];
+                                  searchQuery = null;
+                                  isSearching = true;
+                                  searchStatus = 'listening';
+                                });
+
+                                // Start listening
+                                final query = await _voiceSearch.listen();
+
+                                if (query == null || query.trim().isEmpty) {
+                                  setState(() {
+                                    isSearching = false;
+                                    searchStatus = '';
+                                  });
+                                  return;
+                                }
+
+                                // Now searching
+                                setState(() {
+                                  searchStatus = 'searching';
+                                  searchQuery = query;
+                                });
+
+                                // Search products
+                                final results = await _voiceSearch.searchProducts(widget.shopId, query);
+
+                                // Done
+                                setState(() {
+                                  isSearching = false;
+                                  searchStatus = '';
+                                  voiceResults = results;
+                                });
+
+                                // Scroll to top
+                                if (results.isNotEmpty && scrollController.hasClients) {
+                                  scrollController.jumpTo(0);
+                                }
+                              },
+                              icon: const Icon(Icons.refresh, color: Color(0xFF2E7D32), size: 18),
+                              label: const Text('Search Again', style: TextStyle(fontSize: 14, color: Color(0xFF2E7D32), fontWeight: FontWeight.w500)),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Color(0xFF2E7D32), width: 1.5),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                              ),
                             ),
                           ),
                         ],

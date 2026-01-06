@@ -90,6 +90,7 @@ export class MyProductsComponent implements OnInit, OnDestroy {
   // Pagination
   totalProducts = 0;
   pageSize = 12;
+  pageSizeOptions = [12, 24, 48, 96];
   currentPageIndex = 0;
   
   // Table columns
@@ -900,9 +901,17 @@ export class MyProductsComponent implements OnInit, OnDestroy {
     this.snackBar.open('Update stock feature coming soon', 'Close', { duration: 2000 });
   }
 
+  get dynamicPageSizeOptions(): number[] {
+    const options = [12, 24, 48, 96];
+    if (this.totalProducts > 96 && !options.includes(this.totalProducts)) {
+      options.push(this.totalProducts);
+    }
+    return options;
+  }
+
   onPageChange(event: any): void {
     this.currentPageIndex = event.pageIndex;
-    this.pageSize = event.pageSize;  // Update page size when user changes it
+    this.pageSize = event.pageSize;
     console.log('Page changed:', event.pageIndex, 'Page size:', event.pageSize);
   }
 

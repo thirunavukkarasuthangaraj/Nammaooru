@@ -66,10 +66,21 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
     }
   }
 
-  Future<void> _validatePromoCode(String code) async {
+  Future<void> _validatePromoCode(String code, {PromoCode? promoDetails}) async {
     if (code.trim().isEmpty) {
       _showMessage('Please enter a promo code', isError: true);
       return;
+    }
+
+    // Client-side minimum order validation
+    if (promoDetails != null && promoDetails.minimumOrderAmount != null) {
+      if (widget.orderAmount < promoDetails.minimumOrderAmount!) {
+        _showMessage(
+          'Minimum order of ₹${promoDetails.minimumOrderAmount!.toStringAsFixed(0)} required. Add ₹${(promoDetails.minimumOrderAmount! - widget.orderAmount).toStringAsFixed(0)} more.',
+          isError: true,
+        );
+        return;
+      }
     }
 
     // Check if user is logged in
@@ -347,25 +358,34 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
   }
 
   Widget _buildPromoChip(PromoCode promo) {
+    // Check if order meets minimum requirement
+    final bool isEligible = promo.minimumOrderAmount == null ||
+        widget.orderAmount >= promo.minimumOrderAmount!;
+    final double amountNeeded = promo.minimumOrderAmount != null
+        ? (promo.minimumOrderAmount! - widget.orderAmount).clamp(0, double.infinity)
+        : 0;
+
     return InkWell(
       onTap: () {
         _promoController.text = promo.code;
-        _validatePromoCode(promo.code);
+        _validatePromoCode(promo.code, promoDetails: promo);
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.green.shade50,
+          color: isEligible ? Colors.green.shade50 : Colors.grey.shade100,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.green.shade200),
+          border: Border.all(
+            color: isEligible ? Colors.green.shade200 : Colors.grey.shade300,
+          ),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: VillageTheme.primaryGreen,
+                color: isEligible ? VillageTheme.primaryGreen : Colors.grey,
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
@@ -384,9 +404,10 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
                 children: [
                   Text(
                     promo.title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
+                      color: isEligible ? Colors.black : Colors.grey[600],
                     ),
                   ),
                   Text(
@@ -396,13 +417,22 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
                       color: Colors.grey[600],
                     ),
                   ),
+                  if (!isEligible)
+                    Text(
+                      'Add ₹${amountNeeded.toStringAsFixed(0)} more to unlock',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.orange.shade700,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                 ],
               ),
             ),
-            const Icon(
-              Icons.arrow_forward_ios,
+            Icon(
+              isEligible ? Icons.arrow_forward_ios : Icons.lock_outline,
               size: 16,
-              color: VillageTheme.primaryGreen,
+              color: isEligible ? VillageTheme.primaryGreen : Colors.grey,
             ),
           ],
         ),

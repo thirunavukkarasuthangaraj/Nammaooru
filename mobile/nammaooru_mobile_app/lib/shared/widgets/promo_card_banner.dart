@@ -103,7 +103,7 @@ class _PromoCardBannerState extends State<PromoCardBanner> {
             ),
             // Main content
             Padding(
-              padding: const EdgeInsets.all(20.0),
+              padding: const EdgeInsets.all(16.0),
               child: Row(
                 children: [
                   // Icon (optional)
@@ -121,22 +121,23 @@ class _PromoCardBannerState extends State<PromoCardBanner> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
                           displayTitle,
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 12,
                             fontWeight: FontWeight.w600,
                             color: widget.textColor.withOpacity(0.95),
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 4),
                         Text(
                           displaySubtitle,
                           style: TextStyle(
-                            fontSize: 28,
+                            fontSize: 24,
                             fontWeight: FontWeight.w900,
                             color: widget.textColor,
                             letterSpacing: 0.5,
@@ -144,26 +145,26 @@ class _PromoCardBannerState extends State<PromoCardBanner> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 4),
                         if (displayDescription.isNotEmpty)
                           Text(
                             displayDescription,
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: 12,
                               fontWeight: FontWeight.w600,
                               color: widget.textColor.withOpacity(0.9),
                             ),
-                            maxLines: 2,
+                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         // Show promo code if available
                         if (promo != null)
                           Padding(
-                            padding: const EdgeInsets.only(top: 10.0),
+                            padding: const EdgeInsets.only(top: 4.0),
                             child: Text(
                               'Code: ${promo.code}',
                               style: TextStyle(
-                                fontSize: 13,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w900,
                                 color: widget.textColor,
                               ),

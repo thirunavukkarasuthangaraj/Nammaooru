@@ -83,11 +83,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Timer? _autoRefreshTimer;
   final SoundService _soundService = SoundService();
   Set<int> _previousPendingOrderIds = {}; // Track previous PENDING order IDs
+  Set<int> _readNotificationIds = {}; // Track locally read notification IDs
 
   @override
   void initState() {
     super.initState();
-    _loadNotifications();
+    _loadSavedReadStatus().then((_) {
+      _loadNotifications();
+    });
 
     // Auto-refresh every 30 seconds like Angular version (recurring)
     _autoRefreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
@@ -95,6 +98,31 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         _loadNotifications(silent: true); // Silent refresh without loading indicator
       }
     });
+  }
+
+  Future<void> _loadSavedReadStatus() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedIds = prefs.getStringList('read_notification_ids') ?? [];
+      _readNotificationIds = savedIds.map((id) => int.parse(id)).toSet();
+      print('Loaded ${_readNotificationIds.length} read notification IDs');
+    } catch (e) {
+      print('Error loading saved read status: $e');
+    }
+  }
+
+  Future<void> _saveReadStatus(int notificationId) async {
+    try {
+      _readNotificationIds.add(notificationId);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(
+        'read_notification_ids',
+        _readNotificationIds.map((id) => id.toString()).toList(),
+      );
+      print('Saved read notification ID: $notificationId');
+    } catch (e) {
+      print('Error saving read status: $e');
+    }
   }
 
   @override
@@ -211,18 +239,26 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 priority = 'low';
             }
 
-            // Determine if notification is unread (orders from last 24 hours)
+            // Determine if notification is unread
             final orderDate = DateTime.parse(order['createdAt'] ?? DateTime.now().toIso8601String());
             final yesterday = DateTime.now().subtract(const Duration(days: 1));
             final isRecent = orderDate.isAfter(yesterday);
+            final orderId = order['id'] ?? 0;
+
+            // Check if user has already marked this as read locally
+            final isLocallyRead = _readNotificationIds.contains(orderId);
+            // If locally marked as read, use 'read', otherwise use original logic
+            final notificationStatus = isLocallyRead
+                ? 'read'
+                : ((order['status'] == 'PENDING' || isRecent) ? 'unread' : 'read');
 
             notifications.add(ShopNotification(
-              id: order['id'] ?? 0,
+              id: orderId,
               title: title,
               message: message,
               type: type,
               priority: priority,
-              status: (order['status'] == 'PENDING' || isRecent) ? 'unread' : 'read',
+              status: notificationStatus,
               createdAt: orderDate,
               actionRequired: actionRequired,
               actionUrl: '/orders/${order['id']}',
@@ -271,78 +307,76 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Future<void> _markAsRead(ShopNotification notification) async {
     if (notification.status == 'unread') {
-      try {
-        // Call API to persist read status
-        final response = await ApiService.markNotificationAsRead(notification.id);
+      // Save read status locally first (so it persists across API refreshes)
+      await _saveReadStatus(notification.id);
 
-        if (response.isSuccess) {
-          setState(() {
-            final index = _notifications.indexWhere((n) => n.id == notification.id);
-            if (index != -1) {
-              _notifications[index] = notification.copyWith(
-                status: 'read',
-                readAt: DateTime.now(),
-              );
-            }
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Notification marked as read')),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to mark as read: ${response.error}')),
+      setState(() {
+        final index = _notifications.indexWhere((n) => n.id == notification.id);
+        if (index != -1) {
+          _notifications[index] = notification.copyWith(
+            status: 'read',
+            readAt: DateTime.now(),
           );
         }
+      });
+
+      try {
+        // Also call API to persist read status on backend
+        final response = await ApiService.markNotificationAsRead(notification.id);
+        if (!response.isSuccess) {
+          print('Backend mark as read failed: ${response.error}');
+        }
       } catch (e) {
-        print('Error marking notification as read: $e');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
+        print('Error calling backend markAsRead: $e');
+        // Local status is already saved, so no need to show error
       }
     }
   }
 
   Future<void> _markAllAsRead() async {
-    try {
-      // Get user ID from storage
-      final user = StorageService.getUser();
-      if (user == null || user['id'] == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('User not found. Please log in again.')),
-        );
-        return;
+    // Save all unread notification IDs locally first
+    for (final notification in _notifications) {
+      if (notification.status == 'unread') {
+        _readNotificationIds.add(notification.id);
       }
+    }
 
-      final userId = user['id'] as int;
+    // Save to SharedPreferences
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(
+        'read_notification_ids',
+        _readNotificationIds.map((id) => id.toString()).toList(),
+      );
+    } catch (e) {
+      print('Error saving all read statuses: $e');
+    }
 
-      // Call API to persist read status for all notifications
-      final response = await ApiService.markAllNotificationsAsRead(userId);
+    setState(() {
+      _notifications = _notifications.map((notification) {
+        if (notification.status == 'unread') {
+          return notification.copyWith(
+            status: 'read',
+            readAt: DateTime.now(),
+          );
+        }
+        return notification;
+      }).toList();
+    });
 
-      if (response.isSuccess) {
-        setState(() {
-          _notifications = _notifications.map((notification) {
-            if (notification.status == 'unread') {
-              return notification.copyWith(
-                status: 'read',
-                readAt: DateTime.now(),
-              );
-            }
-            return notification;
-          }).toList();
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('All notifications marked as read')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to mark all as read: ${response.error}')),
-        );
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('All notifications marked as read')),
+    );
+
+    // Try to call backend API (but don't fail if it doesn't work)
+    try {
+      final user = StorageService.getUser();
+      if (user != null && user['id'] != null) {
+        final userId = user['id'] as int;
+        await ApiService.markAllNotificationsAsRead(userId);
       }
     } catch (e) {
-      print('Error marking all notifications as read: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
-      );
+      print('Error calling backend markAllAsRead: $e');
     }
   }
 
@@ -381,7 +415,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         automaticallyImplyLeading: false,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppTheme.textWhite),
-          onPressed: widget.onBackToDashboard,
+          onPressed: () {
+            if (widget.onBackToDashboard != null) {
+              widget.onBackToDashboard!();
+            } else {
+              Navigator.of(context).pop();
+            }
+          },
         ),
         title: Row(
           children: [
@@ -394,9 +434,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   vertical: AppTheme.space4,
                 ),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [AppTheme.accent, AppTheme.accentDark],
-                  ),
+                  color: Colors.orange,
                   borderRadius: AppTheme.roundedRound,
                   boxShadow: AppTheme.shadowSmall,
                 ),
@@ -411,11 +449,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ],
           ],
         ),
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: AppTheme.primaryGradient,
-          ),
-        ),
+        backgroundColor: Colors.green.shade700,
         actions: [
           if (unreadCount > 0)
             IconButton(
@@ -499,10 +533,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final orderItems = orderData != null ? (orderData['orderItems'] as List?) ?? [] : [];
 
     return Card(
-      margin: const EdgeInsets.only(bottom: AppTheme.space4),
+      margin: const EdgeInsets.only(bottom: 12, left: 8, right: 8),
       elevation: notification.status == 'unread' ? 4 : 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.zero,
+        borderRadius: BorderRadius.circular(12),
         side: notification.status == 'unread'
             ? BorderSide(color: AppTheme.primary.withOpacity(0.5), width: 2)
             : BorderSide.none,
@@ -1411,11 +1445,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   String _formatDateTime(DateTime dateTime) {
+    // Server is in Germany (CET = UTC+1), convert to IST (UTC+5:30)
+    // Difference: IST - CET = 5:30 - 1:00 = 4:30 hours
+    final istDateTime = dateTime.add(const Duration(hours: 4, minutes: 30));
     final now = DateTime.now();
-    final difference = now.difference(dateTime);
+    final difference = now.difference(istDateTime);
 
     if (difference.inDays > 7) {
-      return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
+      return '${istDateTime.day}/${istDateTime.month}/${istDateTime.year}';
     } else if (difference.inDays > 0) {
       return '${difference.inDays}d ago';
     } else if (difference.inHours > 0) {

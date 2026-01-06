@@ -239,7 +239,7 @@
   <mat-paginator 
     [length]="totalProducts" 
     [pageSize]="pageSize" 
-    [pageSizeOptions]="[12, 24, 48, 96, 720]"
+    [pageSizeOptions]="dynamicPageSizeOptions"
     [showFirstLastButtons]="true"
     (page)="onPageChange($event)"
     *ngIf="filteredProducts.length > 0">

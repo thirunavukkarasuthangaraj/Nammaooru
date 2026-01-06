@@ -397,7 +397,10 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
 
   String _formatDateTime(String dateTimeString) {
     final dateTime = DateTime.parse(dateTimeString);
-    final difference = DateTime.now().difference(dateTime);
+    // Server is in Germany (CET = UTC+1), convert to IST (UTC+5:30)
+    // Difference: IST - CET = 5:30 - 1:00 = 4:30 hours
+    final istDateTime = dateTime.add(const Duration(hours: 4, minutes: 30));
+    final difference = DateTime.now().difference(istDateTime);
     if (difference.inDays > 0) return '${difference.inDays} day${difference.inDays == 1 ? '' : 's'} ago';
     if (difference.inHours > 0) return '${difference.inHours} hour${difference.inHours == 1 ? '' : 's'} ago';
     if (difference.inMinutes > 0) return '${difference.inMinutes} minute${difference.inMinutes == 1 ? '' : 's'} ago';
@@ -985,7 +988,13 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
           appBar: AppBar(
             leading: IconButton(
               icon: const Icon(Icons.arrow_back, color: Colors.white),
-              onPressed: widget.onBackToDashboard,
+              onPressed: () {
+                if (widget.onBackToDashboard != null) {
+                  widget.onBackToDashboard!();
+                } else {
+                  Navigator.of(context).pop();
+                }
+              },
             ),
             title: Text(
               languageProvider.orders,
@@ -1077,19 +1086,21 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                       final orderId = order['id']?.toString() ?? '';
                       final isUpdating = _updatingOrders.contains(orderId);
 
-                      return OrderCard(
-                        orderNumber: order['orderNumber'] ?? 'Unknown Order',
-                        customerName: order['customerName'] ?? 'Unknown Customer',
-                        status: orderStatus,
-                        totalAmount: (order['totalAmount'] ?? 0).toDouble(),
-                        orderDate: order['createdAt'] != null
-                            ? DateTime.parse(order['createdAt'])
-                            : DateTime.now(),
-                        itemCount: (order['items'] as List?)?.length ?? 0,
-                        items: order['items'] as List?, // Pass items to show product details
-                        deliveryType: deliveryType, // Pass delivery type
-                        isLoading: isUpdating, // Pass loading state
-                        onTap: () {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: OrderCard(
+                          orderNumber: order['orderNumber'] ?? 'Unknown Order',
+                          customerName: order['customerName'] ?? 'Unknown Customer',
+                          status: orderStatus,
+                          totalAmount: (order['totalAmount'] ?? 0).toDouble(),
+                          orderDate: order['createdAt'] != null
+                              ? DateTime.parse(order['createdAt'])
+                              : DateTime.now(),
+                          itemCount: (order['items'] as List?)?.length ?? 0,
+                          items: order['items'] as List?, // Pass items to show product details
+                          deliveryType: deliveryType, // Pass delivery type
+                          isLoading: isUpdating, // Pass loading state
+                          onTap: () {
                           // Navigate to order details screen
                           Navigator.push(
                             context,
@@ -1120,9 +1131,10 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                             ? () => _showOTPVerificationDialog(order)
                             : null,
 
-                        // OUT_FOR_DELIVERY status: No buttons (only driver can deliver)
-                        // Shop owners cannot mark HOME_DELIVERY orders as delivered
-                        onMarkDelivered: null,
+                          // OUT_FOR_DELIVERY status: No buttons (only driver can deliver)
+                          // Shop owners cannot mark HOME_DELIVERY orders as delivered
+                          onMarkDelivered: null,
+                        ),
                       );
                     },
                   ),

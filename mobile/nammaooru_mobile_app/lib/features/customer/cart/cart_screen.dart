@@ -597,11 +597,11 @@ class _CartScreenState extends State<CartScreen> {
                 ),
               ),
 
-            if (cartProvider.deliveryFee > 0 && cartProvider.subtotal >= 100)
+            if (cartProvider.deliveryFee > 0 && cartProvider.amountForFreeDelivery > 0)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
-                  'Add ₹${(500 - cartProvider.subtotal).toStringAsFixed(0)} more for free delivery',
+                  'Add ₹${cartProvider.amountForFreeDelivery.toStringAsFixed(0)} more for free delivery',
                   style: const TextStyle(
                     color: Colors.blue,
                     fontSize: 10,

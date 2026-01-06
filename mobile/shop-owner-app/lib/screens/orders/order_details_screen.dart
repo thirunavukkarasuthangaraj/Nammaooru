@@ -382,15 +382,18 @@ class OrderDetailsScreen extends StatelessWidget {
     if (dateStr == null) return '';
     try {
       final date = DateTime.parse(dateStr.toString());
+      // Server is in Germany (CET = UTC+1), convert to IST (UTC+5:30)
+      // Difference: IST - CET = 5:30 - 1:00 = 4:30 hours
+      final istDate = date.add(const Duration(hours: 4, minutes: 30));
       final now = DateTime.now();
-      final difference = now.difference(date);
+      final difference = now.difference(istDate);
 
       if (difference.inMinutes < 60) {
         return '${difference.inMinutes} minutes ago';
       } else if (difference.inHours < 24) {
         return '${difference.inHours} hours ago';
       } else {
-        return '${date.day}/${date.month}/${date.year} at ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+        return '${istDate.day}/${istDate.month}/${istDate.year} at ${istDate.hour.toString().padLeft(2, '0')}:${istDate.minute.toString().padLeft(2, '0')}';
       }
     } catch (e) {
       return dateStr.toString();
@@ -1197,7 +1200,9 @@ class OrderDetailsScreen extends StatelessWidget {
   }
 
   String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+    // Server is in Germany (CET = UTC+1), convert to IST (UTC+5:30)
+    final istDate = date.add(const Duration(hours: 4, minutes: 30));
+    return '${istDate.day}/${istDate.month}/${istDate.year} ${istDate.hour.toString().padLeft(2, '0')}:${istDate.minute.toString().padLeft(2, '0')}';
   }
 
   void _makePhoneCall(String phoneNumber) async {

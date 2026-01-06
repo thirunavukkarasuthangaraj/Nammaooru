@@ -976,7 +976,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             ),
             TextButton(
               onPressed: () {
-                Navigator.pushNamed(context, '/customer/shops');
+                context.push('/customer/shops');
               },
               child: const Text(
                 'See All',
@@ -1181,7 +1181,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             ),
             TextButton(
               onPressed: () {
-                Navigator.pushNamed(context, '/customer/orders');
+                context.push('/customer/orders');
               },
               child: const Text(
                 'View All',
@@ -1246,7 +1246,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                         const SizedBox(height: 20),
                         ElevatedButton.icon(
                           onPressed: () {
-                            Navigator.pushNamed(context, '/customer/shops');
+                            context.push('/customer/shops');
                           },
                           icon: const Icon(Icons.shopping_cart_outlined, size: 18),
                           label: const Text('Start Shopping'),
@@ -1456,6 +1456,10 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                       try {
                         await _orderApi.reorder(order['id']);
                         Helpers.showSnackBar(context, 'Items added to cart');
+                        // Navigate to cart after adding items
+                        if (mounted) {
+                          context.push('/customer/cart');
+                        }
                       } catch (e) {
                         Helpers.showSnackBar(context, 'Failed to reorder', isError: true);
                       }

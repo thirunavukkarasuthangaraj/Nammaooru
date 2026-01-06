@@ -11,6 +11,7 @@ import 'dart:convert';
 class CartProvider with ChangeNotifier {
   List<CartItem> _items = [];
   double _deliveryFee = 30.0;
+  double _freeDeliveryAbove = 0.0; // Shop's free delivery threshold (0 = no free delivery)
   double _taxRate = 0.0; // Tax disabled for now
   String? _promoCode;
   double _promoDiscount = 0.0;
@@ -22,15 +23,32 @@ class CartProvider with ChangeNotifier {
   bool get isEmpty => _items.isEmpty;
   bool get isNotEmpty => _items.isNotEmpty;
   bool get isLoading => _isLoading;
+  double get freeDeliveryAbove => _freeDeliveryAbove;
 
-  double get subtotal => _items.fold(0.0, (sum, item) => 
+  double get subtotal => _items.fold(0.0, (sum, item) =>
       sum + (item.product.effectivePrice * item.quantity));
-  
-  double get deliveryFee => subtotal >= 500 ? 0.0 : _deliveryFee;
+
+  // Free delivery if shop has threshold set and subtotal exceeds it
+  double get deliveryFee => (_freeDeliveryAbove > 0 && subtotal >= _freeDeliveryAbove) ? 0.0 : _deliveryFee;
   double get taxAmount => subtotal * _taxRate;
   double get promoDiscount => _promoDiscount;
-  
+
+  // Amount remaining for free delivery
+  double get amountForFreeDelivery => _freeDeliveryAbove > 0 ? (_freeDeliveryAbove - subtotal).clamp(0, double.infinity) : 0;
+
   double get total => subtotal + deliveryFee + taxAmount - promoDiscount;
+
+  // Set shop's free delivery threshold
+  void setFreeDeliveryAbove(double amount) {
+    _freeDeliveryAbove = amount;
+    notifyListeners();
+  }
+
+  // Set delivery fee
+  void setDeliveryFee(double fee) {
+    _deliveryFee = fee;
+    notifyListeners();
+  }
 
   CartProvider() {
     _loadCartFromStorage();

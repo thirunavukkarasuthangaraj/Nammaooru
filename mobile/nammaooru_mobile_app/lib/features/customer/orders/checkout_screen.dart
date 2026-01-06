@@ -24,6 +24,7 @@ import '../../../core/api/api_client.dart';
 import '../widgets/promo_code_widget.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../screens/address_management_screen.dart';
+import '../../../services/shop_api_service.dart';
 // import 'order_confirmation_screen.dart'; // Temporarily commented
 
 class CheckoutScreen extends StatefulWidget {
@@ -2426,6 +2427,46 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         Helpers.showSnackBar(context, 'Invalid shop information. Please try adding items again.', isError: true);
         setState(() => _isPlacingOrder = false);
         return;
+      }
+
+      // Check if shop is open before placing order
+      try {
+        final shopDetails = await ShopApiService().getShopById(shopId is int ? shopId : int.parse(shopId.toString()));
+        final isShopOpen = shopDetails['data']?['isOpenNow'] ?? shopDetails['data']?['isActive'] ?? false;
+
+        if (!isShopOpen) {
+          if (mounted) {
+            await showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: Row(
+                  children: [
+                    Icon(Icons.store_outlined, color: Colors.red.shade400),
+                    const SizedBox(width: 8),
+                    const Text('Shop Closed'),
+                  ],
+                ),
+                content: Text(
+                  'Sorry, ${shopDetails['data']?['name'] ?? 'the shop'} is currently closed and not accepting orders. Please try again during business hours.',
+                ),
+                actions: [
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: VillageTheme.primaryGreen,
+                    ),
+                    child: const Text('OK', style: TextStyle(color: Colors.white)),
+                  ),
+                ],
+              ),
+            );
+          }
+          setState(() => _isPlacingOrder = false);
+          return;
+        }
+      } catch (e) {
+        print('⚠️ Could not verify shop status: $e');
+        // Continue with order if we can't verify (backend will validate)
       }
 
       // Get device UUID for promo code tracking
