@@ -634,6 +634,77 @@ public class OrderService {
             log.error("Failed to send cancellation notification: {}", order.getOrderNumber(), e);
         }
 
+        // Send cancellation notification to shop owner
+        try {
+            log.info("Sending cancellation notification to shop owner for order: {}", order.getOrderNumber());
+            if (order.getShop() != null && order.getShop().getOwner() != null) {
+                Long shopOwnerId = order.getShop().getOwner().getId();
+                List<String> shopOwnerFcmTokens = getFcmTokensForUser(shopOwnerId);
+                for (String fcmToken : shopOwnerFcmTokens) {
+                    try {
+                        firebaseNotificationService.sendNotificationToToken(
+                            fcmToken,
+                            "Order Cancelled by Customer",
+                            "Order #" + order.getOrderNumber() + " has been cancelled by the customer. Reason: " + reason,
+                            Map.of(
+                                "type", "ORDER_CANCELLED",
+                                "orderId", order.getId().toString(),
+                                "orderNumber", order.getOrderNumber()
+                            )
+                        );
+                        log.info("Cancellation notification sent to shop owner for order: {}", order.getOrderNumber());
+                        break;
+                    } catch (Exception tokenError) {
+                        log.warn("Failed to send cancellation notification to shop owner: {}", tokenError.getMessage());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("Failed to send cancellation notification to shop owner: {}", order.getOrderNumber(), e);
+        }
+
+        // Send cancellation notification to delivery partner if assigned
+        try {
+            if (order.getOrderAssignments() != null && !order.getOrderAssignments().isEmpty()) {
+                for (OrderAssignment assignment : order.getOrderAssignments()) {
+                    if (assignment.getDeliveryPartner() != null &&
+                        (assignment.getStatus() == OrderAssignment.AssignmentStatus.ASSIGNED ||
+                         assignment.getStatus() == OrderAssignment.AssignmentStatus.ACCEPTED ||
+                         assignment.getStatus() == OrderAssignment.AssignmentStatus.PICKED_UP ||
+                         assignment.getStatus() == OrderAssignment.AssignmentStatus.IN_TRANSIT)) {
+
+                        Long partnerId = assignment.getDeliveryPartner().getId();
+                        List<String> partnerFcmTokens = getFcmTokensForUser(partnerId);
+                        for (String fcmToken : partnerFcmTokens) {
+                            try {
+                                firebaseNotificationService.sendNotificationToToken(
+                                    fcmToken,
+                                    "Order Cancelled",
+                                    "Order #" + order.getOrderNumber() + " has been cancelled by the customer.",
+                                    Map.of(
+                                        "type", "ORDER_CANCELLED",
+                                        "orderId", order.getId().toString(),
+                                        "orderNumber", order.getOrderNumber()
+                                    )
+                                );
+                                log.info("Cancellation notification sent to delivery partner {} for order: {}",
+                                    partnerId, order.getOrderNumber());
+                                break;
+                            } catch (Exception tokenError) {
+                                log.warn("Failed to send cancellation notification to delivery partner: {}", tokenError.getMessage());
+                            }
+                        }
+
+                        // Update assignment status to CANCELLED
+                        assignment.setStatus(OrderAssignment.AssignmentStatus.CANCELLED);
+                        orderAssignmentRepository.save(assignment);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("Failed to send cancellation notification to delivery partner: {}", order.getOrderNumber(), e);
+        }
+
         return mapToResponse(cancelledOrder);
     }
     
@@ -884,7 +955,7 @@ public class OrderService {
         } catch (Exception e) {
             log.error("Failed to send order rejection email to customer", e);
         }
-        
+
         log.info("Order rejected successfully: {}", rejectedOrder.getOrderNumber());
         return mapToResponse(rejectedOrder);
     }

@@ -8,6 +8,7 @@ import '../widgets/order_card.dart';
 import '../widgets/order_details_bottom_sheet.dart';
 import 'otp_handover_screen.dart';
 import 'navigation_screen.dart';
+import 'order_details_screen.dart';
 import '../../delivery/screens/simple_delivery_completion_screen.dart';
 
 class ActiveOrdersScreen extends StatefulWidget {
@@ -30,18 +31,15 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
   }
 
   void _showOrderDetails(OrderModel order) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => OrderDetailsBottomSheet(
-        order: order,
-        showActions: true,
-        onPickup: order.status == 'accepted' ? () => _markAsPickedUp(order) : null,
-        onDeliver: order.status == 'picked_up' || order.status == 'in_transit' ? () => _markAsDelivered(order) : null,
-        onCall: () => _callCustomer(order.customerPhone),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => OrderDetailsScreen(order: order),
       ),
-    );
+    ).then((_) {
+      // Reload orders when returning from details screen
+      _loadActiveOrders();
+    });
   }
 
   void _markAsPickedUp(OrderModel order) async {
@@ -232,16 +230,32 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: provider.currentPartner?.isOnline == true
+                              ? Colors.green
+                              : Colors.red[400],
                           borderRadius: BorderRadius.circular(16),
                         ),
-                        child: Text(
-                          'Online',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              provider.currentPartner?.isOnline == true ? 'Online' : 'Offline',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -255,10 +269,7 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                     itemCount: activeOrders.length,
                     itemBuilder: (context, index) {
                       final order = activeOrders[index];
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _buildActiveOrderCard(order),
-                      );
+                      return _buildActiveOrderCard(order, index);
                     },
                   ),
                 ),
@@ -270,142 +281,317 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
     );
   }
 
-  Widget _buildActiveOrderCard(OrderModel order) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: InkWell(
-        onTap: () => _showOrderDetails(order),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header with order ID and status
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2196F3).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      'Order #${order.orderNumber}',
-                      style: const TextStyle(
-                        color: Color(0xFF2196F3),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _getStatusColor(order.status),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      _getStatusText(order.status),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ),
-                ],
+  Widget _buildActiveOrderCard(OrderModel order, int index) {
+    final cardColors = [
+      Color(0xFF2196F3), // Blue
+      Color(0xFF9C27B0), // Purple
+      Color(0xFF009688), // Teal
+      Color(0xFFFF5722), // Deep Orange
+      Color(0xFF673AB7), // Deep Purple
+    ];
+    final cardColor = cardColors[index % cardColors.length];
+
+    return GestureDetector(
+      onTap: () => _showOrderDetails(order),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: cardColor.withOpacity(0.2),
+              blurRadius: 12,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+        children: [
+          // Colored header with order number
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [cardColor, cardColor.withOpacity(0.8)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-
-              const SizedBox(height: 12),
-
-              // Show OTP prominently if status is ACCEPTED
-              if (order.status.toLowerCase() == 'accepted' && order.pickupOtp != null && order.pickupOtp!.isNotEmpty)
-                _buildOTPDisplay(order.pickupOtp!),
-
-              if (order.status.toLowerCase() == 'accepted' && order.pickupOtp != null && order.pickupOtp!.isNotEmpty)
-                const SizedBox(height: 12),
-
-              // Customer info
-              Row(
-                children: [
-                  const Icon(Icons.person, size: 16, color: Colors.grey),
-                  const SizedBox(width: 8),
-                  Expanded(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+              ),
+            ),
+            child: Row(
+              children: [
+                // Order index badge
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
                     child: Text(
-                      order.customerName,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
+                      '${index + 1}',
+                      style: TextStyle(
+                        color: cardColor,
+                        fontWeight: FontWeight.bold,
                         fontSize: 16,
                       ),
                     ),
                   ),
-                  if (order.customerPhone != null && order.customerPhone!.isNotEmpty)
-                    IconButton(
-                      icon: const Icon(Icons.phone, color: Color(0xFF4CAF50), size: 20),
-                      onPressed: () => _callCustomer(order.customerPhone),
-                      tooltip: 'Call Customer',
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '#${order.orderNumber}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      Text(
+                        order.shopName,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.9),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Time display
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.access_time, color: Colors.white, size: 12),
+                      const SizedBox(width: 4),
+                      Text(
+                        _formatTime(order.createdAt),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    _getStatusText(order.status),
+                    style: TextStyle(
+                      color: cardColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 10,
                     ),
-                ],
-              ),
+                  ),
+                ),
+              ],
+            ),
+          ),
 
-              const SizedBox(height: 8),
-
-              // Delivery address
-              Row(
+          // Card body
+          Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.location_on, size: 16, color: Colors.grey),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      order.deliveryAddress,
-                      style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 14,
+                  // Show compact OTP if status is ACCEPTED
+                  if (order.status.toLowerCase() == 'accepted' && order.pickupOtp != null && order.pickupOtp!.isNotEmpty)
+                    _buildCompactOTPDisplay(order.pickupOtp!, cardColor),
+
+                  if (order.status.toLowerCase() == 'accepted' && order.pickupOtp != null && order.pickupOtp!.isNotEmpty)
+                    const SizedBox(height: 12),
+
+                  // Customer info row
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: cardColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(Icons.person, size: 20, color: cardColor),
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              order.customerName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            if (order.customerPhone != null && order.customerPhone!.isNotEmpty)
+                              Text(
+                                order.customerPhone!,
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 13,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      if (order.customerPhone != null && order.customerPhone!.isNotEmpty)
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.green.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.phone, color: Colors.green, size: 22),
+                            onPressed: () => _callCustomer(order.customerPhone),
+                            tooltip: 'Call Customer',
+                          ),
+                        ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Delivery address with navigation
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[50],
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.grey[200]!),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.location_on, size: 20, color: Colors.red[400]),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            order.deliveryAddress,
+                            style: TextStyle(
+                              color: Colors.grey[700],
+                              fontSize: 14,
+                              height: 1.3,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton.icon(
+                          onPressed: () => _startNavigation(order),
+                          icon: const Icon(Icons.navigation, size: 16),
+                          label: const Text('Navigate'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: cardColor,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.navigation, color: Color(0xFF2196F3), size: 20),
-                    onPressed: () => _startNavigation(order),
-                    tooltip: 'Navigate',
-                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Action buttons based on status
+                  _buildActionButtons(order, cardColor),
                 ],
               ),
-
-              const SizedBox(height: 12),
-
-              // Action buttons based on status
-              _buildActionButtons(order),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildActionButtons(OrderModel order) {
+  Widget _buildCompactOTPDisplay(String otp, Color accentColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFFFC107), Color(0xFFFFB300)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.lock_outlined, color: Colors.white, size: 20),
+          const SizedBox(width: 10),
+          const Text(
+            'PICKUP OTP:',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              otp.split('').join(' '),
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFFFF9800),
+                letterSpacing: 4,
+              ),
+            ),
+          ),
+          const Spacer(),
+          const Icon(Icons.info_outline, color: Colors.white70, size: 18),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButtons(OrderModel order, Color cardColor) {
     switch (order.status.toLowerCase()) {
       case 'accepted':
         return SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
-            onPressed: () => _markAsPickedUp(order),
-            icon: const Icon(Icons.inventory),
-            label: const Text('Mark as Picked Up'),
+            onPressed: () => _showOrderDetails(order),
+            icon: const Icon(Icons.inventory, size: 20),
+            label: const Text('Pick Up'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2196F3),
+              backgroundColor: cardColor,
               foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(12),
               ),
+              textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
             ),
           ),
         );
@@ -416,14 +602,16 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
           width: double.infinity,
           child: ElevatedButton.icon(
             onPressed: () => _markAsDelivered(order),
-            icon: const Icon(Icons.check_circle),
+            icon: const Icon(Icons.check_circle, size: 20),
             label: const Text('Mark as Delivered'),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF4CAF50),
               foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(12),
               ),
+              textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
             ),
           ),
         );
@@ -589,6 +777,25 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
         return 'DELIVERED';
       default:
         return status.toUpperCase();
+    }
+  }
+
+  String _formatTime(DateTime? dateTime) {
+    if (dateTime == null) return '';
+
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inMinutes < 1) {
+      return 'Just now';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}m ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays}d ago';
+    } else {
+      return '${dateTime.day}/${dateTime.month}';
     }
   }
 }

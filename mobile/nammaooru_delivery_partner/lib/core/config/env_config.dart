@@ -3,6 +3,7 @@ class EnvConfig {
   static String get baseUrl => 'https://nammaoorudelivary.in'; // Production URL
   static const String apiVersion = '';
   static String get fullApiUrl => '$baseUrl/api';
+  static String get imageBaseUrl => baseUrl; // Base URL for images
 
   // Google Services - Same API key as customer app
   static const String googleMapsApiKey = 'AIzaSyAr_uGbaOnhebjRyz7ohU6N-hWZJVV_R3U';

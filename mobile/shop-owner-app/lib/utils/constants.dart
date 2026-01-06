@@ -408,13 +408,13 @@ class NotificationTypes {
 }
 
 class SoundFiles {
-  static const String newOrder = 'assets/sounds/new_order.mp3';
-  static const String paymentReceived = 'assets/sounds/payment_received.mp3';
-  static const String orderCancelled = 'assets/sounds/order_cancelled.mp3';
-  static const String urgentAlert = 'assets/sounds/urgent_alert.mp3';
-  static const String successChime = 'assets/sounds/success_chime.mp3';
-  static const String messageReceived = 'assets/sounds/message_received.mp3';
-  static const String lowStock = 'assets/sounds/low_stock.mp3';
+  static const String newOrder = 'new_order.mp3';
+  static const String paymentReceived = 'payment_received.mp3';
+  static const String orderCancelled = 'order_cancelled.mp3';
+  static const String urgentAlert = 'urgent_alert.mp3';
+  static const String successChime = 'success_chime.mp3';
+  static const String messageReceived = 'message_received.mp3';
+  static const String lowStock = 'low_stock.mp3';
 }
 
 class AppAnimations {

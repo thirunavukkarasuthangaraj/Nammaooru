@@ -413,6 +413,8 @@ public class DeliveryPartnerController {
                 orderData.put("assignmentId", assignment.getId().toString()); // Include assignmentId for location tracking
 
                 // Add order items with images
+                log.info("Order {} has {} items", assignment.getOrder().getOrderNumber(),
+                    assignment.getOrder().getOrderItems() != null ? assignment.getOrder().getOrderItems().size() : 0);
                 List<Map<String, Object>> orderItems = assignment.getOrder().getOrderItems().stream()
                     .map(item -> {
                         Map<String, Object> itemMap = new HashMap<>();

@@ -6,6 +6,7 @@ import '../../../core/providers/location_provider.dart';
 import '../../../core/models/simple_order_model.dart';
 import '../widgets/order_card.dart';
 import '../widgets/order_details_bottom_sheet.dart';
+import 'order_details_screen.dart';
 
 class AvailableOrdersScreen extends StatefulWidget {
   const AvailableOrdersScreen({Key? key}) : super(key: key);
@@ -30,16 +31,14 @@ class _AvailableOrdersScreenState extends State<AvailableOrdersScreen> {
   }
 
   void _showOrderDetails(OrderModel order) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => OrderDetailsBottomSheet(
-        order: order,
-        onAccept: () => _acceptOrder(order),
-        onReject: () => _rejectOrder(order),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => OrderDetailsScreen(order: order),
       ),
-    );
+    ).then((_) {
+      _loadAvailableOrders();
+    });
   }
 
   void _acceptOrder(OrderModel order) async {
@@ -221,6 +220,38 @@ class _AvailableOrdersScreenState extends State<AvailableOrdersScreen> {
                               style: TextStyle(
                                 color: Colors.white70,
                                 fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Online/Offline status
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: provider.currentPartner?.isOnline == true
+                              ? Colors.green
+                              : Colors.red[400],
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              provider.currentPartner?.isOnline == true ? 'Online' : 'Offline',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ],
