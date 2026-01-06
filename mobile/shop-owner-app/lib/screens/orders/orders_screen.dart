@@ -39,7 +39,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
   int _previousPendingCount = 0;
   Set<String> _updatingOrders = {}; // Track orders being updated
 
-  final List<String> _statusFilters = ['ALL', 'SELF_PICKUP', 'PENDING', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'];
+  final List<String> _statusFilters = ['ALL', 'SELF_PICKUP', 'PENDING', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY', 'DELIVERED', 'RETURNED_TO_SHOP', 'CANCELLED'];
 
   @override
   void initState() {

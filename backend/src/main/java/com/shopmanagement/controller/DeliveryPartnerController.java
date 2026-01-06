@@ -1462,6 +1462,12 @@ public class DeliveryPartnerController {
 
             Order order = orderOpt.get();
 
+            // Fetch shop owner email BEFORE saving (while session is still open)
+            String shopOwnerEmail = null;
+            if (order.getShop() != null) {
+                shopOwnerEmail = order.getShop().getOwnerEmail();
+            }
+
             // Update order status to RETURNING_TO_SHOP
             order.setStatus(Order.OrderStatus.RETURNING_TO_SHOP);
             orderRepository.save(order);
@@ -1479,8 +1485,8 @@ public class DeliveryPartnerController {
 
             // Send FCM notification to shop owner
             try {
-                if (order.getShop() != null && order.getShop().getOwnerEmail() != null) {
-                    User shopOwner = userService.findByEmail(order.getShop().getOwnerEmail()).orElse(null);
+                if (shopOwnerEmail != null) {
+                    User shopOwner = userService.findByEmail(shopOwnerEmail).orElse(null);
                     if (shopOwner != null) {
                         List<UserFcmToken> fcmTokens = userFcmTokenRepository.findActiveTokensByUserId(shopOwner.getId());
                         for (UserFcmToken token : fcmTokens) {
@@ -1540,6 +1546,12 @@ public class DeliveryPartnerController {
 
             Order order = orderOpt.get();
 
+            // Fetch shop owner email BEFORE saving (while session is still open)
+            String shopOwnerEmail = null;
+            if (order.getShop() != null) {
+                shopOwnerEmail = order.getShop().getOwnerEmail();
+            }
+
             // Update order status to RETURNED_TO_SHOP
             order.setStatus(Order.OrderStatus.RETURNED_TO_SHOP);
             orderRepository.save(order);
@@ -1558,8 +1570,8 @@ public class DeliveryPartnerController {
 
             // Send FCM notification to shop owner to confirm receipt
             try {
-                if (order.getShop() != null && order.getShop().getOwnerEmail() != null) {
-                    User shopOwner = userService.findByEmail(order.getShop().getOwnerEmail()).orElse(null);
+                if (shopOwnerEmail != null) {
+                    User shopOwner = userService.findByEmail(shopOwnerEmail).orElse(null);
                     if (shopOwner != null) {
                         List<UserFcmToken> fcmTokens = userFcmTokenRepository.findActiveTokensByUserId(shopOwner.getId());
                         for (UserFcmToken token : fcmTokens) {

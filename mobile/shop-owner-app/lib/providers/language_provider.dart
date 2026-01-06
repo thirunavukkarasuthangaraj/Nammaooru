@@ -161,6 +161,7 @@ class LanguageProvider with ChangeNotifier {
   String get outForDelivery => getText('Out for Delivery', 'டெலிவரிக்கு');
   String get delivered => getText('Delivered', 'டெலிவரி ஆனது');
   String get cancelled => getText('Cancelled', 'ரத்து');
+  String get returnedToShop => getText('Returned', 'திரும்பியது');
   String get delivery => getText('Delivery', 'டெலிவரி');
   String get pickup => getText('Pickup', 'பிக்அப்');
 
@@ -225,6 +226,10 @@ class LanguageProvider with ChangeNotifier {
         return delivered;
       case 'CANCELLED':
         return cancelled;
+      case 'RETURNED_TO_SHOP':
+        return returnedToShop;
+      case 'RETURNING_TO_SHOP':
+        return getText('Returning', 'திரும்புகிறது');
       default:
         return status;
     }
