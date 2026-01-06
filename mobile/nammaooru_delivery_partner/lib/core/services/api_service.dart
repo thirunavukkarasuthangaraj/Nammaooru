@@ -428,6 +428,42 @@ class ApiService {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_partnerIdKey);
   }
+
+  // Return to shop - start return journey
+  Future<Map<String, dynamic>> startReturnToShop(String orderNumber) async {
+    final prefs = await SharedPreferences.getInstance();
+    final partnerId = prefs.getString(_partnerIdKey);
+
+    if (partnerId == null) {
+      throw ApiException('Partner ID not found. Please login again.', 401);
+    }
+
+    final response = await http.post(
+      Uri.parse('$_deliveryPartnerEndpoint/orders/$orderNumber/return-to-shop'),
+      headers: await _getHeaders(),
+      body: json.encode({'partnerId': partnerId}),
+    );
+
+    return _handleResponse(response);
+  }
+
+  // Return to shop - confirm returned
+  Future<Map<String, dynamic>> confirmReturnedToShop(String orderNumber) async {
+    final prefs = await SharedPreferences.getInstance();
+    final partnerId = prefs.getString(_partnerIdKey);
+
+    if (partnerId == null) {
+      throw ApiException('Partner ID not found. Please login again.', 401);
+    }
+
+    final response = await http.post(
+      Uri.parse('$_deliveryPartnerEndpoint/orders/$orderNumber/returned-to-shop'),
+      headers: await _getHeaders(),
+      body: json.encode({'partnerId': partnerId}),
+    );
+
+    return _handleResponse(response);
+  }
 }
 
 class ApiException implements Exception {

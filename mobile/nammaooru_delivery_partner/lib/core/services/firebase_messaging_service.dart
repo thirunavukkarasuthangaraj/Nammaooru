@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -119,6 +120,21 @@ class FirebaseMessagingService {
       importance: Importance.defaultImportance,
     );
 
+    const AndroidNotificationChannel cancellationChannel = AndroidNotificationChannel(
+      'cancellation_notifications',
+      'Order Cancellation Alerts',
+      description: 'Urgent notifications for order cancellations',
+      importance: Importance.max,
+      sound: RawResourceAndroidNotificationSound('urgent_notification'),
+      playSound: true,
+      enableVibration: true,
+      enableLights: true,
+    );
+
+    await _localNotifications
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(cancellationChannel);
+
     await _localNotifications
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(orderChannel);
@@ -145,7 +161,7 @@ class FirebaseMessagingService {
     FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
 
     // Handle notification tap when app is terminated
-    FirebaseMessaging.getInitialMessage().then((RemoteMessage? message) {
+    _firebaseMessaging.getInitialMessage().then((RemoteMessage? message) {
       if (message != null) {
         _handleNotificationTap(message);
       }
@@ -159,7 +175,22 @@ class FirebaseMessagingService {
     final notification = message.notification;
     final data = message.data;
 
-    if (notification != null) {
+    // Check if this is an order cancellation notification
+    final status = (data['status'] ?? '').toString().toUpperCase();
+    final title = notification?.title ?? '';
+    final isCancelled = status == 'CANCELLED' || title.toLowerCase().contains('cancelled');
+
+    if (isCancelled) {
+      // Play LOUD notification for cancellation
+      final orderNumber = data['orderNumber'] ?? 'Unknown';
+      await showCancellationNotification(
+        title: '🚨 ORDER CANCELLED!',
+        body: 'Order #$orderNumber was cancelled. Please return products to shop.',
+        orderId: orderNumber,
+        data: data.cast<String, dynamic>(),
+      );
+      print('🔴 Cancellation notification shown with loud sound');
+    } else if (notification != null) {
       await _showLocalNotification(
         title: notification.title ?? 'NammaOoru Delivery',
         body: notification.body ?? '',
@@ -242,7 +273,31 @@ class FirebaseMessagingService {
     required String orderId,
     String? actionType,
   }) async {
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+    // Build actions dynamically
+    final List<AndroidNotificationAction> actions = [
+      const AndroidNotificationAction(
+        'view_order',
+        'View Order',
+        titleColor: Colors.blue,
+      ),
+    ];
+
+    if (actionType == 'new_order') {
+      actions.addAll([
+        const AndroidNotificationAction(
+          'accept_order',
+          'Accept',
+          titleColor: Colors.green,
+        ),
+        const AndroidNotificationAction(
+          'reject_order',
+          'Reject',
+          titleColor: Colors.red,
+        ),
+      ]);
+    }
+
+    final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
       'order_notifications',
       'Order Notifications',
       channelDescription: 'Notifications for new orders and order updates',
@@ -250,32 +305,14 @@ class FirebaseMessagingService {
       priority: Priority.high,
       ticker: 'New Order',
       icon: '@drawable/ic_order',
-      largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+      largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
       color: Colors.blue,
       enableVibration: true,
       enableLights: true,
       ledColor: Colors.blue,
       ledOnMs: 1000,
       ledOffMs: 500,
-      actions: <AndroidNotificationAction>[
-        AndroidNotificationAction(
-          'view_order',
-          'View Order',
-          titleColor: Colors.blue,
-        ),
-        if (actionType == 'new_order') ...[
-          AndroidNotificationAction(
-            'accept_order',
-            'Accept',
-            titleColor: Colors.green,
-          ),
-          AndroidNotificationAction(
-            'reject_order',
-            'Reject',
-            titleColor: Colors.red,
-          ),
-        ],
-      ],
+      actions: actions,
     );
 
     const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
@@ -285,7 +322,7 @@ class FirebaseMessagingService {
       sound: 'order_sound.wav',
     );
 
-    const NotificationDetails platformDetails = NotificationDetails(
+    final NotificationDetails platformDetails = NotificationDetails(
       android: androidDetails,
       iOS: iosDetails,
     );
@@ -299,6 +336,62 @@ class FirebaseMessagingService {
         'type': 'order',
         'orderId': orderId,
         'actionType': actionType,
+      }),
+    );
+  }
+
+  /// Show order cancellation notification with loud sound (like call ringtone)
+  static Future<void> showCancellationNotification({
+    required String title,
+    required String body,
+    required String orderId,
+    Map<String, dynamic>? data,
+  }) async {
+    final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'cancellation_notifications',
+      'Order Cancellation Alerts',
+      channelDescription: 'Urgent notifications for order cancellations',
+      importance: Importance.max,
+      priority: Priority.max,
+      ticker: 'ORDER CANCELLED',
+      icon: '@mipmap/ic_launcher',
+      largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+      color: Colors.red,
+      enableVibration: true,
+      vibrationPattern: Int64List.fromList([0, 1000, 500, 1000, 500, 1000]), // Vibrate like a call
+      enableLights: true,
+      ledColor: Colors.red,
+      ledOnMs: 200,
+      ledOffMs: 200,
+      fullScreenIntent: true, // Shows full screen on lock screen
+      category: AndroidNotificationCategory.alarm,
+      sound: const RawResourceAndroidNotificationSound('urgent_notification'),
+      playSound: true,
+      ongoing: false,
+      autoCancel: true,
+    );
+
+    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+      sound: 'urgent_notification.mp3',
+      interruptionLevel: InterruptionLevel.critical,
+    );
+
+    final NotificationDetails platformDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    await _localNotifications.show(
+      888888, // Fixed ID for cancellation
+      title,
+      body,
+      platformDetails,
+      payload: data != null ? jsonEncode(data) : jsonEncode({
+        'type': 'order_cancelled',
+        'orderId': orderId,
       }),
     );
   }

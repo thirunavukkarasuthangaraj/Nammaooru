@@ -207,6 +207,7 @@ class OrderItem {
   final int quantity;
   final double price;
   final String? specialInstructions;
+  final String? imageUrl;
 
   const OrderItem({
     required this.id,
@@ -214,15 +215,17 @@ class OrderItem {
     required this.quantity,
     required this.price,
     this.specialInstructions,
+    this.imageUrl,
   });
 
   factory OrderItem.fromJson(Map<String, dynamic> json) {
     return OrderItem(
-      id: json['id'] ?? '',
-      name: json['name'] ?? '',
+      id: json['id']?.toString() ?? '',
+      name: json['name'] ?? json['productName'] ?? '',
       quantity: json['quantity'] ?? 1,
-      price: (json['price'] ?? 0.0).toDouble(),
+      price: (json['price'] ?? json['unitPrice'] ?? json['totalPrice'] ?? 0.0).toDouble(),
       specialInstructions: json['specialInstructions'],
+      imageUrl: json['imageUrl'] ?? json['productImageUrl'],
     );
   }
 
@@ -233,6 +236,7 @@ class OrderItem {
       'quantity': quantity,
       'price': price,
       'specialInstructions': specialInstructions,
+      'imageUrl': imageUrl,
     };
   }
 }

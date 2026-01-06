@@ -461,6 +461,32 @@ class ApiService {
     }
   }
 
+  // Confirm receipt of returned products (when customer cancelled after driver pickup)
+  static Future<ApiResponse> confirmReturnReceipt(String orderId) async {
+    if (_useMockData) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      return ApiResponse.success({
+        'orderId': orderId,
+        'orderNumber': 'ORD$orderId',
+        'status': 'RETURN_CONFIRMED',
+        'message': 'Return receipt confirmed and stock restored'
+      });
+    }
+
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl${ApiEndpoints.orders}/$orderId/confirm-return-receipt'),
+            headers: _authHeaders,
+          )
+          .timeout(timeout);
+
+      return _handleResponse(response);
+    } catch (e) {
+      return ApiResponse.error('Network error: ${e.toString()}');
+    }
+  }
+
   // Cancel order
   static Future<ApiResponse> cancelOrder(String orderId, String reason) async {
     if (_useMockData) {

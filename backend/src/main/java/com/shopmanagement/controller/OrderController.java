@@ -396,4 +396,58 @@ public class OrderController {
             return ResponseUtil.error("Failed to handover order: " + e.getMessage());
         }
     }
+
+    /**
+     * Shop owner confirms receipt of returned products (when customer cancelled after driver pickup)
+     */
+    @PostMapping("/{orderId}/confirm-return-receipt")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER')")
+    public ResponseEntity<ApiResponse<?>> confirmReturnReceipt(@PathVariable Long orderId) {
+        try {
+            log.info("Shop owner confirming return receipt for order: {}", orderId);
+
+            Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
+
+            // Verify order is in RETURNED_TO_SHOP status
+            if (order.getStatus() != Order.OrderStatus.RETURNED_TO_SHOP) {
+                return ResponseUtil.error("Order is not in returned status. Current status: " + order.getStatus());
+            }
+
+            // Mark as fully completed (returned and received)
+            order.setStatus(Order.OrderStatus.CANCELLED);  // Final status after return is confirmed
+            order.setUpdatedBy("SHOP_OWNER_CONFIRMED_RETURN");
+
+            // Restore stock for returned items
+            if (order.getOrderItems() != null && !order.getOrderItems().isEmpty()) {
+                for (var item : order.getOrderItems()) {
+                    try {
+                        var product = item.getShopProduct();
+                        if (product != null) {
+                            product.setStockQuantity(product.getStockQuantity() + item.getQuantity());
+                            log.info("Stock restored for product {}: +{} units", product.getId(), item.getQuantity());
+                        }
+                    } catch (Exception e) {
+                        log.error("Failed to restore stock for item {}: {}", item.getId(), e.getMessage());
+                    }
+                }
+            }
+
+            orderRepository.save(order);
+
+            log.info("✅ Return receipt confirmed for order {}", orderId);
+
+            Map<String, Object> responseData = Map.of(
+                "orderId", orderId,
+                "orderNumber", order.getOrderNumber(),
+                "status", "RETURN_CONFIRMED",
+                "message", "Return receipt confirmed and stock restored"
+            );
+
+            return ResponseUtil.success(responseData, "Return receipt confirmed successfully");
+        } catch (Exception e) {
+            log.error("Error confirming return receipt for order {}: {}", orderId, e.getMessage(), e);
+            return ResponseUtil.error("Failed to confirm return receipt: " + e.getMessage());
+        }
+    }
 }

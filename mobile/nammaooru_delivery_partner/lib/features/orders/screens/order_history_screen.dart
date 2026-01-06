@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../../core/providers/delivery_partner_provider.dart';
 import '../../../core/models/simple_order_model.dart';
-import '../widgets/order_details_bottom_sheet.dart';
+import 'order_details_screen.dart';
 
 class OrderHistoryScreen extends StatefulWidget {
   const OrderHistoryScreen({Key? key}) : super(key: key);
@@ -53,26 +53,38 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   }
 
   List<OrderModel> _getFilteredOrders(List<OrderModel> orders) {
+    List<OrderModel> filteredOrders;
+
     if (_startDate == null && _endDate == null) {
-      return orders;
+      filteredOrders = List.from(orders);
+    } else {
+      filteredOrders = orders.where((order) {
+        if (order.createdAt == null) return false;
+
+        if (_startDate != null) {
+          final startDateOnly = DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
+          final orderDateOnly = DateTime(order.createdAt!.year, order.createdAt!.month, order.createdAt!.day);
+          if (orderDateOnly.isBefore(startDateOnly)) return false;
+        }
+
+        if (_endDate != null) {
+          final endDateOnly = DateTime(_endDate!.year, _endDate!.month, _endDate!.day, 23, 59, 59);
+          if (order.createdAt!.isAfter(endDateOnly)) return false;
+        }
+
+        return true;
+      }).toList();
     }
 
-    return orders.where((order) {
-      if (order.createdAt == null) return false;
+    // Sort by date descending (newest first)
+    filteredOrders.sort((a, b) {
+      if (a.createdAt == null && b.createdAt == null) return 0;
+      if (a.createdAt == null) return 1;
+      if (b.createdAt == null) return -1;
+      return b.createdAt!.compareTo(a.createdAt!);
+    });
 
-      if (_startDate != null) {
-        final startDateOnly = DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
-        final orderDateOnly = DateTime(order.createdAt!.year, order.createdAt!.month, order.createdAt!.day);
-        if (orderDateOnly.isBefore(startDateOnly)) return false;
-      }
-
-      if (_endDate != null) {
-        final endDateOnly = DateTime(_endDate!.year, _endDate!.month, _endDate!.day, 23, 59, 59);
-        if (order.createdAt!.isAfter(endDateOnly)) return false;
-      }
-
-      return true;
-    }).toList();
+    return filteredOrders;
   }
 
   @override
@@ -288,13 +300,10 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   }
 
   void _showOrderDetails(OrderModel order) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => OrderDetailsBottomSheet(
-        order: order,
-        showActions: false,
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => OrderDetailsScreen(order: order),
       ),
     );
   }
@@ -318,26 +327,41 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Order #${order.id}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                  Expanded(
+                    child: Text(
+                      'Order #${order.orderNumber ?? order.id}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: _getStatusColor(order.status).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: Text(
-                      order.status.toUpperCase(),
-                      style: TextStyle(
-                        color: _getStatusColor(order.status),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.check_circle,
+                          size: 14,
+                          color: _getStatusColor(order.status),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          order.status.toUpperCase(),
+                          style: TextStyle(
+                            color: _getStatusColor(order.status),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],

@@ -108,6 +108,10 @@ class OrderDetailsScreen extends StatelessWidget {
         return Colors.green;
       case 'CANCELLED':
         return Colors.red;
+      case 'RETURNING_TO_SHOP':
+        return Colors.orange;
+      case 'RETURNED_TO_SHOP':
+        return Colors.green;
       default:
         return Colors.grey;
     }
@@ -130,6 +134,10 @@ class OrderDetailsScreen extends StatelessWidget {
         return Icons.check_circle;
       case 'CANCELLED':
         return Icons.cancel;
+      case 'RETURNING_TO_SHOP':
+        return Icons.directions_run;
+      case 'RETURNED_TO_SHOP':
+        return Icons.assignment_return;
       default:
         return Icons.info;
     }
@@ -373,6 +381,10 @@ class OrderDetailsScreen extends StatelessWidget {
         return 'Delivered';
       case 'CANCELLED':
         return 'Cancelled';
+      case 'RETURNING_TO_SHOP':
+        return 'Driver Returning';
+      case 'RETURNED_TO_SHOP':
+        return 'Products Returned';
       default:
         return status;
     }
@@ -1110,6 +1122,90 @@ class OrderDetailsScreen extends StatelessWidget {
                 ),
               ],
             ],
+            // Returning to shop notification
+            if (order.status == 'RETURNING_TO_SHOP') ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.orange.shade300),
+                ),
+                child: Column(
+                  children: [
+                    Icon(Icons.directions_run, color: Colors.orange.shade700, size: 40),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Driver Returning Products',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Colors.orange.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'The delivery partner is returning the products from this cancelled order.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            // Returned to shop - collect products button
+            if (order.status == 'RETURNED_TO_SHOP') ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.green.shade300),
+                ),
+                child: Column(
+                  children: [
+                    Icon(Icons.inventory_2, color: Colors.green.shade700, size: 40),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Products Returned by Driver',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Colors.green.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Please verify and collect the returned products.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _confirmReturnReceipt(context, order, orderProvider),
+                        icon: const Icon(Icons.check_circle),
+                        label: const Text('Verify & Collect Products'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
@@ -1173,6 +1269,16 @@ class OrderDetailsScreen extends StatelessWidget {
         backgroundColor = AppColors.success.withOpacity(0.2);
         textColor = AppColors.success;
         label = 'Collected';
+        break;
+      case 'RETURNING_TO_SHOP':
+        backgroundColor = AppColors.warning.withOpacity(0.1);
+        textColor = AppColors.warning;
+        label = 'Driver Returning';
+        break;
+      case 'RETURNED_TO_SHOP':
+        backgroundColor = AppColors.success.withOpacity(0.1);
+        textColor = AppColors.success;
+        label = 'Products Returned';
         break;
       default:
         backgroundColor = Colors.grey.withOpacity(0.1);
@@ -1674,6 +1780,126 @@ class OrderDetailsScreen extends StatelessWidget {
             ),
           );
         }
+      }
+    }
+  }
+
+  void _confirmReturnReceipt(BuildContext context, Order order, OrderProvider orderProvider) async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.inventory_2, color: Colors.green, size: 28),
+            const SizedBox(width: 10),
+            const Text('Verify & Collect Products'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Order #${order.id} was cancelled by the customer.'),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.amber.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '⚠️ Please verify:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text('• All items have been returned'),
+                  const Text('• Products are in good condition'),
+                  const Text('• Quantities match the order'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Stock will be automatically restored after confirmation.',
+              style: TextStyle(color: Colors.grey, fontSize: 12),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Confirm Collection'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      // Call API to confirm return receipt
+      final response = await ApiService.confirmReturnReceipt(order.id);
+
+      // Close loading dialog
+      if (context.mounted) Navigator.pop(context);
+
+      if (response.success && context.mounted) {
+        // Refresh the order data
+        await orderProvider.loadOrders();
+
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Products collected and stock restored!'),
+            backgroundColor: AppColors.success,
+            duration: Duration(seconds: 3),
+          ),
+        );
+
+        // Navigate back to orders list
+        Navigator.pop(context);
+      } else if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed: ${response.error ?? "Unknown error"}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } catch (e) {
+      // Close loading dialog
+      if (context.mounted) Navigator.pop(context);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
       }
     }
   }

@@ -14,6 +14,7 @@ import '../../orders/screens/available_orders_screen.dart';
 import '../../orders/screens/active_orders_screen.dart';
 import '../../orders/screens/otp_handover_screen.dart';
 import '../../orders/screens/navigation_screen.dart';
+import '../../orders/screens/order_details_screen.dart';
 import '../../orders/widgets/order_details_bottom_sheet.dart';
 import '../../earnings/screens/earnings_screen.dart';
 import '../../auth/screens/login_screen.dart';
@@ -383,7 +384,8 @@ class HomeTab extends StatelessWidget {
         if (provider.activeOrders.isEmpty)
           _buildEmptyActiveOrdersCard()
         else
-          ...provider.activeOrders.take(2).map((order) => _buildActiveOrderCard(order, provider)),
+          ...provider.activeOrders.take(2).toList().asMap().entries.map((entry) =>
+            _buildActiveOrderCard(entry.value, provider, entry.key)),
       ],
     );
   }
@@ -511,227 +513,359 @@ class HomeTab extends StatelessWidget {
     );
   }
 
-  Widget _buildActiveOrderCard(OrderModel order, DeliveryPartnerProvider provider) {
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        onTap: () {
-          showModalBottomSheet(
-            context: parentContext,
-            isScrollControlled: true,
-            backgroundColor: Colors.transparent,
-            builder: (context) => OrderDetailsBottomSheet(
-              order: order,
-              showActions: true,
+  Widget _buildActiveOrderCard(OrderModel order, DeliveryPartnerProvider provider, int index) {
+    final cardColors = [
+      const Color(0xFF2196F3), // Blue
+      const Color(0xFF9C27B0), // Purple
+      const Color(0xFF009688), // Teal
+      const Color(0xFFFF5722), // Deep Orange
+      const Color(0xFF673AB7), // Deep Purple
+    ];
+    final cardColor = cardColors[index % cardColors.length];
+
+    String getStatusText(String status) {
+      switch (status.toLowerCase()) {
+        case 'accepted':
+          return 'READY FOR PICKUP';
+        case 'picked_up':
+          return 'PICKED UP';
+        case 'in_transit':
+        case 'out_for_delivery':
+          return 'IN TRANSIT';
+        default:
+          return status.toUpperCase();
+      }
+    }
+
+    return Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: cardColor.withOpacity(0.2),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
-          );
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          ],
+        ),
+        child: Column(
+          children: [
+            // Colored header with order number
+            Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [cardColor, cardColor.withOpacity(0.8)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+              ),
+            ),
+            child: Row(
               children: [
-                Text(
-                  'Order #${order.orderNumber}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
+                // Order index badge
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      '${index + 1}',
+                      style: TextStyle(
+                        color: cardColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '#${order.orderNumber}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      Text(
+                        order.shopName,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.9),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(6),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    order.status.toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.blue,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                    getStatusText(order.status),
+                    style: TextStyle(
+                      color: cardColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 10,
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                const Icon(Icons.person, size: 16, color: Colors.grey),
-                const SizedBox(width: 8),
-                Text(order.customerName),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(Icons.phone, size: 16, color: Colors.grey),
-                const SizedBox(width: 8),
-                Text(order.customerPhone ?? 'No phone'),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.location_on, size: 16, color: Colors.red),
-                const SizedBox(width: 8),
-                Expanded(child: Text(order.deliveryAddress)),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // Items Section (commented out as OrderModel doesn't have items)
-            /*
-            if (order.items.isNotEmpty) ...[
-              const Text(
-                'Items:',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 8),
-              ...order.items.map((item) => Container(
-                margin: const EdgeInsets.only(bottom: 4),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey[300]!),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        item.name,
-                        style: const TextStyle(fontSize: 14),
-                      ),
-                    ),
-                    Text(
-                      '${item.quantity}x',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: Colors.blue,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '₹${item.price.toStringAsFixed(0)}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              )).toList(),
-              const SizedBox(height: 12),
-            ],
-            */
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Order Value: ₹${(order.totalAmount ?? 0).toStringAsFixed(0)}',
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    Text(
-                      'Delivery Fee: ₹${(order.deliveryFee ?? 0).toStringAsFixed(0)}',
-                      style: const TextStyle(
-                        color: Colors.green,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    if (order.status.toLowerCase() == 'accepted') ...[
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.of(parentContext).push(
-                            MaterialPageRoute(
-                              builder: (context) => NavigationScreen(order: order),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.navigation, size: 16),
-                        label: const Text('Navigate'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton(
-                        onPressed: () async {
-                          // Navigate to OTP handover screen
-                          final result = await Navigator.of(parentContext).push(
-                            MaterialPageRoute(
-                              builder: (context) => OTPHandoverScreen(order: order),
-                            ),
-                          );
-
-                          // If OTP verification was successful, refresh the dashboard
-                          if (result == true) {
-                            final provider = Provider.of<DeliveryPartnerProvider>(parentContext, listen: false);
-                            await provider.refreshAll();
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: const Text('Pick Up'),
-                      ),
-                    ],
-                    if (order.status.toLowerCase() == 'picked_up' ||
-                        order.status.toLowerCase() == 'in_transit' ||
-                        order.status.toLowerCase() == 'out_for_delivery') ...[
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.of(parentContext).push(
-                            MaterialPageRoute(
-                              builder: (context) => NavigationScreen(order: order),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.map, size: 16),
-                        label: const Text('Track Order'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ],
-            ),
-            ],
           ),
+
+          // Card body
+          Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Show OTP if status is ACCEPTED
+                  if (order.status.toLowerCase() == 'accepted' && order.pickupOtp != null && order.pickupOtp!.isNotEmpty)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFFC107), Color(0xFFFFB300)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.lock_outlined, color: Colors.white, size: 18),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'OTP:',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              order.pickupOtp!.split('').join(' '),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFFFF9800),
+                                letterSpacing: 2,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  // Customer info row
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: cardColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(Icons.person, size: 20, color: cardColor),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              order.customerName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
+                            ),
+                            if (order.customerPhone != null && order.customerPhone!.isNotEmpty)
+                              Text(
+                                order.customerPhone!,
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 13,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // Delivery address
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[50],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[200]!),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.location_on, size: 18, color: Colors.red[400]),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            order.deliveryAddress,
+                            style: TextStyle(
+                              color: Colors.grey[700],
+                              fontSize: 13,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Order value and actions
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '₹${(order.totalAmount ?? 0).toStringAsFixed(0)}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                ),
+                              ),
+                              Text(
+                                'Earn ₹${(order.deliveryFee ?? 0).toStringAsFixed(0)}',
+                                style: const TextStyle(
+                                  color: Colors.green,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      // Action buttons in a separate row
+                      if (order.status.toLowerCase() == 'accepted')
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  Navigator.of(parentContext).push(
+                                    MaterialPageRoute(
+                                      builder: (context) => NavigationScreen(order: order),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.navigation, size: 16),
+                                label: const Text('Navigate'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: cardColor,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  Navigator.of(parentContext).push(
+                                    MaterialPageRoute(
+                                      builder: (context) => OrderDetailsScreen(order: order),
+                                    ),
+                                  ).then((_) {
+                                    provider.refreshAll();
+                                  });
+                                },
+                                icon: const Icon(Icons.inventory, size: 16),
+                                label: const Text('Pick Up'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFFFC107),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      if (order.status.toLowerCase() == 'picked_up' ||
+                          order.status.toLowerCase() == 'in_transit' ||
+                          order.status.toLowerCase() == 'out_for_delivery')
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.of(parentContext).push(
+                                MaterialPageRoute(
+                                  builder: (context) => NavigationScreen(order: order),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.local_shipping, size: 18),
+                            label: const Text('Mark as Delivered'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF4CAF50),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-      ),
     );
   }
 

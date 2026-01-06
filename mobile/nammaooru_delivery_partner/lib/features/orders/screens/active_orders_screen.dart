@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../../../core/providers/delivery_partner_provider.dart';
 import '../../../core/providers/location_provider.dart';
 import '../../../core/models/simple_order_model.dart';
+import '../../../core/services/api_service.dart';
+import '../../../core/services/firebase_messaging_service.dart';
 import '../../../services/firebase_notification_service_mobile.dart';
 import '../widgets/order_card.dart';
 import '../widgets/order_details_bottom_sheet.dart';
@@ -20,6 +23,8 @@ class ActiveOrdersScreen extends StatefulWidget {
 }
 
 class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
+  final AudioPlayer _audioPlayer = AudioPlayer();
+
   @override
   void initState() {
     super.initState();
@@ -30,6 +35,7 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
   @override
   void dispose() {
     FirebaseNotificationService.removeListener(_handleNotification);
+    _audioPlayer.dispose();
     super.dispose();
   }
 
@@ -51,6 +57,16 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
     if (isCancelled) {
       final orderNumber = notification.data?['orderNumber'] ?? notification.orderId;
       if (orderNumber != null) {
+        // Play LOUD urgent sound (like a call ringtone)
+        _playUrgentCancellationSound();
+
+        // Show system notification with loud sound
+        FirebaseMessagingService.showCancellationNotification(
+          title: '🚨 ORDER CANCELLED!',
+          body: 'Order #$orderNumber was cancelled. Please return products to shop.',
+          orderId: orderNumber.toString(),
+        );
+
         // Show cancellation dialog
         _showOrderCancelledDialog(orderNumber, notification.body);
 
@@ -64,6 +80,30 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
     }
   }
 
+  /// Play LOUD urgent sound for order cancellation (like a phone call)
+  Future<void> _playUrgentCancellationSound() async {
+    try {
+      // Set volume to maximum
+      await _audioPlayer.setVolume(1.0);
+      // Set release mode to loop for urgent attention
+      await _audioPlayer.setReleaseMode(ReleaseMode.loop);
+      // Play the urgent notification sound
+      await _audioPlayer.play(AssetSource('sounds/urgent_notification.mp3'));
+
+      // Stop after 10 seconds if user doesn't interact
+      Future.delayed(const Duration(seconds: 10), () {
+        _audioPlayer.stop();
+      });
+    } catch (e) {
+      print('Error playing cancellation sound: $e');
+    }
+  }
+
+  /// Stop the urgent sound when user acknowledges
+  void _stopUrgentSound() {
+    _audioPlayer.stop();
+  }
+
   void _showOrderCancelledDialog(String orderNumber, String message) {
     showDialog(
       context: context,
@@ -74,38 +114,71 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
           children: [
             Icon(Icons.cancel, color: Colors.red, size: 28),
             SizedBox(width: 10),
-            Text('Order Cancelled', style: TextStyle(color: Colors.red)),
+            Expanded(
+              child: Text('🚨 ORDER CANCELLED!', style: TextStyle(color: Colors.red, fontSize: 18)),
+            ),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red[200]!),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_amber, color: Colors.red, size: 24),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Order #$orderNumber has been cancelled by the customer.',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 16),
             Text(
-              'Order #$orderNumber has been cancelled by the customer.',
-              style: TextStyle(fontSize: 16),
+              '⚠️ Please return all products to the shop immediately!',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.orange[800],
+              ),
             ),
             if (message.isNotEmpty) ...[
               SizedBox(height: 12),
               Text(
                 message,
-                style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                style: TextStyle(color: Colors.grey[600], fontSize: 13),
               ),
             ],
           ],
         ),
         actions: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _loadActiveOrders(); // Refresh the list
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                _stopUrgentSound(); // Stop the loud sound
+                Navigator.pop(context);
+                _loadActiveOrders(); // Refresh the list
+              },
+              icon: Icon(Icons.check),
+              label: Text('I UNDERSTAND'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
             ),
-            child: Text('OK'),
           ),
         ],
       ),
@@ -220,6 +293,146 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
         builder: (context) => NavigationScreen(order: order),
       ),
     );
+  }
+
+  void _startReturnToShop(OrderModel order) async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.store, color: Colors.orange, size: 28),
+            SizedBox(width: 10),
+            Text('Return to Shop'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Order #${order.orderNumber} was cancelled by the customer.'),
+            SizedBox(height: 12),
+            Text(
+              'Please return the products to ${order.shopName}.',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              foregroundColor: Colors.white,
+            ),
+            child: Text('Start Return'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      final apiService = ApiService();
+      final result = await apiService.startReturnToShop(order.orderNumber ?? order.id.toString());
+
+      if (result['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Returning to shop. Navigate to ${order.shopName}'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        _loadActiveOrders();
+      } else {
+        throw Exception(result['message'] ?? 'Failed to start return');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _confirmReturnedToShop(OrderModel order) async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green, size: 28),
+            SizedBox(width: 10),
+            Text('Confirm Return'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Have you returned all products from Order #${order.orderNumber} to ${order.shopName}?'),
+            SizedBox(height: 12),
+            Text(
+              'The shop owner will be notified to collect the items.',
+              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Not Yet'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            child: Text('Confirm Returned'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      final apiService = ApiService();
+      final result = await apiService.confirmReturnedToShop(order.orderNumber ?? order.id.toString());
+
+      if (result['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Products returned to shop successfully!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        _loadActiveOrders();
+      } else {
+        throw Exception(result['message'] ?? 'Failed to confirm return');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -665,23 +878,120 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
   Widget _buildActionButtons(OrderModel order, Color cardColor) {
     switch (order.status.toLowerCase()) {
       case 'cancelled':
+        // Show return to shop button for cancelled orders
+        return Column(
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.red[50],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red[300]!),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.cancel, color: Colors.red[700], size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'ORDER CANCELLED BY CUSTOMER',
+                    style: TextStyle(
+                      color: Colors.red[700],
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _startReturnToShop(order),
+                icon: const Icon(Icons.store, size: 20),
+                label: const Text('Return to Shop'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ],
+        );
+
+      case 'returning_to_shop':
+        return Column(
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.orange[50],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.orange[300]!),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.directions_run, color: Colors.orange[700], size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'RETURNING TO SHOP',
+                    style: TextStyle(
+                      color: Colors.orange[700],
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _confirmReturnedToShop(order),
+                icon: const Icon(Icons.check_circle, size: 20),
+                label: const Text('Confirm Returned to Shop'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ],
+        );
+
+      case 'returned_to_shop':
         return Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
           decoration: BoxDecoration(
-            color: Colors.red[50],
+            color: Colors.green[50],
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.red[300]!),
+            border: Border.all(color: Colors.green[300]!),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.cancel, color: Colors.red[700], size: 24),
+              Icon(Icons.check_circle, color: Colors.green[700], size: 24),
               const SizedBox(width: 10),
               Text(
-                'ORDER CANCELLED',
+                'RETURNED TO SHOP',
                 style: TextStyle(
-                  color: Colors.red[700],
+                  color: Colors.green[700],
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),

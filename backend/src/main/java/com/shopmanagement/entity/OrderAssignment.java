@@ -128,7 +128,9 @@ public class OrderAssignment {
         IN_TRANSIT,        // On the way to customer
         DELIVERED,         // Successfully delivered
         COMPLETED,         // Assignment completed with payment
-        CANCELLED          // Assignment cancelled
+        CANCELLED,         // Assignment cancelled
+        RETURNING,         // Driver returning products to shop (customer cancelled)
+        RETURNED           // Products returned to shop
     }
 
     public enum AssignmentType {
