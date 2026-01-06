@@ -659,14 +659,14 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   }
 
   String _formatDate(DateTime date) {
-    // Server is in Germany (UTC+1), convert to IST (UTC+5:30)
-    final istDate = date.add(const Duration(hours: 4, minutes: 30));
+    // Server sends UTC time, convert to IST (UTC+5:30)
+    final istDate = date.add(const Duration(hours: 5, minutes: 30));
     return '${istDate.day}/${istDate.month}/${istDate.year}';
   }
 
   String _formatDateTime(DateTime date) {
-    // Server is in Germany (UTC+1), convert to IST (UTC+5:30)
-    final istDate = date.add(const Duration(hours: 4, minutes: 30));
+    // Server sends UTC time, convert to IST (UTC+5:30)
+    final istDate = date.add(const Duration(hours: 5, minutes: 30));
     final hour = istDate.hour > 12 ? istDate.hour - 12 : istDate.hour;
     final period = istDate.hour >= 12 ? 'PM' : 'AM';
     return '${istDate.day}/${istDate.month}/${istDate.year} ${hour == 0 ? 12 : hour}:${istDate.minute.toString().padLeft(2, '0')} $period';

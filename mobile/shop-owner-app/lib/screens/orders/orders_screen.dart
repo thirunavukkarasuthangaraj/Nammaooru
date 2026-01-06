@@ -397,9 +397,8 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
 
   String _formatDateTime(String dateTimeString) {
     final dateTime = DateTime.parse(dateTimeString);
-    // Server is in Germany (CET = UTC+1), convert to IST (UTC+5:30)
-    // Difference: IST - CET = 5:30 - 1:00 = 4:30 hours
-    final istDateTime = dateTime.add(const Duration(hours: 4, minutes: 30));
+    // Server sends UTC time, convert to IST (UTC+5:30)
+    final istDateTime = dateTime.add(const Duration(hours: 5, minutes: 30));
     final difference = DateTime.now().difference(istDateTime);
     if (difference.inDays > 0) return '${difference.inDays} day${difference.inDays == 1 ? '' : 's'} ago';
     if (difference.inHours > 0) return '${difference.inHours} hour${difference.inHours == 1 ? '' : 's'} ago';

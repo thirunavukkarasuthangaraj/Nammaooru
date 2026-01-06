@@ -672,28 +672,28 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
   }
 
   String _formatDate(DateTime date) {
-    // Server is in Germany (UTC+1), convert to IST (UTC+5:30)
-    // Difference is 4.5 hours (5:30 - 1:00 = 4:30)
-    final istDate = date.add(const Duration(hours: 4, minutes: 30));
+    // Server sends UTC time, convert to IST (UTC+5:30)
+    final istDate = date.add(const Duration(hours: 5, minutes: 30));
     final now = DateTime.now();
-    final difference = now.difference(istDate);
+    final today = DateTime(now.year, now.month, now.day);
+    final orderDay = DateTime(istDate.year, istDate.month, istDate.day);
+    final difference = today.difference(orderDay).inDays;
 
-    if (difference.inDays == 0) {
+    if (difference == 0) {
       return 'Today, ${_formatTime(istDate)}';
-    } else if (difference.inDays == 1) {
+    } else if (difference == 1) {
       return 'Yesterday, ${_formatTime(istDate)}';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays} days ago';
+    } else if (difference < 7) {
+      return '$difference days ago';
     } else {
       return '${istDate.day}/${istDate.month}/${istDate.year}';
     }
   }
 
   String _formatTime(DateTime date) {
-    // Date should already be in IST (converted in _formatDate)
-    final hour = date.hour > 12 ? date.hour - 12 : date.hour;
+    final hour = date.hour > 12 ? date.hour - 12 : (date.hour == 0 ? 12 : date.hour);
     final period = date.hour >= 12 ? 'PM' : 'AM';
-    return '${hour == 0 ? 12 : hour}:${date.minute.toString().padLeft(2, '0')} $period';
+    return '$hour:${date.minute.toString().padLeft(2, '0')} $period';
   }
 
   void _showCancelDialog(Order order) {

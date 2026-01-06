@@ -1445,9 +1445,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   String _formatDateTime(DateTime dateTime) {
-    // Server is in Germany (CET = UTC+1), convert to IST (UTC+5:30)
-    // Difference: IST - CET = 5:30 - 1:00 = 4:30 hours
-    final istDateTime = dateTime.add(const Duration(hours: 4, minutes: 30));
+    // Server sends UTC time, convert to IST (UTC+5:30)
+    final istDateTime = dateTime.add(const Duration(hours: 5, minutes: 30));
     final now = DateTime.now();
     final difference = now.difference(istDateTime);
 
