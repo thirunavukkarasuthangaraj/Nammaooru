@@ -17,6 +17,7 @@ import com.shopmanagement.repository.UserFcmTokenRepository;
 import com.shopmanagement.repository.UserRepository;
 import com.shopmanagement.dto.ApiResponse;
 import com.shopmanagement.dto.fcm.FcmTokenRequest;
+import com.shopmanagement.service.FirebaseNotificationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -70,6 +71,9 @@ public class DeliveryPartnerController {
 
     @Autowired
     private OrderAssignmentRepository orderAssignmentRepository;
+
+    @Autowired
+    private FirebaseNotificationService firebaseNotificationService;
 
     @PostMapping("/login")
     public ResponseEntity<Map<String, Object>> login(@RequestBody Map<String, String> request) {
@@ -1463,13 +1467,15 @@ public class DeliveryPartnerController {
             order.setStatus(Order.OrderStatus.RETURNING_TO_SHOP);
             orderRepository.save(order);
 
-            // Update assignment status
-            Optional<OrderAssignment> assignmentOpt = orderAssignmentRepository
-                .findByOrderIdAndDeliveryPartnerId(order.getId(), Long.parseLong(partnerId));
-            if (assignmentOpt.isPresent()) {
-                OrderAssignment assignment = assignmentOpt.get();
-                assignment.setStatus(OrderAssignment.AssignmentStatus.RETURNING);
-                orderAssignmentRepository.save(assignment);
+            // Update assignment status - find the assignment for this order
+            List<OrderAssignment> assignments = orderAssignmentRepository.findByOrderId(order.getId());
+            for (OrderAssignment assignment : assignments) {
+                if (assignment.getDeliveryPartner() != null &&
+                    assignment.getDeliveryPartner().getId().equals(Long.parseLong(partnerId))) {
+                    assignment.setStatus(OrderAssignment.AssignmentStatus.RETURNING);
+                    orderAssignmentRepository.save(assignment);
+                    break;
+                }
             }
 
             // Send FCM notification to shop owner
@@ -1477,13 +1483,13 @@ public class DeliveryPartnerController {
                 if (order.getShop() != null && order.getShop().getOwnerEmail() != null) {
                     User shopOwner = userService.findByEmail(order.getShop().getOwnerEmail()).orElse(null);
                     if (shopOwner != null) {
-                        List<FcmToken> fcmTokens = fcmTokenRepository.findActiveTokensByUserId(shopOwner.getId());
-                        for (FcmToken token : fcmTokens) {
+                        List<UserFcmToken> fcmTokens = userFcmTokenRepository.findActiveTokensByUserId(shopOwner.getId());
+                        for (UserFcmToken token : fcmTokens) {
                             try {
                                 firebaseNotificationService.sendOrderNotification(
                                     order.getOrderNumber(),
                                     "RETURNING_TO_SHOP",
-                                    token.getToken(),
+                                    token.getFcmToken(),
                                     shopOwner.getId()
                                 );
                                 log.info("Return notification sent to shop owner for order: {}", orderNumber);
@@ -1540,14 +1546,16 @@ public class DeliveryPartnerController {
             order.setStatus(Order.OrderStatus.RETURNED_TO_SHOP);
             orderRepository.save(order);
 
-            // Update assignment status
-            Optional<OrderAssignment> assignmentOpt = orderAssignmentRepository
-                .findByOrderIdAndDeliveryPartnerId(order.getId(), Long.parseLong(partnerId));
-            if (assignmentOpt.isPresent()) {
-                OrderAssignment assignment = assignmentOpt.get();
-                assignment.setStatus(OrderAssignment.AssignmentStatus.RETURNED);
-                assignment.setDeliveryCompletedAt(LocalDateTime.now());
-                orderAssignmentRepository.save(assignment);
+            // Update assignment status - find the assignment for this order
+            List<OrderAssignment> assignments = orderAssignmentRepository.findByOrderId(order.getId());
+            for (OrderAssignment assignment : assignments) {
+                if (assignment.getDeliveryPartner() != null &&
+                    assignment.getDeliveryPartner().getId().equals(Long.parseLong(partnerId))) {
+                    assignment.setStatus(OrderAssignment.AssignmentStatus.RETURNED);
+                    assignment.setDeliveryCompletedAt(LocalDateTime.now());
+                    orderAssignmentRepository.save(assignment);
+                    break;
+                }
             }
 
             // Send FCM notification to shop owner to confirm receipt
@@ -1555,13 +1563,13 @@ public class DeliveryPartnerController {
                 if (order.getShop() != null && order.getShop().getOwnerEmail() != null) {
                     User shopOwner = userService.findByEmail(order.getShop().getOwnerEmail()).orElse(null);
                     if (shopOwner != null) {
-                        List<FcmToken> fcmTokens = fcmTokenRepository.findActiveTokensByUserId(shopOwner.getId());
-                        for (FcmToken token : fcmTokens) {
+                        List<UserFcmToken> fcmTokens = userFcmTokenRepository.findActiveTokensByUserId(shopOwner.getId());
+                        for (UserFcmToken token : fcmTokens) {
                             try {
                                 firebaseNotificationService.sendOrderNotification(
                                     order.getOrderNumber(),
                                     "RETURNED_TO_SHOP",
-                                    token.getToken(),
+                                    token.getFcmToken(),
                                     shopOwner.getId()
                                 );
                                 log.info("Return completed notification sent to shop owner for order: {}", orderNumber);

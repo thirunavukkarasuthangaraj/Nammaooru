@@ -402,7 +402,8 @@ public class OrderController {
      */
     @PostMapping("/{orderId}/confirm-return-receipt")
     @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER')")
-    public ResponseEntity<ApiResponse<?>> confirmReturnReceipt(@PathVariable Long orderId) {
+    public ResponseEntity<Map<String, Object>> confirmReturnReceipt(@PathVariable Long orderId) {
+        Map<String, Object> response = new HashMap<>();
         try {
             log.info("Shop owner confirming return receipt for order: {}", orderId);
 
@@ -411,7 +412,9 @@ public class OrderController {
 
             // Verify order is in RETURNED_TO_SHOP status
             if (order.getStatus() != Order.OrderStatus.RETURNED_TO_SHOP) {
-                return ResponseUtil.error("Order is not in returned status. Current status: " + order.getStatus());
+                response.put("success", false);
+                response.put("message", "Order is not in returned status. Current status: " + order.getStatus());
+                return ResponseEntity.badRequest().body(response);
             }
 
             // Mark as fully completed (returned and received)
@@ -437,17 +440,18 @@ public class OrderController {
 
             log.info("✅ Return receipt confirmed for order {}", orderId);
 
-            Map<String, Object> responseData = Map.of(
-                "orderId", orderId,
-                "orderNumber", order.getOrderNumber(),
-                "status", "RETURN_CONFIRMED",
-                "message", "Return receipt confirmed and stock restored"
-            );
+            response.put("success", true);
+            response.put("orderId", orderId);
+            response.put("orderNumber", order.getOrderNumber());
+            response.put("status", "RETURN_CONFIRMED");
+            response.put("message", "Return receipt confirmed and stock restored");
 
-            return ResponseUtil.success(responseData, "Return receipt confirmed successfully");
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Error confirming return receipt for order {}: {}", orderId, e.getMessage(), e);
-            return ResponseUtil.error("Failed to confirm return receipt: " + e.getMessage());
+            response.put("success", false);
+            response.put("message", "Failed to confirm return receipt: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(response);
         }
     }
 }
