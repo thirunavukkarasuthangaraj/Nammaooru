@@ -379,10 +379,14 @@ public class DeliveryPartnerController {
             }
 
             User partner = partnerOpt.get();
+            // Include CANCELLED, RETURNING, RETURNED so driver can return products to shop
             List<OrderAssignment.AssignmentStatus> activeStatuses = List.of(
                 OrderAssignment.AssignmentStatus.ACCEPTED,
                 OrderAssignment.AssignmentStatus.PICKED_UP,
-                OrderAssignment.AssignmentStatus.IN_TRANSIT
+                OrderAssignment.AssignmentStatus.IN_TRANSIT,
+                OrderAssignment.AssignmentStatus.CANCELLED,  // So driver can return products
+                OrderAssignment.AssignmentStatus.RETURNING,  // Driver returning to shop
+                OrderAssignment.AssignmentStatus.RETURNED    // Driver returned to shop
             );
 
             List<OrderAssignment> activeAssignments = orderAssignmentService.findAssignmentsByPartnerAndStatuses(partner, activeStatuses);
@@ -394,7 +398,18 @@ public class DeliveryPartnerController {
                 orderData.put("orderNumber", assignment.getOrder().getOrderNumber());
                 orderData.put("totalAmount", assignment.getOrder().getTotalAmount());
                 orderData.put("deliveryFee", assignment.getDeliveryFee());
-                orderData.put("status", assignment.getStatus().name().toLowerCase()); // lowercase for mobile app
+                // Send BOTH assignment status and order status for proper handling
+                String assignmentStatus = assignment.getStatus().name().toLowerCase();
+                String orderStatus = assignment.getOrder().getStatus().name().toLowerCase();
+
+                // If order is cancelled/returning/returned, use order status so driver sees return button
+                if (orderStatus.equals("cancelled") || orderStatus.equals("returning_to_shop") || orderStatus.equals("returned_to_shop")) {
+                    orderData.put("status", orderStatus);
+                } else {
+                    orderData.put("status", assignmentStatus);
+                }
+                orderData.put("assignmentStatus", assignmentStatus);
+                orderData.put("orderStatus", orderStatus); // Always include order status
                 orderData.put("createdAt", assignment.getCreatedAt().toString());
                 orderData.put("deliveryAddress", assignment.getOrder().getDeliveryAddress());
                 orderData.put("customerName", assignment.getOrder().getCustomer().getFirstName() + " " + assignment.getOrder().getCustomer().getLastName());
@@ -1416,6 +1431,161 @@ public class DeliveryPartnerController {
             log.error("Error fetching delivery partners: {}", e.getMessage(), e);
             response.put("success", false);
             response.put("message", "Error fetching delivery partners: " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    /**
+     * Mark order as returning to shop (when customer cancels after pickup)
+     */
+    @PostMapping("/orders/{orderNumber}/return-to-shop")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> startReturnToShop(
+            @PathVariable String orderNumber,
+            @RequestBody Map<String, String> request) {
+        Map<String, Object> response = new HashMap<>();
+        String partnerId = request.get("partnerId");
+
+        try {
+            log.info("Starting return to shop for order: {} by partner: {}", orderNumber, partnerId);
+
+            // Find the order
+            Optional<Order> orderOpt = orderRepository.findByOrderNumber(orderNumber);
+            if (orderOpt.isEmpty()) {
+                response.put("success", false);
+                response.put("message", "Order not found");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            Order order = orderOpt.get();
+
+            // Update order status to RETURNING_TO_SHOP
+            order.setStatus(Order.OrderStatus.RETURNING_TO_SHOP);
+            orderRepository.save(order);
+
+            // Update assignment status
+            Optional<OrderAssignment> assignmentOpt = orderAssignmentRepository
+                .findByOrderIdAndDeliveryPartnerId(order.getId(), Long.parseLong(partnerId));
+            if (assignmentOpt.isPresent()) {
+                OrderAssignment assignment = assignmentOpt.get();
+                assignment.setStatus(OrderAssignment.AssignmentStatus.RETURNING);
+                orderAssignmentRepository.save(assignment);
+            }
+
+            // Send FCM notification to shop owner
+            try {
+                if (order.getShop() != null && order.getShop().getOwnerEmail() != null) {
+                    User shopOwner = userService.findByEmail(order.getShop().getOwnerEmail()).orElse(null);
+                    if (shopOwner != null) {
+                        List<FcmToken> fcmTokens = fcmTokenRepository.findActiveTokensByUserId(shopOwner.getId());
+                        for (FcmToken token : fcmTokens) {
+                            try {
+                                firebaseNotificationService.sendOrderNotification(
+                                    order.getOrderNumber(),
+                                    "RETURNING_TO_SHOP",
+                                    token.getToken(),
+                                    shopOwner.getId()
+                                );
+                                log.info("Return notification sent to shop owner for order: {}", orderNumber);
+                                break;
+                            } catch (Exception tokenError) {
+                                log.warn("Failed to send return notification to shop owner: {}", tokenError.getMessage());
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.error("Failed to send return notification to shop owner: {}", e.getMessage());
+            }
+
+            response.put("success", true);
+            response.put("message", "Order marked as returning to shop");
+            response.put("status", "RETURNING_TO_SHOP");
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Error starting return to shop for order: {}", orderNumber, e);
+            response.put("success", false);
+            response.put("message", "Error: " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    /**
+     * Mark order as returned to shop (driver confirms products returned)
+     */
+    @PostMapping("/orders/{orderNumber}/returned-to-shop")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> confirmReturnedToShop(
+            @PathVariable String orderNumber,
+            @RequestBody Map<String, String> request) {
+        Map<String, Object> response = new HashMap<>();
+        String partnerId = request.get("partnerId");
+
+        try {
+            log.info("Confirming return to shop for order: {} by partner: {}", orderNumber, partnerId);
+
+            // Find the order
+            Optional<Order> orderOpt = orderRepository.findByOrderNumber(orderNumber);
+            if (orderOpt.isEmpty()) {
+                response.put("success", false);
+                response.put("message", "Order not found");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            Order order = orderOpt.get();
+
+            // Update order status to RETURNED_TO_SHOP
+            order.setStatus(Order.OrderStatus.RETURNED_TO_SHOP);
+            orderRepository.save(order);
+
+            // Update assignment status
+            Optional<OrderAssignment> assignmentOpt = orderAssignmentRepository
+                .findByOrderIdAndDeliveryPartnerId(order.getId(), Long.parseLong(partnerId));
+            if (assignmentOpt.isPresent()) {
+                OrderAssignment assignment = assignmentOpt.get();
+                assignment.setStatus(OrderAssignment.AssignmentStatus.RETURNED);
+                assignment.setDeliveryCompletedAt(LocalDateTime.now());
+                orderAssignmentRepository.save(assignment);
+            }
+
+            // Send FCM notification to shop owner to confirm receipt
+            try {
+                if (order.getShop() != null && order.getShop().getOwnerEmail() != null) {
+                    User shopOwner = userService.findByEmail(order.getShop().getOwnerEmail()).orElse(null);
+                    if (shopOwner != null) {
+                        List<FcmToken> fcmTokens = fcmTokenRepository.findActiveTokensByUserId(shopOwner.getId());
+                        for (FcmToken token : fcmTokens) {
+                            try {
+                                firebaseNotificationService.sendOrderNotification(
+                                    order.getOrderNumber(),
+                                    "RETURNED_TO_SHOP",
+                                    token.getToken(),
+                                    shopOwner.getId()
+                                );
+                                log.info("Return completed notification sent to shop owner for order: {}", orderNumber);
+                                break;
+                            } catch (Exception tokenError) {
+                                log.warn("Failed to send return completed notification: {}", tokenError.getMessage());
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.error("Failed to send return completed notification: {}", e.getMessage());
+            }
+
+            response.put("success", true);
+            response.put("message", "Order returned to shop successfully");
+            response.put("status", "RETURNED_TO_SHOP");
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Error confirming return to shop for order: {}", orderNumber, e);
+            response.put("success", false);
+            response.put("message", "Error: " + e.getMessage());
             return ResponseEntity.badRequest().body(response);
         }
     }
