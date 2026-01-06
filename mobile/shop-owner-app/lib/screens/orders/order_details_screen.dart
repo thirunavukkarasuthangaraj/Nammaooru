@@ -357,12 +357,310 @@ class OrderDetailsScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 24),
+
+                // Return Workflow for RETURNING_TO_SHOP or RETURNED_TO_SHOP
+                if (status == 'RETURNING_TO_SHOP' || status == 'RETURNED_TO_SHOP') ...[
+                  _buildReturnWorkflowCard(context, status, orderData),
+                  const SizedBox(height: 16),
+                ],
               ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildReturnWorkflowCard(BuildContext context, String status, Map<String, dynamic> orderData) {
+    final isReturning = status == 'RETURNING_TO_SHOP';
+    final isReturned = status == 'RETURNED_TO_SHOP';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.assignment_return, color: Colors.orange.shade700, size: 24),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Return Workflow',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // Workflow Steps
+          Row(
+            children: [
+              // Step 1: Order Cancelled
+              Expanded(
+                child: _buildWorkflowStep(
+                  icon: Icons.cancel,
+                  label: 'Cancelled',
+                  isCompleted: true,
+                  isActive: false,
+                  color: Colors.red,
+                ),
+              ),
+              // Connector 1
+              _buildWorkflowConnector(isCompleted: true),
+              // Step 2: Returning
+              Expanded(
+                child: _buildWorkflowStep(
+                  icon: Icons.directions_bike,
+                  label: 'Returning',
+                  isCompleted: isReturned,
+                  isActive: isReturning,
+                  color: Colors.orange,
+                ),
+              ),
+              // Connector 2
+              _buildWorkflowConnector(isCompleted: isReturned),
+              // Step 3: Collected
+              Expanded(
+                child: _buildWorkflowStep(
+                  icon: Icons.inventory_2,
+                  label: 'Collect',
+                  isCompleted: false,
+                  isActive: isReturned,
+                  color: Colors.green,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // Status Message
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isReturned ? Colors.green.shade50 : Colors.orange.shade50,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: isReturned ? Colors.green.shade200 : Colors.orange.shade200,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  isReturned ? Icons.check_circle : Icons.info_outline,
+                  color: isReturned ? Colors.green.shade700 : Colors.orange.shade700,
+                  size: 20,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    isReturned
+                        ? 'Driver has returned. Please verify and collect products.'
+                        : 'Driver is on the way to return products.',
+                    style: TextStyle(
+                      color: isReturned ? Colors.green.shade700 : Colors.orange.shade700,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Collect Button (only when returned)
+          if (isReturned) ...[
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _confirmReturnReceiptFromMap(context, orderData),
+                icon: const Icon(Icons.check_circle, size: 22),
+                label: const Text(
+                  'Verify & Collect Products',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 2,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWorkflowStep({
+    required IconData icon,
+    required String label,
+    required bool isCompleted,
+    required bool isActive,
+    required Color color,
+  }) {
+    final backgroundColor = isCompleted
+        ? color
+        : isActive
+            ? color.withOpacity(0.2)
+            : Colors.grey.shade200;
+    final iconColor = isCompleted
+        ? Colors.white
+        : isActive
+            ? color
+            : Colors.grey.shade400;
+    final textColor = isCompleted || isActive ? color : Colors.grey.shade400;
+
+    return Column(
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            shape: BoxShape.circle,
+            border: isActive && !isCompleted
+                ? Border.all(color: color, width: 2)
+                : null,
+            boxShadow: isCompleted
+                ? [
+                    BoxShadow(
+                      color: color.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Icon(
+            isCompleted ? Icons.check : icon,
+            color: iconColor,
+            size: 22,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: isActive || isCompleted ? FontWeight.w600 : FontWeight.normal,
+            color: textColor,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWorkflowConnector({required bool isCompleted}) {
+    return Container(
+      height: 3,
+      width: 30,
+      margin: const EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        color: isCompleted ? Colors.green : Colors.grey.shade300,
+        borderRadius: BorderRadius.circular(2),
+      ),
+    );
+  }
+
+  Future<void> _confirmReturnReceiptFromMap(BuildContext context, Map<String, dynamic> orderData) async {
+    final orderNumber = orderData['orderNumber'] ?? orderData['id'];
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.inventory_2, color: Colors.green.shade700),
+            const SizedBox(width: 8),
+            const Text('Confirm Receipt'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Have you verified and collected all products from Order #$orderNumber?'),
+            const SizedBox(height: 12),
+            Text(
+              'This will mark the return as complete.',
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            child: const Text('Confirm Receipt', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        final response = await ApiService.confirmReturnReceipt(orderNumber);
+        if (response.isSuccess) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Return receipt confirmed successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.pop(context); // Go back to orders list
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed: ${response.error ?? 'Unknown error'}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   String _getStatusText(String status) {
