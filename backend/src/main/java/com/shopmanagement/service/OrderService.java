@@ -637,25 +637,23 @@ public class OrderService {
         // Send cancellation notification to shop owner
         try {
             log.info("Sending cancellation notification to shop owner for order: {}", order.getOrderNumber());
-            if (order.getShop() != null && order.getShop().getOwner() != null) {
-                Long shopOwnerId = order.getShop().getOwner().getId();
-                List<String> shopOwnerFcmTokens = getFcmTokensForUser(shopOwnerId);
-                for (String fcmToken : shopOwnerFcmTokens) {
-                    try {
-                        firebaseNotificationService.sendNotificationToToken(
-                            fcmToken,
-                            "Order Cancelled by Customer",
-                            "Order #" + order.getOrderNumber() + " has been cancelled by the customer. Reason: " + reason,
-                            Map.of(
-                                "type", "ORDER_CANCELLED",
-                                "orderId", order.getId().toString(),
-                                "orderNumber", order.getOrderNumber()
-                            )
-                        );
-                        log.info("Cancellation notification sent to shop owner for order: {}", order.getOrderNumber());
-                        break;
-                    } catch (Exception tokenError) {
-                        log.warn("Failed to send cancellation notification to shop owner: {}", tokenError.getMessage());
+            if (order.getShop() != null && order.getShop().getOwnerEmail() != null) {
+                User shopOwner = userRepository.findByEmail(order.getShop().getOwnerEmail()).orElse(null);
+                if (shopOwner != null) {
+                    List<String> shopOwnerFcmTokens = getFcmTokensForUser(shopOwner.getId());
+                    for (String fcmToken : shopOwnerFcmTokens) {
+                        try {
+                            firebaseNotificationService.sendOrderNotification(
+                                order.getOrderNumber(),
+                                "CANCELLED",
+                                fcmToken,
+                                shopOwner.getId()
+                            );
+                            log.info("Cancellation notification sent to shop owner for order: {}", order.getOrderNumber());
+                            break;
+                        } catch (Exception tokenError) {
+                            log.warn("Failed to send cancellation notification to shop owner: {}", tokenError.getMessage());
+                        }
                     }
                 }
             }
@@ -677,15 +675,11 @@ public class OrderService {
                         List<String> partnerFcmTokens = getFcmTokensForUser(partnerId);
                         for (String fcmToken : partnerFcmTokens) {
                             try {
-                                firebaseNotificationService.sendNotificationToToken(
+                                firebaseNotificationService.sendOrderNotification(
+                                    order.getOrderNumber(),
+                                    "CANCELLED",
                                     fcmToken,
-                                    "Order Cancelled",
-                                    "Order #" + order.getOrderNumber() + " has been cancelled by the customer.",
-                                    Map.of(
-                                        "type", "ORDER_CANCELLED",
-                                        "orderId", order.getId().toString(),
-                                        "orderNumber", order.getOrderNumber()
-                                    )
+                                    partnerId
                                 );
                                 log.info("Cancellation notification sent to delivery partner {} for order: {}",
                                     partnerId, order.getOrderNumber());
