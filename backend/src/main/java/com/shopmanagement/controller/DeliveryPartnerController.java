@@ -1443,6 +1443,7 @@ public class DeliveryPartnerController {
      * Mark order as returning to shop (when customer cancels after pickup)
      */
     @PostMapping("/orders/{orderNumber}/return-to-shop")
+    @Transactional(noRollbackFor = Exception.class)
     public ResponseEntity<Map<String, Object>> startReturnToShop(
             @PathVariable String orderNumber,
             @RequestBody Map<String, String> request) {
@@ -1527,6 +1528,7 @@ public class DeliveryPartnerController {
      * Mark order as returned to shop (driver confirms products returned)
      */
     @PostMapping("/orders/{orderNumber}/returned-to-shop")
+    @Transactional(noRollbackFor = Exception.class)
     public ResponseEntity<Map<String, Object>> confirmReturnedToShop(
             @PathVariable String orderNumber,
             @RequestBody Map<String, String> request) {
