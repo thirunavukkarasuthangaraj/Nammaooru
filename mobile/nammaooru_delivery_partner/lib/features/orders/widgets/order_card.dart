@@ -342,7 +342,9 @@ class OrderCard extends StatelessWidget {
       case 'delivered':
         return [const Color(0xFF43A047), const Color(0xFF2E7D32)];
       case 'cancelled':
-        return [const Color(0xFFF44336), const Color(0xFFD32F2F)];
+      case 'returning_to_shop':
+      case 'returned_to_shop':
+        return [const Color(0xFF2196F3), const Color(0xFF1976D2)]; // Same blue color
       default:
         return [const Color(0xFF757575), const Color(0xFF616161)];
     }

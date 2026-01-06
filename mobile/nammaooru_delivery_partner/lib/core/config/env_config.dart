@@ -1,6 +1,6 @@
 class EnvConfig {
   // Base API Configuration - Using centralized AppConfig
-  static String get baseUrl => 'https://nammaoorudelivary.in'; // Production URL
+  static String get baseUrl => 'https://api.nammaoorudelivary.in'; // Production URL
   static const String apiVersion = '';
   static String get fullApiUrl => '$baseUrl/api';
   static String get imageBaseUrl => baseUrl; // Base URL for images

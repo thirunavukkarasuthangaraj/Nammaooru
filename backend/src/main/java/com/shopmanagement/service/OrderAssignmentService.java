@@ -56,6 +56,14 @@ public class OrderAssignmentService {
         Order order = orderRepository.findById(orderId)
             .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
 
+        // CRITICAL: Check if order is cancelled - never assign cancelled orders
+        if (order.getStatus() == Order.OrderStatus.CANCELLED ||
+            order.getStatus() == Order.OrderStatus.RETURNING_TO_SHOP ||
+            order.getStatus() == Order.OrderStatus.RETURNED_TO_SHOP) {
+            log.warn("Cannot auto-assign order {} - status is {}", order.getOrderNumber(), order.getStatus());
+            throw new RuntimeException("Cannot assign cancelled or returning order: " + order.getOrderNumber());
+        }
+
         // Skip status check for auto-assignment - we know it's triggered when READY_FOR_PICKUP
         log.info("Auto-assignment triggered for order {} with status: {}", order.getOrderNumber(), order.getStatus());
 
