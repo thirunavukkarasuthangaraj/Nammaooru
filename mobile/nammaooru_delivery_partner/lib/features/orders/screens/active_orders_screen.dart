@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/providers/delivery_partner_provider.dart';
 import '../../../core/providers/location_provider.dart';
 import '../../../core/models/simple_order_model.dart';
+import '../../../services/firebase_notification_service_mobile.dart';
 import '../widgets/order_card.dart';
 import '../widgets/order_details_bottom_sheet.dart';
 import 'otp_handover_screen.dart';
@@ -23,6 +24,81 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
   void initState() {
     super.initState();
     _loadActiveOrders();
+    _setupNotificationListener();
+  }
+
+  @override
+  void dispose() {
+    FirebaseNotificationService.removeListener(_handleNotification);
+    super.dispose();
+  }
+
+  void _setupNotificationListener() {
+    FirebaseNotificationService.addListener(_handleNotification);
+  }
+
+  void _handleNotification(NotificationModel notification) {
+    // Handle order cancellation notification
+    if (notification.type.toLowerCase() == 'order_cancelled' ||
+        notification.type.toLowerCase() == 'delivery_cancelled') {
+      final orderNumber = notification.data?['orderNumber'] ?? notification.orderId;
+      if (orderNumber != null) {
+        // Show cancellation dialog
+        _showOrderCancelledDialog(orderNumber, notification.body);
+
+        // Remove order from list
+        final provider = Provider.of<DeliveryPartnerProvider>(context, listen: false);
+        provider.handleOrderCancelled(orderNumber);
+      }
+    }
+  }
+
+  void _showOrderCancelledDialog(String orderNumber, String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.cancel, color: Colors.red, size: 28),
+            SizedBox(width: 10),
+            Text('Order Cancelled', style: TextStyle(color: Colors.red)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Order #$orderNumber has been cancelled by the customer.',
+              style: TextStyle(fontSize: 16),
+            ),
+            if (message.isNotEmpty) ...[
+              SizedBox(height: 12),
+              Text(
+                message,
+                style: TextStyle(color: Colors.grey[600], fontSize: 14),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _loadActiveOrders(); // Refresh the list
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _loadActiveOrders() {

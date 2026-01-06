@@ -154,6 +154,14 @@ class DeliveryPartnerProvider extends ChangeNotifier {
           .map((order) => OrderModel.fromJson(order))
           .toList();
 
+      // Sort by time (newest first)
+      _availableOrders.sort((a, b) {
+        if (a.createdAt == null && b.createdAt == null) return 0;
+        if (a.createdAt == null) return 1;
+        if (b.createdAt == null) return -1;
+        return b.createdAt!.compareTo(a.createdAt!);
+      });
+
     } catch (e) {
       _setError(e.toString());
     } finally {
@@ -166,9 +174,29 @@ class DeliveryPartnerProvider extends ChangeNotifier {
       _setError(null);
 
       final response = await _apiService.getCurrentOrders();
-      _activeOrders = (response['orders'] as List? ?? [])
+
+      // Debug: Log the response to check if items are included
+      final orders = response['orders'] as List? ?? [];
+      for (var order in orders) {
+        print('Order ${order['orderNumber']}: items=${order['items']?.length ?? 0}, orderItems=${order['orderItems']?.length ?? 0}');
+        if (order['items'] != null) {
+          for (var item in order['items']) {
+            print('  - Item: ${item['productName']}, imageUrl: ${item['productImageUrl']}');
+          }
+        }
+      }
+
+      _activeOrders = orders
           .map((order) => OrderModel.fromJson(order))
           .toList();
+
+      // Sort by time (newest first)
+      _activeOrders.sort((a, b) {
+        if (a.createdAt == null && b.createdAt == null) return 0;
+        if (a.createdAt == null) return 1;
+        if (b.createdAt == null) return -1;
+        return b.createdAt!.compareTo(a.createdAt!);
+      });
 
       notifyListeners();
     } catch (e) {
@@ -239,18 +267,49 @@ class DeliveryPartnerProvider extends ChangeNotifier {
   Future<void> loadOrderHistory() async {
     try {
       _setError(null);
-      
+
       final response = await _apiService.getOrderHistory();
       _orderHistory = (response['orders'] as List? ?? [])
           .map((order) => OrderModel.fromJson(order))
           .toList();
-          
+
+      // Sort by time (newest first)
+      _orderHistory.sort((a, b) {
+        if (a.createdAt == null && b.createdAt == null) return 0;
+        if (a.createdAt == null) return 1;
+        if (b.createdAt == null) return -1;
+        return b.createdAt!.compareTo(a.createdAt!);
+      });
+
       notifyListeners();
     } catch (e) {
       _setError(e.toString());
     }
   }
-  
+
+  // Handle order cancellation notification
+  void handleOrderCancelled(String orderNumber) {
+    // Remove the cancelled order from active orders
+    _activeOrders.removeWhere((order) =>
+      order.orderNumber == orderNumber || order.id.toString() == orderNumber
+    );
+
+    // Also remove from available orders if present
+    _availableOrders.removeWhere((order) =>
+      order.orderNumber == orderNumber || order.id.toString() == orderNumber
+    );
+
+    notifyListeners();
+  }
+
+  // Check if an order is cancelled
+  bool isOrderCancelled(String orderNumber) {
+    // Order is cancelled if it's not in active or available orders anymore
+    final inActive = _activeOrders.any((o) => o.orderNumber == orderNumber);
+    final inAvailable = _availableOrders.any((o) => o.orderNumber == orderNumber);
+    return !inActive && !inAvailable;
+  }
+
   // Earnings Management
   Future<void> loadEarnings({String? period}) async {
     try {

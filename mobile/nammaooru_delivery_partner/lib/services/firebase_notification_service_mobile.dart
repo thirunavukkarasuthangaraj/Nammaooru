@@ -176,8 +176,10 @@ class FirebaseNotificationService {
         // TODO: Navigate to delivery assignment screen
         break;
       case 'delivery_cancelled':
+      case 'order_cancelled':
         // Navigate to cancelled delivery info
-        debugPrint('Delivery cancelled: ${notification.data?['orderId']}');
+        debugPrint('Order/Delivery cancelled: ${notification.data?['orderId']}');
+        // Refresh orders list will be handled by listener
         break;
       case 'payment_received':
         // Navigate to earnings
