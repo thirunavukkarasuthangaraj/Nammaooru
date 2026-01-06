@@ -39,16 +39,27 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
 
   void _handleNotification(NotificationModel notification) {
     // Handle order cancellation notification
-    if (notification.type.toLowerCase() == 'order_cancelled' ||
-        notification.type.toLowerCase() == 'delivery_cancelled') {
+    // Check both type and status fields since backend may send either
+    final type = notification.type.toLowerCase();
+    final status = (notification.data?['status'] ?? '').toString().toLowerCase();
+
+    final isCancelled = type == 'order_cancelled' ||
+        type == 'delivery_cancelled' ||
+        status == 'cancelled' ||
+        notification.title.toLowerCase().contains('cancelled');
+
+    if (isCancelled) {
       final orderNumber = notification.data?['orderNumber'] ?? notification.orderId;
       if (orderNumber != null) {
         // Show cancellation dialog
         _showOrderCancelledDialog(orderNumber, notification.body);
 
-        // Remove order from list
+        // Remove order from list and refresh from API
         final provider = Provider.of<DeliveryPartnerProvider>(context, listen: false);
         provider.handleOrderCancelled(orderNumber);
+
+        // Also refresh from API to ensure sync with server
+        provider.loadCurrentOrders();
       }
     }
   }
@@ -653,6 +664,32 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
 
   Widget _buildActionButtons(OrderModel order, Color cardColor) {
     switch (order.status.toLowerCase()) {
+      case 'cancelled':
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+          decoration: BoxDecoration(
+            color: Colors.red[50],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.red[300]!),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.cancel, color: Colors.red[700], size: 24),
+              const SizedBox(width: 10),
+              Text(
+                'ORDER CANCELLED',
+                style: TextStyle(
+                  color: Colors.red[700],
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        );
+
       case 'accepted':
         return SizedBox(
           width: double.infinity,
