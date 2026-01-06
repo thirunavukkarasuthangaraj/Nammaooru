@@ -571,9 +571,14 @@ public class OrderAssignmentController {
 
         // Order details
         response.put("orderValue", assignment.getOrder().getTotalAmount());
+        response.put("totalAmount", assignment.getOrder().getTotalAmount());
         response.put("deliveryFee", assignment.getDeliveryFee());
         response.put("partnerCommission", assignment.getPartnerCommission());
         response.put("deliveryAddress", assignment.getOrder().getDeliveryAddress());
+        response.put("paymentMethod", assignment.getOrder().getPaymentMethod() != null ?
+            assignment.getOrder().getPaymentMethod().toString() : "CASH_ON_DELIVERY");
+        response.put("paymentStatus", assignment.getOrder().getPaymentStatus() != null ?
+            assignment.getOrder().getPaymentStatus().toString() : "PENDING");
 
         // Customer details
         response.put("customerName", assignment.getOrder().getCustomer().getFirstName() + " " + assignment.getOrder().getCustomer().getLastName());
@@ -583,6 +588,25 @@ public class OrderAssignmentController {
         response.put("shopName", assignment.getOrder().getShop().getName());
         response.put("shopAddress", assignment.getOrder().getShop().getAddressLine1());
         response.put("shopPhone", assignment.getOrder().getShop().getOwnerPhone());
+
+        // Pickup OTP (from Order, not Assignment)
+        response.put("pickupOtp", assignment.getOrder().getPickupOtp());
+
+        // Order Items with images
+        List<Map<String, Object>> orderItems = assignment.getOrder().getOrderItems().stream()
+            .map(item -> {
+                Map<String, Object> itemMap = new HashMap<>();
+                itemMap.put("id", item.getId());
+                itemMap.put("productName", item.getProductName() != null ? item.getProductName() : "Product");
+                itemMap.put("quantity", item.getQuantity());
+                itemMap.put("unitPrice", item.getUnitPrice());
+                itemMap.put("totalPrice", item.getTotalPrice());
+                itemMap.put("productImageUrl", item.getProductImageUrl());
+                return itemMap;
+            })
+            .toList();
+        response.put("items", orderItems);
+        response.put("orderItems", orderItems);
 
         // Timestamps
         response.put("assignedAt", assignment.getAssignedAt());

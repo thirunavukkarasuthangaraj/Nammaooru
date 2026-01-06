@@ -287,6 +287,7 @@ public class DeliveryPartnerController {
     }
     
     @GetMapping("/orders/{partnerId}/available")
+    @Transactional
     public ResponseEntity<Map<String, Object>> getAvailableOrders(@PathVariable String partnerId) {
         Map<String, Object> response = new HashMap<>();
 
@@ -321,6 +322,23 @@ public class DeliveryPartnerController {
                     orderData.put("paymentStatus", assignment.getOrder().getPaymentStatus().name());
                     orderData.put("pickupOtp", assignment.getOrder().getPickupOtp());
                     orderData.put("deliveryType", assignment.getOrder().getDeliveryType() != null ? assignment.getOrder().getDeliveryType().name() : null);
+
+                    // Add order items with images
+                    List<Map<String, Object>> orderItems = assignment.getOrder().getOrderItems().stream()
+                        .map(item -> {
+                            Map<String, Object> itemMap = new HashMap<>();
+                            itemMap.put("id", item.getId());
+                            itemMap.put("productName", item.getProductName() != null ? item.getProductName() : "Product");
+                            itemMap.put("quantity", item.getQuantity());
+                            itemMap.put("unitPrice", item.getUnitPrice());
+                            itemMap.put("totalPrice", item.getTotalPrice());
+                            itemMap.put("productImageUrl", item.getProductImageUrl());
+                            return itemMap;
+                        })
+                        .toList();
+                    orderData.put("items", orderItems);
+                    orderData.put("orderItems", orderItems);
+
                     orders.add(orderData);
                 }
             }
@@ -393,6 +411,23 @@ public class DeliveryPartnerController {
                 orderData.put("pickupOtp", assignment.getOrder().getPickupOtp());
                 orderData.put("deliveryType", assignment.getOrder().getDeliveryType() != null ? assignment.getOrder().getDeliveryType().name() : null);
                 orderData.put("assignmentId", assignment.getId().toString()); // Include assignmentId for location tracking
+
+                // Add order items with images
+                List<Map<String, Object>> orderItems = assignment.getOrder().getOrderItems().stream()
+                    .map(item -> {
+                        Map<String, Object> itemMap = new HashMap<>();
+                        itemMap.put("id", item.getId());
+                        itemMap.put("productName", item.getProductName() != null ? item.getProductName() : "Product");
+                        itemMap.put("quantity", item.getQuantity());
+                        itemMap.put("unitPrice", item.getUnitPrice());
+                        itemMap.put("totalPrice", item.getTotalPrice());
+                        itemMap.put("productImageUrl", item.getProductImageUrl());
+                        return itemMap;
+                    })
+                    .toList();
+                orderData.put("items", orderItems);
+                orderData.put("orderItems", orderItems);
+
                 orders.add(orderData);
             }
 
