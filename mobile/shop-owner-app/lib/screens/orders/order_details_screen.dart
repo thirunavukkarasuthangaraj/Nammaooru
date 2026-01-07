@@ -598,6 +598,20 @@ class OrderDetailsScreen extends StatelessWidget {
     final orderId = orderData['id']?.toString() ?? '';
     final orderNumber = orderData['orderNumber'] ?? orderId;
 
+    // Debug: Print order data to see what we have
+    print('🔍 Order data for confirm: id=$orderId, orderNumber=$orderNumber');
+    print('🔍 Full orderData: $orderData');
+
+    if (orderId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error: Order ID not found'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -637,7 +651,10 @@ class OrderDetailsScreen extends StatelessWidget {
     if (confirmed == true) {
       try {
         // Use numeric orderId for API call, not orderNumber
+        print('📤 Calling confirmReturnReceipt API with orderId: $orderId');
         final response = await ApiService.confirmReturnReceipt(orderId);
+        print('📥 API Response: isSuccess=${response.isSuccess}, data=${response.data}, error=${response.error}');
+
         if (response.isSuccess) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -645,16 +662,17 @@ class OrderDetailsScreen extends StatelessWidget {
               backgroundColor: Colors.green,
             ),
           );
-          Navigator.pop(context); // Go back to orders list
+          Navigator.pop(context, true); // Go back to orders list with result
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Failed: ${response.error ?? 'Unknown error'}'),
+              content: Text('Failed: ${response.error ?? response.data?.toString() ?? 'Unknown error'}'),
               backgroundColor: Colors.red,
             ),
           );
         }
       } catch (e) {
+        print('❌ Exception in confirmReturnReceipt: $e');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error: $e'),
