@@ -64,6 +64,169 @@ void _navigateToNotifications() async {
   }
 }
 
+// Show return notification dialog
+void _showReturnNotificationDialog(
+  String type,
+  String orderNumber,
+  String title,
+  String body,
+) {
+  final context = navigatorKey.currentContext;
+  if (context == null) return;
+
+  final isReturning = type.toLowerCase().contains('returning');
+  final isReturned = type.toLowerCase().contains('returned_to');
+
+  showDialog(
+    context: context,
+    barrierDismissible: true,
+    builder: (BuildContext dialogContext) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isReturned ? Colors.orange.shade100 : Colors.blue.shade100,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                isReturned ? Icons.inventory_2 : Icons.local_shipping,
+                color: isReturned ? Colors.orange : Colors.blue,
+                size: 28,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                isReturned ? '📦 Order Returned!' : '🔙 Order Returning',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.receipt_long, size: 20, color: Colors.grey),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Order: $orderNumber',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    body,
+                    style: TextStyle(
+                      color: Colors.grey.shade700,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (isReturned) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.green.shade700, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Go to Returns tab to verify & collect products',
+                        style: TextStyle(
+                          color: Colors.green.shade700,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ] else ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Driver is on the way back to your shop',
+                        style: TextStyle(
+                          color: Colors.blue.shade700,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Dismiss'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              // Navigate to orders/returns tab
+              _navigateToNotifications();
+            },
+            icon: Icon(isReturned ? Icons.check_circle : Icons.visibility),
+            label: Text(isReturned ? 'View & Collect' : 'View Order'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isReturned ? Colors.green : Colors.blue,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ],
+      );
+    },
+  );
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -117,6 +280,9 @@ void main() async {
         print('🔔 Got a message whilst in the foreground!');
         print('📦 Message data: ${message.data}');
 
+        final notificationType = message.data['type'] ?? '';
+        final orderNumber = message.data['orderNumber'] ?? message.data['orderId'] ?? '';
+
         if (message.notification != null) {
           print(
               '📬 Notification: ${message.notification!.title} - ${message.notification!.body}');
@@ -154,6 +320,19 @@ void main() async {
             print('✅ Local notification shown successfully');
           } catch (e) {
             print('❌ Error showing notification: $e');
+          }
+
+          // Show dialog for return notifications
+          if (notificationType == 'RETURNING_TO_SHOP' ||
+              notificationType == 'RETURNED_TO_SHOP' ||
+              notificationType == 'returning_to_shop' ||
+              notificationType == 'returned_to_shop') {
+            _showReturnNotificationDialog(
+              notificationType,
+              orderNumber,
+              message.notification!.title ?? 'Order Return',
+              message.notification!.body ?? 'An order is being returned',
+            );
           }
         }
       });
