@@ -1551,6 +1551,47 @@ class OrderDetailsScreen extends StatelessWidget {
                     ),
                   ),
                 ),
+              ] else ...[
+                // No driver assigned yet - searching for driver
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.blue.shade300),
+                  ),
+                  child: Column(
+                    children: [
+                      SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 3,
+                          color: Colors.blue.shade700,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Searching for Driver...',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue.shade700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Please wait, looking for available delivery partner',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.blue.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ],
             // Returning to shop notification
