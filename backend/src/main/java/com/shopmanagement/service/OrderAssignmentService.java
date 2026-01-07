@@ -739,6 +739,25 @@ public class OrderAssignmentService {
             );
             log.info("Delivery summary email sent to customer {} with {} items",
                 order.getCustomer().getEmail(), orderItemsForEmail.size());
+
+            // Send FCM push notification to customer
+            User customerUser = userRepository.findByEmail(order.getCustomer().getEmail()).orElse(null);
+            if (customerUser != null) {
+                List<UserFcmToken> customerTokens = userFcmTokenRepository.findActiveTokensByUserId(customerUser.getId());
+                for (UserFcmToken tokenEntity : customerTokens) {
+                    try {
+                        firebaseNotificationService.sendDeliveryNotification(
+                            order.getOrderNumber(),
+                            "Your order has been delivered successfully!",
+                            tokenEntity.getFcmToken()
+                        );
+                        log.info("Delivery FCM sent to customer for order: {}", order.getOrderNumber());
+                        break;
+                    } catch (Exception fcmEx) {
+                        log.warn("Failed to send delivery FCM: {}", fcmEx.getMessage());
+                    }
+                }
+            }
         } catch (Exception e) {
             log.error("Failed to send delivery notification email: {}", e.getMessage());
         }
