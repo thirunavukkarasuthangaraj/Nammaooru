@@ -736,7 +736,7 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     }).join('');
 
     // Get shop name from localStorage or use default
-    const shopName = localStorage.getItem('shop_name') || order.shopName || 'NammaOoru';
+    const shopName = localStorage.getItem('shop_name') || 'NammaOoru';
 
     return `
       <!DOCTYPE html>
@@ -844,7 +844,7 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     `).join('');
 
     // Get shop name from localStorage or use default
-    const shopName = localStorage.getItem('shop_name') || order.shopName || 'NammaOoru';
+    const shopName = localStorage.getItem('shop_name') || 'NammaOoru';
 
     return `
       <!DOCTYPE html>
