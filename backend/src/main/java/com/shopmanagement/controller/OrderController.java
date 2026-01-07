@@ -5,12 +5,17 @@ import com.shopmanagement.common.util.ResponseUtil;
 import com.shopmanagement.dto.order.OrderRequest;
 import com.shopmanagement.dto.order.OrderResponse;
 import com.shopmanagement.entity.Order;
+import com.shopmanagement.entity.User;
+import com.shopmanagement.entity.UserFcmToken;
 import com.shopmanagement.service.OrderService;
 import com.shopmanagement.service.OrderAssignmentService;
 import com.shopmanagement.service.DeliveryConfirmationService;
+import com.shopmanagement.service.FirebaseNotificationService;
 import com.shopmanagement.entity.OrderAssignment;
 import com.shopmanagement.repository.OrderRepository;
 import com.shopmanagement.repository.OrderAssignmentRepository;
+import com.shopmanagement.repository.UserRepository;
+import com.shopmanagement.repository.UserFcmTokenRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -29,6 +34,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -43,6 +49,9 @@ public class OrderController {
     private final DeliveryConfirmationService deliveryConfirmationService;
     private final OrderRepository orderRepository;
     private final OrderAssignmentRepository orderAssignmentRepository;
+    private final FirebaseNotificationService firebaseNotificationService;
+    private final UserRepository userRepository;
+    private final UserFcmTokenRepository userFcmTokenRepository;
     
     @PostMapping
     @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER') or hasRole('CUSTOMER') or hasRole('USER')")
@@ -298,6 +307,37 @@ public class OrderController {
             log.info("✅ Home delivery order {} marked as OUT_FOR_DELIVERY", orderId);
 
             orderRepository.save(order);
+
+            // Send FCM notification to customer - Order picked up and out for delivery
+            try {
+                if (order.getCustomer() != null && order.getCustomer().getEmail() != null) {
+                    User customerUser = userRepository.findByEmail(order.getCustomer().getEmail()).orElse(null);
+                    if (customerUser != null) {
+                        List<UserFcmToken> tokens = userFcmTokenRepository.findActiveTokensByUserId(customerUser.getId());
+                        log.info("📊 Found {} FCM tokens for customer for pickup notification", tokens.size());
+
+                        for (UserFcmToken tokenEntity : tokens) {
+                            try {
+                                firebaseNotificationService.sendOrderNotification(
+                                    order.getOrderNumber(),
+                                    "OUT_FOR_DELIVERY",
+                                    tokenEntity.getFcmToken(),
+                                    order.getCustomer().getId()
+                                );
+                                log.info("✅ Pickup FCM sent to customer for order: {}", order.getOrderNumber());
+                                break;
+                            } catch (Exception fcmEx) {
+                                log.warn("⚠️ Failed to send pickup FCM: {}", fcmEx.getMessage());
+                            }
+                        }
+                    } else {
+                        log.warn("⚠️ No user found for customer email: {}", order.getCustomer().getEmail());
+                    }
+                }
+            } catch (Exception fcmEx) {
+                log.error("❌ Failed to send pickup FCM notification: {}", fcmEx.getMessage());
+                // Don't fail the operation if FCM fails
+            }
 
             Map<String, Object> responseData = Map.of(
                 "orderId", orderId,

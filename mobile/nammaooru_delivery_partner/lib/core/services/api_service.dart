@@ -212,9 +212,12 @@ class ApiService {
     String endpoint = '';
     Map<String, dynamic> requestBody = {'partnerId': partnerId};
 
-    if (status == 'PICKED_UP') {
+    // Normalize status to uppercase for comparison
+    final normalizedStatus = status.toUpperCase();
+
+    if (normalizedStatus == 'PICKED_UP') {
       endpoint = '$_deliveryPartnerEndpoint/orders/$orderId/pickup';
-    } else if (status == 'DELIVERED') {
+    } else if (normalizedStatus == 'DELIVERED') {
       endpoint = '$_deliveryPartnerEndpoint/orders/$orderId/deliver';
       requestBody['deliveryNotes'] = 'Order delivered successfully';
     } else {
