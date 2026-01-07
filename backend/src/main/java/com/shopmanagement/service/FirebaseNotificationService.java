@@ -203,6 +203,7 @@ public class FirebaseNotificationService {
             case "RETURNING_TO_SHOP" -> "Order Returning to Shop 🔙";
             case "RETURNED_TO_SHOP" -> "Order Returned to Shop 📦";
             case "NO_DRIVER_AVAILABLE" -> "No Driver Available 😔";
+            case "NO_DRIVER_CUSTOMER" -> "Delivery Delayed ⏳";
             case "SEARCHING_DRIVER" -> "Searching for Driver... 🔍";
             default -> "Order Update 📋";
         };
@@ -227,6 +228,7 @@ public class FirebaseNotificationService {
             case "RETURNING_TO_SHOP" -> String.format("Order %s is being returned to shop by driver.", orderNumber);
             case "RETURNED_TO_SHOP" -> String.format("Order %s has been returned to shop. Please verify and collect products.", orderNumber);
             case "NO_DRIVER_AVAILABLE" -> String.format("No delivery partner available for order %s. Please try again later.", orderNumber);
+            case "NO_DRIVER_CUSTOMER" -> String.format("Sorry! We're having trouble finding a delivery partner for your order %s. The shop will arrange delivery soon. Thank you for your patience!", orderNumber);
             case "SEARCHING_DRIVER" -> String.format("Searching for delivery partner for order %s...", orderNumber);
             default -> String.format("Status update for your order %s", orderNumber);
         };

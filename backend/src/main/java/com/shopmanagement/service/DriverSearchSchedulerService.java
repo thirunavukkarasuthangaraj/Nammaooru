@@ -175,7 +175,7 @@ public class DriverSearchSchedulerService {
                         try {
                             firebaseNotificationService.sendOrderNotification(
                                 order.getOrderNumber(),
-                                "NO_DRIVER_AVAILABLE",
+                                "NO_DRIVER_CUSTOMER",
                                 tokenEntity.getFcmToken(),
                                 order.getCustomer().getId()
                             );
