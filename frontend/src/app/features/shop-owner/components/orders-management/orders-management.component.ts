@@ -693,6 +693,135 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     this.swal.toast(`Order #${order.orderNumber} sent to printer`, 'success');
   }
 
+  // Small print for thermal/receipt printers (58mm/80mm)
+  printOrderSmall(orderId: number): void {
+    const order = this.orders.find(o => o.id === orderId);
+    if (!order) {
+      this.swal.error('Error', 'Order not found');
+      return;
+    }
+
+    // Create small receipt content
+    const printContent = this.generateSmallPrintContent(order);
+
+    // Open print window with smaller size
+    const printWindow = window.open('', '_blank', 'width=300,height=600');
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+      printWindow.close();
+    }
+
+    this.swal.toast(`Receipt sent to printer`, 'success');
+  }
+
+  generateSmallPrintContent(order: ShopOwnerOrder): string {
+    const itemsHtml = order.items.map(item => {
+      const unitPrice = item.price || item.unitPrice || 0;
+      const totalPrice = item.quantity * unitPrice;
+      const itemName = (item.name || item.productName || '').substring(0, 20);
+      return `
+        <tr>
+          <td style="font-size: 11px; padding: 3px 0;">${itemName}</td>
+          <td style="font-size: 11px; text-align: center; padding: 3px 0;">${item.quantity}</td>
+          <td style="font-size: 11px; text-align: right; padding: 3px 0;">₹${totalPrice}</td>
+        </tr>
+      `;
+    }).join('');
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Receipt</title>
+        <style>
+          @page {
+            size: 58mm auto;
+            margin: 2mm;
+          }
+          body {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            width: 54mm;
+            margin: 0 auto;
+            padding: 2mm;
+          }
+          .center { text-align: center; }
+          .bold { font-weight: bold; }
+          .divider {
+            border-top: 1px dashed #000;
+            margin: 5px 0;
+          }
+          table { width: 100%; border-collapse: collapse; }
+          .total-row {
+            font-weight: bold;
+            font-size: 14px;
+            border-top: 1px solid #000;
+            padding-top: 5px;
+          }
+          .small { font-size: 10px; }
+        </style>
+      </head>
+      <body>
+        <div class="center bold" style="font-size: 14px;">NammaOoru</div>
+        <div class="center small">Order Receipt</div>
+        <div class="divider"></div>
+
+        <div style="font-size: 11px;">
+          <div class="bold">#${order.orderNumber}</div>
+          <div>${new Date(order.createdAt).toLocaleDateString()} ${new Date(order.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+        </div>
+        <div class="divider"></div>
+
+        <div style="font-size: 11px;">
+          <div class="bold">${order.customerName}</div>
+          <div>${order.customerPhone || ''}</div>
+        </div>
+        <div class="divider"></div>
+
+        <table>
+          <thead>
+            <tr style="font-size: 10px; border-bottom: 1px solid #000;">
+              <th style="text-align: left; padding: 2px 0;">Item</th>
+              <th style="text-align: center; padding: 2px 0;">Qty</th>
+              <th style="text-align: right; padding: 2px 0;">Amt</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsHtml}
+          </tbody>
+        </table>
+        <div class="divider"></div>
+
+        <table>
+          <tr>
+            <td style="font-size: 11px;">Items: ${order.items?.length || 0}</td>
+            <td style="text-align: right; font-size: 11px;">Subtotal: ₹${order.totalAmount}</td>
+          </tr>
+        </table>
+
+        <div class="total-row" style="display: flex; justify-content: space-between; margin-top: 5px;">
+          <span>TOTAL</span>
+          <span>₹${order.totalAmount}</span>
+        </div>
+
+        <div class="divider"></div>
+        <div class="center small">
+          ${order.paymentMethod === 'CASH_ON_DELIVERY' ? 'CASH ON DELIVERY' : 'PAID ONLINE'}
+        </div>
+        <div class="divider"></div>
+
+        <div class="center small" style="margin-top: 5px;">
+          Thank you!<br>
+          ${new Date().toLocaleString()}
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
   generatePrintContent(order: ShopOwnerOrder): string {
     const itemsHtml = order.items.map(item => `
       <tr>

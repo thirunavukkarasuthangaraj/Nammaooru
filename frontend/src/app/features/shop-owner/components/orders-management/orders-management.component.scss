@@ -341,6 +341,21 @@ $white: #ffffff;
       color: $primary-color;
     }
   }
+
+  .small-print-btn {
+    padding: 4px 6px;
+    border: 1px solid #f39c12;
+    border-radius: 4px;
+    background: #fff8e1;
+    color: #f39c12;
+    min-width: 32px;
+    font-size: 14px;
+
+    &:hover {
+      background: #f39c12;
+      color: white;
+    }
+  }
 }
 
 .order-info {
