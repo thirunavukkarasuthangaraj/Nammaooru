@@ -701,7 +701,59 @@ public class OrderService {
 
         return mapToResponse(cancelledOrder);
     }
-    
+
+    /**
+     * Confirm receipt of returned products by shop owner
+     */
+    @Transactional
+    public Map<String, Object> confirmReturnReceipt(Long orderId) {
+        Map<String, Object> result = new HashMap<>();
+
+        log.info("Shop owner confirming return receipt for order: {}", orderId);
+
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
+
+        // Verify order is in RETURNED_TO_SHOP status
+        if (order.getStatus() != Order.OrderStatus.RETURNED_TO_SHOP) {
+            result.put("success", false);
+            result.put("message", "Order is not in returned status. Current status: " + order.getStatus());
+            return result;
+        }
+
+        // Mark as fully completed (returned and received)
+        order.setStatus(Order.OrderStatus.CANCELLED);
+        order.setUpdatedBy("SHOP_OWNER_CONFIRMED_RETURN");
+        order.setCancellationReason("Return confirmed by shop owner - products collected");
+
+        // Restore stock for returned items
+        if (order.getOrderItems() != null && !order.getOrderItems().isEmpty()) {
+            for (var item : order.getOrderItems()) {
+                try {
+                    var product = item.getShopProduct();
+                    if (product != null) {
+                        product.setStockQuantity(product.getStockQuantity() + item.getQuantity());
+                        shopProductRepository.save(product);
+                        log.info("Stock restored for product {}: +{} units", product.getId(), item.getQuantity());
+                    }
+                } catch (Exception e) {
+                    log.error("Failed to restore stock for item {}: {}", item.getId(), e.getMessage());
+                }
+            }
+        }
+
+        Order savedOrder = orderRepository.save(order);
+        log.info("✅ Return receipt confirmed for order {} - status changed to CANCELLED", orderId);
+
+        result.put("success", true);
+        result.put("orderId", orderId);
+        result.put("orderNumber", savedOrder.getOrderNumber());
+        result.put("status", "CANCELLED");
+        result.put("message", "Return receipt confirmed and stock restored");
+
+        return result;
+    }
+
     @Transactional(readOnly = true)
     public Page<OrderResponse> getAllOrders(int page, int size, String sortBy, String sortDirection) {
         Sort.Direction direction = sortDirection.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
