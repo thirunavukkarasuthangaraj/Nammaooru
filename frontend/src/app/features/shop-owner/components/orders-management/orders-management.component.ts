@@ -742,6 +742,7 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
       <!DOCTYPE html>
       <html>
       <head>
+        <meta charset="UTF-8">
         <title>Receipt</title>
         <style>
           @page {
@@ -749,7 +750,7 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
             margin: 2mm;
           }
           body {
-            font-family: 'Courier New', monospace;
+            font-family: 'Noto Sans Tamil', 'Latha', 'Tamil Sangam MN', 'Courier New', monospace;
             font-size: 12px;
             width: 54mm;
             margin: 0 auto;
@@ -769,10 +770,13 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
             padding-top: 5px;
           }
           .small { font-size: 10px; }
+          .shop-name {
+            font-family: 'Noto Sans Tamil', 'Latha', 'Tamil Sangam MN', Arial, sans-serif;
+          }
         </style>
       </head>
       <body>
-        <div class="center bold" style="font-size: 14px;">${shopName}</div>
+        <div class="center bold shop-name" style="font-size: 14px;">${shopName}</div>
         <div class="center small">Order Receipt</div>
         <div class="divider"></div>
 
@@ -846,9 +850,10 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
       <!DOCTYPE html>
       <html>
       <head>
+        <meta charset="UTF-8">
         <title>Order #${order.orderNumber}</title>
         <style>
-          body { font-family: Arial, sans-serif; padding: 20px; }
+          body { font-family: 'Noto Sans Tamil', 'Latha', 'Tamil Sangam MN', Arial, sans-serif; padding: 20px; }
           .header { text-align: center; margin-bottom: 30px; }
           .order-info { margin-bottom: 20px; }
           .customer-info { margin-bottom: 20px; }
