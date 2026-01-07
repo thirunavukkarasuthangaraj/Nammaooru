@@ -182,7 +182,8 @@
       "Bash(powershell -Command \"Get-ChildItem ''D:\\\\AAWS\\\\nammaooru\\\\shop-management-system\\\\mobile'' -Directory\")",
       "Bash(powershell -Command \"cd ''D:\\\\AAWS\\\\nammaooru\\\\shop-management-system\\\\mobile\\\\nammaooru_mobile_app''; flutter build appbundle\")",
       "Bash(powershell -Command \"cd ''D:\\\\AAWS\\\\nammaooru\\\\shop-management-system\\\\backend''; mvn clean spring-boot:run\")",
-      "Bash(mvn clean:*)"
+      "Bash(mvn clean:*)",
+      "Bash(ssh:*)"
     ],
     "deny": [],
     "ask": [],

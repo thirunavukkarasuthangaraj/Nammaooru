@@ -595,7 +595,8 @@ class OrderDetailsScreen extends StatelessWidget {
   }
 
   Future<void> _confirmReturnReceiptFromMap(BuildContext context, Map<String, dynamic> orderData) async {
-    final orderNumber = orderData['orderNumber'] ?? orderData['id'];
+    final orderId = orderData['id']?.toString() ?? '';
+    final orderNumber = orderData['orderNumber'] ?? orderId;
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -635,7 +636,8 @@ class OrderDetailsScreen extends StatelessWidget {
 
     if (confirmed == true) {
       try {
-        final response = await ApiService.confirmReturnReceipt(orderNumber);
+        // Use numeric orderId for API call, not orderNumber
+        final response = await ApiService.confirmReturnReceipt(orderId);
         if (response.isSuccess) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(

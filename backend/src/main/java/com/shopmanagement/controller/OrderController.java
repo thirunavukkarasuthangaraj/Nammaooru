@@ -403,6 +403,7 @@ public class OrderController {
      */
     @PostMapping("/{orderId}/confirm-return-receipt")
     @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER')")
+    @Transactional
     public ResponseEntity<Map<String, Object>> confirmReturnReceipt(@PathVariable Long orderId) {
         Map<String, Object> response = new HashMap<>();
         try {
