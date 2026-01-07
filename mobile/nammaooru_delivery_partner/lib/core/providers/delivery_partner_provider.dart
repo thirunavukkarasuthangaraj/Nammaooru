@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../models/delivery_partner.dart';
 import '../models/simple_order_model.dart';
 import '../services/api_service.dart';
+import '../../services/notification_api_service.dart';
 
 class DeliveryPartnerProvider extends ChangeNotifier {
   final ApiService _apiService = ApiService();
@@ -40,12 +42,14 @@ class DeliveryPartnerProvider extends ChangeNotifier {
     try {
       _setLoading(true);
       _setError(null);
-      
+
       final response = await _apiService.login(email, password);
-      
+
       if (response['success'] == true) {
         // Load partner profile after successful login
         await loadProfile();
+        // Register FCM token after successful login
+        await _registerFcmToken();
         return true;
       } else {
         _setError(response['message'] ?? 'Login failed');
@@ -64,13 +68,15 @@ class DeliveryPartnerProvider extends ChangeNotifier {
     try {
       _setLoading(true);
       _setError(null);
-      
+
       final response = await _apiService.login(email, password);
-      
+
       if (response['success'] == true) {
         if (response['requiresPasswordChange'] != true) {
           // Only load profile if password change is not required
           await loadProfile();
+          // Register FCM token after successful login
+          await _registerFcmToken();
         }
         return response;
       } else {
@@ -351,9 +357,31 @@ class DeliveryPartnerProvider extends ChangeNotifier {
       final isLoggedIn = await _apiService.isLoggedIn();
       if (isLoggedIn) {
         await loadProfile();
+        // Register FCM token for returning users
+        await _registerFcmToken();
       }
     } catch (e) {
       // Ignore errors during startup check
+    }
+  }
+
+  /// Register FCM token with backend after login
+  Future<void> _registerFcmToken() async {
+    try {
+      final fcmToken = await FirebaseMessaging.instance.getToken();
+      if (fcmToken != null) {
+        debugPrint('🔔 Registering FCM token after login: ${fcmToken.substring(0, 50)}...');
+        final result = await NotificationApiService.instance.updateDeliveryPartnerFcmToken(fcmToken);
+        if (result['success'] == true) {
+          debugPrint('✅ FCM token registered successfully after login');
+        } else {
+          debugPrint('⚠️ FCM token registration failed: ${result['message']}');
+        }
+      } else {
+        debugPrint('⚠️ No FCM token available');
+      }
+    } catch (e) {
+      debugPrint('❌ Error registering FCM token: $e');
     }
   }
   
