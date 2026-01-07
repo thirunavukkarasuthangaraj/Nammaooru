@@ -233,6 +233,75 @@ public class DeliveryPartnerController {
         }
     }
 
+    /**
+     * Test FCM notification for delivery partner - for debugging
+     */
+    @GetMapping("/notifications/test/{partnerId}")
+    public ResponseEntity<Map<String, Object>> testFcmNotification(@PathVariable Long partnerId) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            log.info("🧪 Testing FCM notification for delivery partner: {}", partnerId);
+
+            // Find the partner
+            Optional<User> partnerOpt = userRepository.findById(partnerId);
+            if (partnerOpt.isEmpty()) {
+                response.put("success", false);
+                response.put("message", "Partner not found");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            User partner = partnerOpt.get();
+
+            // Get active FCM tokens
+            List<UserFcmToken> tokens = userFcmTokenRepository.findActiveTokensByUserId(partnerId);
+            log.info("📊 Found {} active FCM tokens for partner {}", tokens.size(), partner.getEmail());
+
+            if (tokens.isEmpty()) {
+                response.put("success", false);
+                response.put("message", "No active FCM tokens found for this partner");
+                response.put("partnerId", partnerId);
+                response.put("partnerEmail", partner.getEmail());
+                return ResponseEntity.ok(response);
+            }
+
+            // Try sending test notification to first active token
+            UserFcmToken token = tokens.get(0);
+            log.info("📱 Sending test notification to token: {}...", token.getFcmToken().substring(0, 50));
+
+            try {
+                firebaseNotificationService.sendOrderAssignmentNotificationToDriver(
+                    "TEST-ORDER-123",
+                    token.getFcmToken(),
+                    partnerId,
+                    "Test Shop",
+                    "123 Test Address",
+                    50.0
+                );
+
+                response.put("success", true);
+                response.put("message", "Test notification sent successfully!");
+                response.put("partnerId", partnerId);
+                response.put("partnerEmail", partner.getEmail());
+                response.put("tokenUsed", token.getFcmToken().substring(0, 50) + "...");
+                log.info("✅ Test notification sent successfully to partner {}", partner.getEmail());
+
+            } catch (Exception sendError) {
+                log.error("❌ Failed to send test notification: {}", sendError.getMessage(), sendError);
+                response.put("success", false);
+                response.put("message", "Failed to send: " + sendError.getMessage());
+                response.put("error", sendError.getClass().getSimpleName());
+            }
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("❌ Error testing FCM notification: {}", e.getMessage(), e);
+            response.put("success", false);
+            response.put("message", "Error: " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
     @GetMapping("/profile/{partnerId}")
     public ResponseEntity<Map<String, Object>> getProfile(@PathVariable String partnerId) {
         try {

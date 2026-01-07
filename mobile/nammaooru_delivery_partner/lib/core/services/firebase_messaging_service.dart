@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import '../../services/notification_api_service.dart';
 
 class FirebaseMessagingService {
   static FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
@@ -495,16 +496,18 @@ class FirebaseMessagingService {
   /// Send FCM token to backend
   static Future<void> _sendTokenToBackend(String token) async {
     try {
-      // TODO: Implement API call to send token to backend
-      print('Sending FCM token to backend: $token');
+      print('🔔 Sending FCM token to backend: ${token.substring(0, 50)}...');
 
-      // Example API call:
-      // await ApiService().post('/api/delivery-partners/fcm-token', {
-      //   'token': token,
-      //   'platform': Platform.isAndroid ? 'android' : 'ios',
-      // });
+      // Import and use NotificationApiService to send token to backend
+      final result = await NotificationApiService.instance.updateDeliveryPartnerFcmToken(token);
+
+      if (result['success'] == true) {
+        print('✅ FCM token successfully sent to backend');
+      } else {
+        print('⚠️ FCM token send failed: ${result['message']}');
+      }
     } catch (e) {
-      print('Error sending FCM token to backend: $e');
+      print('❌ Error sending FCM token to backend: $e');
     }
   }
 
@@ -553,9 +556,9 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     case 'ORDER_ASSIGNED':
       // Show high-priority notification for new order
       await FirebaseMessagingService.showOrderNotification(
-        title: message.notification?.title ?? 'New Order',
+        title: message.notification?.title ?? 'New Delivery Assigned! 🚚',
         body: message.notification?.body ?? 'You have a new order assignment',
-        orderId: data['orderId'] ?? '0',
+        orderId: data['orderNumber'] ?? data['orderId'] ?? '0',
         actionType: 'new_order',
       );
       break;

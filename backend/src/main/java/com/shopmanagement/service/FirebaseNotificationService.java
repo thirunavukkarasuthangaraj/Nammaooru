@@ -87,7 +87,7 @@ public class FirebaseNotificationService {
             log.info("🎯 Target FCM token: {}...", driverToken.substring(0, Math.min(50, driverToken.length())));
 
             Map<String, String> data = new HashMap<>();
-            data.put("type", "new_order");  // Driver app listens for "new_order" type
+            data.put("type", "ORDER_ASSIGNED");  // Driver app background handler listens for this
             data.put("orderNumber", orderNumber);
             data.put("shopName", shopName);
             data.put("deliveryAddress", deliveryAddress);
