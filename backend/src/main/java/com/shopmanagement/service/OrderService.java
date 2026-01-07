@@ -747,6 +747,41 @@ public class OrderService {
         Order savedOrder = orderRepository.save(order);
         log.info("✅ Return receipt confirmed for order {} - status changed to CANCELLED", orderId);
 
+        // Send FCM notification to driver - "Products collected by shop"
+        try {
+            // Find the delivery partner assigned to this order
+            var assignments = orderAssignmentRepository.findByOrderId(orderId);
+            for (var assignment : assignments) {
+                if (assignment.getDeliveryPartner() != null) {
+                    Long driverId = assignment.getDeliveryPartner().getId();
+                    List<UserFcmToken> driverTokens = userFcmTokenRepository.findActiveTokensByUserId(driverId);
+
+                    if (!driverTokens.isEmpty()) {
+                        String driverName = assignment.getDeliveryPartner().getFirstName() != null
+                            ? assignment.getDeliveryPartner().getFirstName() : "Driver";
+
+                        for (UserFcmToken token : driverTokens) {
+                            try {
+                                firebaseNotificationService.sendDeliveryNotification(
+                                    savedOrder.getOrderNumber(),
+                                    "Products collected by shop ✅",
+                                    token.getFcmToken()
+                                );
+                                log.info("✅ FCM sent to driver {} for order {} - Products collected", driverId, savedOrder.getOrderNumber());
+                                break;
+                            } catch (Exception e) {
+                                log.warn("⚠️ Failed to send FCM to driver: {}", e.getMessage());
+                            }
+                        }
+                    }
+                    break; // Only notify the assigned driver
+                }
+            }
+        } catch (Exception e) {
+            log.error("❌ Error sending FCM to driver for return confirmation: {}", e.getMessage());
+            // Don't fail the operation if notification fails
+        }
+
         result.put("success", true);
         result.put("orderId", orderId);
         result.put("orderNumber", savedOrder.getOrderNumber());
