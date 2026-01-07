@@ -714,8 +714,10 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
             .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
 
-        // Verify order is in RETURNED_TO_SHOP status
-        if (order.getStatus() != Order.OrderStatus.RETURNED_TO_SHOP) {
+        // Verify order is in RETURNING_TO_SHOP or RETURNED_TO_SHOP status
+        // Shop owner can confirm receipt when driver is returning or has returned
+        if (order.getStatus() != Order.OrderStatus.RETURNING_TO_SHOP &&
+            order.getStatus() != Order.OrderStatus.RETURNED_TO_SHOP) {
             result.put("success", false);
             result.put("message", "Order is not in returned status. Current status: " + order.getStatus());
             return result;
