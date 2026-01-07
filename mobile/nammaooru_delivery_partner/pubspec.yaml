@@ -1,6 +1,6 @@
 name: nammaooru_delivery_partner
 description: A Flutter app for NammaOoru delivery partners
-version: 1.0.10+10
+version: 1.0.11+11
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

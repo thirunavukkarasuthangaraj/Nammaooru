@@ -582,156 +582,173 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
   }
 
   Widget _buildActiveOrderCard(OrderModel order, int index) {
-    final cardColors = [
-      Color(0xFF2196F3), // Blue
-      Color(0xFF9C27B0), // Purple
-      Color(0xFF009688), // Teal
-      Color(0xFFFF5722), // Deep Orange
-      Color(0xFF673AB7), // Deep Purple
-    ];
-    final cardColor = cardColors[index % cardColors.length];
+    final statusInfo = _getStatusInfo(order.status);
+    final stepInfo = _getStepInfo(order.status);
+
+    // Use consistent blue color for all cards
+    const Color cardColor = Color(0xFF2196F3);
 
     return GestureDetector(
       onTap: () => _showOrderDetails(order),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
+        margin: const EdgeInsets.only(bottom: 20),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: cardColor.withOpacity(0.2),
+              color: Colors.black.withOpacity(0.08),
               blurRadius: 12,
-              offset: Offset(0, 4),
+              offset: const Offset(0, 4),
             ),
           ],
         ),
         child: Column(
-        children: [
-          // Colored header with order number
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [cardColor, cardColor.withOpacity(0.8)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
-              ),
-            ),
-            child: Row(
-              children: [
-                // Order index badge
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Text(
-                      '${index + 1}',
-                      style: TextStyle(
-                        color: cardColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
+          children: [
+            // Header with Order Number and Status
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [cardColor, cardColor.withOpacity(0.85)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
+                ),
+              ),
+              child: Column(
+                children: [
+                  // Order number and status row
+                  Row(
                     children: [
-                      Text(
-                        '#${order.orderNumber}',
-                        style: const TextStyle(
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
                           color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${index + 1}',
+                            style: TextStyle(
+                              color: cardColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
                         ),
                       ),
-                      Text(
-                        order.shopName,
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
-                          fontSize: 12,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '#${order.orderNumber}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            Text(
+                              order.shopName,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.9),
+                                fontSize: 13,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: statusInfo.color,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          _getStatusText(order.status),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                          ),
                         ),
                       ),
                     ],
                   ),
-                ),
-                // Time display
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  margin: const EdgeInsets.only(right: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.access_time, color: Colors.white, size: 12),
-                      const SizedBox(width: 4),
-                      Text(
-                        _formatTime(order.createdAt),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
+                  const SizedBox(height: 12),
+                  // Status instruction
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(statusInfo.icon, color: Colors.white, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            statusInfo.subtitle,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    _getStatusText(order.status),
-                    style: TextStyle(
-                      color: cardColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 10,
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '₹${order.totalAmount?.toStringAsFixed(0) ?? '0'}',
+                            style: TextStyle(
+                              color: Colors.green[700],
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
 
-          // Card body
-          Padding(
+            // Card body
+            Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Show compact OTP if status is ACCEPTED
-                  if (order.status.toLowerCase() == 'accepted' && order.pickupOtp != null && order.pickupOtp!.isNotEmpty)
-                    _buildCompactOTPDisplay(order.pickupOtp!, cardColor),
-
-                  if (order.status.toLowerCase() == 'accepted' && order.pickupOtp != null && order.pickupOtp!.isNotEmpty)
-                    const SizedBox(height: 12),
-
                   // Customer info row
                   Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: cardColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
+                      CircleAvatar(
+                        radius: 20,
+                        backgroundColor: Colors.blue[50],
+                        child: Text(
+                          order.customerName.isNotEmpty
+                            ? order.customerName[0].toUpperCase()
+                            : 'C',
+                          style: TextStyle(
+                            color: cardColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                         ),
-                        child: Icon(Icons.person, size: 20, color: cardColor),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -742,7 +759,7 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                               order.customerName,
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
-                                fontSize: 16,
+                                fontSize: 15,
                               ),
                             ),
                             if (order.customerPhone != null && order.customerPhone!.isNotEmpty)
@@ -756,16 +773,16 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                           ],
                         ),
                       ),
+                      // Call button
                       if (order.customerPhone != null && order.customerPhone!.isNotEmpty)
                         Container(
                           decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.1),
+                            color: Colors.green[50],
                             shape: BoxShape.circle,
                           ),
                           child: IconButton(
-                            icon: const Icon(Icons.phone, color: Colors.green, size: 22),
+                            icon: Icon(Icons.phone, color: Colors.green[700], size: 20),
                             onPressed: () => _callCustomer(order.customerPhone),
-                            tooltip: 'Call Customer',
                           ),
                         ),
                     ],
@@ -773,7 +790,7 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
 
                   const SizedBox(height: 12),
 
-                  // Delivery address with navigation
+                  // Delivery address
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -784,41 +801,28 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.location_on, size: 20, color: Colors.red[400]),
-                        const SizedBox(width: 10),
+                        Icon(Icons.location_on, size: 18, color: Colors.red[400]),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             order.deliveryAddress,
                             style: TextStyle(
                               color: Colors.grey[700],
-                              fontSize: 14,
+                              fontSize: 13,
                               height: 1.3,
                             ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        ElevatedButton.icon(
-                          onPressed: () => _startNavigation(order),
-                          icon: const Icon(Icons.navigation, size: 16),
-                          label: const Text('Navigate'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: cardColor,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
                     ),
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
 
-                  // Action buttons based on status
-                  _buildActionButtons(order, cardColor),
+                  // Action buttons
+                  _buildActionButtonsNew(order, statusInfo),
                 ],
               ),
             ),
@@ -826,6 +830,520 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildStepIndicator(int step, String label, bool completed, bool active, Color color) {
+    return Expanded(
+      child: Column(
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: completed ? color : (active ? color.withOpacity(0.2) : Colors.grey[300]),
+              shape: BoxShape.circle,
+              border: active && !completed ? Border.all(color: color, width: 2) : null,
+            ),
+            child: Center(
+              child: completed
+                ? const Icon(Icons.check, color: Colors.white, size: 16)
+                : Text(
+                    '$step',
+                    style: TextStyle(
+                      color: active ? color : Colors.grey[500],
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: completed || active ? color : Colors.grey[500],
+              fontSize: 10,
+              fontWeight: completed || active ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepConnector(bool completed, Color color) {
+    return Container(
+      width: 30,
+      height: 3,
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: completed ? color : Colors.grey[300],
+        borderRadius: BorderRadius.circular(2),
+      ),
+    );
+  }
+
+  Widget _buildPickupOTPSection(OrderModel order) {
+    final hasOtp = order.pickupOtp != null && order.pickupOtp!.isNotEmpty;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFFF9800), Color(0xFFFF6D00)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.orange.withOpacity(0.4),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.lock, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'PICKUP OTP',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                    Text(
+                      'Show this to shop owner',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: hasOtp
+              ? Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: order.pickupOtp!.split('').map((digit) => Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.orange[50],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.orange[300]!),
+                    ),
+                    child: Text(
+                      digit,
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange[800],
+                      ),
+                    ),
+                  )).toList(),
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.hourglass_empty, color: Colors.orange[600]),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Waiting for OTP...',
+                      style: TextStyle(
+                        color: Colors.orange[600],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNextActionSection(OrderModel order, _StatusInfo statusInfo) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // "NEXT ACTION" label
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: statusInfo.color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.arrow_forward, size: 14, color: statusInfo.color),
+              const SizedBox(width: 4),
+              Text(
+                'NEXT ACTION',
+                style: TextStyle(
+                  color: statusInfo.color,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 11,
+                  letterSpacing: 1,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+
+        // Action buttons based on status
+        _buildActionButtonsNew(order, statusInfo),
+      ],
+    );
+  }
+
+  Widget _buildActionButtonsNew(OrderModel order, _StatusInfo statusInfo) {
+    switch (order.status.toLowerCase()) {
+      case 'cancelled':
+        return Column(
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red[50],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red[300]!),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.warning_amber, color: Colors.red[700], size: 22),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Order cancelled! Return products to shop',
+                      style: TextStyle(
+                        color: Colors.red[700],
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _startNavigation(order),
+                    icon: const Icon(Icons.navigation, size: 20),
+                    label: const Text('Navigate'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _startReturnToShop(order),
+                    icon: const Icon(Icons.store, size: 20),
+                    label: const Text('Start Return to Shop'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+
+      case 'returning_to_shop':
+        return Column(
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange[50],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.orange[300]!),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.orange[100],
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.directions_bike, color: Colors.orange[700], size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Go to ${order.shopName} and return the products',
+                      style: TextStyle(
+                        color: Colors.orange[800],
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _startNavigation(order),
+                    icon: const Icon(Icons.navigation, size: 20),
+                    label: const Text('Navigate to Shop'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _confirmReturnedToShop(order),
+                    icon: const Icon(Icons.check_circle, size: 20),
+                    label: const Text('Returned'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+
+      case 'returned_to_shop':
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.green[50],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.green[300]!),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.green,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.check, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Products Returned Successfully!',
+                style: TextStyle(
+                  color: Colors.green[700],
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        );
+
+      case 'accepted':
+      case 'ready_for_pickup':
+        return Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () => _startNavigation(order),
+                icon: const Icon(Icons.navigation, size: 20),
+                label: const Text('Navigate to Shop'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () => _showOrderDetails(order),
+                icon: const Icon(Icons.inventory_2, size: 20),
+                label: const Text('Confirm Pickup'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+
+      case 'picked_up':
+      case 'in_transit':
+      case 'out_for_delivery':
+        // Only show Navigate button - delivery completion is done by tapping the card
+        return SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () => _startNavigation(order),
+            icon: const Icon(Icons.navigation, size: 20),
+            label: const Text('Navigate to Customer'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        );
+
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  _StatusInfo _getStatusInfo(String status) {
+    switch (status.toLowerCase()) {
+      case 'accepted':
+      case 'ready_for_pickup':
+        return _StatusInfo(
+          title: 'GO TO SHOP',
+          subtitle: 'Pick up the order from shop',
+          icon: Icons.store,
+          color: Colors.blue,
+        );
+      case 'picked_up':
+      case 'in_transit':
+      case 'out_for_delivery':
+        return _StatusInfo(
+          title: 'DELIVER ORDER',
+          subtitle: 'Go to customer location',
+          icon: Icons.delivery_dining,
+          color: Colors.purple,
+        );
+      case 'cancelled':
+        return _StatusInfo(
+          title: 'ORDER CANCELLED',
+          subtitle: 'Return products to shop',
+          icon: Icons.cancel,
+          color: Colors.red,
+        );
+      case 'returning_to_shop':
+        return _StatusInfo(
+          title: 'RETURNING TO SHOP',
+          subtitle: 'Take products back to shop',
+          icon: Icons.directions_bike,
+          color: Colors.orange,
+        );
+      case 'returned_to_shop':
+        return _StatusInfo(
+          title: 'RETURNED',
+          subtitle: 'Products returned to shop',
+          icon: Icons.check_circle,
+          color: Colors.green,
+        );
+      case 'delivered':
+        return _StatusInfo(
+          title: 'DELIVERED',
+          subtitle: 'Order completed',
+          icon: Icons.done_all,
+          color: Colors.green,
+        );
+      default:
+        return _StatusInfo(
+          title: status.toUpperCase(),
+          subtitle: 'Order in progress',
+          icon: Icons.local_shipping,
+          color: Colors.grey,
+        );
+    }
+  }
+
+  _StepInfo _getStepInfo(String status) {
+    switch (status.toLowerCase()) {
+      case 'accepted':
+      case 'ready_for_pickup':
+        return _StepInfo(currentStep: 1, totalSteps: 3);
+      case 'picked_up':
+      case 'in_transit':
+      case 'out_for_delivery':
+        return _StepInfo(currentStep: 2, totalSteps: 3);
+      case 'delivered':
+        return _StepInfo(currentStep: 3, totalSteps: 3);
+      case 'cancelled':
+      case 'returning_to_shop':
+        return _StepInfo(currentStep: 1, totalSteps: 2); // Return flow
+      case 'returned_to_shop':
+        return _StepInfo(currentStep: 2, totalSteps: 2);
+      default:
+        return _StepInfo(currentStep: 1, totalSteps: 3);
+    }
   }
 
   Widget _buildCompactOTPDisplay(String otp, Color accentColor) {
@@ -1221,4 +1739,30 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
       return '${dateTime.day}/${dateTime.month}';
     }
   }
+}
+
+// Helper class for status information
+class _StatusInfo {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+
+  _StatusInfo({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+  });
+}
+
+// Helper class for step information
+class _StepInfo {
+  final int currentStep;
+  final int totalSteps;
+
+  _StepInfo({
+    required this.currentStep,
+    required this.totalSteps,
+  });
 }

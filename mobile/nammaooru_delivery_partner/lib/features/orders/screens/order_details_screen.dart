@@ -5,6 +5,7 @@ import '../../../core/models/simple_order_model.dart';
 import '../../../core/providers/delivery_partner_provider.dart';
 import '../../../core/utils/image_url_helper.dart';
 import 'navigation_screen.dart';
+import '../../delivery/screens/simple_delivery_completion_screen.dart';
 
 class OrderDetailsScreen extends StatefulWidget {
   final OrderModel order;
@@ -62,20 +63,17 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   }
 
   Future<void> _markDelivered() async {
-    final provider = Provider.of<DeliveryPartnerProvider>(context, listen: false);
-    try {
-      await provider.updateOrderStatus(order.orderNumber ?? order.id.toString(), 'delivered');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Order delivered successfully!'), backgroundColor: Colors.green),
-        );
+    // Navigate to delivery completion screen instead of directly marking as delivered
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SimpleDeliveryCompletionScreen(order: order),
+      ),
+    ).then((result) {
+      if (result == true && mounted) {
         Navigator.pop(context, true);
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-      );
-    }
+    });
   }
 
   @override
@@ -848,6 +846,16 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   Widget _buildBottomAction() {
     final status = order.status.toLowerCase();
 
+    // Show "Confirm Pickup" for all statuses BEFORE order is picked up
+    // This includes: assigned, accepted, ready_for_pickup, verified, otp_verified
+    final isPickupStatus = status == 'assigned' ||
+                           status == 'accepted' ||
+                           status == 'ready_for_pickup' ||
+                           status == 'ready' ||
+                           status == 'verified' ||
+                           status == 'otp_verified';
+    final isDeliveryStatus = status == 'picked_up' || status == 'in_transit' || status == 'out_for_delivery';
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -865,14 +873,14 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (status == 'accepted' && order.pickupOtp != null && order.pickupOtp!.isNotEmpty) ...[
-              // OTP Display
+            // Show OTP for pickup status (before order is picked up)
+            if (isPickupStatus && order.pickupOtp != null && order.pickupOtp!.isNotEmpty) ...[
               Row(
                 children: [
                   const Icon(Icons.lock_outline, color: Colors.grey, size: 20),
                   const SizedBox(width: 8),
                   const Text(
-                    'Enter Pickup OTP',
+                    'Pickup OTP',
                     style: TextStyle(
                       color: Colors.grey,
                       fontSize: 14,
@@ -899,24 +907,23 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
               const SizedBox(height: 16),
             ],
 
-            // Action Button
+            // Action Button based on status
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: status == 'accepted' ? _confirmPickup :
-                          (status == 'picked_up' || status == 'in_transit') ? _markDelivered : null,
+                onPressed: isPickupStatus ? _confirmPickup :
+                          isDeliveryStatus ? _markDelivered : null,
                 icon: Icon(
-                  status == 'accepted' ? Icons.check_circle : Icons.local_shipping,
+                  isPickupStatus ? Icons.check_circle : Icons.local_shipping,
                   size: 20,
                 ),
                 label: Text(
-                  status == 'accepted' ? 'Confirm Pickup' :
-                  (status == 'picked_up' || status == 'in_transit') ? 'Mark as Delivered' :
-                  'Order ${order.status}',
+                  isPickupStatus ? 'Confirm Pickup' :
+                  isDeliveryStatus ? 'Mark as Delivered' : 'Order ${order.status}',
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFFC107),
+                  backgroundColor: isDeliveryStatus ? Colors.green : const Color(0xFFFFC107),
                   foregroundColor: Colors.white,
                   disabledBackgroundColor: Colors.grey[300],
                   padding: const EdgeInsets.symmetric(vertical: 16),

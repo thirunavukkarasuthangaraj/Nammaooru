@@ -620,6 +620,39 @@ public class OrderAssignmentService {
             // Don't fail the pickup operation if notification fails
         }
 
+        // Send push notification to shop owner - "Order collected by driver"
+        try {
+            if (order.getShop() != null && order.getShop().getOwnerEmail() != null) {
+                User shopOwner = userRepository.findByEmail(order.getShop().getOwnerEmail()).orElse(null);
+                if (shopOwner != null) {
+                    List<UserFcmToken> shopOwnerTokens = userFcmTokenRepository.findActiveTokensByUserId(shopOwner.getId());
+                    log.info("📊 Found {} active FCM tokens for shop owner for order collected notification", shopOwnerTokens.size());
+
+                    if (!shopOwnerTokens.isEmpty()) {
+                        User deliveryPartner = assignment.getDeliveryPartner();
+                        String driverName = deliveryPartner.getFirstName() != null ? deliveryPartner.getFirstName() : "Driver";
+                        String message = "Order " + order.getOrderNumber() + " collected by " + driverName;
+
+                        for (UserFcmToken tokenEntity : shopOwnerTokens) {
+                            try {
+                                firebaseNotificationService.sendDeliveryNotification(
+                                    order.getOrderNumber(),
+                                    "Collected by " + driverName + " 📦",
+                                    tokenEntity.getFcmToken()
+                                );
+                                log.info("✅ Order collected notification sent to shop owner for order: {}", order.getOrderNumber());
+                                break;
+                            } catch (Exception e) {
+                                log.warn("⚠️ Failed to send collected notification to shop owner: {}", e.getMessage());
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("❌ Failed to send order collected notification to shop owner: {}", e.getMessage());
+        }
+
         log.info("Assignment {} marked as picked up and in transit by partner {}", assignmentId, partnerId);
         return assignment;
     }

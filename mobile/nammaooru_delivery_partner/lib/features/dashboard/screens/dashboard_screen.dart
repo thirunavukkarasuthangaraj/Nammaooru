@@ -514,14 +514,8 @@ class HomeTab extends StatelessWidget {
   }
 
   Widget _buildActiveOrderCard(OrderModel order, DeliveryPartnerProvider provider, int index) {
-    final cardColors = [
-      const Color(0xFF2196F3), // Blue
-      const Color(0xFF9C27B0), // Purple
-      const Color(0xFF009688), // Teal
-      const Color(0xFFFF5722), // Deep Orange
-      const Color(0xFF673AB7), // Deep Purple
-    ];
-    final cardColor = cardColors[index % cardColors.length];
+    // Use consistent blue color for all cards
+    const Color cardColor = Color(0xFF2196F3);
 
     String getStatusText(String status) {
       switch (status.toLowerCase()) {
@@ -537,7 +531,17 @@ class HomeTab extends StatelessWidget {
       }
     }
 
-    return Container(
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(parentContext).push(
+          MaterialPageRoute(
+            builder: (context) => OrderDetailsScreen(order: order),
+          ),
+        ).then((_) {
+          provider.refreshAll();
+        });
+      },
+      child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -833,6 +837,7 @@ class HomeTab extends StatelessWidget {
                             ),
                           ],
                         ),
+                      // Navigate button for delivery status
                       if (order.status.toLowerCase() == 'picked_up' ||
                           order.status.toLowerCase() == 'in_transit' ||
                           order.status.toLowerCase() == 'out_for_delivery')
@@ -846,10 +851,10 @@ class HomeTab extends StatelessWidget {
                                 ),
                               );
                             },
-                            icon: const Icon(Icons.local_shipping, size: 18),
-                            label: const Text('Mark as Delivered'),
+                            icon: const Icon(Icons.navigation, size: 18),
+                            label: const Text('Navigate to Customer'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF4CAF50),
+                              backgroundColor: cardColor,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
@@ -866,6 +871,7 @@ class HomeTab extends StatelessWidget {
             ),
           ],
         ),
+      ),
     );
   }
 

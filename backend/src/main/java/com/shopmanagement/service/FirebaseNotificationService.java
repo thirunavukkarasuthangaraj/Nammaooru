@@ -198,6 +198,8 @@ public class FirebaseNotificationService {
             case "REFUNDED" -> "Order Refunded 💰";
             case "SELF_PICKUP_COLLECTED" -> "Order Collected! 📦";
             case "DRIVER_ACCEPTED" -> "Driver Accepted! 🚚";
+            case "ORDER_ASSIGNED" -> "New Delivery Assigned! 🚚";
+            case "ORDER_COLLECTED" -> "Order Collected by Driver! 📦";
             case "RETURNING_TO_SHOP" -> "Order Returning to Shop 🔙";
             case "RETURNED_TO_SHOP" -> "Order Returned to Shop 📦";
             default -> "Order Update 📋";
@@ -218,6 +220,8 @@ public class FirebaseNotificationService {
             case "REFUNDED" -> String.format("Your order %s has been refunded. The amount will be credited to your account shortly.", orderNumber);
             case "SELF_PICKUP_COLLECTED" -> String.format("You have collected your order %s. Enjoy your meal!", orderNumber);
             case "DRIVER_ACCEPTED" -> String.format("A delivery partner has accepted your order %s and will pick it up soon!", orderNumber);
+            case "ORDER_ASSIGNED" -> String.format("New delivery order %s has been assigned to you. Please accept it!", orderNumber);
+            case "ORDER_COLLECTED" -> String.format("Order %s has been collected by the delivery partner.", orderNumber);
             case "RETURNING_TO_SHOP" -> String.format("Order %s is being returned to shop by driver.", orderNumber);
             case "RETURNED_TO_SHOP" -> String.format("Order %s has been returned to shop. Please verify and collect products.", orderNumber);
             default -> String.format("Status update for your order %s", orderNumber);
@@ -260,7 +264,7 @@ public class FirebaseNotificationService {
 
         return switch (type) {
             case "new_order" -> "new_order.mp3";  // For shop owners receiving new orders
-            case "order_assignment" -> "new_order.mp3";  // For delivery partners receiving assignment
+            case "order_assignment", "ORDER_ASSIGNED" -> "new_order.mp3";  // For delivery partners receiving assignment
             case "order_update" -> {
                 if (status != null) {
                     yield switch (status.toUpperCase()) {

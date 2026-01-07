@@ -39,7 +39,8 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
   int _previousPendingCount = 0;
   Set<String> _updatingOrders = {}; // Track orders being updated
 
-  final List<String> _statusFilters = ['ALL', 'SELF_PICKUP', 'PENDING', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY', 'DELIVERED', 'RETURNED_TO_SHOP', 'CANCELLED'];
+  // RETURNS tab placed second for easy visibility
+  final List<String> _statusFilters = ['ALL', 'RETURNS', 'SELF_PICKUP', 'PENDING', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'];
 
   @override
   void initState() {
@@ -83,10 +84,11 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
     }
 
     try {
-      // Don't pass SELF_PICKUP as status filter (it's a delivery type filter)
-      final statusFilter = (_selectedFilter != 'ALL' && _selectedFilter != 'SELF_PICKUP')
-          ? _selectedFilter
-          : null;
+      // Don't pass SELF_PICKUP or RETURNS as status filter (they are special filters)
+      String? statusFilter;
+      if (_selectedFilter != 'ALL' && _selectedFilter != 'SELF_PICKUP' && _selectedFilter != 'RETURNS') {
+        statusFilter = _selectedFilter;
+      }
 
       final response = await ApiService.getShopOrders(
         page: 0,
@@ -227,10 +229,11 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
 
     try {
       final nextPage = _currentPage + 1;
-      // Don't pass SELF_PICKUP as status filter (it's a delivery type filter)
-      final statusFilter = (_selectedFilter != 'ALL' && _selectedFilter != 'SELF_PICKUP')
-          ? _selectedFilter
-          : null;
+      // Don't pass SELF_PICKUP or RETURNS as status filter (they are special filters)
+      String? statusFilter;
+      if (_selectedFilter != 'ALL' && _selectedFilter != 'SELF_PICKUP' && _selectedFilter != 'RETURNS') {
+        statusFilter = _selectedFilter;
+      }
 
       final response = await ApiService.getShopOrders(
         page: nextPage,
@@ -360,11 +363,16 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
       ).toList();
     }
 
-    // For ALL other status tabs - EXCLUDE self-pickup orders
-    // Only show HOME_DELIVERY orders in status tabs
-    return _orders.where((order) =>
-      order['deliveryType']?.toString().toUpperCase() != 'SELF_PICKUP'
-    ).toList();
+    // Special filter for RETURNS - show RETURNING_TO_SHOP and RETURNED_TO_SHOP
+    if (_selectedFilter == 'RETURNS') {
+      return _orders.where((order) {
+        final status = order['status']?.toString().toUpperCase() ?? '';
+        return status == 'RETURNING_TO_SHOP' || status == 'RETURNED_TO_SHOP';
+      }).toList();
+    }
+
+    // For ALL other tabs - show all orders (including self-pickup)
+    return _orders;
   }
 
   Color _getStatusColor(String status) {
@@ -385,6 +393,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
   String _getStatusText(String status) {
     switch (status) {
       case 'ALL': return 'All';
+      case 'RETURNS': return '🔙 Returns';
       case 'SELF_PICKUP': return 'Self Pickup';
       case 'PENDING': return 'Pending';
       case 'CONFIRMED': return 'Confirmed';

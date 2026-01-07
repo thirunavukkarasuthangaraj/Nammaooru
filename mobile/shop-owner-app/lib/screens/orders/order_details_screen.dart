@@ -363,6 +363,12 @@ class OrderDetailsScreen extends StatelessWidget {
                   _buildReturnWorkflowCard(context, status, orderData),
                   const SizedBox(height: 16),
                 ],
+
+                // Products Collected indicator for orders that completed return workflow
+                if (status == 'CANCELLED' && _isReturnCollected(orderData)) ...[
+                  _buildReturnCollectedCard(),
+                  const SizedBox(height: 16),
+                ],
               ],
             ),
           ),
@@ -590,6 +596,113 @@ class OrderDetailsScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: isCompleted ? Colors.green : Colors.grey.shade300,
         borderRadius: BorderRadius.circular(2),
+      ),
+    );
+  }
+
+  // Check if the order was from return workflow (cancelled after products were returned)
+  bool _isReturnCollected(Map<String, dynamic> orderData) {
+    final cancellationReason = orderData['cancellationReason']?.toString() ?? '';
+    final updatedBy = orderData['updatedBy']?.toString() ?? '';
+
+    // Check if order was collected through return workflow
+    return cancellationReason.contains('Return confirmed by shop owner') ||
+           cancellationReason.contains('products collected') ||
+           updatedBy.contains('SHOP_OWNER_CONFIRMED_RETURN');
+  }
+
+  // Build the Products Collected card shown after return workflow is complete
+  Widget _buildReturnCollectedCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.green.shade50,
+            Colors.green.shade100.withOpacity(0.5),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.green.shade300, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.green.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Success Icon
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.green,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.green.withOpacity(0.4),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.check_circle,
+              color: Colors.white,
+              size: 40,
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Title
+          const Text(
+            'Products Collected',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+              color: Colors.green,
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Subtitle
+          Text(
+            'Return workflow completed successfully.\nStock has been restored.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.grey.shade700,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Completed Badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.green,
+              borderRadius: BorderRadius.circular(25),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.verified, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'COLLECTED',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    letterSpacing: 1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -2,9 +2,11 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 import '../constants/api_endpoints.dart';
 import '../models/partner_model.dart';
+import '../../services/notification_api_service.dart';
 
 class AuthProvider with ChangeNotifier {
   Partner? _partner;
@@ -25,12 +27,17 @@ class AuthProvider with ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString('auth_token');
     _isAuthenticated = prefs.getBool('isLoggedIn') ?? false;
-    
+
     final partnerJson = prefs.getString('partner_data');
     if (partnerJson != null) {
       _partner = Partner.fromJson(json.decode(partnerJson));
     }
-    
+
+    // Re-register FCM token if already logged in (for returning users)
+    if (_isAuthenticated && _token != null) {
+      _registerFcmToken();
+    }
+
     notifyListeners();
   }
 
@@ -90,11 +97,15 @@ class AuthProvider with ChangeNotifier {
           _token = data['token'];
           _partner = Partner.fromJson(data['partner']);
           _isAuthenticated = true;
-          
+
           await _saveAuthData();
+
+          // Register FCM token after successful login
+          await _registerFcmToken();
+
           _setLoading(false);
           notifyListeners();
-          
+
           return true;
         }
       }
@@ -166,6 +177,26 @@ class AuthProvider with ChangeNotifier {
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();
+  }
+
+  /// Register FCM token with backend after login
+  Future<void> _registerFcmToken() async {
+    try {
+      final fcmToken = await FirebaseMessaging.instance.getToken();
+      if (fcmToken != null) {
+        debugPrint('🔔 Registering FCM token after login: ${fcmToken.substring(0, 50)}...');
+        final result = await NotificationApiService.instance.updateDeliveryPartnerFcmToken(fcmToken);
+        if (result['success'] == true) {
+          debugPrint('✅ FCM token registered successfully after login');
+        } else {
+          debugPrint('⚠️ FCM token registration failed: ${result['message']}');
+        }
+      } else {
+        debugPrint('⚠️ No FCM token available');
+      }
+    } catch (e) {
+      debugPrint('❌ Error registering FCM token: $e');
+    }
   }
 
   Future<void> updatePartnerStatus(bool isOnline) async {
