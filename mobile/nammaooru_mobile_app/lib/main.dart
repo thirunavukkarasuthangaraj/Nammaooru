@@ -7,6 +7,7 @@ import 'app/app.dart';
 import 'core/auth/auth_provider.dart'; // Use the main auth provider
 import 'shared/providers/cart_provider.dart';
 import 'core/localization/language_provider.dart';
+import 'core/providers/connectivity_provider.dart';
 import 'features/auth/providers/forgot_password_provider.dart';
 import 'core/api/api_client.dart';
 import 'core/api/api_service.dart';
@@ -59,6 +60,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => CartProvider()),
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
+        ChangeNotifierProvider(create: (_) => ConnectivityProvider()),
         ChangeNotifierProvider(create: (_) => ForgotPasswordProvider(services.ApiService())),
       ],
       child: const NammaOoruApp(),

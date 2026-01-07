@@ -43,7 +43,11 @@ class ConnectivityService {
 
     // Listen to connectivity changes
     _connectivitySubscription = _connectivity.onConnectivityChanged.listen(
-      _onConnectivityChanged,
+      (List<ConnectivityResult> results) {
+        // Use first result or none if empty
+        final result = results.isNotEmpty ? results.first : ConnectivityResult.none;
+        _onConnectivityChanged(result);
+      },
       onError: (error) {
         debugPrint('❌ Connectivity error: $error');
       },
@@ -87,7 +91,10 @@ class ConnectivityService {
 
   /// Check both connectivity and internet quality
   Future<void> _checkConnectivityAndQuality() async {
-    final connectivityResult = await _connectivity.checkConnectivity();
+    final connectivityResults = await _connectivity.checkConnectivity();
+    final connectivityResult = connectivityResults.isNotEmpty
+        ? connectivityResults.first
+        : ConnectivityResult.none;
 
     if (connectivityResult == ConnectivityResult.none) {
       _updateConnectionQuality(ConnectionQuality.offline);
@@ -163,7 +170,10 @@ class ConnectivityService {
 
   /// Check if internet is available (quick check)
   Future<bool> hasInternetConnection() async {
-    final connectivityResult = await _connectivity.checkConnectivity();
+    final connectivityResults = await _connectivity.checkConnectivity();
+    final connectivityResult = connectivityResults.isNotEmpty
+        ? connectivityResults.first
+        : ConnectivityResult.none;
 
     if (connectivityResult == ConnectivityResult.none) {
       return false;

@@ -6,6 +6,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'routes.dart';
 import 'theme.dart';
 import '../core/auth/auth_provider.dart';
+import '../core/widgets/connectivity_banner.dart';
 import '../services/version_service.dart';
 import '../shared/widgets/update_dialog.dart';
 
@@ -89,7 +90,9 @@ class _NammaOoruAppState extends State<NammaOoruApp> {
       themeMode: ThemeMode.light,
       routerConfig: AppRouter.router,
       builder: (context, child) {
-        return child ?? const SizedBox.shrink();
+        return ConnectivityBanner(
+          child: child ?? const SizedBox.shrink(),
+        );
       },
       localizationsDelegates: const [
         // AppLocalizations.delegate,
