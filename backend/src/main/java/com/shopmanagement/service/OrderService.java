@@ -705,7 +705,7 @@ public class OrderService {
     /**
      * Confirm receipt of returned products by shop owner
      */
-    @Transactional
+    @Transactional(noRollbackFor = Exception.class)
     public Map<String, Object> confirmReturnReceipt(Long orderId) {
         Map<String, Object> result = new HashMap<>();
 
@@ -745,6 +745,7 @@ public class OrderService {
         }
 
         Order savedOrder = orderRepository.save(order);
+        orderRepository.flush(); // Ensure order is persisted before sending FCM
         log.info("✅ Return receipt confirmed for order {} - status changed to CANCELLED", orderId);
 
         // Send FCM notification to driver - "Products collected by shop"

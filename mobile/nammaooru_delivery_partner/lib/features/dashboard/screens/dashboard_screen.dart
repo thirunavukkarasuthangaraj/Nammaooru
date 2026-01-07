@@ -639,51 +639,7 @@ class HomeTab extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Show OTP if status is ACCEPTED
-                  if (order.status.toLowerCase() == 'accepted' && order.pickupOtp != null && order.pickupOtp!.isNotEmpty)
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFFFC107), Color(0xFFFFB300)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.lock_outlined, color: Colors.white, size: 18),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'OTP:',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              order.pickupOtp!.split('').join(' '),
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFFFF9800),
-                                letterSpacing: 2,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  // OTP is shown only in Order Details screen, not here on dashboard
 
                   // Customer info row
                   Row(

@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -403,6 +404,7 @@ public class OrderController {
      */
     @PostMapping("/{orderId}/confirm-return-receipt")
     @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER')")
+    @Transactional(noRollbackFor = Exception.class)
     public ResponseEntity<Map<String, Object>> confirmReturnReceipt(@PathVariable Long orderId) {
         try {
             Map<String, Object> result = orderService.confirmReturnReceipt(orderId);
