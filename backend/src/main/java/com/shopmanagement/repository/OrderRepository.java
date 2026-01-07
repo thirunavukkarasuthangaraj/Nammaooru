@@ -174,4 +174,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     // Count total orders by customer (for determining first-time customers)
     @Query("SELECT COUNT(o) FROM Order o WHERE o.customer.id = :customerId")
     Long countByCustomerId(@Param("customerId") Long customerId);
+
+    // Find orders that are searching for drivers (for driver search scheduler)
+    @Query("SELECT o FROM Order o WHERE o.status = :status AND o.driverSearchStartedAt IS NOT NULL AND o.driverSearchCompleted = false")
+    List<Order> findByStatusAndDriverSearchStartedAtIsNotNullAndDriverSearchCompletedFalse(@Param("status") Order.OrderStatus status);
 }

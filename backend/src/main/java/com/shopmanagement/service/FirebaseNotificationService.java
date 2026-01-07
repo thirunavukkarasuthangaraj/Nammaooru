@@ -202,6 +202,8 @@ public class FirebaseNotificationService {
             case "ORDER_COLLECTED" -> "Order Collected by Driver! 📦";
             case "RETURNING_TO_SHOP" -> "Order Returning to Shop 🔙";
             case "RETURNED_TO_SHOP" -> "Order Returned to Shop 📦";
+            case "NO_DRIVER_AVAILABLE" -> "No Driver Available 😔";
+            case "SEARCHING_DRIVER" -> "Searching for Driver... 🔍";
             default -> "Order Update 📋";
         };
     }
@@ -224,6 +226,8 @@ public class FirebaseNotificationService {
             case "ORDER_COLLECTED" -> String.format("Order %s has been collected by the delivery partner.", orderNumber);
             case "RETURNING_TO_SHOP" -> String.format("Order %s is being returned to shop by driver.", orderNumber);
             case "RETURNED_TO_SHOP" -> String.format("Order %s has been returned to shop. Please verify and collect products.", orderNumber);
+            case "NO_DRIVER_AVAILABLE" -> String.format("No delivery partner available for order %s. Please try again later.", orderNumber);
+            case "SEARCHING_DRIVER" -> String.format("Searching for delivery partner for order %s...", orderNumber);
             default -> String.format("Status update for your order %s", orderNumber);
         };
     }

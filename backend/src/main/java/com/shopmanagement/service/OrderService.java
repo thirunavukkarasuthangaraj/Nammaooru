@@ -404,18 +404,69 @@ public class OrderService {
         if (status == Order.OrderStatus.READY_FOR_PICKUP &&
             order.getDeliveryType() == Order.DeliveryType.HOME_DELIVERY) {
             // Use a separate thread to avoid transaction rollback issues
+            final Order orderCopy = order;
             CompletableFuture.runAsync(() -> {
                 try {
                     // Delay to ensure transaction commits first
                     Thread.sleep(500);
 
-                    log.info("Order {} is ready for pickup - auto-assigning delivery partner", order.getOrderNumber());
+                    log.info("Order {} is ready for pickup - checking for available drivers", orderCopy.getOrderNumber());
+
+                    // First check if any drivers are available
+                    List<User> availablePartners = userRepository.findByRoleAndIsActiveAndIsAvailableAndIsOnline(
+                        User.UserRole.DELIVERY_PARTNER, true, true, true
+                    );
+
+                    if (availablePartners.isEmpty()) {
+                        // No drivers available - start the search process
+                        log.info("🔍 No drivers available for order {}. Starting driver search...", orderCopy.getOrderNumber());
+
+                        // Update order to start driver search
+                        Order freshOrder = orderRepository.findById(orderId).orElse(null);
+                        if (freshOrder != null) {
+                            freshOrder.setDriverSearchStartedAt(java.time.LocalDateTime.now());
+                            freshOrder.setDriverSearchAttempts(0);
+                            freshOrder.setDriverSearchCompleted(false);
+                            orderRepository.save(freshOrder);
+
+                            // Send "Searching for driver" notification to shop owner
+                            try {
+                                String shopOwnerEmail = freshOrder.getShop().getOwnerEmail();
+                                User shopOwner = userRepository.findByEmail(shopOwnerEmail).orElse(null);
+                                if (shopOwner != null) {
+                                    List<UserFcmToken> tokens = userFcmTokenRepository.findActiveTokensByUserId(shopOwner.getId());
+                                    for (UserFcmToken tokenEntity : tokens) {
+                                        try {
+                                            firebaseNotificationService.sendOrderNotification(
+                                                freshOrder.getOrderNumber(),
+                                                "SEARCHING_DRIVER",
+                                                tokenEntity.getFcmToken(),
+                                                shopOwner.getId()
+                                            );
+                                            log.info("✅ Searching driver FCM sent to shop owner for order: {}", freshOrder.getOrderNumber());
+                                            break;
+                                        } catch (Exception e) {
+                                            log.warn("⚠️ Failed to send searching driver FCM: {}", e.getMessage());
+                                        }
+                                    }
+                                }
+                            } catch (Exception e) {
+                                log.error("❌ Error sending searching driver notification: {}", e.getMessage());
+                            }
+
+                            log.info("✅ Driver search started for order {}. Scheduler will retry every 30 seconds.", freshOrder.getOrderNumber());
+                        }
+                        return; // Don't proceed with assignment
+                    }
+
+                    // Drivers available - proceed with auto-assignment
+                    log.info("✅ Found {} available drivers for order {}", availablePartners.size(), orderCopy.getOrderNumber());
 
                     // Auto-assign to available delivery partner
                     Long assignedBy = 1L; // System auto-assignment
                     orderAssignmentService.autoAssignOrder(orderId, assignedBy);
 
-                    log.info("Order {} successfully auto-assigned to delivery partner", order.getOrderNumber());
+                    log.info("Order {} successfully auto-assigned to delivery partner", orderCopy.getOrderNumber());
 
                     // AUTO-GENERATE PICKUP OTP after assignment
                     try {
@@ -427,7 +478,7 @@ public class OrderService {
                         log.error("Failed to auto-generate pickup OTP for order {}: {}", orderId, otpError.getMessage());
                     }
                 } catch (Exception e) {
-                    log.error("Failed to auto-assign delivery partner for order: {}", order.getOrderNumber(), e);
+                    log.error("Failed to auto-assign delivery partner for order: {}", orderCopy.getOrderNumber(), e);
                 }
             });
         } else if (status == Order.OrderStatus.READY_FOR_PICKUP &&

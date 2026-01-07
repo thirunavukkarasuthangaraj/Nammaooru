@@ -105,6 +105,17 @@ public class Order {
 
     private LocalDateTime pickupOtpVerifiedAt;
 
+    // Driver search tracking fields
+    private LocalDateTime driverSearchStartedAt;
+
+    @Column(columnDefinition = "integer default 0")
+    @Builder.Default
+    private Integer driverSearchAttempts = 0;
+
+    @Column(columnDefinition = "boolean default false")
+    @Builder.Default
+    private Boolean driverSearchCompleted = false;
+
     // Order Items
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<OrderItem> orderItems;
