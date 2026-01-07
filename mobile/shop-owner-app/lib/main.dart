@@ -21,6 +21,7 @@ import 'providers/order_provider.dart';
 import 'services/version_service.dart';
 import 'screens/auth/forgot_password_screen.dart';
 import 'screens/notifications/notifications_screen.dart';
+import 'services/storage_service.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
@@ -65,6 +66,9 @@ void _navigateToNotifications() async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize StorageService first (required for API calls)
+  await StorageService.init();
 
   // Initialize Firebase only on mobile platforms
   if (!kIsWeb) {

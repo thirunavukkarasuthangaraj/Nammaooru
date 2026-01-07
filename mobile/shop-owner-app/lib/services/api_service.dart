@@ -21,7 +21,15 @@ class ApiService {
       };
 
   static Map<String, String> get _authHeaders {
-    final token = StorageService.getToken();
+    String? token;
+    try {
+      token = StorageService.getToken();
+    } catch (e) {
+      // StorageService not initialized - return headers without token
+      // This will cause 401 error which can be handled appropriately
+      print('Warning: StorageService not initialized when getting auth headers');
+      token = null;
+    }
     final headers = Map<String, String>.from(_defaultHeaders);
     if (token != null) {
       headers['Authorization'] = 'Bearer $token';

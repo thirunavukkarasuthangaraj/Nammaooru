@@ -15,12 +15,20 @@ class StorageService {
     _prefs = await SharedPreferences.getInstance();
   }
 
+  // Alias for init() - for consistency with other services
+  static Future<void> initialize() async {
+    await init();
+  }
+
   static SharedPreferences get prefs {
     if (_prefs == null) {
       throw Exception('StorageService not initialized. Call init() first.');
     }
     return _prefs!;
   }
+
+  // Check if service is initialized
+  static bool get isInitialized => _prefs != null;
 
   // Token management
   static Future<void> saveToken(String token) async {
@@ -32,7 +40,21 @@ class StorageService {
   }
 
   static String? getToken() {
-    return prefs.getString(_keyToken);
+    if (_prefs == null) {
+      // Try to reinitialize if not initialized
+      // This handles edge cases like app returning from background
+      return null;
+    }
+    return _prefs!.getString(_keyToken);
+  }
+
+  // Safe token getter that won't throw
+  static String? getTokenSafe() {
+    try {
+      return _prefs?.getString(_keyToken);
+    } catch (e) {
+      return null;
+    }
   }
 
   static Future<void> saveRefreshToken(String refreshToken) async {
