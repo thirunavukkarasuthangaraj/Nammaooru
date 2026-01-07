@@ -110,6 +110,10 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
         if (response.data && response.data.id) {
           this.shopId = response.data.id;
           localStorage.setItem('current_shop_id', response.data.id.toString());
+          // Save shop name for receipt printing
+          if (response.data.name) {
+            localStorage.setItem('shop_name', response.data.name);
+          }
           console.log('Got shop ID from API:', this.shopId);
           this.loadOrders();
         }
@@ -731,6 +735,9 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
       `;
     }).join('');
 
+    // Get shop name from localStorage or use default
+    const shopName = localStorage.getItem('shop_name') || order.shopName || 'NammaOoru';
+
     return `
       <!DOCTYPE html>
       <html>
@@ -765,7 +772,7 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
         </style>
       </head>
       <body>
-        <div class="center bold" style="font-size: 14px;">NammaOoru</div>
+        <div class="center bold" style="font-size: 14px;">${shopName}</div>
         <div class="center small">Order Receipt</div>
         <div class="divider"></div>
 
@@ -832,6 +839,9 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
       </tr>
     `).join('');
 
+    // Get shop name from localStorage or use default
+    const shopName = localStorage.getItem('shop_name') || order.shopName || 'NammaOoru';
+
     return `
       <!DOCTYPE html>
       <html>
@@ -851,7 +861,7 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
       </head>
       <body>
         <div class="header">
-          <h1>Order Receipt</h1>
+          <h1>${shopName}</h1>
           <h2>Order #${order.orderNumber}</h2>
         </div>
 
