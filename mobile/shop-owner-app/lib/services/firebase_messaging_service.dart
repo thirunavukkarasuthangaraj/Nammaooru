@@ -170,6 +170,24 @@ class FirebaseMessagingService {
           channelName = 'Payments';
           channelDescription = 'Payment related notifications';
           break;
+        case 'RETURNING_TO_SHOP':
+        case 'returning_to_shop':
+          channelId = 'returns';
+          channelName = 'Order Returns';
+          channelDescription = 'Order return notifications';
+          break;
+        case 'RETURNED_TO_SHOP':
+        case 'returned_to_shop':
+          channelId = 'returns';
+          channelName = 'Order Returns';
+          channelDescription = 'Order return notifications';
+          break;
+        case 'ORDER_COLLECTED':
+        case 'order_collected':
+          channelId = 'order_updates';
+          channelName = 'Order Updates';
+          channelDescription = 'Updates on existing orders';
+          break;
       }
     }
 
@@ -216,6 +234,14 @@ class FirebaseMessagingService {
         return const RawResourceAndroidNotificationSound('urgent_alert');
       case 'payment':
         return const RawResourceAndroidNotificationSound('payment_received');
+      case 'RETURNING_TO_SHOP':
+      case 'returning_to_shop':
+      case 'RETURNED_TO_SHOP':
+      case 'returned_to_shop':
+        return const RawResourceAndroidNotificationSound('new_order'); // Use new_order sound for returns
+      case 'ORDER_COLLECTED':
+      case 'order_collected':
+        return const RawResourceAndroidNotificationSound('success_chime');
       default:
         return const RawResourceAndroidNotificationSound('success_chime');
     }
@@ -244,6 +270,18 @@ class FirebaseMessagingService {
         break;
       case 'payment':
         debugPrint('Navigate to finances');
+        break;
+      case 'RETURNING_TO_SHOP':
+      case 'returning_to_shop':
+        debugPrint('🔙 Order returning to shop: $orderId - Navigate to Returns tab');
+        break;
+      case 'RETURNED_TO_SHOP':
+      case 'returned_to_shop':
+        debugPrint('📦 Order returned to shop: $orderId - Show verify & collect dialog');
+        break;
+      case 'ORDER_COLLECTED':
+      case 'order_collected':
+        debugPrint('✅ Order collected by driver: $orderId');
         break;
       default:
         debugPrint('Navigate to dashboard');
