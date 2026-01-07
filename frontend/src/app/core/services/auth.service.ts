@@ -407,6 +407,9 @@ export class AuthService {
       localStorage.removeItem(this.USER_KEY);
       localStorage.removeItem('passwordChangeRequired');
       localStorage.removeItem('isTemporaryPassword');
+      // Clear shop data for next login
+      localStorage.removeItem('shop_name');
+      localStorage.removeItem('current_shop_id');
     }
   }
 
