@@ -198,6 +198,8 @@ public class FirebaseNotificationService {
             case "REFUNDED" -> "Order Refunded 💰";
             case "SELF_PICKUP_COLLECTED" -> "Order Collected! 📦";
             case "DRIVER_ACCEPTED" -> "Driver Accepted! 🚚";
+            case "RETURNING_TO_SHOP" -> "Order Returning to Shop 🔙";
+            case "RETURNED_TO_SHOP" -> "Order Returned to Shop 📦";
             default -> "Order Update 📋";
         };
     }
@@ -216,6 +218,8 @@ public class FirebaseNotificationService {
             case "REFUNDED" -> String.format("Your order %s has been refunded. The amount will be credited to your account shortly.", orderNumber);
             case "SELF_PICKUP_COLLECTED" -> String.format("You have collected your order %s. Enjoy your meal!", orderNumber);
             case "DRIVER_ACCEPTED" -> String.format("A delivery partner has accepted your order %s and will pick it up soon!", orderNumber);
+            case "RETURNING_TO_SHOP" -> String.format("Order %s is being returned to shop by driver.", orderNumber);
+            case "RETURNED_TO_SHOP" -> String.format("Order %s has been returned to shop. Please verify and collect products.", orderNumber);
             default -> String.format("Status update for your order %s", orderNumber);
         };
     }
