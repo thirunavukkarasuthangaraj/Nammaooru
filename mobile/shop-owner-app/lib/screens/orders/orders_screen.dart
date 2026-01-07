@@ -1139,7 +1139,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                         onHandoverSelfPickup: (orderStatus == 'READY_FOR_PICKUP' && deliveryType == 'SELF_PICKUP')
                             ? () => _handoverSelfPickupOrder(order)
                             : null,
-                        onVerifyPickupOTP: (orderStatus == 'READY_FOR_PICKUP' && deliveryType == 'HOME_DELIVERY')
+                        onVerifyPickupOTP: (orderStatus == 'READY_FOR_PICKUP' && deliveryType == 'HOME_DELIVERY' && order['assignedToDeliveryPartner'] == true)
                             ? () => _showOTPVerificationDialog(order)
                             : null,
 
