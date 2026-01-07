@@ -376,6 +376,8 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
       case 'OUT_FOR_DELIVERY': return Colors.indigo;
       case 'DELIVERED': return Colors.green;
       case 'CANCELLED': return Colors.red;
+      case 'RETURNING_TO_SHOP': return Colors.deepOrange;
+      case 'RETURNED_TO_SHOP': return Colors.deepOrange;
       default: return Colors.grey;
     }
   }
@@ -391,6 +393,8 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
       case 'OUT_FOR_DELIVERY': return 'Out for Delivery';
       case 'DELIVERED': return 'Delivered';
       case 'CANCELLED': return 'Cancelled';
+      case 'RETURNING_TO_SHOP': return 'Returning';
+      case 'RETURNED_TO_SHOP': return 'Returned to Shop';
       default: return status;
     }
   }

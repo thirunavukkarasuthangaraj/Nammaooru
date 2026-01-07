@@ -493,38 +493,53 @@ class OrderCard extends StatelessWidget {
   }) : super(key: key);
 
   Color _getStatusColor() {
-    switch (status.toLowerCase()) {
+    switch (status.toLowerCase().replaceAll('_', '')) {
       case 'pending':
         return AppTheme.warning;
       case 'accepted':
       case 'preparing':
+      case 'confirmed':
         return AppTheme.info;
       case 'ready':
+      case 'readyforpickup':
       case 'delivered':
         return AppTheme.success;
       case 'cancelled':
       case 'rejected':
         return AppTheme.error;
+      case 'returningtoshop':
+      case 'returnedtoshop':
+        return Colors.deepOrange;  // Highlight returned orders
+      case 'outfordelivery':
+        return Colors.indigo;
       default:
         return AppTheme.textSecondary;
     }
   }
 
   IconData _getStatusIcon() {
-    switch (status.toLowerCase()) {
+    switch (status.toLowerCase().replaceAll('_', '')) {
       case 'pending':
         return Icons.pending_outlined;
       case 'accepted':
+      case 'confirmed':
         return Icons.check_circle_outline;
       case 'preparing':
         return Icons.restaurant_outlined;
       case 'ready':
+      case 'readyforpickup':
         return Icons.done_all;
       case 'delivered':
         return Icons.verified;
       case 'cancelled':
       case 'rejected':
         return Icons.cancel_outlined;
+      case 'returningtoshop':
+        return Icons.local_shipping;
+      case 'returnedtoshop':
+        return Icons.inventory_2;  // Box icon for returned
+      case 'outfordelivery':
+        return Icons.delivery_dining;
       default:
         return Icons.info_outline;
     }
@@ -540,19 +555,24 @@ class OrderCard extends StatelessWidget {
       case 'pending':
         return 'PENDING';
       case 'accepted':
-        return 'ACCEPTED';
+      case 'confirmed':
+        return 'CONFIRMED';
       case 'preparing':
         return 'PREPARING';
       case 'ready':
         return 'READY';
       case 'delivered':
-        return 'DONE';
+        return 'DELIVERED';
       case 'cancelled':
         return 'CANCELLED';
       case 'rejected':
         return 'REJECTED';
+      case 'returning to shop':
+        return 'RETURNING';
+      case 'returned to shop':
+        return 'RETURNED TO SHOP';
       default:
-        return status.toUpperCase().substring(0, status.length > 8 ? 8 : status.length);
+        return status.toUpperCase().substring(0, status.length > 12 ? 12 : status.length);
     }
   }
 
