@@ -16,15 +16,34 @@ class NotificationsScreen extends StatefulWidget {
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
   final NotificationApiService _notificationApi = NotificationApiService.instance;
+  final ScrollController _scrollController = ScrollController();
   List<NotificationModel> _notifications = [];
   bool _isLoading = true;
+  bool _isLoadingMore = false;
+  bool _hasMoreData = true;
   bool _isMarkingAllRead = false;
+  int _currentPage = 0;
+  static const int _pageSize = 20;
 
   @override
   void initState() {
     super.initState();
     _loadNotifications();
     _setupFirebaseListener();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      _loadMoreNotifications();
+    }
   }
 
   void _setupFirebaseListener() {
@@ -51,21 +70,25 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _loadNotifications() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _currentPage = 0;
+      _hasMoreData = true;
+    });
 
     try {
       final response = await _notificationApi.getNotifications(
         page: 0,
-        size: 50, // Load more notifications
+        size: _pageSize,
       );
 
       if (mounted && response['statusCode'] == '0000' && response['data'] != null) {
-        // response['data'] is now the actual notifications list from backend
         final notificationsData = response['data'];
 
         if (notificationsData is List) {
           setState(() {
             _notifications = _notificationApi.parseNotifications(notificationsData);
+            _hasMoreData = notificationsData.length >= _pageSize;
 
             // Merge with Firebase local notifications (avoid duplicates)
             final firebaseNotifications = FirebaseNotificationService.getLocalNotifications();
@@ -79,18 +102,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             _notifications.sort((a, b) => b.createdAt.compareTo(a.createdAt));
           });
 
-          // Apply stored read status for Firebase notifications
           await _applyStoredReadStatus();
         } else {
-          // Fallback to demo data if API response is unexpected
           _loadDemoNotifications();
         }
       } else {
-        // Fallback to demo data if API fails
         _loadDemoNotifications();
       }
     } catch (e) {
-      // Fallback to demo data on error
       _loadDemoNotifications();
 
       if (mounted) {
@@ -99,6 +118,55 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _loadMoreNotifications() async {
+    if (_isLoadingMore || !_hasMoreData) return;
+
+    setState(() => _isLoadingMore = true);
+
+    try {
+      final nextPage = _currentPage + 1;
+      final response = await _notificationApi.getNotifications(
+        page: nextPage,
+        size: _pageSize,
+      );
+
+      if (mounted && response['statusCode'] == '0000' && response['data'] != null) {
+        final notificationsData = response['data'];
+
+        if (notificationsData is List && notificationsData.isNotEmpty) {
+          final newNotifications = _notificationApi.parseNotifications(notificationsData);
+
+          setState(() {
+            _currentPage = nextPage;
+            _hasMoreData = notificationsData.length >= _pageSize;
+
+            // Add only non-duplicate notifications
+            for (final notification in newNotifications) {
+              if (!_notifications.any((n) => n.id == notification.id)) {
+                _notifications.add(notification);
+              }
+            }
+
+            // Sort by latest first
+            _notifications.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          });
+
+          await _applyStoredReadStatus();
+        } else {
+          setState(() => _hasMoreData = false);
+        }
+      } else {
+        setState(() => _hasMoreData = false);
+      }
+    } catch (e) {
+      // Silently fail for load more
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingMore = false);
       }
     }
   }
@@ -423,9 +491,24 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       onRefresh: _loadNotifications,
       color: const Color(0xFF4CAF50),
       child: ListView.builder(
+        controller: _scrollController,
         padding: const EdgeInsets.all(16),
-        itemCount: _notifications.length,
+        itemCount: _notifications.length + (_hasMoreData ? 1 : 0),
         itemBuilder: (context, index) {
+          if (index == _notifications.length) {
+            // Loading indicator at bottom
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Center(
+                child: _isLoadingMore
+                    ? const CircularProgressIndicator(
+                        color: Color(0xFF4CAF50),
+                        strokeWidth: 2,
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            );
+          }
           return _buildNotificationCard(_notifications[index]);
         },
       ),
