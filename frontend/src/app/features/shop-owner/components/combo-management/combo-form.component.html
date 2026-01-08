@@ -50,7 +50,7 @@
 
           <div class="product-suggestions" *ngIf="filteredProducts.length > 0">
             <div class="suggestion-item" *ngFor="let product of filteredProducts | slice:0:10"
-                 (click)="addProduct(product)">
+                 (mousedown)="addProduct(product); $event.preventDefault()">
               <img *ngIf="getProductImage(product)" [src]="getProductImage(product)" class="product-thumb" alt="">
               <div class="product-thumb-placeholder" *ngIf="!getProductImage(product)">
                 <mat-icon>inventory_2</mat-icon>
