@@ -351,6 +351,29 @@ class ApiService {
     }
   }
 
+  // Retry driver search for order (shop owner retry when no driver found)
+  static Future<ApiResponse> retryDriverSearch(String orderId) async {
+    try {
+      print('🔄 Retrying driver search for order: $orderId');
+
+      final headers = await _getAuthHeaders();
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/assignments/orders/$orderId/retry-driver-search'),
+            headers: headers,
+          )
+          .timeout(timeout);
+
+      print('✅ Retry driver search response status: ${response.statusCode}');
+      print('📨 Retry driver search response body: ${response.body}');
+
+      return _handleResponse(response);
+    } catch (e) {
+      print('❌ Retry driver search error: ${e.toString()}');
+      return ApiResponse.error('Network error: ${e.toString()}');
+    }
+  }
+
   // Get Available Master Products (excluding ones already in shop)
   static Future<ApiResponse> getAvailableMasterProducts({
     int page = 0,

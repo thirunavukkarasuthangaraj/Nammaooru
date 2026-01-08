@@ -75,6 +75,8 @@ public class OrderResponse {
     private Boolean assignedToDeliveryPartner;
     private String orderAge;
     private Integer itemCount;
+    private String driverSearchStartedAt;
+    private Boolean driverSearchCompleted;
     
     @Data
     @NoArgsConstructor

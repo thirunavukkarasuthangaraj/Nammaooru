@@ -489,7 +489,15 @@ public class OrderService {
         // Track if push notification was sent successfully
         boolean pushNotificationSent = false;
 
+        // Skip FCM for READY_FOR_PICKUP - customer will be notified when driver is actually assigned
+        // This prevents sending "driver assigned" message before driver is actually assigned
+        if (status == Order.OrderStatus.READY_FOR_PICKUP) {
+            log.info("⏭️ Skipping customer FCM for READY_FOR_PICKUP - will notify when driver assigned");
+        }
+
         // Send push notification to customer for all status updates (try push first)
+        // Skip READY_FOR_PICKUP as it's handled by OrderAssignmentService when driver is actually assigned
+        if (status != Order.OrderStatus.READY_FOR_PICKUP) {
         try {
             log.info("🔔 Starting push notification process for order: {}", order.getOrderNumber());
 
@@ -547,6 +555,7 @@ public class OrderService {
         } catch (Exception e) {
             log.error("❌ Failed to send push notification for status update", e);
         }
+        } // End of if (status != READY_FOR_PICKUP)
 
         // Send email ONLY for final delivery summary (DELIVERED or SELF_PICKUP_COLLECTED)
         // FCM push notifications handle all other status updates
@@ -1384,6 +1393,10 @@ public class OrderService {
                 .assignedToDeliveryPartner(isAssigned)
                 .orderAge(orderAge)
                 .itemCount(order.getOrderItems().size())
+                .driverSearchStartedAt(order.getDriverSearchStartedAt() != null
+                        ? order.getDriverSearchStartedAt().toString()
+                        : null)
+                .driverSearchCompleted(order.getDriverSearchCompleted())
                 .build();
     }
 

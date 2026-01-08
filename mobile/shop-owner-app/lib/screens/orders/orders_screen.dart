@@ -120,9 +120,11 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
             'createdAt': order['createdAt'] ?? DateTime.now().toIso8601String(),
             'items': order['orderItems'] ?? order['items'] ?? [],
             'address': order['fullDeliveryAddress'] ?? order['deliveryAddress'] ?? '',
-            'deliveryType': order['deliveryType'] ?? 'HOME_DELIVERY', // ADD THIS
-            'assignedToDeliveryPartner': order['assignedToDeliveryPartner'] ?? false, // ADD THIS
-            'paymentMethod': order['paymentMethod'] ?? 'CASH_ON_DELIVERY', // ADD THIS
+            'deliveryType': order['deliveryType'] ?? 'HOME_DELIVERY',
+            'assignedToDeliveryPartner': order['assignedToDeliveryPartner'] ?? false,
+            'paymentMethod': order['paymentMethod'] ?? 'CASH_ON_DELIVERY',
+            'driverSearchStartedAt': order['driverSearchStartedAt'],
+            'driverSearchCompleted': order['driverSearchCompleted'] ?? false,
           };
         }).toList();
 
@@ -258,9 +260,11 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
             'createdAt': order['createdAt'] ?? DateTime.now().toIso8601String(),
             'items': order['orderItems'] ?? order['items'] ?? [],
             'address': order['fullDeliveryAddress'] ?? order['deliveryAddress'] ?? '',
-            'deliveryType': order['deliveryType'] ?? 'HOME_DELIVERY', // ADD THIS
-            'assignedToDeliveryPartner': order['assignedToDeliveryPartner'] ?? false, // ADD THIS
-            'paymentMethod': order['paymentMethod'] ?? 'CASH_ON_DELIVERY', // ADD THIS
+            'deliveryType': order['deliveryType'] ?? 'HOME_DELIVERY',
+            'assignedToDeliveryPartner': order['assignedToDeliveryPartner'] ?? false,
+            'paymentMethod': order['paymentMethod'] ?? 'CASH_ON_DELIVERY',
+            'driverSearchStartedAt': order['driverSearchStartedAt'],
+            'driverSearchCompleted': order['driverSearchCompleted'] ?? false,
           };
         }).toList();
 
@@ -440,19 +444,19 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
 
       if (response.isSuccess) {
         setState(() {
-          // Update in both _orders and _allOrders to persist across polling refreshes
-          final index = _orders.indexWhere((o) => o['id'] == order['id']);
-          if (index != -1) _orders[index]['status'] = newStatus;
-
-          final allIndex = _allOrders.indexWhere((o) => o['id'] == order['id']);
-          if (allIndex != -1) _allOrders[allIndex]['status'] = newStatus;
-
-          // Remove loading state
           _updatingOrders.remove(orderId);
         });
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Order ${order['orderNumber']} updated to ${_getStatusText(newStatus)}'), backgroundColor: Colors.green),
         );
+
+        // Refresh orders from server to get latest data (especially for auto-assign)
+        if (newStatus == 'READY_FOR_PICKUP') {
+          // Wait 2 seconds for auto-assign to complete, then refresh
+          await Future.delayed(const Duration(seconds: 2));
+        }
+        await _fetchOrders();
       } else {
         setState(() {
           // Remove loading state
@@ -464,21 +468,14 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
       }
     } catch (e) {
       print('Error updating order status: $e');
-      // Fallback to local update for demo
       setState(() {
-        // Update in both _orders and _allOrders to persist across polling refreshes
-        final index = _orders.indexWhere((o) => o['id'] == order['id']);
-        if (index != -1) _orders[index]['status'] = newStatus;
-
-        final allIndex = _allOrders.indexWhere((o) => o['id'] == order['id']);
-        if (allIndex != -1) _allOrders[allIndex]['status'] = newStatus;
-
-        // Remove loading state
         _updatingOrders.remove(orderId);
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Order ${order['orderNumber']} updated locally'), backgroundColor: Colors.orange),
+        SnackBar(content: Text('Error updating order: $e'), backgroundColor: Colors.red),
       );
+      // Refresh to get actual server state
+      await _fetchOrders();
     }
   }
 
@@ -525,6 +522,106 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
           backgroundColor: Colors.red,
         ),
       );
+    }
+  }
+
+  void _retryDriverSearch(dynamic order) async {
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            const Text(
+              'Searching for driver...',
+              style: TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Please wait while we look for available delivery partners.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      final response = await ApiService.retryDriverSearch(order['id'].toString());
+
+      // Close loading dialog
+      if (mounted) Navigator.pop(context);
+
+      if (response.isSuccess && mounted) {
+        final data = response.data as Map<String, dynamic>?;
+        final driverAssigned = data?['driverAssigned'] ?? false;
+        final message = data?['message'] ?? 'Driver search started';
+
+        if (driverAssigned) {
+          // Driver found and assigned immediately
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Driver found and assigned!'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+
+          // Refresh orders
+          _fetchOrders();
+        } else {
+          // Search started but no driver yet
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(message),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+
+          // Refresh orders to update status
+          _fetchOrders();
+        }
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed: ${response.error ?? "Unknown error"}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      // Close loading dialog
+      if (mounted) Navigator.pop(context);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -1112,6 +1209,10 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                           items: order['items'] as List?, // Pass items to show product details
                           deliveryType: deliveryType, // Pass delivery type
                           isLoading: isUpdating, // Pass loading state
+                          driverSearchStartedAt: order['driverSearchStartedAt'] != null
+                              ? DateTime.tryParse(order['driverSearchStartedAt'])
+                              : null,
+                          driverSearchCompleted: order['driverSearchCompleted'] ?? false,
                           onTap: () {
                           // Navigate to order details screen
                           Navigator.push(
@@ -1125,14 +1226,20 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                           );
                         },
                         // PENDING status: Show Accept/Reject buttons
+                        // READY status with HOME_DELIVERY: Show Cancel button (if no driver found)
                         onAccept: orderStatus == 'PENDING' ? () => _updateOrderStatus(order, 'CONFIRMED') : null,
-                        onReject: orderStatus == 'PENDING' ? () => _updateOrderStatus(order, 'CANCELLED') : null,
+                        onReject: (orderStatus == 'PENDING' || (orderStatus == 'READY' && deliveryType == 'HOME_DELIVERY'))
+                            ? () => _updateOrderStatus(order, 'CANCELLED')
+                            : null,
 
                         // CONFIRMED status: Show Start Preparing button
                         onStartPreparing: orderStatus == 'CONFIRMED' ? () => _updateOrderStatus(order, 'PREPARING') : null,
 
                         // PREPARING status: Only show Ready button (no skipping to OUT_FOR_DELIVERY)
-                        onMarkReady: orderStatus == 'PREPARING' ? () => _updateOrderStatus(order, 'READY_FOR_PICKUP') : null,
+                        // Also show at READY status for HOME_DELIVERY so shop owner can retry driver search
+                        onMarkReady: (orderStatus == 'PREPARING' || (orderStatus == 'READY' && deliveryType == 'HOME_DELIVERY'))
+                            ? () => _updateOrderStatus(order, 'READY_FOR_PICKUP')
+                            : null,
                         onOutForDelivery: null, // Shop owners cannot skip to OUT_FOR_DELIVERY
 
                         // READY_FOR_PICKUP status: Show specific buttons based on delivery type
@@ -1141,6 +1248,9 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                             : null,
                         onVerifyPickupOTP: (orderStatus == 'READY_FOR_PICKUP' && deliveryType == 'HOME_DELIVERY' && order['assignedToDeliveryPartner'] == true)
                             ? () => _showOTPVerificationDialog(order)
+                            : null,
+                        onRetryDriverSearch: ((orderStatus == 'READY_FOR_PICKUP' || orderStatus == 'READY') && deliveryType == 'HOME_DELIVERY' && order['assignedToDeliveryPartner'] != true)
+                            ? () => _retryDriverSearch(order)
                             : null,
 
                           // OUT_FOR_DELIVERY status: No buttons (only driver can deliver)

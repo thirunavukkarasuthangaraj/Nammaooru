@@ -986,6 +986,10 @@ public class ShopService {
                 .actualDeliveryTime(order.getActualDeliveryTime())
                 .orderItems(orderItemResponses)
                 .assignedToDeliveryPartner(isAssigned)
+                .driverSearchStartedAt(order.getDriverSearchStartedAt() != null
+                        ? order.getDriverSearchStartedAt().toString()
+                        : null)
+                .driverSearchCompleted(order.getDriverSearchCompleted())
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())
                 .build();

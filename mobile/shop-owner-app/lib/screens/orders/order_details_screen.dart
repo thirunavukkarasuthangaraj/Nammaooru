@@ -1557,36 +1557,47 @@ class OrderDetailsScreen extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
+                    color: Colors.orange.shade50,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blue.shade300),
+                    border: Border.all(color: Colors.orange.shade300),
                   ),
                   child: Column(
                     children: [
-                      SizedBox(
-                        width: 40,
-                        height: 40,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 3,
-                          color: Colors.blue.shade700,
-                        ),
+                      Icon(
+                        Icons.search_off,
+                        size: 40,
+                        color: Colors.orange.shade700,
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'Searching for Driver...',
+                        'No Driver Available',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Colors.blue.shade700,
+                          color: Colors.orange.shade700,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Please wait, looking for available delivery partner',
+                        'No delivery partner found. Try again or wait for driver to come online.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.blue.shade600,
+                          color: Colors.orange.shade600,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () => _retryDriverSearch(context, order, orderProvider),
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Retry Search Driver'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
                         ),
                       ),
                     ],
@@ -2353,6 +2364,107 @@ class OrderDetailsScreen extends StatelessWidget {
 
         // Navigate back to orders list
         Navigator.pop(context);
+      } else if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed: ${response.error ?? "Unknown error"}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } catch (e) {
+      // Close loading dialog
+      if (context.mounted) Navigator.pop(context);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  void _retryDriverSearch(BuildContext context, Order order, OrderProvider orderProvider) async {
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            const Text(
+              'Searching for driver...',
+              style: TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Please wait while we look for available delivery partners.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      final response = await ApiService.retryDriverSearch(order.id);
+
+      // Close loading dialog
+      if (context.mounted) Navigator.pop(context);
+
+      if (response.success && context.mounted) {
+        final data = response.data as Map<String, dynamic>?;
+        final driverAssigned = data?['driverAssigned'] ?? false;
+        final message = data?['message'] ?? 'Driver search started';
+
+        if (driverAssigned) {
+          // Driver found and assigned immediately
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ Driver found and assigned!'),
+              backgroundColor: AppColors.success,
+              duration: Duration(seconds: 3),
+            ),
+          );
+
+          // Refresh orders and go back
+          await orderProvider.loadOrders();
+          Navigator.pop(context);
+        } else {
+          // Search started but no driver yet
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(message),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+
+          // Refresh orders to update status
+          await orderProvider.loadOrders();
+        }
       } else if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

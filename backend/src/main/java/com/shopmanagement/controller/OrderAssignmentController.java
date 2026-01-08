@@ -1,7 +1,10 @@
 package com.shopmanagement.controller;
 
+import com.shopmanagement.entity.Order;
 import com.shopmanagement.entity.OrderAssignment;
 import com.shopmanagement.entity.User;
+import com.shopmanagement.repository.OrderRepository;
+import com.shopmanagement.service.DriverSearchSchedulerService;
 import com.shopmanagement.service.OrderAssignmentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -9,6 +12,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -23,6 +27,8 @@ import java.util.Optional;
 public class OrderAssignmentController {
 
     private final OrderAssignmentService assignmentService;
+    private final DriverSearchSchedulerService driverSearchSchedulerService;
+    private final OrderRepository orderRepository;
 
     /**
      * Auto-assign an order to available delivery partner
@@ -48,6 +54,68 @@ public class OrderAssignmentController {
 
         } catch (Exception e) {
             log.error("Error auto-assigning order {}: {}", orderId, e.getMessage());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", e.getMessage());
+
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    /**
+     * Retry driver search for an order
+     * Called by shop owners when no driver was found and they want to try again
+     */
+    @PostMapping("/orders/{orderId}/retry-driver-search")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SHOP_OWNER')")
+    public ResponseEntity<Map<String, Object>> retryDriverSearch(@PathVariable Long orderId) {
+
+        log.info("🔄 Retrying driver search for order {}", orderId);
+
+        try {
+            // Find the order
+            Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
+
+            log.info("📦 Found order: {} with status: {}", order.getOrderNumber(), order.getStatus());
+
+            // Validate order status - should be READY or READY_FOR_PICKUP to retry
+            if (order.getStatus() != Order.OrderStatus.READY &&
+                order.getStatus() != Order.OrderStatus.READY_FOR_PICKUP) {
+                throw new RuntimeException("Order must be in READY or READY_FOR_PICKUP status to retry driver search. Current status: " + order.getStatus());
+            }
+
+            // Reset driver search (starts new search timer) - use ID-based method to avoid detached entity issues
+            driverSearchSchedulerService.resetDriverSearchById(orderId);
+            log.info("✅ Driver search reset for order: {}", order.getOrderNumber());
+
+            // Try to auto-assign immediately
+            try {
+                OrderAssignment assignment = assignmentService.autoAssignOrder(orderId, 1L); // System assignment
+
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", true);
+                response.put("message", "Driver found and assigned successfully!");
+                response.put("driverAssigned", true);
+                response.put("assignment", createAssignmentResponse(assignment));
+
+                return ResponseEntity.ok(response);
+            } catch (Exception e) {
+                // No driver available immediately, search will continue in background
+                log.info("⏳ No driver available immediately for order {}. Background search started. Reason: {}", orderId, e.getMessage());
+
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", true);
+                response.put("message", "Driver search started. Looking for available drivers...");
+                response.put("driverAssigned", false);
+                response.put("searchStarted", true);
+
+                return ResponseEntity.ok(response);
+            }
+
+        } catch (Exception e) {
+            log.error("❌ Error retrying driver search for order {}: {}", orderId, e.getMessage(), e);
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", false);

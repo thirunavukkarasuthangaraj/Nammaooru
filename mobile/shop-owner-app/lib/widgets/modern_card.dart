@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../utils/app_theme.dart';
 
@@ -469,6 +470,9 @@ class OrderCard extends StatelessWidget {
   final VoidCallback? onMarkDelivered;
   final VoidCallback? onHandoverSelfPickup; // For SELF_PICKUP orders at READY_FOR_PICKUP
   final VoidCallback? onVerifyPickupOTP; // For HOME_DELIVERY orders at READY_FOR_PICKUP
+  final VoidCallback? onRetryDriverSearch; // For retrying driver search when no driver found
+  final DateTime? driverSearchStartedAt; // When driver search started
+  final bool? driverSearchCompleted; // Whether driver search completed
 
   const OrderCard({
     Key? key,
@@ -490,6 +494,9 @@ class OrderCard extends StatelessWidget {
     this.onMarkDelivered,
     this.onHandoverSelfPickup,
     this.onVerifyPickupOTP,
+    this.onRetryDriverSearch,
+    this.driverSearchStartedAt,
+    this.driverSearchCompleted,
   }) : super(key: key);
 
   Color _getStatusColor() {
@@ -666,9 +673,8 @@ class OrderCard extends StatelessWidget {
         // For HOME_DELIVERY: This triggers auto-assignment to delivery partner
         // For SELF_PICKUP: Customer will come to pick up
         // Shop owners should NOT be able to skip to OUT_FOR_DELIVERY
-        final isSelfPickup = deliveryType?.toUpperCase() == 'SELF_PICKUP';
-
         if (onMarkReady != null) {
+          final isSelfPickup = deliveryType?.toUpperCase() == 'SELF_PICKUP';
           return _buildActionButton(
             label: isSelfPickup ? 'Ready for Pickup' : 'Ready',
             onPressed: onMarkReady!,
@@ -678,8 +684,45 @@ class OrderCard extends StatelessWidget {
         }
         break;
 
-      case 'ready for pickup':
       case 'ready':
+        // At READY status (after driver search timeout), show buttons
+        // For HOME_DELIVERY: Show "Find Driver" and "Cancel" buttons
+        // For SELF_PICKUP: Show "Handover" button
+        final isSelfPickupReady = deliveryType?.toUpperCase() == 'SELF_PICKUP';
+
+        if (isSelfPickupReady && onHandoverSelfPickup != null) {
+          return _buildActionButton(
+            label: 'Handover',
+            onPressed: onHandoverSelfPickup!,
+            backgroundColor: AppTheme.success,
+            textColor: AppTheme.textWhite,
+          );
+        } else if (!isSelfPickupReady) {
+          // HOME_DELIVERY at READY: Show "Find Driver" and "Cancel" buttons
+          return Row(
+            children: [
+              if (onReject != null)
+                _buildActionButton(
+                  label: 'Cancel',
+                  onPressed: onReject!,
+                  backgroundColor: AppTheme.error.withOpacity(0.1),
+                  textColor: AppTheme.error,
+                ),
+              if (onReject != null && onMarkReady != null)
+                const SizedBox(width: 8),
+              if (onMarkReady != null)
+                _buildActionButton(
+                  label: 'Find Driver',
+                  onPressed: onMarkReady!,
+                  backgroundColor: Colors.orange,
+                  textColor: AppTheme.textWhite,
+                ),
+            ],
+          );
+        }
+        break;
+
+      case 'ready for pickup':
         final isSelfPickup = deliveryType?.toUpperCase() == 'SELF_PICKUP';
 
         if (isSelfPickup && onHandoverSelfPickup != null) {
@@ -691,20 +734,19 @@ class OrderCard extends StatelessWidget {
             textColor: AppTheme.textWhite,
           );
         } else if (!isSelfPickup && onVerifyPickupOTP != null) {
-          // HOME_DELIVERY: Show "Verify Pickup OTP" button
+          // HOME_DELIVERY with driver assigned: Show "Verify Pickup OTP" button
           return _buildActionButton(
             label: 'Verify OTP',
             onPressed: onVerifyPickupOTP!,
             backgroundColor: Colors.orange,
             textColor: AppTheme.textWhite,
           );
-        } else if (onMarkDelivered != null) {
-          // Fallback to old behavior
-          return _buildActionButton(
-            label: isSelfPickup ? 'Picked Up' : 'Mark Delivered',
-            onPressed: onMarkDelivered!,
-            backgroundColor: AppTheme.success,
-            textColor: AppTheme.textWhite,
+        } else if (!isSelfPickup) {
+          // HOME_DELIVERY without driver: Show timer countdown with Find Driver button
+          return DriverSearchTimerWidget(
+            driverSearchStartedAt: driverSearchStartedAt,
+            driverSearchCompleted: driverSearchCompleted ?? false,
+            onRetryDriverSearch: onRetryDriverSearch,
           );
         }
         break;
@@ -1146,5 +1188,136 @@ class InfoCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Widget to show driver search countdown timer with Find Driver button
+class DriverSearchTimerWidget extends StatefulWidget {
+  final DateTime? driverSearchStartedAt;
+  final bool driverSearchCompleted;
+  final VoidCallback? onRetryDriverSearch;
+
+  const DriverSearchTimerWidget({
+    Key? key,
+    this.driverSearchStartedAt,
+    this.driverSearchCompleted = false,
+    this.onRetryDriverSearch,
+  }) : super(key: key);
+
+  @override
+  State<DriverSearchTimerWidget> createState() => _DriverSearchTimerWidgetState();
+}
+
+class _DriverSearchTimerWidgetState extends State<DriverSearchTimerWidget> {
+  Timer? _timer;
+  int _remainingSeconds = 0;
+  static const int _searchDurationSeconds = 120; // 2 minutes
+
+  @override
+  void initState() {
+    super.initState();
+    _calculateRemainingTime();
+    _startTimer();
+  }
+
+  @override
+  void didUpdateWidget(DriverSearchTimerWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.driverSearchStartedAt != oldWidget.driverSearchStartedAt) {
+      _calculateRemainingTime();
+    }
+  }
+
+  void _calculateRemainingTime() {
+    if (widget.driverSearchStartedAt != null && !widget.driverSearchCompleted) {
+      final elapsed = DateTime.now().difference(widget.driverSearchStartedAt!).inSeconds;
+      _remainingSeconds = (_searchDurationSeconds - elapsed).clamp(0, _searchDurationSeconds);
+    } else {
+      _remainingSeconds = 0;
+    }
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_remainingSeconds > 0) {
+        setState(() {
+          _remainingSeconds--;
+        });
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String _formatTime(int seconds) {
+    final minutes = seconds ~/ 60;
+    final secs = seconds % 60;
+    return '$minutes:${secs.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isSearching = _remainingSeconds > 0 && !widget.driverSearchCompleted;
+
+    if (isSearching) {
+      // Timer running - show countdown with disabled button
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.orange.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.orange.shade200),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.orange.shade700),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Searching...  ${_formatTime(_remainingSeconds)}',
+                  style: TextStyle(
+                    color: Colors.orange.shade700,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    } else {
+      // Timer completed - show enabled Find Driver button
+      return ElevatedButton.icon(
+        onPressed: widget.onRetryDriverSearch,
+        icon: const Icon(Icons.search, size: 18),
+        label: const Text('Find Driver'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.orange,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      );
+    }
   }
 }

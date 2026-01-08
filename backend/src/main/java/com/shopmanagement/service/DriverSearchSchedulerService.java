@@ -122,7 +122,7 @@ public class DriverSearchSchedulerService {
 
         // Mark search as completed (failed)
         order.setDriverSearchCompleted(true);
-        // Keep order at READY status (not READY_FOR_PICKUP) so shop owner can try again
+        // Set order to READY status - shop owner can click "Ready" button to retry driver search
         order.setStatus(Order.OrderStatus.READY);
         orderRepository.save(order);
 
@@ -216,6 +216,26 @@ public class DriverSearchSchedulerService {
     @Transactional
     public void resetDriverSearch(Order order) {
         log.info("🔄 Resetting driver search for order: {}", order.getOrderNumber());
+
+        order.setDriverSearchStartedAt(LocalDateTime.now());
+        order.setDriverSearchAttempts(0);
+        order.setDriverSearchCompleted(false);
+        order.setStatus(Order.OrderStatus.READY_FOR_PICKUP);
+        orderRepository.save(order);
+
+        log.info("✅ Driver search reset for order: {}", order.getOrderNumber());
+    }
+
+    /**
+     * Reset driver search for retry by order ID
+     * Called when shop owner clicks "Find Driver" button
+     */
+    @Transactional
+    public void resetDriverSearchById(Long orderId) {
+        log.info("🔄 Resetting driver search for order ID: {}", orderId);
+
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
 
         order.setDriverSearchStartedAt(LocalDateTime.now());
         order.setDriverSearchAttempts(0);

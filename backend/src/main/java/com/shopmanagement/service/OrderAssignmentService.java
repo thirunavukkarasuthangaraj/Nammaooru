@@ -172,6 +172,32 @@ public class OrderAssignmentService {
         log.info("Order {} auto-assigned to partner {} (ID: {})",
                  orderId, selectedPartner.getEmail(), selectedPartner.getId());
 
+        // Send FCM notification to customer that driver is assigned
+        try {
+            if (order.getCustomer() != null && order.getCustomer().getEmail() != null) {
+                User customerUser = userRepository.findByEmail(order.getCustomer().getEmail()).orElse(null);
+                if (customerUser != null) {
+                    List<UserFcmToken> customerTokens = userFcmTokenRepository.findActiveTokensByUserId(customerUser.getId());
+                    for (UserFcmToken tokenEntity : customerTokens) {
+                        try {
+                            firebaseNotificationService.sendOrderNotification(
+                                order.getOrderNumber(),
+                                "DRIVER_ACCEPTED",
+                                tokenEntity.getFcmToken(),
+                                order.getCustomer().getId()
+                            );
+                            log.info("✅ Driver assigned FCM sent to customer for order: {}", order.getOrderNumber());
+                            break;
+                        } catch (Exception e) {
+                            log.warn("⚠️ Failed to send driver assigned FCM to customer: {}", e.getMessage());
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("❌ Error sending driver assigned notification to customer: {}", e.getMessage());
+        }
+
         return assignment;
     }
 
