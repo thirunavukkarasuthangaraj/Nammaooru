@@ -185,7 +185,8 @@
       "Bash(mvn clean:*)",
       "Bash(ssh:*)",
       "Bash(mvnw.cmd compile:*)",
-      "Bash(cmd.exe /c \"mvnw.cmd compile -q\")"
+      "Bash(cmd.exe /c \"mvnw.cmd compile -q\")",
+      "Bash(./mvnw compile:*)"
     ],
     "deny": [],
     "ask": [],

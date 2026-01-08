@@ -83,7 +83,7 @@ class AppConfig {
   // ============================
 
   // Force production URLs for testing
-  static const bool _useProductionUrls = false; // Using localhost for testing
+  static const bool _useProductionUrls = true; // Using production for testing
 
   static String get apiBaseUrl {
     if (_useProductionUrls) {

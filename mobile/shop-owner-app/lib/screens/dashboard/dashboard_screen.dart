@@ -9,6 +9,7 @@ import '../notifications/notifications_screen.dart';
 import '../orders/orders_screen.dart';
 import '../payments/payments_screen.dart';
 import '../promo_codes/promo_codes_screen.dart';
+import '../combos/combo_list_screen.dart';
 import '../inventory/inventory_screen.dart';
 import '../products/products_screen.dart';
 import '../../utils/app_config.dart';
@@ -41,6 +42,7 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
   };
   bool _isLoading = true;
   int _unreadNotificationCount = 0;
+  int? _shopId;
 
   @override
   void initState() {
@@ -87,6 +89,7 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
       }
 
       final shopId = myShopData['data']['shopId'];
+      _shopId = shopId is int ? shopId : int.tryParse(shopId.toString());
 
       final dashboardResponse = await http.get(
         Uri.parse('${AppConfig.apiBaseUrl}/shops/$shopId/dashboard'),
@@ -444,6 +447,45 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                                       onTap: () => Navigator.push(
                                         context,
                                         MaterialPageRoute(builder: (context) => const PromoCodesScreen()),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              // Combos Row
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _ActionCard(
+                                      icon: Icons.card_giftcard,
+                                      label: languageProvider.getText('Combos', 'காம்போக்கள்'),
+                                      color: const Color(0xFFD32F2F),
+                                      onTap: () {
+                                        if (_shopId != null) {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => ComboListScreen(shopId: _shopId!),
+                                            ),
+                                          );
+                                        } else {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('Loading shop data...')),
+                                          );
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _ActionCard(
+                                      icon: Icons.inventory_2_outlined,
+                                      label: languageProvider.getText('Inventory', 'சரக்கு'),
+                                      color: const Color(0xFF455A64),
+                                      onTap: () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(builder: (context) => InventoryScreen(token: widget.token)),
                                       ),
                                     ),
                                   ),

@@ -14,6 +14,9 @@ import '../../../core/utils/helpers.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../core/config/api_config.dart';
 import '../../../core/services/promo_code_service.dart';
+import '../models/combo_model.dart';
+import '../services/combo_service.dart';
+import '../widgets/combo_banner_widget.dart';
 import 'cart_screen.dart';
 import 'shop_products_screen.dart';
 
@@ -48,6 +51,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       []; // Store all products for client-side filtering
   List<dynamic> _categories = [];
   List<PromoCode> _promotions = []; // Store promotions from API
+  List<CustomerCombo> _combos = []; // Store combos from API
   String? _selectedCategory;
   String? _selectedCategoryName; // Store category name for filtering
   bool _isLoadingShop = false;
@@ -66,6 +70,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     _loadCategories();
     _loadProducts();
     _loadPromotions();
+    _loadCombos();
     _searchController.addListener(_onSearchChanged);
     _startCouponAutoSlide();
   }
@@ -116,6 +121,19 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
           _isLoadingPromotions = false;
         });
       }
+    }
+  }
+
+  Future<void> _loadCombos() async {
+    try {
+      final combos = await CustomerComboService.getActiveCombos(widget.shopId);
+      if (mounted) {
+        setState(() {
+          _combos = combos;
+        });
+      }
+    } catch (e) {
+      print('Error loading combos: $e');
     }
   }
 
@@ -832,9 +850,11 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     return CustomScrollView(
       controller: _scrollController,
       slivers: [
-        SliverToBoxAdapter(child: _buildShopBanner()),
-        SliverToBoxAdapter(child: _buildFreeDeliveryBanner()),
+        // Shop banner and free delivery banner removed as per request
         SliverToBoxAdapter(child: _buildCouponSection()),
+        // Combo Banner Section
+        if (_combos.isNotEmpty)
+          SliverToBoxAdapter(child: _buildComboSection()),
         SliverToBoxAdapter(child: _buildHorizontalCategories()),
         SliverToBoxAdapter(child: _buildSearchBar()),
         _buildProductGrid(),
@@ -1136,6 +1156,73 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
           border: InputBorder.none,
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildComboSection() {
+    if (_combos.isEmpty) return const SizedBox.shrink();
+
+    return ComboBannerWidget(
+      combos: _combos,
+      onComboTapped: (combo) {
+        _showComboDetail(combo);
+      },
+    );
+  }
+
+  void _showComboDetail(CustomerCombo combo) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ComboDetailBottomSheet(
+        combo: combo,
+        onAddToCart: () {
+          _addComboToCart(combo);
+          Navigator.pop(context);
+        },
+      ),
+    );
+  }
+
+  void _addComboToCart(CustomerCombo combo) {
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+
+    // Add each item in the combo to cart
+    for (final item in combo.items) {
+      // Create a product map for each combo item
+      final productData = {
+        'id': item.shopProductId,
+        'name': item.productName,
+        'nameTamil': item.productNameTamil,
+        'price': item.unitPrice,
+        'imageUrl': item.imageUrl,
+        'unit': item.unit,
+        'shopId': combo.shopId,
+        'shopName': combo.shopName,
+      };
+
+      // Add to cart with the specified quantity
+      for (int i = 0; i < item.quantity; i++) {
+        cartProvider.addToCart(ProductModel.fromJson(productData), combo.shopId);
+      }
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${combo.name} added to cart!'),
+        backgroundColor: const Color(0xFF2E7D32),
+        action: SnackBarAction(
+          label: 'View Cart',
+          textColor: Colors.white,
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const CartScreen()),
+            );
+          },
         ),
       ),
     );
