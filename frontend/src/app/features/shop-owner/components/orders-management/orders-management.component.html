@@ -64,6 +64,16 @@
             (click)="selectStatusTab('')">
       All Orders ({{ totalOrders }})
     </button>
+    <button class="tab-btn tab-returns"
+            [class.active]="selectedStatus === 'RETURNS'"
+            (click)="selectStatusTab('RETURNS')">
+      Returns ({{ getReturnOrders().length }})
+    </button>
+    <button class="tab-btn tab-self-pickup"
+            [class.active]="selectedStatus === 'SELF_PICKUP'"
+            (click)="selectStatusTab('SELF_PICKUP')">
+      Self Pickup ({{ getSelfPickupOrders().length }})
+    </button>
     <button class="tab-btn tab-pending"
             [class.active]="selectedStatus === 'PENDING'"
             (click)="selectStatusTab('PENDING')">
@@ -272,11 +282,36 @@
             Verify Pickup OTP
           </button>
 
-          <!-- HOME_DELIVERY: Show Assign button if not yet assigned -->
+          <!-- HOME_DELIVERY: Show Find Driver button if not yet assigned -->
           <button *ngIf="order.deliveryType === 'HOME_DELIVERY' && !order.assignedToDeliveryPartner"
-                  class="action-btn assign-btn"
-                  (click)="assignDelivery(order.id)">
-            Assign Delivery
+                  class="action-btn find-driver-btn"
+                  (click)="retryDriverSearch(order.id)">
+            Find Driver
+          </button>
+        </ng-container>
+
+        <!-- RETURNING_TO_SHOP: Driver returning products -->
+        <ng-container *ngIf="order.status === 'RETURNING_TO_SHOP'">
+          <div class="return-status-card returning">
+            <div class="return-icon">🚴</div>
+            <div class="return-text">
+              <strong>Driver Returning</strong>
+              <span>Products are being returned to your shop</span>
+            </div>
+          </div>
+        </ng-container>
+
+        <!-- RETURNED_TO_SHOP: Collect products from driver -->
+        <ng-container *ngIf="order.status === 'RETURNED_TO_SHOP'">
+          <div class="return-status-card returned">
+            <div class="return-icon">📦</div>
+            <div class="return-text">
+              <strong>Products Returned</strong>
+              <span>Verify and collect products from driver</span>
+            </div>
+          </div>
+          <button class="action-btn collect-btn" (click)="confirmReturnReceipt(order.id)">
+            Verify & Collect Products
           </button>
         </ng-container>
 

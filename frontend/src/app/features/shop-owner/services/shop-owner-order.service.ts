@@ -18,7 +18,7 @@ export interface ShopOwnerOrder {
   items: OrderItem[];
   totalAmount: number;
   createdAt: string;
-  status: 'PENDING' | 'CONFIRMED' | 'PREPARING' | 'READY_FOR_PICKUP' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'CANCELLED' | 'SELF_PICKUP_COLLECTED';
+  status: 'PENDING' | 'CONFIRMED' | 'PREPARING' | 'READY_FOR_PICKUP' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'CANCELLED' | 'SELF_PICKUP_COLLECTED' | 'RETURNING_TO_SHOP' | 'RETURNED_TO_SHOP';
   paymentStatus: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
   paymentMethod: string;
   estimatedDeliveryTime?: string;

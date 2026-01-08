@@ -794,6 +794,120 @@ $white: #ffffff;
       background: darken(#FF9800, 10%);
     }
   }
+
+  &.find-driver-btn {
+    background: #9C27B0;
+    color: white;
+
+    &:hover {
+      background: darken(#9C27B0, 10%);
+    }
+  }
+
+  &.collect-btn {
+    background: #4CAF50;
+    color: white;
+    font-weight: 600;
+
+    &:hover {
+      background: darken(#4CAF50, 10%);
+    }
+  }
+}
+
+// Return Status Card
+.return-status-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+
+  .return-icon {
+    font-size: 24px;
+  }
+
+  .return-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    strong {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    span {
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.6);
+    }
+  }
+
+  &.returning {
+    background: rgba(#FF9800, 0.1);
+    border: 1px solid rgba(#FF9800, 0.3);
+
+    strong {
+      color: #E65100;
+    }
+  }
+
+  &.returned {
+    background: rgba(#4CAF50, 0.1);
+    border: 1px solid rgba(#4CAF50, 0.3);
+
+    strong {
+      color: #2E7D32;
+    }
+  }
+}
+
+// Tab styles for Returns and Self Pickup
+.tab-returns {
+  &.active {
+    background: #FF5722 !important;
+    color: white !important;
+    border-color: #FF5722 !important;
+  }
+}
+
+.tab-self-pickup {
+  &.active {
+    background: #2196F3 !important;
+    color: white !important;
+    border-color: #2196F3 !important;
+  }
+}
+
+// Status badges for return statuses
+.status-returning {
+  background: rgba(#FF9800, 0.15);
+  color: #E65100;
+  border: 1px solid rgba(#FF9800, 0.3);
+}
+
+.status-returned {
+  background: rgba(#4CAF50, 0.15);
+  color: #2E7D32;
+  border: 1px solid rgba(#4CAF50, 0.3);
+}
+
+.status-collected {
+  background: rgba(#4CAF50, 0.2);
+  color: #1B5E20;
+  border: 1px solid rgba(#4CAF50, 0.4);
+}
+
+// Order card status background for returns
+.order-card {
+  &.status-returning_to_shop {
+    border-left: 4px solid #FF9800;
+  }
+
+  &.status-returned_to_shop {
+    border-left: 4px solid #4CAF50;
+  }
 }
 
 // Orders List

@@ -235,8 +235,15 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
         order.orderNumber.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
         order.customerName.toLowerCase().includes(this.searchTerm.toLowerCase());
 
-      const matchesStatus = !this.selectedStatus ||
-        order.status === this.selectedStatus;
+      // Handle special status filters
+      let matchesStatus = true;
+      if (this.selectedStatus === 'RETURNS') {
+        matchesStatus = order.status === 'RETURNING_TO_SHOP' || order.status === 'RETURNED_TO_SHOP';
+      } else if (this.selectedStatus === 'SELF_PICKUP') {
+        matchesStatus = order.deliveryType === 'SELF_PICKUP';
+      } else if (this.selectedStatus) {
+        matchesStatus = order.status === this.selectedStatus;
+      }
 
       const matchesDateRange = this.matchesDateRange(order);
 
@@ -669,6 +676,9 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
       case 'OUT_FOR_DELIVERY': return 'Out for Delivery';
       case 'DELIVERED': return 'Delivered';
       case 'CANCELLED': return 'Cancelled';
+      case 'RETURNING_TO_SHOP': return 'Driver Returning';
+      case 'RETURNED_TO_SHOP': return 'Products Returned';
+      case 'SELF_PICKUP_COLLECTED': return 'Collected';
       default: return status.replace(/_/g, ' ');
     }
   }
@@ -1061,6 +1071,9 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
       case 'OUT_FOR_DELIVERY': return 'status-delivery';
       case 'DELIVERED': return 'status-delivered';
       case 'CANCELLED': return 'status-cancelled';
+      case 'RETURNING_TO_SHOP': return 'status-returning';
+      case 'RETURNED_TO_SHOP': return 'status-returned';
+      case 'SELF_PICKUP_COLLECTED': return 'status-collected';
       default: return '';
     }
   }
@@ -1358,6 +1371,87 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
 
   getOrdersByStatus(status: string): ShopOwnerOrder[] {
     return this.orders.filter(order => order.status === status);
+  }
+
+  // Get all return orders (RETURNING_TO_SHOP and RETURNED_TO_SHOP)
+  getReturnOrders(): ShopOwnerOrder[] {
+    return this.orders.filter(order =>
+      order.status === 'RETURNING_TO_SHOP' || order.status === 'RETURNED_TO_SHOP'
+    );
+  }
+
+  // Get all self-pickup orders
+  getSelfPickupOrders(): ShopOwnerOrder[] {
+    return this.orders.filter(order => order.deliveryType === 'SELF_PICKUP');
+  }
+
+  // Retry driver search for orders without assigned driver
+  retryDriverSearch(orderId: number): void {
+    this.swal.loading('Searching for available drivers...');
+
+    this.http.post<any>(`${environment.apiUrl}/orders/${orderId}/retry-driver-search`, {}).subscribe({
+      next: (response) => {
+        this.swal.close();
+        if (response.data?.driverAssigned) {
+          this.swal.success('Driver Found!', 'A delivery partner has been assigned to this order.');
+        } else {
+          this.swal.custom({
+            icon: 'warning',
+            title: 'Searching for Drivers',
+            text: response.data?.message || 'We are looking for available drivers. Please wait or try again later.',
+            confirmButtonText: 'OK'
+          });
+        }
+        this.loadOrders(); // Refresh orders
+      },
+      error: (error) => {
+        console.error('Error retrying driver search:', error);
+        this.swal.close();
+        this.swal.error('Error', error.error?.message || 'Failed to search for drivers. Please try again.');
+      }
+    });
+  }
+
+  // Confirm return receipt - collect products from driver
+  confirmReturnReceipt(orderId: number): void {
+    this.swal.custom({
+      icon: 'question',
+      title: 'Verify & Collect Products',
+      html: `
+        <div style="text-align: left; padding: 10px;">
+          <p style="margin-bottom: 15px;">Please verify the following before confirming:</p>
+          <ul style="margin: 0; padding-left: 20px; color: #666;">
+            <li style="margin-bottom: 8px;">All items have been returned</li>
+            <li style="margin-bottom: 8px;">Products are in good condition</li>
+            <li style="margin-bottom: 8px;">Quantities match the order</li>
+          </ul>
+          <p style="margin-top: 15px; font-size: 13px; color: #888;">
+            Stock will be automatically restored after confirmation.
+          </p>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Confirm Collection',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#4CAF50'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        this.swal.loading('Processing return receipt...');
+
+        this.http.post<any>(`${environment.apiUrl}/orders/${orderId}/confirm-return-receipt`, {}).subscribe({
+          next: (response) => {
+            this.swal.close();
+            this.swal.success('Products Collected!', 'Return receipt confirmed and stock has been restored.');
+            this.loadOrders(); // Refresh orders
+          },
+          error: (error) => {
+            console.error('Error confirming return receipt:', error);
+            this.swal.close();
+            this.swal.error('Error', error.error?.message || 'Failed to confirm return receipt. Please try again.');
+          }
+        });
+      }
+    });
   }
 
   getImageUrl(imageUrl: string): string {
