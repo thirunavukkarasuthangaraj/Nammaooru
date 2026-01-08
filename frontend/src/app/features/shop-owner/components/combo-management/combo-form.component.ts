@@ -9,11 +9,16 @@ import { of } from 'rxjs';
 
 interface ShopProduct {
   id: number;
-  productName: string;
-  productNameTamil?: string;
+  displayName?: string;
+  customName?: string;
+  masterProduct?: {
+    name: string;
+    nameTamil?: string;
+  };
   price: number;
-  imageUrl?: string;
-  unit?: string;
+  primaryImageUrl?: string;
+  baseWeight?: string;
+  baseUnit?: string;
 }
 
 @Component({
@@ -86,10 +91,30 @@ export class ComboFormComponent implements OnInit {
 
   filterProducts(): void {
     const query = this.searchQuery.toLowerCase();
-    this.filteredProducts = this.shopProducts.filter(p =>
-      p.productName.toLowerCase().includes(query) ||
-      (p.productNameTamil && p.productNameTamil.toLowerCase().includes(query))
-    );
+    this.filteredProducts = this.shopProducts.filter(p => {
+      const name = this.getProductName(p).toLowerCase();
+      const nameTamil = this.getProductNameTamil(p)?.toLowerCase() || '';
+      return name.includes(query) || nameTamil.includes(query);
+    });
+  }
+
+  getProductName(product: ShopProduct): string {
+    return product.displayName || product.customName || product.masterProduct?.name || 'Unknown Product';
+  }
+
+  getProductNameTamil(product: ShopProduct): string | undefined {
+    return product.masterProduct?.nameTamil;
+  }
+
+  getProductImage(product: ShopProduct): string | undefined {
+    return product.primaryImageUrl;
+  }
+
+  getProductUnit(product: ShopProduct): string {
+    if (product.baseWeight && product.baseUnit) {
+      return `${product.baseWeight} ${product.baseUnit}`;
+    }
+    return '';
   }
 
   addProduct(product: ShopProduct): void {
@@ -104,12 +129,12 @@ export class ComboFormComponent implements OnInit {
 
     const itemGroup = this.fb.group({
       shopProductId: [product.id, Validators.required],
-      productName: [product.productName],
-      productNameTamil: [product.productNameTamil],
+      productName: [this.getProductName(product)],
+      productNameTamil: [this.getProductNameTamil(product)],
       quantity: [1, [Validators.required, Validators.min(1)]],
       unitPrice: [product.price],
-      imageUrl: [product.imageUrl],
-      unit: [product.unit]
+      imageUrl: [this.getProductImage(product)],
+      unit: [this.getProductUnit(product)]
     });
 
     this.itemsFormArray.push(itemGroup);

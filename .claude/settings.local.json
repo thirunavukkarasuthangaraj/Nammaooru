@@ -186,7 +186,9 @@
       "Bash(ssh:*)",
       "Bash(mvnw.cmd compile:*)",
       "Bash(cmd.exe /c \"mvnw.cmd compile -q\")",
-      "Bash(./mvnw compile:*)"
+      "Bash(./mvnw compile:*)",
+      "WebFetch(domain:api.nammaoorudelivery.in)",
+      "WebFetch(domain:api.nammaoorudelivary.in)"
     ],
     "deny": [],
     "ask": [],

@@ -47,13 +47,13 @@
           <div class="product-suggestions" *ngIf="searchQuery && filteredProducts.length > 0">
             <div class="suggestion-item" *ngFor="let product of filteredProducts | slice:0:5"
                  (click)="addProduct(product)">
-              <img *ngIf="product.imageUrl" [src]="product.imageUrl" class="product-thumb" alt="">
-              <div class="product-thumb-placeholder" *ngIf="!product.imageUrl">
+              <img *ngIf="getProductImage(product)" [src]="getProductImage(product)" class="product-thumb" alt="">
+              <div class="product-thumb-placeholder" *ngIf="!getProductImage(product)">
                 <mat-icon>inventory_2</mat-icon>
               </div>
               <div class="product-details">
-                <span class="name">{{ product.productName }}</span>
-                <span class="price">₹{{ product.price }}</span>
+                <span class="name">{{ getProductName(product) }}</span>
+                <span class="price">₹{{ product.price }} <small *ngIf="getProductUnit(product)">/ {{ getProductUnit(product) }}</small></span>
               </div>
               <mat-icon class="add-icon">add_circle</mat-icon>
             </div>
