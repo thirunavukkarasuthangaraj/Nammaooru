@@ -103,13 +103,13 @@
         </div>
         <div class="header-actions">
           <button class="header-btn print-header-btn" (click)="printOrder(order.id)" title="Print Large (A4)">
-            <span style="font-size: 12px;">Print</span>
+            Print
           </button>
           <button class="header-btn small-print-btn" (click)="printOrderSmall(order.id)" title="Print Small (Receipt/Thermal)">
-            <span style="font-size: 10px;">🧾</span>
+            Small
           </button>
           <button class="header-btn details-header-btn" (click)="viewOrderDetails(order)" title="View Details">
-            <span style="font-size: 12px;">View</span>
+            View
           </button>
           <!-- Delivery Type Badge -->
           <div *ngIf="order.deliveryType" class="delivery-type-badge"

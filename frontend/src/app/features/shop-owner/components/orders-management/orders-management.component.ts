@@ -725,12 +725,12 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     const itemsHtml = order.items.map(item => {
       const unitPrice = item.price || item.unitPrice || 0;
       const totalPrice = item.quantity * unitPrice;
-      const itemName = (item.name || item.productName || '').substring(0, 20);
+      const itemName = (item.name || item.productName || '').substring(0, 25);
       return `
         <tr>
-          <td style="font-size: 11px; padding: 3px 0;">${itemName}</td>
-          <td style="font-size: 11px; text-align: center; padding: 3px 0;">${item.quantity}</td>
-          <td style="font-size: 11px; text-align: right; padding: 3px 0;">₹${totalPrice}</td>
+          <td style="font-size: 14px; padding: 6px 0; font-weight: 500;">${itemName}</td>
+          <td style="font-size: 14px; text-align: center; padding: 6px 0; font-weight: 600;">${item.quantity}</td>
+          <td style="font-size: 14px; text-align: right; padding: 6px 0; font-weight: 600;">₹${totalPrice}</td>
         </tr>
       `;
     }).join('');
@@ -743,90 +743,147 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
       <html>
       <head>
         <meta charset="UTF-8">
-        <title>Receipt</title>
+        <title>Receipt - ${order.orderNumber}</title>
         <style>
           @page {
-            size: 58mm auto;
-            margin: 2mm;
+            size: 80mm auto;
+            margin: 3mm;
+          }
+          @media print {
+            body {
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
           }
           body {
-            font-family: 'Noto Sans Tamil', 'Latha', 'Tamil Sangam MN', 'Courier New', monospace;
-            font-size: 12px;
-            width: 54mm;
+            font-family: 'Noto Sans Tamil', 'Latha', 'Tamil Sangam MN', Arial, sans-serif;
+            font-size: 14px;
+            width: 76mm;
             margin: 0 auto;
-            padding: 2mm;
+            padding: 4mm;
+            line-height: 1.4;
           }
           .center { text-align: center; }
           .bold { font-weight: bold; }
           .divider {
-            border-top: 1px dashed #000;
-            margin: 5px 0;
+            border-top: 2px dashed #000;
+            margin: 10px 0;
+          }
+          .divider-solid {
+            border-top: 2px solid #000;
+            margin: 10px 0;
           }
           table { width: 100%; border-collapse: collapse; }
           .total-row {
             font-weight: bold;
-            font-size: 14px;
-            border-top: 1px solid #000;
-            padding-top: 5px;
+            font-size: 20px;
+            border-top: 2px solid #000;
+            padding-top: 10px;
+            margin-top: 10px;
           }
-          .small { font-size: 10px; }
           .shop-name {
             font-family: 'Noto Sans Tamil', 'Latha', 'Tamil Sangam MN', Arial, sans-serif;
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 5px;
+          }
+          .order-number {
+            font-size: 18px;
+            font-weight: 700;
+            background: #000;
+            color: #fff;
+            padding: 8px 12px;
+            display: inline-block;
+            border-radius: 4px;
+            margin: 8px 0;
+          }
+          .customer-name {
+            font-size: 16px;
+            font-weight: 700;
+          }
+          .customer-phone {
+            font-size: 14px;
+            color: #333;
+          }
+          .item-header th {
+            font-size: 13px;
+            padding: 8px 0;
+            border-bottom: 2px solid #000;
+            text-transform: uppercase;
+            font-weight: 700;
+          }
+          .payment-badge {
+            font-size: 14px;
+            font-weight: 700;
+            padding: 8px 16px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            display: inline-block;
+            margin: 8px 0;
+          }
+          .footer-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
           }
         </style>
       </head>
       <body>
-        <div class="center bold shop-name" style="font-size: 14px;">${shopName}</div>
-        <div class="center small">Order Receipt</div>
+        <div class="center shop-name">${shopName}</div>
+        <div class="center" style="font-size: 13px; color: #666;">Order Receipt</div>
         <div class="divider"></div>
 
-        <div style="font-size: 11px;">
-          <div class="bold">#${order.orderNumber}</div>
-          <div>${new Date(order.createdAt).toLocaleDateString()} ${new Date(order.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+        <div class="center">
+          <div class="order-number">#${order.orderNumber}</div>
+        </div>
+        <div style="font-size: 14px; text-align: center; margin-bottom: 8px;">
+          ${new Date(order.createdAt).toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: 'numeric'})} | ${new Date(order.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
         </div>
         <div class="divider"></div>
 
-        <div style="font-size: 11px;">
-          <div class="bold">${order.customerName}</div>
-          <div>${order.customerPhone || ''}</div>
+        <div style="margin-bottom: 8px;">
+          <div class="customer-name">${order.customerName}</div>
+          <div class="customer-phone">${order.customerPhone || ''}</div>
         </div>
         <div class="divider"></div>
 
         <table>
           <thead>
-            <tr style="font-size: 10px; border-bottom: 1px solid #000;">
-              <th style="text-align: left; padding: 2px 0;">Item</th>
-              <th style="text-align: center; padding: 2px 0;">Qty</th>
-              <th style="text-align: right; padding: 2px 0;">Amt</th>
+            <tr class="item-header">
+              <th style="text-align: left;">Item</th>
+              <th style="text-align: center;">Qty</th>
+              <th style="text-align: right;">Amount</th>
             </tr>
           </thead>
           <tbody>
             ${itemsHtml}
           </tbody>
         </table>
-        <div class="divider"></div>
+        <div class="divider-solid"></div>
 
         <table>
           <tr>
-            <td style="font-size: 11px;">Items: ${order.items?.length || 0}</td>
-            <td style="text-align: right; font-size: 11px;">Subtotal: ₹${order.totalAmount}</td>
+            <td style="font-size: 14px;">Total Items: <strong>${order.items?.length || 0}</strong></td>
+            <td style="text-align: right; font-size: 14px;">Subtotal: <strong>₹${order.totalAmount}</strong></td>
           </tr>
         </table>
 
-        <div class="total-row" style="display: flex; justify-content: space-between; margin-top: 5px;">
+        <div class="total-row" style="display: flex; justify-content: space-between; align-items: center;">
           <span>TOTAL</span>
-          <span>₹${order.totalAmount}</span>
+          <span style="font-size: 24px;">₹${order.totalAmount}</span>
         </div>
 
         <div class="divider"></div>
-        <div class="center small">
-          ${order.paymentMethod === 'CASH_ON_DELIVERY' ? 'CASH ON DELIVERY' : 'PAID ONLINE'}
+        <div class="center">
+          <span class="payment-badge">
+            ${order.paymentMethod === 'CASH_ON_DELIVERY' ? '💵 CASH ON DELIVERY' : '✓ PAID ONLINE'}
+          </span>
         </div>
         <div class="divider"></div>
 
-        <div class="center small" style="margin-top: 5px;">
-          Thank you!<br>
-          ${new Date().toLocaleString()}
+        <div class="center footer-text">
+          Thank you for your order!<br>
+          Printed: ${new Date().toLocaleString('en-IN')}
         </div>
       </body>
       </html>

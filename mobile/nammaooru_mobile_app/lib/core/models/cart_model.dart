@@ -2,6 +2,7 @@ class CartItem {
   final String id;
   final String productId;
   final String productName;
+  final String? productNameTamil;
   final String productImage;
   final double price;
   final int quantity;
@@ -13,6 +14,7 @@ class CartItem {
     required this.id,
     required this.productId,
     required this.productName,
+    this.productNameTamil,
     required this.productImage,
     required this.price,
     required this.quantity,
@@ -26,6 +28,7 @@ class CartItem {
       id: json['id']?.toString() ?? '',
       productId: json['productId']?.toString() ?? '',
       productName: json['productName'] ?? '',
+      productNameTamil: json['productNameTamil'],
       productImage: json['productImage'] ?? '',
       price: (json['price'] ?? 0).toDouble(),
       quantity: json['quantity'] ?? 0,
@@ -40,6 +43,7 @@ class CartItem {
       'id': id,
       'productId': productId,
       'productName': productName,
+      'productNameTamil': productNameTamil,
       'productImage': productImage,
       'price': price,
       'quantity': quantity,
@@ -53,6 +57,7 @@ class CartItem {
     String? id,
     String? productId,
     String? productName,
+    String? productNameTamil,
     String? productImage,
     double? price,
     int? quantity,
@@ -64,6 +69,7 @@ class CartItem {
       id: id ?? this.id,
       productId: productId ?? this.productId,
       productName: productName ?? this.productName,
+      productNameTamil: productNameTamil ?? this.productNameTamil,
       productImage: productImage ?? this.productImage,
       price: price ?? this.price,
       quantity: quantity ?? this.quantity,

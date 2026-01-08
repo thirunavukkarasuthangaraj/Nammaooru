@@ -9,16 +9,22 @@ import { of } from 'rxjs';
 
 interface ShopProduct {
   id: number;
+  name?: string;
   displayName?: string;
   customName?: string;
+  productName?: string;
   masterProduct?: {
     name: string;
     nameTamil?: string;
   };
   price: number;
+  sellingPrice?: number;
   primaryImageUrl?: string;
+  imageUrl?: string;
   baseWeight?: string;
   baseUnit?: string;
+  unit?: string;
+  weight?: string;
 }
 
 @Component({
@@ -75,11 +81,20 @@ export class ComboFormComponent implements OnInit {
   }
 
   loadProducts(): void {
+    if (!this.data.shopId) {
+      this.showSnackBar('Shop ID not found. Please try again.', 'error');
+      return;
+    }
+
     this.isLoading = true;
-    this.http.get<any>(`${environment.apiUrl}/shops/${this.data.shopId}/products`).subscribe({
+    // Load all products once - search will filter locally
+    const url = `${environment.apiUrl}/shops/${this.data.shopId}/products?page=0&size=500`;
+
+    this.http.get<any>(url).subscribe({
       next: (response) => {
         this.shopProducts = response.data?.content || response.content || response.data || response || [];
-        this.filteredProducts = [...this.shopProducts];
+        // Keep dropdown closed by default - user can click toggle or type to search
+        this.filteredProducts = [];
         this.isLoading = false;
       },
       error: () => {
@@ -89,8 +104,39 @@ export class ComboFormComponent implements OnInit {
     });
   }
 
+  showProducts(): void {
+    // Only show dropdown if there's a search query or user explicitly clicks to browse
+    // For edit mode, don't auto-show to avoid covering existing items
+    if (!this.isEditMode || this.searchQuery.trim()) {
+      if (this.filteredProducts.length === 0 && this.shopProducts.length > 0) {
+        this.filteredProducts = [...this.shopProducts];
+      }
+    }
+  }
+
+  hideDropdown(): void {
+    // Small delay to allow click events to register before hiding
+    setTimeout(() => {
+      this.filteredProducts = [];
+    }, 200);
+  }
+
+  toggleProductDropdown(): void {
+    if (this.filteredProducts.length > 0) {
+      this.filteredProducts = [];
+    } else {
+      this.filteredProducts = [...this.shopProducts];
+    }
+  }
+
   filterProducts(): void {
-    const query = this.searchQuery.toLowerCase();
+    const query = this.searchQuery.toLowerCase().trim();
+    if (!query) {
+      // Keep dropdown closed when search is cleared
+      this.filteredProducts = [];
+      return;
+    }
+    // Show filtered products when user types
     this.filteredProducts = this.shopProducts.filter(p => {
       const name = this.getProductName(p).toLowerCase();
       const nameTamil = this.getProductNameTamil(p)?.toLowerCase() || '';
@@ -99,7 +145,7 @@ export class ComboFormComponent implements OnInit {
   }
 
   getProductName(product: ShopProduct): string {
-    return product.displayName || product.customName || product.masterProduct?.name || 'Unknown Product';
+    return product.name || product.displayName || product.customName || product.productName || product.masterProduct?.name || 'Unknown Product';
   }
 
   getProductNameTamil(product: ShopProduct): string | undefined {
@@ -107,12 +153,26 @@ export class ComboFormComponent implements OnInit {
   }
 
   getProductImage(product: ShopProduct): string | undefined {
-    return product.primaryImageUrl;
+    const imageUrl = product.primaryImageUrl || product.imageUrl;
+    if (!imageUrl) return undefined;
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      return imageUrl;
+    }
+    // Prepend base URL for relative paths
+    const cleanPath = imageUrl.startsWith('/') ? imageUrl : '/' + imageUrl;
+    return `${environment.imageBaseUrl}${cleanPath}`;
+  }
+
+  getProductPrice(product: ShopProduct): number {
+    return product.sellingPrice || product.price || 0;
   }
 
   getProductUnit(product: ShopProduct): string {
     if (product.baseWeight && product.baseUnit) {
       return `${product.baseWeight} ${product.baseUnit}`;
+    }
+    if (product.weight && product.unit) {
+      return `${product.weight} ${product.unit}`;
     }
     return '';
   }
@@ -132,7 +192,7 @@ export class ComboFormComponent implements OnInit {
       productName: [this.getProductName(product)],
       productNameTamil: [this.getProductNameTamil(product)],
       quantity: [1, [Validators.required, Validators.min(1)]],
-      unitPrice: [product.price],
+      unitPrice: [this.getProductPrice(product)],
       imageUrl: [this.getProductImage(product)],
       unit: [this.getProductUnit(product)]
     });
@@ -140,7 +200,8 @@ export class ComboFormComponent implements OnInit {
     this.itemsFormArray.push(itemGroup);
     this.calculateOriginalPrice();
     this.searchQuery = '';
-    this.filterProducts();
+    this.filteredProducts = []; // Hide dropdown after adding
+    this.showSnackBar(`${this.getProductName(product)} added`, 'success');
   }
 
   removeProduct(index: number): void {
@@ -194,18 +255,29 @@ export class ComboFormComponent implements OnInit {
     // Add existing items
     if (combo.items && combo.items.length > 0) {
       combo.items.forEach((item: any) => {
+        // Convert relative image URL to full URL
+        const imageUrl = this.getFullImageUrl(item.imageUrl);
         const itemGroup = this.fb.group({
           shopProductId: [item.shopProductId, Validators.required],
           productName: [item.productName],
           productNameTamil: [item.productNameTamil],
           quantity: [item.quantity, [Validators.required, Validators.min(1)]],
           unitPrice: [item.unitPrice],
-          imageUrl: [item.imageUrl],
+          imageUrl: [imageUrl],
           unit: [item.unit]
         });
         this.itemsFormArray.push(itemGroup);
       });
     }
+  }
+
+  getFullImageUrl(imageUrl: string | undefined): string | undefined {
+    if (!imageUrl) return undefined;
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      return imageUrl;
+    }
+    const cleanPath = imageUrl.startsWith('/') ? imageUrl : '/' + imageUrl;
+    return `${environment.imageBaseUrl}${cleanPath}`;
   }
 
   onSubmit(): void {

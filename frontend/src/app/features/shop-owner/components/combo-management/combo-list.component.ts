@@ -25,7 +25,8 @@ interface Combo {
   discountPercentage: number;
   startDate: string;
   endDate: string;
-  active: boolean;
+  active?: boolean;
+  isActive?: boolean;
   bannerImageUrl?: string;
   items: ComboItem[];
   itemCount: number;
@@ -77,11 +78,11 @@ export class ComboListComponent implements OnInit {
     this.isLoading = true;
     this.http.get<any>(`${environment.apiUrl}/shops/${this.shopId}/combos`).subscribe({
       next: (response) => {
-        this.combos = response.data || response || [];
+        // API returns paginated response: { data: { content: [...] } }
+        this.combos = response.data?.content || response.data || response.content || response || [];
         this.isLoading = false;
       },
-      error: (error) => {
-        console.error('Error loading combos:', error);
+      error: () => {
         this.isLoading = false;
         this.showSnackBar('Failed to load combos', 'error');
       }
@@ -89,6 +90,10 @@ export class ComboListComponent implements OnInit {
   }
 
   openCreateDialog(): void {
+    if (!this.shopId) {
+      this.showSnackBar('Shop ID not loaded. Please refresh the page.', 'error');
+      return;
+    }
     const dialogRef = this.dialog.open(ComboFormComponent, {
       width: '800px',
       maxHeight: '90vh',
@@ -103,30 +108,44 @@ export class ComboListComponent implements OnInit {
   }
 
   openEditDialog(combo: Combo): void {
-    const dialogRef = this.dialog.open(ComboFormComponent, {
-      width: '800px',
-      maxHeight: '90vh',
-      data: { mode: 'edit', combo, shopId: this.shopId }
-    });
+    // Fetch full combo details with items before opening edit dialog
+    this.http.get<any>(`${environment.apiUrl}/shops/${this.shopId}/combos/${combo.id}`).subscribe({
+      next: (response) => {
+        const fullCombo = response.data || response;
+        const dialogRef = this.dialog.open(ComboFormComponent, {
+          width: '800px',
+          maxHeight: '90vh',
+          data: { mode: 'edit', combo: fullCombo, shopId: this.shopId }
+        });
 
-    dialogRef.afterClosed().subscribe(result => {
-      if (result) {
-        this.loadCombos();
+        dialogRef.afterClosed().subscribe(result => {
+          if (result) {
+            this.loadCombos();
+          }
+        });
+      },
+      error: () => {
+        this.showSnackBar('Failed to load combo details', 'error');
       }
     });
+  }
+
+  isComboActive(combo: Combo): boolean {
+    return combo.isActive ?? combo.active ?? false;
   }
 
   toggleStatus(combo: Combo): void {
     if (!this.shopId) return;
 
-    const endpoint = combo.active
-      ? `${environment.apiUrl}/shops/${this.shopId}/combos/${combo.id}/deactivate`
-      : `${environment.apiUrl}/shops/${this.shopId}/combos/${combo.id}/activate`;
+    const isCurrentlyActive = this.isComboActive(combo);
+    const endpoint = `${environment.apiUrl}/shops/${this.shopId}/combos/${combo.id}/toggle-status`;
 
     this.http.patch<any>(endpoint, {}).subscribe({
-      next: () => {
-        combo.active = !combo.active;
-        this.showSnackBar(`Combo ${combo.active ? 'activated' : 'deactivated'}`, 'success');
+      next: (response) => {
+        const updatedCombo = response.data;
+        combo.isActive = updatedCombo?.isActive ?? !isCurrentlyActive;
+        combo.active = combo.isActive;
+        this.showSnackBar(`Combo ${combo.isActive ? 'activated' : 'deactivated'}`, 'success');
       },
       error: () => {
         this.showSnackBar('Failed to update combo status', 'error');
@@ -158,14 +177,14 @@ export class ComboListComponent implements OnInit {
   }
 
   getStatusClass(combo: Combo): string {
-    if (!combo.active) return 'status-inactive';
+    if (!this.isComboActive(combo)) return 'status-inactive';
     if (this.isExpired(combo)) return 'status-expired';
     if (this.isUpcoming(combo)) return 'status-upcoming';
     return 'status-active';
   }
 
   getStatusText(combo: Combo): string {
-    if (!combo.active) return 'Inactive';
+    if (!this.isComboActive(combo)) return 'Inactive';
     if (this.isExpired(combo)) return 'Expired';
     if (this.isUpcoming(combo)) return 'Upcoming';
     return 'Active';

@@ -230,6 +230,16 @@ class _CartScreenState extends State<CartScreen> {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
+                if (item.product.nameTamil != null && item.product.nameTamil!.isNotEmpty)
+                  Text(
+                    item.product.nameTamil!,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[700],
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 const SizedBox(height: 4),
                 Row(
                   children: [

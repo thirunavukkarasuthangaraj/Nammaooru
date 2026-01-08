@@ -34,20 +34,21 @@ public class FileUploadService {
 
     public String uploadFile(MultipartFile file, String category) throws IOException {
         validateFile(file);
-        
+
         String fileName = generateFileName(file);
         String categoryPath = category != null ? category + "/" : "";
         Path uploadDir = Paths.get(uploadPath, categoryPath);
-        
+
         // Create directories if they don't exist
         Files.createDirectories(uploadDir);
-        
+
         Path filePath = uploadDir.resolve(fileName);
         Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-        
-        String fileUrl = "/" + categoryPath + fileName;
+
+        // Include /uploads prefix for proper serving
+        String fileUrl = "/uploads/" + categoryPath + fileName;
         log.info("File uploaded successfully: {}", fileUrl);
-        
+
         return fileUrl;
     }
 

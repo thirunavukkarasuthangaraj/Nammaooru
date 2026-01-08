@@ -67,7 +67,8 @@ class _PromoCardBannerState extends State<PromoCardBanner> {
     final promo = widget.promoCode ?? _promoCode;
     final displayTitle = widget.title ?? promo?.title ?? 'Special Offer';
     final displaySubtitle = widget.subtitle ?? promo?.formattedDiscount ?? 'Limited Time';
-    final displayDescription = widget.description ?? promo?.description ?? promo?.formattedMinOrder ?? '';
+    final displayDescription = widget.description ?? promo?.description ?? '';
+    final shopName = promo?.shopName ?? 'Platform Offer';
 
     return GestureDetector(
       onTap: widget.onTap,
@@ -109,10 +110,10 @@ class _PromoCardBannerState extends State<PromoCardBanner> {
                   // Icon (optional)
                   if (widget.icon != null)
                     Padding(
-                      padding: const EdgeInsets.only(right: 20.0),
+                      padding: const EdgeInsets.only(right: 16.0),
                       child: Icon(
                         widget.icon,
-                        size: 48,
+                        size: 40,
                         color: widget.textColor,
                       ),
                     ),
@@ -123,21 +124,47 @@ class _PromoCardBannerState extends State<PromoCardBanner> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        // Shop Name with store icon
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.store,
+                              size: 14,
+                              color: widget.textColor.withOpacity(0.9),
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                shopName,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: widget.textColor.withOpacity(0.95),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        // Title
                         Text(
                           displayTitle,
                           style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: widget.textColor.withOpacity(0.95),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: widget.textColor.withOpacity(0.85),
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
+                        // Discount amount - prominent
                         Text(
                           displaySubtitle,
                           style: TextStyle(
-                            fontSize: 24,
+                            fontSize: 22,
                             fontWeight: FontWeight.w900,
                             color: widget.textColor,
                             letterSpacing: 0.5,
@@ -146,27 +173,47 @@ class _PromoCardBannerState extends State<PromoCardBanner> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
+                        // Description/Min order
                         if (displayDescription.isNotEmpty)
                           Text(
                             displayDescription,
                             style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: widget.textColor.withOpacity(0.9),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: widget.textColor.withOpacity(0.85),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                        // Show promo code if available
+                        // Min order if description is empty
+                        if (displayDescription.isEmpty && promo?.formattedMinOrder != null)
+                          Text(
+                            promo!.formattedMinOrder,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: widget.textColor.withOpacity(0.85),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        // Show promo code with copy hint
                         if (promo != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 4.0),
-                            child: Text(
-                              'Code: ${promo.code}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w900,
-                                color: widget.textColor,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                'Code: ${promo.code}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                  color: widget.textColor,
+                                ),
                               ),
                             ),
                           ),
@@ -177,17 +224,17 @@ class _PromoCardBannerState extends State<PromoCardBanner> {
                   if (widget.badgeText != null || promo?.isFirstTimeOnly == true)
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
+                        horizontal: 10,
+                        vertical: 4,
                       ),
                       decoration: BoxDecoration(
                         color: widget.badgeColor ?? Colors.white,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
-                        widget.badgeText ?? 'FIRST TIME',
+                        widget.badgeText ?? 'NEW USER',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 10,
                           fontWeight: FontWeight.bold,
                           color: widget.backgroundColor,
                         ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../../core/services/promo_code_service.dart';
+import '../../features/customer/screens/shop_details_screen.dart';
 import 'promo_card_banner.dart';
 
 class PlatformPromosCarousel extends StatefulWidget {
@@ -71,6 +72,42 @@ class _PlatformPromosCarouselState extends State<PlatformPromosCarousel> {
     return colors[index % colors.length];
   }
 
+  void _navigateToShop(PromoCode promo) {
+    // If promo has shopId, navigate to that shop
+    if (promo.shopId != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ShopDetailsScreen(
+            shopId: promo.shopId!,
+            shop: null, // Will load shop details from API
+          ),
+        ),
+      );
+    } else {
+      // Platform offer - show a snackbar message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.info_outline, color: Colors.white),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'This is a platform-wide offer. Use code "${promo.code}" at any shop!',
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.green[700],
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<PromoCode>>(
@@ -97,7 +134,7 @@ class _PlatformPromosCarouselState extends State<PlatformPromosCarousel> {
             promoCode: promos[0],
             backgroundColor: _getColorForPromo(0),
             icon: Icons.local_offer,
-            onTap: widget.onPromoTap,
+            onTap: () => _navigateToShop(promos[0]),
           );
         }
 
@@ -124,7 +161,7 @@ class _PlatformPromosCarouselState extends State<PlatformPromosCarousel> {
                   promoCode: promos[index],
                   backgroundColor: _getColorForPromo(index),
                   icon: Icons.local_offer,
-                  onTap: widget.onPromoTap,
+                  onTap: () => _navigateToShop(promos[index]),
                 ),
               );
             },

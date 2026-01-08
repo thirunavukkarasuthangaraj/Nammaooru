@@ -81,184 +81,192 @@ class ComboBannerWidget extends StatelessWidget {
     return GestureDetector(
       onTap: () => onComboTapped(combo),
       child: Container(
-        width: 280,
-        margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        width: 300,
+        margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            colors: [
-              Colors.orange[700]!,
-              Colors.red[600]!,
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+          color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.red.withOpacity(0.3),
-              blurRadius: 8,
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
               offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: Stack(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Background Pattern
-            Positioned(
-              right: -20,
-              top: -20,
-              child: Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
-                  shape: BoxShape.circle,
+            // Top section with gradient
+            Container(
+              height: 70,
+              decoration: BoxDecoration(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                gradient: LinearGradient(
+                  colors: [const Color(0xFF2E7D32), const Color(0xFF4CAF50)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
               ),
-            ),
-            Positioned(
-              right: 20,
-              bottom: -30,
-              child: Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-
-            // Content
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Stack(
                 children: [
-                  // Title Row
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          combo.name,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                  // Decorative circles (subtle)
+                  Positioned(
+                    right: -15,
+                    top: -15,
+                    child: Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        shape: BoxShape.circle,
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '${combo.discountPercentage.toStringAsFixed(0)}% OFF',
-                          style: TextStyle(
-                            color: Colors.red[700],
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-
-                  // Tamil Name
-                  if (combo.nameTamil != null)
-                    Text(
-                      combo.nameTamil!,
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
-                        fontSize: 14,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
-
-                  const Spacer(),
-
-                  // Items Count
-                  Row(
-                    children: [
-                      Icon(Icons.inventory_2,
-                          color: Colors.white.withOpacity(0.9), size: 16),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${combo.itemCount} items included',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
                   ),
-                  const SizedBox(height: 8),
-
-                  // Price Row
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        '₹${combo.comboPrice.toStringAsFixed(0)}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Text(
-                          '₹${combo.originalPrice.toStringAsFixed(0)}',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.7),
-                            fontSize: 16,
-                            decoration: TextDecoration.lineThrough,
-                          ),
-                        ),
-                      ),
-                      const Spacer(),
-                      if (daysLeft >= 0 && daysLeft <= 7)
+                  // Content
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        // Combo icon
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(8),
                           ),
+                          child: const Icon(Icons.card_giftcard, color: Colors.white, size: 20),
+                        ),
+                        const SizedBox(width: 10),
+                        // Title
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                combo.name,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (combo.nameTamil != null)
+                                Text(
+                                  combo.nameTamil!,
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.9),
+                                    fontSize: 12,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                            ],
+                          ),
+                        ),
+                        // Discount badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.orange[600],
+                            borderRadius: BorderRadius.circular(20),
+                          ),
                           child: Text(
-                            daysLeft == 0
-                                ? 'Ends today!'
-                                : '$daysLeft days left',
+                            '${combo.discountPercentage.toStringAsFixed(0)}% OFF',
                             style: const TextStyle(
                               color: Colors.white,
+                              fontWeight: FontWeight.bold,
                               fontSize: 11,
-                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
 
-            // Tap indicator
-            Positioned(
-              right: 8,
-              top: 8,
-              child: Icon(
-                Icons.touch_app,
-                color: Colors.white.withOpacity(0.5),
-                size: 20,
+            // Bottom section with price
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Items count
+                    Row(
+                      children: [
+                        Icon(Icons.shopping_basket, color: Colors.grey[600], size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${combo.itemCount} items included',
+                          style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                        ),
+                        const Spacer(),
+                        if (daysLeft >= 0 && daysLeft <= 7)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.red[50],
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              daysLeft == 0 ? '⏰ Ends today!' : '⏰ $daysLeft days left',
+                              style: TextStyle(color: Colors.red[700], fontSize: 10, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                      ],
+                    ),
+
+                    // Price row
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '₹${combo.comboPrice.toStringAsFixed(0)}',
+                          style: const TextStyle(
+                            color: Color(0xFF2E7D32),
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 3),
+                          child: Text(
+                            '₹${combo.originalPrice.toStringAsFixed(0)}',
+                            style: TextStyle(
+                              color: Colors.grey[500],
+                              fontSize: 14,
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
+                        ),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2E7D32),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text('View', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                              SizedBox(width: 4),
+                              Icon(Icons.arrow_forward_ios, color: Colors.white, size: 10),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -584,10 +592,15 @@ class ComboDetailBottomSheet extends StatelessWidget {
                   item.productName,
                   style: const TextStyle(fontWeight: FontWeight.w500),
                 ),
+                if (item.productNameTamil != null && item.productNameTamil!.isNotEmpty)
+                  Text(
+                    item.productNameTamil!,
+                    style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                  ),
                 if (item.unit != null)
                   Text(
                     item.unit!,
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    style: TextStyle(fontSize: 11, color: Colors.grey[500]),
                   ),
               ],
             ),

@@ -2,6 +2,7 @@ package com.shopmanagement.repository;
 
 import com.shopmanagement.entity.ComboItem;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -15,7 +16,9 @@ public interface ComboItemRepository extends JpaRepository<ComboItem, Long> {
     List<ComboItem> findByComboIdOrderByDisplayOrderAsc(Long comboId);
 
     // Delete all items for a combo
-    void deleteByComboId(Long comboId);
+    @Modifying
+    @Query("DELETE FROM ComboItem ci WHERE ci.combo.id = :comboId")
+    void deleteByComboId(@Param("comboId") Long comboId);
 
     // Check if a product is in any active combo
     @Query("SELECT CASE WHEN COUNT(ci) > 0 THEN true ELSE false END FROM ComboItem ci " +

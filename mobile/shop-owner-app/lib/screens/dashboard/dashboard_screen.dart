@@ -83,13 +83,20 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
       }
 
       final myShopData = jsonDecode(myShopResponse.body);
+      print('My shop API response: $myShopData');
       if (myShopData['statusCode'] != '0000' || myShopData['data'] == null) {
+        print('My shop API failed or no data');
         _setMockData();
         return;
       }
 
-      final shopId = myShopData['data']['shopId'];
+      // Try 'id' first (numeric), then 'shopId' (might be string)
+      final shopData = myShopData['data'];
+      print('Shop data: $shopData');
+      final shopId = shopData['id'] ?? shopData['shopId'];
+      print('Raw shopId value: $shopId (type: ${shopId.runtimeType})');
       _shopId = shopId is int ? shopId : int.tryParse(shopId.toString());
+      print('Loaded shopId: $_shopId');
 
       final dashboardResponse = await http.get(
         Uri.parse('${AppConfig.apiBaseUrl}/shops/$shopId/dashboard'),
@@ -200,7 +207,7 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                     slivers: [
                       // Header
                       SliverAppBar(
-                        expandedHeight: 160,
+                        expandedHeight: 100,
                         floating: false,
                         pinned: true,
                         backgroundColor: const Color(0xFF2E7D32),

@@ -120,6 +120,7 @@ public class ShopOwnerPromotionController {
                 .shopId(shop.getId())  // Set shop ID so promo is shop-specific
                 .createdBy(username)
                 .usedCount(0)
+                .imageUrl(request.getImageUrl())
                 .build();
 
         Promotion savedPromotion = promotionRepository.save(promotion);
@@ -174,6 +175,7 @@ public class ShopOwnerPromotionController {
         promotion.setUsageLimit(request.getUsageLimit());
         promotion.setUsageLimitPerCustomer(request.getUsageLimitPerCustomer());
         promotion.setIsFirstTimeOnly(request.isFirstTimeOnly());
+        promotion.setImageUrl(request.getImageUrl());
         promotion.setUpdatedBy(username);
 
         Promotion updatedPromotion = promotionRepository.save(promotion);
@@ -387,5 +389,7 @@ public class ShopOwnerPromotionController {
         private Integer usageLimitPerCustomer;
 
         private boolean firstTimeOnly = false;
+
+        private String imageUrl;
     }
 }

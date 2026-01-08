@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/combo_model.dart';
 import '../../services/combo_service.dart';
 import '../../utils/app_config.dart';
@@ -173,9 +174,13 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(isEditMode ? 'Edit Combo' : 'Create Combo'),
+        title: Text(
+          isEditMode ? 'Edit Combo' : 'Create Combo',
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+        ),
         backgroundColor: const Color(0xFF2E7D32),
         foregroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -289,6 +294,10 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
     );
   }
 
+  // Search controller for products
+  final _productSearchController = TextEditingController();
+  String _productSearchQuery = '';
+
   Widget _buildProductSelectionStep() {
     if (_isLoadingProducts) {
       return const Center(
@@ -308,6 +317,23 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
       );
     }
 
+    // Filter available products (excluding selected)
+    final availableForSelection = _availableProducts.where((product) {
+      final productId = product['id'] as int;
+      final isAlreadySelected = _selectedItems.any((item) => item.shopProductId == productId);
+      if (isAlreadySelected) return false;
+
+      // Apply search filter
+      if (_productSearchQuery.isNotEmpty) {
+        final productName = (product['displayName'] ??
+            product['customName'] ??
+            product['masterProduct']?['name'] ??
+            'Product').toString().toLowerCase();
+        return productName.contains(_productSearchQuery.toLowerCase());
+      }
+      return true;
+    }).take(20).toList(); // Limit to 20 products for performance
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -323,22 +349,63 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
               children: [
                 const Icon(Icons.check_circle, color: Color(0xFF2E7D32)),
                 const SizedBox(width: 8),
-                Text(
-                  '${_selectedItems.length} items | Total: ₹${_originalPrice.toStringAsFixed(0)}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2E7D32),
+                Expanded(
+                  child: Text(
+                    '${_selectedItems.length} items | Total: ₹${_originalPrice.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2E7D32),
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+
+          // Selected Products - Compact list
+          const Text(
+            'Selected Products',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF2E7D32)),
+          ),
+          const SizedBox(height: 8),
+          ..._selectedItems.map((item) => _buildCompactSelectedItem(item)),
+          const Divider(thickness: 1, height: 24),
         ],
 
-        // Product List
-        ...List.generate(_availableProducts.length, (index) {
-          final product = _availableProducts[index];
+        // Search box for available products
+        TextField(
+          controller: _productSearchController,
+          decoration: InputDecoration(
+            hintText: 'Search products to add...',
+            prefixIcon: const Icon(Icons.search),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            isDense: true,
+            suffixIcon: _productSearchQuery.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () {
+                      setState(() {
+                        _productSearchController.clear();
+                        _productSearchQuery = '';
+                      });
+                    },
+                  )
+                : null,
+          ),
+          onChanged: (value) => setState(() => _productSearchQuery = value),
+        ),
+        const SizedBox(height: 8),
+
+        Text(
+          'Showing ${availableForSelection.length} products',
+          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+        ),
+        const SizedBox(height: 8),
+
+        // Available Product List - Limited height
+        ...availableForSelection.map((product) {
           final productId = product['id'] as int;
           final productName = product['displayName'] ??
               product['customName'] ??
@@ -351,107 +418,218 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
               ? '${product['baseWeight']} ${product['baseUnit']}'
               : '';
 
-          final selectedIndex = _selectedItems
-              .indexWhere((item) => item.shopProductId == productId);
-          final isSelected = selectedIndex >= 0;
-          final quantity =
-              isSelected ? _selectedItems[selectedIndex].quantity : 0;
-
           return Card(
-            margin: const EdgeInsets.only(bottom: 8),
+            margin: const EdgeInsets.only(bottom: 6),
             child: ListTile(
+              dense: true,
               leading: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: imageUrl != null
-                    ? Image.network(
-                        _getFullImageUrl(imageUrl),
-                        width: 50,
-                        height: 50,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) =>
-                            Container(
-                          width: 50,
-                          height: 50,
-                          color: Colors.grey[200],
-                          child: const Icon(Icons.image),
-                        ),
-                      )
-                    : Container(
-                        width: 50,
-                        height: 50,
-                        color: Colors.grey[200],
-                        child: const Icon(Icons.inventory_2),
-                      ),
+                borderRadius: BorderRadius.circular(6),
+                child: _buildProductImage(imageUrl, 40),
               ),
-              title: Text(
-                productName,
-                style: const TextStyle(fontWeight: FontWeight.w500),
+              title: Text(productName, style: const TextStyle(fontSize: 14)),
+              subtitle: Text('$unit • ₹${price.toStringAsFixed(0)}', style: const TextStyle(fontSize: 12)),
+              trailing: IconButton(
+                icon: const Icon(Icons.add_circle, color: Color(0xFF2E7D32), size: 28),
+                onPressed: () {
+                  setState(() {
+                    _selectedItems.add(ComboItem(
+                      shopProductId: productId,
+                      productName: productName,
+                      unitPrice: price,
+                      totalPrice: price,
+                      unit: unit,
+                      imageUrl: imageUrl,
+                      quantity: 1,
+                    ));
+                    _calculateOriginalPrice();
+                  });
+                },
               ),
-              subtitle: Text('$unit • ₹${price.toStringAsFixed(0)}'),
-              trailing: isSelected
-                  ? Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.remove_circle_outline),
-                          onPressed: () {
-                            if (quantity > 1) {
-                              setState(() {
-                                _selectedItems[selectedIndex] =
-                                    _selectedItems[selectedIndex]
-                                        .copyWith(quantity: quantity - 1);
-                                _calculateOriginalPrice();
-                              });
-                            } else {
-                              setState(() {
-                                _selectedItems.removeAt(selectedIndex);
-                                _calculateOriginalPrice();
-                              });
-                            }
-                          },
-                        ),
-                        Text(
-                          '$quantity',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.add_circle_outline),
-                          onPressed: () {
-                            setState(() {
-                              _selectedItems[selectedIndex] =
-                                  _selectedItems[selectedIndex]
-                                      .copyWith(quantity: quantity + 1);
-                              _calculateOriginalPrice();
-                            });
-                          },
-                        ),
-                      ],
-                    )
-                  : IconButton(
-                      icon: const Icon(Icons.add_circle,
-                          color: Color(0xFF2E7D32)),
-                      onPressed: () {
-                        setState(() {
-                          _selectedItems.add(ComboItem(
-                            shopProductId: productId,
-                            productName: productName,
-                            unitPrice: price,
-                            totalPrice: price,
-                            unit: unit,
-                            imageUrl: imageUrl,
-                            quantity: 1,
-                          ));
-                          _calculateOriginalPrice();
-                        });
-                      },
-                    ),
             ),
           );
         }),
       ],
+    );
+  }
+
+  Widget _buildCompactSelectedItem(ComboItem item) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2E7D32).withOpacity(0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFF2E7D32).withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          // Small image
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: _buildProductImage(item.imageUrl, 36),
+          ),
+          const SizedBox(width: 8),
+          // Product info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.productName,
+                  style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  '₹${item.unitPrice.toStringAsFixed(0)} × ${item.quantity}',
+                  style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          ),
+          // Price
+          Text(
+            '₹${(item.unitPrice * item.quantity).toStringAsFixed(0)}',
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF2E7D32)),
+          ),
+          const SizedBox(width: 4),
+          // Quantity controls
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey[300]!),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                InkWell(
+                  onTap: () {
+                    final index = _selectedItems.indexWhere((i) => i.shopProductId == item.shopProductId);
+                    if (index >= 0 && item.quantity > 1) {
+                      setState(() {
+                        _selectedItems[index] = item.copyWith(quantity: item.quantity - 1);
+                        _calculateOriginalPrice();
+                      });
+                    }
+                  },
+                  child: const Padding(padding: EdgeInsets.all(2), child: Icon(Icons.remove, size: 14)),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  color: const Color(0xFF2E7D32),
+                  child: Text('${item.quantity}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
+                ),
+                InkWell(
+                  onTap: () {
+                    final index = _selectedItems.indexWhere((i) => i.shopProductId == item.shopProductId);
+                    if (index >= 0) {
+                      setState(() {
+                        _selectedItems[index] = item.copyWith(quantity: item.quantity + 1);
+                        _calculateOriginalPrice();
+                      });
+                    }
+                  },
+                  child: const Padding(padding: EdgeInsets.all(2), child: Icon(Icons.add, size: 14, color: Color(0xFF2E7D32))),
+                ),
+              ],
+            ),
+          ),
+          // Delete button
+          InkWell(
+            onTap: () {
+              final index = _selectedItems.indexWhere((i) => i.shopProductId == item.shopProductId);
+              if (index >= 0) {
+                setState(() {
+                  _selectedItems.removeAt(index);
+                  _calculateOriginalPrice();
+                });
+              }
+            },
+            child: const Padding(padding: EdgeInsets.all(4), child: Icon(Icons.close, size: 16, color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSelectedProductCard(ComboItem item) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      color: const Color(0xFF2E7D32).withOpacity(0.05),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: const BorderSide(color: Color(0xFF2E7D32), width: 1),
+      ),
+      child: ListTile(
+        leading: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: _buildProductImage(item.imageUrl, 50),
+        ),
+        title: Text(
+          item.productName,
+          style: const TextStyle(fontWeight: FontWeight.w500),
+        ),
+        subtitle: Text('${item.unit ?? ''} • ₹${item.unitPrice.toStringAsFixed(0)} × ${item.quantity} = ₹${(item.unitPrice * item.quantity).toStringAsFixed(0)}'),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Decrease quantity
+            IconButton(
+              icon: const Icon(Icons.remove_circle_outline, size: 22),
+              onPressed: () {
+                final index = _selectedItems.indexWhere((i) => i.shopProductId == item.shopProductId);
+                if (index >= 0 && item.quantity > 1) {
+                  setState(() {
+                    _selectedItems[index] = item.copyWith(quantity: item.quantity - 1);
+                    _calculateOriginalPrice();
+                  });
+                }
+              },
+            ),
+            // Quantity badge
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2E7D32),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                '${item.quantity}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            // Increase quantity
+            IconButton(
+              icon: const Icon(Icons.add_circle_outline, color: Color(0xFF2E7D32), size: 22),
+              onPressed: () {
+                final index = _selectedItems.indexWhere((i) => i.shopProductId == item.shopProductId);
+                if (index >= 0) {
+                  setState(() {
+                    _selectedItems[index] = item.copyWith(quantity: item.quantity + 1);
+                    _calculateOriginalPrice();
+                  });
+                }
+              },
+            ),
+            // Delete button
+            IconButton(
+              icon: const Icon(Icons.close, color: Colors.red, size: 22),
+              onPressed: () {
+                final index = _selectedItems.indexWhere((i) => i.shopProductId == item.shopProductId);
+                if (index >= 0) {
+                  setState(() {
+                    _selectedItems.removeAt(index);
+                    _calculateOriginalPrice();
+                  });
+                }
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -616,6 +794,43 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
     return '${AppConfig.imageBaseUrl}$url';
   }
 
+  Widget _buildProductImage(String? imageUrl, double size) {
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return Container(
+        width: size,
+        height: size,
+        color: Colors.grey[200],
+        child: const Icon(Icons.inventory_2),
+      );
+    }
+    return CachedNetworkImage(
+      imageUrl: _getFullImageUrl(imageUrl),
+      width: size,
+      height: size,
+      fit: BoxFit.cover,
+      memCacheWidth: (size * 2).toInt(),
+      memCacheHeight: (size * 2).toInt(),
+      placeholder: (context, url) => Container(
+        width: size,
+        height: size,
+        color: Colors.grey[200],
+        child: const Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      ),
+      errorWidget: (context, url, error) => Container(
+        width: size,
+        height: size,
+        color: Colors.grey[200],
+        child: const Icon(Icons.image),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -623,6 +838,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
     _descriptionController.dispose();
     _comboPriceController.dispose();
     _maxQtyController.dispose();
+    _productSearchController.dispose();
     super.dispose();
   }
 }

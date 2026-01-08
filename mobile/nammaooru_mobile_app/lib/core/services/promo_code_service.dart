@@ -164,6 +164,9 @@ class PromoCode {
   final String? bannerUrl;
   final bool? isFirstTimeOnly;
   final String? termsAndConditions;
+  final int? shopId;
+  final String? shopName;
+  final String? shopBusinessType;
 
   PromoCode({
     required this.id,
@@ -181,6 +184,9 @@ class PromoCode {
     this.bannerUrl,
     this.isFirstTimeOnly,
     this.termsAndConditions,
+    this.shopId,
+    this.shopName,
+    this.shopBusinessType,
   });
 
   factory PromoCode.fromJson(Map<String, dynamic> json) {
@@ -189,7 +195,7 @@ class PromoCode {
       code: json['code'],
       title: json['title'],
       description: json['description'],
-      type: json['type'],
+      type: json['type']?.toString() ?? 'PERCENTAGE',
       discountValue: (json['discountValue'] ?? 0).toDouble(),
       minimumOrderAmount: json['minimumOrderAmount'] != null
           ? (json['minimumOrderAmount']).toDouble()
@@ -204,6 +210,9 @@ class PromoCode {
       bannerUrl: json['bannerUrl'],
       isFirstTimeOnly: json['isFirstTimeOnly'],
       termsAndConditions: json['termsAndConditions'],
+      shopId: json['shopId'],
+      shopName: json['shopName'],
+      shopBusinessType: json['shopBusinessType']?.toString(),
     );
   }
 

@@ -62,6 +62,10 @@ public class FileUploadConfig implements WebMvcConfigurer {
         registry.addResourceHandler("/uploads/products/**")
                 .addResourceLocations("file:" + imagePath + "/products/");
 
+        // Serve promotion banner images
+        registry.addResourceHandler("/uploads/promotions/**")
+                .addResourceLocations("file:" + imagePath + "/promotions/");
+
         // Serve delivery partner profile images (if needed in future)
         registry.addResourceHandler("/delivery-partners/**")
                 .addResourceLocations(

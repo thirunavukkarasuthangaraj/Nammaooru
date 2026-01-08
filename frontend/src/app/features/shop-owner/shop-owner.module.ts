@@ -58,6 +58,7 @@ import { ProductAssignmentDialogComponent } from './components/product-assignmen
 import { ComboListComponent } from './components/combo-management/combo-list.component';
 import { ComboFormComponent } from './components/combo-management/combo-form.component';
 import { ShopPromoListComponent } from './components/promo-codes/shop-promo-list.component';
+import { ShopPromoFormComponent } from './components/promo-codes/shop-promo-form.component';
 
 @NgModule({
   declarations: [
@@ -87,7 +88,8 @@ import { ShopPromoListComponent } from './components/promo-codes/shop-promo-list
     ProductAssignmentDialogComponent,
     ComboListComponent,
     ComboFormComponent,
-    ShopPromoListComponent
+    ShopPromoListComponent,
+    ShopPromoFormComponent
   ],
   imports: [
     CommonModule,

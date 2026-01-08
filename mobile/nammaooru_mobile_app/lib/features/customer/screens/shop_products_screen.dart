@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../../services/shop_api_service.dart';
@@ -282,7 +283,7 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
             children: [
               IconButton(
                 icon: const Icon(Icons.shopping_cart, color: Colors.white),
-                onPressed: () => Navigator.pushNamed(context, '/cart'),
+                onPressed: () => context.push('/customer/cart'),
               ),
               if (cartProvider.itemCount > 0)
                 Positioned(
@@ -824,7 +825,7 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
-                        Navigator.pushNamed(context, '/cart');
+                        context.push('/customer/cart');
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,

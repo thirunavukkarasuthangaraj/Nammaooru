@@ -5,7 +5,13 @@
         <mat-icon>local_offer</mat-icon>
         Promo Codes
       </h1>
-      <p class="subtitle">Active promotions for your shop</p>
+      <p class="subtitle">Create and manage promotions for your shop</p>
+    </div>
+    <div class="header-actions">
+      <button mat-raised-button color="primary" (click)="openCreateDialog()">
+        <mat-icon>add</mat-icon>
+        Create Promo
+      </button>
     </div>
   </div>
 
@@ -14,25 +20,38 @@
       <mat-spinner diameter="40"></mat-spinner>
     </div>
 
-    <div class="info-banner" *ngIf="!isLoading">
-      <mat-icon>info</mat-icon>
-      <span>Promo codes are managed by NammaOoru admin. Contact support to create shop-specific offers.</span>
-    </div>
-
     <div class="empty-state" *ngIf="!isLoading && promoCodes.length === 0">
       <mat-icon class="empty-icon">local_offer</mat-icon>
-      <h3>No Active Promos</h3>
-      <p>There are no promo codes currently active for your shop.</p>
+      <h3>No Promo Codes Yet</h3>
+      <p>Create your first promo code to attract more customers!</p>
+      <button mat-raised-button color="primary" (click)="openCreateDialog()">
+        <mat-icon>add</mat-icon>
+        Create Your First Promo
+      </button>
     </div>
 
     <div class="promo-grid" *ngIf="!isLoading && promoCodes.length > 0">
       <div class="promo-item" *ngFor="let promo of promoCodes" [ngClass]="getStatusClass(promo)">
         <!-- Banner Image -->
         <div class="promo-banner" *ngIf="promo.imageUrl">
-          <img [src]="promo.imageUrl" alt="Promo banner">
+          <img [src]="getImageUrl(promo.imageUrl)" alt="Promo banner">
         </div>
         <div class="promo-banner default-banner" *ngIf="!promo.imageUrl">
           <mat-icon>local_offer</mat-icon>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="promo-actions">
+          <button mat-icon-button matTooltip="Edit" (click)="openEditDialog(promo)">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button mat-icon-button [matTooltip]="promo.status === 'ACTIVE' ? 'Deactivate' : 'Activate'"
+                  (click)="toggleStatus(promo)" *ngIf="!isExpired(promo)">
+            <mat-icon>{{ promo.status === 'ACTIVE' ? 'pause' : 'play_arrow' }}</mat-icon>
+          </button>
+          <button mat-icon-button matTooltip="Delete" color="warn" (click)="deletePromo(promo)">
+            <mat-icon>delete</mat-icon>
+          </button>
         </div>
 
         <!-- Content -->
@@ -68,9 +87,6 @@
           <div class="promo-tags">
             <span class="tag" *ngIf="promo.firstTimeOnly">
               <mat-icon>person_add</mat-icon> First-time only
-            </span>
-            <span class="tag" *ngIf="promo.applicableToAllShops">
-              <mat-icon>store</mat-icon> All shops
             </span>
             <span class="tag" *ngIf="promo.maximumDiscountAmount">
               Max: ₹{{ promo.maximumDiscountAmount }}

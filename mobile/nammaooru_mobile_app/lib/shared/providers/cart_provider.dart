@@ -302,6 +302,7 @@ class CartProvider with ChangeNotifier {
           final product = ProductModel(
             id: backendItem.productId,
             name: backendItem.productName,
+            nameTamil: backendItem.productNameTamil,
             description: backendItem.productName, // Use name as description fallback
             price: backendItem.price,
             category: 'Unknown', // Backend doesn't provide category in cart

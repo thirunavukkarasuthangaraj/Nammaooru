@@ -4,6 +4,8 @@ import com.shopmanagement.entity.Promotion;
 import com.shopmanagement.entity.PromotionUsage;
 import com.shopmanagement.repository.PromotionRepository;
 import com.shopmanagement.service.PromotionService;
+import com.shopmanagement.shop.entity.Shop;
+import com.shopmanagement.shop.repository.ShopRepository;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +24,7 @@ import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/promotions")
@@ -31,6 +34,7 @@ public class PromotionController {
 
     private final PromotionRepository promotionRepository;
     private final PromotionService promotionService;
+    private final ShopRepository shopRepository;
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN') or hasRole('SHOP_OWNER')")
@@ -108,11 +112,47 @@ public class PromotionController {
 
         List<Promotion> promotions = promotionService.getActivePromotions(shopId, customerId, phone);
 
+        // Enrich promotions with shop name
+        List<Map<String, Object>> enrichedPromotions = promotions.stream()
+            .map(promo -> {
+                Map<String, Object> promoMap = new HashMap<>();
+                promoMap.put("id", promo.getId());
+                promoMap.put("code", promo.getCode());
+                promoMap.put("title", promo.getTitle());
+                promoMap.put("description", promo.getDescription());
+                promoMap.put("type", promo.getType());
+                promoMap.put("discountValue", promo.getDiscountValue());
+                promoMap.put("minimumOrderAmount", promo.getMinimumOrderAmount());
+                promoMap.put("maximumDiscountAmount", promo.getMaximumDiscountAmount());
+                promoMap.put("usageLimitPerCustomer", promo.getUsageLimitPerCustomer());
+                promoMap.put("startDate", promo.getStartDate());
+                promoMap.put("endDate", promo.getEndDate());
+                promoMap.put("imageUrl", promo.getImageUrl());
+                promoMap.put("bannerUrl", promo.getBannerUrl());
+                promoMap.put("isFirstTimeOnly", promo.getIsFirstTimeOnly());
+                promoMap.put("termsAndConditions", promo.getTermsAndConditions());
+                promoMap.put("shopId", promo.getShopId());
+
+                // Get shop name if shopId exists
+                if (promo.getShopId() != null) {
+                    shopRepository.findById(promo.getShopId())
+                        .ifPresent(shop -> {
+                            promoMap.put("shopName", shop.getName());
+                            promoMap.put("shopBusinessType", shop.getBusinessType());
+                        });
+                } else {
+                    promoMap.put("shopName", "Platform Offer");
+                }
+
+                return promoMap;
+            })
+            .collect(Collectors.toList());
+
         Map<String, Object> response = new HashMap<>();
         response.put("statusCode", "0000");
         response.put("message", "Active promotions retrieved successfully");
-        response.put("data", promotions);
-        response.put("count", promotions.size());
+        response.put("data", enrichedPromotions);
+        response.put("count", enrichedPromotions.size());
 
         return ResponseEntity.ok(response);
     }

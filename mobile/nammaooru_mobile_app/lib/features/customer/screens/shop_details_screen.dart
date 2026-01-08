@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../../services/shop_api_service.dart';
@@ -85,9 +86,10 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
   }
 
   void _startCouponAutoSlide() {
-    _couponAutoSlideTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      if (_couponPageController.hasClients && _promotions.isNotEmpty) {
-        final nextPage = (_currentCouponPage + 1) % _promotions.length;
+    _couponAutoSlideTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      final totalItems = _combos.length + _promotions.length;
+      if (_couponPageController.hasClients && totalItems > 0) {
+        final nextPage = (_currentCouponPage + 1) % totalItems;
         _couponPageController.animateToPage(
           nextPage,
           duration: const Duration(milliseconds: 400),
@@ -850,11 +852,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     return CustomScrollView(
       controller: _scrollController,
       slivers: [
-        // Shop banner and free delivery banner removed as per request
-        SliverToBoxAdapter(child: _buildCouponSection()),
-        // Combo Banner Section
-        if (_combos.isNotEmpty)
-          SliverToBoxAdapter(child: _buildComboSection()),
+        // Unified Offers Carousel (Combos + Promos together)
+        SliverToBoxAdapter(child: _buildUnifiedOffersCarousel()),
         SliverToBoxAdapter(child: _buildHorizontalCategories()),
         SliverToBoxAdapter(child: _buildSearchBar()),
         _buildProductGrid(),
@@ -1161,6 +1160,408 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     );
   }
 
+  Widget _buildUnifiedOffersCarousel() {
+    // Calculate total items: combos + promos
+    final totalItems = _combos.length + _promotions.length;
+
+    if (totalItems == 0) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.green[50],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.local_offer, color: Colors.green[700], size: 20),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Special Offers',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[800],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.green,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$totalItems',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Unified carousel
+        SizedBox(
+          height: 200,
+          child: PageView.builder(
+            controller: _couponPageController,
+            onPageChanged: (index) {
+              setState(() {
+                _currentCouponPage = index;
+              });
+            },
+            itemCount: totalItems,
+            itemBuilder: (context, index) {
+              // First show combos, then promos
+              if (index < _combos.length) {
+                return _buildComboCard(_combos[index]);
+              } else {
+                return _buildPromoCard(_promotions[index - _combos.length]);
+              }
+            },
+          ),
+        ),
+        // Page indicators
+        if (totalItems > 1)
+          Padding(
+            padding: const EdgeInsets.only(top: 8, bottom: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                totalItems,
+                (index) => Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: _currentCouponPage == index ? 16 : 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(3),
+                    color: _currentCouponPage == index
+                        ? Colors.green[700]
+                        : Colors.grey.withOpacity(0.3),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildComboCard(CustomerCombo combo) {
+    return GestureDetector(
+      onTap: () => _showComboDetail(combo),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top section with gradient
+            Container(
+              height: 60,
+              decoration: BoxDecoration(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                gradient: LinearGradient(
+                  colors: [const Color(0xFF2E7D32), const Color(0xFF4CAF50)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.card_giftcard, color: Colors.white, size: 18),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            combo.name,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (combo.nameTamil != null)
+                            Text(
+                              combo.nameTamil!,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.9),
+                                fontSize: 11,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.orange[600],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${combo.discountPercentage.toStringAsFixed(0)}% OFF',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Bottom section
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                '₹${combo.comboPrice.toStringAsFixed(0)}',
+                                style: const TextStyle(
+                                  color: Color(0xFF2E7D32),
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '₹${combo.originalPrice.toStringAsFixed(0)}',
+                                style: TextStyle(
+                                  color: Colors.grey[500],
+                                  fontSize: 13,
+                                  decoration: TextDecoration.lineThrough,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            '${combo.itemCount} items included',
+                            style: TextStyle(color: Colors.grey[600], fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2E7D32),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('View', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                          SizedBox(width: 4),
+                          Icon(Icons.arrow_forward_ios, color: Colors.white, size: 10),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPromoCard(PromoCode promo) {
+    final code = promo.code;
+    final discountType = promo.type;
+    final discountValue = promo.discountValue;
+    final minOrderAmount = promo.minimumOrderAmount ?? 0;
+
+    String offerText;
+    if (discountType == 'PERCENTAGE') {
+      offerText = '${discountValue.toStringAsFixed(0)}% OFF';
+    } else if (discountType == 'FIXED_AMOUNT') {
+      offerText = '₹${discountValue.toStringAsFixed(0)} OFF';
+    } else if (discountType == 'FREE_SHIPPING') {
+      offerText = 'Free Delivery';
+    } else {
+      offerText = promo.description ?? 'Special Offer';
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top section with gradient
+          Container(
+            height: 60,
+            decoration: BoxDecoration(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              gradient: LinearGradient(
+                colors: [Colors.orange[700]!, Colors.orange[500]!],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.local_offer, color: Colors.white, size: 18),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          code,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                        Text(
+                          offerText,
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.9),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Bottom section
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          offerText,
+                          style: TextStyle(
+                            color: Colors.orange[700],
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          minOrderAmount > 0
+                              ? 'Min. order ₹${minOrderAmount.toStringAsFixed(0)}'
+                              : 'No minimum order',
+                          style: TextStyle(color: Colors.grey[600], fontSize: 11),
+                        ),
+                      ],
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      Clipboard.setData(ClipboardData(text: code));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Code "$code" copied!'),
+                          backgroundColor: const Color(0xFF2E7D32),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.orange[700],
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.copy, color: Colors.white, size: 14),
+                          SizedBox(width: 6),
+                          Text('Copy Code', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildComboSection() {
     if (_combos.isEmpty) return const SizedBox.shrink();
 
@@ -1192,22 +1593,24 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
 
     // Add each item in the combo to cart
     for (final item in combo.items) {
-      // Create a product map for each combo item
-      final productData = {
-        'id': item.shopProductId,
-        'name': item.productName,
-        'nameTamil': item.productNameTamil,
-        'price': item.unitPrice,
-        'imageUrl': item.imageUrl,
-        'unit': item.unit,
-        'shopId': combo.shopId,
-        'shopName': combo.shopName,
-      };
+      // Create a ProductModel for each combo item
+      final product = ProductModel(
+        id: item.shopProductId.toString(),
+        name: item.productName,
+        nameTamil: item.productNameTamil,
+        description: '',
+        price: item.unitPrice,
+        images: item.imageUrl != null ? [item.imageUrl!] : [],
+        category: 'Combo Item',
+        shopId: combo.shopId.toString(),
+        shopName: combo.shopName ?? '',
+        stockQuantity: 999,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
 
       // Add to cart with the specified quantity
-      for (int i = 0; i < item.quantity; i++) {
-        cartProvider.addToCart(ProductModel.fromJson(productData), combo.shopId);
-      }
+      cartProvider.addToCart(product, quantity: item.quantity);
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -1218,10 +1621,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
           label: 'View Cart',
           textColor: Colors.white,
           onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const CartScreen()),
-            );
+            context.push('/customer/cart');
           },
         ),
       ),
@@ -1234,138 +1634,242 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       return const SizedBox.shrink();
     }
 
-    // Color palette for promotions
-    final colors = [
-      VillageTheme.primaryGreen,
-      Colors.orange,
-      Colors.blue,
-      Colors.purple,
-      Colors.teal,
-    ];
-
-    return Container(
-      height: 100,
-      margin: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 8),
-      child: Column(
-        children: [
-          Expanded(
-            child: PageView.builder(
-              controller: _couponPageController,
-              onPageChanged: (index) {
-                setState(() {
-                  _currentCouponPage = index;
-                });
-              },
-              itemCount: _promotions.length,
-              itemBuilder: (context, index) {
-                final promo = _promotions[index];
-                final cardColor = colors[index % colors.length];
-
-                // PromoCode is a class, access properties directly
-                final code = promo.code;
-                final discountType = promo.type;
-                final discountValue = promo.discountValue;
-                final minOrderAmount = promo.minimumOrderAmount ?? 0;
-
-                String offerText;
-                if (discountType == 'PERCENTAGE') {
-                  offerText = '${discountValue.toStringAsFixed(0)}% OFF';
-                } else if (discountType == 'FIXED_AMOUNT') {
-                  offerText = '₹${discountValue.toStringAsFixed(0)} OFF';
-                } else if (discountType == 'FREE_SHIPPING') {
-                  offerText = 'Free Delivery';
-                } else {
-                  offerText = promo.description ?? 'Special Offer';
-                }
-
-                if (minOrderAmount > 0) {
-                  offerText += ' above ₹${minOrderAmount.toStringAsFixed(0)}';
-                }
-
-                return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: cardColor,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: cardColor.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header matching combo section style
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.orange[50],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.local_offer, color: Colors.orange[700], size: 20),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Special Offers',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[800],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.orange,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '${_promotions.length}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
                   ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(
-                          Icons.local_offer,
-                          color: Colors.white,
-                          size: 22,
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Promo cards - PageView slider
+        SizedBox(
+          height: 160,
+          child: PageView.builder(
+            controller: _couponPageController,
+            onPageChanged: (index) {
+              setState(() {
+                _currentCouponPage = index;
+              });
+            },
+            itemCount: _promotions.length,
+            itemBuilder: (context, index) {
+              final promo = _promotions[index];
+
+              // PromoCode is a class, access properties directly
+              final code = promo.code;
+              final discountType = promo.type;
+              final discountValue = promo.discountValue;
+              final minOrderAmount = promo.minimumOrderAmount ?? 0;
+
+              String offerText;
+              if (discountType == 'PERCENTAGE') {
+                offerText = '${discountValue.toStringAsFixed(0)}% OFF';
+              } else if (discountType == 'FIXED_AMOUNT') {
+                offerText = '₹${discountValue.toStringAsFixed(0)} OFF';
+              } else if (discountType == 'FREE_SHIPPING') {
+                offerText = 'Free Delivery';
+              } else {
+                offerText = promo.description ?? 'Special Offer';
+              }
+
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Top section with gradient
+                    Container(
+                      height: 60,
+                      decoration: BoxDecoration(
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                        gradient: LinearGradient(
+                          colors: [Colors.orange[700]!, Colors.orange[500]!],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        child: Row(
                           children: [
-                            Text(
-                              code,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                                letterSpacing: 1,
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(8),
                               ),
+                              child: const Icon(Icons.local_offer, color: Colors.white, size: 18),
                             ),
-                            const SizedBox(height: 3),
-                            Text(
-                              offerText,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w500,
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    code,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1,
+                                    ),
+                                  ),
+                                  Text(
+                                    offerText,
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.9),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),
                       ),
-                    ],
-                  ),
-                );
-              },
-            ),
+                    ),
+
+                    // Bottom section
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        child: Row(
+                          children: [
+                            // Min order info
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    offerText,
+                                    style: TextStyle(
+                                      color: Colors.orange[700],
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    minOrderAmount > 0
+                                        ? 'Min. order ₹${minOrderAmount.toStringAsFixed(0)}'
+                                        : 'No minimum order',
+                                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // Copy Code button
+                            GestureDetector(
+                              onTap: () {
+                                // Copy code to clipboard
+                                Clipboard.setData(ClipboardData(text: code));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Code "$code" copied!'),
+                                    backgroundColor: const Color(0xFF2E7D32),
+                                    duration: const Duration(seconds: 2),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange[700],
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.copy, color: Colors.white, size: 14),
+                                    SizedBox(width: 6),
+                                    Text('Copy Code', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
-          const SizedBox(height: 8),
-          // Page indicators
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-              _promotions.length,
-              (index) => Container(
-                margin: const EdgeInsets.symmetric(horizontal: 3),
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _currentCouponPage == index
-                      ? VillageTheme.primaryGreen
-                      : Colors.grey.withOpacity(0.3),
+        ),
+        // Page indicators
+        if (_promotions.length > 1)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                _promotions.length,
+                (index) => Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: _currentCouponPage == index ? 16 : 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(3),
+                    color: _currentCouponPage == index
+                        ? Colors.orange[700]
+                        : Colors.grey.withOpacity(0.3),
+                  ),
                 ),
               ),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 

@@ -4,9 +4,10 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
 import { AuthService } from '../../../../core/services/auth.service';
+import { ShopPromoFormComponent } from './shop-promo-form.component';
 
-interface PromoCode {
-  id: number;
+export interface PromoCode {
+  id?: number;
   code: string;
   title: string;
   description?: string;
@@ -18,11 +19,12 @@ interface PromoCode {
   endDate: string;
   status: 'ACTIVE' | 'INACTIVE' | 'EXPIRED';
   usageLimit?: number;
-  usageCount: number;
+  usageCount?: number;
   usageLimitPerCustomer?: number;
   firstTimeOnly: boolean;
-  applicableToAllShops: boolean;
+  applicableToAllShops?: boolean;
   imageUrl?: string;
+  shopId?: number;
 }
 
 @Component({
@@ -34,12 +36,12 @@ export class ShopPromoListComponent implements OnInit {
   promoCodes: PromoCode[] = [];
   isLoading = false;
   shopId: number | null = null;
-  displayedColumns = ['code', 'discount', 'validity', 'usage', 'status'];
 
   constructor(
     private http: HttpClient,
     private authService: AuthService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private dialog: MatDialog
   ) {}
 
   ngOnInit(): void {
@@ -66,19 +68,74 @@ export class ShopPromoListComponent implements OnInit {
 
   loadPromoCodes(): void {
     this.isLoading = true;
-    // Get promo codes that apply to this shop (either shop-specific or all shops)
-    this.http.get<any>(`${environment.apiUrl}/promotions`, {
-      params: { shopId: this.shopId?.toString() || '' }
-    }).subscribe({
+    // Get promo codes for this shop owner
+    this.http.get<any>(`${environment.apiUrl}/shop-owner/promotions`).subscribe({
       next: (response) => {
-        this.promoCodes = response.content || response.data || response || [];
+        const data = response.data?.content || response.data || response.content || response || [];
+        this.promoCodes = Array.isArray(data) ? data : [];
         this.isLoading = false;
       },
       error: (error) => {
         console.error('Error loading promo codes:', error);
         this.isLoading = false;
-        // Don't show error - just show empty state
         this.promoCodes = [];
+      }
+    });
+  }
+
+  openCreateDialog(): void {
+    const dialogRef = this.dialog.open(ShopPromoFormComponent, {
+      width: '600px',
+      maxHeight: '90vh',
+      data: { mode: 'create', shopId: this.shopId }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.loadPromoCodes();
+      }
+    });
+  }
+
+  openEditDialog(promo: PromoCode): void {
+    const dialogRef = this.dialog.open(ShopPromoFormComponent, {
+      width: '600px',
+      maxHeight: '90vh',
+      data: { mode: 'edit', promo: promo, shopId: this.shopId }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.loadPromoCodes();
+      }
+    });
+  }
+
+  toggleStatus(promo: PromoCode): void {
+    const newStatus = promo.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+    this.http.patch<any>(`${environment.apiUrl}/shop-owner/promotions/${promo.id}/status?status=${newStatus}`, {}).subscribe({
+      next: () => {
+        promo.status = newStatus;
+        this.showSnackBar(`Promo code ${newStatus.toLowerCase()}`, 'success');
+      },
+      error: (error) => {
+        this.showSnackBar(error.error?.message || 'Failed to update status', 'error');
+      }
+    });
+  }
+
+  deletePromo(promo: PromoCode): void {
+    if (!confirm(`Are you sure you want to delete "${promo.title}"?`)) {
+      return;
+    }
+
+    this.http.delete(`${environment.apiUrl}/shop-owner/promotions/${promo.id}`).subscribe({
+      next: () => {
+        this.promoCodes = this.promoCodes.filter(p => p.id !== promo.id);
+        this.showSnackBar('Promo code deleted', 'success');
+      },
+      error: (error) => {
+        this.showSnackBar(error.error?.message || 'Failed to delete promo code', 'error');
       }
     });
   }
@@ -129,6 +186,16 @@ export class ShopPromoListComponent implements OnInit {
     navigator.clipboard.writeText(code).then(() => {
       this.showSnackBar('Code copied!', 'success');
     });
+  }
+
+  getImageUrl(imageUrl: string | undefined): string {
+    if (!imageUrl) return '';
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      return imageUrl;
+    }
+    // Prepend the imageBaseUrl for relative paths
+    const cleanPath = imageUrl.startsWith('/') ? imageUrl : '/' + imageUrl;
+    return `${environment.imageBaseUrl}${cleanPath}`;
   }
 
   private showSnackBar(message: string, type: 'success' | 'error'): void {

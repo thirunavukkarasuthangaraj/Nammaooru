@@ -322,18 +322,18 @@ $white: #ffffff;
   }
 
   .header-btn {
-    padding: 4px 8px;
+    padding: 6px 12px;
     border: 1px solid $border-color;
     border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    font-size: 11px;
+    font-size: 12px;
+    font-weight: 500;
     transition: all 0.2s ease;
     background: $white;
     color: $text-secondary;
-    min-width: 48px;
 
     &:hover {
       background: $primary-lighter;
@@ -342,18 +342,42 @@ $white: #ffffff;
     }
   }
 
+  .print-header-btn {
+    background: $accent-color;
+    color: white;
+    border-color: $accent-color;
+
+    &:hover {
+      background: darken($accent-color, 10%);
+      border-color: darken($accent-color, 10%);
+      color: white;
+    }
+  }
+
   .small-print-btn {
-    padding: 4px 6px;
-    border: 1px solid #f39c12;
+    padding: 6px 12px;
+    border: 2px solid #f39c12;
     border-radius: 4px;
     background: #fff8e1;
-    color: #f39c12;
-    min-width: 32px;
-    font-size: 14px;
+    color: #e67e22;
+    font-size: 12px;
+    font-weight: 600;
 
     &:hover {
       background: #f39c12;
       color: white;
+    }
+  }
+
+  .details-header-btn {
+    background: $primary-lighter;
+    color: $primary-color;
+    border-color: $border-color;
+
+    &:hover {
+      background: $primary-color;
+      color: white;
+      border-color: $primary-color;
     }
   }
 }

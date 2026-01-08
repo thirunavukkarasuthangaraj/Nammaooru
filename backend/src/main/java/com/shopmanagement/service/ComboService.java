@@ -152,8 +152,10 @@ public class ComboService {
         combo.setTotalQuantityAvailable(request.getTotalQuantityAvailable());
         combo.setDisplayOrder(request.getDisplayOrder() != null ? request.getDisplayOrder() : 0);
 
-        // Clear existing items and add new ones
-        combo.clearItems();
+        // Delete existing items explicitly to avoid duplicate key constraint
+        comboItemRepository.deleteByComboId(combo.getId());
+        comboItemRepository.flush();
+        combo.getItems().clear();
 
         int order = 0;
         for (CreateComboRequest.ComboItemRequest itemRequest : request.getItems()) {

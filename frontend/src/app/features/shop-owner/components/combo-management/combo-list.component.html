@@ -107,8 +107,8 @@
                 <span>Edit</span>
               </button>
               <button mat-menu-item (click)="toggleStatus(combo)">
-                <mat-icon>{{ combo.active ? 'toggle_off' : 'toggle_on' }}</mat-icon>
-                <span>{{ combo.active ? 'Deactivate' : 'Activate' }}</span>
+                <mat-icon>{{ isComboActive(combo) ? 'toggle_off' : 'toggle_on' }}</mat-icon>
+                <span>{{ isComboActive(combo) ? 'Deactivate' : 'Activate' }}</span>
               </button>
               <mat-divider></mat-divider>
               <button mat-menu-item (click)="deleteCombo(combo)" class="delete-btn">

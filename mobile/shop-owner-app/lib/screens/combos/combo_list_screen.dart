@@ -85,6 +85,44 @@ class _ComboListScreenState extends State<ComboListScreen> {
     }
   }
 
+  Future<void> _editCombo(Combo combo) async {
+    if (combo.id == null) return;
+
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    // Fetch full combo details including items
+    final fullCombo = await ComboService.getComboById(widget.shopId, combo.id!);
+
+    // Hide loading indicator
+    if (mounted) Navigator.pop(context);
+
+    if (fullCombo != null) {
+      final result = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CreateComboScreen(
+            shopId: widget.shopId,
+            combo: fullCombo,
+          ),
+        ),
+      );
+      if (result == true) {
+        _loadCombos();
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error loading combo details')),
+        );
+      }
+    }
+  }
+
   Future<void> _toggleStatus(Combo combo) async {
     if (combo.id == null) return;
 
@@ -385,20 +423,7 @@ class _ComboListScreenState extends State<ComboListScreen> {
                       label: Text(combo.isActive ? 'Deactivate' : 'Activate'),
                     ),
                     TextButton.icon(
-                      onPressed: () async {
-                        final result = await Navigator.push<bool>(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => CreateComboScreen(
-                              shopId: widget.shopId,
-                              combo: combo,
-                            ),
-                          ),
-                        );
-                        if (result == true) {
-                          _loadCombos();
-                        }
-                      },
+                      onPressed: () => _editCombo(combo),
                       icon: const Icon(Icons.edit, size: 18),
                       label: const Text('Edit'),
                     ),

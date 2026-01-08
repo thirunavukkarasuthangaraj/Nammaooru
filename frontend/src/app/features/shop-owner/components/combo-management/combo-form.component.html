@@ -40,12 +40,16 @@
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Search and add products</mat-label>
             <input matInput [(ngModel)]="searchQuery" [ngModelOptions]="{standalone: true}"
-                   (ngModelChange)="filterProducts()" placeholder="Type product name...">
+                   (ngModelChange)="filterProducts()" (focus)="showProducts()" (blur)="hideDropdown()"
+                   placeholder="Type to search...">
             <mat-icon matPrefix>search</mat-icon>
+            <button mat-icon-button matSuffix (click)="toggleProductDropdown()" type="button">
+              <mat-icon>{{ filteredProducts.length > 0 ? 'expand_less' : 'expand_more' }}</mat-icon>
+            </button>
           </mat-form-field>
 
-          <div class="product-suggestions" *ngIf="searchQuery && filteredProducts.length > 0">
-            <div class="suggestion-item" *ngFor="let product of filteredProducts | slice:0:5"
+          <div class="product-suggestions" *ngIf="filteredProducts.length > 0">
+            <div class="suggestion-item" *ngFor="let product of filteredProducts | slice:0:10"
                  (click)="addProduct(product)">
               <img *ngIf="getProductImage(product)" [src]="getProductImage(product)" class="product-thumb" alt="">
               <div class="product-thumb-placeholder" *ngIf="!getProductImage(product)">
@@ -53,15 +57,18 @@
               </div>
               <div class="product-details">
                 <span class="name">{{ getProductName(product) }}</span>
-                <span class="price">₹{{ product.price }} <small *ngIf="getProductUnit(product)">/ {{ getProductUnit(product) }}</small></span>
+                <span class="price">₹{{ getProductPrice(product) }} <small *ngIf="getProductUnit(product)">/ {{ getProductUnit(product) }}</small></span>
               </div>
               <mat-icon class="add-icon">add_circle</mat-icon>
+            </div>
+            <div class="more-products" *ngIf="filteredProducts.length > 10">
+              <small>{{ filteredProducts.length - 10 }} more products. Type to filter.</small>
             </div>
           </div>
         </div>
 
         <!-- Selected Products -->
-        <div class="selected-products" *ngIf="itemsFormArray.length > 0">
+        <div class="selected-products" *ngIf="itemsFormArray.length > 0" formArrayName="items">
           <div class="product-item" *ngFor="let item of itemsFormArray.controls; let i = index" [formGroupName]="i">
             <img *ngIf="item.get('imageUrl')?.value" [src]="item.get('imageUrl')?.value" class="item-thumb" alt="">
             <div class="item-thumb-placeholder" *ngIf="!item.get('imageUrl')?.value">
