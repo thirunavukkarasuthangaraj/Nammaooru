@@ -14,6 +14,9 @@ export class PromoCodeFormComponent implements OnInit {
   promoForm!: FormGroup;
   isEditMode = false;
   isLoading = false;
+  isUploading = false;
+  selectedFile: File | null = null;
+  imagePreview: string | null = null;
   discountTypes = [
     { value: 'PERCENTAGE', label: 'Percentage Discount', icon: 'percent' },
     { value: 'FIXED_AMOUNT', label: 'Fixed Amount', icon: 'attach_money' },
@@ -104,6 +107,11 @@ export class PromoCodeFormComponent implements OnInit {
       applicableToAllShops: promo.applicableToAllShops,
       imageUrl: promo.imageUrl
     });
+
+    // Show existing image as preview when editing
+    if (promo.imageUrl) {
+      this.imagePreview = promo.imageUrl;
+    }
   }
 
   onSubmit(): void {
@@ -191,6 +199,58 @@ export class PromoCodeFormComponent implements OnInit {
       code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     this.promoForm.patchValue({ code });
+  }
+
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        this.showSnackBar('Please select an image file', 'error');
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        this.showSnackBar('Image size should be less than 5MB', 'error');
+        return;
+      }
+
+      this.selectedFile = file;
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        this.imagePreview = e.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  uploadImage(): void {
+    if (!this.selectedFile) return;
+
+    this.isUploading = true;
+    this.promoCodeService.uploadPromoImage(this.selectedFile).subscribe({
+      next: (response) => {
+        this.promoForm.patchValue({ imageUrl: response.imageUrl });
+        this.isUploading = false;
+        this.showSnackBar('Image uploaded successfully', 'success');
+      },
+      error: (error) => {
+        console.error('Error uploading image:', error);
+        this.isUploading = false;
+        this.showSnackBar('Failed to upload image', 'error');
+      }
+    });
+  }
+
+  removeImage(): void {
+    this.selectedFile = null;
+    this.imagePreview = null;
+    this.promoForm.patchValue({ imageUrl: '' });
   }
 
   private showSnackBar(message: string, type: 'success' | 'error'): void {

@@ -187,19 +187,52 @@
         </div>
       </div>
 
-      <!-- Optional Image URL -->
+      <!-- Promotional Image Upload -->
       <div class="form-section">
         <h3 class="section-title">
           <mat-icon>image</mat-icon>
-          Promotional Image (Optional)
+          Promotional Banner (Optional)
         </h3>
 
-        <div class="form-row">
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Image URL</mat-label>
-            <input matInput formControlName="imageUrl" placeholder="https://...">
-            <mat-icon matPrefix>link</mat-icon>
-          </mat-form-field>
+        <div class="image-upload-container">
+          <!-- Hidden file input -->
+          <input type="file" #fileInput accept="image/*" (change)="onFileSelected($event)" style="display: none;">
+
+          <!-- Image preview area -->
+          <div class="image-preview-area" *ngIf="imagePreview || promoForm.get('imageUrl')?.value">
+            <img [src]="imagePreview || promoForm.get('imageUrl')?.value" alt="Promo banner preview" class="preview-image">
+            <div class="image-overlay">
+              <button mat-icon-button color="warn" (click)="removeImage()" matTooltip="Remove image" type="button">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
+          </div>
+
+          <!-- Upload placeholder -->
+          <div class="upload-placeholder" *ngIf="!imagePreview && !promoForm.get('imageUrl')?.value" (click)="fileInput.click()">
+            <mat-icon class="upload-icon">cloud_upload</mat-icon>
+            <span class="upload-text">Click to select banner image</span>
+            <span class="upload-hint">Recommended: 1200 x 400px, Max 5MB</span>
+          </div>
+
+          <!-- Upload button (shown when file selected but not yet uploaded) -->
+          <div class="upload-actions" *ngIf="selectedFile && !promoForm.get('imageUrl')?.value">
+            <span class="file-name">{{ selectedFile.name }}</span>
+            <button mat-raised-button color="primary" (click)="uploadImage()" [disabled]="isUploading" type="button">
+              <mat-spinner diameter="18" *ngIf="isUploading"></mat-spinner>
+              <mat-icon *ngIf="!isUploading">cloud_upload</mat-icon>
+              <span>{{ isUploading ? 'Uploading...' : 'Upload' }}</span>
+            </button>
+            <button mat-button (click)="removeImage()" [disabled]="isUploading" type="button">Cancel</button>
+          </div>
+
+          <!-- Change image button (shown when image is already uploaded) -->
+          <div class="change-image-btn" *ngIf="promoForm.get('imageUrl')?.value">
+            <button mat-stroked-button (click)="fileInput.click()" type="button">
+              <mat-icon>edit</mat-icon>
+              Change Image
+            </button>
+          </div>
         </div>
       </div>
 

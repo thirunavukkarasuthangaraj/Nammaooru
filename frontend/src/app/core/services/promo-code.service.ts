@@ -197,4 +197,19 @@ export class PromoCodeService {
         return 'secondary';
     }
   }
+
+  /**
+   * Upload promo code banner image
+   */
+  uploadPromoImage(file: File): Observable<{ imageUrl: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('folder', 'promos');
+
+    return this.http.post<any>(`${environment.apiUrl}/uploads/image`, formData).pipe(
+      map(response => ({
+        imageUrl: response.data?.url || response.url || response.imageUrl || response
+      }))
+    );
+  }
 }
