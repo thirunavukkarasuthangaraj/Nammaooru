@@ -18,6 +18,8 @@ import { ProductsPricingComponent } from './components/products-pricing/products
 import { BusinessSummaryComponent } from './components/business-summary/business-summary.component';
 import { BusinessHoursComponent } from './components/business-hours/business-hours.component';
 import { BrowseProductsComponent } from './components/browse-products/browse-products.component';
+import { ComboListComponent } from './components/combo-management/combo-list.component';
+import { ShopPromoListComponent } from './components/promo-codes/shop-promo-list.component';
 
 const routes: Routes = [
   {
@@ -81,6 +83,14 @@ const routes: Routes = [
   {
     path: 'browse-products',
     component: BrowseProductsComponent
+  },
+  {
+    path: 'combos',
+    component: ComboListComponent
+  },
+  {
+    path: 'promo-codes',
+    component: ShopPromoListComponent
   },
   {
     path: 'inventory',

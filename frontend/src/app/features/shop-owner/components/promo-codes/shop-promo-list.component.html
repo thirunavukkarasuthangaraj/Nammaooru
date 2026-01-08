@@ -1,0 +1,83 @@
+<div class="promo-container">
+  <div class="page-header">
+    <div class="header-left">
+      <h1>
+        <mat-icon>local_offer</mat-icon>
+        Promo Codes
+      </h1>
+      <p class="subtitle">Active promotions for your shop</p>
+    </div>
+  </div>
+
+  <mat-card class="promo-card">
+    <div class="loading-spinner" *ngIf="isLoading">
+      <mat-spinner diameter="40"></mat-spinner>
+    </div>
+
+    <div class="info-banner" *ngIf="!isLoading">
+      <mat-icon>info</mat-icon>
+      <span>Promo codes are managed by NammaOoru admin. Contact support to create shop-specific offers.</span>
+    </div>
+
+    <div class="empty-state" *ngIf="!isLoading && promoCodes.length === 0">
+      <mat-icon class="empty-icon">local_offer</mat-icon>
+      <h3>No Active Promos</h3>
+      <p>There are no promo codes currently active for your shop.</p>
+    </div>
+
+    <div class="promo-grid" *ngIf="!isLoading && promoCodes.length > 0">
+      <div class="promo-item" *ngFor="let promo of promoCodes" [ngClass]="getStatusClass(promo)">
+        <!-- Banner Image -->
+        <div class="promo-banner" *ngIf="promo.imageUrl">
+          <img [src]="promo.imageUrl" alt="Promo banner">
+        </div>
+        <div class="promo-banner default-banner" *ngIf="!promo.imageUrl">
+          <mat-icon>local_offer</mat-icon>
+        </div>
+
+        <!-- Content -->
+        <div class="promo-content">
+          <div class="promo-header">
+            <span class="discount-badge">{{ getDiscountText(promo) }}</span>
+            <span class="status-badge" [ngClass]="getStatusClass(promo)">{{ getStatusText(promo) }}</span>
+          </div>
+
+          <h3 class="promo-title">{{ promo.title }}</h3>
+          <p class="promo-description" *ngIf="promo.description">{{ promo.description }}</p>
+
+          <div class="promo-code-box" (click)="copyCode(promo.code)">
+            <span class="code">{{ promo.code }}</span>
+            <mat-icon matTooltip="Click to copy">content_copy</mat-icon>
+          </div>
+
+          <div class="promo-details">
+            <div class="detail-item">
+              <mat-icon>shopping_cart</mat-icon>
+              <span>{{ getMinOrderText(promo) }}</span>
+            </div>
+            <div class="detail-item">
+              <mat-icon>event</mat-icon>
+              <span>{{ promo.startDate | date:'dd MMM' }} - {{ promo.endDate | date:'dd MMM yyyy' }}</span>
+            </div>
+            <div class="detail-item" *ngIf="promo.usageLimit">
+              <mat-icon>people</mat-icon>
+              <span>{{ promo.usageCount || 0 }}/{{ promo.usageLimit }} used</span>
+            </div>
+          </div>
+
+          <div class="promo-tags">
+            <span class="tag" *ngIf="promo.firstTimeOnly">
+              <mat-icon>person_add</mat-icon> First-time only
+            </span>
+            <span class="tag" *ngIf="promo.applicableToAllShops">
+              <mat-icon>store</mat-icon> All shops
+            </span>
+            <span class="tag" *ngIf="promo.maximumDiscountAmount">
+              Max: ₹{{ promo.maximumDiscountAmount }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </mat-card>
+</div>

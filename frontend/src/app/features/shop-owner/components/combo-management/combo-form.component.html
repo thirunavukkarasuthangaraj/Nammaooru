@@ -1,0 +1,152 @@
+<div class="dialog-container">
+  <div class="dialog-header">
+    <h2 mat-dialog-title>
+      <mat-icon>{{ isEditMode ? 'edit' : 'add_circle' }}</mat-icon>
+      {{ isEditMode ? 'Edit Combo' : 'Create New Combo' }}
+    </h2>
+    <button mat-icon-button mat-dialog-close>
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <mat-dialog-content class="dialog-content">
+    <form [formGroup]="comboForm">
+      <!-- Basic Info Section -->
+      <div class="form-section">
+        <h3><mat-icon>info</mat-icon> Basic Information</h3>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Combo Name *</mat-label>
+          <input matInput formControlName="name" placeholder="e.g., Pongal Special Pack">
+          <mat-error *ngIf="comboForm.get('name')?.hasError('required')">Name is required</mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Name in Tamil</mat-label>
+          <input matInput formControlName="nameTamil" placeholder="e.g., பொங்கல் ஸ்பெஷல் பேக்">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Description</mat-label>
+          <textarea matInput formControlName="description" rows="2" placeholder="Brief description..."></textarea>
+        </mat-form-field>
+      </div>
+
+      <!-- Products Section -->
+      <div class="form-section">
+        <h3><mat-icon>inventory_2</mat-icon> Products (Min 2 required)</h3>
+
+        <div class="product-search">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Search and add products</mat-label>
+            <input matInput [(ngModel)]="searchQuery" [ngModelOptions]="{standalone: true}"
+                   (ngModelChange)="filterProducts()" placeholder="Type product name...">
+            <mat-icon matPrefix>search</mat-icon>
+          </mat-form-field>
+
+          <div class="product-suggestions" *ngIf="searchQuery && filteredProducts.length > 0">
+            <div class="suggestion-item" *ngFor="let product of filteredProducts | slice:0:5"
+                 (click)="addProduct(product)">
+              <img *ngIf="product.imageUrl" [src]="product.imageUrl" class="product-thumb" alt="">
+              <div class="product-thumb-placeholder" *ngIf="!product.imageUrl">
+                <mat-icon>inventory_2</mat-icon>
+              </div>
+              <div class="product-details">
+                <span class="name">{{ product.productName }}</span>
+                <span class="price">₹{{ product.price }}</span>
+              </div>
+              <mat-icon class="add-icon">add_circle</mat-icon>
+            </div>
+          </div>
+        </div>
+
+        <!-- Selected Products -->
+        <div class="selected-products" *ngIf="itemsFormArray.length > 0">
+          <div class="product-item" *ngFor="let item of itemsFormArray.controls; let i = index" [formGroupName]="i">
+            <img *ngIf="item.get('imageUrl')?.value" [src]="item.get('imageUrl')?.value" class="item-thumb" alt="">
+            <div class="item-thumb-placeholder" *ngIf="!item.get('imageUrl')?.value">
+              <mat-icon>inventory_2</mat-icon>
+            </div>
+            <div class="item-info">
+              <span class="item-name">{{ item.get('productName')?.value }}</span>
+              <span class="item-price">₹{{ item.get('unitPrice')?.value }} {{ item.get('unit')?.value }}</span>
+            </div>
+            <div class="quantity-control">
+              <button mat-icon-button (click)="updateQuantity(i, -1)" [disabled]="item.get('quantity')?.value <= 1">
+                <mat-icon>remove</mat-icon>
+              </button>
+              <span class="qty">{{ item.get('quantity')?.value }}</span>
+              <button mat-icon-button (click)="updateQuantity(i, 1)">
+                <mat-icon>add</mat-icon>
+              </button>
+            </div>
+            <span class="item-total">₹{{ (item.get('quantity')?.value || 0) * (item.get('unitPrice')?.value || 0) }}</span>
+            <button mat-icon-button color="warn" (click)="removeProduct(i)">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </div>
+        </div>
+
+        <div class="empty-products" *ngIf="itemsFormArray.length === 0">
+          <mat-icon>inventory</mat-icon>
+          <p>Search and add products above</p>
+        </div>
+      </div>
+
+      <!-- Pricing Section -->
+      <div class="form-section" *ngIf="itemsFormArray.length >= 2">
+        <h3><mat-icon>payments</mat-icon> Pricing</h3>
+
+        <div class="pricing-summary">
+          <div class="price-row">
+            <span>Original Price ({{ itemsFormArray.length }} items):</span>
+            <span class="original">₹{{ calculateOriginalPrice() }}</span>
+          </div>
+
+          <mat-form-field appearance="outline" class="combo-price-field">
+            <mat-label>Combo Price *</mat-label>
+            <span matPrefix>₹&nbsp;</span>
+            <input matInput type="number" formControlName="comboPrice" min="1">
+            <mat-error *ngIf="comboForm.get('comboPrice')?.hasError('required')">Price is required</mat-error>
+            <mat-error *ngIf="comboForm.get('comboPrice')?.hasError('min')">Price must be at least ₹1</mat-error>
+          </mat-form-field>
+
+          <div class="savings-box" *ngIf="getSavings() > 0">
+            <div class="discount-badge">{{ getDiscountPercentage() }}% OFF</div>
+            <div class="savings-text">Customer saves ₹{{ getSavings() }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Validity Section -->
+      <div class="form-section">
+        <h3><mat-icon>event</mat-icon> Validity Period</h3>
+
+        <div class="date-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Start Date *</mat-label>
+            <input matInput [matDatepicker]="startPicker" formControlName="startDate">
+            <mat-datepicker-toggle matSuffix [for]="startPicker"></mat-datepicker-toggle>
+            <mat-datepicker #startPicker></mat-datepicker>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>End Date *</mat-label>
+            <input matInput [matDatepicker]="endPicker" formControlName="endDate">
+            <mat-datepicker-toggle matSuffix [for]="endPicker"></mat-datepicker-toggle>
+            <mat-datepicker #endPicker></mat-datepicker>
+          </mat-form-field>
+        </div>
+      </div>
+    </form>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button (click)="onCancel()" [disabled]="isSaving">Cancel</button>
+    <button mat-raised-button color="primary" (click)="onSubmit()"
+            [disabled]="isSaving || itemsFormArray.length < 2">
+      <mat-spinner diameter="20" *ngIf="isSaving"></mat-spinner>
+      <span *ngIf="!isSaving">{{ isEditMode ? 'Update Combo' : 'Create Combo' }}</span>
+    </button>
+  </mat-dialog-actions>
+</div>

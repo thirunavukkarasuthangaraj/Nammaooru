@@ -55,6 +55,9 @@ import { BulkPriceUpdateDialogComponent } from './components/bulk-price-update-d
 import { BrowseMasterProductsDialogComponent } from './components/browse-master-products-dialog/browse-master-products-dialog.component';
 import { ProductEditDialogComponent } from './components/product-edit-dialog/product-edit-dialog.component';
 import { ProductAssignmentDialogComponent } from './components/product-assignment-dialog/product-assignment-dialog.component';
+import { ComboListComponent } from './components/combo-management/combo-list.component';
+import { ComboFormComponent } from './components/combo-management/combo-form.component';
+import { ShopPromoListComponent } from './components/promo-codes/shop-promo-list.component';
 
 @NgModule({
   declarations: [
@@ -81,7 +84,10 @@ import { ProductAssignmentDialogComponent } from './components/product-assignmen
     BulkPriceUpdateDialogComponent,
     BrowseMasterProductsDialogComponent,
     ProductEditDialogComponent,
-    ProductAssignmentDialogComponent
+    ProductAssignmentDialogComponent,
+    ComboListComponent,
+    ComboFormComponent,
+    ShopPromoListComponent
   ],
   imports: [
     CommonModule,

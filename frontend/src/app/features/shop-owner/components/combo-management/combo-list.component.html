@@ -1,0 +1,127 @@
+<div class="combo-container">
+  <div class="page-header">
+    <div class="header-left">
+      <h1>
+        <mat-icon>card_giftcard</mat-icon>
+        Product Combos
+      </h1>
+      <p class="subtitle">Create combo offers to boost sales</p>
+    </div>
+    <button mat-raised-button color="primary" (click)="openCreateDialog()">
+      <mat-icon>add</mat-icon>
+      Create Combo
+    </button>
+  </div>
+
+  <mat-card class="combo-card">
+    <div class="loading-spinner" *ngIf="isLoading">
+      <mat-spinner diameter="40"></mat-spinner>
+    </div>
+
+    <div class="empty-state" *ngIf="!isLoading && combos.length === 0">
+      <mat-icon class="empty-icon">card_giftcard</mat-icon>
+      <h3>No Combos Yet</h3>
+      <p>Create combo offers to attract more customers!</p>
+      <button mat-raised-button color="primary" (click)="openCreateDialog()">
+        <mat-icon>add</mat-icon>
+        Create Your First Combo
+      </button>
+    </div>
+
+    <div class="combo-table" *ngIf="!isLoading && combos.length > 0">
+      <table mat-table [dataSource]="combos">
+        <!-- Name Column -->
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef>Combo Name</th>
+          <td mat-cell *matCellDef="let combo">
+            <div class="combo-name-cell">
+              <img *ngIf="combo.bannerImageUrl" [src]="combo.bannerImageUrl" class="combo-thumb" alt="">
+              <div class="combo-thumb-placeholder" *ngIf="!combo.bannerImageUrl">
+                <mat-icon>card_giftcard</mat-icon>
+              </div>
+              <div class="combo-info">
+                <span class="name">{{ combo.name }}</span>
+                <span class="tamil-name" *ngIf="combo.nameTamil">{{ combo.nameTamil }}</span>
+              </div>
+            </div>
+          </td>
+        </ng-container>
+
+        <!-- Items Column -->
+        <ng-container matColumnDef="items">
+          <th mat-header-cell *matHeaderCellDef>Items</th>
+          <td mat-cell *matCellDef="let combo">
+            <span class="item-count">{{ combo.itemCount }} items</span>
+          </td>
+        </ng-container>
+
+        <!-- Price Column -->
+        <ng-container matColumnDef="price">
+          <th mat-header-cell *matHeaderCellDef>Price</th>
+          <td mat-cell *matCellDef="let combo">
+            <div class="price-cell">
+              <span class="combo-price">₹{{ combo.comboPrice }}</span>
+              <span class="original-price">₹{{ combo.originalPrice }}</span>
+            </div>
+          </td>
+        </ng-container>
+
+        <!-- Discount Column -->
+        <ng-container matColumnDef="discount">
+          <th mat-header-cell *matHeaderCellDef>Discount</th>
+          <td mat-cell *matCellDef="let combo">
+            <span class="discount-badge">{{ combo.discountPercentage | number:'1.0-0' }}% OFF</span>
+          </td>
+        </ng-container>
+
+        <!-- Validity Column -->
+        <ng-container matColumnDef="validity">
+          <th mat-header-cell *matHeaderCellDef>Validity</th>
+          <td mat-cell *matCellDef="let combo">
+            <div class="validity-cell">
+              <span>{{ combo.startDate | date:'dd MMM' }} - {{ combo.endDate | date:'dd MMM yyyy' }}</span>
+            </div>
+          </td>
+        </ng-container>
+
+        <!-- Status Column -->
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>Status</th>
+          <td mat-cell *matCellDef="let combo">
+            <span class="status-badge" [ngClass]="getStatusClass(combo)">
+              {{ getStatusText(combo) }}
+            </span>
+          </td>
+        </ng-container>
+
+        <!-- Actions Column -->
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef>Actions</th>
+          <td mat-cell *matCellDef="let combo">
+            <button mat-icon-button [matMenuTriggerFor]="menu" matTooltip="Actions">
+              <mat-icon>more_vert</mat-icon>
+            </button>
+            <mat-menu #menu="matMenu">
+              <button mat-menu-item (click)="openEditDialog(combo)">
+                <mat-icon>edit</mat-icon>
+                <span>Edit</span>
+              </button>
+              <button mat-menu-item (click)="toggleStatus(combo)">
+                <mat-icon>{{ combo.active ? 'toggle_off' : 'toggle_on' }}</mat-icon>
+                <span>{{ combo.active ? 'Deactivate' : 'Activate' }}</span>
+              </button>
+              <mat-divider></mat-divider>
+              <button mat-menu-item (click)="deleteCombo(combo)" class="delete-btn">
+                <mat-icon color="warn">delete</mat-icon>
+                <span>Delete</span>
+              </button>
+            </mat-menu>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+    </div>
+  </mat-card>
+</div>
