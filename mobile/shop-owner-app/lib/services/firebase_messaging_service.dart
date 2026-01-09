@@ -151,6 +151,8 @@ class FirebaseMessagingService {
       String notificationType = data['type'] ?? 'general';
       switch (notificationType) {
         case 'new_order':
+        case 'ORDER_ASSIGNED':
+        case 'order_assigned':
           channelId = 'orders';
           channelName = 'New Orders';
           channelDescription = 'Notifications for new orders';
@@ -229,6 +231,8 @@ class FirebaseMessagingService {
   static RawResourceAndroidNotificationSound? _getNotificationSound(String? type) {
     switch (type) {
       case 'new_order':
+      case 'ORDER_ASSIGNED':
+      case 'order_assigned':
         return const RawResourceAndroidNotificationSound('new_order');
       case 'low_stock':
         return const RawResourceAndroidNotificationSound('urgent_alert');
@@ -261,6 +265,10 @@ class FirebaseMessagingService {
     switch (type) {
       case 'new_order':
         debugPrint('Navigate to order details: $orderId');
+        break;
+      case 'ORDER_ASSIGNED':
+      case 'order_assigned':
+        debugPrint('🚚 New delivery order assigned: ${data['orderNumber']} - Navigate to deliveries');
         break;
       case 'order_update':
         debugPrint('Navigate to order management: $orderId');
@@ -343,17 +351,22 @@ class FirebaseMessagingService {
   // Register token with server
   static Future<void> _registerTokenWithServer(String token) async {
     try {
-      // Get user info
-      final userId = "1"; // await StorageService.getUserId();
-      if (userId == null) {
-        debugPrint('No user ID found, skipping token registration');
+      // Check if user is logged in
+      final authToken = StorageService.getToken();
+
+      if (authToken == null || authToken.isEmpty) {
+        debugPrint('No auth token found, skipping FCM token registration');
         return;
       }
 
-      // Register token with backend
-      await ApiService.registerFCMToken(token, 'shop_owner');
+      // Register token with backend (device type is just metadata)
+      final response = await ApiService.registerFCMToken(token, 'android');
 
-      debugPrint('FCM token registered with server successfully');
+      if (response.isSuccess) {
+        debugPrint('✅ FCM token registered with server successfully');
+      } else {
+        debugPrint('❌ FCM token registration failed: ${response.error}');
+      }
     } catch (e) {
       debugPrint('Error registering FCM token: $e');
     }

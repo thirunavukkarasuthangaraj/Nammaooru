@@ -5,8 +5,10 @@ import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.Notification;
 import com.shopmanagement.entity.Customer;
+import com.shopmanagement.entity.UserFcmToken;
 import com.shopmanagement.repository.CustomerRepository;
 import com.shopmanagement.repository.NotificationRepository;
+import com.shopmanagement.repository.UserFcmTokenRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,7 @@ public class FirebaseNotificationService {
 
     private final NotificationRepository notificationRepository;
     private final CustomerRepository customerRepository;
+    private final UserFcmTokenRepository userFcmTokenRepository;
 
     public void sendOrderNotification(String orderNumber, String status, String customerToken, Long customerId) {
         log.info("🚀 FirebaseNotificationService: Preparing notification for order {} with status {}", orderNumber, status);
@@ -173,8 +176,9 @@ public class FirebaseNotificationService {
 
             // Check if it's an UNREGISTERED token error
             if (e.getMessage() != null && (e.getMessage().contains("UNREGISTERED") || e.getMessage().contains("Requested entity was not found"))) {
-                log.warn("🔄 FCM token is invalid/expired. Token should be refreshed when customer opens the app next time.");
-                // Note: We don't deactivate the token here as it might work later when refreshed
+                log.warn("🔄 FCM token is invalid/expired. Deactivating token: {}...", token.substring(0, Math.min(30, token.length())));
+                // Deactivate the invalid token so it won't be used again
+                deactivateInvalidToken(token);
             } else {
                 log.error("💡 Check Firebase configuration, FCM token validity, and internet connection");
             }
@@ -312,6 +316,23 @@ public class FirebaseNotificationService {
 
         } catch (Exception e) {
             log.error("❌ Error saving notification history for customer {} and order {}", customerId, orderNumber, e);
+        }
+    }
+
+    /**
+     * Deactivate an invalid FCM token so it won't be used again
+     */
+    private void deactivateInvalidToken(String fcmToken) {
+        try {
+            Optional<UserFcmToken> tokenEntity = userFcmTokenRepository.findByFcmToken(fcmToken);
+            if (tokenEntity.isPresent()) {
+                UserFcmToken token = tokenEntity.get();
+                token.setIsActive(false);
+                userFcmTokenRepository.save(token);
+                log.info("🗑️ Deactivated invalid FCM token for user ID: {}", token.getUserId());
+            }
+        } catch (Exception e) {
+            log.error("❌ Error deactivating invalid FCM token", e);
         }
     }
 }

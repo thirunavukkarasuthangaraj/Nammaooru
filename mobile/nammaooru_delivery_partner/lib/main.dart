@@ -144,9 +144,15 @@ class _AppInitializerState extends State<AppInitializer> {
   void _checkLoginStatus() async {
     final provider = Provider.of<DeliveryPartnerProvider>(context, listen: false);
     await provider.checkLoginStatus();
-    
+
     if (mounted) {
       if (provider.isLoggedIn) {
+        // Re-register FCM token when user is already logged in
+        // This ensures token is always fresh even if Firebase rotated it
+        if (!kIsWeb) {
+          debugPrint('🔄 User already logged in - refreshing FCM token...');
+          await reRegisterFcmToken();
+        }
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const DashboardScreen()),

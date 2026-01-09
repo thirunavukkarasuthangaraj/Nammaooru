@@ -138,30 +138,43 @@ public class OrderAssignmentService {
         try {
             log.info("🔔 Sending assignment notification to partner: {} (ID: {})", selectedPartner.getEmail(), selectedPartner.getId());
 
-            // Get all FCM tokens for the delivery partner (for debugging)
+            // Get all FCM tokens for the delivery partner
             List<UserFcmToken> allTokens = userFcmTokenRepository.findByUserIdAndIsActiveTrue(selectedPartner.getId());
             log.info("📊 Found {} active FCM token(s) for partner ID: {}", allTokens.size(), selectedPartner.getId());
 
             if (!allTokens.isEmpty()) {
-                // Use the most recently updated token
-                UserFcmToken latestToken = allTokens.get(0);
-                String fcmToken = latestToken.getFcmToken();
-                log.info("📱 Using FCM token (device: {}, updated: {}) for partner {}",
-                    latestToken.getDeviceId(),
-                    latestToken.getUpdatedAt(),
-                    selectedPartner.getEmail());
+                boolean notificationSent = false;
+                // Try ALL tokens until one succeeds (like cancellation notification does)
+                for (UserFcmToken tokenEntity : allTokens) {
+                    try {
+                        String fcmToken = tokenEntity.getFcmToken();
+                        log.info("📱 Trying FCM token (device: {}, updated: {}) for partner {}",
+                            tokenEntity.getDeviceId(),
+                            tokenEntity.getUpdatedAt(),
+                            selectedPartner.getEmail());
 
-                // Send Firebase notification to driver with proper title, sound, and details
-                firebaseNotificationService.sendOrderAssignmentNotificationToDriver(
-                    order.getOrderNumber(),
-                    fcmToken,
-                    selectedPartner.getId(),
-                    order.getShop().getName(),
-                    order.getDeliveryAddress(),
-                    deliveryFee.doubleValue()
-                );
+                        // Send Firebase notification to driver with proper title, sound, and details
+                        firebaseNotificationService.sendOrderAssignmentNotificationToDriver(
+                            order.getOrderNumber(),
+                            fcmToken,
+                            selectedPartner.getId(),
+                            order.getShop().getName(),
+                            order.getDeliveryAddress(),
+                            deliveryFee.doubleValue()
+                        );
 
-                log.info("✅ Assignment notification sent successfully to partner: {}", selectedPartner.getEmail());
+                        log.info("✅ Assignment notification sent successfully to partner: {}", selectedPartner.getEmail());
+                        notificationSent = true;
+                        break; // Success - stop trying other tokens
+                    } catch (Exception tokenError) {
+                        log.warn("⚠️ Failed with token {}, trying next... Error: {}",
+                            tokenEntity.getDeviceId(), tokenError.getMessage());
+                        // Continue to try next token
+                    }
+                }
+                if (!notificationSent) {
+                    log.error("❌ All FCM tokens failed for delivery partner: {}", selectedPartner.getEmail());
+                }
             } else {
                 log.warn("❌ No FCM token found for delivery partner: {} (ID: {}). Driver app may not be properly registered.",
                     selectedPartner.getEmail(), selectedPartner.getId());

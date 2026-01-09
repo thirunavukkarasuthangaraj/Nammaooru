@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { catchError, switchMap } from 'rxjs/operators';
+import { catchError, switchMap, map } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
 import { FirebaseService } from '../../../core/services/firebase.service';
 import { AuthService } from '../../../core/services/auth.service';
@@ -148,6 +148,18 @@ export class ShopOwnerOrderService {
         }),
         catchError((error) => {
           console.error('Error accepting order:', error);
+          throw error;
+        })
+      );
+  }
+
+  // Get single order by ID
+  getOrderById(orderId: number): Observable<ShopOwnerOrder> {
+    return this.http.get<{data: any}>(`${this.apiUrl}/orders/${orderId}`)
+      .pipe(
+        map((response: {data: any}) => this.transformOrder(response.data)),
+        catchError((error) => {
+          console.error('Error fetching order:', error);
           throw error;
         })
       );

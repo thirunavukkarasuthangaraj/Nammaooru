@@ -105,11 +105,19 @@
   <div class="orders-grid">
     <div *ngFor="let order of filteredOrders" class="order-card" [ngClass]="'status-' + order.status.toLowerCase()">
 
+      <!-- Loading Overlay -->
+      <div *ngIf="isProcessingOrder(order.id)" class="order-loading-overlay">
+        <div class="loading-spinner">
+          <i class="fas fa-spinner fa-spin"></i>
+          <span>Processing...</span>
+        </div>
+      </div>
+
       <!-- Card Header -->
       <div class="card-header">
         <div class="order-info">
           <div class="order-number">{{ order.orderNumber }}</div>
-          <div class="order-time">{{ order.createdAt | date:'MMM d, HH:mm' }}</div>
+          <div class="order-time">{{ formatOrderTime(order.createdAt) }}</div>
         </div>
         <div class="header-actions">
           <button class="header-btn print-header-btn" (click)="printOrder(order.id)" title="Print Large (A4)">
@@ -275,15 +283,22 @@
             Handover to Customer
           </button>
 
+          <!-- HOME_DELIVERY: Show loading when searching for driver -->
+          <button *ngIf="order.deliveryType === 'HOME_DELIVERY' && isSearchingDriver(order.id)"
+                  class="action-btn searching-btn"
+                  disabled>
+            <i class="fas fa-spinner fa-spin"></i> Searching Driver...
+          </button>
+
           <!-- HOME_DELIVERY: Show Verify OTP button if assigned to partner -->
-          <button *ngIf="order.deliveryType === 'HOME_DELIVERY' && order.assignedToDeliveryPartner"
+          <button *ngIf="order.deliveryType === 'HOME_DELIVERY' && !isSearchingDriver(order.id) && order.assignedToDeliveryPartner"
                   class="action-btn warning-btn"
                   (click)="verifyPickupOTP(order.id)">
             Verify Pickup OTP
           </button>
 
           <!-- HOME_DELIVERY: Show Find Driver button if not yet assigned -->
-          <button *ngIf="order.deliveryType === 'HOME_DELIVERY' && !order.assignedToDeliveryPartner"
+          <button *ngIf="order.deliveryType === 'HOME_DELIVERY' && !isSearchingDriver(order.id) && !order.assignedToDeliveryPartner"
                   class="action-btn find-driver-btn"
                   (click)="retryDriverSearch(order.id)">
             Find Driver

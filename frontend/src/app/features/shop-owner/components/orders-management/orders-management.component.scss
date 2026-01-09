@@ -269,6 +269,38 @@ $white: #ffffff;
   position: relative;
   overflow: hidden;
 
+  // Loading Overlay
+  .order-loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    border-radius: 8px;
+
+    .loading-spinner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      color: #2196F3;
+
+      i {
+        font-size: 32px;
+      }
+
+      span {
+        font-size: 14px;
+        font-weight: 500;
+      }
+    }
+  }
+
   &::before {
     content: '';
     position: absolute;
@@ -801,6 +833,22 @@ $white: #ffffff;
 
     &:hover {
       background: darken(#9C27B0, 10%);
+    }
+  }
+
+  &.searching-btn {
+    background: #FF9800;
+    color: white;
+    cursor: not-allowed;
+    opacity: 0.9;
+
+    i {
+      margin-right: 6px;
+    }
+
+    &:disabled {
+      background: #FF9800;
+      opacity: 0.9;
     }
   }
 

@@ -54,6 +54,12 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
   // Assignment state
   isAssigningPartner = false;
 
+  // Orders currently searching for driver
+  searchingDriverOrders: Set<number> = new Set();
+
+  // Orders currently processing (loading state per order)
+  processingOrderIds: Set<number> = new Set();
+
   // Driver verification
   verificationCodes: { [orderId: number]: string } = {};
 
@@ -294,7 +300,7 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
   }
 
   acceptOrder(order: ShopOwnerOrder): void {
-    this.swal.loading('Accepting order...');
+    this.startProcessing(order.id);
     this.orderService.acceptOrder(order.id).subscribe({
       next: (updatedOrder) => {
         const orderIndex = this.orders.findIndex(o => o.id === order.id);
@@ -303,12 +309,12 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
           this.updateOrderLists();
           this.applyFilter();
         }
-        this.swal.close();
-        this.swal.success('Order Accepted!', `Order #${order.orderNumber} has been accepted successfully.`);
+        this.stopProcessing(order.id);
+        this.swal.toast('Order accepted', 'success');
       },
       error: (error) => {
         console.error('Error accepting order:', error);
-        this.swal.close();
+        this.stopProcessing(order.id);
         this.swal.error('Error', 'Failed to accept order. Please try again.');
       }
     });
@@ -459,7 +465,7 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
   }
 
   startPreparing(orderId: number): void {
-    this.swal.loading('Starting preparation...');
+    this.startProcessing(orderId);
     this.orderService.startPreparing(orderId).subscribe({
       next: (updatedOrder) => {
         const orderIndex = this.orders.findIndex(o => o.id === orderId);
@@ -467,19 +473,19 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
           this.orders[orderIndex] = updatedOrder;
           this.updateOrderLists();
         }
-        this.swal.close();
-        this.swal.toast('Order preparation started', 'success');
+        this.stopProcessing(orderId);
+        this.swal.toast('Preparation started', 'success');
       },
       error: (error) => {
         console.error('Error starting preparation:', error);
-        this.swal.close();
+        this.stopProcessing(orderId);
         this.swal.error('Error', 'Failed to start preparation. Please try again.');
       }
     });
   }
 
   markReady(orderId: number): void {
-    this.swal.loading('Marking order as ready...');
+    this.startProcessing(orderId);
     this.orderService.markReady(orderId).subscribe({
       next: (updatedOrder) => {
         const orderIndex = this.orders.findIndex(o => o.id === orderId);
@@ -487,15 +493,97 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
           this.orders[orderIndex] = updatedOrder;
           this.updateOrderLists();
         }
-        this.swal.close();
-        this.swal.success('Order Ready!', 'Order marked as ready and auto-assigned to delivery partner.');
+        this.stopProcessing(orderId);
+
+        // For HOME_DELIVERY, start polling for driver assignment
+        if (updatedOrder.deliveryType === 'HOME_DELIVERY') {
+          this.searchingDriverOrders.add(orderId);
+          this.swal.toast('Searching for driver...', 'info');
+          this.pollForDriverAssignment(orderId);
+        } else {
+          this.swal.toast('Order ready for pickup', 'success');
+        }
       },
       error: (error) => {
         console.error('Error marking ready:', error);
-        this.swal.close();
+        this.stopProcessing(orderId);
         this.swal.error('Error', 'Failed to mark order as ready. Please try again.');
       }
     });
+  }
+
+  // Poll for driver assignment status
+  private pollForDriverAssignment(orderId: number, attempts: number = 0): void {
+    const maxAttempts = 10; // Poll for up to 15 seconds (10 * 1.5s)
+    const pollInterval = 1500; // 1.5 seconds
+
+    if (attempts >= maxAttempts) {
+      this.searchingDriverOrders.delete(orderId);
+      // Final check - driver might not have been found
+      this.refreshSingleOrder(orderId);
+      return;
+    }
+
+    setTimeout(() => {
+      this.orderService.getOrderById(orderId).subscribe({
+        next: (order) => {
+          const orderIndex = this.orders.findIndex(o => o.id === orderId);
+          if (orderIndex !== -1) {
+            this.orders[orderIndex] = order;
+            this.updateOrderLists();
+          }
+
+          if (order.assignedToDeliveryPartner) {
+            // Driver found!
+            this.searchingDriverOrders.delete(orderId);
+            this.swal.success('Driver Assigned!', 'A delivery partner has been assigned. Please verify pickup OTP.');
+          } else {
+            // Keep polling
+            this.pollForDriverAssignment(orderId, attempts + 1);
+          }
+        },
+        error: (error) => {
+          console.error('Error polling for driver assignment:', error);
+          this.searchingDriverOrders.delete(orderId);
+        }
+      });
+    }, pollInterval);
+  }
+
+  // Refresh a single order without reloading all
+  private refreshSingleOrder(orderId: number): void {
+    this.orderService.getOrderById(orderId).subscribe({
+      next: (order) => {
+        const orderIndex = this.orders.findIndex(o => o.id === orderId);
+        if (orderIndex !== -1) {
+          this.orders[orderIndex] = order;
+          this.updateOrderLists();
+        }
+      },
+      error: (error) => {
+        console.error('Error refreshing order:', error);
+      }
+    });
+  }
+
+  // Check if order is searching for driver
+  isSearchingDriver(orderId: number): boolean {
+    return this.searchingDriverOrders.has(orderId);
+  }
+
+  // Check if order is being processed
+  isProcessingOrder(orderId: number): boolean {
+    return this.processingOrderIds.has(orderId);
+  }
+
+  // Start processing an order
+  private startProcessing(orderId: number): void {
+    this.processingOrderIds.add(orderId);
+  }
+
+  // Stop processing an order
+  private stopProcessing(orderId: number): void {
+    this.processingOrderIds.delete(orderId);
   }
 
   markPickedUp(orderId: number): void {
@@ -1472,5 +1560,18 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
         container.appendChild(fallbackIcon);
       }
     }
+  }
+
+  // Format date/time in Indian format (d/M/yy, h:mm AM/PM)
+  formatOrderTime(dateString: string): string {
+    if (!dateString) return '';
+    const d = new Date(dateString);
+    const day = d.getDate();
+    const month = d.getMonth() + 1;
+    let hours = d.getHours();
+    const minutes = d.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12 || 12;
+    return `${day}/${month}, ${hours}:${minutes} ${ampm}`;
   }
 }

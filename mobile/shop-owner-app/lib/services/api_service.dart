@@ -964,6 +964,33 @@ class ApiService {
       return ApiResponse.error('File upload failed: ${e.toString()}');
     }
   }
+
+  // FCM Token Registration
+  static Future<ApiResponse> registerFCMToken(String fcmToken, String deviceType) async {
+    if (_useMockData) {
+      await Future.delayed(const Duration(milliseconds: 200));
+      return ApiResponse.success({'message': 'FCM token registered successfully'});
+    }
+
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/notifications/fcm-token'),
+            headers: _authHeaders,
+            body: json.encode({
+              'fcmToken': fcmToken,
+              'deviceType': deviceType,
+            }),
+          )
+          .timeout(timeout);
+
+      print('FCM Token registration response: ${response.statusCode}');
+      return _handleResponse(response);
+    } catch (e) {
+      print('Error registering FCM token: $e');
+      return ApiResponse.error('FCM token registration failed: ${e.toString()}');
+    }
+  }
 }
 
 class ApiResponse {
