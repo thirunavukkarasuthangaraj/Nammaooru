@@ -888,6 +888,7 @@ export class ShopProfileComponent implements OnInit {
   ) {
     this.shopForm = this.fb.group({
       name: ['', [Validators.required]],
+      nameTamil: [''],
       description: [''],
       phone: ['', [Validators.required]],
       email: [{value: '', disabled: true}],
@@ -911,6 +912,12 @@ export class ShopProfileComponent implements OnInit {
         control: 'name',
         type: 'text',
         placeholder: 'Enter shop name'
+      },
+      {
+        label: 'Shop Name (Tamil)',
+        control: 'nameTamil',
+        type: 'text',
+        placeholder: 'கடை பெயர் தமிழில்'
       },
       {
         label: 'Description',
@@ -1099,6 +1106,7 @@ export class ShopProfileComponent implements OnInit {
   getFieldIcon(controlName: string): string {
     const iconMap: { [key: string]: string } = {
       name: 'store',
+      nameTamil: 'translate',
       description: 'description',
       phone: 'phone',
       email: 'email',
@@ -1185,6 +1193,7 @@ export class ShopProfileComponent implements OnInit {
           // Update form with actual shop data
           this.shopForm.patchValue({
             name: shop.name || '',
+            nameTamil: shop.nameTamil || '',
             description: shop.description || '',
             phone: shop.ownerPhone || shop.phone || '',
             address: shop.addressLine1 || shop.address || '',
@@ -1283,6 +1292,7 @@ export class ShopProfileComponent implements OnInit {
       const updatedShop = {
         ...this.shop,
         name: this.shopForm.value.name,
+        nameTamil: this.shopForm.value.nameTamil,
         description: this.shopForm.value.description,
         ownerPhone: this.shopForm.value.phone,
         // Email is disabled and should not be updated

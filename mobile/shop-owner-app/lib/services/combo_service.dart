@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_config.dart';
@@ -254,6 +255,58 @@ class ComboService {
     } catch (e) {
       print('Error fetching shop products: $e');
       return [];
+    }
+  }
+
+  /// Upload combo banner image
+  static Future<Map<String, dynamic>> uploadComboImage(
+      int shopId, File imageFile, {int? comboId}) async {
+    try {
+      String url = '$baseUrl/shops/$shopId/combos/upload-image';
+      if (comboId != null) {
+        url += '?comboId=$comboId';
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+
+      var request = http.MultipartRequest('POST', Uri.parse(url));
+
+      if (token != null && token.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+
+      request.files.add(await http.MultipartFile.fromPath(
+        'file',
+        imageFile.path,
+      ));
+
+      final streamedResponse = await request.send().timeout(timeout);
+      final response = await http.Response.fromStream(streamedResponse);
+      final data = json.decode(response.body);
+
+      print('Upload combo image response: $data');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (data['statusCode'] == '0000') {
+          return {
+            'success': true,
+            'imageUrl': data['imageUrl'],
+            'message': data['message'] ?? 'Image uploaded successfully',
+          };
+        }
+      }
+
+      return {
+        'success': false,
+        'message': data['message'] ?? 'Failed to upload image',
+      };
+    } catch (e) {
+      print('Error uploading combo image: $e');
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+      };
     }
   }
 }

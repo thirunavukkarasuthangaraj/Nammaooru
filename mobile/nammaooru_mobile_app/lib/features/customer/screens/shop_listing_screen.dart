@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:provider/provider.dart';
 import '../../../services/shop_api_service.dart';
 import '../../../services/voice_search_service.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/localization/app_localizations.dart';
+import '../../../core/localization/language_provider.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../core/utils/image_url_helper.dart';
 import 'shop_details_screen.dart';
@@ -274,7 +276,6 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
   Widget _buildVillageSortingChips() {
     final sortOptions = [
       {'key': 'name', 'label': 'பெயர் / Name', 'icon': Icons.sort_by_alpha},
-      {'key': 'rating', 'label': 'ரேடிங் / Rating', 'icon': Icons.star},
     ];
 
     return Container(
@@ -376,14 +377,15 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         itemCount: _filteredShops.length,
         itemBuilder: (context, index) {
-          return _buildVillageShopCard(_filteredShops[index]);
+          return _buildVillageShopCard(context, _filteredShops[index]);
         },
       ),
     );
   }
 
-  Widget _buildVillageShopCard(Map<String, dynamic> shop) {
-    final shopName = shop['name']?.toString() ?? 'Shop';
+  Widget _buildVillageShopCard(BuildContext context, Map<String, dynamic> shop) {
+    final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
+    final shopName = languageProvider.getShopName(shop);
     final shopDescription = shop['description']?.toString() ?? '';
     final businessType = shop['businessType']?.toString() ?? 'Store';
     final rating = double.tryParse(shop['averageRating']?.toString() ?? '0.0') ?? 0.0;
@@ -492,49 +494,50 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Shop Name Row with Status
+                      // Shop Name with Status Badge
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
                             child: Text(
                               shopName,
                               style: const TextStyle(
-                                fontSize: 18,
+                                fontSize: 16,
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFF1A1A1A),
-                                letterSpacing: -0.5,
+                                letterSpacing: -0.3,
                               ),
-                              maxLines: 1,
+                              maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           const SizedBox(width: 8),
                           // Status Indicator - Real-time Business Hours
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                             decoration: BoxDecoration(
                               color: isOpenNow
                                 ? const Color(0xFF4CAF50)
                                 : const Color(0xFFFF5252),
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(10),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Container(
-                                  width: 6,
-                                  height: 6,
+                                  width: 5,
+                                  height: 5,
                                   decoration: const BoxDecoration(
                                     color: Colors.white,
                                     shape: BoxShape.circle,
                                   ),
                                 ),
-                                const SizedBox(width: 4),
+                                const SizedBox(width: 3),
                                 Text(
                                   isOpenNow ? 'திறந்து' : 'மூடியது',
                                   style: const TextStyle(
                                     color: Colors.white,
-                                    fontSize: 10,
+                                    fontSize: 9,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),

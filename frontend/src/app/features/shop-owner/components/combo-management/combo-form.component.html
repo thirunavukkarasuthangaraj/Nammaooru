@@ -32,6 +32,37 @@
         </mat-form-field>
       </div>
 
+      <!-- Banner Image Section -->
+      <div class="form-section">
+        <h3><mat-icon>image</mat-icon> Banner Image (Optional)</h3>
+
+        <div class="image-upload-container">
+          <div class="image-preview" *ngIf="getBannerImageUrl()">
+            <img [src]="getBannerImageUrl()" alt="Combo banner">
+            <button mat-icon-button class="remove-image-btn" (click)="removeImage()" type="button">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+
+          <div class="upload-area" *ngIf="!getBannerImageUrl()" (click)="imageInput.click()">
+            <mat-icon>cloud_upload</mat-icon>
+            <span>Click to upload banner image</span>
+            <small>JPG, PNG, GIF, WebP (max 10MB)</small>
+          </div>
+
+          <input type="file" #imageInput hidden accept="image/*" (change)="onImageSelected($event)">
+
+          <div class="upload-actions" *ngIf="!getBannerImageUrl()">
+            <button mat-stroked-button type="button" (click)="imageInput.click()" [disabled]="isUploadingImage">
+              <mat-icon>photo_library</mat-icon>
+              Choose Image
+            </button>
+          </div>
+
+          <mat-progress-bar mode="indeterminate" *ngIf="isUploadingImage"></mat-progress-bar>
+        </div>
+      </div>
+
       <!-- Products Section -->
       <div class="form-section">
         <h3><mat-icon>inventory_2</mat-icon> Products (Min 2 required)</h3>

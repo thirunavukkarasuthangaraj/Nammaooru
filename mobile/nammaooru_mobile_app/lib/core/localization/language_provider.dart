@@ -84,6 +84,22 @@ class LanguageProvider with ChangeNotifier {
     return product['name'] ?? '';
   }
 
+  // Get shop name based on language preference
+  String getShopName(dynamic shop) {
+    if (shop == null) return '';
+
+    // If Tamil is selected, try to show Tamil name
+    if (_showTamil) {
+      final nameTamil = shop['nameTamil'];
+      if (nameTamil != null && nameTamil.toString().trim().isNotEmpty) {
+        return nameTamil.toString();
+      }
+    }
+
+    // Fall back to English name
+    return shop['name']?.toString() ?? '';
+  }
+
   // Get display name for shop products (uses displayName field but respects language toggle)
   String getDisplayName(dynamic product) {
     if (product == null) return '';

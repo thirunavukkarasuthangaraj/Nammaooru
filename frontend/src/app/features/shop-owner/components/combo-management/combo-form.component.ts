@@ -37,9 +37,12 @@ export class ComboFormComponent implements OnInit {
   isEditMode = false;
   isLoading = false;
   isSaving = false;
+  isUploadingImage = false;
   shopProducts: ShopProduct[] = [];
   filteredProducts: ShopProduct[] = [];
   searchQuery = '';
+  selectedImageFile: File | null = null;
+  imagePreviewUrl: string | null = null;
 
   constructor(
     private fb: FormBuilder,
@@ -351,5 +354,84 @@ export class ComboFormComponent implements OnInit {
       verticalPosition: 'top',
       panelClass: type === 'success' ? 'snackbar-success' : 'snackbar-error'
     });
+  }
+
+  // Image upload methods
+  onImageSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      const file = input.files[0];
+
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        this.showSnackBar('Invalid file type. Please select an image (JPG, PNG, GIF, WebP)', 'error');
+        return;
+      }
+
+      // Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        this.showSnackBar('File too large. Maximum size is 10MB', 'error');
+        return;
+      }
+
+      this.selectedImageFile = file;
+
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        this.imagePreviewUrl = e.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+
+      // Upload the image
+      this.uploadImage();
+    }
+  }
+
+  uploadImage(): void {
+    if (!this.selectedImageFile) return;
+
+    this.isUploadingImage = true;
+    const formData = new FormData();
+    formData.append('file', this.selectedImageFile);
+
+    const comboId = this.isEditMode && this.data.combo ? this.data.combo.id : null;
+    let url = `${environment.apiUrl}/shops/${this.data.shopId}/combos/upload-image`;
+    if (comboId) {
+      url += `?comboId=${comboId}`;
+    }
+
+    this.http.post<any>(url, formData).subscribe({
+      next: (response) => {
+        this.isUploadingImage = false;
+        if (response.imageUrl) {
+          this.comboForm.patchValue({ bannerImageUrl: response.imageUrl });
+          this.showSnackBar('Image uploaded successfully', 'success');
+        }
+      },
+      error: (error) => {
+        this.isUploadingImage = false;
+        const message = error.error?.message || 'Failed to upload image';
+        this.showSnackBar(message, 'error');
+      }
+    });
+  }
+
+  removeImage(): void {
+    this.selectedImageFile = null;
+    this.imagePreviewUrl = null;
+    this.comboForm.patchValue({ bannerImageUrl: '' });
+  }
+
+  getBannerImageUrl(): string | null {
+    const bannerUrl = this.comboForm.get('bannerImageUrl')?.value;
+    if (this.imagePreviewUrl) {
+      return this.imagePreviewUrl;
+    }
+    if (bannerUrl) {
+      return this.getFullImageUrl(bannerUrl) || null;
+    }
+    return null;
   }
 }

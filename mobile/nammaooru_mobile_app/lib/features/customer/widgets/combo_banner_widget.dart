@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'dart:async';
 import '../models/combo_model.dart';
 import '../../../core/config/env_config.dart';
 
@@ -20,32 +20,25 @@ class ComboBannerWidget extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Header - "SPECIAL OFFERS" with count badge
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.red[50],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(Icons.card_giftcard, color: Colors.red[700], size: 20),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'Special Combos',
+              const Text(
+                'SPECIAL OFFERS',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 14,
                   fontWeight: FontWeight.bold,
-                  color: Colors.grey[800],
+                  color: Colors.black87,
+                  letterSpacing: 0.5,
                 ),
               ),
               const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.red,
+                  color: const Color(0xFF4CAF50),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
@@ -60,207 +53,293 @@ class ComboBannerWidget extends StatelessWidget {
             ],
           ),
         ),
+        // Combo Cards - Horizontal PageView
         SizedBox(
-          height: 180,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            itemCount: combos.length,
-            itemBuilder: (context, index) {
-              return _buildComboCard(context, combos[index]);
-            },
+          height: 160,
+          child: _ComboCarousel(
+            combos: combos,
+            onComboTapped: onComboTapped,
           ),
         ),
       ],
     );
   }
+}
 
-  Widget _buildComboCard(BuildContext context, CustomerCombo combo) {
-    final daysLeft = combo.endDate.difference(DateTime.now()).inDays;
+// Stateful widget for auto-sliding carousel
+class _ComboCarousel extends StatefulWidget {
+  final List<CustomerCombo> combos;
+  final Function(CustomerCombo) onComboTapped;
+
+  const _ComboCarousel({
+    required this.combos,
+    required this.onComboTapped,
+  });
+
+  @override
+  State<_ComboCarousel> createState() => _ComboCarouselState();
+}
+
+class _ComboCarouselState extends State<_ComboCarousel> {
+  late PageController _pageController;
+  int _currentPage = 0;
+  Timer? _autoSlideTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(viewportFraction: 0.92);
+    _startAutoSlide();
+  }
+
+  @override
+  void dispose() {
+    _autoSlideTimer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _startAutoSlide() {
+    _autoSlideTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      if (_pageController.hasClients && widget.combos.length > 1) {
+        final nextPage = (_currentPage + 1) % widget.combos.length;
+        _pageController.animateToPage(
+          nextPage,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PageView.builder(
+      controller: _pageController,
+      onPageChanged: (index) {
+        setState(() {
+          _currentPage = index;
+        });
+      },
+      itemCount: widget.combos.length,
+      itemBuilder: (context, index) {
+        return _ComboCard(
+          combo: widget.combos[index],
+          onTap: () => widget.onComboTapped(widget.combos[index]),
+        );
+      },
+    );
+  }
+}
+
+// Compact horizontal combo card with product images slideshow
+class _ComboCard extends StatefulWidget {
+  final CustomerCombo combo;
+  final VoidCallback onTap;
+
+  const _ComboCard({
+    required this.combo,
+    required this.onTap,
+  });
+
+  @override
+  State<_ComboCard> createState() => _ComboCardState();
+}
+
+class _ComboCardState extends State<_ComboCard> {
+  late PageController _imagePageController;
+  int _currentImageIndex = 0;
+  Timer? _imageSlideTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _imagePageController = PageController();
+    _startImageAutoSlide();
+  }
+
+  @override
+  void dispose() {
+    _imageSlideTimer?.cancel();
+    _imagePageController.dispose();
+    super.dispose();
+  }
+
+  void _startImageAutoSlide() {
+    final imageCount = widget.combo.items.length;
+    if (imageCount > 1) {
+      _imageSlideTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+        if (_imagePageController.hasClients) {
+          final nextPage = (_currentImageIndex + 1) % imageCount;
+          _imagePageController.animateToPage(
+            nextPage,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOut,
+          );
+        }
+      });
+    }
+  }
+
+  String _getFullImageUrl(String? url) {
+    if (url == null || url.isEmpty) return '';
+    if (url.startsWith('http')) return url;
+    return '${EnvConfig.imageBaseUrl}$url';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final combo = widget.combo;
+    final hasImages = combo.items.any((item) => item.imageUrl != null && item.imageUrl!.isNotEmpty);
 
     return GestureDetector(
-      onTap: () => onComboTapped(combo),
+      onTap: widget.onTap,
       child: Container(
-        width: 300,
         margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
           color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            // Top section with gradient
-            Container(
-              height: 70,
-              decoration: BoxDecoration(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                gradient: LinearGradient(
-                  colors: [const Color(0xFF2E7D32), const Color(0xFF4CAF50)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
+            // Left side - Product Image with discount badge
+            Expanded(
+              flex: 4,
               child: Stack(
                 children: [
-                  // Decorative circles (subtle)
-                  Positioned(
-                    right: -15,
-                    top: -15,
-                    child: Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        shape: BoxShape.circle,
+                  // Product Image Container
+                  Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1B4332),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(16),
+                        bottomLeft: Radius.circular(16),
                       ),
                     ),
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(16),
+                        bottomLeft: Radius.circular(16),
+                      ),
+                      child: _buildImageSection(combo, hasImages),
+                    ),
                   ),
-                  // Content
-                  Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      children: [
-                        // Combo icon
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(Icons.card_giftcard, color: Colors.white, size: 20),
+                  // Discount badge
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF4CAF50),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '${combo.discountPercentage.toStringAsFixed(0)}% OFF',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10,
                         ),
-                        const SizedBox(width: 10),
-                        // Title
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                combo.name,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              if (combo.nameTamil != null)
-                                Text(
-                                  combo.nameTamil!,
-                                  style: TextStyle(
-                                    color: Colors.white.withOpacity(0.9),
-                                    fontSize: 12,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                            ],
-                          ),
-                        ),
-                        // Discount badge
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.orange[600],
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            '${combo.discountPercentage.toStringAsFixed(0)}% OFF',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-
-            // Bottom section with price
+            // Right side - Details
             Expanded(
+              flex: 5,
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Items count
-                    Row(
-                      children: [
-                        Icon(Icons.shopping_basket, color: Colors.grey[600], size: 16),
-                        const SizedBox(width: 6),
-                        Text(
-                          '${combo.itemCount} items included',
-                          style: TextStyle(color: Colors.grey[600], fontSize: 13),
-                        ),
-                        const Spacer(),
-                        if (daysLeft >= 0 && daysLeft <= 7)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: Colors.red[50],
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              daysLeft == 0 ? '⏰ Ends today!' : '⏰ $daysLeft days left',
-                              style: TextStyle(color: Colors.red[700], fontSize: 10, fontWeight: FontWeight.w600),
-                            ),
-                          ),
-                      ],
+                    // Combo name (English / Tamil)
+                    Text(
+                      combo.nameTamil != null && combo.nameTamil!.isNotEmpty
+                          ? '${combo.name} / ${combo.nameTamil}'
+                          : combo.name,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-
-                    // Price row
+                    const SizedBox(height: 4),
+                    // Items count
+                    Text(
+                      '${combo.itemCount} items included',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const Spacer(),
+                    // Price row with cart button
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text(
-                          '₹${combo.comboPrice.toStringAsFixed(0)}',
-                          style: const TextStyle(
-                            color: Color(0xFF2E7D32),
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 3),
-                          child: Text(
-                            '₹${combo.originalPrice.toStringAsFixed(0)}',
-                            style: TextStyle(
-                              color: Colors.grey[500],
-                              fontSize: 14,
-                              decoration: TextDecoration.lineThrough,
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '₹${combo.comboPrice.toStringAsFixed(0)}',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF4CAF50),
+                              ),
                             ),
-                          ),
+                            Text(
+                              '₹${combo.originalPrice.toStringAsFixed(0)}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[500],
+                                decoration: TextDecoration.lineThrough,
+                              ),
+                            ),
+                          ],
                         ),
                         const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF2E7D32),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text('View', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
-                              SizedBox(width: 4),
-                              Icon(Icons.arrow_forward_ios, color: Colors.white, size: 10),
-                            ],
+                        // View button
+                        GestureDetector(
+                          onTap: widget.onTap,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF4CAF50),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'View',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                SizedBox(width: 2),
+                                Icon(
+                                  Icons.chevron_right,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
@@ -271,6 +350,56 @@ class ComboBannerWidget extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildImageSection(CustomerCombo combo, bool hasImages) {
+    if (hasImages) {
+      return PageView.builder(
+        controller: _imagePageController,
+        onPageChanged: (index) {
+          setState(() {
+            _currentImageIndex = index;
+          });
+        },
+        itemCount: combo.items.length,
+        itemBuilder: (context, index) {
+          final item = combo.items[index];
+          final imageUrl = _getFullImageUrl(item.imageUrl);
+          return Padding(
+            padding: const EdgeInsets.all(12),
+            child: imageUrl.isNotEmpty
+                ? Image.network(
+                    imageUrl,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) =>
+                        _buildPlaceholderImage(),
+                  )
+                : _buildPlaceholderImage(),
+          );
+        },
+      );
+    } else if (combo.bannerImageUrl != null && combo.bannerImageUrl!.isNotEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(12),
+        child: Image.network(
+          _getFullImageUrl(combo.bannerImageUrl),
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) => _buildPlaceholderImage(),
+        ),
+      );
+    } else {
+      return _buildPlaceholderImage();
+    }
+  }
+
+  Widget _buildPlaceholderImage() {
+    return Center(
+      child: Icon(
+        Icons.card_giftcard,
+        size: 40,
+        color: Colors.white.withOpacity(0.5),
       ),
     );
   }
@@ -567,7 +696,7 @@ class ComboDetailBottomSheet extends StatelessWidget {
                     width: 50,
                     height: 50,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
+                    errorBuilder: (context, url, error) => Container(
                       width: 50,
                       height: 50,
                       color: Colors.grey[200],

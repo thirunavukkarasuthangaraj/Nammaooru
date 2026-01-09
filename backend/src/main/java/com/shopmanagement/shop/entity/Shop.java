@@ -37,6 +37,10 @@ public class Shop {
     @Column(nullable = false)
     private String name;
 
+    @Size(max = 255)
+    @Column(name = "name_tamil")
+    private String nameTamil;
+
     @Size(max = 2000)
     @Column(columnDefinition = "TEXT")
     private String description;

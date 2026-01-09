@@ -3,6 +3,7 @@ package com.shopmanagement.controller;
 import com.shopmanagement.dto.combo.ComboResponse;
 import com.shopmanagement.dto.combo.CreateComboRequest;
 import com.shopmanagement.service.ComboService;
+import com.shopmanagement.service.FileUploadService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,9 +12,11 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
 import java.util.List;
@@ -26,6 +29,7 @@ import java.util.Map;
 public class ComboController {
 
     private final ComboService comboService;
+    private final FileUploadService fileUploadService;
 
     // ==================== SHOP OWNER APIs ====================
 
@@ -201,6 +205,37 @@ public class ComboController {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Error toggling combo status: {}", e.getMessage(), e);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("statusCode", "9999");
+            response.put("message", e.getMessage());
+
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    /**
+     * Upload combo banner image
+     */
+    @PostMapping(value = "/shops/{shopId}/combos/upload-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SHOP_OWNER')")
+    public ResponseEntity<Map<String, Object>> uploadComboImage(
+            @PathVariable Long shopId,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "comboId", required = false) Long comboId) {
+        log.info("POST /shops/{}/combos/upload-image - Uploading combo image", shopId);
+
+        try {
+            String imageUrl = fileUploadService.uploadComboImage(file, shopId, comboId);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("statusCode", "0000");
+            response.put("message", "Image uploaded successfully");
+            response.put("imageUrl", imageUrl);
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error uploading combo image: {}", e.getMessage(), e);
 
             Map<String, Object> response = new HashMap<>();
             response.put("statusCode", "9999");

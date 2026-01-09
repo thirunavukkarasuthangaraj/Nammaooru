@@ -18,6 +18,9 @@ public class ShopCreateRequest {
     @Size(max = 255, message = "Shop name cannot exceed 255 characters")
     private String name;
 
+    @Size(max = 255, message = "Shop name (Tamil) cannot exceed 255 characters")
+    private String nameTamil;
+
     @Size(max = 2000, message = "Description cannot exceed 2000 characters")
     private String description;
 

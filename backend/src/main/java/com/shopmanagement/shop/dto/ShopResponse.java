@@ -17,6 +17,7 @@ public class ShopResponse {
 
     private Long id;
     private String name;
+    private String nameTamil;
     private String description;
     private String shopId;
     private String slug;

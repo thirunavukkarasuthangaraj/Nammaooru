@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../models/combo_model.dart';
 import '../../services/combo_service.dart';
 import '../../utils/app_config.dart';
@@ -19,6 +21,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
   int _currentStep = 0;
   bool _isLoading = false;
   bool _isLoadingProducts = true;
+  bool _isUploadingImage = false;
 
   // Form Controllers
   final _nameController = TextEditingController();
@@ -35,6 +38,11 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
   List<Map<String, dynamic>> _availableProducts = [];
   List<ComboItem> _selectedItems = [];
   double _originalPrice = 0;
+
+  // Image upload
+  File? _selectedImage;
+  String? _bannerImageUrl;
+  final ImagePicker _imagePicker = ImagePicker();
 
   bool get isEditMode => widget.combo != null;
 
@@ -58,6 +66,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
     _endDate = combo.endDate;
     _isActive = combo.isActive;
     _selectedItems = List.from(combo.items);
+    _bannerImageUrl = combo.bannerImageUrl;
     _calculateOriginalPrice();
   }
 
@@ -136,6 +145,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
       'endDate': _endDate.toIso8601String().split('T')[0],
       'isActive': _isActive,
       'maxQuantityPerOrder': int.tryParse(_maxQtyController.text) ?? 5,
+      'bannerImageUrl': _bannerImageUrl,
       'items': _selectedItems
           .map((e) => {
                 'shopProductId': e.shopProductId,
@@ -259,6 +269,66 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
     );
   }
 
+  Future<void> _pickImage() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        setState(() {
+          _selectedImage = File(image.path);
+          _isUploadingImage = true;
+        });
+
+        // Upload the image
+        final result = await ComboService.uploadComboImage(
+          widget.shopId,
+          _selectedImage!,
+          comboId: isEditMode ? widget.combo!.id : null,
+        );
+
+        setState(() => _isUploadingImage = false);
+
+        if (result['success']) {
+          setState(() => _bannerImageUrl = result['imageUrl']);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Image uploaded successfully')),
+            );
+          }
+        } else {
+          setState(() => _selectedImage = null);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(result['message'] ?? 'Failed to upload image')),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      setState(() {
+        _selectedImage = null;
+        _isUploadingImage = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error picking image: $e')),
+        );
+      }
+    }
+  }
+
+  void _removeImage() {
+    setState(() {
+      _selectedImage = null;
+      _bannerImageUrl = null;
+    });
+  }
+
   Widget _buildBasicInfoStep() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -290,6 +360,104 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
             border: OutlineInputBorder(),
           ),
         ),
+        const SizedBox(height: 20),
+
+        // Banner Image Upload (Optional)
+        const Text(
+          'Banner Image (Optional)',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Product images will automatically show in customer app',
+          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+        ),
+        const SizedBox(height: 8),
+
+        if (_isUploadingImage)
+          Container(
+            height: 150,
+            decoration: BoxDecoration(
+              color: Colors.grey[200],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 8),
+                  Text('Uploading...'),
+                ],
+              ),
+            ),
+          )
+        else if (_selectedImage != null || _bannerImageUrl != null)
+          Stack(
+            children: [
+              Container(
+                height: 150,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey[300]!),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: _selectedImage != null
+                      ? Image.file(_selectedImage!, fit: BoxFit.cover)
+                      : CachedNetworkImage(
+                          imageUrl: _getFullImageUrl(_bannerImageUrl!),
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) =>
+                              const Center(child: CircularProgressIndicator()),
+                          errorWidget: (context, url, error) =>
+                              const Icon(Icons.error),
+                        ),
+                ),
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: InkWell(
+                  onTap: _removeImage,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.close, color: Colors.white, size: 18),
+                  ),
+                ),
+              ),
+            ],
+          )
+        else
+          InkWell(
+            onTap: _pickImage,
+            child: Container(
+              height: 100,
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey[300]!, style: BorderStyle.solid),
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.cloud_upload, size: 32, color: Colors.grey[500]),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Tap to upload banner (optional)',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }

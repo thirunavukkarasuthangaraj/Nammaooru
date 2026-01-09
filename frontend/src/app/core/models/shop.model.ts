@@ -1,6 +1,7 @@
 export interface Shop {
   id: number;
   name: string;
+  nameTamil?: string;
   description?: string;
   shopId: string;
   slug: string;
@@ -48,6 +49,7 @@ export interface ShopImage {
 
 export interface ShopCreateRequest {
   name: string;
+  nameTamil?: string;
   description?: string;
   ownerName: string;
   ownerEmail: string;
@@ -71,6 +73,7 @@ export interface ShopCreateRequest {
 
 export interface ShopUpdateRequest {
   name?: string;
+  nameTamil?: string;
   description?: string;
   ownerName?: string;
   ownerEmail?: string;

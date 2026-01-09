@@ -57,6 +57,28 @@ public class FileUploadService {
     }
 
     /**
+     * Upload combo banner image
+     */
+    public String uploadComboImage(MultipartFile file, Long shopId, Long comboId) throws IOException {
+        validateFile(file);
+
+        String fileName = generateFileName(file);
+        String categoryPath = "combos/" + shopId + "/" + (comboId != null ? comboId : "temp") + "/";
+        Path uploadDir = Paths.get(uploadPath, categoryPath);
+
+        // Create directories if they don't exist
+        Files.createDirectories(uploadDir);
+
+        Path filePath = uploadDir.resolve(fileName);
+        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+        String fileUrl = "/uploads/" + categoryPath + fileName;
+        log.info("Combo image uploaded successfully: {}", fileUrl);
+
+        return fileUrl;
+    }
+
+    /**
      * Upload delivery proof with image processing and watermarking
      */
     public String uploadDeliveryProof(MultipartFile file, Long orderId, String proofType) throws IOException {
