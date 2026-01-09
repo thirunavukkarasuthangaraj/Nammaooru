@@ -1305,6 +1305,19 @@ export class ShopProfileComponent implements OnInit {
         next: (response) => {
           this.isLoading = false;
           this.shop = response;
+          this.isEditMode = false;
+
+          // Re-patch form with updated values from response
+          this.shopForm.patchValue({
+            name: response.name || '',
+            nameTamil: response.nameTamil || '',
+            description: response.description || '',
+            phone: response.ownerPhone || '',
+            address: response.addressLine1 || '',
+            city: response.city || '',
+            pincode: response.postalCode || ''
+          });
+
           this.snackBar.open('Shop profile updated successfully!', 'Close', {
             duration: 3000,
             horizontalPosition: 'end',
