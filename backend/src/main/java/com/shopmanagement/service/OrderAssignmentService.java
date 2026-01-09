@@ -136,17 +136,20 @@ public class OrderAssignmentService {
 
         // Send push notification to assigned delivery partner
         try {
-            log.info("🔔 Sending assignment notification to partner: {}", selectedPartner.getEmail());
+            log.info("🔔 Sending assignment notification to partner: {} (ID: {})", selectedPartner.getEmail(), selectedPartner.getId());
 
-            // Get FCM token for the delivery partner
-            String fcmToken = userFcmTokenRepository.findByUserIdAndIsActiveTrue(selectedPartner.getId())
-                .stream()
-                .findFirst()
-                .map(UserFcmToken::getFcmToken)
-                .orElse(null);
+            // Get all FCM tokens for the delivery partner (for debugging)
+            List<UserFcmToken> allTokens = userFcmTokenRepository.findByUserIdAndIsActiveTrue(selectedPartner.getId());
+            log.info("📊 Found {} active FCM token(s) for partner ID: {}", allTokens.size(), selectedPartner.getId());
 
-            if (fcmToken != null && !fcmToken.isEmpty()) {
-                log.info("📱 Found FCM token for partner {}, sending notification", selectedPartner.getEmail());
+            if (!allTokens.isEmpty()) {
+                // Use the most recently updated token
+                UserFcmToken latestToken = allTokens.get(0);
+                String fcmToken = latestToken.getFcmToken();
+                log.info("📱 Using FCM token (device: {}, updated: {}) for partner {}",
+                    latestToken.getDeviceId(),
+                    latestToken.getUpdatedAt(),
+                    selectedPartner.getEmail());
 
                 // Send Firebase notification to driver with proper title, sound, and details
                 firebaseNotificationService.sendOrderAssignmentNotificationToDriver(
@@ -160,7 +163,7 @@ public class OrderAssignmentService {
 
                 log.info("✅ Assignment notification sent successfully to partner: {}", selectedPartner.getEmail());
             } else {
-                log.warn("❌ No FCM token found for delivery partner: {} (ID: {})",
+                log.warn("❌ No FCM token found for delivery partner: {} (ID: {}). Driver app may not be properly registered.",
                     selectedPartner.getEmail(), selectedPartner.getId());
             }
         } catch (Exception e) {

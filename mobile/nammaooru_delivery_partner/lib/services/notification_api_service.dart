@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../core/config/app_config.dart';
 import '../core/storage/local_storage.dart';
 
@@ -260,15 +262,38 @@ class NotificationApiService {
 
   /// Get device type
   String _getDeviceType() {
-    // You can use Platform.isAndroid and Platform.isIOS
-    // For now, returning android as default
+    try {
+      if (Platform.isAndroid) return 'android';
+      if (Platform.isIOS) return 'ios';
+    } catch (e) {
+      // Platform not available (e.g., web)
+    }
     return 'android';
   }
 
-  /// Get device ID
+  /// Get persistent device ID
+  /// Uses SharedPreferences to ensure the same device ID is used across app restarts
+  /// This is critical for FCM token management - old tokens for the same device
+  /// can be properly deactivated when a new token is registered
   Future<String> _getDeviceId() async {
-    // You can use device_info_plus package to get actual device ID
-    // For now, returning a placeholder
-    return 'device_${DateTime.now().millisecondsSinceEpoch}';
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? deviceId = prefs.getString('fcm_device_id');
+
+      if (deviceId == null || deviceId.isEmpty) {
+        // Generate a unique device ID once and persist it
+        deviceId = 'dp_device_${DateTime.now().millisecondsSinceEpoch}_${DateTime.now().microsecond}';
+        await prefs.setString('fcm_device_id', deviceId);
+        debugPrint('📱 Generated new persistent device ID: $deviceId');
+      } else {
+        debugPrint('📱 Using existing device ID: $deviceId');
+      }
+
+      return deviceId;
+    } catch (e) {
+      debugPrint('❌ Error getting device ID: $e');
+      // Fallback to a consistent identifier based on device info if possible
+      return 'dp_device_fallback';
+    }
   }
 }

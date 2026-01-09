@@ -51,8 +51,13 @@ public class OrderAssignmentRetryService {
      * Scheduled task that runs every 1 minute to check for unassigned orders
      * and retry auto-assignment
      */
+    /**
+     * Note: Do NOT add @Transactional here. Each order is processed independently
+     * via autoAssignOrder() which has its own transaction. If we add @Transactional here,
+     * when an inner transaction fails (e.g., "Order already assigned"), Spring marks
+     * the outer transaction as rollback-only, causing UnexpectedRollbackException.
+     */
     @Scheduled(fixedDelay = 60000, initialDelay = 30000) // Run every 1 minute, start after 30 seconds
-    @Transactional
     public void retryUnassignedOrders() {
         try {
             log.debug("Checking for unassigned orders...");
