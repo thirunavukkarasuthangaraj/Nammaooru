@@ -10,10 +10,10 @@ class EnvConfig {
   // static const String apiUrl = 'https://api.nammaoorudelivary.in'; // Alias for compatibility
   // static const String imageBaseUrl = 'https://nammaoorudelivary.in';
 
-  // DEVELOPMENT: Local development - Point to localhost
-  static const String baseUrl = 'http://localhost:8080';
-  static const String apiUrl = 'http://localhost:8080'; // Alias for compatibility
-  static const String imageBaseUrl = 'http://localhost:8080';
+  // PRODUCTION: Use your deployed server
+  static const String baseUrl = 'https://api.nammaoorudelivary.in';
+  static const String apiUrl = 'https://api.nammaoorudelivary.in'; // Alias for compatibility
+  static const String imageBaseUrl = 'https://nammaoorudelivary.in';
 
   static const String apiVersion = '';
   static const String fullApiUrl = '$baseUrl/api';
