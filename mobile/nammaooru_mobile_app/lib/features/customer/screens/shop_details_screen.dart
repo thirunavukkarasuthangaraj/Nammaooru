@@ -1503,7 +1503,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     );
   }
 
-  void _addComboToCart(CustomerCombo combo) {
+  Future<void> _addComboToCart(CustomerCombo combo) async {
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
 
     // Debug: Log combo info
@@ -1521,11 +1521,13 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
         id: item.shopProductId.toString(),
         name: item.productName,
         nameTamil: item.productNameTamil,
-        description: '',
+        description: item.productName,
         price: item.unitPrice,
         images: item.imageUrl != null ? [item.imageUrl!] : [],
+        unit: item.unit ?? 'piece',
         category: 'Combo Item',
-        shopId: combo.shopId.toString(),
+        shopId: combo.shopCode ?? combo.shopId.toString(),
+        shopDatabaseId: combo.shopId,
         shopName: combo.shopName ?? '',
         stockQuantity: 999,
         createdAt: DateTime.now(),
@@ -1536,7 +1538,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       print('✅ Created ProductModel: name=${product.name}, nameTamil=${product.nameTamil}');
 
       // Add to cart with the specified quantity
-      cartProvider.addToCart(product, quantity: item.quantity);
+      await cartProvider.addToCart(product, quantity: item.quantity);
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
