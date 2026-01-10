@@ -36,6 +36,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.beans.factory.annotation.Value;
 
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -69,6 +71,7 @@ public class OrderService {
     private final OrderAssignmentRepository orderAssignmentRepository;
     private final PromotionService promotionService;
     private final com.shopmanagement.repository.PromotionRepository promotionRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     public OrderService(
             OrderRepository orderRepository,
@@ -85,7 +88,8 @@ public class OrderService {
             OrderAssignmentRepository orderAssignmentRepository,
             @Lazy DeliveryConfirmationService deliveryConfirmationService,
             PromotionService promotionService,
-            com.shopmanagement.repository.PromotionRepository promotionRepository) {
+            com.shopmanagement.repository.PromotionRepository promotionRepository,
+            SimpMessagingTemplate messagingTemplate) {
         this.orderRepository = orderRepository;
         this.customerRepository = customerRepository;
         this.userRepository = userRepository;
@@ -98,6 +102,7 @@ public class OrderService {
         this.userFcmTokenRepository = userFcmTokenRepository;
         this.notificationRepository = notificationRepository;
         this.orderAssignmentRepository = orderAssignmentRepository;
+        this.messagingTemplate = messagingTemplate;
         this.deliveryConfirmationService = deliveryConfirmationService;
         this.promotionService = promotionService;
         this.promotionRepository = promotionRepository;
@@ -343,7 +348,15 @@ public class OrderService {
         } catch (Exception e) {
             log.error("❌ Failed to send FCM notification to shop owner", e);
         }
-        
+
+        // Send WebSocket notification to shop owner for real-time web updates
+        try {
+            log.info("📡 Sending WebSocket notification for new order to shop: {}", shop.getId());
+            sendNewOrderWebSocketNotification(savedOrder, customer, shop, orderItems.size());
+        } catch (Exception e) {
+            log.error("❌ Failed to send WebSocket notification to shop", e);
+        }
+
         log.info("Order created successfully: {}", savedOrder.getOrderNumber());
         return mapToResponse(savedOrder);
     }
@@ -397,6 +410,13 @@ public class OrderService {
             createOrderStatusNotification(updatedOrder, oldStatus, status);
         } catch (Exception e) {
             log.error("Failed to create order status notification", e);
+        }
+
+        // Send WebSocket notification for real-time web updates
+        try {
+            sendOrderStatusWebSocketNotification(updatedOrder, oldStatus, status);
+        } catch (Exception e) {
+            log.error("Failed to send WebSocket status notification", e);
         }
 
         // Auto-assign delivery partner when order is ready for pickup (separate transaction)
@@ -1932,6 +1952,61 @@ public class OrderService {
             log.info("✅ Notification created successfully for order: {}", order.getOrderNumber());
         } catch (Exception e) {
             log.error("❌ Failed to create notification for order {}: {}", order.getOrderNumber(), e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Send WebSocket notification to shop owner when a new order is placed.
+     * This enables real-time updates on the shop owner's web dashboard.
+     */
+    private void sendNewOrderWebSocketNotification(Order order, Customer customer, Shop shop, int itemCount) {
+        try {
+            Map<String, Object> orderData = new HashMap<>();
+            orderData.put("type", "NEW_ORDER");
+            orderData.put("orderId", order.getId());
+            orderData.put("orderNumber", order.getOrderNumber());
+            orderData.put("customerName", customer.getFullName());
+            orderData.put("customerPhone", customer.getPhone());
+            orderData.put("totalAmount", order.getTotalAmount());
+            orderData.put("itemCount", itemCount);
+            orderData.put("status", order.getStatus().name());
+            orderData.put("deliveryType", order.getDeliveryType().name());
+            orderData.put("paymentMethod", order.getPaymentMethod());
+            orderData.put("createdAt", order.getCreatedAt().toString());
+            orderData.put("timestamp", LocalDateTime.now().toString());
+
+            // Send to shop-specific topic
+            String destination = "/topic/shop/" + shop.getId() + "/orders";
+            messagingTemplate.convertAndSend(destination, orderData);
+
+            log.info("✅ WebSocket notification sent to {} for new order: {}", destination, order.getOrderNumber());
+        } catch (Exception e) {
+            log.error("❌ Error sending WebSocket notification for order {}: {}", order.getOrderNumber(), e.getMessage());
+        }
+    }
+
+    /**
+     * Send WebSocket notification when order status changes.
+     * This enables real-time status updates on the shop owner's web dashboard.
+     */
+    private void sendOrderStatusWebSocketNotification(Order order, Order.OrderStatus oldStatus, Order.OrderStatus newStatus) {
+        try {
+            Map<String, Object> statusData = new HashMap<>();
+            statusData.put("type", "ORDER_STATUS_UPDATE");
+            statusData.put("orderId", order.getId());
+            statusData.put("orderNumber", order.getOrderNumber());
+            statusData.put("oldStatus", oldStatus.name());
+            statusData.put("newStatus", newStatus.name());
+            statusData.put("timestamp", LocalDateTime.now().toString());
+
+            // Send to shop-specific topic
+            String destination = "/topic/shop/" + order.getShop().getId() + "/orders";
+            messagingTemplate.convertAndSend(destination, statusData);
+
+            log.info("✅ WebSocket status update sent to {} for order: {} ({} -> {})",
+                    destination, order.getOrderNumber(), oldStatus, newStatus);
+        } catch (Exception e) {
+            log.error("❌ Error sending WebSocket status update for order {}: {}", order.getOrderNumber(), e.getMessage());
         }
     }
 }

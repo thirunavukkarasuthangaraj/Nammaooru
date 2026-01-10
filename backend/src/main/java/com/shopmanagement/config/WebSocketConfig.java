@@ -15,7 +15,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
             "/topic/delivery",       // Public delivery updates
             "/queue/partner",        // Private partner messages
             "/queue/customer",       // Private customer messages
-            "/topic/tracking"        // Real-time tracking updates
+            "/topic/tracking",       // Real-time tracking updates
+            "/topic/shop"            // Shop order notifications
         );
         
         // Set application destination prefix

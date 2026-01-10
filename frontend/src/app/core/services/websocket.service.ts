@@ -1,6 +1,8 @@
 import { Injectable } from '@angular/core';
 import { Observable, BehaviorSubject, Subject } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { Client, IMessage, StompSubscription } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
 
 export interface WebSocketMessage {
   type: string;
@@ -12,62 +14,62 @@ export interface WebSocketMessage {
   providedIn: 'root'
 })
 export class WebSocketService {
-  private ws: WebSocket | null = null;
+  private stompClient: Client | null = null;
   private connectionStatus$ = new BehaviorSubject<boolean>(false);
+  private subscriptions: Map<string, StompSubscription> = new Map();
   private messageSubjects: Map<string, Subject<any>> = new Map();
-  
+
   private reconnectInterval = 5000; // 5 seconds
-  private reconnectAttempts = 0;
   private maxReconnectAttempts = 10;
 
   constructor() {}
 
   /**
-   * Connect to WebSocket server
+   * Connect to WebSocket server using STOMP over SockJS
    */
   connect(token?: string): Observable<boolean> {
-    const serverUrl = `${environment.apiUrl}/ws`.replace('http', 'ws');
-    
     return new Observable(observer => {
       try {
-        this.ws = new WebSocket(serverUrl);
-        
-        this.ws.onopen = (event) => {
-          console.log('WebSocket Connected');
-          this.connectionStatus$.next(true);
-          this.reconnectAttempts = 0;
-          
-          // Send authentication if token provided
-          if (token) {
-            this.send('/auth', { token });
+        // Build WebSocket URL
+        const wsUrl = `${environment.apiUrl.replace('/api', '')}/ws`;
+        console.log('📡 Connecting to WebSocket:', wsUrl);
+
+        // Create STOMP client with SockJS
+        this.stompClient = new Client({
+          webSocketFactory: () => new SockJS(wsUrl),
+          reconnectDelay: this.reconnectInterval,
+          heartbeatIncoming: 4000,
+          heartbeatOutgoing: 4000,
+          debug: (str) => {
+            console.log('STOMP:', str);
+          },
+          onConnect: (frame) => {
+            console.log('✅ WebSocket Connected via STOMP');
+            this.connectionStatus$.next(true);
+            observer.next(true);
+            observer.complete();
+          },
+          onStompError: (frame) => {
+            console.error('❌ STOMP error:', frame.headers['message']);
+            console.error('Details:', frame.body);
+            this.connectionStatus$.next(false);
+            observer.error(new Error(frame.headers['message']));
+          },
+          onDisconnect: () => {
+            console.log('WebSocket disconnected');
+            this.connectionStatus$.next(false);
+          },
+          onWebSocketClose: () => {
+            console.log('WebSocket connection closed');
+            this.connectionStatus$.next(false);
           }
-          
-          observer.next(true);
-          observer.complete();
-        };
+        });
 
-        this.ws.onmessage = (event) => {
-          try {
-            const message = JSON.parse(event.data);
-            this.handleMessage(message);
-          } catch (error) {
-            console.error('Error parsing WebSocket message:', error);
-          }
-        };
-
-        this.ws.onerror = (error) => {
-          console.error('WebSocket error:', error);
-          this.connectionStatus$.next(false);
-          observer.error(error);
-        };
-
-        this.ws.onclose = (event) => {
-          console.log('WebSocket connection closed');
-          this.connectionStatus$.next(false);
-          this.handleReconnect(token);
-        };
+        // Activate the client
+        this.stompClient.activate();
 
       } catch (error) {
+        console.error('❌ Error creating WebSocket connection:', error);
         observer.error(error);
       }
     });
@@ -77,55 +79,47 @@ export class WebSocketService {
    * Subscribe to a specific topic
    */
   subscribe(destination: string): Observable<any> {
-    if (!this.messageSubjects.has(destination)) {
-      this.messageSubjects.set(destination, new Subject<any>());
-    }
-    
-    // Send subscription message
-    this.send('/subscribe', { destination });
-    
-    return this.messageSubjects.get(destination)!.asObservable();
-  }
+    return new Observable(observer => {
+      if (!this.stompClient || !this.stompClient.connected) {
+        console.warn('WebSocket not connected, cannot subscribe to:', destination);
+        return;
+      }
 
-  /**
-   * Send message to WebSocket
-   */
-  private send(destination: string, data: any): void {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      const message = {
-        destination,
-        data,
-        timestamp: new Date()
+      console.log('📬 Subscribing to:', destination);
+
+      const subscription = this.stompClient.subscribe(destination, (message: IMessage) => {
+        try {
+          const body = JSON.parse(message.body);
+          console.log('📩 Received message on', destination, ':', body);
+          observer.next(body);
+        } catch (error) {
+          console.error('Error parsing message:', error);
+          observer.next(message.body);
+        }
+      });
+
+      this.subscriptions.set(destination, subscription);
+
+      // Return unsubscribe function
+      return () => {
+        console.log('Unsubscribing from:', destination);
+        subscription.unsubscribe();
+        this.subscriptions.delete(destination);
       };
-      this.ws.send(JSON.stringify(message));
-    }
+    });
   }
 
   /**
-   * Handle incoming messages
+   * Send message to a destination
    */
-  private handleMessage(message: any): void {
-    const { destination, data } = message;
-    
-    if (this.messageSubjects.has(destination)) {
-      this.messageSubjects.get(destination)!.next(data);
-    }
-  }
-
-  /**
-   * Handle reconnection
-   */
-  private handleReconnect(token?: string): void {
-    if (this.reconnectAttempts < this.maxReconnectAttempts) {
-      this.reconnectAttempts++;
-      console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
-      
-      setTimeout(() => {
-        this.connect(token).subscribe({
-          next: () => console.log('Reconnected successfully'),
-          error: (error) => console.error('Reconnection failed:', error)
-        });
-      }, this.reconnectInterval);
+  send(destination: string, data: any): void {
+    if (this.stompClient && this.stompClient.connected) {
+      this.stompClient.publish({
+        destination: `/app${destination}`,
+        body: JSON.stringify(data)
+      });
+    } else {
+      console.warn('WebSocket not connected, cannot send to:', destination);
     }
   }
 
@@ -140,9 +134,17 @@ export class WebSocketService {
    * Disconnect from WebSocket
    */
   disconnect(): void {
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
+    if (this.stompClient) {
+      // Unsubscribe from all subscriptions
+      this.subscriptions.forEach((sub, dest) => {
+        console.log('Unsubscribing from:', dest);
+        sub.unsubscribe();
+      });
+      this.subscriptions.clear();
+
+      // Deactivate the client
+      this.stompClient.deactivate();
+      this.stompClient = null;
     }
     this.connectionStatus$.next(false);
     this.messageSubjects.clear();
@@ -179,5 +181,13 @@ export class WebSocketService {
 
   subscribeToChatMessages(assignmentId: number): Observable<any> {
     return this.subscribe(`/topic/delivery/chat/${assignmentId}`);
+  }
+
+  /**
+   * Subscribe to shop order updates for real-time notifications
+   * Shop owners use this to receive new order and status update notifications
+   */
+  subscribeToShopOrders(shopId: number): Observable<any> {
+    return this.subscribe(`/topic/shop/${shopId}/orders`);
   }
 }

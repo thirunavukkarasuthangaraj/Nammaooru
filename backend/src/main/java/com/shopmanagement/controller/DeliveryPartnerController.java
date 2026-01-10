@@ -20,6 +20,7 @@ import com.shopmanagement.dto.fcm.FcmTokenRequest;
 import com.shopmanagement.service.FirebaseNotificationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -74,6 +75,9 @@ public class DeliveryPartnerController {
 
     @Autowired
     private FirebaseNotificationService firebaseNotificationService;
+
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
 
     @PostMapping("/login")
     public ResponseEntity<Map<String, Object>> login(@RequestBody Map<String, String> request) {
@@ -1579,6 +1583,23 @@ public class DeliveryPartnerController {
                 log.error("Failed to send return notification to shop owner: {}", e.getMessage());
             }
 
+            // Send WebSocket notification for real-time web updates
+            try {
+                Map<String, Object> wsData = new HashMap<>();
+                wsData.put("type", "ORDER_RETURNING");
+                wsData.put("orderId", order.getId());
+                wsData.put("orderNumber", order.getOrderNumber());
+                wsData.put("status", "RETURNING_TO_SHOP");
+                wsData.put("message", "Driver is returning products to shop");
+                wsData.put("timestamp", LocalDateTime.now().toString());
+
+                String destination = "/topic/shop/" + order.getShop().getId() + "/orders";
+                messagingTemplate.convertAndSend(destination, wsData);
+                log.info("✅ WebSocket notification sent for returning order: {}", orderNumber);
+            } catch (Exception e) {
+                log.error("Failed to send WebSocket notification for returning order: {}", e.getMessage());
+            }
+
             response.put("success", true);
             response.put("message", "Order marked as returning to shop");
             response.put("status", "RETURNING_TO_SHOP");
@@ -1663,6 +1684,23 @@ public class DeliveryPartnerController {
                 }
             } catch (Exception e) {
                 log.error("Failed to send return completed notification: {}", e.getMessage());
+            }
+
+            // Send WebSocket notification for real-time web updates
+            try {
+                Map<String, Object> wsData = new HashMap<>();
+                wsData.put("type", "ORDER_RETURNED");
+                wsData.put("orderId", order.getId());
+                wsData.put("orderNumber", order.getOrderNumber());
+                wsData.put("status", "RETURNED_TO_SHOP");
+                wsData.put("message", "Products have been returned to shop. Please verify and collect.");
+                wsData.put("timestamp", LocalDateTime.now().toString());
+
+                String destination = "/topic/shop/" + order.getShop().getId() + "/orders";
+                messagingTemplate.convertAndSend(destination, wsData);
+                log.info("✅ WebSocket notification sent for returned order: {}", orderNumber);
+            } catch (Exception e) {
+                log.error("Failed to send WebSocket notification for returned order: {}", e.getMessage());
             }
 
             response.put("success", true);

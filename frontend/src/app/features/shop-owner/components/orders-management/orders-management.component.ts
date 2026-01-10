@@ -8,6 +8,7 @@ import { AssignmentService } from '../../services/assignment.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { SwalService } from '../../../../core/services/swal.service';
 import { ShopContextService } from '../../services/shop-context.service';
+import { WebSocketService } from '../../../../core/services/websocket.service';
 import { environment } from '../../../../../environments/environment';
 import { getImageUrl as getImageUrlUtil } from '../../../../core/utils/image-url.util';
 import { Subject } from 'rxjs';
@@ -78,7 +79,8 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     private snackBar: MatSnackBar,
     private swal: SwalService,
     private router: Router,
-    private http: HttpClient
+    private http: HttpClient,
+    private webSocketService: WebSocketService
   ) {}
 
   ngOnInit(): void {
@@ -97,6 +99,8 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     // Clean up subscriptions
     this.destroy$.next();
     this.destroy$.complete();
+    // Disconnect WebSocket
+    this.webSocketService.disconnect();
   }
 
   loadOrdersFromCache(): void {
@@ -106,6 +110,7 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
       this.shopId = parseInt(cachedShopId, 10);
       console.log('Using cached shop ID:', this.shopId);
       this.loadOrders();
+      this.subscribeToWebSocketUpdates();
       return;
     }
 
@@ -122,12 +127,121 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
           }
           console.log('Got shop ID from API:', this.shopId);
           this.loadOrders();
+          this.subscribeToWebSocketUpdates();
         }
       },
       error: (error) => {
         console.error('Error getting shop ID:', error);
       }
     });
+  }
+
+  /**
+   * Subscribe to WebSocket for real-time order updates
+   */
+  private subscribeToWebSocketUpdates(): void {
+    if (!this.shopId) {
+      console.log('Cannot subscribe to WebSocket - no shop ID');
+      return;
+    }
+
+    console.log('📡 Connecting to WebSocket for shop:', this.shopId);
+
+    // Connect to WebSocket
+    const token = localStorage.getItem('auth_token');
+    this.webSocketService.connect(token || undefined).pipe(
+      takeUntil(this.destroy$)
+    ).subscribe({
+      next: (connected) => {
+        if (connected) {
+          console.log('✅ WebSocket connected, subscribing to shop orders');
+          this.subscribeToShopOrders();
+        }
+      },
+      error: (error) => {
+        console.error('❌ WebSocket connection error:', error);
+      }
+    });
+  }
+
+  /**
+   * Subscribe to shop orders topic for real-time notifications
+   */
+  private subscribeToShopOrders(): void {
+    if (!this.shopId) return;
+
+    this.webSocketService.subscribeToShopOrders(this.shopId).pipe(
+      takeUntil(this.destroy$)
+    ).subscribe({
+      next: (message) => {
+        console.log('📬 WebSocket message received:', message);
+        this.handleWebSocketMessage(message);
+      },
+      error: (error) => {
+        console.error('❌ WebSocket subscription error:', error);
+      }
+    });
+  }
+
+  /**
+   * Handle incoming WebSocket messages for order updates
+   */
+  private handleWebSocketMessage(message: any): void {
+    if (!message || !message.type) return;
+
+    switch (message.type) {
+      case 'NEW_ORDER':
+        console.log('🆕 New order received:', message.orderNumber);
+        // Play notification sound
+        this.playNotificationSound();
+        // Show toast notification
+        this.swal.toast(`New order #${message.orderNumber} received!`, 'success');
+        // Reload orders to get the new order
+        this.loadOrders();
+        break;
+
+      case 'ORDER_STATUS_UPDATE':
+        console.log('🔄 Order status updated:', message.orderNumber, message.oldStatus, '->', message.newStatus);
+        // Update the order in the local list or reload
+        this.loadOrders();
+        break;
+
+      case 'ORDER_RETURNING':
+        console.log('🔙 Order returning to shop:', message.orderNumber);
+        // Play notification sound for important update
+        this.playNotificationSound();
+        // Show warning toast
+        this.swal.toast(`Order #${message.orderNumber} - Driver returning products!`, 'warning');
+        // Reload orders
+        this.loadOrders();
+        break;
+
+      case 'ORDER_RETURNED':
+        console.log('📦 Order returned to shop:', message.orderNumber);
+        // Play notification sound for important update
+        this.playNotificationSound();
+        // Show info toast
+        this.swal.toast(`Order #${message.orderNumber} - Products returned. Please verify!`, 'info');
+        // Reload orders
+        this.loadOrders();
+        break;
+
+      default:
+        console.log('Unknown WebSocket message type:', message.type);
+    }
+  }
+
+  /**
+   * Play notification sound for new orders
+   */
+  private playNotificationSound(): void {
+    try {
+      const audio = new Audio('assets/sounds/new-order.mp3');
+      audio.volume = 0.5;
+      audio.play().catch(e => console.log('Audio play failed:', e));
+    } catch (error) {
+      console.log('Error playing notification sound:', error);
+    }
   }
 
   loadDashboardData(): void {

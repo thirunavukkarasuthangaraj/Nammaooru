@@ -1,4 +1,4 @@
- {
+{
   "name": "shop-management-frontend",
   "version": "1.0.195",
   "scripts": {
@@ -31,12 +31,14 @@
     "@stomp/stompjs": "^7.1.1",
     "@swimlane/ngx-charts": "^20.1.2",
     "@types/googlemaps": "^3.43.3",
+    "@types/sockjs-client": "^1.5.4",
     "chart.js": "^4.4.1",
     "firebase": "^9.23.0",
     "highcharts": "^12.4.0",
     "highcharts-angular": "^4.0.0",
     "ng2-charts": "^5.0.4",
     "rxjs": "~7.8.0",
+    "sockjs-client": "^1.6.1",
     "sweetalert2": "^11.23.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.13.0"

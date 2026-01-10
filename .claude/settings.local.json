@@ -188,7 +188,16 @@
       "Bash(cmd.exe /c \"mvnw.cmd compile -q\")",
       "Bash(./mvnw compile:*)",
       "WebFetch(domain:api.nammaoorudelivery.in)",
-      "WebFetch(domain:api.nammaoorudelivary.in)"
+      "WebFetch(domain:api.nammaoorudelivary.in)",
+      "Bash(dir \"D:\\\\AAWS\\\\nammaooru\\\\shop-management-system\\\\backend\\\\mvnw*\")",
+      "Bash(cmd //c \"taskkill /PID 28912 /F\")",
+      "Bash(powershell -Command \"Get-Content ''C:\\\\Users\\\\MVNLA\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--AAWS-nammaooru-shop-management-system\\\\tasks\\\\b221226.output'' -Tail 30\")",
+      "Bash(flutter analyze:*)",
+      "Bash(cd:*)",
+      "Bash(popd)",
+      "Bash(npm run build:*)",
+      "Bash(cmd.exe /c \"mvnw.cmd spring-boot:run\")",
+      "Bash(ng serve:*)"
     ],
     "deny": [],
     "ask": [],
