@@ -1,5 +1,5 @@
 # NammaOoru Delivery - Robots.txt
-# https://nammaooru delivery.in
+# https://nammaoorudelivary.in
 
 User-agent: *
 Allow: /
@@ -19,7 +19,7 @@ Disallow: /financial
 Disallow: /users
 
 # Sitemap location
-Sitemap: https://nammaooru delivery.in/sitemap.xml
+Sitemap: https://nammaoorudelivary.in/sitemap.xml
 
 # Crawl-delay for politeness
 Crawl-delay: 10

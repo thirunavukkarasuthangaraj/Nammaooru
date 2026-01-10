@@ -2,7 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <!-- Homepage -->
   <url>
-    <loc>https://nammaooru delivery.in/</loc>
+    <loc>https://nammaoorudelivary.in/</loc>
     <lastmod>2026-01-11</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
@@ -10,13 +10,13 @@
 
   <!-- Authentication Pages -->
   <url>
-    <loc>https://nammaooru delivery.in/auth/login</loc>
+    <loc>https://nammaoorudelivary.in/auth/login</loc>
     <lastmod>2026-01-11</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://nammaooru delivery.in/auth/register</loc>
+    <loc>https://nammaoorudelivary.in/auth/register</loc>
     <lastmod>2026-01-11</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -24,13 +24,13 @@
 
   <!-- Legal Pages -->
   <url>
-    <loc>https://nammaooru delivery.in/privacy-policy</loc>
+    <loc>https://nammaoorudelivary.in/privacy-policy</loc>
     <lastmod>2026-01-11</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://nammaooru delivery.in/terms-conditions</loc>
+    <loc>https://nammaoorudelivary.in/terms-conditions</loc>
     <lastmod>2026-01-11</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
@@ -38,25 +38,25 @@
 
   <!-- Shop Owner Portal -->
   <url>
-    <loc>https://nammaooru delivery.in/shop-owner</loc>
+    <loc>https://nammaoorudelivary.in/shop-owner</loc>
     <lastmod>2026-01-11</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://nammaooru delivery.in/shop-owner/dashboard</loc>
+    <loc>https://nammaoorudelivary.in/shop-owner/dashboard</loc>
     <lastmod>2026-01-11</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://nammaooru delivery.in/shop-owner/orders-management</loc>
+    <loc>https://nammaoorudelivary.in/shop-owner/orders-management</loc>
     <lastmod>2026-01-11</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://nammaooru delivery.in/shop-owner/products</loc>
+    <loc>https://nammaoorudelivary.in/shop-owner/products</loc>
     <lastmod>2026-01-11</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -64,19 +64,19 @@
 
   <!-- Customer Portal -->
   <url>
-    <loc>https://nammaooru delivery.in/customer</loc>
+    <loc>https://nammaoorudelivary.in/customer</loc>
     <lastmod>2026-01-11</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://nammaooru delivery.in/customer/shops</loc>
+    <loc>https://nammaoorudelivary.in/customer/shops</loc>
     <lastmod>2026-01-11</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://nammaooru delivery.in/customer/cart</loc>
+    <loc>https://nammaoorudelivary.in/customer/cart</loc>
     <lastmod>2026-01-11</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
@@ -84,7 +84,7 @@
 
   <!-- Delivery Partner Portal -->
   <url>
-    <loc>https://nammaooru delivery.in/delivery</loc>
+    <loc>https://nammaoorudelivary.in/delivery</loc>
     <lastmod>2026-01-11</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
