@@ -2,7 +2,6 @@ import { Injectable } from '@angular/core';
 import { Observable, BehaviorSubject, Subject } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Client, IMessage, StompSubscription } from '@stomp/stompjs';
-import SockJS from 'sockjs-client';
 
 export interface WebSocketMessage {
   type: string;
@@ -25,18 +24,19 @@ export class WebSocketService {
   constructor() {}
 
   /**
-   * Connect to WebSocket server using STOMP over SockJS
+   * Connect to WebSocket server using STOMP over native WebSocket
    */
   connect(token?: string): Observable<boolean> {
     return new Observable(observer => {
       try {
-        // Build WebSocket URL
-        const wsUrl = `${environment.apiUrl.replace('/api', '')}/ws`;
+        // Build WebSocket URL - convert http/https to ws/wss
+        const httpUrl = environment.apiUrl.replace('/api', '');
+        const wsUrl = httpUrl.replace(/^http/, 'ws') + '/ws/websocket';
         console.log('📡 Connecting to WebSocket:', wsUrl);
 
-        // Create STOMP client with SockJS
+        // Create STOMP client with native WebSocket
         this.stompClient = new Client({
-          webSocketFactory: () => new SockJS(wsUrl),
+          brokerURL: wsUrl,
           reconnectDelay: this.reconnectInterval,
           heartbeatIncoming: 4000,
           heartbeatOutgoing: 4000,
