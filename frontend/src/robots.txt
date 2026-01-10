@@ -1,0 +1,25 @@
+# NammaOoru Delivery - Robots.txt
+# https://nammaooru delivery.in
+
+User-agent: *
+Allow: /
+Allow: /auth/login
+Allow: /auth/register
+Allow: /privacy-policy
+Allow: /terms-conditions
+Allow: /shop-owner
+Allow: /customer
+Allow: /delivery
+
+# Disallow admin and sensitive areas
+Disallow: /admin
+Disallow: /api/
+Disallow: /settings
+Disallow: /financial
+Disallow: /users
+
+# Sitemap location
+Sitemap: https://nammaooru delivery.in/sitemap.xml
+
+# Crawl-delay for politeness
+Crawl-delay: 10
