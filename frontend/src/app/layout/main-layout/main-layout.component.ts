@@ -566,18 +566,40 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     };
   }
 
-  // Format time for display in Indian format
+  // Format time for display with relative time for recent, full date for older
   formatNotificationTime(date: Date): string {
     if (!date) return '';
     const d = new Date(date);
-    const day = d.getDate();
-    const month = d.getMonth() + 1;
-    const year = d.getFullYear() % 100;
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    // Format time part
     let hours = d.getHours();
     const minutes = d.getMinutes().toString().padStart(2, '0');
     const ampm = hours >= 12 ? 'PM' : 'AM';
     hours = hours % 12 || 12;
-    return `${day}/${month}/${year}, ${hours}:${minutes} ${ampm}`;
+    const timeStr = `${hours}:${minutes} ${ampm}`;
+
+    // Relative time for recent notifications
+    if (diffMins < 1) {
+      return 'Just now';
+    } else if (diffMins < 60) {
+      return `${diffMins} min ago`;
+    } else if (diffHours < 24 && d.getDate() === now.getDate()) {
+      return `Today, ${timeStr}`;
+    } else if (diffDays === 1 || (diffHours < 48 && d.getDate() === now.getDate() - 1)) {
+      return `Yesterday, ${timeStr}`;
+    } else {
+      // Full date format: "11 Jan 2026, 7:47 PM"
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const day = d.getDate();
+      const month = months[d.getMonth()];
+      const year = d.getFullYear();
+      return `${day} ${month} ${year}, ${timeStr}`;
+    }
   }
 
   getClientVersion(): string {
