@@ -221,7 +221,7 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
           controller: _searchController,
           style: const TextStyle(fontSize: 15),
           decoration: InputDecoration(
-            hintText: 'கடை தேடுங்கள் / Search shops...',
+            hintText: context.loc?.translate('search_shops') ?? 'Search shops...',
             hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
             prefixIcon: const Icon(
               Icons.search,
@@ -534,7 +534,9 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
                                 ),
                                 const SizedBox(width: 3),
                                 Text(
-                                  isOpenNow ? 'திறந்து' : 'மூடியது',
+                                  isOpenNow
+                                    ? (context.loc?.translate('open') ?? 'Open')
+                                    : (context.loc?.translate('closed') ?? 'Closed'),
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 9,
@@ -835,26 +837,13 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
                           ),
                           const SizedBox(width: 16),
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'இப்போது திறந்து உள்ளது',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF1B5E20),
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Open Now',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                              ],
+                            child: Text(
+                              context.loc?.translate('open_now') ?? 'Open Now',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1B5E20),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 12),

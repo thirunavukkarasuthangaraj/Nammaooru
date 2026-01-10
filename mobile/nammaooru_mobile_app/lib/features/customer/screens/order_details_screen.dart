@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../../../core/models/order_model.dart';
 import '../../../core/services/order_service.dart';
 import '../../../core/utils/image_url_helper.dart';
+import '../../../core/localization/language_provider.dart';
 
 class OrderDetailsScreen extends StatefulWidget {
   final String orderId;
@@ -400,58 +402,68 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.productName,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                if (item.shopName.isNotEmpty)
-                  Text(
-                    'From ${item.shopName}',
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: 12,
-                    ),
-                  ),
-                const SizedBox(height: 4),
-                Row(
+            child: Builder(
+              builder: (context) {
+                final languageProvider = Provider.of<LanguageProvider>(context);
+                final isTamil = languageProvider.currentLanguage == 'ta';
+                final hasTamilName = item.productNameTamil != null && item.productNameTamil!.isNotEmpty;
+                // Show ONLY the selected language name
+                final displayName = (isTamil && hasTamilName) ? item.productNameTamil! : item.productName;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (item.unit.isNotEmpty && item.unit != 'piece') ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.green.shade50,
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: Colors.green.shade200),
+                    Text(
+                      displayName,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    if (item.shopName.isNotEmpty)
+                      Text(
+                        'From ${item.shopName}',
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 12,
                         ),
-                        child: Text(
-                          item.unit,
+                      ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        if (item.unit.isNotEmpty && item.unit != 'piece') ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade50,
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: Colors.green.shade200),
+                            ),
+                            child: Text(
+                              item.unit,
+                              style: TextStyle(
+                                color: Colors.green.shade700,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        Text(
+                          'Qty: ${item.quantity} × ₹${item.price.toStringAsFixed(2)}',
                           style: TextStyle(
-                            color: Colors.green.shade700,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade600,
+                            fontSize: 14,
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                    Text(
-                      'Qty: ${item.quantity} × ₹${item.price.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 14,
-                      ),
+                      ],
                     ),
                   ],
-                ),
-              ],
+                );
+              },
             ),
           ),
           Text(

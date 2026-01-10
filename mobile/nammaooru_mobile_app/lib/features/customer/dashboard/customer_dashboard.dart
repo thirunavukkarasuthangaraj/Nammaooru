@@ -26,8 +26,15 @@ import '../../../core/services/location_service.dart';
 import '../../../core/services/address_service.dart';
 import '../widgets/address_selection_dialog.dart';
 import '../../../shared/widgets/platform_promos_carousel.dart';
+import '../../../core/services/promo_code_service.dart';
 import '../../../services/version_service.dart';
+import 'dart:async';
 import '../../../shared/widgets/update_dialog.dart';
+import '../services/combo_service.dart';
+import '../models/combo_model.dart';
+import '../widgets/combo_banner_widget.dart';
+import '../../../shared/providers/cart_provider.dart';
+import '../../../shared/models/product_model.dart';
 
 class CustomerDashboard extends StatefulWidget {
   const CustomerDashboard({super.key});
@@ -43,10 +50,16 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   bool _isLocationPickerOpen = false;
   List<dynamic> _featuredShops = [];
   List<dynamic> _recentOrders = [];
+  List<CustomerCombo> _combos = [];
+  List<PromoCode> _promos = [];
   DateTime? _lastBackPressTime;
+  final PageController _unifiedOffersController = PageController();
+  Timer? _autoSlideTimer;
+  int _currentOfferPage = 0;
 
   final _shopApi = ShopApiService();
   final _orderApi = OrderApiService();
+  final _promoService = PromoCodeService();
 
   @override
   void initState() {
@@ -56,6 +69,13 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     _loadDashboardData();
     _getCurrentLocationOnStartup();
     // App version checking is handled globally in app.dart, no need for duplicate check here
+  }
+
+  @override
+  void dispose() {
+    _autoSlideTimer?.cancel();
+    _unifiedOffersController.dispose();
+    super.dispose();
   }
 
   Future<void> _getCurrentLocationOnStartup() async {
@@ -393,9 +413,497 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     await Future.wait([
       _loadFeaturedShops(),
       _loadRecentOrders(),
+      _loadCombos(),
+      _loadPromos(),
     ]);
+    _startAutoSlideOffers();
   }
-  
+
+  Future<void> _loadPromos() async {
+    try {
+      final promos = await _promoService.getActivePromotions();
+      if (mounted) {
+        setState(() {
+          _promos = promos;
+        });
+      }
+    } catch (e) {
+      print('Error loading promos: $e');
+    }
+  }
+
+  void _startAutoSlideOffers() {
+    final totalItems = _promos.length + _combos.length;
+    if (totalItems <= 1) return;
+
+    _autoSlideTimer?.cancel();
+    _autoSlideTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (_unifiedOffersController.hasClients && mounted) {
+        final nextPage = (_currentOfferPage + 1) % totalItems;
+        _unifiedOffersController.animateToPage(
+          nextPage,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
+  }
+
+  Future<void> _loadCombos() async {
+    try {
+      final combos = await CustomerComboService.getAllActiveCombos();
+      if (mounted) {
+        setState(() {
+          _combos = combos;
+        });
+      }
+    } catch (e) {
+      print('Error loading combos: $e');
+    }
+  }
+
+  void _showComboDetails(CustomerCombo combo) {
+    // Show combo detail bottom sheet directly
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ComboDetailBottomSheet(
+        combo: combo,
+        onAddToCart: () {
+          Navigator.pop(context); // Close bottom sheet
+          _addComboToCart(combo);
+        },
+      ),
+    );
+  }
+
+  Future<void> _addComboToCart(CustomerCombo combo) async {
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+
+    // Add each item in the combo to cart
+    for (final item in combo.items) {
+      final product = ProductModel(
+        id: item.shopProductId.toString(),
+        name: item.productName,
+        nameTamil: item.productNameTamil,
+        description: item.productName,
+        price: item.unitPrice,
+        images: item.imageUrl != null ? [item.imageUrl!] : [],
+        unit: item.unit ?? 'piece',
+        category: 'Combo Item',
+        shopId: combo.shopCode ?? combo.shopId.toString(),
+        shopDatabaseId: combo.shopId,
+        shopName: combo.shopName ?? '',
+        stockQuantity: 999,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      await cartProvider.addToCart(product, quantity: item.quantity);
+    }
+
+    // Show success message
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${combo.name} added to cart!'),
+          backgroundColor: VillageTheme.primaryGreen,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  Widget _buildUnifiedOffersCarousel() {
+    final totalItems = _promos.length + _combos.length;
+
+    if (totalItems == 0) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header with count badge
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+          child: Row(
+            children: [
+              const Text(
+                'SPECIAL OFFERS',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4CAF50),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$totalItems',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Unified carousel
+        SizedBox(
+          height: 200,
+          child: PageView.builder(
+            controller: _unifiedOffersController,
+            itemCount: totalItems,
+            onPageChanged: (index) {
+              setState(() => _currentOfferPage = index);
+            },
+            itemBuilder: (context, index) {
+              // First show combos, then promos
+              if (index < _combos.length) {
+                return _buildComboCard(_combos[index]);
+              } else {
+                return _buildPromoCard(_promos[index - _combos.length]);
+              }
+            },
+          ),
+        ),
+        // Page indicator dots
+        if (totalItems > 1)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(totalItems, (index) {
+                return Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: _currentOfferPage == index ? 16 : 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: _currentOfferPage == index
+                        ? VillageTheme.primaryGreen
+                        : Colors.grey[300],
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                );
+              }),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildPromoCard(PromoCode promo) {
+    return GestureDetector(
+      onTap: () => _navigateToPromoShop(promo),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              VillageTheme.primaryGreen,
+              VillageTheme.primaryGreen.withOpacity(0.8),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: VillageTheme.primaryGreen.withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            // Decorative circles
+            Positioned(
+              right: -20,
+              top: -20,
+              child: Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.1),
+                ),
+              ),
+            ),
+            Positioned(
+              right: 30,
+              bottom: -30,
+              child: Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.1),
+                ),
+              ),
+            ),
+            // Content
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                promo.shopName ?? 'PLATFORM OFFER',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: VillageTheme.primaryGreen,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.local_offer, color: Colors.white, size: 16),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          '₹${promo.discountValue.toStringAsFixed(0)} OFF',
+                          style: const TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          promo.description ?? '',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white.withOpacity(0.9),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            'Code: ${promo.code}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: VillageTheme.primaryGreen,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (promo.imageUrl != null)
+                    Expanded(
+                      flex: 2,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          ImageUrlHelper.getFullImageUrl(promo.imageUrl),
+                          fit: BoxFit.cover,
+                          height: 120,
+                          errorBuilder: (_, __, ___) => const SizedBox(),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildComboCard(CustomerCombo combo) {
+    return GestureDetector(
+      onTap: () => _showComboDetails(combo),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Left side - Image with discount badge
+            ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                bottomLeft: Radius.circular(16),
+              ),
+              child: Stack(
+                children: [
+                  SizedBox(
+                    width: 140,
+                    height: 200,
+                    child: combo.bannerImageUrl != null
+                        ? Image.network(
+                            ImageUrlHelper.getFullImageUrl(combo.bannerImageUrl),
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              color: Colors.grey[200],
+                              child: const Icon(Icons.image, size: 40, color: Colors.grey),
+                            ),
+                          )
+                        : Container(
+                            color: Colors.grey[200],
+                            child: const Icon(Icons.local_offer, size: 40, color: Colors.grey),
+                          ),
+                  ),
+                  // Discount badge
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '${combo.discountPercentage.toStringAsFixed(0)}% OFF',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Right side - Details
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      combo.name,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (combo.nameTamil != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        combo.nameTamil!,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                    Text(
+                      '${combo.itemCount} items included',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Text(
+                          '₹${combo.comboPrice.toStringAsFixed(0)}',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: VillageTheme.primaryGreen,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '₹${combo.originalPrice.toStringAsFixed(0)}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[500],
+                            decoration: TextDecoration.lineThrough,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    _AnimatedViewButton(onTap: () => _showComboDetails(combo)),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _navigateToPromoShop(PromoCode promo) {
+    if (promo.shopId != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ShopDetailsScreen(
+            shopId: promo.shopId!,
+            shop: null,
+          ),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Use code "${promo.code}" at checkout!'),
+          backgroundColor: VillageTheme.primaryGreen,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   Future<void> _loadFeaturedShops() async {
     setState(() => _isLoadingShops = true);
     
@@ -489,36 +997,54 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         }
       },
       child: Scaffold(
-        backgroundColor: isDarkMode ? Colors.black : Colors.white,
-        body: SafeArea(
-          child: CustomScrollView(
-            slivers: [
-              _buildSliverAppBar(),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildLocationSelector(),
-                      const SizedBox(height: 20),
-                      PlatformPromosCarousel(
-                        onPromoTap: () {
-                          // Handle promo tap - navigate to deals page or show details
-                          // context.push('/customer/deals');
-                        },
-                      ),
-                      const SizedBox(height: 20),
-                      _buildServiceCategories(),
-                      const SizedBox(height: 24),
-                      _buildFeaturedShops(),
-                      const SizedBox(height: 24),
-                      _buildRecentOrders(),
-                      const SizedBox(height: 20),
-                    ],
+        backgroundColor: isDarkMode ? Colors.black : Colors.grey[50],
+        body: SingleChildScrollView(
+          child: Stack(
+            children: [
+              // Green curved header background
+              _buildCurvedHeader(),
+              // Content that overlaps the header
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Spacer to position content below header top area
+                  const SizedBox(height: 120),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Location selector overlaps the curved header
+                        _buildLocationSelector(),
+                      ],
+                    ),
+                  ),
+                  // White background to cover the green curve
+                  Container(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.grey[900]
+                        : Colors.grey[50],
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 16),
+                          // Unified Offers Carousel (Promos + Combos)
+                          _buildUnifiedOffersCarousel(),
+                          const SizedBox(height: 24),
+                        _buildServiceCategories(),
+                        const SizedBox(height: 24),
+                        _buildFeaturedShops(),
+                        const SizedBox(height: 24),
+                        _buildRecentOrders(),
+                        const SizedBox(height: 20),
+                      ],
+                    ),
                   ),
                 ),
-              ),
+              ],
+            ),
             ],
           ),
         ),
@@ -578,126 +1104,165 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     }
   }
 
-  Widget _buildSliverAppBar() {
+  Widget _buildCurvedHeader() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    return SliverAppBar(
-      expandedHeight: 100.0,
-      floating: false,
-      pinned: true,
-      backgroundColor: isDarkMode ? Colors.grey[900] : VillageTheme.primaryGreen,
-      elevation: 0,
-      flexibleSpace: FlexibleSpaceBar(
-        title: Consumer<LanguageProvider>(
-          builder: (context, languageProvider, child) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  languageProvider.welcome,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  languageProvider.appName,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            );
-          },
+    return Stack(
+      children: [
+        // Green background with curve using Container
+        Container(
+          height: 200,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: isDarkMode ? Colors.grey[900] : VillageTheme.primaryGreen,
+            borderRadius: const BorderRadius.only(
+              bottomLeft: Radius.elliptical(200, 50),
+              bottomRight: Radius.elliptical(200, 50),
+            ),
+          ),
         ),
-        titlePadding: const EdgeInsets.only(left: 20, bottom: 12),
-      ),
-      actions: [
-        Consumer<LanguageProvider>(
-          builder: (context, languageProvider, child) {
-            return Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(20),
+        // Content
+        SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Welcome text and app name
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: Consumer<LanguageProvider>(
+                      builder: (context, languageProvider, child) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              languageProvider.welcome,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              languageProvider.appName,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 12),
-                      child: Text(
-                        languageProvider.showTamil ? 'த' : 'En',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
+                // Language toggle and notification
+                Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Language toggle
+                      Consumer<LanguageProvider>(
+                        builder: (context, languageProvider, child) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'En',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: languageProvider.showTamil ? FontWeight.w400 : FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                GestureDetector(
+                                  onTap: () => languageProvider.toggleLanguage(),
+                                  child: Container(
+                                    width: 40,
+                                    height: 22,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.3),
+                                      borderRadius: BorderRadius.circular(11),
+                                    ),
+                                    child: AnimatedAlign(
+                                      alignment: languageProvider.showTamil
+                                          ? Alignment.centerRight
+                                          : Alignment.centerLeft,
+                                      duration: const Duration(milliseconds: 200),
+                                      child: Container(
+                                        width: 18,
+                                        height: 18,
+                                        margin: const EdgeInsets.symmetric(horizontal: 2),
+                                        decoration: const BoxDecoration(
+                                          color: Colors.white,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 12),
+                      // Notification bell
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const NotificationsScreen(),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              const Icon(Icons.notifications_outlined, color: Colors.white, size: 24),
+                              Positioned(
+                                right: -2,
+                                top: -2,
+                                child: Container(
+                                  width: 10,
+                                  height: 10,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                    Switch(
-                      value: languageProvider.showTamil,
-                      onChanged: (value) {
-                        languageProvider.toggleLanguage();
-                      },
-                      activeColor: Colors.white,
-                      activeTrackColor: VillageTheme.accentOrange,
-                      inactiveThumbColor: Colors.white,
-                      inactiveTrackColor: Colors.white.withOpacity(0.3),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
-        Padding(
-          padding: const EdgeInsets.only(right: 16),
-          child: IconButton(
-            icon: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                const Icon(Icons.notifications, color: Colors.white, size: 28),
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 18,
-                      minHeight: 18,
-                    ),
-                    child: Text(
-                      '${NotificationService.getUnreadCount()}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
+                    ],
                   ),
                 ),
               ],
             ),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const NotificationsScreen(),
-                ),
-              );
-            },
           ),
         ),
       ],
@@ -707,21 +1272,19 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   Widget _buildLocationSelector() {
     return InkWell(
       onTap: _showLocationPicker,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Colors.white,
-              Colors.white.withOpacity(0.95),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [],
-          border: Border.all(color: Colors.grey.shade300, width: 1),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Row(
           children: [
@@ -729,34 +1292,34 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: VillageTheme.primaryGreen.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
                 Icons.location_on,
                 color: VillageTheme.primaryGreen,
-                size: 26,
+                size: 22,
               ),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Deliver to',
+                  Text(
+                    'DELIVER TO',
                     style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: 0.3,
+                      fontSize: 11,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     _selectedLocation,
                     style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
                       color: Color(0xFF1a1a1a),
                     ),
                     maxLines: 1,
@@ -765,18 +1328,10 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                 ],
               ),
             ),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: VillageTheme.primaryGreen.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                Icons.keyboard_arrow_down,
-                color: VillageTheme.primaryGreen,
-                size: 24,
-                weight: 600,
-              ),
+            Icon(
+              Icons.keyboard_arrow_down,
+              color: Colors.grey[600],
+              size: 24,
             ),
           ],
         ),
@@ -792,67 +1347,33 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             'name': languageProvider.getText('Farmer Products', 'விவசாய பொருட்கள்'),
             'nameEn': 'Farmer Products',
             'imageUrl': 'assets/images/formar.png',
-            'borderRadius': const BorderRadius.only(
-              topLeft: Radius.circular(48),
-              topRight: Radius.circular(24),
-              bottomLeft: Radius.circular(48),
-              bottomRight: Radius.circular(24),
-            )
           },
           {
             'name': languageProvider.getText('Grocery', 'மளிகை'),
             'nameEn': 'Grocery',
             'imageUrl': 'assets/images/gorceries.webp',
-            'borderRadius': const BorderRadius.all(Radius.circular(32))
           },
           {
             'name': languageProvider.getText('Food', 'உணவு'),
             'nameEn': 'Food',
             'imageUrl': 'assets/images/Food.jpeg',
-            'borderRadius': const BorderRadius.only(
-              topLeft: Radius.circular(24),
-              topRight: Radius.circular(48),
-              bottomLeft: Radius.circular(24),
-              bottomRight: Radius.circular(48),
-            )
           },
           {
             'name': languageProvider.getText('Medicine', 'மருந்து'),
             'nameEn': 'Medicine',
             'imageUrl': 'assets/images/Medicines.png',
-            'borderRadius': const BorderRadius.all(Radius.circular(32))
           },
         ];
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ShaderMask(
-              shaderCallback: (bounds) => LinearGradient(
-                colors: [
-                  VillageTheme.primaryGreen,
-                  VillageTheme.primaryGreen.withOpacity(0.7),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ).createShader(bounds),
-              child: Text(
-                languageProvider.getText('What do you need?', 'உங்களுக்கு என்ன வேண்டும்?'),
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white,
-                  letterSpacing: 0.2,
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
             GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
-                childAspectRatio: 1.0,
+                childAspectRatio: 1.1,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
               ),
@@ -863,7 +1384,6 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                   category['name'] as String,
                   category['nameEn'] as String,
                   category['imageUrl'] as String,
-                  category['borderRadius'] as BorderRadius,
                 );
               },
             ),
@@ -873,7 +1393,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     );
   }
 
-  Widget _buildCategoryCard(String name, String nameEn, String imageUrl, BorderRadius borderRadius) {
+  Widget _buildCategoryCard(String name, String nameEn, String imageUrl) {
     return GestureDetector(
       onTap: () async {
         // Special handling for Farmer Products - redirect to WhatsApp channel
@@ -894,21 +1414,28 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       },
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: borderRadius,
-          boxShadow: [],
-          border: Border.all(color: Colors.grey.shade300, width: 1),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        child: ClipRRect(
-          borderRadius: borderRadius,
-          child: Stack(
-            children: [
-              Positioned.fill(
+        child: Column(
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                 child: Image.asset(
                   imageUrl,
                   fit: BoxFit.cover,
+                  width: double.infinity,
                   errorBuilder: (context, error, stackTrace) {
                     return Container(
-                      color: Colors.grey[300],
+                      color: Colors.grey[200],
                       child: const Center(
                         child: Icon(Icons.broken_image, size: 40, color: Colors.grey),
                       ),
@@ -916,44 +1443,22 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                   },
                 ),
               ),
-              Positioned.fill(
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.transparent,
-                        Colors.black.withOpacity(0.5),
-                      ],
-                    ),
-                  ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Text(
+                name,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1a1a1a),
                 ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                top: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  alignment: Alignment.bottomLeft,
-                  child: Text(
-                    name,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
-                      shadows: [],
-                    ),
-                    textAlign: TextAlign.left,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -1032,7 +1537,8 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   }
 
   Widget _buildShopCard(Map<String, dynamic>? shop) {
-    final shopName = shop?['name'] ?? 'Shop';
+    final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
+    final shopName = shop != null ? languageProvider.getShopName(shop) : 'Shop';
     final businessType = shop?['businessType'] ?? 'Store';
     final rating = shop?['averageRating']?.toString() ?? '4.0';
     final deliveryTime = shop?['estimatedDeliveryTime']?.toString() ?? '30';
@@ -1747,6 +2253,127 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// Custom painter for curved header
+class _CurvedHeaderPainter extends CustomPainter {
+  final Color color;
+
+  _CurvedHeaderPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final path = Path();
+    path.lineTo(0, size.height - 60);
+
+    // Create a smooth curve at the bottom
+    path.quadraticBezierTo(
+      size.width / 2,
+      size.height + 20,
+      size.width,
+      size.height - 60,
+    );
+
+    path.lineTo(size.width, 0);
+    path.close();
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// Animated View Details Button with pulse effect
+class _AnimatedViewButton extends StatefulWidget {
+  final VoidCallback onTap;
+
+  const _AnimatedViewButton({required this.onTap});
+
+  @override
+  State<_AnimatedViewButton> createState() => _AnimatedViewButtonState();
+}
+
+class _AnimatedViewButtonState extends State<_AnimatedViewButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: AnimatedBuilder(
+        animation: _scaleAnimation,
+        builder: (context, child) {
+          return Transform.scale(
+            scale: _scaleAnimation.value,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    VillageTheme.primaryGreen,
+                    const Color(0xFF66BB6A),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(25),
+                boxShadow: [
+                  BoxShadow(
+                    color: VillageTheme.primaryGreen.withOpacity(0.4),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Icon(
+                    Icons.touch_app,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                  SizedBox(width: 4),
+                  Text(
+                    'View Details',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

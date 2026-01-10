@@ -10,6 +10,8 @@ import '../../../core/constants/colors.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/helpers.dart';
+import '../../../core/localization/language_provider.dart';
+import '../../../core/localization/app_localizations.dart';
 import '../orders/checkout_screen.dart';
 
 class CartScreen extends StatefulWidget {
@@ -47,8 +49,8 @@ class _CartScreenState extends State<CartScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              const CustomAppBar(
-                title: 'Shopping Cart',
+              CustomAppBar(
+                title: context.loc?.translate('shopping_cart') ?? 'Shopping Cart',
                 backgroundColor: Colors.transparent,
                 foregroundColor: Colors.white,
                 showBackButton: true,
@@ -91,10 +93,10 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Widget _buildEmptyCart() {
-    return const Center(
+    return Center(
       child: EmptyStateWidget(
-        title: 'Your cart is empty',
-        message: 'Add some products to get started',
+        title: context.loc?.translate('cart_empty') ?? 'Your cart is empty',
+        message: context.loc?.translate('add_products_to_start') ?? 'Add some products to get started',
         icon: Icons.shopping_cart_outlined,
         action: null,
       ),
@@ -217,29 +219,31 @@ class _CartScreenState extends State<CartScreen> {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.product.name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
-                    color: Colors.black,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (item.product.nameTamil != null && item.product.nameTamil!.isNotEmpty)
-                  Text(
-                    item.product.nameTamil!,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey[700],
+            child: Builder(
+              builder: (context) {
+                final languageProvider = Provider.of<LanguageProvider>(context);
+                final isTamil = languageProvider.currentLanguage == 'ta';
+                final hasTamilName = item.product.nameTamil != null && item.product.nameTamil!.isNotEmpty;
+
+                // Show ONLY the selected language name
+                final displayName = isTamil && hasTamilName
+                    ? item.product.nameTamil!
+                    : item.product.name;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Show only the selected language name
+                    Text(
+                      displayName,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                        color: Colors.black,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
@@ -337,14 +341,16 @@ class _CartScreenState extends State<CartScreen> {
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
                     child: Text(
-                      'Only ${item.product.stockQuantity} available',
+                      context.loc?.translate('only_available', args: [item.product.stockQuantity.toString()]) ?? 'Only ${item.product.stockQuantity} available',
                       style: const TextStyle(
                         color: Colors.red,
                         fontSize: 12,
                       ),
                     ),
                   ),
-              ],
+                  ],
+                );
+              },
             ),
           ),
         ],
@@ -369,15 +375,15 @@ class _CartScreenState extends State<CartScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Promo Code',
-            style: TextStyle(
+          Text(
+            context.loc?.translate('promo_code') ?? 'Promo Code',
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 12),
-          
+
           if (cartProvider.appliedPromoCode != null) ...[
             Container(
               padding: const EdgeInsets.all(12),
@@ -392,7 +398,7 @@ class _CartScreenState extends State<CartScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Promo code "${cartProvider.appliedPromoCode}" applied',
+                      context.loc?.translate('promo_code_applied', args: [cartProvider.appliedPromoCode!]) ?? 'Promo code "${cartProvider.appliedPromoCode}" applied',
                       style: const TextStyle(color: Colors.green),
                     ),
                   ),
@@ -401,7 +407,7 @@ class _CartScreenState extends State<CartScreen> {
                       cartProvider.removePromoCode();
                       _promoController.clear();
                     },
-                    child: const Text('Remove'),
+                    child: Text(context.loc?.translate('remove') ?? 'Remove'),
                   ),
                 ],
               ),
@@ -412,9 +418,9 @@ class _CartScreenState extends State<CartScreen> {
                 Expanded(
                   child: TextField(
                     controller: _promoController,
-                    decoration: const InputDecoration(
-                      hintText: 'Enter promo code',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      hintText: context.loc?.translate('enter_promo_code') ?? 'Enter promo code',
+                      border: const OutlineInputBorder(),
                     ),
                     textCapitalization: TextCapitalization.characters,
                   ),
@@ -428,7 +434,7 @@ class _CartScreenState extends State<CartScreen> {
                           height: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Apply'),
+                      : Text(context.loc?.translate('apply') ?? 'Apply'),
                 ),
               ],
             ),
@@ -455,55 +461,55 @@ class _CartScreenState extends State<CartScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Order Summary',
-            style: TextStyle(
+          Text(
+            context.loc?.translate('order_summary') ?? 'Order Summary',
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 16),
-          
+
           _buildSummaryRow(
-            'Subtotal (${cartProvider.itemCount} items)',
+            '${context.loc?.translate('subtotal') ?? 'Subtotal'} (${cartProvider.itemCount} ${context.loc?.translate('items') ?? 'items'})',
             Helpers.formatCurrency(cartProvider.subtotal),
           ),
-          
+
           _buildSummaryRow(
-            'Delivery Fee',
-            cartProvider.deliveryFee > 0 
+            context.loc?.translate('delivery_fee') ?? 'Delivery Fee',
+            cartProvider.deliveryFee > 0
                 ? Helpers.formatCurrency(cartProvider.deliveryFee)
-                : 'FREE',
+                : context.loc?.translate('free') ?? 'FREE',
             valueColor: cartProvider.deliveryFee > 0 ? null : Colors.green,
           ),
-          
+
           _buildSummaryRow(
-            'Tax',
+            context.loc?.translate('tax') ?? 'Tax',
             Helpers.formatCurrency(cartProvider.taxAmount),
           ),
-          
+
           if (cartProvider.promoDiscount > 0)
             _buildSummaryRow(
-              'Promo Discount',
+              context.loc?.translate('promo_discount') ?? 'Promo Discount',
               '-${Helpers.formatCurrency(cartProvider.promoDiscount)}',
               valueColor: Colors.green,
             ),
-          
+
           const Divider(thickness: 1),
-          
+
           _buildSummaryRow(
-            'Total',
+            context.loc?.translate('total') ?? 'Total',
             Helpers.formatCurrency(cartProvider.total),
             isTotal: true,
           ),
-          
+
           if (cartProvider.deliveryFee > 0 && cartProvider.amountForFreeDelivery > 0)
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
-                'Add ₹${cartProvider.amountForFreeDelivery.toStringAsFixed(0)} more for free delivery',
+                context.loc?.translate('add_more_for_free_delivery', args: [cartProvider.amountForFreeDelivery.toStringAsFixed(0)]) ?? 'Add ₹${cartProvider.amountForFreeDelivery.toStringAsFixed(0)} more for free delivery',
                 style: const TextStyle(
-                  color: const Color(0xFF4CAF50),
+                  color: Color(0xFF4CAF50),
                   fontSize: 12,
                 ),
               ),
@@ -577,9 +583,9 @@ class _CartScreenState extends State<CartScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Unable to checkout:',
-                      style: TextStyle(
+                    Text(
+                      context.loc?.translate('unable_to_checkout') ?? 'Unable to checkout:',
+                      style: const TextStyle(
                         color: Colors.red,
                         fontWeight: FontWeight.bold,
                       ),
@@ -591,16 +597,16 @@ class _CartScreenState extends State<CartScreen> {
                   ],
                 ),
               ),
-            
+
             Row(
               children: [
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Total Amount',
-                        style: TextStyle(
+                      Text(
+                        context.loc?.translate('total_amount') ?? 'Total Amount',
+                        style: const TextStyle(
                           fontSize: 12,
                           color: Colors.grey,
                         ),
@@ -620,7 +626,7 @@ class _CartScreenState extends State<CartScreen> {
                 Expanded(
                   flex: 2,
                   child: PrimaryButton(
-                    text: 'Proceed to Checkout',
+                    text: context.loc?.translate('proceed_to_checkout') ?? 'Proceed to Checkout',
                     onPressed: canCheckout ? _proceedToCheckout : null,
                     icon: Icons.shopping_cart_checkout,
                   ),
@@ -636,20 +642,20 @@ class _CartScreenState extends State<CartScreen> {
   void _showRemoveDialog(CartItem item, CartProvider cartProvider) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Remove Item'),
-        content: Text('Remove ${item.product.name} from cart?'),
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.loc?.translate('remove_item') ?? 'Remove Item'),
+        content: Text(context.loc?.translate('remove_from_cart', args: [item.product.name]) ?? 'Remove ${item.product.name} from cart?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(context.loc?.translate('cancel') ?? 'Cancel'),
           ),
           TextButton(
             onPressed: () {
               cartProvider.removeFromCart(item.product.id);
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
             },
-            child: const Text('Remove'),
+            child: Text(context.loc?.translate('remove') ?? 'Remove'),
           ),
         ],
       ),
@@ -667,9 +673,9 @@ class _CartScreenState extends State<CartScreen> {
     setState(() => _isApplyingPromo = false);
 
     if (success) {
-      Helpers.showSnackBar(context, 'Promo code applied successfully!');
+      Helpers.showSnackBar(context, context.loc?.translate('promo_applied') ?? 'Promo code applied successfully!');
     } else {
-      Helpers.showSnackBar(context, 'Invalid promo code', isError: true);
+      Helpers.showSnackBar(context, context.loc?.translate('invalid_promo') ?? 'Invalid promo code', isError: true);
     }
   }
 

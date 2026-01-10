@@ -63,6 +63,12 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
   bool _hasError = false;
   String? _errorMessage;
 
+  // Check if shop is currently open
+  bool get _isShopOpen {
+    if (_shop == null) return true; // Default to open if no data
+    return _shop!['isOpenNow'] ?? _shop!['isActive'] ?? true;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -86,8 +92,19 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
   }
 
   void _startCouponAutoSlide() {
-    _couponAutoSlideTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
-      final totalItems = _combos.length + _promotions.length;
+    _scheduleNextSlide();
+  }
+
+  void _scheduleNextSlide() {
+    _couponAutoSlideTimer?.cancel();
+    final totalItems = _combos.length + _promotions.length;
+    if (totalItems == 0) return;
+
+    // Determine duration: combos (30 sec) vs promos (10 sec)
+    final isCombo = _currentCouponPage < _combos.length;
+    final duration = isCombo ? const Duration(seconds: 30) : const Duration(seconds: 10);
+
+    _couponAutoSlideTimer = Timer(duration, () {
       if (_couponPageController.hasClients && totalItems > 0) {
         final nextPage = (_currentCouponPage + 1) % totalItems;
         _couponPageController.animateToPage(
@@ -852,12 +869,57 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     return CustomScrollView(
       controller: _scrollController,
       slivers: [
+        // Shop Closed Banner
+        if (!_isShopOpen)
+          SliverToBoxAdapter(child: _buildShopClosedBanner()),
         // Unified Offers Carousel (Combos + Promos together)
         SliverToBoxAdapter(child: _buildUnifiedOffersCarousel()),
         SliverToBoxAdapter(child: _buildHorizontalCategories()),
         SliverToBoxAdapter(child: _buildSearchBar()),
         _buildProductGrid(),
       ],
+    );
+  }
+
+  Widget _buildShopClosedBanner() {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.red.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.red.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.access_time, color: Colors.red.shade700, size: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.loc?.translate('shop_closed') ?? 'Shop Closed',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red.shade700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  context.loc?.translate('shop_closed_message', args: [_shop?['name'] ?? 'This shop']) ??
+                      'This shop is currently closed. Please try again during business hours.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.red.shade600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1219,6 +1281,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
               setState(() {
                 _currentCouponPage = index;
               });
+              _scheduleNextSlide(); // Schedule next slide with appropriate duration
             },
             itemCount: totalItems,
             itemBuilder: (context, index) {
@@ -1258,157 +1321,9 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
   }
 
   Widget _buildComboCard(CustomerCombo combo) {
-    return GestureDetector(
+    return _ComboCardWithSlideshow(
+      combo: combo,
       onTap: () => _showComboDetail(combo),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top section with gradient
-            Container(
-              height: 60,
-              decoration: BoxDecoration(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                gradient: LinearGradient(
-                  colors: [const Color(0xFF2E7D32), const Color(0xFF4CAF50)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(Icons.card_giftcard, color: Colors.white, size: 18),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            combo.name,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          if (combo.nameTamil != null)
-                            Text(
-                              combo.nameTamil!,
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.9),
-                                fontSize: 11,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.orange[600],
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '${combo.discountPercentage.toStringAsFixed(0)}% OFF',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Bottom section
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Row(
-                            children: [
-                              Text(
-                                '₹${combo.comboPrice.toStringAsFixed(0)}',
-                                style: const TextStyle(
-                                  color: Color(0xFF2E7D32),
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                '₹${combo.originalPrice.toStringAsFixed(0)}',
-                                style: TextStyle(
-                                  color: Colors.grey[500],
-                                  fontSize: 13,
-                                  decoration: TextDecoration.lineThrough,
-                                ),
-                              ),
-                            ],
-                          ),
-                          Text(
-                            '${combo.itemCount} items included',
-                            style: TextStyle(color: Colors.grey[600], fontSize: 11),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2E7D32),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text('View', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
-                          SizedBox(width: 4),
-                          Icon(Icons.arrow_forward_ios, color: Colors.white, size: 10),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -1591,8 +1506,16 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
   void _addComboToCart(CustomerCombo combo) {
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
 
+    // Debug: Log combo info
+    print('🎁 Adding combo to cart: ${combo.name}');
+    print('🎁 Combo has ${combo.items.length} items');
+
     // Add each item in the combo to cart
     for (final item in combo.items) {
+      // Debug: Log item info before creating ProductModel
+      print('📦 Item: ${item.productName}');
+      print('📦 Item Tamil: ${item.productNameTamil}');
+
       // Create a ProductModel for each combo item
       final product = ProductModel(
         id: item.shopProductId.toString(),
@@ -1608,6 +1531,9 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
+
+      // Debug: Log the created ProductModel
+      print('✅ Created ProductModel: name=${product.name}, nameTamil=${product.nameTamil}');
 
       // Add to cart with the specified quantity
       cartProvider.addToCart(product, quantity: item.quantity);
@@ -1687,6 +1613,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
               setState(() {
                 _currentCouponPage = index;
               });
+              _scheduleNextSlide();
             },
             itemCount: _promotions.length,
             itemBuilder: (context, index) {
@@ -2248,6 +2175,29 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                         );
                       }
 
+                      // Show disabled button when shop is closed
+                      if (!_isShopOpen) {
+                        return Container(
+                          width: double.infinity,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[400],
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Center(
+                            child: Text(
+                              context.loc?.translate('closed') ?? 'Closed',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+
                       if (cartQuantity == 0) {
                         return GestureDetector(
                           onTap: () async {
@@ -2371,6 +2321,21 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
 
   Future<void> _handleAddToCart(BuildContext context, CartProvider cartProvider,
       ProductModel product) async {
+    // Check if shop is open
+    if (!_isShopOpen) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.loc?.translate('shop_closed_message', args: [_shop?['name'] ?? 'This shop']) ??
+                'This shop is currently closed. Please try again during business hours.'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+      return;
+    }
+
     // Check stock availability before adding
     final currentCartQuantity = cartProvider.getQuantity(product.id);
     final availableStock = product.stockQuantity;
@@ -2955,5 +2920,252 @@ class _RightFloatingButtonLocation extends FloatingActionButtonLocation {
         16.0;
 
     return Offset(fabX, fabY);
+  }
+}
+
+// Combo card with product image slideshow (2 second interval)
+class _ComboCardWithSlideshow extends StatefulWidget {
+  final CustomerCombo combo;
+  final VoidCallback onTap;
+
+  const _ComboCardWithSlideshow({
+    required this.combo,
+    required this.onTap,
+  });
+
+  @override
+  State<_ComboCardWithSlideshow> createState() => _ComboCardWithSlideshowState();
+}
+
+class _ComboCardWithSlideshowState extends State<_ComboCardWithSlideshow> {
+  late PageController _imagePageController;
+  int _currentImageIndex = 0;
+  Timer? _imageSlideTimer;
+  List<String> _productImages = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _imagePageController = PageController();
+    _collectProductImages();
+    _startImageSlideshow();
+  }
+
+  @override
+  void dispose() {
+    _imageSlideTimer?.cancel();
+    _imagePageController.dispose();
+    super.dispose();
+  }
+
+  void _collectProductImages() {
+    // Collect all product images from combo items
+    for (var item in widget.combo.items) {
+      if (item.imageUrl != null && item.imageUrl!.isNotEmpty) {
+        _productImages.add(ImageUrlHelper.getFullImageUrl(item.imageUrl));
+      }
+    }
+    // Add banner image as fallback if no product images
+    if (_productImages.isEmpty && widget.combo.bannerImageUrl != null) {
+      _productImages.add(ImageUrlHelper.getFullImageUrl(widget.combo.bannerImageUrl));
+    }
+  }
+
+  void _startImageSlideshow() {
+    if (_productImages.length > 1) {
+      _imageSlideTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+        if (_imagePageController.hasClients) {
+          final nextPage = (_currentImageIndex + 1) % _productImages.length;
+          _imagePageController.animateToPage(
+            nextPage,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOut,
+          );
+        }
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Left side - Product Image Slideshow
+            Container(
+              width: 120,
+              decoration: const BoxDecoration(
+                color: Color(0xFF1B4332),
+                borderRadius: BorderRadius.horizontal(left: Radius.circular(16)),
+              ),
+              child: Stack(
+                children: [
+                  // Product Image Slideshow
+                  ClipRRect(
+                    borderRadius: const BorderRadius.horizontal(left: Radius.circular(16)),
+                    child: _productImages.isNotEmpty
+                        ? PageView.builder(
+                            controller: _imagePageController,
+                            onPageChanged: (index) {
+                              setState(() {
+                                _currentImageIndex = index;
+                              });
+                            },
+                            itemCount: _productImages.length,
+                            itemBuilder: (context, index) {
+                              return Image.network(
+                                _productImages[index],
+                                width: 120,
+                                height: double.infinity,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => Center(
+                                  child: Icon(Icons.card_giftcard, color: Colors.white.withOpacity(0.5), size: 40),
+                                ),
+                              );
+                            },
+                          )
+                        : Center(
+                            child: Icon(Icons.card_giftcard, color: Colors.white.withOpacity(0.5), size: 40),
+                          ),
+                  ),
+                  // Discount Badge
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.orange[600],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '${widget.combo.discountPercentage.toStringAsFixed(0)}% OFF',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Image indicator dots
+                  if (_productImages.length > 1)
+                    Positioned(
+                      bottom: 8,
+                      left: 0,
+                      right: 0,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(
+                          _productImages.length,
+                          (index) => Container(
+                            width: 6,
+                            height: 6,
+                            margin: const EdgeInsets.symmetric(horizontal: 2),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _currentImageIndex == index
+                                  ? Colors.white
+                                  : Colors.white.withOpacity(0.4),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            // Right side - Details
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      widget.combo.name,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (widget.combo.nameTamil != null)
+                      Text(
+                        widget.combo.nameTamil!,
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${widget.combo.itemCount} items included',
+                      style: TextStyle(color: Colors.grey[500], fontSize: 11),
+                    ),
+                    const Spacer(),
+                    Row(
+                      children: [
+                        Text(
+                          '₹${widget.combo.comboPrice.toStringAsFixed(0)}',
+                          style: const TextStyle(
+                            color: Color(0xFF2E7D32),
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '₹${widget.combo.originalPrice.toStringAsFixed(0)}',
+                          style: TextStyle(
+                            color: Colors.grey[400],
+                            fontSize: 12,
+                            decoration: TextDecoration.lineThrough,
+                          ),
+                        ),
+                        const Spacer(),
+                        Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: widget.onTap,
+                            borderRadius: BorderRadius.circular(16),
+                            splashColor: Colors.white.withOpacity(0.3),
+                            highlightColor: Colors.white.withOpacity(0.1),
+                            child: Ink(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2E7D32),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const Text('View', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

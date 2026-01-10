@@ -12,6 +12,9 @@ import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../core/auth/auth_provider.dart';
+import '../../../core/localization/language_provider.dart';
+import '../../../core/localization/app_localizations.dart';
+import '../../../services/shop_api_service.dart';
 import '../orders/checkout_screen.dart';
 
 class CartScreen extends StatefulWidget {
@@ -46,7 +49,7 @@ class _CartScreenState extends State<CartScreen> {
           child: Scaffold(
             backgroundColor: VillageTheme.lightBackground,
             appBar: CustomAppBar(
-              title: 'Shopping Cart',
+              title: context.loc?.translate('shopping_cart') ?? 'Shopping Cart',
               backgroundColor: VillageTheme.primaryGreen,
               foregroundColor: Colors.white,
               onBackPressed: () {
@@ -92,9 +95,9 @@ class _CartScreenState extends State<CartScreen> {
         children: [
           Icon(Icons.shopping_cart_outlined, size: 70, color: Colors.grey.shade400),
           const SizedBox(height: 12),
-          const Text(
-            'Your cart is empty',
-            style: TextStyle(
+          Text(
+            context.loc?.translate('cart_empty') ?? 'Your cart is empty',
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
               color: Colors.black87,
@@ -104,7 +107,7 @@ class _CartScreenState extends State<CartScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Add some products to get started',
+            context.loc?.translate('add_products_to_start') ?? 'Add some products to get started',
             style: TextStyle(
               fontSize: 12,
               color: Colors.grey.shade600,
@@ -225,7 +228,14 @@ class _CartScreenState extends State<CartScreen> {
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: Column(
+            child: Consumer<LanguageProvider>(
+              builder: (context, languageProvider, child) {
+                final isTamil = languageProvider.currentLanguage == 'ta';
+                final hasTamilName = item.product.nameTamil != null && item.product.nameTamil!.isNotEmpty;
+                // Show ONLY the selected language name
+                final displayName = isTamil && hasTamilName ? item.product.nameTamil! : item.product.name;
+
+                return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -233,13 +243,13 @@ class _CartScreenState extends State<CartScreen> {
                   children: [
                     Flexible(
                       child: Text(
-                        item.product.name,
+                        displayName,
                         style: const TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 13,
                           color: Colors.black87,
                         ),
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -398,6 +408,8 @@ class _CartScreenState extends State<CartScreen> {
                     ),
                   ),
               ],
+                );
+              },
             ),
           ),
         ],
@@ -521,9 +533,9 @@ class _CartScreenState extends State<CartScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'Order Summary',
-              style: TextStyle(
+            Text(
+              context.loc?.translate('order_summary') ?? 'Order Summary',
+              style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,
@@ -534,20 +546,20 @@ class _CartScreenState extends State<CartScreen> {
             const SizedBox(height: 10),
 
             _buildSummaryRow(
-              'Subtotal (${cartProvider.itemCount} items)',
+              '${context.loc?.translate('subtotal') ?? 'Subtotal'} (${cartProvider.itemCount} ${context.loc?.translate('items') ?? 'items'})',
               Helpers.formatCurrency(cartProvider.subtotal),
             ),
 
             _buildSummaryRow(
-              'Delivery Fee',
+              context.loc?.translate('delivery_fee') ?? 'Delivery Fee',
               cartProvider.deliveryFee > 0
                   ? Helpers.formatCurrency(cartProvider.deliveryFee)
-                  : 'FREE',
+                  : context.loc?.translate('free') ?? 'FREE',
               valueColor: cartProvider.deliveryFee > 0 ? null : Colors.green,
             ),
 
             _buildSummaryRow(
-              'Tax',
+              context.loc?.translate('tax') ?? 'Tax',
               Helpers.formatCurrency(cartProvider.taxAmount),
             ),
 
@@ -562,7 +574,7 @@ class _CartScreenState extends State<CartScreen> {
             const Divider(thickness: 1, height: 16),
 
             _buildSummaryRow(
-              'Total',
+              context.loc?.translate('total') ?? 'Total',
               Helpers.formatCurrency(cartProvider.total),
               isTotal: true,
             ),
@@ -685,9 +697,9 @@ class _CartScreenState extends State<CartScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
-                      'Unable to checkout:',
-                      style: TextStyle(
+                    Text(
+                      context.loc?.translate('unable_to_checkout') ?? 'Unable to checkout:',
+                      style: const TextStyle(
                         color: Colors.red,
                         fontWeight: FontWeight.bold,
                         fontSize: 11,
@@ -712,9 +724,9 @@ class _CartScreenState extends State<CartScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text(
-                        'Total Amount',
-                        style: TextStyle(
+                      Text(
+                        context.loc?.translate('total_amount') ?? 'Total Amount',
+                        style: const TextStyle(
                           fontSize: 11,
                           color: Colors.grey,
                         ),
@@ -747,18 +759,18 @@ class _CartScreenState extends State<CartScreen> {
                       ),
                       elevation: 2,
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          'Proceed to Checkout',
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                          context.loc?.translate('proceed_to_checkout') ?? 'Proceed to Checkout',
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        SizedBox(width: 6),
-                        Icon(Icons.arrow_forward, size: 16),
+                        const SizedBox(width: 6),
+                        const Icon(Icons.arrow_forward, size: 16),
                       ],
                     ),
                   ),
@@ -852,6 +864,7 @@ class _CartScreenState extends State<CartScreen> {
   Future<void> _proceedToCheckout() async {
     // Check if user is logged in
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
 
     if (!authProvider.isAuthenticated) {
       // Show login dialog
@@ -865,7 +878,57 @@ class _CartScreenState extends State<CartScreen> {
       return;
     }
 
-    // User is logged in, proceed to checkout
+    // Check if shop is open before proceeding
+    if (cartProvider.items.isNotEmpty) {
+      final shopDatabaseId = cartProvider.items.first.product.shopDatabaseId;
+      if (shopDatabaseId != null) {
+        try {
+          final shopDetails = await ShopApiService().getShopById(
+            shopDatabaseId is int ? shopDatabaseId : int.parse(shopDatabaseId.toString())
+          );
+          final isShopOpen = shopDetails['data']?['isOpenNow'] ?? shopDetails['data']?['isActive'] ?? false;
+
+          if (!isShopOpen && mounted) {
+            final shopName = shopDetails['data']?['name'] ?? 'The shop';
+            await showDialog(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                title: Row(
+                  children: [
+                    Icon(Icons.store_outlined, color: Colors.red.shade400),
+                    const SizedBox(width: 8),
+                    Text(
+                      context.loc?.translate('shop_closed') ?? 'Shop Closed',
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                  ],
+                ),
+                content: Text(
+                  '$shopName is currently closed and not accepting orders. Please try again during business hours.',
+                  style: const TextStyle(fontSize: 13),
+                ),
+                actions: [
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: VillageTheme.primaryGreen,
+                    ),
+                    child: const Text('OK', style: TextStyle(color: Colors.white)),
+                  ),
+                ],
+              ),
+            );
+            return;
+          }
+        } catch (e) {
+          debugPrint('⚠️ Could not verify shop status: $e');
+          // Continue if we can't verify - backend will validate
+        }
+      }
+    }
+
+    // User is logged in and shop is open, proceed to checkout
     Navigator.push(
       context,
       MaterialPageRoute(
