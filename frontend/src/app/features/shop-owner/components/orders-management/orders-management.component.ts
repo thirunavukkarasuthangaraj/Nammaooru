@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, NgZone } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -80,7 +80,8 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     private swal: SwalService,
     private router: Router,
     private http: HttpClient,
-    private webSocketService: WebSocketService
+    private webSocketService: WebSocketService,
+    private ngZone: NgZone
   ) {}
 
   ngOnInit(): void {
@@ -185,50 +186,54 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
 
   /**
    * Handle incoming WebSocket messages for order updates
+   * Uses NgZone.run() to ensure Angular change detection is triggered
    */
   private handleWebSocketMessage(message: any): void {
     if (!message || !message.type) return;
 
-    switch (message.type) {
-      case 'NEW_ORDER':
-        console.log('🆕 New order received:', message.orderNumber);
-        // Play notification sound
-        this.playNotificationSound();
-        // Show toast notification
-        this.swal.toast(`New order #${message.orderNumber} received!`, 'success');
-        // Reload orders to get the new order
-        this.loadOrders();
-        break;
+    // Run inside Angular zone to trigger change detection
+    this.ngZone.run(() => {
+      switch (message.type) {
+        case 'NEW_ORDER':
+          console.log('🆕 New order received:', message.orderNumber);
+          // Play notification sound
+          this.playNotificationSound();
+          // Show toast notification
+          this.swal.toast(`New order #${message.orderNumber} received!`, 'success');
+          // Reload orders to get the new order
+          this.loadOrders();
+          break;
 
-      case 'ORDER_STATUS_UPDATE':
-        console.log('🔄 Order status updated:', message.orderNumber, message.oldStatus, '->', message.newStatus);
-        // Update the order in the local list or reload
-        this.loadOrders();
-        break;
+        case 'ORDER_STATUS_UPDATE':
+          console.log('🔄 Order status updated:', message.orderNumber, message.oldStatus, '->', message.newStatus);
+          // Update the order in the local list or reload
+          this.loadOrders();
+          break;
 
-      case 'ORDER_RETURNING':
-        console.log('🔙 Order returning to shop:', message.orderNumber);
-        // Play notification sound for important update
-        this.playNotificationSound();
-        // Show warning toast
-        this.swal.toast(`Order #${message.orderNumber} - Driver returning products!`, 'warning');
-        // Reload orders
-        this.loadOrders();
-        break;
+        case 'ORDER_RETURNING':
+          console.log('🔙 Order returning to shop:', message.orderNumber);
+          // Play notification sound for important update
+          this.playNotificationSound();
+          // Show warning toast
+          this.swal.toast(`Order #${message.orderNumber} - Driver returning products!`, 'warning');
+          // Reload orders
+          this.loadOrders();
+          break;
 
-      case 'ORDER_RETURNED':
-        console.log('📦 Order returned to shop:', message.orderNumber);
-        // Play notification sound for important update
-        this.playNotificationSound();
-        // Show info toast
-        this.swal.toast(`Order #${message.orderNumber} - Products returned. Please verify!`, 'info');
-        // Reload orders
-        this.loadOrders();
-        break;
+        case 'ORDER_RETURNED':
+          console.log('📦 Order returned to shop:', message.orderNumber);
+          // Play notification sound for important update
+          this.playNotificationSound();
+          // Show info toast
+          this.swal.toast(`Order #${message.orderNumber} - Products returned. Please verify!`, 'info');
+          // Reload orders
+          this.loadOrders();
+          break;
 
-      default:
-        console.log('Unknown WebSocket message type:', message.type);
-    }
+        default:
+          console.log('Unknown WebSocket message type:', message.type);
+      }
+    });
   }
 
   /**
