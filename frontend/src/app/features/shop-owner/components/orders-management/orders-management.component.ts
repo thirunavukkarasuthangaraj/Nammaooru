@@ -232,13 +232,51 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Play notification sound for new orders
+   * Play notification sound for new orders using Web Audio API
+   * This generates a pleasant notification beep without needing external files
    */
   private playNotificationSound(): void {
     try {
-      const audio = new Audio('assets/sounds/new-order.mp3');
-      audio.volume = 0.5;
-      audio.play().catch(e => console.log('Audio play failed:', e));
+      // Create audio context
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      const audioContext = new AudioContext();
+
+      // Create oscillator for the beep
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      // Set beep properties - pleasant notification tone
+      oscillator.frequency.value = 880; // A5 note
+      oscillator.type = 'sine';
+
+      // Set volume envelope (fade in/out)
+      gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+      gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.05);
+      gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.3);
+
+      // Play first beep
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.3);
+
+      // Play second beep after short delay
+      setTimeout(() => {
+        const osc2 = audioContext.createOscillator();
+        const gain2 = audioContext.createGain();
+        osc2.connect(gain2);
+        gain2.connect(audioContext.destination);
+        osc2.frequency.value = 1046.5; // C6 note (higher)
+        osc2.type = 'sine';
+        gain2.gain.setValueAtTime(0, audioContext.currentTime);
+        gain2.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.05);
+        gain2.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.3);
+        osc2.start(audioContext.currentTime);
+        osc2.stop(audioContext.currentTime + 0.3);
+      }, 200);
+
+      console.log('🔔 Notification sound played');
     } catch (error) {
       console.log('Error playing notification sound:', error);
     }

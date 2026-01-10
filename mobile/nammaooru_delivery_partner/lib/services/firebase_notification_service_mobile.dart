@@ -2,6 +2,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'notification_api_service.dart';
+import '../core/services/audio_service.dart';
 
 class FirebaseNotificationService {
   static final FirebaseNotificationService _instance = FirebaseNotificationService._internal();
@@ -22,6 +23,9 @@ class FirebaseNotificationService {
     }
 
     try {
+      // Initialize audio service for notification sounds
+      await AudioService.instance.initialize();
+
       // Request permission
       await _requestPermission();
 
@@ -76,9 +80,21 @@ class FirebaseNotificationService {
     _notifyListeners(notification);
 
     // Play sound for important delivery notifications
-    if (notification.type == 'new_delivery' || notification.type == 'urgent_delivery') {
-      // You can add sound playing logic here
+    final notificationType = notification.type.toLowerCase();
+    if (notificationType == 'new_delivery' ||
+        notificationType == 'urgent_delivery' ||
+        notificationType == 'order_assigned' ||
+        notificationType == 'order_assignment') {
       debugPrint('🔊 Playing notification sound for delivery alert');
+      try {
+        if (notificationType == 'urgent_delivery') {
+          await AudioService.instance.playUrgentSound();
+        } else {
+          await AudioService.instance.playOrderAssignedSound();
+        }
+      } catch (e) {
+        debugPrint('Error playing notification sound: $e');
+      }
     }
   }
 
