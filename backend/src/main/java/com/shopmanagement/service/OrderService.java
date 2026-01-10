@@ -1966,7 +1966,7 @@ public class OrderService {
             orderData.put("orderId", order.getId());
             orderData.put("orderNumber", order.getOrderNumber());
             orderData.put("customerName", customer.getFullName());
-            orderData.put("customerPhone", customer.getPhone());
+            orderData.put("customerPhone", customer.getMobileNumber());
             orderData.put("totalAmount", order.getTotalAmount());
             orderData.put("itemCount", itemCount);
             orderData.put("status", order.getStatus().name());
