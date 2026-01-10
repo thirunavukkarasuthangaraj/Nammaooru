@@ -89,11 +89,13 @@ class CartProvider with ChangeNotifier {
           notifyListeners();
           return false; // Stock limit exceeded
         }
+        // Update both quantity AND product (to get latest data like nameTamil)
         _items[existingIndex] = _items[existingIndex].copyWith(
           quantity: newQuantity,
+          product: product,  // Update product to get latest Tamil name
         );
         if (kDebugMode) {
-          print('🛒 Updated existing item, new qty: ${_items[existingIndex].quantity}');
+          print('🛒 Updated existing item, new qty: ${_items[existingIndex].quantity}, nameTamil: ${product.nameTamil}');
         }
       } else {
         // Check stock for new item

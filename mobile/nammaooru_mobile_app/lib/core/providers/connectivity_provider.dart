@@ -58,9 +58,9 @@ class ConnectivityProvider extends ChangeNotifier {
   }
 
   void _checkAndShowAlert(ConnectionQuality quality) {
-    // Show alert for slow or offline connections
-    if (quality == ConnectionQuality.slow ||
-        quality == ConnectionQuality.verySlow ||
+    // Only show alert for very slow or offline connections
+    // "Slow" is acceptable for most operations and shouldn't interrupt the user
+    if (quality == ConnectionQuality.verySlow ||
         quality == ConnectionQuality.offline) {
       _showAlert = true;
       _alertMessage = _connectivityService.getConnectionStatusMessage();

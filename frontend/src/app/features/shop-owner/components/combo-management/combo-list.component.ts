@@ -198,4 +198,12 @@ export class ComboListComponent implements OnInit {
       panelClass: type === 'success' ? 'snackbar-success' : 'snackbar-error'
     });
   }
+
+  getImageUrl(url: string | undefined): string {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    return `${environment.imageBaseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+  }
 }

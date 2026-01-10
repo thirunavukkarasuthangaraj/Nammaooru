@@ -40,6 +40,8 @@ public interface ProductMapper {
     @Mapping(source = "shop.id", target = "shopId")
     @Mapping(source = "shop.name", target = "shopName")
     @Mapping(target = "displayName", expression = "java(shopProduct.getDisplayName())")
+    @Mapping(target = "displayNameTamil", expression = "java(getDisplayNameTamil(shopProduct))")
+    @Mapping(target = "nameTamil", expression = "java(getNameTamil(shopProduct))")
     @Mapping(target = "displayDescription", expression = "java(shopProduct.getDisplayDescription())")
     @Mapping(target = "primaryImageUrl", expression = "java(shopProduct.getPrimaryShopImageUrl())")
     @Mapping(target = "inStock", expression = "java(shopProduct.isInStock())")
@@ -99,7 +101,7 @@ public interface ProductMapper {
 
     // Helper methods
     default java.math.BigDecimal calculateProfitMargin(ShopProduct shopProduct) {
-        if (shopProduct.getCostPrice() == null || shopProduct.getPrice() == null || 
+        if (shopProduct.getCostPrice() == null || shopProduct.getPrice() == null ||
             shopProduct.getCostPrice().compareTo(java.math.BigDecimal.ZERO) == 0) {
             return java.math.BigDecimal.ZERO;
         }
@@ -107,5 +109,29 @@ public interface ProductMapper {
                 .subtract(shopProduct.getCostPrice())
                 .multiply(java.math.BigDecimal.valueOf(100))
                 .divide(shopProduct.getCostPrice(), 2, java.math.BigDecimal.ROUND_HALF_UP);
+    }
+
+    /**
+     * Get Tamil display name - custom Tamil name if set, otherwise master product Tamil name
+     */
+    default String getDisplayNameTamil(ShopProduct shopProduct) {
+        if (shopProduct == null) return null;
+        // For now, only master product has Tamil name
+        // In future, shops can have customNameTamil
+        if (shopProduct.getMasterProduct() != null) {
+            return shopProduct.getMasterProduct().getNameTamil();
+        }
+        return null;
+    }
+
+    /**
+     * Get Tamil name - convenience method that returns master product Tamil name
+     */
+    default String getNameTamil(ShopProduct shopProduct) {
+        if (shopProduct == null) return null;
+        if (shopProduct.getMasterProduct() != null) {
+            return shopProduct.getMasterProduct().getNameTamil();
+        }
+        return null;
     }
 }

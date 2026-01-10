@@ -1,6 +1,7 @@
 class CustomerCombo {
   final int id;
   final int shopId;
+  final String? shopCode;
   final String? shopName;
   final String name;
   final String? nameTamil;
@@ -19,6 +20,7 @@ class CustomerCombo {
   CustomerCombo({
     required this.id,
     required this.shopId,
+    this.shopCode,
     this.shopName,
     required this.name,
     this.nameTamil,
@@ -39,6 +41,7 @@ class CustomerCombo {
     return CustomerCombo(
       id: json['id'] ?? 0,
       shopId: json['shopId'] ?? 0,
+      shopCode: json['shopCode'],
       shopName: json['shopName'],
       name: json['name'] ?? '',
       nameTamil: json['nameTamil'],
@@ -92,6 +95,9 @@ class CustomerComboItem {
   });
 
   factory CustomerComboItem.fromJson(Map<String, dynamic> json) {
+    // Debug: Log what the backend is sending
+    print('🔍 Parsing ComboItem JSON: productName=${json['productName']}, productNameTamil=${json['productNameTamil']}');
+
     return CustomerComboItem(
       id: json['id'],
       shopProductId: json['shopProductId'] ?? 0,

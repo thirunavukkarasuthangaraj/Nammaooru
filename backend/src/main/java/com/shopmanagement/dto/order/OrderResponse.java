@@ -86,6 +86,7 @@ public class OrderResponse {
         private Long id;
         private Long shopProductId;
         private String productName;
+        private String productNameTamil;
         private String productDescription;
         private String productSku;
         private String productImageUrl;

@@ -128,6 +128,7 @@ class OrderItem {
   final String id;
   final String productId;
   final String productName;
+  final String? productNameTamil;
   final String productImage;
   final double price;
   final int quantity;
@@ -140,6 +141,7 @@ class OrderItem {
     required this.id,
     required this.productId,
     required this.productName,
+    this.productNameTamil,
     required this.productImage,
     required this.price,
     required this.quantity,
@@ -154,6 +156,7 @@ class OrderItem {
       id: json['id']?.toString() ?? '',
       productId: json['productId']?.toString() ?? json['shopProductId']?.toString() ?? '',
       productName: json['productName'] ?? '',
+      productNameTamil: json['productNameTamil'],
       productImage: json['productImage'] ?? json['productImageUrl'] ?? '',
       price: (json['price'] ?? json['unitPrice'] ?? 0).toDouble(),
       quantity: json['quantity'] ?? 0,

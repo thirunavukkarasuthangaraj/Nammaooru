@@ -46,29 +46,72 @@ class ProductModel {
   });
   
   factory ProductModel.fromJson(Map<String, dynamic> json) {
+    // Extract Tamil name - check top level first, then masterProduct
+    String? tamilName = json['nameTamil'] ??
+        json['displayNameTamil'] ??
+        (json['masterProduct'] != null ? json['masterProduct']['nameTamil'] : null);
+
     return ProductModel(
-      id: json['id'] ?? '',
-      name: json['name'] ?? '',
-      nameTamil: json['nameTamil'],
-      description: json['description'] ?? '',
+      id: json['id']?.toString() ?? '',
+      name: json['displayName'] ?? json['name'] ?? '',
+      nameTamil: tamilName,
+      description: json['displayDescription'] ?? json['description'] ?? '',
       price: (json['price'] ?? 0.0).toDouble(),
-      discountPrice: json['discountPrice']?.toDouble(),
+      discountPrice: json['discountPrice']?.toDouble() ?? json['originalPrice']?.toDouble(),
       category: json['category'] ?? '',
-      shopId: json['shopId'] ?? '',
+      shopId: json['shopId']?.toString() ?? '',
       shopDatabaseId: json['shopDatabaseId'] != null ? int.tryParse(json['shopDatabaseId'].toString()) : null,
       shopName: json['shopName'] ?? '',
-      images: List<String>.from(json['images'] ?? []),
+      images: _extractImages(json),
       stockQuantity: json['stockQuantity'] ?? 0,
-      unit: json['unit'] ?? 'piece',
+      unit: json['unit'] ?? json['baseUnit'] ?? 'piece',
       isAvailable: json['isAvailable'] ?? true,
       rating: (json['rating'] ?? 0.0).toDouble(),
       reviewCount: json['reviewCount'] ?? 0,
       nutritionInfo: json['nutritionInfo'],
-      tags: List<String>.from(json['tags'] ?? []),
+      tags: _extractTags(json['tags']),
       minStockLevel: json['minStockLevel'] ?? 5,
-      createdAt: DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String()),
-      updatedAt: DateTime.parse(json['updatedAt'] ?? DateTime.now().toIso8601String()),
+      createdAt: _parseDateTime(json['createdAt']),
+      updatedAt: _parseDateTime(json['updatedAt']),
     );
+  }
+
+  static List<String> _extractImages(Map<String, dynamic> json) {
+    // Try images array first
+    if (json['images'] != null && json['images'] is List) {
+      return List<String>.from(json['images']);
+    }
+    // Try primaryImageUrl
+    if (json['primaryImageUrl'] != null) {
+      return [json['primaryImageUrl']];
+    }
+    // Try shopImages
+    if (json['shopImages'] != null && json['shopImages'] is List) {
+      return (json['shopImages'] as List)
+          .map((img) => img['imageUrl']?.toString() ?? '')
+          .where((url) => url.isNotEmpty)
+          .toList();
+    }
+    return [];
+  }
+
+  static DateTime _parseDateTime(dynamic value) {
+    if (value == null) return DateTime.now();
+    if (value is DateTime) return value;
+    try {
+      return DateTime.parse(value.toString());
+    } catch (_) {
+      return DateTime.now();
+    }
+  }
+
+  static List<String> _extractTags(dynamic tags) {
+    if (tags == null) return [];
+    if (tags is List) return List<String>.from(tags);
+    if (tags is String) {
+      return tags.split(',').map((t) => t.trim()).where((t) => t.isNotEmpty).toList();
+    }
+    return [];
   }
   
   Map<String, dynamic> toJson() {

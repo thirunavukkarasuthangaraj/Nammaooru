@@ -172,10 +172,19 @@ public class ShopProduct {
                 .map(ShopProductImage::getImageUrl)
                 .findFirst()
                 .orElse(null);
-        
+
         if (shopImageUrl != null) return shopImageUrl;
-        
+
+        // Try first shop image if no primary set
+        if (!shopImages.isEmpty()) {
+            return shopImages.iterator().next().getImageUrl();
+        }
+
         // Fallback to master product image
-        return masterProduct.getPrimaryImageUrl();
+        if (masterProduct != null) {
+            return masterProduct.getPrimaryImageUrl();
+        }
+
+        return null;
     }
 }

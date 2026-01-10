@@ -47,6 +47,13 @@ public class ComboItem {
     @Column(nullable = false)
     private Integer quantity = 1;
 
+    // Store product names for historical tracking
+    @Column(name = "product_name")
+    private String productName;
+
+    @Column(name = "product_name_tamil")
+    private String productNameTamil;
+
     @Builder.Default
     @Column(name = "display_order")
     private Integer displayOrder = 0;

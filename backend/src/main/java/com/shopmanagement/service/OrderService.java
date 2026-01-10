@@ -1314,6 +1314,7 @@ public class OrderService {
                             .id(item.getId())
                             .shopProductId(shopProduct.getId())
                             .productName(item.getProductName())
+                            .productNameTamil(masterProduct.getNameTamil())
                             .productDescription(item.getProductDescription())
                             .productSku(item.getProductSku())
                             .productImageUrl(productImageUrl)

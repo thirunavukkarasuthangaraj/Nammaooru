@@ -248,6 +248,32 @@ public class ComboController {
     // ==================== CUSTOMER APIs ====================
 
     /**
+     * Get all active combos across all shops (for dashboard)
+     */
+    @GetMapping("/customer/combos")
+    public ResponseEntity<Map<String, Object>> getAllActiveCombos() {
+        log.info("GET /customer/combos - Getting all active combos for dashboard");
+
+        try {
+            List<ComboResponse> combos = comboService.getAllActiveCombos();
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("statusCode", "0000");
+            response.put("data", combos);
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error getting all active combos: {}", e.getMessage(), e);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("statusCode", "9999");
+            response.put("message", e.getMessage());
+
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    /**
      * Get active combos for a shop (customer view)
      */
     @GetMapping("/customer/shops/{shopId}/combos")

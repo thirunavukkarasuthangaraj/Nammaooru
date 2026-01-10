@@ -227,43 +227,51 @@ class OrderModel {
 class OrderItem {
   final String productId;
   final String productName;
+  final String? productNameTamil;
   final String productImage;
   final double price;
   final int quantity;
   final String unit;
   final double totalPrice;
-  
+  final String shopName;
+
   OrderItem({
     required this.productId,
     required this.productName,
+    this.productNameTamil,
     required this.productImage,
     required this.price,
     required this.quantity,
     required this.unit,
     required this.totalPrice,
+    this.shopName = '',
   });
-  
+
   factory OrderItem.fromJson(Map<String, dynamic> json) {
     return OrderItem(
       productId: json['productId'] ?? '',
       productName: json['productName'] ?? '',
+      productNameTamil: json['productNameTamil'],
       productImage: json['productImage'] ?? '',
       price: (json['price'] ?? 0.0).toDouble(),
       quantity: json['quantity'] ?? 0,
       unit: json['unit'] ?? 'piece',
       totalPrice: (json['totalPrice'] ?? 0.0).toDouble(),
+      shopName: json['shopName'] ?? '',
     );
   }
-  
+
   Map<String, dynamic> toJson() {
     return {
       'productId': productId,
       'productName': productName,
+      'productNameTamil': productNameTamil,
       'productImage': productImage,
       'price': price,
       'quantity': quantity,
       'unit': unit,
       'totalPrice': totalPrice,
+      'shopName': shopName,
     };
   }
 }

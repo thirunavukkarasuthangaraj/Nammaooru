@@ -166,6 +166,7 @@ class PromoCode {
   final String? termsAndConditions;
   final int? shopId;
   final String? shopName;
+  final String? shopNameTamil;
   final String? shopBusinessType;
 
   PromoCode({
@@ -186,6 +187,7 @@ class PromoCode {
     this.termsAndConditions,
     this.shopId,
     this.shopName,
+    this.shopNameTamil,
     this.shopBusinessType,
   });
 
@@ -212,6 +214,7 @@ class PromoCode {
       termsAndConditions: json['termsAndConditions'],
       shopId: json['shopId'],
       shopName: json['shopName'],
+      shopNameTamil: json['shopNameTamil'],
       shopBusinessType: json['shopBusinessType']?.toString(),
     );
   }

@@ -67,4 +67,14 @@ public interface ProductComboRepository extends JpaRepository<ProductCombo, Long
     boolean existsByShopIdAndNameIgnoreCaseAndIdNot(@Param("shopId") Long shopId,
                                                      @Param("name") String name,
                                                      @Param("excludeId") Long excludeId);
+
+    // Find all active combos across all shops for dashboard
+    @Query("SELECT c FROM ProductCombo c " +
+           "JOIN FETCH c.shop s " +
+           "WHERE c.isActive = true " +
+           "AND c.startDate <= :today " +
+           "AND c.endDate >= :today " +
+           "AND s.isActive = true " +
+           "ORDER BY c.displayOrder ASC, c.createdAt DESC")
+    List<ProductCombo> findAllActiveCombos(@Param("today") LocalDate today);
 }

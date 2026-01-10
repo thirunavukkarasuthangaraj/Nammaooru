@@ -86,7 +86,7 @@ interface ShopNotification {
 
           <div class="notification-status-column">
             <div class="notification-time">
-              {{ notification.createdAt | date:'short':'Asia/Kolkata' }}
+              {{ formatNotificationTime(notification.createdAt) }}
             </div>
             <div class="order-status" *ngIf="notification.orderData">
               <span class="status-badge" [class]="'status-' + getOrderStatus(notification)">
@@ -857,6 +857,20 @@ export class NotificationsComponent implements OnInit, OnDestroy {
     }
 
     return 'UNKNOWN';
+  }
+
+  // Format date/time in Indian format (d/M/yy, h:mm AM/PM)
+  formatNotificationTime(date: Date): string {
+    if (!date) return '';
+    const d = new Date(date);
+    const day = d.getDate();
+    const month = d.getMonth() + 1;
+    const year = d.getFullYear() % 100;
+    let hours = d.getHours();
+    const minutes = d.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12 || 12;
+    return `${day}/${month}/${year}, ${hours}:${minutes} ${ampm}`;
   }
 
 }

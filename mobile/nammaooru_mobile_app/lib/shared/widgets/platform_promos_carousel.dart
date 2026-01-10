@@ -144,7 +144,7 @@ class _PlatformPromosCarouselState extends State<PlatformPromosCarousel> {
         });
 
         return SizedBox(
-          height: 160,
+          height: 220,
           child: PageView.builder(
             controller: _pageController,
             padEnds: false,

@@ -9,6 +9,7 @@ import '../../../core/config/env_config.dart';
 import '../../../shared/providers/cart_provider.dart';
 import '../../../core/localization/language_provider.dart';
 import '../../../core/utils/helpers.dart';
+import '../../../core/utils/image_url_helper.dart';
 
 class ShopProductsScreen extends StatefulWidget {
   final String shopId;

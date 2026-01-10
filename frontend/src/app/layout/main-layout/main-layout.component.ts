@@ -3,9 +3,23 @@ import { Router, NavigationEnd } from '@angular/router';
 import { MatSidenav } from '@angular/material/sidenav';
 import { AuthService } from '../../core/services/auth.service';
 import { VersionService } from '../../core/services/version.service';
+import { OrderService } from '../../core/services/order.service';
+import { SoundService } from '../../core/services/sound.service';
+import { MenuPermissionService, MENU_PERMISSION_ROUTES } from '../../core/services/menu-permission.service';
 import { User, UserRole } from '../../core/models/auth.model';
-import { Observable, Subject, debounceTime, distinctUntilChanged, filter } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { Observable, Subject, debounceTime, distinctUntilChanged, filter, interval } from 'rxjs';
+import { takeUntil, catchError, switchMap } from 'rxjs/operators';
+import { of } from 'rxjs';
+
+interface HeaderNotification {
+  id: number;
+  title: string;
+  message: string;
+  time: Date;
+  type: string;
+  icon: string;
+  read: boolean;
+}
 
 @Component({
   selector: 'app-main-layout',
@@ -27,44 +41,20 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   searchQuery = '';
   private searchSubject = new Subject<string>();
   
-  // Notifications
-  notificationCount = 3; // Mock data
+  // Notifications - loaded from API
+  notificationCount = 0;
 
-  
   // Version info
   versionInfo: any = null;
-  notifications = [
-    {
-      id: 1,
-      title: 'New Order Received',
-      message: 'Order #12345 has been placed',
-      time: new Date(),
-      type: 'order',
-      icon: 'shopping_cart',
-      read: false
-    },
-    {
-      id: 2,
-      title: 'Low Stock Alert',
-      message: 'Product inventory is running low',
-      time: new Date(),
-      type: 'warning',
-      icon: 'warning',
-      read: false
-    },
-    {
-      id: 3,
-      title: 'Shop Approved',
-      message: 'New shop registration approved',
-      time: new Date(),
-      type: 'success',
-      icon: 'check_circle',
-      read: false
-    }
-  ];
-  
+  notifications: HeaderNotification[] = [];
+  notificationsLoading = false;
+  private previousPendingCount = -1; // -1 means not initialized yet (first load)
+
   private destroy$ = new Subject<void>();
-  
+
+  // User menu permissions (for shop owners)
+  userMenuPermissions: Set<string> = new Set();
+
   // SUPER ADMIN - Can see ALL menus from all roles
   superAdminMenuItems = [
     {
@@ -142,6 +132,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       items: [
         { title: 'System Settings', icon: 'settings', route: '/settings', badge: null },
         { title: 'App Configuration', icon: 'tune', route: '/admin/config', badge: null },
+        { title: 'Menu Permissions', icon: 'menu_open', route: '/admin/menu-permissions', badge: null },
         { title: 'Delivery Fee Management', icon: 'local_shipping', route: '/admin/delivery-fees', badge: null },
         { title: 'Notifications', icon: 'notifications', route: '/notifications', badge: '8' },
         { title: 'Audit Logs', icon: 'history', route: '/admin/audit', badge: null },
@@ -333,15 +324,15 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
 
   get currentMenuItems() {
     const user = this.authService.getCurrentUser();
-    
+
     // If no user is authenticated, return empty menu
     if (!user || !this.authService.isAuthenticated()) {
       return [];
     }
-    
+
     // Log for debugging
     console.log('Current user role:', user.role, 'Type:', typeof user.role);
-    
+
     switch (user.role) {
       case UserRole.SUPER_ADMIN:
       case 'SUPER_ADMIN':
@@ -358,7 +349,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       case UserRole.SHOP_OWNER:
       case 'SHOP_OWNER':
         console.log('Showing SHOP_OWNER menus');
-        return this.shopOwnerMenuItems;
+        return this.getFilteredShopOwnerMenus();
       case UserRole.DELIVERY_PARTNER:
       case 'DELIVERY_PARTNER':
         console.log('Showing DELIVERY_PARTNER menus');
@@ -375,10 +366,54 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Filter shop owner menus based on user permissions
+   */
+  private getFilteredShopOwnerMenus(): any[] {
+    // If no permissions loaded yet, show all menus (will update after permissions load)
+    if (this.userMenuPermissions.size === 0) {
+      return this.shopOwnerMenuItems;
+    }
+
+    // Map route to permission name
+    const routeToPermission: { [key: string]: string } = {};
+    for (const [permission, route] of Object.entries(MENU_PERMISSION_ROUTES)) {
+      routeToPermission[route] = permission;
+    }
+
+    // Filter menu items based on permissions
+    const filteredMenus: any[] = [];
+
+    for (const category of this.shopOwnerMenuItems) {
+      const filteredItems: any[] = [];
+
+      for (const item of category.items) {
+        const permission = routeToPermission[item.route];
+        // If no permission mapping exists for this route, show it
+        if (!permission || this.userMenuPermissions.has(permission)) {
+          filteredItems.push(item);
+        }
+      }
+
+      // Only include category if it has visible items
+      if (filteredItems.length > 0) {
+        filteredMenus.push({
+          category: category.category,
+          items: filteredItems
+        });
+      }
+    }
+
+    return filteredMenus;
+  }
+
   constructor(
     private authService: AuthService,
     public router: Router,
-    private versionService: VersionService
+    private versionService: VersionService,
+    private orderService: OrderService,
+    private soundService: SoundService,
+    private menuPermissionService: MenuPermissionService
   ) {
     this.currentUser$ = this.authService.currentUser$;
   }
@@ -388,12 +423,161 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     this.setupSearchSubscription();
     this.setupRouterSubscription();
     this.loadVersionInfo();
+    this.loadNotifications();
+    this.loadMenuPermissions();
+
+    // Subscribe to menu permissions changes
+    this.menuPermissionService.menuPermissions$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(permissions => {
+        this.userMenuPermissions = permissions;
+      });
+
+    // Auto-refresh notifications every 60 seconds
+    interval(60000)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.loadNotifications();
+      });
+  }
+
+  private loadMenuPermissions(): void {
+    const currentUser = this.authService.getCurrentUser();
+    if (currentUser && this.authService.isAuthenticated()) {
+      this.menuPermissionService.loadMyMenuPermissions();
+    }
   }
   
   private loadVersionInfo(): void {
     this.versionService.getVersionInfo().subscribe(info => {
       this.versionInfo = info;
     });
+  }
+
+  private loadNotifications(): void {
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser || !this.authService.isAuthenticated()) {
+      return;
+    }
+
+    // Get shop ID for shop owner, or load general notifications
+    const shopId = localStorage.getItem('current_shop_id');
+
+    if (shopId && (currentUser.role === 'SHOP_OWNER' || (currentUser.role as any) === UserRole.SHOP_OWNER)) {
+      this.notificationsLoading = true;
+      this.orderService.getOrdersByShop(shopId, 0, 10)
+        .pipe(
+          takeUntil(this.destroy$),
+          catchError(() => of({ data: { content: [] } }))
+        )
+        .subscribe({
+          next: (response) => {
+            const orders = response.data?.content || [];
+
+            // Count current pending orders
+            const currentPendingCount = orders.filter((order: any) => order.status === 'PENDING').length;
+
+            // Play sound if there are new pending orders (but not on first load)
+            if (this.previousPendingCount >= 0 && currentPendingCount > this.previousPendingCount) {
+              console.log('🔔 New order detected! Playing notification sound...');
+              this.soundService.playOrderNotification();
+            }
+
+            // Update previous count (first load will set it from -1 to actual count)
+            this.previousPendingCount = currentPendingCount;
+
+            this.notifications = orders
+              .filter((order: any) => order.status === 'PENDING' || this.isRecentOrder(order))
+              .slice(0, 5)
+              .map((order: any) => this.orderToNotification(order));
+            this.notificationCount = this.notifications.filter(n => !n.read).length;
+            this.notificationsLoading = false;
+          },
+          error: () => {
+            this.notificationsLoading = false;
+          }
+        });
+    }
+  }
+
+  private isRecentOrder(order: any): boolean {
+    const orderDate = new Date(order.createdAt);
+    const oneHourAgo = new Date();
+    oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+    return orderDate > oneHourAgo;
+  }
+
+  private orderToNotification(order: any): HeaderNotification {
+    let title = '';
+    let icon = 'shopping_cart';
+    let type = 'order';
+
+    switch (order.status) {
+      case 'PENDING':
+        title = 'New Order';
+        icon = 'shopping_cart';
+        type = 'order';
+        break;
+      case 'CONFIRMED':
+      case 'ACCEPTED':
+        title = 'Order Accepted';
+        icon = 'check_circle';
+        type = 'success';
+        break;
+      case 'PREPARING':
+        title = 'Preparing Order';
+        icon = 'restaurant';
+        type = 'info';
+        break;
+      case 'READY_FOR_PICKUP':
+        title = 'Ready for Pickup';
+        icon = 'inventory_2';
+        type = 'info';
+        break;
+      case 'OUT_FOR_DELIVERY':
+        title = 'Out for Delivery';
+        icon = 'delivery_dining';
+        type = 'info';
+        break;
+      case 'DELIVERED':
+        title = 'Delivered';
+        icon = 'done_all';
+        type = 'success';
+        break;
+      case 'CANCELLED':
+        title = 'Order Cancelled';
+        icon = 'cancel';
+        type = 'warning';
+        break;
+      default:
+        title = 'Order Update';
+        icon = 'notifications';
+        type = 'info';
+    }
+
+    return {
+      id: order.id,
+      title: title,
+      message: `${order.orderNumber} - ₹${order.totalAmount}`,
+      time: new Date(order.createdAt),
+      type: type,
+      icon: icon,
+      read: order.status !== 'PENDING'
+    };
+  }
+
+  // Format time for display in Indian format
+  formatNotificationTime(date: Date): string {
+    if (!date) return '';
+    const d = new Date(date);
+    const day = d.getDate();
+    const month = d.getMonth() + 1;
+    const year = d.getFullYear() % 100;
+    let hours = d.getHours();
+    const minutes = d.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12 || 12;
+    return `${day}/${month}/${year}, ${hours}:${minutes} ${ampm}`;
   }
 
   getClientVersion(): string {

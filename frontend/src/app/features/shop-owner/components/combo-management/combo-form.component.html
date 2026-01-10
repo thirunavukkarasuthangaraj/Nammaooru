@@ -88,6 +88,7 @@
               </div>
               <div class="product-details">
                 <span class="name">{{ getProductName(product) }}</span>
+                <span class="name-tamil" *ngIf="getProductNameTamil(product)">{{ getProductNameTamil(product) }}</span>
                 <span class="price">₹{{ getProductPrice(product) }} <small *ngIf="getProductUnit(product)">/ {{ getProductUnit(product) }}</small></span>
               </div>
               <mat-icon class="add-icon">add_circle</mat-icon>
@@ -107,6 +108,7 @@
             </div>
             <div class="item-info">
               <span class="item-name">{{ item.get('productName')?.value }}</span>
+              <span class="item-name-tamil" *ngIf="item.get('productNameTamil')?.value">{{ item.get('productNameTamil')?.value }}</span>
               <span class="item-price">₹{{ item.get('unitPrice')?.value }} {{ item.get('unit')?.value }}</span>
             </div>
             <div class="quantity-control">

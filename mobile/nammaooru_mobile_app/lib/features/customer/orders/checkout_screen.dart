@@ -1763,14 +1763,29 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                     ),
                                   ),
                                   Flexible(
-                                    child: Text(
-                                      item.product.name,
-                                      style: VillageTheme.bodyMedium.copyWith(
-                                        color: Colors.black,
-                                        fontSize: 12,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          item.product.name,
+                                          style: VillageTheme.bodyMedium.copyWith(
+                                            color: Colors.black,
+                                            fontSize: 12,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        if (item.product.nameTamil != null && item.product.nameTamil!.isNotEmpty)
+                                          Text(
+                                            item.product.nameTamil!,
+                                            style: VillageTheme.bodyMedium.copyWith(
+                                              color: Colors.grey[600],
+                                              fontSize: 10,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                      ],
                                     ),
                                   ),
                                   if (item.product.unit.isNotEmpty && item.product.unit != 'piece') ...[
@@ -2479,6 +2494,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         'items': cartProvider.items.map((item) => {
           'productId': int.tryParse(item.product.id.toString()) ?? item.product.id,
           'productName': item.product.name,
+          'productNameTamil': item.product.nameTamil,
           'price': item.product.effectivePrice,
           'quantity': item.quantity,
           'unit': 'piece'

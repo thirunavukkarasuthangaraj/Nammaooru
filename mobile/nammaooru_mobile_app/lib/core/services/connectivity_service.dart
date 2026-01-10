@@ -5,10 +5,10 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 enum ConnectionQuality {
-  excellent, // < 300ms
-  good,      // 300-800ms
-  slow,      // 800-2000ms
-  verySlow,  // > 2000ms
+  excellent, // < 500ms
+  good,      // 500-1200ms
+  slow,      // 1200-3000ms
+  verySlow,  // > 3000ms
   offline,   // No connection
 }
 
@@ -31,6 +31,11 @@ class ConnectivityService {
   bool _isMonitoring = false;
   Timer? _qualityCheckTimer;
   StreamSubscription? _connectivitySubscription;
+
+  // Debouncing: require consecutive poor readings before alerting
+  int _consecutivePoorReadings = 0;
+  static const int _requiredPoorReadingsForAlert = 2; // Need 2 consecutive poor readings
+  ConnectionQuality? _lastMeasuredQuality;
 
   /// Initialize connectivity monitoring
   Future<void> initialize() async {
@@ -124,36 +129,76 @@ class ConnectivityService {
       stopwatch.stop();
       final latency = stopwatch.elapsedMilliseconds;
 
+      ConnectionQuality measuredQuality;
       if (response.statusCode == 408) {
         // Timeout occurred
-        _updateConnectionQuality(ConnectionQuality.verySlow);
+        measuredQuality = ConnectionQuality.verySlow;
         debugPrint('📡 Network: VERY SLOW (timeout)');
-        return;
+      } else {
+        // Categorize connection quality based on latency
+        measuredQuality = _categorizeLatency(latency);
+        debugPrint('📡 Network latency: ${latency}ms - Quality: ${measuredQuality.name}');
       }
 
-      // Categorize connection quality based on latency
-      final quality = _categorizeLatency(latency);
-      _updateConnectionQuality(quality);
-
-      debugPrint('📡 Network latency: ${latency}ms - Quality: ${quality.name}');
+      _applyDebouncedQualityUpdate(measuredQuality);
 
     } on SocketException catch (e) {
-      _updateConnectionQuality(ConnectionQuality.offline);
+      _applyDebouncedQualityUpdate(ConnectionQuality.offline);
       debugPrint('📡 Network: OFFLINE (${e.message})');
     } catch (e) {
-      // On any error, assume slow connection
-      _updateConnectionQuality(ConnectionQuality.slow);
+      // On any error, assume slow connection but debounce it
+      _applyDebouncedQualityUpdate(ConnectionQuality.slow);
       debugPrint('📡 Network check error: $e');
     }
   }
 
+  /// Apply debouncing to prevent false alerts from transient network hiccups
+  void _applyDebouncedQualityUpdate(ConnectionQuality measuredQuality) {
+    final isPoorQuality = measuredQuality == ConnectionQuality.slow ||
+        measuredQuality == ConnectionQuality.verySlow ||
+        measuredQuality == ConnectionQuality.offline;
+
+    if (isPoorQuality) {
+      // For poor quality, require consecutive readings before alerting
+      if (_lastMeasuredQuality == measuredQuality ||
+          (_lastMeasuredQuality != null && _isPoorQuality(_lastMeasuredQuality!))) {
+        _consecutivePoorReadings++;
+      } else {
+        _consecutivePoorReadings = 1;
+      }
+
+      _lastMeasuredQuality = measuredQuality;
+
+      // Only update if we've had enough consecutive poor readings
+      if (_consecutivePoorReadings >= _requiredPoorReadingsForAlert) {
+        _updateConnectionQuality(measuredQuality);
+        debugPrint('📡 Debounce: Poor connection confirmed after $_consecutivePoorReadings readings');
+      } else {
+        debugPrint('📡 Debounce: Ignoring transient poor reading ($_consecutivePoorReadings/$_requiredPoorReadingsForAlert)');
+      }
+    } else {
+      // Good quality - immediately update and reset counter
+      _consecutivePoorReadings = 0;
+      _lastMeasuredQuality = measuredQuality;
+      _updateConnectionQuality(measuredQuality);
+    }
+  }
+
+  /// Check if a quality level is considered poor
+  bool _isPoorQuality(ConnectionQuality quality) {
+    return quality == ConnectionQuality.slow ||
+        quality == ConnectionQuality.verySlow ||
+        quality == ConnectionQuality.offline;
+  }
+
   /// Categorize latency into quality levels
+  /// Thresholds are lenient to account for mobile network variability
   ConnectionQuality _categorizeLatency(int latencyMs) {
-    if (latencyMs < 300) {
+    if (latencyMs < 500) {
       return ConnectionQuality.excellent;
-    } else if (latencyMs < 800) {
+    } else if (latencyMs < 1200) {
       return ConnectionQuality.good;
-    } else if (latencyMs < 2000) {
+    } else if (latencyMs < 3000) {
       return ConnectionQuality.slow;
     } else {
       return ConnectionQuality.verySlow;

@@ -138,10 +138,12 @@ public class PromotionController {
                     shopRepository.findById(promo.getShopId())
                         .ifPresent(shop -> {
                             promoMap.put("shopName", shop.getName());
+                            promoMap.put("shopNameTamil", shop.getNameTamil());
                             promoMap.put("shopBusinessType", shop.getBusinessType());
                         });
                 } else {
                     promoMap.put("shopName", "Platform Offer");
+                    promoMap.put("shopNameTamil", null);
                 }
 
                 return promoMap;

@@ -18,6 +18,7 @@ public class ComboResponse {
 
     private Long id;
     private Long shopId;
+    private String shopCode;
     private String shopName;
     private String name;
     private String nameTamil;

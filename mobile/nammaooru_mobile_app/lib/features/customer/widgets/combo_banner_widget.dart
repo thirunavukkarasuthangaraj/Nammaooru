@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'dart:async';
 import '../models/combo_model.dart';
-import '../../../core/config/env_config.dart';
+import '../../../core/utils/image_url_helper.dart';
+import '../../../core/localization/language_provider.dart';
 
 class ComboBannerWidget extends StatelessWidget {
   final List<CustomerCombo> combos;
@@ -183,8 +185,7 @@ class _ComboCardState extends State<_ComboCard> {
 
   String _getFullImageUrl(String? url) {
     if (url == null || url.isEmpty) return '';
-    if (url.startsWith('http')) return url;
-    return '${EnvConfig.imageBaseUrl}$url';
+    return ImageUrlHelper.getFullImageUrl(url);
   }
 
   @override
@@ -504,85 +505,104 @@ class ComboDetailBottomSheet extends StatelessWidget {
                             const SizedBox(height: 16),
 
                             // Price Box
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Colors.green[50]!,
-                                    Colors.green[100]!,
-                                  ],
-                                ),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.green),
-                              ),
-                              child: Row(
-                                children: [
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      const Text(
-                                        'Combo Price',
-                                        style: TextStyle(color: Colors.grey),
-                                      ),
-                                      Text(
-                                        '₹${combo.comboPrice.toStringAsFixed(0)}',
-                                        style: const TextStyle(
-                                          fontSize: 28,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.green,
-                                        ),
-                                      ),
-                                    ],
+                            Builder(
+                              builder: (context) {
+                                final languageProvider = Provider.of<LanguageProvider>(context);
+                                final isTamil = languageProvider.currentLanguage == 'ta';
+                                final comboPriceLabel = isTamil ? 'காம்போ விலை' : 'Combo Price';
+                                final saveLabel = isTamil
+                                    ? '₹${combo.savings.toStringAsFixed(0)} சேமிக்கவும்'
+                                    : 'Save ₹${combo.savings.toStringAsFixed(0)}';
+                                return Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        Colors.green[50]!,
+                                        Colors.green[100]!,
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.green),
                                   ),
-                                  const Spacer(),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                  child: Row(
                                     children: [
-                                      Text(
-                                        '₹${combo.originalPrice.toStringAsFixed(0)}',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          color: Colors.grey[500],
-                                          decoration: TextDecoration.lineThrough,
-                                        ),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 12, vertical: 6),
-                                        decoration: BoxDecoration(
-                                          color: Colors.green,
-                                          borderRadius: BorderRadius.circular(20),
-                                        ),
-                                        child: Text(
-                                          'Save ₹${combo.savings.toStringAsFixed(0)}',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            comboPriceLabel,
+                                            style: const TextStyle(color: Colors.grey),
                                           ),
-                                        ),
+                                          Text(
+                                            '₹${combo.comboPrice.toStringAsFixed(0)}',
+                                            style: const TextStyle(
+                                              fontSize: 28,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.green,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const Spacer(),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        children: [
+                                          Text(
+                                            '₹${combo.originalPrice.toStringAsFixed(0)}',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              color: Colors.grey[500],
+                                              decoration: TextDecoration.lineThrough,
+                                            ),
+                                          ),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 12, vertical: 6),
+                                            decoration: BoxDecoration(
+                                              color: Colors.green,
+                                              borderRadius: BorderRadius.circular(20),
+                                            ),
+                                            child: Text(
+                                              saveLabel,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   ),
-                                ],
-                              ),
+                                );
+                              },
                             ),
 
                             const SizedBox(height: 20),
 
                             // Items List
-                            Row(
-                              children: [
-                                const Icon(Icons.inventory_2, size: 20),
-                                const SizedBox(width: 8),
-                                Text(
-                                  '${combo.itemCount} Items Included',
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
+                            Builder(
+                              builder: (context) {
+                                final languageProvider = Provider.of<LanguageProvider>(context);
+                                final isTamil = languageProvider.currentLanguage == 'ta';
+                                final itemsText = isTamil
+                                    ? '${combo.itemCount} பொருட்கள் சேர்க்கப்பட்டுள்ளன'
+                                    : '${combo.itemCount} Items Included';
+                                return Row(
+                                  children: [
+                                    const Icon(Icons.inventory_2, size: 20),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      itemsText,
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
                             ),
                             const SizedBox(height: 12),
 
@@ -624,19 +644,28 @@ class ComboDetailBottomSheet extends StatelessWidget {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.shopping_cart),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Add Combo to Cart  •  ₹${combo.comboPrice.toStringAsFixed(0)}',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
+                      child: Builder(
+                        builder: (context) {
+                          final languageProvider = Provider.of<LanguageProvider>(context);
+                          final isTamil = languageProvider.currentLanguage == 'ta';
+                          final buttonText = isTamil
+                              ? 'காம்போவை கார்ட்டில் சேர்  •  ₹${combo.comboPrice.toStringAsFixed(0)}'
+                              : 'Add Combo to Cart  •  ₹${combo.comboPrice.toStringAsFixed(0)}';
+                          return Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.shopping_cart),
+                              const SizedBox(width: 8),
+                              Text(
+                                buttonText,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ),
                   ),
@@ -755,7 +784,6 @@ class ComboDetailBottomSheet extends StatelessWidget {
   }
 
   String _getFullImageUrl(String url) {
-    if (url.startsWith('http')) return url;
-    return '${EnvConfig.imageBaseUrl}$url';
+    return ImageUrlHelper.getFullImageUrl(url);
   }
 }

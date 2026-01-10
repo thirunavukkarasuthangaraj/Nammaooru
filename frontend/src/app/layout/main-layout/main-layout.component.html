@@ -214,7 +214,7 @@
         <div class="notification-content">
           <p class="notification-title">{{ notification.title }}</p>
           <p class="notification-message">{{ notification.message }}</p>
-          <span class="notification-time">{{ notification.time | date:'short' }}</span>
+          <span class="notification-time">{{ formatNotificationTime(notification.time) }}</span>
         </div>
         <div class="notification-status" *ngIf="!notification.read">
           <div class="unread-indicator"></div>

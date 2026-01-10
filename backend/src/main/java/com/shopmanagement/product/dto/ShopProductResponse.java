@@ -41,6 +41,7 @@ public class ShopProductResponse {
     
     // Customizations
     private String customName;
+    private String customNameTamil;
     private String customDescription;
     private String customAttributes;
 
@@ -50,7 +51,9 @@ public class ShopProductResponse {
 
     // Display
     private String displayName; // Computed: custom name or master name
+    private String displayNameTamil; // Computed: custom name Tamil or master name Tamil
     private String displayDescription; // Computed: custom description or master description
+    private String nameTamil; // Top-level convenience field for mobile apps
     private Integer displayOrder;
     private String tags;
     

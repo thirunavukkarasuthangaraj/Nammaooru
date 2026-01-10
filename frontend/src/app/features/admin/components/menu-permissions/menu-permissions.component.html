@@ -1,0 +1,74 @@
+<div class="menu-permissions-container">
+  <div class="page-header">
+    <h1>Shop Owner Menu Permissions</h1>
+    <p class="subtitle">Control which menu items shop owners can access</p>
+  </div>
+
+  <div class="loading-container" *ngIf="loading">
+    <mat-spinner diameter="50"></mat-spinner>
+    <p>Loading shop owners...</p>
+  </div>
+
+  <div class="content" *ngIf="!loading">
+    <div class="no-data" *ngIf="shopOwners.length === 0">
+      <mat-icon>store</mat-icon>
+      <p>No shop owners found</p>
+    </div>
+
+    <div class="shop-owners-grid" *ngIf="shopOwners.length > 0">
+      <mat-card *ngFor="let shopOwner of shopOwners" class="shop-owner-card">
+        <mat-card-header>
+          <div mat-card-avatar class="avatar">
+            {{ shopOwner.fullName?.charAt(0) || 'S' }}
+          </div>
+          <mat-card-title>{{ shopOwner.fullName || shopOwner.username }}</mat-card-title>
+          <mat-card-subtitle>{{ shopOwner.email }}</mat-card-subtitle>
+        </mat-card-header>
+
+        <mat-card-content>
+          <div class="permissions-header">
+            <span class="permissions-count">
+              <mat-icon>lock_open</mat-icon>
+              {{ getPermissionCount(shopOwner) }} permissions
+            </span>
+            <div class="quick-actions">
+              <button mat-icon-button
+                      matTooltip="Grant All Permissions"
+                      (click)="grantAllPermissions(shopOwner)"
+                      [disabled]="saving[shopOwner.userId]">
+                <mat-icon>done_all</mat-icon>
+              </button>
+              <button mat-icon-button
+                      matTooltip="Revoke All Permissions"
+                      (click)="revokeAllPermissions(shopOwner)"
+                      [disabled]="saving[shopOwner.userId]">
+                <mat-icon>clear_all</mat-icon>
+              </button>
+            </div>
+          </div>
+
+          <mat-divider></mat-divider>
+
+          <div class="permissions-list">
+            <div *ngFor="let permission of shopOwner.allAvailablePermissions"
+                 class="permission-item"
+                 [class.active]="hasPermission(shopOwner, permission)">
+              <mat-slide-toggle
+                [checked]="hasPermission(shopOwner, permission)"
+                (change)="togglePermission(shopOwner, permission)"
+                [disabled]="saving[shopOwner.userId]"
+                color="primary">
+                {{ getPermissionLabel(permission) }}
+              </mat-slide-toggle>
+            </div>
+          </div>
+
+          <div class="saving-overlay" *ngIf="saving[shopOwner.userId]">
+            <mat-spinner diameter="24"></mat-spinner>
+            <span>Saving...</span>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </div>
+</div>

@@ -93,10 +93,17 @@ public class ComboService {
                 throw new RuntimeException("Product " + itemRequest.getShopProductId() + " does not belong to this shop");
             }
 
+            // Get product names
+            String productName = product.getCustomName() != null ? product.getCustomName() :
+                    (product.getMasterProduct() != null ? product.getMasterProduct().getName() : "Unknown Product");
+            String productNameTamil = product.getMasterProduct() != null ? product.getMasterProduct().getNameTamil() : null;
+
             ComboItem item = ComboItem.builder()
                     .combo(combo)
                     .shopProduct(product)
                     .quantity(itemRequest.getQuantity() != null ? itemRequest.getQuantity() : 1)
+                    .productName(productName)
+                    .productNameTamil(productNameTamil)
                     .displayOrder(itemRequest.getDisplayOrder() != null ? itemRequest.getDisplayOrder() : order++)
                     .build();
 
@@ -166,10 +173,17 @@ public class ComboService {
                 throw new RuntimeException("Product " + itemRequest.getShopProductId() + " does not belong to this shop");
             }
 
+            // Get product names
+            String productName = product.getCustomName() != null ? product.getCustomName() :
+                    (product.getMasterProduct() != null ? product.getMasterProduct().getName() : "Unknown Product");
+            String productNameTamil = product.getMasterProduct() != null ? product.getMasterProduct().getNameTamil() : null;
+
             ComboItem item = ComboItem.builder()
                     .combo(combo)
                     .shopProduct(product)
                     .quantity(itemRequest.getQuantity() != null ? itemRequest.getQuantity() : 1)
+                    .productName(productName)
+                    .productNameTamil(productNameTamil)
                     .displayOrder(itemRequest.getDisplayOrder() != null ? itemRequest.getDisplayOrder() : order++)
                     .build();
 
@@ -254,6 +268,19 @@ public class ComboService {
     }
 
     /**
+     * Get all active combos across all shops for dashboard
+     */
+    @Transactional(readOnly = true)
+    public List<ComboResponse> getAllActiveCombos() {
+        List<ProductCombo> combos = comboRepository.findAllActiveCombos(LocalDate.now());
+
+        return combos.stream()
+                .filter(this::isComboAvailable) // Filter out combos with out-of-stock items
+                .map(combo -> mapToResponse(combo, true))
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Toggle combo active status
      */
     @Transactional
@@ -300,13 +327,19 @@ public class ComboService {
         // Check if all items are in stock
         for (ComboItem item : combo.getItems()) {
             ShopProduct product = item.getShopProduct();
-            if (product.getStockQuantity() < item.getQuantity()) {
+            // If product is null or has insufficient stock, combo is not available
+            if (product == null) {
+                return false;
+            }
+            Integer stockQty = product.getStockQuantity();
+            if (stockQty == null || stockQty < item.getQuantity()) {
                 return false;
             }
         }
 
         // Check if total quantity limit reached
         if (combo.getTotalQuantityAvailable() != null &&
+            combo.getTotalSold() != null &&
             combo.getTotalSold() >= combo.getTotalQuantityAvailable()) {
             return false;
         }
@@ -326,6 +359,7 @@ public class ComboService {
         ComboResponse.ComboResponseBuilder builder = ComboResponse.builder()
                 .id(combo.getId())
                 .shopId(combo.getShop().getId())
+                .shopCode(combo.getShop().getShopId())
                 .shopName(combo.getShop().getName())
                 .name(combo.getName())
                 .nameTamil(combo.getNameTamil())
@@ -362,12 +396,51 @@ public class ComboService {
 
     private ComboResponse.ComboItemResponse mapItemToResponse(ComboItem item) {
         ShopProduct product = item.getShopProduct();
-        String productName = product.getCustomName() != null ? product.getCustomName() :
-                (product.getMasterProduct() != null ? product.getMasterProduct().getName() : "Unknown Product");
-        String productNameTamil = product.getMasterProduct() != null ? product.getMasterProduct().getNameTamil() : null;
+
+        // Handle case where shop product might have been deleted
+        if (product == null) {
+            log.warn("ComboItem {} has null ShopProduct - using stored values", item.getId());
+            return ComboResponse.ComboItemResponse.builder()
+                    .id(item.getId())
+                    .shopProductId(0L)
+                    .productName(item.getProductName() != null ? item.getProductName() : "Product Unavailable")
+                    .productNameTamil(item.getProductNameTamil())
+                    .productDescription(null)
+                    .quantity(item.getQuantity())
+                    .unitPrice(BigDecimal.ZERO)
+                    .totalPrice(BigDecimal.ZERO)
+                    .unit("")
+                    .imageUrl(null)
+                    .stockQuantity(0)
+                    .inStock(false)
+                    .displayOrder(item.getDisplayOrder())
+                    .build();
+        }
+
+        // Use stored names from ComboItem, fallback to product relation for backward compatibility
+        String productName = item.getProductName() != null ? item.getProductName() :
+                (product.getCustomName() != null ? product.getCustomName() :
+                (product.getMasterProduct() != null ? product.getMasterProduct().getName() : "Unknown Product"));
+
+        String productNameTamil = item.getProductNameTamil() != null ? item.getProductNameTamil() :
+                (product.getMasterProduct() != null ? product.getMasterProduct().getNameTamil() : null);
+
         String imageUrl = product.getPrimaryShopImageUrl();
-        String unit = product.getBaseUnit() != null ? product.getBaseWeight() + " " + product.getBaseUnit() :
-                (product.getMasterProduct() != null ? product.getMasterProduct().getBaseWeight() + " " + product.getMasterProduct().getBaseUnit() : "");
+
+        // Build unit string with null safety
+        String unit = "";
+        if (product.getBaseUnit() != null && product.getBaseWeight() != null) {
+            unit = product.getBaseWeight() + " " + product.getBaseUnit();
+        } else if (product.getMasterProduct() != null) {
+            BigDecimal baseWeight = product.getMasterProduct().getBaseWeight();
+            String baseUnit = product.getMasterProduct().getBaseUnit();
+            if (baseWeight != null && baseUnit != null) {
+                unit = baseWeight + " " + baseUnit;
+            }
+        }
+
+        BigDecimal price = product.getPrice() != null ? product.getPrice() : BigDecimal.ZERO;
+        Integer stockQty = product.getStockQuantity() != null ? product.getStockQuantity() : 0;
 
         return ComboResponse.ComboItemResponse.builder()
                 .id(item.getId())
@@ -376,12 +449,12 @@ public class ComboService {
                 .productNameTamil(productNameTamil)
                 .productDescription(product.getCustomDescription())
                 .quantity(item.getQuantity())
-                .unitPrice(product.getPrice())
-                .totalPrice(product.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
+                .unitPrice(price)
+                .totalPrice(price.multiply(BigDecimal.valueOf(item.getQuantity())))
                 .unit(unit)
                 .imageUrl(imageUrl)
-                .stockQuantity(product.getStockQuantity())
-                .inStock(product.getStockQuantity() >= item.getQuantity())
+                .stockQuantity(stockQty)
+                .inStock(stockQty >= item.getQuantity())
                 .displayOrder(item.getDisplayOrder())
                 .build();
     }
