@@ -763,6 +763,15 @@ $white: #ffffff;
     }
   }
 
+  &.update-btn {
+    background: #9C27B0;
+    color: white;
+
+    &:hover {
+      background: darken(#9C27B0, 10%);
+    }
+  }
+
   &.prepare-btn {
     background: $accent-color;
     color: white;
@@ -861,6 +870,15 @@ $white: #ffffff;
       background: darken(#4CAF50, 10%);
     }
   }
+
+  &.cancel-btn {
+    background: #ef4444;
+    color: white;
+
+    &:hover {
+      background: darken(#ef4444, 10%);
+    }
+  }
 }
 
 // Return Status Card
@@ -928,6 +946,14 @@ $white: #ffffff;
   }
 }
 
+.tab-cancelled {
+  &.active {
+    background: #ef4444 !important;
+    color: white !important;
+    border-color: #ef4444 !important;
+  }
+}
+
 // Status badges for return statuses
 .status-returning {
   background: rgba(#FF9800, 0.15);
@@ -947,7 +973,13 @@ $white: #ffffff;
   border: 1px solid rgba(#4CAF50, 0.4);
 }
 
-// Order card status background for returns
+.status-cancelled {
+  background: rgba(#ef4444, 0.15);
+  color: #dc2626;
+  border: 1px solid rgba(#ef4444, 0.3);
+}
+
+// Order card status background for returns and cancelled
 .order-card {
   &.status-returning_to_shop {
     border-left: 4px solid #FF9800;
@@ -955,6 +987,15 @@ $white: #ffffff;
 
   &.status-returned_to_shop {
     border-left: 4px solid #4CAF50;
+  }
+
+  &.status-cancelled {
+    border-left: 4px solid #ef4444;
+    opacity: 0.8;
+
+    &::before {
+      background: #ef4444;
+    }
   }
 }
 

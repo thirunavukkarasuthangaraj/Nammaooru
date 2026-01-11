@@ -4,6 +4,8 @@ import com.shopmanagement.common.dto.ApiResponse;
 import com.shopmanagement.common.util.ResponseUtil;
 import com.shopmanagement.dto.order.OrderRequest;
 import com.shopmanagement.dto.order.OrderResponse;
+import com.shopmanagement.dto.order.AddOrderItemRequest;
+import jakarta.validation.Valid;
 import com.shopmanagement.entity.Order;
 import com.shopmanagement.entity.User;
 import com.shopmanagement.entity.UserFcmToken;
@@ -202,7 +204,19 @@ public class OrderController {
         OrderResponse response = orderService.rejectOrder(orderId, reason);
         return ResponseUtil.success(response, "Order rejected successfully");
     }
-    
+
+    @PostMapping("/{orderId}/add-item")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER')")
+    public ResponseEntity<ApiResponse<OrderResponse>> addItemToOrder(
+            @PathVariable Long orderId,
+            @Valid @RequestBody AddOrderItemRequest request) {
+        log.info("Adding item to order: {} - Product: {}, Quantity: {}",
+                orderId, request.getShopProductId(), request.getQuantity());
+
+        OrderResponse response = orderService.addItemToOrder(orderId, request);
+        return ResponseUtil.success(response, "Item added to order successfully");
+    }
+
     @GetMapping("/{orderId}/tracking")
     @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER') or hasRole('CUSTOMER')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getOrderTracking(@PathVariable Long orderId) {

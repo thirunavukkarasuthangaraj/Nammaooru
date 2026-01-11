@@ -99,6 +99,11 @@
             (click)="selectStatusTab('DELIVERED')">
       Delivered ({{ completedOrders.length }})
     </button>
+    <button class="tab-btn tab-cancelled"
+            [class.active]="selectedStatus === 'CANCELLED'"
+            (click)="selectStatusTab('CANCELLED')">
+      Cancelled ({{ getOrdersByStatus('CANCELLED').length }})
+    </button>
   </div>
 
   <!-- Orders Cards Grid -->
@@ -254,6 +259,9 @@
           <button class="action-btn reject-btn" (click)="rejectOrder(order)">
             Reject
           </button>
+          <button class="action-btn update-btn" (click)="openUpdateOrderModal(order)">
+            + Add Item
+          </button>
         </ng-container>
 
         <!-- Confirmed Actions -->
@@ -261,12 +269,24 @@
           <button class="action-btn prepare-btn" (click)="startPreparing(order.id)">
             Start Preparing
           </button>
+          <button class="action-btn update-btn" (click)="openUpdateOrderModal(order)">
+            + Add Item
+          </button>
+          <button class="action-btn cancel-btn" (click)="cancelOrder(order)">
+            Cancel Order
+          </button>
         </ng-container>
 
         <!-- Preparing Actions -->
         <ng-container *ngIf="order.status === 'PREPARING'">
           <button class="action-btn ready-btn" (click)="markReady(order.id)">
             Mark Ready
+          </button>
+          <button class="action-btn update-btn" (click)="openUpdateOrderModal(order)">
+            + Add Item
+          </button>
+          <button class="action-btn cancel-btn" (click)="cancelOrder(order)">
+            Cancel Order
           </button>
         </ng-container>
 

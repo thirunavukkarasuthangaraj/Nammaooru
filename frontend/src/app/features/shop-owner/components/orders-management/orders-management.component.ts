@@ -4,6 +4,7 @@ import { HttpClient } from '@angular/common/http';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTabChangeEvent } from '@angular/material/tabs';
 import { ShopOwnerOrderService, ShopOwnerOrder } from '../../services/shop-owner-order.service';
+import { ShopOwnerProductService } from '../../services/shop-owner-product.service';
 import { AssignmentService } from '../../services/assignment.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { SwalService } from '../../../../core/services/swal.service';
@@ -12,6 +13,7 @@ import { WebSocketService } from '../../../../core/services/websocket.service';
 import { environment } from '../../../../../environments/environment';
 import { getImageUrl as getImageUrlUtil } from '../../../../core/utils/image-url.util';
 import { Subject } from 'rxjs';
+import Swal from 'sweetalert2';
 import { takeUntil, distinctUntilChanged } from 'rxjs/operators';
 
 @Component({
@@ -73,6 +75,7 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
 
   constructor(
     private orderService: ShopOwnerOrderService,
+    private productService: ShopOwnerProductService,
     private assignmentService: AssignmentService,
     private authService: AuthService,
     private shopContextService: ShopContextService,
@@ -1730,5 +1733,129 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     const ampm = hours >= 12 ? 'PM' : 'AM';
     hours = hours % 12 || 12;
     return `${day}/${month}, ${hours}:${minutes} ${ampm}`;
+  }
+
+  // Open modal to add item to existing order
+  openUpdateOrderModal(order: ShopOwnerOrder): void {
+    if (!this.shopId) {
+      this.swal.error('Error', 'Shop ID not found');
+      return;
+    }
+
+    // Load shop products for dropdown
+    this.productService.getShopProducts(this.shopId, 0, 100).subscribe({
+      next: (products) => {
+        if (!products || products.length === 0) {
+          this.swal.error('No Products', 'No products found in your shop');
+          return;
+        }
+
+        // Build product options HTML
+        const productOptions = products.map((p: any) =>
+          `<option value="${p.id}" data-price="${p.price}">${p.name || p.masterProduct?.name} - ₹${p.price}</option>`
+        ).join('');
+
+        Swal.fire({
+          title: `Add Item to Order #${order.orderNumber}`,
+          html: `
+            <div style="text-align: left; padding: 10px 0;">
+              <label style="font-weight: 600; margin-bottom: 8px; display: block;">Select Product:</label>
+              <select id="productSelect" class="swal2-select" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ddd; margin-bottom: 15px;">
+                <option value="">-- Select Product --</option>
+                ${productOptions}
+              </select>
+
+              <label style="font-weight: 600; margin-bottom: 8px; display: block;">Quantity:</label>
+              <input type="number" id="quantityInput" class="swal2-input" min="1" value="1" style="width: 100%; margin: 0 0 15px 0;">
+
+              <label style="font-weight: 600; margin-bottom: 8px; display: block;">Special Instructions (optional):</label>
+              <textarea id="instructionsInput" class="swal2-textarea" placeholder="Any special instructions..." style="width: 100%; margin: 0;"></textarea>
+
+              <div id="itemPreview" style="margin-top: 15px; padding: 12px; background: #f5f5f5; border-radius: 8px; display: none;">
+                <strong>Item Total:</strong> <span id="itemTotal">₹0</span>
+              </div>
+            </div>
+          `,
+          showCancelButton: true,
+          confirmButtonText: 'Add Item',
+          confirmButtonColor: '#4CAF50',
+          cancelButtonText: 'Cancel',
+          didOpen: () => {
+            const productSelect = document.getElementById('productSelect') as HTMLSelectElement;
+            const quantityInput = document.getElementById('quantityInput') as HTMLInputElement;
+            const itemPreview = document.getElementById('itemPreview') as HTMLElement;
+            const itemTotal = document.getElementById('itemTotal') as HTMLElement;
+
+            const updatePreview = () => {
+              const selectedOption = productSelect.selectedOptions[0];
+              if (selectedOption && selectedOption.value) {
+                const price = parseFloat(selectedOption.getAttribute('data-price') || '0');
+                const quantity = parseInt(quantityInput.value) || 1;
+                const total = price * quantity;
+                itemTotal.textContent = `₹${total.toFixed(0)}`;
+                itemPreview.style.display = 'block';
+              } else {
+                itemPreview.style.display = 'none';
+              }
+            };
+
+            productSelect.addEventListener('change', updatePreview);
+            quantityInput.addEventListener('input', updatePreview);
+          },
+          preConfirm: () => {
+            const productSelect = document.getElementById('productSelect') as HTMLSelectElement;
+            const quantityInput = document.getElementById('quantityInput') as HTMLInputElement;
+            const instructionsInput = document.getElementById('instructionsInput') as HTMLTextAreaElement;
+
+            const shopProductId = parseInt(productSelect.value);
+            const quantity = parseInt(quantityInput.value);
+            const specialInstructions = instructionsInput.value.trim();
+
+            if (!shopProductId) {
+              Swal.showValidationMessage('Please select a product');
+              return false;
+            }
+            if (!quantity || quantity < 1) {
+              Swal.showValidationMessage('Quantity must be at least 1');
+              return false;
+            }
+
+            return { shopProductId, quantity, specialInstructions };
+          }
+        }).then((result: any) => {
+          if (result.isConfirmed && result.value) {
+            const { shopProductId, quantity, specialInstructions } = result.value;
+
+            this.swal.loading('Adding item to order...');
+
+            this.orderService.addItemToOrder(order.id, shopProductId, quantity, specialInstructions).subscribe({
+              next: (updatedOrder) => {
+                const orderIndex = this.orders.findIndex(o => o.id === order.id);
+                if (orderIndex !== -1) {
+                  this.orders[orderIndex] = updatedOrder;
+                  this.updateOrderLists();
+                  this.applyFilter();
+                }
+                this.swal.close();
+                this.swal.success('Item Added', `Item added to order #${order.orderNumber}. New total: ₹${updatedOrder.totalAmount}`);
+              },
+              error: (error) => {
+                console.error('Error adding item to order:', error);
+                this.swal.close();
+                let errorMsg = 'Failed to add item to order.';
+                if (error?.error?.message) {
+                  errorMsg = error.error.message;
+                }
+                this.swal.error('Error', errorMsg);
+              }
+            });
+          }
+        });
+      },
+      error: (error) => {
+        console.error('Error loading products:', error);
+        this.swal.error('Error', 'Failed to load products');
+      }
+    });
   }
 }

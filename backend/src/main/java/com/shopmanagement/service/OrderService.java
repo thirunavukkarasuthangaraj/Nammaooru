@@ -4,6 +4,7 @@ import com.shopmanagement.dto.order.OrderRequest;
 import com.shopmanagement.dto.order.OrderResponse;
 import com.shopmanagement.dto.order.CustomerOrderRequest;
 import com.shopmanagement.dto.order.OrderTrackingResponse;
+import com.shopmanagement.dto.order.AddOrderItemRequest;
 import com.shopmanagement.entity.Customer;
 import com.shopmanagement.entity.Notification;
 import com.shopmanagement.entity.Order;
@@ -2008,5 +2009,124 @@ public class OrderService {
         } catch (Exception e) {
             log.error("❌ Error sending WebSocket status update for order {}: {}", order.getOrderNumber(), e.getMessage());
         }
+    }
+
+    /**
+     * Add item to existing order (Shop Owner feature)
+     * Only allowed for orders in PENDING, CONFIRMED, or PREPARING status
+     */
+    @Transactional
+    public OrderResponse addItemToOrder(Long orderId, AddOrderItemRequest request) {
+        log.info("Adding item to order: {} - Product: {}, Quantity: {}",
+                orderId, request.getShopProductId(), request.getQuantity());
+
+        // 1. Find and validate order
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
+
+        // 2. Check order status - only allow modification for editable statuses
+        List<Order.OrderStatus> editableStatuses = List.of(
+                Order.OrderStatus.PENDING,
+                Order.OrderStatus.CONFIRMED,
+                Order.OrderStatus.PREPARING
+        );
+
+        if (!editableStatuses.contains(order.getStatus())) {
+            throw new RuntimeException(String.format(
+                    "Cannot add items to order in %s status. Order must be in PENDING, CONFIRMED, or PREPARING status.",
+                    order.getStatus()));
+        }
+
+        // 3. Fetch and validate product
+        ShopProduct shopProduct = shopProductRepository.findById(request.getShopProductId())
+                .orElseThrow(() -> new RuntimeException("Product not found with id: " + request.getShopProductId()));
+
+        // 4. Validate product belongs to same shop
+        if (!shopProduct.getShop().getId().equals(order.getShop().getId())) {
+            throw new RuntimeException("Product does not belong to the order's shop");
+        }
+
+        // 5. Check stock availability if inventory tracking is enabled
+        if (shopProduct.getTrackInventory()) {
+            Integer currentStock = shopProduct.getStockQuantity() != null ? shopProduct.getStockQuantity() : 0;
+            if (currentStock < request.getQuantity()) {
+                throw new RuntimeException(String.format(
+                        "Insufficient stock for product '%s'. Available: %d, Requested: %d",
+                        shopProduct.getMasterProduct().getName(),
+                        currentStock,
+                        request.getQuantity()
+                ));
+            }
+
+            // Reduce stock
+            int newStock = currentStock - request.getQuantity();
+            shopProduct.setStockQuantity(newStock);
+
+            // Update product status if out of stock
+            if (newStock == 0) {
+                shopProduct.setStatus(ShopProduct.ShopProductStatus.OUT_OF_STOCK);
+                shopProduct.setIsAvailable(false);
+            }
+
+            shopProductRepository.save(shopProduct);
+            log.info("Stock reduced for product {}: {} -> {}", shopProduct.getId(), currentStock, newStock);
+        }
+
+        // 6. Create new OrderItem
+        BigDecimal itemTotal = shopProduct.getPrice()
+                .multiply(BigDecimal.valueOf(request.getQuantity()));
+
+        OrderItem newItem = OrderItem.builder()
+                .order(order)
+                .shopProduct(shopProduct)
+                .quantity(request.getQuantity())
+                .unitPrice(shopProduct.getPrice())
+                .totalPrice(itemTotal)
+                .specialInstructions(request.getSpecialInstructions())
+                .productName(shopProduct.getMasterProduct().getName())
+                .productDescription(shopProduct.getMasterProduct().getDescription())
+                .productSku(shopProduct.getMasterProduct().getSku())
+                .productImageUrl(shopProduct.getMasterProduct().getPrimaryImageUrl())
+                .build();
+
+        // 7. Add item to order
+        order.getOrderItems().add(newItem);
+
+        // 8. Recalculate order totals
+        BigDecimal newSubtotal = order.getOrderItems().stream()
+                .map(OrderItem::getTotalPrice)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal newTaxAmount = newSubtotal.multiply(BigDecimal.valueOf(0.05)); // 5% tax
+        BigDecimal deliveryFee = order.getDeliveryFee() != null ? order.getDeliveryFee() : BigDecimal.ZERO;
+        BigDecimal discountAmount = order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO;
+        BigDecimal newTotalAmount = newSubtotal.add(newTaxAmount).add(deliveryFee).subtract(discountAmount);
+
+        order.setSubtotal(newSubtotal);
+        order.setTaxAmount(newTaxAmount);
+        order.setTotalAmount(newTotalAmount);
+        order.setUpdatedAt(LocalDateTime.now());
+
+        // 9. Save order (cascades to items)
+        Order savedOrder = orderRepository.save(order);
+
+        log.info("✅ Item added to order: {} - New total: {}", savedOrder.getOrderNumber(), newTotalAmount);
+
+        // 10. Send WebSocket notification about order update
+        try {
+            Map<String, Object> updateData = new HashMap<>();
+            updateData.put("type", "ORDER_UPDATED");
+            updateData.put("orderId", savedOrder.getId());
+            updateData.put("orderNumber", savedOrder.getOrderNumber());
+            updateData.put("message", "Item added to order");
+            updateData.put("timestamp", LocalDateTime.now().toString());
+
+            String destination = "/topic/shop/" + savedOrder.getShop().getId() + "/orders";
+            messagingTemplate.convertAndSend(destination, updateData);
+        } catch (Exception e) {
+            log.warn("Failed to send WebSocket notification: {}", e.getMessage());
+        }
+
+        return mapToResponse(savedOrder);
     }
 }

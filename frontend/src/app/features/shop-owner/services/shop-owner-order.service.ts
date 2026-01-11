@@ -336,6 +336,26 @@ export class ShopOwnerOrderService {
   }
 
   /**
+   * Add item to existing order (only for PENDING, CONFIRMED, PREPARING orders)
+   */
+  addItemToOrder(orderId: number, shopProductId: number, quantity: number, specialInstructions?: string): Observable<ShopOwnerOrder> {
+    const requestBody = {
+      shopProductId: shopProductId,
+      quantity: quantity,
+      specialInstructions: specialInstructions
+    };
+
+    return this.http.post<{data: any}>(`${this.apiUrl}/orders/${orderId}/add-item`, requestBody)
+      .pipe(
+        map(response => this.transformOrder(response.data)),
+        catchError((error) => {
+          console.error('Error adding item to order:', error);
+          throw error;
+        })
+      );
+  }
+
+  /**
    * Transform backend order response to match frontend interface
    */
   private transformOrder(order: any): ShopOwnerOrder {
