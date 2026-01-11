@@ -96,17 +96,40 @@ public class BusinessHoursService {
     public boolean isShopOpenNow(Long shopId) {
         return isShopOpenNow(shopId, ZoneId.systemDefault());
     }
-    
+
     public boolean isShopOpenNow(Long shopId, ZoneId timeZone) {
         LocalDateTime now = LocalDateTime.now(timeZone);
         DayOfWeek currentDay = now.getDayOfWeek();
 
-        Optional<BusinessHours> businessHours = businessHoursRepository
-            .findOpenHoursByShopIdAndDay(shopId, currentDay);
+        // First check if ANY business hours are configured for this shop
+        List<BusinessHours> allHours = businessHoursRepository.findByShopId(shopId);
 
-        // If no business hours configured, default to OPEN (available)
-        // This allows shops without configured hours to be available
-        return businessHours.map(hours -> isCurrentlyOpen(hours, now.toLocalTime())).orElse(true);
+        if (allHours.isEmpty()) {
+            // No business hours configured at all - default to OPEN
+            log.debug("Shop {} has no business hours configured - defaulting to OPEN", shopId);
+            return true;
+        }
+
+        // Business hours exist - check today's configuration
+        Optional<BusinessHours> todayHours = businessHoursRepository
+            .findByShopIdAndDayOfWeek(shopId, currentDay);
+
+        if (todayHours.isEmpty()) {
+            // Business hours exist but not for today - shop is CLOSED today
+            log.debug("Shop {} has no hours configured for {} - CLOSED", shopId, currentDay);
+            return false;
+        }
+
+        BusinessHours hours = todayHours.get();
+
+        // Check if shop is marked as closed for today
+        if (!hours.getIsOpen()) {
+            log.debug("Shop {} is marked as CLOSED for {}", shopId, currentDay);
+            return false;
+        }
+
+        // Shop is open today - check if within business hours
+        return isCurrentlyOpen(hours, now.toLocalTime());
     }
     
     public Map<String, Object> getShopOpenStatus(Long shopId) {
