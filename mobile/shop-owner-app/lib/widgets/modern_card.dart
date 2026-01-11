@@ -471,6 +471,7 @@ class OrderCard extends StatelessWidget {
   final VoidCallback? onHandoverSelfPickup; // For SELF_PICKUP orders at READY_FOR_PICKUP
   final VoidCallback? onVerifyPickupOTP; // For HOME_DELIVERY orders at READY_FOR_PICKUP
   final VoidCallback? onRetryDriverSearch; // For retrying driver search when no driver found
+  final VoidCallback? onAddItem; // For adding items to PENDING/CONFIRMED/PREPARING orders
   final DateTime? driverSearchStartedAt; // When driver search started
   final bool? driverSearchCompleted; // Whether driver search completed
 
@@ -495,6 +496,7 @@ class OrderCard extends StatelessWidget {
     this.onHandoverSelfPickup,
     this.onVerifyPickupOTP,
     this.onRetryDriverSearch,
+    this.onAddItem,
     this.driverSearchStartedAt,
     this.driverSearchCompleted,
   }) : super(key: key);
@@ -632,9 +634,18 @@ class OrderCard extends StatelessWidget {
 
     switch (statusLower) {
       case 'pending':
-        if (onAccept != null || onReject != null) {
-          return Row(
+        if (onAccept != null || onReject != null || onAddItem != null) {
+          return Wrap(
+            spacing: AppTheme.space8,
+            runSpacing: AppTheme.space8,
             children: [
+              if (onAddItem != null)
+                _buildActionButton(
+                  label: '+ Add',
+                  onPressed: onAddItem!,
+                  backgroundColor: Colors.blue.withOpacity(0.1),
+                  textColor: Colors.blue,
+                ),
               if (onReject != null)
                 _buildActionButton(
                   label: 'Reject',
@@ -642,8 +653,6 @@ class OrderCard extends StatelessWidget {
                   backgroundColor: AppTheme.error.withOpacity(0.1),
                   textColor: AppTheme.error,
                 ),
-              if (onAccept != null && onReject != null)
-                const SizedBox(width: AppTheme.space8),
               if (onAccept != null)
                 _buildActionButton(
                   label: 'Accept',
@@ -658,31 +667,53 @@ class OrderCard extends StatelessWidget {
 
       case 'confirmed':
       case 'accepted':
-        if (onStartPreparing != null) {
-          return _buildActionButton(
-            label: 'Start Preparing',
-            onPressed: onStartPreparing!,
-            backgroundColor: AppTheme.info,
-            textColor: AppTheme.textWhite,
-          );
-        }
-        break;
+        return Wrap(
+          spacing: AppTheme.space8,
+          runSpacing: AppTheme.space8,
+          children: [
+            if (onAddItem != null)
+              _buildActionButton(
+                label: '+ Add',
+                onPressed: onAddItem!,
+                backgroundColor: Colors.blue.withOpacity(0.1),
+                textColor: Colors.blue,
+              ),
+            if (onStartPreparing != null)
+              _buildActionButton(
+                label: 'Start Preparing',
+                onPressed: onStartPreparing!,
+                backgroundColor: AppTheme.info,
+                textColor: AppTheme.textWhite,
+              ),
+          ],
+        );
 
       case 'preparing':
         // At PREPARING status, shop owners can ONLY mark as READY_FOR_PICKUP
         // For HOME_DELIVERY: This triggers auto-assignment to delivery partner
         // For SELF_PICKUP: Customer will come to pick up
         // Shop owners should NOT be able to skip to OUT_FOR_DELIVERY
-        if (onMarkReady != null) {
-          final isSelfPickup = deliveryType?.toUpperCase() == 'SELF_PICKUP';
-          return _buildActionButton(
-            label: isSelfPickup ? 'Ready for Pickup' : 'Ready',
-            onPressed: onMarkReady!,
-            backgroundColor: AppTheme.success,
-            textColor: AppTheme.textWhite,
-          );
-        }
-        break;
+        final isSelfPickup = deliveryType?.toUpperCase() == 'SELF_PICKUP';
+        return Wrap(
+          spacing: AppTheme.space8,
+          runSpacing: AppTheme.space8,
+          children: [
+            if (onAddItem != null)
+              _buildActionButton(
+                label: '+ Add',
+                onPressed: onAddItem!,
+                backgroundColor: Colors.blue.withOpacity(0.1),
+                textColor: Colors.blue,
+              ),
+            if (onMarkReady != null)
+              _buildActionButton(
+                label: isSelfPickup ? 'Ready for Pickup' : 'Ready',
+                onPressed: onMarkReady!,
+                backgroundColor: AppTheme.success,
+                textColor: AppTheme.textWhite,
+              ),
+          ],
+        );
 
       case 'ready':
         // At READY status (after driver search timeout), show buttons

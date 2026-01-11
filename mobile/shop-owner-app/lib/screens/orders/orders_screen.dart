@@ -921,6 +921,300 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
     }
   }
 
+  // Add Item to Order Dialog
+  void _showAddItemDialog(dynamic order) async {
+    final orderId = order['id'];
+    final orderNumber = order['orderNumber'];
+
+    // Show loading while fetching products
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    // Fetch shop products
+    final response = await ApiService.getMyProducts(page: 0, size: 100);
+    Navigator.pop(context); // Close loading
+
+    if (!response.isSuccess || response.data == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load products: ${response.error ?? "Unknown error"}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    // Parse products
+    final data = response.data;
+    final productsData = data['data'] ?? data;
+    final productsList = productsData['content'] ?? productsData['products'] ?? [];
+
+    if (productsList.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No products available'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
+    // Show Add Item dialog
+    dynamic selectedProduct;
+    int quantity = 1;
+    final TextEditingController quantityController = TextEditingController(text: '1');
+    final TextEditingController instructionsController = TextEditingController();
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Row(
+            children: [
+              const Icon(Icons.add_shopping_cart, color: Colors.blue),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Add Item to #$orderNumber',
+                  style: const TextStyle(fontSize: 16),
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Product Dropdown
+                const Text(
+                  'Select Product',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<dynamic>(
+                      isExpanded: true,
+                      value: selectedProduct,
+                      hint: const Text('Choose a product'),
+                      items: productsList.map<DropdownMenuItem<dynamic>>((product) {
+                        final name = product['customName'] ?? product['masterProductName'] ?? product['name'] ?? 'Unknown';
+                        final price = product['price'] ?? 0;
+                        return DropdownMenuItem<dynamic>(
+                          value: product,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  name,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                              ),
+                              Text(
+                                '₹$price',
+                                style: TextStyle(
+                                  color: Colors.green.shade700,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setDialogState(() {
+                          selectedProduct = value;
+                        });
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Quantity Input
+                const Text(
+                  'Quantity',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    IconButton(
+                      onPressed: () {
+                        if (quantity > 1) {
+                          setDialogState(() {
+                            quantity--;
+                            quantityController.text = quantity.toString();
+                          });
+                        }
+                      },
+                      icon: const Icon(Icons.remove_circle_outline),
+                      color: Colors.red,
+                    ),
+                    SizedBox(
+                      width: 60,
+                      child: TextField(
+                        controller: quantityController,
+                        keyboardType: TextInputType.number,
+                        textAlign: TextAlign.center,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(vertical: 8),
+                        ),
+                        onChanged: (value) {
+                          final parsed = int.tryParse(value);
+                          if (parsed != null && parsed > 0) {
+                            setDialogState(() {
+                              quantity = parsed;
+                            });
+                          }
+                        },
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () {
+                        setDialogState(() {
+                          quantity++;
+                          quantityController.text = quantity.toString();
+                        });
+                      },
+                      icon: const Icon(Icons.add_circle_outline),
+                      color: Colors.green,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Special Instructions
+                const Text(
+                  'Special Instructions (Optional)',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: instructionsController,
+                  maxLines: 2,
+                  decoration: InputDecoration(
+                    hintText: 'Any special notes...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    contentPadding: const EdgeInsets.all(12),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Price Preview
+                if (selectedProduct != null)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.green.shade200),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Total:',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        Text(
+                          '₹${((selectedProduct['price'] ?? 0) * quantity).toStringAsFixed(0)}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                            color: Colors.green.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: selectedProduct == null
+                  ? null
+                  : () async {
+                      Navigator.pop(context); // Close dialog
+
+                      // Show loading
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (context) => const Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                      );
+
+                      // Call API
+                      final shopProductId = selectedProduct['id'];
+                      final addResponse = await ApiService.addItemToOrder(
+                        orderId: orderId,
+                        shopProductId: shopProductId,
+                        quantity: quantity,
+                        specialInstructions: instructionsController.text.trim().isNotEmpty
+                            ? instructionsController.text.trim()
+                            : null,
+                      );
+
+                      Navigator.pop(context); // Close loading
+
+                      if (addResponse.isSuccess && mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Item added to order #$orderNumber'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                        // Refresh orders
+                        _fetchOrders();
+                      } else if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Failed to add item: ${addResponse.error ?? "Unknown error"}'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Add Item'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showOrderActions(dynamic order) {
     // Debug: Print order details
     print('📋 Order Details:');
@@ -968,6 +1262,15 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
               ),
               const SizedBox(height: AppTheme.space12),
               ModernButton(
+                text: 'Add Item',
+                icon: Icons.add_shopping_cart,
+                variant: ButtonVariant.primary,
+                size: ButtonSize.large,
+                fullWidth: true,
+                onPressed: () { Navigator.pop(context); _showAddItemDialog(order); },
+              ),
+              const SizedBox(height: AppTheme.space12),
+              ModernButton(
                 text: 'Cancel Order',
                 icon: Icons.cancel,
                 variant: ButtonVariant.error,
@@ -986,6 +1289,15 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                 useGradient: true,
                 onPressed: () { Navigator.pop(context); _updateOrderStatus(order, 'PREPARING'); },
               ),
+              const SizedBox(height: AppTheme.space12),
+              ModernButton(
+                text: 'Add Item',
+                icon: Icons.add_shopping_cart,
+                variant: ButtonVariant.outline,
+                size: ButtonSize.large,
+                fullWidth: true,
+                onPressed: () { Navigator.pop(context); _showAddItemDialog(order); },
+              ),
             ],
             if (order['status'] == 'PREPARING') ...[
               ModernButton(
@@ -996,6 +1308,15 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                 fullWidth: true,
                 useGradient: true,
                 onPressed: () { Navigator.pop(context); _updateOrderStatus(order, 'READY_FOR_PICKUP'); },
+              ),
+              const SizedBox(height: AppTheme.space12),
+              ModernButton(
+                text: 'Add Item',
+                icon: Icons.add_shopping_cart,
+                variant: ButtonVariant.outline,
+                size: ButtonSize.large,
+                fullWidth: true,
+                onPressed: () { Navigator.pop(context); _showAddItemDialog(order); },
               ),
             ],
             if (order['status'] == 'READY_FOR_PICKUP') ...[
@@ -1251,6 +1572,11 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                             : null,
                         onRetryDriverSearch: ((orderStatus == 'READY_FOR_PICKUP' || orderStatus == 'READY') && deliveryType == 'HOME_DELIVERY' && order['assignedToDeliveryPartner'] != true)
                             ? () => _retryDriverSearch(order)
+                            : null,
+
+                        // Add Item button - only for PENDING, CONFIRMED, PREPARING orders
+                        onAddItem: (orderStatus == 'PENDING' || orderStatus == 'CONFIRMED' || orderStatus == 'PREPARING')
+                            ? () => _showAddItemDialog(order)
                             : null,
 
                           // OUT_FOR_DELIVERY status: No buttons (only driver can deliver)

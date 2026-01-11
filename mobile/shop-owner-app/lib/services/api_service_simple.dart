@@ -827,6 +827,38 @@ class ApiService {
     }
   }
 
+  // Add item to existing order
+  static Future<ApiResponse> addItemToOrder({
+    required int orderId,
+    required int shopProductId,
+    required int quantity,
+    String? specialInstructions,
+  }) async {
+    try {
+      final headers = await _getAuthHeaders();
+      final body = <String, dynamic>{
+        'shopProductId': shopProductId,
+        'quantity': quantity,
+      };
+
+      if (specialInstructions != null && specialInstructions.isNotEmpty) {
+        body['specialInstructions'] = specialInstructions;
+      }
+
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/orders/$orderId/add-item'),
+            headers: headers,
+            body: json.encode(body),
+          )
+          .timeout(timeout);
+
+      return _handleResponse(response);
+    } catch (e) {
+      return ApiResponse.error('Network error: ${e.toString()}');
+    }
+  }
+
   static ApiResponse _handleResponse(http.Response response) {
     try {
       final data = json.decode(response.body);
