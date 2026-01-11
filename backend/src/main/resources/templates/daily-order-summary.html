@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Order Summary - NammaOoru</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap');
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #1a1a1a;
+            max-width: 650px;
+            margin: 0 auto;
+            padding: 0;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        }
+
+        .email-wrapper {
+            padding: 30px 15px;
+        }
+
+        .email-container {
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.05);
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #6B46C1 100%);
+            position: relative;
+            color: white;
+            text-align: center;
+            padding: 50px 30px;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="20" cy="20" r="1" fill="white" opacity="0.1"/><circle cx="60" cy="40" r="1" fill="white" opacity="0.1"/><circle cx="40" cy="70" r="1" fill="white" opacity="0.1"/><circle cx="80" cy="80" r="1" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            pointer-events: none;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            backdrop-filter: blur(10px);
+            position: relative;
+            z-index: 1;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-family: 'Playfair Display', serif;
+            font-size: 2.8rem;
+            font-weight: 700;
+            position: relative;
+            z-index: 1;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .header .tagline {
+            margin: 15px 0 0 0;
+            font-size: 1.2rem;
+            opacity: 0.95;
+            font-weight: 400;
+            position: relative;
+            z-index: 1;
+        }
+
+        .date-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 10px 24px;
+            border-radius: 25px;
+            margin-top: 15px;
+            font-size: 14px;
+            font-weight: 500;
+            position: relative;
+            z-index: 1;
+        }
+
+        .content {
+            padding: 45px 40px;
+            background: white;
+        }
+
+        .greeting {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin: 0 0 10px 0;
+            font-family: 'Playfair Display', serif;
+        }
+
+        .intro-text {
+            font-size: 1rem;
+            color: #4b5563;
+            margin-bottom: 35px;
+            line-height: 1.7;
+        }
+
+        /* Grand Total Card */
+        .grand-total-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 25px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .grand-total-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #fff, rgba(255,255,255,0.5), #fff);
+        }
+
+        .grand-total-label {
+            font-size: 14px;
+            color: rgba(255,255,255,0.9);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+        }
+
+        .grand-total-amount {
+            font-size: 3rem;
+            font-weight: 800;
+            color: #ffffff;
+            font-family: 'Playfair Display', serif;
+        }
+
+        .grand-total-orders {
+            font-size: 16px;
+            color: rgba(255,255,255,0.9);
+            margin-top: 8px;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            border-radius: 16px;
+            padding: 25px 20px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+        }
+
+        .stat-card.walkin {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            border: 1px solid #6ee7b7;
+        }
+
+        .stat-card.walkin::before {
+            background: linear-gradient(90deg, #10b981, #059669);
+        }
+
+        .stat-card.online {
+            background: linear-gradient(135deg, #ddd6fe 0%, #c4b5fd 100%);
+            border: 1px solid #a78bfa;
+        }
+
+        .stat-card.online::before {
+            background: linear-gradient(90deg, #8b5cf6, #7c3aed);
+        }
+
+        .stat-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .stat-count {
+            font-size: 2.5rem;
+            font-weight: 800;
+            font-family: 'Playfair Display', serif;
+        }
+
+        .stat-card.walkin .stat-count {
+            color: #065f46;
+        }
+
+        .stat-card.online .stat-count {
+            color: #5b21b6;
+        }
+
+        .stat-amount {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-top: 5px;
+        }
+
+        .stat-card.walkin .stat-amount {
+            color: #047857;
+        }
+
+        .stat-card.online .stat-amount {
+            color: #6d28d9;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 8px;
+            font-weight: 600;
+        }
+
+        .stat-card.walkin .stat-label {
+            color: #065f46;
+        }
+
+        .stat-card.online .stat-label {
+            color: #5b21b6;
+        }
+
+        /* Payment Method Section */
+        .section-card {
+            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+            border: 1px solid #a7f3d0;
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 25px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .section-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #10b981, #059669, #047857);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .section-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: white;
+        }
+
+        .section-card h3 {
+            margin: 0;
+            color: #065f46;
+            font-weight: 600;
+            font-size: 1.2rem;
+        }
+
+        .payment-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .payment-card {
+            border-radius: 12px;
+            padding: 18px 12px;
+            text-align: center;
+        }
+
+        .payment-card.cash {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border: 1px solid #fcd34d;
+        }
+
+        .payment-card.upi {
+            background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
+            border: 1px solid #c4b5fd;
+        }
+
+        .payment-card.card {
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            border: 1px solid #93c5fd;
+        }
+
+        .payment-icon {
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+        }
+
+        .payment-count {
+            font-size: 1.8rem;
+            font-weight: 800;
+            font-family: 'Playfair Display', serif;
+        }
+
+        .payment-card.cash .payment-count {
+            color: #92400e;
+        }
+
+        .payment-card.upi .payment-count {
+            color: #5b21b6;
+        }
+
+        .payment-card.card .payment-count {
+            color: #1e40af;
+        }
+
+        .payment-amount {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
+        .payment-card.cash .payment-amount {
+            color: #b45309;
+        }
+
+        .payment-card.upi .payment-amount {
+            color: #6d28d9;
+        }
+
+        .payment-card.card .payment-amount {
+            color: #1d4ed8;
+        }
+
+        .payment-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 6px;
+            font-weight: 600;
+        }
+
+        .payment-card.cash .payment-label {
+            color: #92400e;
+        }
+
+        .payment-card.upi .payment-label {
+            color: #5b21b6;
+        }
+
+        .payment-card.card .payment-label {
+            color: #1e40af;
+        }
+
+        /* Order Status Section */
+        .status-section {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 25px;
+            border: 1px solid #e5e7eb;
+            margin-bottom: 25px;
+        }
+
+        .status-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 20px;
+            font-family: 'Playfair Display', serif;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .status-item:last-child {
+            border-bottom: none;
+        }
+
+        .status-label {
+            font-size: 14px;
+            color: #4b5563;
+        }
+
+        .status-badge {
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            color: white;
+        }
+
+        .status-badge.completed {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .status-badge.pending {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+
+        .status-badge.cancelled {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+
+        /* Thank You Section */
+        .thank-you {
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        .thank-you p {
+            font-size: 1rem;
+            color: #4b5563;
+            margin: 0;
+        }
+
+        .thank-you strong {
+            color: #667eea;
+        }
+
+        /* Footer */
+        .footer {
+            background: linear-gradient(135deg, #1f2937, #374151);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+
+        .footer-logo {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .footer-tagline {
+            font-size: 1rem;
+            opacity: 0.9;
+            margin-bottom: 20px;
+            font-weight: 400;
+        }
+
+        .footer-disclaimer {
+            font-size: 0.85rem;
+            opacity: 0.7;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+            line-height: 1.6;
+        }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 600px) {
+            .email-wrapper {
+                padding: 15px 10px;
+            }
+
+            .content {
+                padding: 30px 20px;
+            }
+
+            .header {
+                padding: 40px 20px;
+            }
+
+            .header h1 {
+                font-size: 2.2rem;
+            }
+
+            .logo {
+                width: 60px;
+                height: 60px;
+                font-size: 2rem;
+            }
+
+            .greeting {
+                font-size: 1.3rem;
+            }
+
+            .grand-total-amount {
+                font-size: 2.5rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .payment-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .section-card {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-wrapper">
+        <div class="email-container">
+            <!-- Header -->
+            <div class="header">
+                <div class="logo">📊</div>
+                <h1>NammaOoru</h1>
+                <div class="tagline">Daily Order Summary</div>
+                <div class="date-badge" th:text="${date}">12 Jan 2026</div>
+            </div>
+
+            <!-- Content -->
+            <div class="content">
+                <div class="greeting">
+                    Hello <span th:text="${ownerName}">Shop Owner</span>!
+                </div>
+
+                <div class="intro-text">
+                    Here's your daily business summary for <strong th:text="${shopName}">Your Shop</strong>.
+                    Keep up the great work growing your business with NammaOoru!
+                </div>
+
+                <!-- Grand Total Card -->
+                <div class="grand-total-card">
+                    <div class="grand-total-label">Total Revenue</div>
+                    <div class="grand-total-amount" th:text="${grandTotal}">₹0</div>
+                    <div class="grand-total-orders">
+                        <span th:text="${totalOrders}">0</span> Orders Today
+                    </div>
+                </div>
+
+                <!-- Order Type Stats -->
+                <div class="stats-grid">
+                    <div class="stat-card walkin">
+                        <div class="stat-icon">🏪</div>
+                        <div class="stat-count" th:text="${walkInCount}">0</div>
+                        <div class="stat-amount" th:text="${walkInTotal}">₹0</div>
+                        <div class="stat-label">Walk-in Orders</div>
+                    </div>
+                    <div class="stat-card online">
+                        <div class="stat-icon">🌐</div>
+                        <div class="stat-count" th:text="${onlineCount}">0</div>
+                        <div class="stat-amount" th:text="${onlineTotal}">₹0</div>
+                        <div class="stat-label">Online Orders</div>
+                    </div>
+                </div>
+
+                <!-- Payment Method Breakdown -->
+                <div class="section-card">
+                    <div class="section-header">
+                        <div class="section-icon">💳</div>
+                        <h3>Payment Method Breakdown</h3>
+                    </div>
+                    <div class="payment-grid">
+                        <div class="payment-card cash">
+                            <div class="payment-icon">💵</div>
+                            <div class="payment-count" th:text="${cashCount}">0</div>
+                            <div class="payment-amount" th:text="${cashTotal}">₹0</div>
+                            <div class="payment-label">Cash</div>
+                        </div>
+                        <div class="payment-card upi">
+                            <div class="payment-icon">📱</div>
+                            <div class="payment-count" th:text="${upiCount}">0</div>
+                            <div class="payment-amount" th:text="${upiTotal}">₹0</div>
+                            <div class="payment-label">UPI</div>
+                        </div>
+                        <div class="payment-card card">
+                            <div class="payment-icon">💳</div>
+                            <div class="payment-count" th:text="${cardCount}">0</div>
+                            <div class="payment-amount" th:text="${cardTotal}">₹0</div>
+                            <div class="payment-label">Card</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Order Status Breakdown -->
+                <div class="status-section">
+                    <div class="status-title">
+                        📋 Order Status Breakdown
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Completed / Delivered</span>
+                        <span class="status-badge completed" th:text="${completedCount}">0</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Pending / In Progress</span>
+                        <span class="status-badge pending" th:text="${pendingCount}">0</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Cancelled</span>
+                        <span class="status-badge cancelled" th:text="${cancelledCount}">0</span>
+                    </div>
+                </div>
+
+                <!-- Thank You -->
+                <div class="thank-you">
+                    <p>Thank you for growing your business with <strong>NammaOoru</strong>!</p>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer">
+                <div class="footer-logo">NammaOoru</div>
+                <div class="footer-tagline">Building Stronger Local Communities</div>
+
+                <div class="footer-disclaimer">
+                    This is an automated daily summary sent at 11:55 PM.
+                    You receive this because you're a registered shop owner on NammaOoru.
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

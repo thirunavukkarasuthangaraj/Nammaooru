@@ -1,0 +1,208 @@
+<div class="pos-billing-container">
+  <!-- Header with Sync Status -->
+  <div class="pos-header">
+    <div class="header-left">
+      <h1>POS Billing</h1>
+      <span class="shop-name">{{ shopName }}</span>
+    </div>
+    <div class="header-right">
+      <!-- Language Toggle -->
+      <div class="language-toggle">
+        <span class="lang-label" [class.active]="!showTamil">EN</span>
+        <mat-slide-toggle
+          [checked]="showTamil"
+          (change)="toggleLanguage()"
+          color="primary">
+        </mat-slide-toggle>
+        <span class="lang-label" [class.active]="showTamil">தமிழ்</span>
+      </div>
+
+      <!-- Offline/Online Status -->
+      <div class="sync-status" [class.offline]="!syncStatus.isOnline" [class.syncing]="syncStatus.isSyncing">
+        <mat-icon>{{ syncStatus.isOnline ? 'cloud_done' : 'cloud_off' }}</mat-icon>
+        <span *ngIf="syncStatus.isOnline && !syncStatus.isSyncing">Online</span>
+        <span *ngIf="!syncStatus.isOnline">Offline</span>
+        <span *ngIf="syncStatus.isSyncing">Syncing...</span>
+      </div>
+
+      <!-- Pending Orders Badge -->
+      <div class="pending-badge" *ngIf="syncStatus.pendingOrders > 0" (click)="manualSync()">
+        <mat-icon>sync_problem</mat-icon>
+        <span>{{ syncStatus.pendingOrders }} pending</span>
+      </div>
+
+      <!-- Sync Button -->
+      <button mat-icon-button (click)="manualSync()" [disabled]="!syncStatus.isOnline || syncStatus.isSyncing"
+              title="Sync Now">
+        <mat-icon>sync</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <div class="pos-content">
+    <!-- Left Panel: Product Search & List -->
+    <div class="products-panel">
+      <!-- Search Bar -->
+      <div class="search-section">
+        <div class="search-box">
+          <mat-icon>search</mat-icon>
+          <input #searchInput
+                 type="text"
+                 [(ngModel)]="searchTerm"
+                 (input)="onSearchChange()"
+                 placeholder="Search products by name, SKU, or barcode..."
+                 class="search-input">
+          <button *ngIf="searchTerm" mat-icon-button (click)="searchTerm = ''; onSearchChange()">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+
+        <!-- Barcode Input -->
+        <div class="barcode-box">
+          <mat-icon>qr_code_scanner</mat-icon>
+          <input #barcodeInput
+                 type="text"
+                 [(ngModel)]="barcodeBuffer"
+                 (keyup.enter)="onBarcodeSubmit()"
+                 placeholder="Scan barcode..."
+                 class="barcode-input">
+        </div>
+      </div>
+
+      <!-- Products Grid -->
+      <div class="products-grid" *ngIf="!isLoading">
+        <div *ngFor="let product of filteredProducts"
+             class="product-card"
+             [class.out-of-stock]="product.trackInventory && product.stock <= 0"
+             [class.in-cart]="isInCart(product)"
+             (click)="addToCart(product)">
+          <!-- In Cart Badge -->
+          <div class="cart-badge" *ngIf="getCartQuantity(product) > 0">
+            <span>{{ getCartQuantity(product) }}</span>
+          </div>
+          <div class="product-image">
+            <!-- Use cached base64 image if available (for offline), otherwise fetch from URL -->
+            <img *ngIf="product.imageBase64 || product.image"
+                 [src]="product.imageBase64 || getImageUrl(product.image)"
+                 [alt]="product.name"
+                 (error)="onImageError($event)">
+            <div *ngIf="!product.image && !product.imageBase64" class="product-initial">{{ product.name[0] }}</div>
+          </div>
+          <div class="product-info">
+            <div class="product-name">{{ getProductName(product) }}</div>
+            <div class="product-name-secondary" *ngIf="showTamil && product.name">{{ product.name }}</div>
+            <div class="product-name-secondary" *ngIf="!showTamil && product.nameTamil">{{ product.nameTamil }}</div>
+            <div class="product-sku">{{ product.sku }}</div>
+            <div class="product-price">₹{{ product.price }}</div>
+            <div class="product-stock" *ngIf="product.trackInventory">
+              <span [class.low-stock]="product.stock <= 5">Stock: {{ product.stock }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div *ngIf="filteredProducts.length === 0" class="empty-products">
+          <mat-icon>inventory_2</mat-icon>
+          <p>No products found</p>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div *ngIf="isLoading" class="loading-state">
+        <mat-spinner diameter="40"></mat-spinner>
+        <p>Loading products...</p>
+      </div>
+    </div>
+
+    <!-- Right Panel: Cart & Billing -->
+    <div class="cart-panel">
+      <!-- Cart Header -->
+      <div class="cart-header">
+        <h2>
+          <mat-icon>shopping_cart</mat-icon>
+          Cart ({{ cart.length }})
+        </h2>
+        <button mat-icon-button color="warn" (click)="clearCart()" *ngIf="cart.length > 0" title="Clear Cart">
+          <mat-icon>delete_sweep</mat-icon>
+        </button>
+      </div>
+
+      <!-- Cart Items -->
+      <div class="cart-items">
+        <div *ngFor="let item of cart" class="cart-item">
+          <div class="item-row-top">
+            <div class="item-name">{{ getProductName(item.product) }}</div>
+            <button mat-icon-button color="warn" (click)="removeFromCart(item)" class="remove-btn">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+          <div class="item-row-bottom">
+            <div class="item-price">₹{{ item.unitPrice }} x</div>
+            <div class="item-quantity">
+              <button mat-mini-fab color="basic" (click)="updateQuantity(item, -1)">
+                <mat-icon>remove</mat-icon>
+              </button>
+              <span class="qty">{{ item.quantity }}</span>
+              <button mat-mini-fab color="basic" (click)="updateQuantity(item, 1)">
+                <mat-icon>add</mat-icon>
+              </button>
+            </div>
+            <div class="item-total">₹{{ item.total }}</div>
+          </div>
+        </div>
+
+        <!-- Empty Cart -->
+        <div *ngIf="cart.length === 0" class="empty-cart">
+          <mat-icon>shopping_cart</mat-icon>
+          <p>Cart is empty</p>
+          <span>Add products to start billing</span>
+        </div>
+      </div>
+
+      <!-- Customer Info (Collapsible) -->
+      <div class="customer-section">
+        <button mat-button (click)="toggleCustomerForm()" class="customer-toggle">
+          <mat-icon>{{ showCustomerForm ? 'expand_less' : 'expand_more' }}</mat-icon>
+          Customer Details (Optional)
+        </button>
+        <div *ngIf="showCustomerForm" class="customer-form">
+          <input type="text" [(ngModel)]="customerName" placeholder="Customer Name" class="customer-input">
+          <input type="tel" [(ngModel)]="customerPhone" placeholder="Phone Number" class="customer-input">
+          <input type="text" [(ngModel)]="orderNotes" placeholder="Notes" class="customer-input">
+        </div>
+      </div>
+
+      <!-- Totals -->
+      <div class="totals-section" *ngIf="cart.length > 0">
+        <div class="total-row grand-total">
+          <span>TOTAL</span>
+          <span>₹{{ totalAmount | number:'1.0-0' }}</span>
+        </div>
+      </div>
+
+      <!-- Payment Methods -->
+      <div class="payment-section" *ngIf="cart.length > 0">
+        <div class="payment-label">Payment Method</div>
+        <div class="payment-options">
+          <button *ngFor="let method of paymentMethods"
+                  mat-stroked-button
+                  [class.selected]="selectedPaymentMethod === method.value"
+                  (click)="selectedPaymentMethod = method.value">
+            <mat-icon>{{ method.icon }}</mat-icon>
+            {{ method.label }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Generate Bill Button -->
+      <button mat-raised-button
+              color="primary"
+              class="generate-btn"
+              [disabled]="cart.length === 0"
+              (click)="generateBill()">
+        <mat-icon>receipt_long</mat-icon>
+        Generate Bill - ₹{{ totalAmount | number:'1.0-0' }}
+      </button>
+    </div>
+  </div>
+</div>

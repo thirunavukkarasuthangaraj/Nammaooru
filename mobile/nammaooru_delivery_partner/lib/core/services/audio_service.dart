@@ -30,7 +30,7 @@ class AudioService {
     try {
       debugPrint('AudioService: Playing new_order sound');
       await _player.stop();
-      await _player.play(AssetSource('sounds/new_order_notification.mp3'));
+      await _player.play(AssetSource('sounds/new_order_notification.wav'));
     } catch (e) {
       debugPrint('AudioService: Error playing new_order sound - $e');
       // Try fallback sound
@@ -44,7 +44,7 @@ class AudioService {
     try {
       debugPrint('AudioService: Playing urgent sound');
       await _player.stop();
-      await _player.play(AssetSource('sounds/urgent_notification.mp3'));
+      await _player.play(AssetSource('sounds/urgent_notification.wav'));
     } catch (e) {
       debugPrint('AudioService: Error playing urgent sound - $e');
       _playFallbackBeep();
@@ -57,7 +57,7 @@ class AudioService {
     try {
       debugPrint('AudioService: Playing order assigned sound');
       await _player.stop();
-      await _player.play(AssetSource('sounds/new_order_notification.mp3'));
+      await _player.play(AssetSource('sounds/new_order_notification.wav'));
     } catch (e) {
       debugPrint('AudioService: Error playing order assigned sound - $e');
       _playFallbackBeep();
@@ -69,7 +69,7 @@ class AudioService {
     if (_isMuted) return;
     try {
       await _player.stop();
-      await _player.play(AssetSource('sounds/success_chime.mp3'));
+      await _player.play(AssetSource('sounds/new_order_notification.wav'));
     } catch (e) {
       debugPrint('AudioService: Error playing success sound - $e');
     }
@@ -80,7 +80,7 @@ class AudioService {
     if (_isMuted) return;
     try {
       await _player.stop();
-      await _player.play(AssetSource('sounds/message_received.mp3'));
+      await _player.play(AssetSource('sounds/new_order_notification.wav'));
     } catch (e) {
       debugPrint('AudioService: Error playing notification sound - $e');
       _playFallbackBeep();

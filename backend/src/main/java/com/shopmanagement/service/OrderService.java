@@ -1346,6 +1346,7 @@ public class OrderService {
                             .unitPrice(item.getUnitPrice())
                             .totalPrice(item.getTotalPrice())
                             .specialInstructions(item.getSpecialInstructions())
+                            .addedByShopOwner(item.getAddedByShopOwner())
                             .build();
                 })
                 .collect(Collectors.toList());
@@ -1375,6 +1376,7 @@ public class OrderService {
                 .id(order.getId())
                 .orderNumber(order.getOrderNumber())
                 .status(order.getStatus())
+                .orderType(order.getOrderType())
                 .paymentStatus(order.getPaymentStatus())
                 .paymentMethod(order.getPaymentMethod())
                 .customerId(order.getCustomer().getId())
@@ -2072,25 +2074,44 @@ public class OrderService {
             log.info("Stock reduced for product {}: {} -> {}", shopProduct.getId(), currentStock, newStock);
         }
 
-        // 6. Create new OrderItem
-        BigDecimal itemTotal = shopProduct.getPrice()
-                .multiply(BigDecimal.valueOf(request.getQuantity()));
+        // 6. Check if product already exists in order - if yes, increase quantity
+        Optional<OrderItem> existingItem = order.getOrderItems().stream()
+                .filter(item -> item.getShopProduct().getId().equals(shopProduct.getId()))
+                .findFirst();
 
-        OrderItem newItem = OrderItem.builder()
-                .order(order)
-                .shopProduct(shopProduct)
-                .quantity(request.getQuantity())
-                .unitPrice(shopProduct.getPrice())
-                .totalPrice(itemTotal)
-                .specialInstructions(request.getSpecialInstructions())
-                .productName(shopProduct.getMasterProduct().getName())
-                .productDescription(shopProduct.getMasterProduct().getDescription())
-                .productSku(shopProduct.getMasterProduct().getSku())
-                .productImageUrl(shopProduct.getMasterProduct().getPrimaryImageUrl())
-                .build();
+        if (existingItem.isPresent()) {
+            // Update existing item quantity
+            OrderItem item = existingItem.get();
+            int newQuantity = item.getQuantity() + request.getQuantity();
+            item.setQuantity(newQuantity);
+            item.setTotalPrice(item.getUnitPrice().multiply(BigDecimal.valueOf(newQuantity)));
+            // Mark as added by shop owner if it wasn't already
+            if (!Boolean.TRUE.equals(item.getAddedByShopOwner())) {
+                item.setAddedByShopOwner(true);
+            }
+            log.info("Updated existing item quantity: {} -> {}", item.getQuantity() - request.getQuantity(), newQuantity);
+        } else {
+            // Create new OrderItem
+            BigDecimal itemTotal = shopProduct.getPrice()
+                    .multiply(BigDecimal.valueOf(request.getQuantity()));
 
-        // 7. Add item to order
-        order.getOrderItems().add(newItem);
+            OrderItem newItem = OrderItem.builder()
+                    .order(order)
+                    .shopProduct(shopProduct)
+                    .quantity(request.getQuantity())
+                    .unitPrice(shopProduct.getPrice())
+                    .totalPrice(itemTotal)
+                    .specialInstructions(request.getSpecialInstructions())
+                    .productName(shopProduct.getMasterProduct().getName())
+                    .productDescription(shopProduct.getMasterProduct().getDescription())
+                    .productSku(shopProduct.getMasterProduct().getSku())
+                    .productImageUrl(shopProduct.getMasterProduct().getPrimaryImageUrl())
+                    .addedByShopOwner(true) // Mark as added by shop owner (not in original customer order)
+                    .build();
+
+            // Add item to order
+            order.getOrderItems().add(newItem);
+        }
 
         // 8. Recalculate order totals
         BigDecimal newSubtotal = order.getOrderItems().stream()
@@ -2119,6 +2140,99 @@ public class OrderService {
             updateData.put("orderId", savedOrder.getId());
             updateData.put("orderNumber", savedOrder.getOrderNumber());
             updateData.put("message", "Item added to order");
+            updateData.put("timestamp", LocalDateTime.now().toString());
+
+            String destination = "/topic/shop/" + savedOrder.getShop().getId() + "/orders";
+            messagingTemplate.convertAndSend(destination, updateData);
+        } catch (Exception e) {
+            log.warn("Failed to send WebSocket notification: {}", e.getMessage());
+        }
+
+        return mapToResponse(savedOrder);
+    }
+
+    /**
+     * Remove an item from an existing order
+     */
+    @Transactional
+    public OrderResponse removeItemFromOrder(Long orderId, Long itemId) {
+        log.info("Removing item {} from order: {}", itemId, orderId);
+
+        // 1. Find and validate order
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
+
+        // 2. Check order status - only allow modification for editable statuses
+        List<Order.OrderStatus> editableStatuses = List.of(
+                Order.OrderStatus.PENDING,
+                Order.OrderStatus.CONFIRMED,
+                Order.OrderStatus.PREPARING
+        );
+
+        if (!editableStatuses.contains(order.getStatus())) {
+            throw new RuntimeException(String.format(
+                    "Cannot remove items from order in %s status. Order must be in PENDING, CONFIRMED, or PREPARING status.",
+                    order.getStatus()));
+        }
+
+        // 3. Find the item to remove
+        OrderItem itemToRemove = order.getOrderItems().stream()
+                .filter(item -> item.getId().equals(itemId))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Item not found with id: " + itemId));
+
+        // 4. Check if this is the last item - prevent removing all items
+        if (order.getOrderItems().size() <= 1) {
+            throw new RuntimeException("Cannot remove the last item from order. Cancel the order instead.");
+        }
+
+        // 5. Restore stock if inventory tracking is enabled
+        ShopProduct shopProduct = itemToRemove.getShopProduct();
+        if (shopProduct.getTrackInventory()) {
+            Integer currentStock = shopProduct.getStockQuantity() != null ? shopProduct.getStockQuantity() : 0;
+            int restoredStock = currentStock + itemToRemove.getQuantity();
+            shopProduct.setStockQuantity(restoredStock);
+
+            // Update product status if was out of stock
+            if (shopProduct.getStatus() == ShopProduct.ShopProductStatus.OUT_OF_STOCK && restoredStock > 0) {
+                shopProduct.setStatus(ShopProduct.ShopProductStatus.ACTIVE);
+                shopProduct.setIsAvailable(true);
+            }
+
+            shopProductRepository.save(shopProduct);
+            log.info("Stock restored for product {}: {} -> {}", shopProduct.getId(), currentStock, restoredStock);
+        }
+
+        // 6. Remove item from order
+        order.getOrderItems().remove(itemToRemove);
+
+        // 7. Recalculate order totals
+        BigDecimal newSubtotal = order.getOrderItems().stream()
+                .map(OrderItem::getTotalPrice)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal newTaxAmount = newSubtotal.multiply(BigDecimal.valueOf(0.05)); // 5% tax
+        BigDecimal deliveryFee = order.getDeliveryFee() != null ? order.getDeliveryFee() : BigDecimal.ZERO;
+        BigDecimal discountAmount = order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO;
+        BigDecimal newTotalAmount = newSubtotal.add(newTaxAmount).add(deliveryFee).subtract(discountAmount);
+
+        order.setSubtotal(newSubtotal);
+        order.setTaxAmount(newTaxAmount);
+        order.setTotalAmount(newTotalAmount);
+        order.setUpdatedAt(LocalDateTime.now());
+
+        // 8. Save order
+        Order savedOrder = orderRepository.save(order);
+
+        log.info("✅ Item removed from order: {} - New total: {}", savedOrder.getOrderNumber(), newTotalAmount);
+
+        // 9. Send WebSocket notification about order update
+        try {
+            Map<String, Object> updateData = new HashMap<>();
+            updateData.put("type", "ORDER_UPDATED");
+            updateData.put("orderId", savedOrder.getId());
+            updateData.put("orderNumber", savedOrder.getOrderNumber());
+            updateData.put("message", "Item removed from order");
             updateData.put("timestamp", LocalDateTime.now().toString());
 
             String destination = "/topic/shop/" + savedOrder.getShop().getId() + "/orders";

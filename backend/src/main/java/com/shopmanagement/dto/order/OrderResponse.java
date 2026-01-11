@@ -19,6 +19,7 @@ public class OrderResponse {
     private Long id;
     private String orderNumber;
     private Order.OrderStatus status;
+    private Order.OrderType orderType;
     private Order.PaymentStatus paymentStatus;
     private Order.PaymentMethod paymentMethod;
     
@@ -97,5 +98,6 @@ public class OrderResponse {
         private BigDecimal unitPrice;
         private BigDecimal totalPrice;
         private String specialInstructions;
+        private Boolean addedByShopOwner; // True if item was added by shop owner after original order
     }
 }

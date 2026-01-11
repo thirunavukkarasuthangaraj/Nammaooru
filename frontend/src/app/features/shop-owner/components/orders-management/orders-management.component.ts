@@ -36,9 +36,12 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
   // Shop ID - dynamically retrieved from shop context service
   shopId: number | null = null;
 
+  // Main tab control (realtime vs history)
+  mainTab: 'realtime' | 'history' = 'realtime';
+
   // Filter controls
   searchTerm = '';
-  selectedStatus = '';
+  selectedStatus = 'REALTIME_ALL';
   selectedTabIndex = 0;
   startDate: Date | null = null;
   endDate: Date | null = null;
@@ -69,6 +72,9 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
   // Message properties
   successMessage = '';
   errorMessage = '';
+
+  // Daily summary loading state
+  isSendingSummary = false;
 
   // Unsubscription subject
   private destroy$ = new Subject<void>();
@@ -297,6 +303,29 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     this.loadOrders();
   }
 
+  /**
+   * Send daily order summary email to shop owner
+   */
+  sendDailySummary(): void {
+    this.isSendingSummary = true;
+
+    this.http.post<any>('/api/shops/dashboard/send-daily-summary', {}).subscribe({
+      next: (response) => {
+        this.isSendingSummary = false;
+        if (response.success) {
+          this.swal.success('Email Sent', response.message || 'Daily summary email sent to your registered email.');
+        } else {
+          this.swal.error('Failed', response.message || 'Failed to send daily summary.');
+        }
+      },
+      error: (error) => {
+        this.isSendingSummary = false;
+        console.error('Error sending daily summary:', error);
+        this.swal.error('Error', 'Failed to send daily summary email. Please try again.');
+      }
+    });
+  }
+
   loadOrders(): void {
     if (!this.shopId) {
       console.log('No shop ID available, cannot load orders');
@@ -396,6 +425,9 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
   }
 
   applyFilter(): void {
+    const realtimeStatuses = ['PENDING', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'PICKED_UP', 'OUT_FOR_DELIVERY', 'RETURNING_TO_SHOP', 'RETURNED_TO_SHOP'];
+    const historyStatuses = ['DELIVERED', 'CANCELLED', 'SELF_PICKUP_COLLECTED'];
+
     this.filteredOrders = this.orders.filter(order => {
       const matchesSearch = !this.searchTerm ||
         order.orderNumber.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
@@ -403,10 +435,23 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
 
       // Handle special status filters
       let matchesStatus = true;
-      if (this.selectedStatus === 'RETURNS') {
+      if (this.selectedStatus === 'REALTIME_ALL') {
+        matchesStatus = realtimeStatuses.includes(order.status);
+      } else if (this.selectedStatus === 'HISTORY_ALL') {
+        matchesStatus = historyStatuses.includes(order.status);
+      } else if (this.selectedStatus === 'RETURNS') {
         matchesStatus = order.status === 'RETURNING_TO_SHOP' || order.status === 'RETURNED_TO_SHOP';
+      } else if (this.selectedStatus === 'SELF_PICKUP_ACTIVE') {
+        const activeStatuses = ['PENDING', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP'];
+        matchesStatus = order.deliveryType === 'SELF_PICKUP' && activeStatuses.includes(order.status);
       } else if (this.selectedStatus === 'SELF_PICKUP') {
-        matchesStatus = order.deliveryType === 'SELF_PICKUP';
+        matchesStatus = order.deliveryType === 'SELF_PICKUP' && historyStatuses.includes(order.status);
+      } else if (this.selectedStatus === 'WALK_IN') {
+        matchesStatus = (order as any).orderType === 'WALK_IN' && historyStatuses.includes(order.status);
+      } else if (this.selectedStatus === 'ONLINE') {
+        matchesStatus = (order as any).orderType !== 'WALK_IN' && historyStatuses.includes(order.status);
+      } else if (this.selectedStatus === 'DELIVERED') {
+        matchesStatus = order.status === 'DELIVERED' || order.status === 'SELF_PICKUP_COLLECTED';
       } else if (this.selectedStatus) {
         matchesStatus = order.status === this.selectedStatus;
       }
@@ -1633,6 +1678,59 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     return this.orders.filter(order => order.deliveryType === 'SELF_PICKUP');
   }
 
+  // Get all walk-in/POS orders (offline counter sales)
+  getWalkInOrders(): ShopOwnerOrder[] {
+    return this.orders.filter(order => (order as any).orderType === 'WALK_IN');
+  }
+
+  // Get all online orders
+  getOnlineOrders(): ShopOwnerOrder[] {
+    return this.orders.filter(order => (order as any).orderType !== 'WALK_IN');
+  }
+
+  // Switch main tab between realtime and history
+  switchMainTab(tab: 'realtime' | 'history'): void {
+    this.mainTab = tab;
+    if (tab === 'realtime') {
+      this.selectedStatus = 'REALTIME_ALL';
+    } else {
+      this.selectedStatus = 'HISTORY_ALL';
+    }
+    this.applyFilter();
+  }
+
+  // Get count of real-time orders (active orders needing action)
+  getRealtimeOrdersCount(): number {
+    const realtimeStatuses = ['PENDING', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'PICKED_UP', 'OUT_FOR_DELIVERY', 'RETURNING_TO_SHOP', 'RETURNED_TO_SHOP'];
+    return this.orders.filter(order => realtimeStatuses.includes(order.status)).length;
+  }
+
+  // Get count of history orders (completed/cancelled)
+  getHistoryOrdersCount(): number {
+    const historyStatuses = ['DELIVERED', 'CANCELLED', 'SELF_PICKUP_COLLECTED'];
+    return this.orders.filter(order => historyStatuses.includes(order.status)).length;
+  }
+
+  // Get real-time orders (active)
+  getRealtimeOrders(): ShopOwnerOrder[] {
+    const realtimeStatuses = ['PENDING', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'PICKED_UP', 'OUT_FOR_DELIVERY', 'RETURNING_TO_SHOP', 'RETURNED_TO_SHOP'];
+    return this.orders.filter(order => realtimeStatuses.includes(order.status));
+  }
+
+  // Get history orders (completed/cancelled)
+  getHistoryOrders(): ShopOwnerOrder[] {
+    const historyStatuses = ['DELIVERED', 'CANCELLED', 'SELF_PICKUP_COLLECTED'];
+    return this.orders.filter(order => historyStatuses.includes(order.status));
+  }
+
+  // Get active self pickup orders (not yet collected)
+  getActiveSelfPickupOrders(): ShopOwnerOrder[] {
+    const activeStatuses = ['PENDING', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP'];
+    return this.orders.filter(order =>
+      order.deliveryType === 'SELF_PICKUP' && activeStatuses.includes(order.status)
+    );
+  }
+
   // Retry driver search for orders without assigned driver
   retryDriverSearch(orderId: number): void {
     this.swal.loading('Searching for available drivers...');
@@ -1733,6 +1831,54 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     const ampm = hours >= 12 ? 'PM' : 'AM';
     hours = hours % 12 || 12;
     return `${day}/${month}, ${hours}:${minutes} ${ampm}`;
+  }
+
+  // Remove item from existing order
+  removeItemFromOrder(order: ShopOwnerOrder, item: any): void {
+    // Prevent removing if order is not in editable status
+    if (!['PENDING', 'CONFIRMED', 'PREPARING'].includes(order.status)) {
+      this.swal.error('Cannot Remove Item', 'Items can only be removed from orders that are Pending, Confirmed, or Preparing.');
+      return;
+    }
+
+    // Check if this is the last item
+    if (order.items.length <= 1) {
+      this.swal.error('Cannot Remove Item', 'Cannot remove the last item from an order. Cancel the order instead.');
+      return;
+    }
+
+    this.swal.confirm(
+      'Remove Item',
+      `Are you sure you want to remove "${item.name || item.productName}" from this order?`,
+      'Yes, Remove',
+      'Cancel'
+    ).then((result) => {
+      if (result.isConfirmed) {
+        this.swal.loading('Removing item...');
+
+        this.orderService.removeItemFromOrder(order.id, item.id).subscribe({
+          next: (updatedOrder) => {
+            const orderIndex = this.orders.findIndex(o => o.id === order.id);
+            if (orderIndex !== -1) {
+              this.orders[orderIndex] = updatedOrder;
+              this.updateOrderLists();
+              this.applyFilter();
+            }
+            this.swal.close();
+            this.swal.success('Item Removed', `Item removed from order #${order.orderNumber}. New total: ₹${updatedOrder.totalAmount}`);
+          },
+          error: (error) => {
+            console.error('Error removing item from order:', error);
+            this.swal.close();
+            let errorMsg = 'Failed to remove item from order.';
+            if (error?.error?.message) {
+              errorMsg = error.error.message;
+            }
+            this.swal.error('Error', errorMsg);
+          }
+        });
+      }
+    });
   }
 
   // Open modal to add item to existing order

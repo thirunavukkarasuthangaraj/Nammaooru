@@ -50,6 +50,7 @@ export interface OrderItem {
   unit: string;
   image?: string;
   productImageUrl?: string;
+  addedByShopOwner?: boolean; // True if item was added by shop owner after original order
 }
 
 export interface OrderStatusUpdate {
@@ -104,7 +105,8 @@ export class ShopOwnerOrderService {
               totalPrice: item.totalPrice,
               unit: 'pcs',
               image: item.productImageUrl,
-              productImageUrl: item.productImageUrl
+              productImageUrl: item.productImageUrl,
+              addedByShopOwner: item.addedByShopOwner || false
             })),
             customerName: order.customerName,
             customerPhone: order.customerPhone || order.deliveryPhone,
@@ -356,6 +358,20 @@ export class ShopOwnerOrderService {
   }
 
   /**
+   * Remove item from existing order (only for PENDING, CONFIRMED, PREPARING orders)
+   */
+  removeItemFromOrder(orderId: number, itemId: number): Observable<ShopOwnerOrder> {
+    return this.http.delete<{data: any}>(`${this.apiUrl}/orders/${orderId}/items/${itemId}`)
+      .pipe(
+        map(response => this.transformOrder(response.data)),
+        catchError((error) => {
+          console.error('Error removing item from order:', error);
+          throw error;
+        })
+      );
+  }
+
+  /**
    * Transform backend order response to match frontend interface
    */
   private transformOrder(order: any): ShopOwnerOrder {
@@ -372,7 +388,8 @@ export class ShopOwnerOrderService {
         totalPrice: item.totalPrice,
         unit: 'pcs',
         image: item.productImageUrl,
-        productImageUrl: item.productImageUrl
+        productImageUrl: item.productImageUrl,
+        addedByShopOwner: item.addedByShopOwner || false
       })),
       customerName: order.customerName,
       customerPhone: order.customerPhone || order.deliveryPhone,

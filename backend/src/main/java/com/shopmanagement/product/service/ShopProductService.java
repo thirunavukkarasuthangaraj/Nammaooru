@@ -469,4 +469,30 @@ public class ShopProductService {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         return authentication != null ? authentication.getName() : "system";
     }
+
+    /**
+     * Find product by barcode in a specific shop
+     * Used for POS barcode scanning
+     */
+    public ShopProductResponse findByBarcodeInShop(Long shopId, String barcode) {
+        if (barcode == null || barcode.trim().isEmpty()) {
+            return null;
+        }
+
+        // Find shop product by master product barcode
+        ShopProduct shopProduct = shopProductRepository.findByShopIdAndMasterProductBarcode(shopId, barcode)
+                .orElse(null);
+
+        if (shopProduct == null) {
+            // Also try SKU as fallback
+            shopProduct = shopProductRepository.findByShopIdAndMasterProductSku(shopId, barcode)
+                    .orElse(null);
+        }
+
+        if (shopProduct == null) {
+            return null;
+        }
+
+        return productMapper.toResponse(shopProduct);
+    }
 }

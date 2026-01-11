@@ -95,6 +95,11 @@
           </mat-form-field>
         </div>
 
+        <!-- App Version -->
+        <div class="header-version" matTooltip="App Version">
+          v{{ getClientVersion() }}
+        </div>
+
         <!-- Quick Actions -->
         <div class="quick-actions">
           <!-- Notifications -->
@@ -230,11 +235,6 @@
     class="sidebar-overlay" 
     *ngIf="isMobile && isMobileSidebarOpen"
     (click)="closeMobileSidebar()">
-  </div>
-
-  <!-- Simple Version Display -->
-  <div class="simple-version">
-    v{{ getClientVersion() }}
   </div>
 
 </div>

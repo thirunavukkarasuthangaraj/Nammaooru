@@ -197,7 +197,12 @@
       "Bash(popd)",
       "Bash(npm run build:*)",
       "Bash(cmd.exe /c \"mvnw.cmd spring-boot:run\")",
-      "Bash(ng serve:*)"
+      "Bash(ng serve:*)",
+      "Bash(C:/Users/MVNLA/AppData/Local/Android/Sdk/platform-tools/adb.exe -s 192.168.1.2:38821 install -r \"D:/AAWS/nammaooru/shop-management-system/mobile/nammaooru_delivery_partner/build/app/outputs/flutter-apk/app-release.apk\")",
+      "Bash(C:/Users/MVNLA/AppData/Local/Android/Sdk/platform-tools/adb.exe -s 192.168.1.2:38821 install -r build/app/outputs/flutter-apk/app-release.apk)",
+      "Bash(ffmpeg:*)",
+      "Bash(ng build:*)",
+      "Bash(mvn:*)"
     ],
     "deny": [],
     "ask": [],

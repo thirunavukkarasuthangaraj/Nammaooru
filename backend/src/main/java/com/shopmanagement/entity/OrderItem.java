@@ -53,7 +53,12 @@ public class OrderItem {
     
     @Column(length = 2000)
     private String productImageUrl;
-    
+
+    // Track if item was added by shop owner (not in original customer order)
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean addedByShopOwner = false;
+
     // Audit fields
     @CreationTimestamp
     @Column(nullable = false, updatable = false)

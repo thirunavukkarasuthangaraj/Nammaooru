@@ -79,22 +79,18 @@ class FirebaseNotificationService {
     // Show in-app notification or update UI
     _notifyListeners(notification);
 
-    // Play sound for important delivery notifications
+    // Play sound for ALL notifications (delivery partner needs to hear every notification)
     final notificationType = notification.type.toLowerCase();
-    if (notificationType == 'new_delivery' ||
-        notificationType == 'urgent_delivery' ||
-        notificationType == 'order_assigned' ||
-        notificationType == 'order_assignment') {
-      debugPrint('🔊 Playing notification sound for delivery alert');
-      try {
-        if (notificationType == 'urgent_delivery') {
-          await AudioService.instance.playUrgentSound();
-        } else {
-          await AudioService.instance.playOrderAssignedSound();
-        }
-      } catch (e) {
-        debugPrint('Error playing notification sound: $e');
+    debugPrint('🔊 Playing notification sound for type: $notificationType');
+    try {
+      if (notificationType == 'urgent_delivery' || notificationType == 'urgent') {
+        await AudioService.instance.playUrgentSound();
+      } else {
+        // Play order sound for all other notifications
+        await AudioService.instance.playOrderAssignedSound();
       }
+    } catch (e) {
+      debugPrint('Error playing notification sound: $e');
     }
   }
 

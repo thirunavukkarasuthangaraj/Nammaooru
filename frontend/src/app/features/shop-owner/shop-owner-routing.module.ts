@@ -20,6 +20,7 @@ import { BusinessHoursComponent } from './components/business-hours/business-hou
 import { BrowseProductsComponent } from './components/browse-products/browse-products.component';
 import { ComboListComponent } from './components/combo-management/combo-list.component';
 import { ShopPromoListComponent } from './components/promo-codes/shop-promo-list.component';
+import { PosBillingComponent } from './components/pos-billing/pos-billing.component';
 
 const routes: Routes = [
   {
@@ -91,6 +92,10 @@ const routes: Routes = [
   {
     path: 'promo-codes',
     component: ShopPromoListComponent
+  },
+  {
+    path: 'pos-billing',
+    component: PosBillingComponent
   },
   {
     path: 'inventory',

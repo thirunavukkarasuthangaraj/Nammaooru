@@ -136,6 +136,7 @@ class OrderItem {
   final double totalPrice;
   final String shopId;
   final String shopName;
+  final bool addedByShopOwner; // True if item was added by shop owner after original order
 
   OrderItem({
     required this.id,
@@ -149,6 +150,7 @@ class OrderItem {
     required this.totalPrice,
     required this.shopId,
     required this.shopName,
+    this.addedByShopOwner = false,
   });
 
   factory OrderItem.fromJson(Map<String, dynamic> json) {
@@ -164,6 +166,7 @@ class OrderItem {
       totalPrice: (json['totalPrice'] ?? 0).toDouble(),
       shopId: json['shopId']?.toString() ?? '',
       shopName: json['shopName'] ?? '',
+      addedByShopOwner: json['addedByShopOwner'] ?? false,
     );
   }
 }

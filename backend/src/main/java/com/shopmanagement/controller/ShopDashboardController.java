@@ -1,13 +1,17 @@
 package com.shopmanagement.controller;
 
 import com.shopmanagement.dto.ApiResponse;
+import com.shopmanagement.service.DailyOrderSummaryService;
 import com.shopmanagement.service.ShopDashboardService;
+import com.shopmanagement.shop.entity.Shop;
+import com.shopmanagement.shop.repository.ShopRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
@@ -19,6 +23,8 @@ import java.util.Map;
 public class ShopDashboardController {
 
     private final ShopDashboardService dashboardService;
+    private final DailyOrderSummaryService dailyOrderSummaryService;
+    private final ShopRepository shopRepository;
 
     @GetMapping("/todays-revenue")
     public ResponseEntity<ApiResponse<Double>> getTodaysRevenue(Authentication authentication) {
@@ -101,6 +107,33 @@ public class ShopDashboardController {
             return ResponseEntity.ok(ApiResponse.success(count, "New customer count retrieved successfully"));
         } catch (Exception e) {
             return ResponseEntity.ok(ApiResponse.success(0L, "No new customer data available"));
+        }
+    }
+
+    /**
+     * Send daily order summary email manually
+     * Shop owners can trigger this anytime to get their daily summary
+     */
+    @PostMapping("/send-daily-summary")
+    public ResponseEntity<ApiResponse<String>> sendDailySummary(Authentication authentication) {
+        try {
+            String username = authentication.getName();
+
+            // Find the shop by created_by (username)
+            Shop shop = shopRepository.findByCreatedBy(username)
+                    .orElseThrow(() -> new RuntimeException("Shop not found for user: " + username));
+
+            // Send the daily summary
+            dailyOrderSummaryService.sendShopDailySummary(shop);
+
+            return ResponseEntity.ok(ApiResponse.success(
+                    "Summary sent to " + shop.getOwnerEmail(),
+                    "Daily summary email sent successfully"
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.error("Failed to send daily summary: " + e.getMessage())
+            );
         }
     }
 }

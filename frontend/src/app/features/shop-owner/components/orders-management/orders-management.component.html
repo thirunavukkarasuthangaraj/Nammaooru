@@ -1,35 +1,62 @@
 <div class="orders-page">
-  <!-- Header -->
-  <div class="page-header">
-    <h1>Order Management</h1>
+  <!-- Main Tabs with Actions (Combined Header) -->
+  <div class="main-header">
+    <div class="main-tabs">
+      <button class="main-tab"
+              [class.active]="mainTab === 'realtime'"
+              (click)="switchMainTab('realtime')">
+        <mat-icon>notifications_active</mat-icon>
+        <span>Real-time Orders</span>
+        <span class="main-tab-badge" *ngIf="getRealtimeOrdersCount() > 0">{{ getRealtimeOrdersCount() }}</span>
+      </button>
+      <button class="main-tab"
+              [class.active]="mainTab === 'history'"
+              (click)="switchMainTab('history')">
+        <mat-icon>history</mat-icon>
+        <span>Order History</span>
+      </button>
+    </div>
     <div class="header-actions">
+      <button mat-stroked-button color="accent" (click)="sendDailySummary()" [disabled]="isSendingSummary">
+        <mat-icon>email</mat-icon>
+        {{ isSendingSummary ? 'Sending...' : 'Daily Summary' }}
+      </button>
       <button mat-raised-button color="primary" (click)="loadDashboardData()">
-        Refresh Orders
+        <mat-icon>refresh</mat-icon>
+        Refresh
       </button>
     </div>
   </div>
 
-  <!-- Quick Stats -->
-  <div class="quick-stats">
-    <div class="stat">
-      <span class="number">{{ totalOrders }}</span>
-      <span class="label">Total</span>
+  <!-- Compact Stats Bar -->
+  <div class="stats-bar">
+    <div class="stat-item">
+      <span class="stat-value">{{ mainTab === 'realtime' ? getRealtimeOrdersCount() : getHistoryOrdersCount() }}</span>
+      <span class="stat-label">Total</span>
     </div>
-    <div class="stat">
-      <span class="number">{{ pendingOrders.length }}</span>
-      <span class="label">Pending</span>
+    <div class="stat-item" *ngIf="mainTab === 'realtime'">
+      <span class="stat-value pending">{{ pendingOrders.length }}</span>
+      <span class="stat-label">Pending</span>
     </div>
-    <div class="stat">
-      <span class="number">{{ activeOrders.length }}</span>
-      <span class="label">Active</span>
+    <div class="stat-item" *ngIf="mainTab === 'realtime'">
+      <span class="stat-value">{{ getOrdersByStatus('CONFIRMED').length + getOrdersByStatus('PREPARING').length }}</span>
+      <span class="stat-label">In Progress</span>
     </div>
-    <div class="stat">
-      <span class="number">{{ completedOrders.length }}</span>
-      <span class="label">Done</span>
+    <div class="stat-item" *ngIf="mainTab === 'realtime'">
+      <span class="stat-value">{{ getOrdersByStatus('READY_FOR_PICKUP').length }}</span>
+      <span class="stat-label">Ready</span>
     </div>
-    <div class="stat">
-      <span class="number">₹{{ todayRevenue | number:'1.0-0' }}</span>
-      <span class="label">Revenue</span>
+    <div class="stat-item" *ngIf="mainTab === 'history'">
+      <span class="stat-value success">{{ completedOrders.length }}</span>
+      <span class="stat-label">Delivered</span>
+    </div>
+    <div class="stat-item" *ngIf="mainTab === 'history'">
+      <span class="stat-value danger">{{ getOrdersByStatus('CANCELLED').length }}</span>
+      <span class="stat-label">Cancelled</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-value revenue">₹{{ todayRevenue | number:'1.0-0' }}</span>
+      <span class="stat-label">Revenue</span>
     </div>
   </div>
 
@@ -41,7 +68,7 @@
            (input)="applyFilter()"
            class="search-input">
 
-    <div class="date-filters">
+    <div class="date-filters" *ngIf="mainTab === 'history'">
       <input type="date"
              placeholder="From Date"
              [(ngModel)]="fromDate"
@@ -57,27 +84,17 @@
     </div>
   </div>
 
-  <!-- Status Tabs -->
-  <div class="status-tabs">
+  <!-- Real-time Orders Sub-tabs -->
+  <div class="status-tabs" *ngIf="mainTab === 'realtime'">
     <button class="tab-btn"
-            [class.active]="selectedStatus === ''"
-            (click)="selectStatusTab('')">
-      All Orders ({{ totalOrders }})
-    </button>
-    <button class="tab-btn tab-returns"
-            [class.active]="selectedStatus === 'RETURNS'"
-            (click)="selectStatusTab('RETURNS')">
-      Returns ({{ getReturnOrders().length }})
-    </button>
-    <button class="tab-btn tab-self-pickup"
-            [class.active]="selectedStatus === 'SELF_PICKUP'"
-            (click)="selectStatusTab('SELF_PICKUP')">
-      Self Pickup ({{ getSelfPickupOrders().length }})
+            [class.active]="selectedStatus === 'REALTIME_ALL'"
+            (click)="selectStatusTab('REALTIME_ALL')">
+      All Active ({{ getRealtimeOrdersCount() }})
     </button>
     <button class="tab-btn tab-pending"
             [class.active]="selectedStatus === 'PENDING'"
             (click)="selectStatusTab('PENDING')">
-      Pending ({{ pendingOrders.length }})
+      🔔 Pending ({{ pendingOrders.length }})
     </button>
     <button class="tab-btn tab-confirmed"
             [class.active]="selectedStatus === 'CONFIRMED'"
@@ -93,6 +110,40 @@
             [class.active]="selectedStatus === 'READY_FOR_PICKUP'"
             (click)="selectStatusTab('READY_FOR_PICKUP')">
       Ready ({{ getOrdersByStatus('READY_FOR_PICKUP').length }})
+    </button>
+    <button class="tab-btn tab-self-pickup"
+            [class.active]="selectedStatus === 'SELF_PICKUP_ACTIVE'"
+            (click)="selectStatusTab('SELF_PICKUP_ACTIVE')">
+      Self Pickup ({{ getActiveSelfPickupOrders().length }})
+    </button>
+    <button class="tab-btn tab-returns"
+            [class.active]="selectedStatus === 'RETURNS'"
+            (click)="selectStatusTab('RETURNS')">
+      Returns ({{ getReturnOrders().length }})
+    </button>
+  </div>
+
+  <!-- Order History Sub-tabs -->
+  <div class="status-tabs" *ngIf="mainTab === 'history'">
+    <button class="tab-btn"
+            [class.active]="selectedStatus === 'HISTORY_ALL'"
+            (click)="selectStatusTab('HISTORY_ALL')">
+      All History ({{ getHistoryOrdersCount() }})
+    </button>
+    <button class="tab-btn tab-walkin"
+            [class.active]="selectedStatus === 'WALK_IN'"
+            (click)="selectStatusTab('WALK_IN')">
+      Walk-in ({{ getWalkInOrders().length }})
+    </button>
+    <button class="tab-btn tab-online"
+            [class.active]="selectedStatus === 'ONLINE'"
+            (click)="selectStatusTab('ONLINE')">
+      Online ({{ getOnlineOrders().length }})
+    </button>
+    <button class="tab-btn tab-self-pickup"
+            [class.active]="selectedStatus === 'SELF_PICKUP'"
+            (click)="selectStatusTab('SELF_PICKUP')">
+      Self Pickup ({{ getSelfPickupOrders().length }})
     </button>
     <button class="tab-btn tab-delivered"
             [class.active]="selectedStatus === 'DELIVERED'"
@@ -191,7 +242,10 @@
               </div>
             </div>
             <div class="item-info">
-              <div class="item-name">{{ item.name || item.productName }}</div>
+              <div class="item-name">
+                {{ item.name || item.productName }}
+                <span *ngIf="item.addedByShopOwner" class="added-by-shop-badge" title="Added by shop owner">+Added</span>
+              </div>
               <div class="item-details">
                 <span class="item-quantity-badge">{{ item.quantity }}</span>
                 <span class="item-calculation">
@@ -199,6 +253,13 @@
                 </span>
               </div>
             </div>
+            <!-- Remove Item Button (only for editable orders with more than 1 item) -->
+            <button *ngIf="['PENDING', 'CONFIRMED', 'PREPARING'].includes(order.status) && order.items.length > 1"
+                    class="remove-item-btn"
+                    (click)="removeItemFromOrder(order, item)"
+                    title="Remove this item">
+              ×
+            </button>
           </div>
         </div>
       </div>

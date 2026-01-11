@@ -178,4 +178,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     // Find orders that are searching for drivers (for driver search scheduler)
     @Query("SELECT o FROM Order o WHERE o.status = :status AND o.driverSearchStartedAt IS NOT NULL AND o.driverSearchCompleted = false")
     List<Order> findByStatusAndDriverSearchStartedAtIsNotNullAndDriverSearchCompletedFalse(@Param("status") Order.OrderStatus status);
+
+    // Find orders by shop and created date range (for daily summary)
+    List<Order> findByShopIdAndCreatedAtBetween(Long shopId, LocalDateTime startDate, LocalDateTime endDate);
 }

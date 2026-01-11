@@ -64,7 +64,12 @@
         <!-- Default notification channel for delivery updates -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="delivery_updates" />
+            android:value="delivery_assignment_channel_v2" />
+
+        <!-- High priority notifications - wake device for important deliveries -->
+        <meta-data
+            android:name="com.google.firebase.messaging.notification_foreground_color"
+            android:resource="@android:color/holo_orange_dark" />
 
         <!-- Default notification icon -->
         <meta-data

@@ -247,9 +247,16 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       ]
     },
     {
-      category: 'Thiru Software',
+      category: 'Billing',
       items: [
-        { title: 'Shop Profile', icon: 'store', route: '/shop-owner/profile', badge: null }
+        { title: 'POS Billing', icon: 'point_of_sale', route: '/shop-owner/pos-billing', badge: null }
+      ]
+    },
+    {
+      category: 'Orders',
+      items: [
+        { title: 'Order Management', icon: 'assignment_turned_in', route: '/shop-owner/orders-management', badge: '7' },
+        { title: 'Notifications', icon: 'notifications', route: '/shop-owner/notifications', badge: '5' }
       ]
     },
     {
@@ -262,10 +269,9 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       ]
     },
     {
-      category: 'Orders',
+      category: 'Thiru Software',
       items: [
-        { title: 'Order Management', icon: 'assignment_turned_in', route: '/shop-owner/orders-management', badge: '7' },
-        { title: 'Notifications', icon: 'notifications', route: '/shop-owner/notifications', badge: '5' }
+        { title: 'Shop Profile', icon: 'store', route: '/shop-owner/profile', badge: null }
       ]
     },
     {
@@ -331,37 +337,37 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     }
 
     // Log for debugging
-    console.log('Current user role:', user.role, 'Type:', typeof user.role);
+    // console.log('Current user role:', user.role, 'Type:', typeof user.role);
 
     switch (user.role) {
       case UserRole.SUPER_ADMIN:
       case 'SUPER_ADMIN':
-        console.log('Showing SUPER_ADMIN menus');
+        // console.log('Showing SUPER_ADMIN menus');
         return this.superAdminMenuItems;
       case UserRole.ADMIN:
       case 'ADMIN':
-        console.log('Showing ADMIN menus');
+        // console.log('Showing ADMIN menus');
         return this.adminMenuItems;
       case UserRole.MANAGER:
       case 'MANAGER':
-        console.log('Showing MANAGER menus');
+        // console.log('Showing MANAGER menus');
         return this.managerMenuItems;
       case UserRole.SHOP_OWNER:
       case 'SHOP_OWNER':
-        console.log('Showing SHOP_OWNER menus');
+        // console.log('Showing SHOP_OWNER menus');
         return this.getFilteredShopOwnerMenus();
       case UserRole.DELIVERY_PARTNER:
       case 'DELIVERY_PARTNER':
-        console.log('Showing DELIVERY_PARTNER menus');
+        // console.log('Showing DELIVERY_PARTNER menus');
         return this.deliveryPartnerMenuItems;
       case UserRole.USER:
       case UserRole.CUSTOMER:
       case 'USER':
       case 'CUSTOMER':
-        console.log('Showing CUSTOMER menus');
+        // console.log('Showing CUSTOMER menus');
         return this.customerMenuItems;
       default:
-        console.log('Unknown role, showing empty menu:', user.role);
+        // console.log('Unknown role, showing empty menu:', user.role);
         return [];
     }
   }

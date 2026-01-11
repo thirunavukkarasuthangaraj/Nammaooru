@@ -13,12 +13,74 @@ final AudioPlayer audioPlayer = AudioPlayer();
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
 
+/// Background message handler - MUST be top-level function
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // Initialize Firebase if needed (background isolate)
+  await Firebase.initializeApp();
+
+  debugPrint('🌙 Background message received: ${message.notification?.title}');
+  debugPrint('📦 Background data: ${message.data}');
+
+  // Initialize local notifications plugin for background isolate
+  final FlutterLocalNotificationsPlugin plugin = FlutterLocalNotificationsPlugin();
+
+  // Initialize Android settings for background
+  const AndroidInitializationSettings androidSettings =
+      AndroidInitializationSettings('@mipmap/ic_launcher');
+  const InitializationSettings initSettings =
+      InitializationSettings(android: androidSettings);
+  await plugin.initialize(initSettings);
+
+  // Show local notification for background messages
+  const AndroidNotificationChannel channel = AndroidNotificationChannel(
+    'delivery_assignment_channel_v2',
+    'Delivery Assignments',
+    description: 'Notifications for new delivery assignments',
+    importance: Importance.max,
+    playSound: true,
+    enableVibration: true,
+    enableLights: true,
+  );
+
+  // Create channel
+  await plugin
+      .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+      ?.createNotificationChannel(channel);
+
+  String title = message.notification?.title ?? message.data['title'] ?? 'New Delivery!';
+  String body = message.notification?.body ?? message.data['body'] ?? 'You have a new delivery assignment';
+
+  await plugin.show(
+    message.hashCode,
+    title,
+    body,
+    NotificationDetails(
+      android: AndroidNotificationDetails(
+        channel.id,
+        channel.name,
+        channelDescription: channel.description,
+        importance: Importance.max,
+        priority: Priority.high,
+        playSound: true,
+        icon: '@mipmap/ic_launcher',
+        fullScreenIntent: true,
+        category: AndroidNotificationCategory.alarm,
+        visibility: NotificationVisibility.public,
+      ),
+    ),
+  );
+}
+
 Future<void> initializeFirebase() async {
   try {
     debugPrint('🔥 Initializing Firebase for delivery partner app...');
 
     // Initialize Firebase
     await Firebase.initializeApp();
+
+    // Register background message handler - CRITICAL for background notifications
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
     // Initialize local notifications
     const AndroidInitializationSettings initializationSettingsAndroid =
@@ -29,15 +91,27 @@ Future<void> initializeFirebase() async {
 
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
-    // Create notification channel for delivery assignments
+    // Create notification channel for delivery assignments with DEFAULT ALARM sound
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
-      'delivery_assignment_channel',
+      'delivery_assignment_channel_v2',  // New channel ID to force new settings
       'Delivery Assignments',
       description: 'Notifications for new delivery assignments',
       importance: Importance.max,
       playSound: true,
-      sound: RawResourceAndroidNotificationSound('new_order'),
+      enableVibration: true,
+      enableLights: true,
+      // Use default notification sound (system will use alarm/ringtone based on importance)
     );
+
+    // Delete old channels and create new one
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.deleteNotificationChannel('delivery_assignment_channel');
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.deleteNotificationChannel('delivery_assignment_channel_v2');
 
     await flutterLocalNotificationsPlugin
         .resolvePlatformSpecificImplementation<
@@ -52,48 +126,49 @@ Future<void> initializeFirebase() async {
       sound: true,
     );
 
-    // Handle foreground messages
+    // Handle foreground messages - play sound for ALL messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
       debugPrint('🔔 Delivery Partner: Got a message whilst in the foreground!');
       debugPrint('📦 Message data: ${message.data}');
+      debugPrint('📬 Notification: ${message.notification?.title} - ${message.notification?.body}');
 
-      if (message.notification != null) {
-        debugPrint('📬 Notification: ${message.notification!.title} - ${message.notification!.body}');
+      // ALWAYS play sound for ANY incoming message
+      try {
+        debugPrint('🔊 Playing notification sound...');
+        await audioPlayer.stop();
+        await audioPlayer.setVolume(1.0); // MAX volume
+        await audioPlayer.play(AssetSource('sounds/new_order_notification.wav'));
+        debugPrint('✅ Sound played successfully');
+      } catch (e) {
+        debugPrint('❌ Error playing sound: $e');
+      }
 
-        try {
-          // Play notification sound
-          debugPrint('🔊 Attempting to play notification sound...');
-          await audioPlayer.stop(); // Stop any currently playing sound
-          await audioPlayer.play(AssetSource('sounds/new_order.mp3'));
-          debugPrint('✅ Sound played successfully');
-        } catch (e) {
-          debugPrint('❌ Error playing sound: $e');
-        }
+      // Show local notification
+      String title = message.notification?.title ?? message.data['title'] ?? 'New Notification';
+      String body = message.notification?.body ?? message.data['body'] ?? 'You have a new message';
 
-        try {
-          // Show local notification
-          debugPrint('📱 Showing local notification...');
-          await flutterLocalNotificationsPlugin.show(
-            message.hashCode,
-            message.notification!.title,
-            message.notification!.body,
-            NotificationDetails(
-              android: AndroidNotificationDetails(
-                channel.id,
-                channel.name,
-                channelDescription: channel.description,
-                importance: Importance.max,
-                priority: Priority.high,
-                sound: const RawResourceAndroidNotificationSound('new_order'),
-                playSound: true,
-                icon: '@mipmap/ic_launcher',
-              ),
+      try {
+        debugPrint('📱 Showing local notification...');
+        await flutterLocalNotificationsPlugin.show(
+          message.hashCode,
+          title,
+          body,
+          NotificationDetails(
+            android: AndroidNotificationDetails(
+              channel.id,
+              channel.name,
+              channelDescription: channel.description,
+              importance: Importance.max,
+              priority: Priority.high,
+              playSound: true,
+              icon: '@mipmap/ic_launcher',
+              fullScreenIntent: true,  // Makes it more attention-grabbing
             ),
-          );
-          debugPrint('✅ Local notification shown successfully');
-        } catch (e) {
-          debugPrint('❌ Error showing notification: $e');
-        }
+          ),
+        );
+        debugPrint('✅ Local notification shown successfully');
+      } catch (e) {
+        debugPrint('❌ Error showing notification: $e');
       }
     });
 

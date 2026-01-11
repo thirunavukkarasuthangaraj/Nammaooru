@@ -132,4 +132,14 @@ public interface ShopProductRepository extends JpaRepository<ShopProduct, Long>,
 
     @Query("SELECT COUNT(sp) FROM ShopProduct sp WHERE sp.shop = :shop AND sp.masterProduct.category.name = :categoryName AND sp.isAvailable = true")
     int countByShopAndCategory(@Param("shop") Shop shop, @Param("categoryName") String categoryName);
+
+    // Barcode and SKU lookup for POS
+    @Query("SELECT sp FROM ShopProduct sp WHERE sp.shop.id = :shopId AND sp.masterProduct.barcode = :barcode AND sp.isAvailable = true")
+    Optional<ShopProduct> findByShopIdAndMasterProductBarcode(@Param("shopId") Long shopId, @Param("barcode") String barcode);
+
+    @Query("SELECT sp FROM ShopProduct sp WHERE sp.shop.id = :shopId AND sp.masterProduct.sku = :sku AND sp.isAvailable = true")
+    Optional<ShopProduct> findByShopIdAndMasterProductSku(@Param("shopId") Long shopId, @Param("sku") String sku);
+
+    // Get all available products for offline cache
+    List<ShopProduct> findByShopIdAndIsAvailable(Long shopId, Boolean isAvailable);
 }

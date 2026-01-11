@@ -23,10 +23,8 @@ class VersionService {
       final platform = _getPlatform();
       print('📱 VersionService: Platform detected: $platform');
 
-      // Get base URL without /api suffix
-      final baseUrl = kIsWeb
-          ? 'http://localhost:8080'
-          : EnvConfig.baseUrl; // Uses hardcoded production URL: https://api.nammaoorudelivary.in
+      // Get base URL without /api suffix - always use EnvConfig
+      final baseUrl = EnvConfig.baseUrl;
       final uri = Uri.parse('$baseUrl/api/app-version/check')
           .replace(queryParameters: {
         'appName': 'CUSTOMER_APP',

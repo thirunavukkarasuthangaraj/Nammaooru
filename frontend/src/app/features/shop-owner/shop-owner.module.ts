@@ -59,6 +59,7 @@ import { ComboListComponent } from './components/combo-management/combo-list.com
 import { ComboFormComponent } from './components/combo-management/combo-form.component';
 import { ShopPromoListComponent } from './components/promo-codes/shop-promo-list.component';
 import { ShopPromoFormComponent } from './components/promo-codes/shop-promo-form.component';
+import { PosBillingComponent } from './components/pos-billing/pos-billing.component';
 
 @NgModule({
   declarations: [
@@ -89,7 +90,8 @@ import { ShopPromoFormComponent } from './components/promo-codes/shop-promo-form
     ComboListComponent,
     ComboFormComponent,
     ShopPromoListComponent,
-    ShopPromoFormComponent
+    ShopPromoFormComponent,
+    PosBillingComponent
   ],
   imports: [
     CommonModule,

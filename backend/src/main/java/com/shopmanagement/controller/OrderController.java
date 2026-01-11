@@ -217,6 +217,17 @@ public class OrderController {
         return ResponseUtil.success(response, "Item added to order successfully");
     }
 
+    @DeleteMapping("/{orderId}/items/{itemId}")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER')")
+    public ResponseEntity<ApiResponse<OrderResponse>> removeItemFromOrder(
+            @PathVariable Long orderId,
+            @PathVariable Long itemId) {
+        log.info("Removing item {} from order: {}", itemId, orderId);
+
+        OrderResponse response = orderService.removeItemFromOrder(orderId, itemId);
+        return ResponseUtil.success(response, "Item removed from order successfully");
+    }
+
     @GetMapping("/{orderId}/tracking")
     @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER') or hasRole('CUSTOMER')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getOrderTracking(@PathVariable Long orderId) {

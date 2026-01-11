@@ -13,7 +13,7 @@ class EnvConfig {
   // PRODUCTION: Use your deployed server
   static const String baseUrl = 'https://api.nammaoorudelivary.in';
   static const String apiUrl = 'https://api.nammaoorudelivary.in'; // Alias for compatibility
-  static const String imageBaseUrl = 'https://api.nammaoorudelivary.in';
+  static const String imageBaseUrl = 'https://nammaoorudelivary.in';
 
   static const String apiVersion = '';
   static const String fullApiUrl = '$baseUrl/api';

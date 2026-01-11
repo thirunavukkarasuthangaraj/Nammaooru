@@ -48,6 +48,11 @@ public class Order {
     @Column(name = "delivery_type", nullable = true)
     private DeliveryType deliveryType;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "order_type")
+    @Builder.Default
+    private OrderType orderType = OrderType.ONLINE;
+
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal subtotal;
     
@@ -117,7 +122,7 @@ public class Order {
     private Boolean driverSearchCompleted = false;
 
     // Order Items
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private List<OrderItem> orderItems;
 
     // Order Assignments (relationship to delivery partners)
@@ -157,7 +162,13 @@ public class Order {
     public enum DeliveryType {
         HOME_DELIVERY, SELF_PICKUP
     }
-    
+
+    public enum OrderType {
+        ONLINE,         // Regular online orders (delivery/pickup)
+        WALK_IN,        // Walk-in customer at shop counter
+        COUNTER_SALE    // Quick counter sale (same as walk-in)
+    }
+
     // Helper methods
     @PrePersist
     private void generateOrderNumber() {

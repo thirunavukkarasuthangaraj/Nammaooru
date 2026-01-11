@@ -430,4 +430,21 @@ public class ShopProductController {
                 "Inventory updated successfully"
         ));
     }
+
+    /**
+     * Find product by barcode for POS scanning
+     */
+    @GetMapping("/barcode/{barcode}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'SHOP_OWNER')")
+    public ResponseEntity<ApiResponse<ShopProductResponse>> findByBarcode(
+            @PathVariable Long shopId,
+            @PathVariable String barcode) {
+        log.info("Finding product by barcode in shop: {} - barcode: {}", shopId, barcode);
+        ShopProductResponse product = shopProductService.findByBarcodeInShop(shopId, barcode);
+        if (product == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error("Product not found with barcode: " + barcode));
+        }
+        return ResponseEntity.ok(ApiResponse.success(product, "Product found"));
+    }
 }
