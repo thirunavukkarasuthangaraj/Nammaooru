@@ -109,15 +109,6 @@
             <mat-icon>notifications</mat-icon>
           </button>
 
-          <!-- Quick Add Menu -->
-          <button 
-            mat-icon-button 
-            class="quick-add-btn"
-            [matMenuTriggerFor]="quickAddMenu"
-            matTooltip="Quick add">
-            <mat-icon>add_circle</mat-icon>
-          </button>
-
           <!-- Settings -->
           <button 
             mat-icon-button 
@@ -232,67 +223,6 @@
     <div class="notification-footer">
       <button mat-button routerLink="/shop-owner/notifications">View all notifications</button>
     </div>
-  </mat-menu>
-
-  <!-- Quick Add Menu -->
-  <mat-menu #quickAddMenu="matMenu" class="quick-add-menu">
-    <!-- Admin Quick Actions -->
-    <ng-container *ngIf="hasAccess(['ADMIN'])">
-      <button mat-menu-item routerLink="/shops/new">
-        <mat-icon>store</mat-icon>
-        <span>New Shop</span>
-      </button>
-      
-      <button mat-menu-item routerLink="/products/master/new">
-        <mat-icon>inventory</mat-icon>
-        <span>New Product</span>
-      </button>
-      
-      <button mat-menu-item routerLink="/categories/new">
-        <mat-icon>category</mat-icon>
-        <span>New Category</span>
-      </button>
-      
-      <button mat-menu-item routerLink="/users/new">
-        <mat-icon>person_add</mat-icon>
-        <span>New User</span>
-      </button>
-      
-      <mat-divider></mat-divider>
-      
-      <button mat-menu-item routerLink="/delivery/partner/register">
-        <mat-icon>delivery_dining</mat-icon>
-        <span>Register Delivery Partner</span>
-      </button>
-      
-      <button mat-menu-item routerLink="/delivery/admin/assignments/new">
-        <mat-icon>assignment</mat-icon>
-        <span>Assign Order</span>
-      </button>
-    </ng-container>
-
-    <!-- Shop Owner Quick Actions -->
-    <ng-container *ngIf="hasAccess(['SHOP_OWNER'])">
-      <button mat-menu-item routerLink="/shop-owner/products/add">
-        <mat-icon>add_box</mat-icon>
-        <span>Add Product</span>
-      </button>
-      
-      <button mat-menu-item routerLink="/shop-owner/orders-management/new">
-        <mat-icon>receipt</mat-icon>
-        <span>New Order</span>
-      </button>
-      
-      <button mat-menu-item routerLink="/shop-owner/promotions/new">
-        <mat-icon>local_offer</mat-icon>
-        <span>Create Promotion</span>
-      </button>
-      
-      <button mat-menu-item routerLink="/shop-owner/inventory">
-        <mat-icon>inventory_2</mat-icon>
-        <span>Update Stock</span>
-      </button>
-    </ng-container>
   </mat-menu>
 
   <!-- Mobile Sidebar Overlay -->
