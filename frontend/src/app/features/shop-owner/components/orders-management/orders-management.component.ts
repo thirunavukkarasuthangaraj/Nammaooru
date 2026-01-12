@@ -1031,9 +1031,9 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
       const itemName = item.name || item.productName || '';
       return `
         <tr>
-          <td style="font-size: 13px; padding: 6px 0; font-weight: 600; word-wrap: break-word; max-width: 140px;">${itemName}</td>
-          <td style="font-size: 13px; text-align: center; padding: 6px 0; font-weight: 700; white-space: nowrap;">${item.quantity}</td>
-          <td style="font-size: 13px; text-align: right; padding: 6px 0; font-weight: 700; white-space: nowrap;">₹${totalPrice}</td>
+          <td style="font-size: 10px; padding: 3px 0; font-weight: 600; word-wrap: break-word; max-width: 90px;">${itemName}</td>
+          <td style="font-size: 10px; text-align: center; padding: 3px 0; font-weight: 700; white-space: nowrap;">${item.quantity}</td>
+          <td style="font-size: 10px; text-align: right; padding: 3px 0; font-weight: 700; white-space: nowrap;">₹${totalPrice}</td>
         </tr>
       `;
     }).join('');
@@ -1049,8 +1049,8 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
         <title>Receipt - ${order.orderNumber}</title>
         <style>
           @page {
-            size: 80mm auto;
-            margin: 3mm;
+            size: 58mm auto;
+            margin: 1mm;
           }
           @media print {
             body {
@@ -1060,91 +1060,91 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
           }
           body {
             font-family: 'Noto Sans Tamil', 'Latha', 'Tamil Sangam MN', Arial, sans-serif;
-            font-size: 14px;
-            width: 76mm;
+            font-size: 11px;
+            width: 48mm;
             margin: 0 auto;
-            padding: 4mm;
-            line-height: 1.4;
+            padding: 2mm;
+            line-height: 1.3;
           }
           .center { text-align: center; }
           .bold { font-weight: bold; }
           .divider {
-            border-top: 2px dashed #000;
-            margin: 10px 0;
+            border-top: 1px dashed #000;
+            margin: 6px 0;
           }
           .divider-solid {
-            border-top: 2px solid #000;
-            margin: 10px 0;
+            border-top: 1px solid #000;
+            margin: 6px 0;
           }
           table { width: 100%; border-collapse: collapse; }
           .total-row {
             font-weight: bold;
-            font-size: 20px;
-            border-top: 2px solid #000;
-            padding-top: 10px;
-            margin-top: 10px;
+            font-size: 14px;
+            border-top: 1px solid #000;
+            padding-top: 6px;
+            margin-top: 6px;
           }
           .shop-name {
             font-family: 'Noto Sans Tamil', 'Latha', 'Tamil Sangam MN', Arial, sans-serif;
-            font-size: 22px;
+            font-size: 14px;
             font-weight: 700;
-            margin-bottom: 5px;
+            margin-bottom: 3px;
           }
           .order-number {
-            font-size: 18px;
+            font-size: 12px;
             font-weight: 700;
             background: #000;
             color: #fff;
-            padding: 8px 12px;
+            padding: 4px 8px;
             display: inline-block;
-            border-radius: 4px;
-            margin: 8px 0;
+            border-radius: 3px;
+            margin: 4px 0;
           }
           .customer-name {
-            font-size: 16px;
+            font-size: 12px;
             font-weight: 700;
           }
           .customer-phone {
-            font-size: 14px;
+            font-size: 10px;
             color: #333;
           }
           .item-header th {
-            font-size: 13px;
-            padding: 8px 0;
-            border-bottom: 2px solid #000;
+            font-size: 10px;
+            padding: 4px 0;
+            border-bottom: 1px solid #000;
             text-transform: uppercase;
             font-weight: 700;
           }
           .payment-badge {
-            font-size: 14px;
+            font-size: 10px;
             font-weight: 700;
-            padding: 8px 16px;
+            padding: 4px 8px;
             background: #f0f0f0;
-            border-radius: 4px;
+            border-radius: 3px;
             display: inline-block;
-            margin: 8px 0;
+            margin: 4px 0;
           }
           .footer-text {
-            font-size: 12px;
+            font-size: 9px;
             color: #666;
-            margin-top: 10px;
+            margin-top: 6px;
           }
         </style>
       </head>
       <body>
         <div class="center shop-name">${shopName}</div>
-        <div class="center" style="font-size: 13px; color: #666;">Order Receipt</div>
+        <div class="center" style="font-size: 9px; color: #666;">Order Receipt</div>
         <div class="divider"></div>
 
         <div class="center">
           <div class="order-number">#${order.orderNumber}</div>
         </div>
-        <div style="font-size: 14px; text-align: center; margin-bottom: 8px;">
+        <div style="font-size: 9px; text-align: center; margin-bottom: 4px;">
           ${new Date(order.createdAt).toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: 'numeric'})} | ${new Date(order.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
         </div>
         <div class="divider"></div>
 
-        <div style="margin-bottom: 8px;">
+        <div style="margin-bottom: 4px;">
           <div class="customer-name">${order.customerName}</div>
           <div class="customer-phone">${order.customerPhone || ''}</div>
         </div>
@@ -1166,15 +1166,15 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
 
         <table style="width: 100%;">
           <tr>
-            <td style="font-size: 14px; font-weight: 600;">Total Items: ${order.items?.length || 0}</td>
-            <td style="text-align: right; font-size: 14px; font-weight: 700;">Subtotal: ₹${order.totalAmount || 0}</td>
+            <td style="font-size: 10px; font-weight: 600;">Items: ${order.items?.length || 0}</td>
+            <td style="text-align: right; font-size: 10px; font-weight: 700;">₹${order.totalAmount || 0}</td>
           </tr>
         </table>
 
-        <table style="width: 100%; margin-top: 10px; border-top: 2px solid #000; padding-top: 10px;">
+        <table style="width: 100%; margin-top: 6px; border-top: 1px solid #000; padding-top: 6px;">
           <tr>
-            <td style="font-size: 20px; font-weight: 700;">TOTAL</td>
-            <td style="text-align: right; font-size: 24px; font-weight: 700;">₹${order.totalAmount || 0}</td>
+            <td style="font-size: 14px; font-weight: 700;">TOTAL</td>
+            <td style="text-align: right; font-size: 16px; font-weight: 700;">₹${order.totalAmount || 0}</td>
           </tr>
         </table>
 
