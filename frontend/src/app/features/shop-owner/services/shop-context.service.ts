@@ -66,9 +66,10 @@ export class ShopContextService {
         console.log('Shop loaded for current user:', shop);
         this.shopSubject.next(shop);
         this.loadingSubject.next(false);
-        // Cache numeric shop ID for quick access
+        // Cache shop ID and name for quick access
         if (shop && shop.id) {
           localStorage.setItem('current_shop_id', shop.id.toString());
+          localStorage.setItem('shop_name', shop.name || shop.businessName || '');
         }
       }),
       catchError(error => {
@@ -103,6 +104,7 @@ export class ShopContextService {
           console.log('Shop found by owner username:', userShop);
           this.shopSubject.next(userShop);
           localStorage.setItem('current_shop_id', userShop.id.toString());
+          localStorage.setItem('shop_name', userShop.name || userShop.businessName || '');
         } else {
           // For shopowner1, use shop ID 11 as fallback
           if (username === 'shopowner1') {
@@ -132,6 +134,7 @@ export class ShopContextService {
         console.log('Shop loaded by ID:', shop);
         this.shopSubject.next(shop);
         localStorage.setItem('current_shop_id', shop.id.toString());
+        localStorage.setItem('shop_name', shop.name || shop.businessName || '');
       }),
       catchError(error => {
         console.error('Error loading shop by ID:', error);
@@ -208,6 +211,7 @@ export class ShopContextService {
   clearShop(): void {
     this.shopSubject.next(null);
     localStorage.removeItem('current_shop_id');
+    localStorage.removeItem('shop_name');
     this.errorSubject.next(null);
   }
 

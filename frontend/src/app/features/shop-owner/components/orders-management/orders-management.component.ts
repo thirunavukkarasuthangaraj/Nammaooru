@@ -1038,8 +1038,8 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
       `;
     }).join('');
 
-    // Get shop name from localStorage or use default
-    const shopName = localStorage.getItem('shop_name') || 'NammaOoru';
+    // Get shop name from order or localStorage
+    const shopName = order.shopName || localStorage.getItem('shop_name') || 'NammaOoru';
 
     return `
       <!DOCTYPE html>
