@@ -97,11 +97,13 @@ public class PosService {
 
             // Create order item with null-safe product name
             String productName = shopProduct.getCustomName();
+            String productNameTamil = null;
             String productImageUrl = null;
             if (shopProduct.getMasterProduct() != null) {
                 if (productName == null || productName.trim().isEmpty()) {
                     productName = shopProduct.getMasterProduct().getName();
                 }
+                productNameTamil = shopProduct.getMasterProduct().getNameTamil();
                 productImageUrl = shopProduct.getMasterProduct().getPrimaryImageUrl();
             }
             if (productName == null || productName.trim().isEmpty()) {
@@ -111,6 +113,7 @@ public class PosService {
             OrderItem orderItem = OrderItem.builder()
                     .shopProduct(shopProduct)
                     .productName(productName)
+                    .productNameTamil(productNameTamil)
                     .quantity(itemRequest.getQuantity())
                     .unitPrice(unitPrice)
                     .totalPrice(itemTotal)
@@ -263,6 +266,7 @@ public class PosService {
                 .map(item -> OrderResponse.OrderItemResponse.builder()
                         .id(item.getId())
                         .productName(item.getProductName())
+                        .productNameTamil(item.getProductNameTamil())
                         .quantity(item.getQuantity())
                         .unitPrice(item.getUnitPrice())
                         .totalPrice(item.getTotalPrice())

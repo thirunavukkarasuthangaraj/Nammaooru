@@ -742,13 +742,21 @@ export class PosBillingComponent implements OnInit, OnDestroy {
    * Same layout as Order Management small print
    */
   private generateReceiptHtml(order: any): string {
-    const items = this.cart.map(item => `
+    const items = this.cart.map(item => {
+      const englishName = item.product.name || '';
+      const tamilName = item.product.nameTamil || '';
+      // Show Tamil name below English name if available
+      const nameHtml = tamilName
+        ? `${englishName}<br><span style="font-size: 9px; color: #333;">${tamilName}</span>`
+        : englishName;
+      return `
       <tr>
-        <td style="font-size: 10px; padding: 3px 0; font-weight: 600; word-wrap: break-word; max-width: 90px;">${item.product.name}</td>
+        <td style="font-size: 10px; padding: 3px 0; font-weight: 600; word-wrap: break-word; max-width: 90px;">${nameHtml}</td>
         <td style="font-size: 10px; text-align: center; padding: 3px 0; font-weight: 700; white-space: nowrap;">${item.quantity}</td>
         <td style="font-size: 10px; text-align: right; padding: 3px 0; font-weight: 700; white-space: nowrap;">₹${item.total.toFixed(0)}</td>
       </tr>
-    `).join('');
+    `;
+    }).join('');
 
     const isOffline = order.offlineOrderId && !order.id;
     // Get shop name from order response (API), then localStorage, then fallback

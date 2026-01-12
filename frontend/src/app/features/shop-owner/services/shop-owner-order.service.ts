@@ -43,6 +43,7 @@ export interface OrderItem {
   id: number;
   name: string;
   productName: string;
+  productNameTamil?: string;
   quantity: number;
   price: number;
   unitPrice: number;

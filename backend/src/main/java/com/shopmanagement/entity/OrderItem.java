@@ -44,7 +44,10 @@ public class OrderItem {
     // Product details at time of order (for historical purposes)
     @Column(nullable = false, length = 255)
     private String productName;
-    
+
+    @Column(length = 255)
+    private String productNameTamil;
+
     @Column(length = 500)
     private String productDescription;
     

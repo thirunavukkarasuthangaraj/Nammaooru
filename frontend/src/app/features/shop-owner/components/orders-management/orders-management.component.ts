@@ -1028,10 +1028,15 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     const itemsHtml = order.items.map(item => {
       const unitPrice = item.price || item.unitPrice || item.totalPrice || 0;
       const totalPrice = item.total || item.totalPrice || (item.quantity * unitPrice) || 0;
-      const itemName = item.name || item.productName || '';
+      const englishName = item.name || item.productName || '';
+      const tamilName = item.productNameTamil || '';
+      // Show Tamil name below English name if available
+      const nameHtml = tamilName
+        ? `${englishName}<br><span style="font-size: 9px; color: #333;">${tamilName}</span>`
+        : englishName;
       return `
         <tr>
-          <td style="font-size: 10px; padding: 3px 0; font-weight: 600; word-wrap: break-word; max-width: 90px;">${itemName}</td>
+          <td style="font-size: 10px; padding: 3px 0; font-weight: 600; word-wrap: break-word; max-width: 90px;">${nameHtml}</td>
           <td style="font-size: 10px; text-align: center; padding: 3px 0; font-weight: 700; white-space: nowrap;">${item.quantity}</td>
           <td style="font-size: 10px; text-align: right; padding: 3px 0; font-weight: 700; white-space: nowrap;">₹${totalPrice}</td>
         </tr>
