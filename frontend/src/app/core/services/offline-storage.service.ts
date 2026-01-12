@@ -246,16 +246,9 @@ export class OfflineStorageService {
    * Get all pending (unsynced) orders
    */
   async getPendingOrders(): Promise<OfflineOrder[]> {
-    const db = await this.getDB();
-    const transaction = db.transaction(ORDERS_STORE, 'readonly');
-    const store = transaction.objectStore(ORDERS_STORE);
-    const index = store.index('synced');
-
-    return new Promise((resolve, reject) => {
-      const request = index.getAll(IDBKeyRange.only(false));
-      request.onsuccess = () => resolve(request.result || []);
-      request.onerror = () => reject(request.error);
-    });
+    // Get all orders and filter - IndexedDB doesnt support boolean keys
+    const allOrders = await this.getAllOfflineOrders();
+    return allOrders.filter(order => order.synced === false);
   }
 
   /**
