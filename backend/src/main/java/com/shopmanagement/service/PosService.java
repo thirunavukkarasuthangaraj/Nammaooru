@@ -122,10 +122,10 @@ public class PosService {
             subtotal = subtotal.add(itemTotal);
         }
 
-        // 4. Calculate totals (no delivery fee for POS)
-        BigDecimal taxAmount = subtotal.multiply(BigDecimal.valueOf(0.05)); // 5% tax
+        // 4. Calculate totals (no delivery fee, no tax for POS walk-in orders)
+        BigDecimal taxAmount = BigDecimal.ZERO; // No tax for walk-in orders
         BigDecimal discountAmount = request.getDiscountAmount() != null ? request.getDiscountAmount() : BigDecimal.ZERO;
-        BigDecimal totalAmount = subtotal.add(taxAmount).subtract(discountAmount);
+        BigDecimal totalAmount = subtotal.subtract(discountAmount);
 
         // 5. Create order
         Order order = Order.builder()
