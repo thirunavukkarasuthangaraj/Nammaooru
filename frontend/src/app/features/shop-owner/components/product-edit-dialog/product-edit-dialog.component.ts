@@ -75,11 +75,13 @@ export class ProductEditDialogComponent implements OnInit {
 
   onSubmit(): void {
     if (this.editForm.valid) {
+      const formValue = this.editForm.value;
       const updatedProduct = {
         ...this.data,
-        ...this.editForm.value,
-        imageUrl: this.currentImageUrl || this.data.imageUrl
-        // Image already uploaded, just pass the URL
+        ...formValue,
+        imageUrl: this.currentImageUrl || this.data.imageUrl,
+        // Map frontend field names to backend field names
+        voiceSearchTags: formValue.tags // Backend expects voiceSearchTags for voice search tags
       };
       this.dialogRef.close(updatedProduct);
     } else {

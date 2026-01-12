@@ -73,4 +73,19 @@ public class ShopProductRequest {
 
     @Size(max = 50, message = "Base unit must be less than 50 characters")
     private String baseUnit;
+
+    // Master product SKU/Barcode (for shop owner to update product identification)
+    @Size(max = 100, message = "SKU must be less than 100 characters")
+    private String sku;
+
+    @Size(max = 100, message = "Barcode must be less than 100 characters")
+    private String barcode;
+
+    // Master product voice search tags (comma-separated tags for voice search)
+    @Size(max = 2000, message = "Voice search tags must be less than 2000 characters")
+    private String voiceSearchTags;
+
+    // Tamil name for the product
+    @Size(max = 255, message = "Tamil name must be less than 255 characters")
+    private String nameTamil;
 }

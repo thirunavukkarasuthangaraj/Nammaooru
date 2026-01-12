@@ -184,6 +184,40 @@ public class ShopProductService {
             shopProduct.setBaseUnit(request.getBaseUnit());
         }
 
+        // Update MasterProduct fields (sku, barcode, voice search tags, Tamil name)
+        MasterProduct masterProduct = shopProduct.getMasterProduct();
+        boolean masterProductUpdated = false;
+
+        if (request.getSku() != null && !request.getSku().trim().isEmpty()) {
+            masterProduct.setSku(request.getSku().trim());
+            masterProductUpdated = true;
+            log.debug("Updating master product SKU to: {}", request.getSku());
+        }
+
+        if (request.getBarcode() != null) {
+            masterProduct.setBarcode(request.getBarcode().trim().isEmpty() ? null : request.getBarcode().trim());
+            masterProductUpdated = true;
+            log.debug("Updating master product barcode to: {}", request.getBarcode());
+        }
+
+        if (request.getVoiceSearchTags() != null) {
+            masterProduct.setTags(request.getVoiceSearchTags().trim().isEmpty() ? null : request.getVoiceSearchTags().trim());
+            masterProductUpdated = true;
+            log.debug("Updating master product voice search tags to: {}", request.getVoiceSearchTags());
+        }
+
+        if (request.getNameTamil() != null) {
+            masterProduct.setNameTamil(request.getNameTamil().trim().isEmpty() ? null : request.getNameTamil().trim());
+            masterProductUpdated = true;
+            log.debug("Updating master product Tamil name to: {}", request.getNameTamil());
+        }
+
+        if (masterProductUpdated) {
+            masterProduct.setUpdatedBy(getCurrentUsername());
+            masterProductRepository.save(masterProduct);
+            log.info("Master product {} updated with SKU/barcode/tags/Tamil name", masterProduct.getId());
+        }
+
         // Update shop images if provided
         if (request.getShopImageUrls() != null) {
             shopProduct.getShopImages().clear();
