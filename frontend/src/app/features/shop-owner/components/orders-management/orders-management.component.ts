@@ -1026,14 +1026,14 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
 
   generateSmallPrintContent(order: ShopOwnerOrder): string {
     const itemsHtml = order.items.map(item => {
-      const unitPrice = item.price || item.unitPrice || 0;
-      const totalPrice = item.quantity * unitPrice;
-      const itemName = (item.name || item.productName || '').substring(0, 25);
+      const unitPrice = item.price || item.unitPrice || item.totalPrice || 0;
+      const totalPrice = item.total || item.totalPrice || (item.quantity * unitPrice) || 0;
+      const itemName = item.name || item.productName || '';
       return `
         <tr>
-          <td style="font-size: 14px; padding: 6px 0; font-weight: 500;">${itemName}</td>
-          <td style="font-size: 14px; text-align: center; padding: 6px 0; font-weight: 600;">${item.quantity}</td>
-          <td style="font-size: 14px; text-align: right; padding: 6px 0; font-weight: 600;">₹${totalPrice}</td>
+          <td style="font-size: 13px; padding: 6px 0; font-weight: 600; word-wrap: break-word; max-width: 140px;">${itemName}</td>
+          <td style="font-size: 13px; text-align: center; padding: 6px 0; font-weight: 700; white-space: nowrap;">${item.quantity}</td>
+          <td style="font-size: 13px; text-align: right; padding: 6px 0; font-weight: 700; white-space: nowrap;">₹${totalPrice}</td>
         </tr>
       `;
     }).join('');
@@ -1164,17 +1164,19 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
         </table>
         <div class="divider-solid"></div>
 
-        <table>
+        <table style="width: 100%;">
           <tr>
-            <td style="font-size: 14px;">Total Items: <strong>${order.items?.length || 0}</strong></td>
-            <td style="text-align: right; font-size: 14px;">Subtotal: <strong>₹${order.totalAmount}</strong></td>
+            <td style="font-size: 14px; font-weight: 600;">Total Items: ${order.items?.length || 0}</td>
+            <td style="text-align: right; font-size: 14px; font-weight: 700;">Subtotal: ₹${order.totalAmount || 0}</td>
           </tr>
         </table>
 
-        <div class="total-row" style="display: flex; justify-content: space-between; align-items: center;">
-          <span>TOTAL</span>
-          <span style="font-size: 24px;">₹${order.totalAmount}</span>
-        </div>
+        <table style="width: 100%; margin-top: 10px; border-top: 2px solid #000; padding-top: 10px;">
+          <tr>
+            <td style="font-size: 20px; font-weight: 700;">TOTAL</td>
+            <td style="text-align: right; font-size: 24px; font-weight: 700;">₹${order.totalAmount || 0}</td>
+          </tr>
+        </table>
 
         <div class="divider"></div>
         <div class="center">
