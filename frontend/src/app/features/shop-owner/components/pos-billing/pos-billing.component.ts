@@ -745,15 +745,17 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     const items = this.cart.map(item => {
       const englishName = item.product.name || '';
       const tamilName = item.product.nameTamil || '';
+      const rate = item.product.price || 0;
       // Show Tamil name below English name if available
       const nameHtml = tamilName
         ? `${englishName}<br><span style="font-size: 9px; color: #333;">${tamilName}</span>`
         : englishName;
       return `
       <tr>
-        <td style="font-size: 10px; padding: 3px 0; font-weight: 600; word-wrap: break-word; max-width: 90px;">${nameHtml}</td>
-        <td style="font-size: 10px; text-align: center; padding: 3px 0; font-weight: 700; white-space: nowrap;">${item.quantity}</td>
-        <td style="font-size: 10px; text-align: right; padding: 3px 0; font-weight: 700; white-space: nowrap;">₹${item.total.toFixed(0)}</td>
+        <td style="font-size: 9px; padding: 2px 0; font-weight: 600; word-wrap: break-word; max-width: 60px;">${nameHtml}</td>
+        <td style="font-size: 9px; text-align: right; padding: 2px 0; font-weight: 600; white-space: nowrap;">${rate}</td>
+        <td style="font-size: 9px; text-align: center; padding: 2px 0; font-weight: 700; white-space: nowrap;">${item.quantity}</td>
+        <td style="font-size: 9px; text-align: right; padding: 2px 0; font-weight: 700; white-space: nowrap;">${item.total.toFixed(0)}</td>
       </tr>
     `;
     }).join('');
@@ -883,8 +885,9 @@ export class PosBillingComponent implements OnInit, OnDestroy {
           <thead>
             <tr class="item-header">
               <th style="text-align: left;">ITEM</th>
+              <th style="text-align: right;">RATE</th>
               <th style="text-align: center;">QTY</th>
-              <th style="text-align: right;">AMOUNT</th>
+              <th style="text-align: right;">AMT</th>
             </tr>
           </thead>
           <tbody>
