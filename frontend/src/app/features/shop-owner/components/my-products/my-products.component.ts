@@ -221,6 +221,7 @@ export class MyProductsComponent implements OnInit, OnDestroy {
                 description: p.masterProduct.description,
                 baseUnit: p.masterProduct.baseUnit,
                 sku: p.masterProduct.sku,
+                tags: p.masterProduct.tags,
                 category: p.masterProduct.category
               } : undefined,
               createdAt: p.createdAt,
