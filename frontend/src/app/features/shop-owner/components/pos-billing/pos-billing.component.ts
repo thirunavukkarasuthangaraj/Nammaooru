@@ -776,9 +776,10 @@ export class PosBillingComponent implements OnInit, OnDestroy {
           body {
             font-family: 'Noto Sans Tamil', 'Latha', 'Tamil Sangam MN', Arial, sans-serif;
             font-size: 11px;
-            width: 48mm;
+            width: 180px;
+            max-width: 180px;
             margin: 0 auto;
-            padding: 2mm;
+            padding: 8px;
             line-height: 1.3;
           }
           .center { text-align: center; }
