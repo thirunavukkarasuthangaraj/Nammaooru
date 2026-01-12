@@ -25,6 +25,7 @@ export interface ShopOwnerOrder {
   notes?: string;
   customerId: number;
   shopId: number;
+  shopName?: string;
   couponCode?: string;
   discountAmount?: number;
   assignedToDeliveryPartner?: boolean;
