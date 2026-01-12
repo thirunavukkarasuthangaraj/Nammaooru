@@ -19,7 +19,7 @@
       <mat-card *ngFor="let shopOwner of shopOwners" class="shop-owner-card">
         <mat-card-header>
           <div mat-card-avatar class="avatar">
-            {{ shopOwner.fullName?.charAt(0) || 'S' }}
+            {{ (shopOwner.fullName || 'S').charAt(0) }}
           </div>
           <mat-card-title>{{ shopOwner.fullName || shopOwner.username }}</mat-card-title>
           <mat-card-subtitle>{{ shopOwner.email }}</mat-card-subtitle>
