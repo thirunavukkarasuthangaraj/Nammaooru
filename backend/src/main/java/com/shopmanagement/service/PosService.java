@@ -61,13 +61,19 @@ public class PosService {
                     .orElseThrow(() -> new RuntimeException("Product not found: " + itemRequest.getShopProductId()));
 
             // Check and deduct stock
-            if (shopProduct.getTrackInventory()) {
+            if (shopProduct.getTrackInventory() != null && shopProduct.getTrackInventory()) {
                 Integer currentStock = shopProduct.getStockQuantity() != null ? shopProduct.getStockQuantity() : 0;
                 if (currentStock < itemRequest.getQuantity()) {
+                    String stockProductName = shopProduct.getCustomName();
+                    if (stockProductName == null && shopProduct.getMasterProduct() != null) {
+                        stockProductName = shopProduct.getMasterProduct().getName();
+                    }
+                    if (stockProductName == null) {
+                        stockProductName = "Product #" + shopProduct.getId();
+                    }
                     throw new RuntimeException(String.format(
                             "Insufficient stock for %s. Available: %d, Requested: %d",
-                            shopProduct.getCustomName() != null ? shopProduct.getCustomName() : shopProduct.getMasterProduct().getName(),
-                            currentStock, itemRequest.getQuantity()));
+                            stockProductName, currentStock, itemRequest.getQuantity()));
                 }
 
                 // Deduct stock
@@ -89,16 +95,26 @@ public class PosService {
                     : shopProduct.getPrice();
             BigDecimal itemTotal = unitPrice.multiply(BigDecimal.valueOf(itemRequest.getQuantity()));
 
-            // Create order item
+            // Create order item with null-safe product name
+            String productName = shopProduct.getCustomName();
+            String productImageUrl = null;
+            if (shopProduct.getMasterProduct() != null) {
+                if (productName == null || productName.trim().isEmpty()) {
+                    productName = shopProduct.getMasterProduct().getName();
+                }
+                productImageUrl = shopProduct.getMasterProduct().getPrimaryImageUrl();
+            }
+            if (productName == null || productName.trim().isEmpty()) {
+                productName = "Product #" + shopProduct.getId();
+            }
+
             OrderItem orderItem = OrderItem.builder()
                     .shopProduct(shopProduct)
-                    .productName(shopProduct.getCustomName() != null
-                            ? shopProduct.getCustomName()
-                            : shopProduct.getMasterProduct().getName())
+                    .productName(productName)
                     .quantity(itemRequest.getQuantity())
                     .unitPrice(unitPrice)
                     .totalPrice(itemTotal)
-                    .productImageUrl(shopProduct.getMasterProduct().getPrimaryImageUrl())
+                    .productImageUrl(productImageUrl)
                     .addedByShopOwner(true)
                     .build();
 

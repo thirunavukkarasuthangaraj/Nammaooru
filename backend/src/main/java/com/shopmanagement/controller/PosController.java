@@ -83,24 +83,41 @@ public class PosController {
     private Map<String, Object> mapToLightweightProduct(ShopProduct product) {
         Map<String, Object> data = new HashMap<>();
         data.put("id", product.getId());
-        data.put("name", product.getCustomName() != null
-                ? product.getCustomName()
-                : product.getMasterProduct().getName());
-        data.put("nameTamil", product.getMasterProduct().getNameTamil());
+        data.put("shopId", product.getShop() != null ? product.getShop().getId() : null);
+
+        // Safe null handling for master product
+        var masterProduct = product.getMasterProduct();
+        if (masterProduct != null) {
+            data.put("name", product.getCustomName() != null
+                    ? product.getCustomName()
+                    : masterProduct.getName());
+            data.put("nameTamil", masterProduct.getNameTamil());
+            data.put("sku", masterProduct.getSku());
+            data.put("barcode", masterProduct.getBarcode());
+            data.put("image", masterProduct.getPrimaryImageUrl());
+            data.put("categoryId", masterProduct.getCategory() != null
+                    ? masterProduct.getCategory().getId()
+                    : null);
+            data.put("categoryName", masterProduct.getCategory() != null
+                    ? masterProduct.getCategory().getName()
+                    : null);
+            data.put("unit", masterProduct.getBaseUnit());
+            data.put("weight", masterProduct.getBaseWeight());
+        } else {
+            data.put("name", product.getCustomName() != null ? product.getCustomName() : "Unknown");
+            data.put("nameTamil", null);
+            data.put("sku", null);
+            data.put("barcode", null);
+            data.put("image", null);
+            data.put("categoryId", null);
+            data.put("categoryName", null);
+            data.put("unit", null);
+            data.put("weight", null);
+        }
+
         data.put("price", product.getPrice());
         data.put("stock", product.getStockQuantity());
         data.put("trackInventory", product.getTrackInventory());
-        data.put("sku", product.getMasterProduct().getSku());
-        data.put("barcode", product.getMasterProduct().getBarcode());
-        data.put("image", product.getMasterProduct().getPrimaryImageUrl());
-        data.put("categoryId", product.getMasterProduct().getCategory() != null
-                ? product.getMasterProduct().getCategory().getId()
-                : null);
-        data.put("categoryName", product.getMasterProduct().getCategory() != null
-                ? product.getMasterProduct().getCategory().getName()
-                : null);
-        data.put("unit", product.getMasterProduct().getBaseUnit());
-        data.put("weight", product.getMasterProduct().getBaseWeight());
         return data;
     }
 }
