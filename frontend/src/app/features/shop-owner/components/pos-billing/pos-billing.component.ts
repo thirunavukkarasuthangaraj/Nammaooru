@@ -738,90 +738,167 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Generate receipt HTML
+   * Generate receipt HTML - optimized for 58mm thermal paper
    */
   private generateReceiptHtml(order: any): string {
     const items = this.cart.map(item => `
       <tr>
-        <td style="text-align:left;">${item.product.name}</td>
-        <td style="text-align:center;">${item.quantity}</td>
-        <td style="text-align:right;">₹${item.total.toFixed(0)}</td>
+        <td style="font-size: 10px; padding: 3px 0; font-weight: 600; word-wrap: break-word; max-width: 90px;">${item.product.name}</td>
+        <td style="font-size: 10px; text-align: center; padding: 3px 0; font-weight: 700; white-space: nowrap;">${item.quantity}</td>
+        <td style="font-size: 10px; text-align: right; padding: 3px 0; font-weight: 700; white-space: nowrap;">₹${item.total.toFixed(0)}</td>
       </tr>
     `).join('');
 
     const isOffline = order.offlineOrderId && !order.id;
+    const shopName = this.shopName || localStorage.getItem('shop_name') || 'Shop';
 
     return `
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Receipt</title>
+        <meta charset="UTF-8">
+        <title>Receipt - ${order.orderNumber || order.offlineOrderId}</title>
         <style>
-          body {
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            width: 280px;
-            margin: 0 auto;
-            padding: 10px;
+          @page {
+            size: 58mm auto;
+            margin: 1mm;
           }
-          .header { text-align: center; margin-bottom: 10px; }
-          .shop-name { font-size: 16px; font-weight: bold; }
-          .divider { border-top: 1px dashed #000; margin: 8px 0; }
+          @media print {
+            body {
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+          }
+          body {
+            font-family: 'Noto Sans Tamil', 'Latha', 'Tamil Sangam MN', Arial, sans-serif;
+            font-size: 11px;
+            width: 48mm;
+            margin: 0 auto;
+            padding: 2mm;
+            line-height: 1.3;
+          }
+          .center { text-align: center; }
+          .divider {
+            border-top: 1px dashed #000;
+            margin: 6px 0;
+          }
+          .divider-solid {
+            border-top: 1px solid #000;
+            margin: 6px 0;
+          }
           table { width: 100%; border-collapse: collapse; }
-          th, td { padding: 4px 2px; }
-          .total-row { font-weight: bold; font-size: 14px; }
-          .footer { text-align: center; margin-top: 10px; font-size: 10px; }
-          .offline-badge { background: #ff9800; color: white; padding: 2px 6px; font-size: 10px; }
+          .shop-name {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 3px;
+          }
+          .order-number {
+            font-size: 12px;
+            font-weight: 700;
+            background: #000;
+            color: #fff;
+            padding: 4px 8px;
+            display: inline-block;
+            border-radius: 3px;
+            margin: 4px 0;
+          }
+          .customer-name {
+            font-size: 12px;
+            font-weight: 700;
+          }
+          .customer-phone {
+            font-size: 10px;
+            color: #333;
+          }
+          .item-header th {
+            font-size: 10px;
+            padding: 4px 0;
+            border-bottom: 1px solid #000;
+            text-transform: uppercase;
+            font-weight: 700;
+          }
+          .payment-badge {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 4px 8px;
+            background: #f0f0f0;
+            border-radius: 3px;
+            display: inline-block;
+            margin: 4px 0;
+          }
+          .footer-text {
+            font-size: 9px;
+            color: #666;
+            margin-top: 6px;
+          }
+          .offline-badge {
+            background: #ff9800;
+            color: white;
+            padding: 2px 6px;
+            font-size: 9px;
+            border-radius: 3px;
+          }
         </style>
       </head>
       <body>
-        <div class="header">
-          <div class="shop-name">${this.shopName}</div>
-          <div>POS Receipt</div>
-          ${isOffline ? '<span class="offline-badge">OFFLINE</span>' : ''}
-        </div>
-
+        <div class="center shop-name">${shopName}</div>
+        <div class="center" style="font-size: 9px; color: #666;">POS Receipt</div>
+        ${isOffline ? '<div class="center"><span class="offline-badge">OFFLINE</span></div>' : ''}
         <div class="divider"></div>
 
-        <div>
-          <strong>Order:</strong> ${order.orderNumber || order.offlineOrderId}<br>
-          <strong>Date:</strong> ${new Date().toLocaleString('en-IN')}<br>
-          ${this.customerName ? `<strong>Customer:</strong> ${this.customerName}<br>` : ''}
-          ${this.customerPhone ? `<strong>Phone:</strong> ${this.customerPhone}<br>` : ''}
+        <div class="center">
+          <div class="order-number">#${order.orderNumber || order.offlineOrderId}</div>
         </div>
-
+        <div style="font-size: 9px; text-align: center; margin-bottom: 4px;">
+          ${new Date().toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: 'numeric'})} | ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+        </div>
         <div class="divider"></div>
+
+        ${this.customerName || this.customerPhone ? `
+        <div style="margin-bottom: 4px;">
+          ${this.customerName ? `<div class="customer-name">${this.customerName}</div>` : ''}
+          ${this.customerPhone ? `<div class="customer-phone">${this.customerPhone}</div>` : ''}
+        </div>
+        <div class="divider"></div>
+        ` : ''}
 
         <table>
           <thead>
-            <tr>
-              <th style="text-align:left;">Item</th>
-              <th style="text-align:center;">Qty</th>
-              <th style="text-align:right;">Amount</th>
+            <tr class="item-header">
+              <th style="text-align: left;">Item</th>
+              <th style="text-align: center;">Qty</th>
+              <th style="text-align: right;">Amt</th>
             </tr>
           </thead>
           <tbody>
             ${items}
           </tbody>
         </table>
+        <div class="divider-solid"></div>
 
-        <div class="divider"></div>
+        <table style="width: 100%;">
+          <tr>
+            <td style="font-size: 10px; font-weight: 600;">Items: ${this.cart.length}</td>
+            <td style="text-align: right; font-size: 10px; font-weight: 700;">₹${this.totalAmount.toFixed(0)}</td>
+          </tr>
+        </table>
 
-        <table>
-          <tr class="total-row">
-            <td>TOTAL</td>
-            <td style="text-align:right;">₹${this.totalAmount.toFixed(0)}</td>
+        <table style="width: 100%; margin-top: 6px; border-top: 1px solid #000; padding-top: 6px;">
+          <tr>
+            <td style="font-size: 14px; font-weight: 700;">TOTAL</td>
+            <td style="text-align: right; font-size: 16px; font-weight: 700;">₹${this.totalAmount.toFixed(0)}</td>
           </tr>
         </table>
 
         <div class="divider"></div>
-
-        <div style="text-align:center;">
-          <strong>Payment: ${this.getPaymentLabel(this.selectedPaymentMethod)}</strong>
+        <div class="center">
+          <span class="payment-badge">
+            ${this.getPaymentLabel(this.selectedPaymentMethod)}
+          </span>
         </div>
+        <div class="divider"></div>
 
-        <div class="footer">
-          <div class="divider"></div>
+        <div class="center footer-text">
           Thank you for your purchase!<br>
           Visit again
         </div>
