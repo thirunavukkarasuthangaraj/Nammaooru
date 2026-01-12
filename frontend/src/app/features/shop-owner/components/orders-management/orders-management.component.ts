@@ -1129,6 +1129,11 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
             color: #666;
             margin-top: 6px;
           }
+          .flex-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
         </style>
       </head>
       <body>
@@ -1164,19 +1169,15 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
         </table>
         <div class="divider-solid"></div>
 
-        <table style="width: 100%;">
-          <tr>
-            <td style="font-size: 10px; font-weight: 600;">Items: ${order.items?.length || 0}</td>
-            <td style="text-align: right; font-size: 10px; font-weight: 700;">₹${order.totalAmount || 0}</td>
-          </tr>
-        </table>
+        <div class="flex-row" style="font-size: 10px; padding: 4px 0;">
+          <span style="font-weight: 600;">Items: ${order.items?.length || 0}</span>
+          <span style="font-weight: 700;">₹${order.totalAmount || 0}</span>
+        </div>
 
-        <table style="width: 100%; margin-top: 6px; border-top: 1px solid #000; padding-top: 6px;">
-          <tr>
-            <td style="font-size: 14px; font-weight: 700;">TOTAL</td>
-            <td style="text-align: right; font-size: 16px; font-weight: 700;">₹${order.totalAmount || 0}</td>
-          </tr>
-        </table>
+        <div class="flex-row" style="border-top: 1px solid #000; padding-top: 6px; margin-top: 4px;">
+          <span style="font-size: 14px; font-weight: 700;">TOTAL</span>
+          <span style="font-size: 16px; font-weight: 700;">₹${order.totalAmount || 0}</span>
+        </div>
 
         <div class="divider"></div>
         <div class="center">
