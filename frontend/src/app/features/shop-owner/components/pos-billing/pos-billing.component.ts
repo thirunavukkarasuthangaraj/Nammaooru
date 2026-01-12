@@ -751,8 +751,8 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     `).join('');
 
     const isOffline = order.offlineOrderId && !order.id;
-    // Get shop name from localStorage first (most reliable), then fallback
-    const shopName = localStorage.getItem('shop_name') || this.shopName || 'Shop';
+    // Get shop name from order response (API), then localStorage, then fallback
+    const shopName = order.shopName || localStorage.getItem('shop_name') || this.shopName || 'Shop';
     const customerName = this.customerName || 'Walk-in Customer';
     const customerPhone = this.customerPhone || '';
 
