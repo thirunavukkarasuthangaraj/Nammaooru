@@ -739,6 +739,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
 
   /**
    * Generate receipt HTML - optimized for 58mm thermal paper
+   * Same layout as Order Management small print
    */
   private generateReceiptHtml(order: any): string {
     const items = this.cart.map(item => `
@@ -750,7 +751,10 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     `).join('');
 
     const isOffline = order.offlineOrderId && !order.id;
-    const shopName = this.shopName || localStorage.getItem('shop_name') || 'Shop';
+    // Get shop name from localStorage first (most reliable), then fallback
+    const shopName = localStorage.getItem('shop_name') || this.shopName || 'Shop';
+    const customerName = this.customerName || 'Walk-in Customer';
+    const customerPhone = this.customerPhone || '';
 
     return `
       <!DOCTYPE html>
@@ -788,6 +792,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
           }
           table { width: 100%; border-collapse: collapse; }
           .shop-name {
+            font-family: 'Noto Sans Tamil', 'Latha', 'Tamil Sangam MN', Arial, sans-serif;
             font-size: 14px;
             font-weight: 700;
             margin-bottom: 3px;
@@ -838,11 +843,16 @@ export class PosBillingComponent implements OnInit, OnDestroy {
             font-size: 9px;
             border-radius: 3px;
           }
+          .flex-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
         </style>
       </head>
       <body>
         <div class="center shop-name">${shopName}</div>
-        <div class="center" style="font-size: 9px; color: #666;">POS Receipt</div>
+        <div class="center" style="font-size: 9px; color: #666;">Order Receipt</div>
         ${isOffline ? '<div class="center"><span class="offline-badge">OFFLINE</span></div>' : ''}
         <div class="divider"></div>
 
@@ -854,20 +864,18 @@ export class PosBillingComponent implements OnInit, OnDestroy {
         </div>
         <div class="divider"></div>
 
-        ${this.customerName || this.customerPhone ? `
         <div style="margin-bottom: 4px;">
-          ${this.customerName ? `<div class="customer-name">${this.customerName}</div>` : ''}
-          ${this.customerPhone ? `<div class="customer-phone">${this.customerPhone}</div>` : ''}
+          <div class="customer-name">${customerName}</div>
+          ${customerPhone ? `<div class="customer-phone">${customerPhone}</div>` : ''}
         </div>
         <div class="divider"></div>
-        ` : ''}
 
         <table>
           <thead>
             <tr class="item-header">
-              <th style="text-align: left;">Item</th>
-              <th style="text-align: center;">Qty</th>
-              <th style="text-align: right;">Amt</th>
+              <th style="text-align: left;">ITEM</th>
+              <th style="text-align: center;">QTY</th>
+              <th style="text-align: right;">AMOUNT</th>
             </tr>
           </thead>
           <tbody>
@@ -876,31 +884,27 @@ export class PosBillingComponent implements OnInit, OnDestroy {
         </table>
         <div class="divider-solid"></div>
 
-        <table style="width: 100%;">
-          <tr>
-            <td style="font-size: 10px; font-weight: 600;">Items: ${this.cart.length}</td>
-            <td style="text-align: right; font-size: 10px; font-weight: 700;">₹${this.totalAmount.toFixed(0)}</td>
-          </tr>
-        </table>
+        <div class="flex-row" style="font-size: 10px; padding: 4px 0;">
+          <span style="font-weight: 600;">Items: ${this.cart.length}</span>
+          <span style="font-weight: 700;">₹${this.totalAmount.toFixed(0)}</span>
+        </div>
 
-        <table style="width: 100%; margin-top: 6px; border-top: 1px solid #000; padding-top: 6px;">
-          <tr>
-            <td style="font-size: 14px; font-weight: 700;">TOTAL</td>
-            <td style="text-align: right; font-size: 16px; font-weight: 700;">₹${this.totalAmount.toFixed(0)}</td>
-          </tr>
-        </table>
+        <div class="flex-row" style="border-top: 1px solid #000; padding-top: 6px; margin-top: 4px;">
+          <span style="font-size: 14px; font-weight: 700;">TOTAL</span>
+          <span style="font-size: 16px; font-weight: 700;">₹${this.totalAmount.toFixed(0)}</span>
+        </div>
 
         <div class="divider"></div>
         <div class="center">
           <span class="payment-badge">
-            ${this.getPaymentLabel(this.selectedPaymentMethod)}
+            ${this.selectedPaymentMethod === 'CASH' ? '💵 CASH' : this.selectedPaymentMethod === 'UPI' ? '📱 UPI' : '💳 CARD'}
           </span>
         </div>
         <div class="divider"></div>
 
         <div class="center footer-text">
-          Thank you for your purchase!<br>
-          Visit again
+          Thank you for your order!<br>
+          Printed: ${new Date().toLocaleString('en-IN')}
         </div>
       </body>
       </html>
