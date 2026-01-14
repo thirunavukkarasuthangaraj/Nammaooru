@@ -101,6 +101,12 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Set default date filter to today
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0]; // Format: yyyy-MM-dd
+    this.fromDate = todayStr;
+    this.toDate = todayStr;
+
     // Simple: Get shop ID from localStorage and load orders
     this.loadOrdersFromCache();
   }
@@ -128,20 +134,27 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     console.log('No cached shop ID - calling /api/shops/my-shop');
     this.http.get<any>(`${environment.apiUrl}/shops/my-shop`).subscribe({
       next: (response) => {
-        if (response.data && response.data.id) {
-          this.shopId = response.data.id;
-          localStorage.setItem('current_shop_id', response.data.id.toString());
+        // Handle both wrapped (response.data) and unwrapped responses
+        const shopData = response?.data || response;
+        if (shopData && shopData.id) {
+          this.shopId = shopData.id;
+          localStorage.setItem('current_shop_id', shopData.id.toString());
           // Save shop name for receipt printing
-          if (response.data.name) {
-            localStorage.setItem('shop_name', response.data.name);
+          const shopName = shopData.name || shopData.businessName;
+          if (shopName) {
+            localStorage.setItem('shop_name', shopName);
           }
           console.log('Got shop ID from API:', this.shopId);
           this.loadOrders();
           this.subscribeToWebSocketUpdates();
+        } else {
+          console.error('Invalid shop response:', response);
+          this.swal.error('Error', 'Failed to load shop information. Please try refreshing the page.');
         }
       },
       error: (error) => {
         console.error('Error getting shop ID:', error);
+        this.swal.error('Error', 'Failed to load shop information. Please check your connection.');
       }
     });
   }
@@ -340,6 +353,14 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
         this.orders = orders;
         this.updateOrderLists();
 
+        // Smart tab switching: if no real-time orders but there are history orders, switch to history tab
+        const realtimeCount = this.getRealtimeOrdersCount();
+        const historyCount = this.getHistoryOrdersCount();
+        if (realtimeCount === 0 && historyCount > 0 && this.mainTab === 'realtime') {
+          console.log('No real-time orders, switching to history tab');
+          this.switchMainTab('history');
+        }
+
         // Show success message if orders are loaded
         if (orders.length > 0) {
           this.successMessage = `Loaded ${orders.length} orders successfully`;
@@ -383,6 +404,9 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
 
     // Calculate comprehensive statistics
     this.calculateStatistics();
+
+    // Apply filter to show correct orders based on current tab/status selection
+    this.applyFilter();
   }
 
   calculateStatistics(): void {
@@ -456,7 +480,8 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
         matchesStatus = order.status === this.selectedStatus;
       }
 
-      const matchesDateRange = this.matchesDateRange(order);
+      // Only apply date filter for history tab, not for real-time orders
+      const matchesDateRange = this.mainTab === 'history' ? this.matchesDateRange(order) : true;
 
       return matchesSearch && matchesStatus && matchesDateRange;
     });

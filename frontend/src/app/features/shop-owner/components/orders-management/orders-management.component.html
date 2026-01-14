@@ -176,15 +176,15 @@
           <div class="order-time">{{ formatOrderTime(order.createdAt) }}</div>
         </div>
         <div class="header-actions">
-          <button class="header-btn print-header-btn" (click)="printOrder(order.id)" title="Print Large (A4)">
+          <!-- <button class="header-btn print-header-btn" (click)="printOrder(order.id)" title="Print Large (A4)">
+            Print
+          </button> -->
+          <button class="header-btn small-print-btn" (click)="printOrderSmall(order.id)" title="Print Small (Receipt/Thermal)">
             Print
           </button>
-          <button class="header-btn small-print-btn" (click)="printOrderSmall(order.id)" title="Print Small (Receipt/Thermal)">
-            Small
-          </button>
-          <button class="header-btn details-header-btn" (click)="viewOrderDetails(order)" title="View Details">
+          <!-- <button class="header-btn details-header-btn" (click)="viewOrderDetails(order)" title="View Details">
             View
-          </button>
+          </button> -->
           <!-- Delivery Type Badge -->
           <div *ngIf="order.deliveryType" class="delivery-type-badge"
                [ngClass]="order.deliveryType === 'SELF_PICKUP' ? 'self-pickup-badge' : 'home-delivery-badge'">

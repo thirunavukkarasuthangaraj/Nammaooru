@@ -209,7 +209,7 @@ export class MyProductsComponent implements OnInit, OnDestroy {
               isAvailable: p.isAvailable,
               status: p.status,
               category: p.masterProduct?.category?.name,
-              unit: p.masterProduct?.baseUnit,
+              unit: p.baseUnit || p.masterProduct?.baseUnit,
               sku: p.masterProduct?.sku,
               imageUrl: p.primaryImageUrl,
               masterProductId: p.masterProduct?.id,

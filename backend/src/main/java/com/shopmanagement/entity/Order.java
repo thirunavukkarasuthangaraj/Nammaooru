@@ -64,7 +64,10 @@ public class Order {
     
     @Column(precision = 10, scale = 2)
     private BigDecimal discountAmount;
-    
+
+    @Column(length = 50)
+    private String couponCode;
+
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal totalAmount;
     

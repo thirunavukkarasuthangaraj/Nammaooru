@@ -56,9 +56,12 @@ public class OrderRequest {
     private String deliveryContactName;
     
     private LocalDateTime estimatedDeliveryTime;
-    
+
     private BigDecimal discountAmount;
-    
+
+    @Size(max = 50, message = "Coupon code cannot exceed 50 characters")
+    private String couponCode;
+
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
