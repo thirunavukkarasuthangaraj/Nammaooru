@@ -1,8 +1,9 @@
-import { NgModule } from '@angular/core';
+import { NgModule, isDevMode } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
 import { ReactiveFormsModule, FormsModule } from '@angular/forms';
+import { ServiceWorkerModule } from '@angular/service-worker';
 
 // Firebase
 import { AngularFireModule } from '@angular/fire/compat';
@@ -139,7 +140,13 @@ import { ShopModule } from './features/shop/shop.module';
       messagingSenderId: "123456789",
       appId: "1:123456789:web:demo"
     }),
-    AngularFireMessagingModule
+    AngularFireMessagingModule,
+
+    // Service Worker for PWA/Offline support
+    ServiceWorkerModule.register('ngsw-worker.js', {
+      enabled: !isDevMode(),
+      registrationStrategy: 'registerWhenStable:30000'
+    })
   ],
   providers: [
     {
