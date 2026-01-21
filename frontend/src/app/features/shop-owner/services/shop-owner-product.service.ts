@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
-import { catchError, switchMap } from 'rxjs/operators';
+import { Observable, of, Subject } from 'rxjs';
+import { catchError, switchMap, debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
 
 export interface ShopProduct {
@@ -524,5 +524,34 @@ export class ShopOwnerProductService {
           return of(mockProduct);
         })
       );
+  }
+
+  // Real-time master product suggestions for autocomplete
+  getMasterProductSuggestions(query: string, limit: number = 10): Observable<any[]> {
+    if (!query || query.trim().length < 2) {
+      return of([]);
+    }
+
+    const params = new HttpParams()
+      .set('query', query.trim())
+      .set('limit', limit.toString());
+
+    return this.http.get<{data: any[]}>(`${this.apiUrl}/products/master/suggestions`, { params })
+      .pipe(
+        switchMap(response => of(response.data || [])),
+        catchError(error => {
+          console.error('Error fetching suggestions:', error);
+          return of([]);
+        })
+      );
+  }
+
+  // Create a debounced suggestion stream for real-time search
+  createSuggestionStream(searchSubject: Subject<string>, limit: number = 10): Observable<any[]> {
+    return searchSubject.pipe(
+      debounceTime(300),
+      distinctUntilChanged(),
+      switchMap(query => this.getMasterProductSuggestions(query, limit))
+    );
   }
 }

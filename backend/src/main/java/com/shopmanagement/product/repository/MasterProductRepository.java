@@ -106,4 +106,20 @@ public interface MasterProductRepository extends JpaRepository<MasterProduct, Lo
     // Find all products ordered by category sort order, then by product name
     @Query("SELECT p FROM MasterProduct p JOIN p.category c ORDER BY c.sortOrder ASC, p.name ASC")
     Page<MasterProduct> findAllOrderedByCategoryPriority(Pageable pageable);
+
+    // Suggestions - lightweight search for autocomplete
+    @Query(value = "SELECT * FROM master_products p WHERE p.status = 'ACTIVE' AND (" +
+           "LOWER(p.name) LIKE :pattern OR " +
+           "LOWER(p.name_tamil) LIKE :pattern OR " +
+           "LOWER(p.sku) LIKE :pattern OR " +
+           "LOWER(p.barcode) LIKE :pattern OR " +
+           "LOWER(p.brand) LIKE :pattern OR " +
+           "LOWER(p.tags) LIKE :pattern) " +
+           "ORDER BY CASE " +
+           "  WHEN LOWER(p.name) LIKE :pattern THEN 1 " +
+           "  WHEN LOWER(p.sku) LIKE :pattern THEN 2 " +
+           "  WHEN LOWER(p.barcode) LIKE :pattern THEN 3 " +
+           "  ELSE 4 END, p.name " +
+           "LIMIT :limit", nativeQuery = true)
+    List<MasterProduct> findSuggestions(@Param("pattern") String pattern, @Param("limit") int limit);
 }

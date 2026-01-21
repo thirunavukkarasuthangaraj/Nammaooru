@@ -269,6 +269,12 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       ]
     },
     {
+      category: 'Inventory',
+      items: [
+        { title: 'Stock Management', icon: 'inventory', route: '/shop-owner/inventory', badge: null }
+      ]
+    },
+    {
       category: 'Thiru Software',
       items: [
         { title: 'Shop Profile', icon: 'store', route: '/shop-owner/profile', badge: null }

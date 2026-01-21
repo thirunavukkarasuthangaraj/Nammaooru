@@ -59,17 +59,24 @@ export class ShopContextService {
   loadShopForCurrentUser(): void {
     this.loadingSubject.next(true);
     this.errorSubject.next(null);
-    
+
     // First, try to get the shop for the logged-in user
-    this.http.get<Shop>(`${this.apiUrl}/shops/my-shop`).pipe(
-      tap(shop => {
+    // API returns ApiResponse<ShopResponse>, so we need to extract data
+    this.http.get<any>(`${this.apiUrl}/shops/my-shop`).pipe(
+      tap(response => {
+        // Extract shop from ApiResponse wrapper (response.data) or use directly if not wrapped
+        const shop = response?.data || response;
         console.log('Shop loaded for current user:', shop);
         this.shopSubject.next(shop);
         this.loadingSubject.next(false);
         // Cache shop ID and name for quick access
         if (shop && shop.id) {
           localStorage.setItem('current_shop_id', shop.id.toString());
-          localStorage.setItem('shop_name', shop.name || shop.businessName || '');
+          const shopName = shop.name || shop.businessName;
+          console.log('Saving shop name to localStorage:', shopName);
+          if (shopName && shopName.trim()) {
+            localStorage.setItem('shop_name', shopName.trim());
+          }
         }
       }),
       catchError(error => {
@@ -104,7 +111,10 @@ export class ShopContextService {
           console.log('Shop found by owner username:', userShop);
           this.shopSubject.next(userShop);
           localStorage.setItem('current_shop_id', userShop.id.toString());
-          localStorage.setItem('shop_name', userShop.name || userShop.businessName || '');
+          const shopName = userShop.name || userShop.businessName;
+          if (shopName && shopName.trim()) {
+            localStorage.setItem('shop_name', shopName.trim());
+          }
         } else {
           // For shopowner1, use shop ID 11 as fallback
           if (username === 'shopowner1') {
@@ -129,12 +139,19 @@ export class ShopContextService {
    * Get shop by ID
    */
   getShopById(shopId: number): Observable<Shop | null> {
-    return this.http.get<Shop>(`${this.apiUrl}/shops/${shopId}`).pipe(
-      tap(shop => {
+    return this.http.get<any>(`${this.apiUrl}/shops/${shopId}`).pipe(
+      map(response => {
+        // Extract shop from ApiResponse wrapper (response.data) or use directly if not wrapped
+        const shop = response?.data || response;
         console.log('Shop loaded by ID:', shop);
         this.shopSubject.next(shop);
         localStorage.setItem('current_shop_id', shop.id.toString());
-        localStorage.setItem('shop_name', shop.name || shop.businessName || '');
+        const shopName = shop.name || shop.businessName;
+        console.log('Saving shop name to localStorage:', shopName);
+        if (shopName && shopName.trim()) {
+          localStorage.setItem('shop_name', shopName.trim());
+        }
+        return shop;
       }),
       catchError(error => {
         console.error('Error loading shop by ID:', error);

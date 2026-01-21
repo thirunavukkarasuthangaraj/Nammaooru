@@ -292,6 +292,21 @@ public class MasterProductService {
     }
 
 public MasterProductResponse updateVoiceFields(Long id, String nameTamil, String tags) {        log.info("Updating voice fields for product {}: nameTamil={}, tags={}", id, nameTamil, tags);        MasterProduct product = masterProductRepository.findById(id)                .orElseThrow(() -> new RuntimeException("Master product not found: " + id));                if (nameTamil != null) {            product.setNameTamil(nameTamil);        }        if (tags != null) {            product.setTags(tags);        }        product.setUpdatedBy(getCurrentUsername());                MasterProduct saved = masterProductRepository.save(product);        return productMapper.toResponse(saved);    }
+
+    @Transactional(readOnly = true)
+    public List<MasterProductResponse> getSuggestions(String query, int limit) {
+        log.info("Getting suggestions for query: {} with limit: {}", query, limit);
+        if (query == null || query.trim().isEmpty()) {
+            return List.of();
+        }
+
+        String searchPattern = "%" + query.toLowerCase().trim() + "%";
+        List<MasterProduct> products = masterProductRepository.findSuggestions(searchPattern, limit);
+
+        return products.stream()
+                .map(productMapper::toResponse)
+                .toList();
+    }
     private String getCurrentUsername() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         return authentication != null ? authentication.getName() : "system";

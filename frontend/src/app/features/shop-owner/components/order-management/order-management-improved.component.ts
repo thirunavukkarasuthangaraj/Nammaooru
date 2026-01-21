@@ -128,7 +128,7 @@ export class OrderManagementImprovedComponent implements OnInit, OnDestroy {
       ['CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY'].includes(order.status)
     );
     this.completedOrders = orders.filter(order =>
-      ['DELIVERED', 'CANCELLED'].includes(order.status)
+      ['DELIVERED', 'CANCELLED', 'SELF_PICKUP_COLLECTED'].includes(order.status)
     );
   }
 
@@ -143,11 +143,15 @@ export class OrderManagementImprovedComponent implements OnInit, OnDestroy {
     // Basic counts
     const totalOrders = todayOrders.length;
     const pendingOrders = todayOrders.filter(o => o.status === 'PENDING').length;
-    const completedOrders = todayOrders.filter(o => o.status === 'DELIVERED').length;
+    const completedOrders = todayOrders.filter(o =>
+      ['DELIVERED', 'SELF_PICKUP_COLLECTED'].includes(o.status)
+    ).length;
     const cancelledOrders = todayOrders.filter(o => o.status === 'CANCELLED').length;
 
-    // Financial metrics
-    const deliveredOrders = todayOrders.filter(o => o.status === 'DELIVERED');
+    // Financial metrics (include POS orders in revenue)
+    const deliveredOrders = todayOrders.filter(o =>
+      ['DELIVERED', 'SELF_PICKUP_COLLECTED'].includes(o.status)
+    );
     const cancelledOrdersList = todayOrders.filter(o => o.status === 'CANCELLED');
 
     const revenue = deliveredOrders.reduce((sum, order) => sum + order.totalAmount, 0);

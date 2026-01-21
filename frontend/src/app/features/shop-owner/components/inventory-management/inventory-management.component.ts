@@ -1,18 +1,23 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { FormControl, FormGroup, FormBuilder, Validators } from '@angular/forms';
-import { ShopProductService } from '@core/services/shop-product.service';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { AuthService } from '@core/services/auth.service';
-import { finalize } from 'rxjs/operators';
+import { finalize, takeUntil } from 'rxjs/operators';
+import { Subject } from 'rxjs';
+import { environment } from '../../../../../environments/environment';
 
 interface InventoryItem {
   id: number;
   productName: string;
+  productNameTamil: string;
   category: string;
+  categoryTamil: string;
   currentStock: number;
   minStock: number;
   maxStock: number;
@@ -37,6 +42,16 @@ interface InventoryItem {
           <p class="page-subtitle">Monitor and manage your stock levels</p>
         </div>
         <div class="header-actions">
+          <!-- Language Toggle -->
+          <div class="language-toggle-container">
+            <span class="lang-label" [class.active]="!showTamil">EN</span>
+            <mat-slide-toggle
+              [(ngModel)]="showTamil"
+              color="primary"
+              class="language-toggle">
+            </mat-slide-toggle>
+            <span class="lang-label tamil" [class.active]="showTamil">தமிழ்</span>
+          </div>
           <button mat-raised-button color="primary" (click)="openBulkUpdate()">
             <mat-icon>system_update_alt</mat-icon>
             Bulk Update
@@ -162,12 +177,12 @@ interface InventoryItem {
               
               <!-- Product Column -->
               <ng-container matColumnDef="product">
-                <th mat-header-cell *matHeaderCellDef mat-sort-header>Product</th>
+                <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ showTamil ? 'பொருள்' : 'Product' }}</th>
                 <td mat-cell *matCellDef="let item">
                   <div class="product-cell">
                     <div class="product-info">
-                      <h4>{{ item.productName }}</h4>
-                      <p>{{ item.category }}</p>
+                      <h4 [class.tamil-text]="showTamil">{{ showTamil && item.productNameTamil ? item.productNameTamil : item.productName }}</h4>
+                      <p [class.tamil-text]="showTamil">{{ showTamil && item.categoryTamil ? item.categoryTamil : item.category }}</p>
                     </div>
                   </div>
                 </td>
@@ -367,6 +382,46 @@ interface InventoryItem {
     .header-actions {
       display: flex;
       gap: 12px;
+      align-items: center;
+    }
+
+    .language-toggle-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 8px 16px;
+      border-radius: 24px;
+      margin-right: 8px;
+      box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    }
+
+    .lang-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.6);
+      transition: all 0.3s ease;
+    }
+
+    .lang-label.active {
+      color: #ffffff;
+      text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+    }
+
+    .lang-label.tamil {
+      font-family: 'Noto Sans Tamil', 'Latha', sans-serif;
+    }
+
+    .language-toggle ::ng-deep .mat-mdc-slide-toggle .mdc-switch__track {
+      background-color: rgba(255, 255, 255, 0.3) !important;
+    }
+
+    .language-toggle ::ng-deep .mat-mdc-slide-toggle.mat-mdc-slide-toggle-checked .mdc-switch__track {
+      background-color: rgba(255, 255, 255, 0.5) !important;
+    }
+
+    .tamil-text {
+      font-family: 'Noto Sans Tamil', 'Latha', 'Tamil Sangam MN', sans-serif;
     }
 
     .summary-cards {
@@ -646,99 +701,35 @@ interface InventoryItem {
     }
   `]
 })
-export class InventoryManagementComponent implements OnInit {
+export class InventoryManagementComponent implements OnInit, OnDestroy {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
+
+  private destroy$ = new Subject<void>();
+  private apiUrl = environment.apiUrl;
 
   displayedColumns: string[] = ['product', 'currentStock', 'minMaxStock', 'status', 'pricing', 'lastRestocked', 'actions'];
   dataSource = new MatTableDataSource<InventoryItem>();
   searchControl = new FormControl();
-  
+
   selectedCategory = '';
   selectedStatus = '';
   showOnlyLowStock = false;
   showOnlyCritical = false;
   showQuickUpdate = false;
+  showTamil = false;
 
   quickUpdateForm: FormGroup;
 
-  categories = ['Groceries', 'Vegetables', 'Fruits', 'Dairy', 'Bakery', 'Beverages'];
-
-  // Mock data
-  inventoryData: InventoryItem[] = [
-    {
-      id: 1,
-      productName: 'Organic Rice',
-      category: 'Groceries',
-      currentStock: 50,
-      minStock: 20,
-      maxStock: 100,
-      unit: 'kg',
-      price: 120,
-      cost: 90,
-      supplier: 'ABC Suppliers',
-      lastRestocked: new Date('2024-01-10'),
-      status: 'healthy',
-      location: 'Aisle 1',
-      reorderPoint: 25
-    },
-    {
-      id: 2,
-      productName: 'Fresh Tomatoes',
-      category: 'Vegetables',
-      currentStock: 3,
-      minStock: 10,
-      maxStock: 50,
-      unit: 'kg',
-      price: 40,
-      cost: 25,
-      supplier: 'Local Farm',
-      lastRestocked: new Date('2024-01-08'),
-      status: 'critical',
-      location: 'Cold Storage',
-      reorderPoint: 8
-    },
-    {
-      id: 3,
-      productName: 'Whole Wheat Bread',
-      category: 'Bakery',
-      currentStock: 15,
-      minStock: 10,
-      maxStock: 30,
-      unit: 'piece',
-      price: 35,
-      cost: 20,
-      supplier: 'Daily Bread Co',
-      lastRestocked: new Date('2024-01-12'),
-      status: 'low',
-      location: 'Bakery Section',
-      reorderPoint: 12
-    },
-    {
-      id: 4,
-      productName: 'Premium Honey',
-      category: 'Groceries',
-      currentStock: 85,
-      minStock: 15,
-      maxStock: 40,
-      unit: 'bottle',
-      price: 350,
-      cost: 200,
-      supplier: 'Mountain Honey',
-      lastRestocked: new Date('2024-01-01'),
-      status: 'overstock',
-      location: 'Aisle 3',
-      reorderPoint: 20
-    }
-  ];
-
+  categories: string[] = [];
+  inventoryData: InventoryItem[] = [];
   loading = false;
 
   constructor(
     private fb: FormBuilder,
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
-    private shopProductService: ShopProductService,
+    private http: HttpClient,
     private authService: AuthService
   ) {
     this.dataSource.data = [];
@@ -755,58 +746,84 @@ export class InventoryManagementComponent implements OnInit {
     this.loadInventoryData();
   }
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
   loadInventoryData(): void {
     this.loading = true;
-    const currentUser = this.authService.getCurrentUser();
-    
-    if (!currentUser || !currentUser.shopId) {
-      this.snackBar.open('Shop information not found', 'Close', { duration: 3000 });
-      this.loading = false;
-      // Fallback to mock data if no shop ID
-      this.dataSource.data = this.inventoryData;
-      return;
-    }
+    console.log('Loading inventory data from /shop-products/my-products');
 
-    this.shopProductService.getShopProducts(currentUser.shopId, 0, 100)
+    const params = new HttpParams()
+      .set('page', '0')
+      .set('size', '100000');
+
+    this.http.get<any>(`${this.apiUrl}/shop-products/my-products`, { params })
       .pipe(
+        takeUntil(this.destroy$),
         finalize(() => this.loading = false)
       )
       .subscribe({
         next: (response) => {
+          console.log('Inventory API response:', response);
+
+          let products: any[] = [];
+          if (response && response.data) {
+            if (response.data.content) {
+              products = response.data.content;
+            } else if (Array.isArray(response.data)) {
+              products = response.data;
+            }
+          }
+
           // Map API response to InventoryItem interface
-          const inventoryItems = response.content.map((item: any) => ({
-            id: item.id,
-            productName: item.masterProduct.name,
-            category: item.masterProduct.category?.name || 'Uncategorized',
-            currentStock: item.stockQuantity,
-            minStock: item.lowStockThreshold || 10,
-            maxStock: item.maxStockThreshold || 100,
-            unit: item.unit || 'piece',
-            price: item.sellingPrice,
-            cost: item.costPrice || item.sellingPrice * 0.7,
-            supplier: item.supplier || 'Local Supplier',
-            lastRestocked: new Date(item.lastRestockedAt || item.updatedAt),
-            status: this.getStockStatus(item.stockQuantity, item.lowStockThreshold || 10),
-            location: item.location || 'Main Store',
-            reorderPoint: item.lowStockThreshold || 10
-          }));
-          
+          const inventoryItems = products.map((item: any) => {
+            const currentStock = item.stockQuantity || 0;
+            const minStock = item.minStockLevel || 10;
+            const maxStock = item.maxStockLevel || 100;
+            const price = item.price || item.sellingPrice || 0;
+
+            return {
+              id: item.id,
+              productName: item.customName || item.displayName || item.masterProduct?.name || 'Unknown Product',
+              productNameTamil: item.customNameTamil || item.displayNameTamil || item.nameTamil || item.masterProduct?.nameTamil || '',
+              category: item.masterProduct?.category?.name || item.category || 'Uncategorized',
+              categoryTamil: item.masterProduct?.category?.nameTamil || '',
+              currentStock: currentStock,
+              minStock: minStock,
+              maxStock: maxStock,
+              unit: item.masterProduct?.baseUnit || item.unit || 'piece',
+              price: price,
+              cost: item.costPrice || Math.round(price * 0.7),
+              supplier: 'Local Supplier',
+              lastRestocked: new Date(item.updatedAt || new Date()),
+              status: this.getStockStatus(currentStock, minStock, maxStock),
+              location: 'Main Store',
+              reorderPoint: minStock
+            };
+          });
+
           this.inventoryData = inventoryItems;
           this.dataSource.data = this.inventoryData;
+
+          // Extract unique categories
+          const categorySet = new Set(inventoryItems.map(item => item.category));
+          this.categories = Array.from(categorySet).filter(c => c !== 'Uncategorized');
+
+          console.log('Loaded inventory data:', inventoryItems.length, 'items');
         },
         error: (error) => {
           console.error('Error loading inventory:', error);
-          this.snackBar.open('Failed to load inventory. Showing sample data.', 'Close', { duration: 3000 });
-          // Fallback to mock data on error
-          this.dataSource.data = this.inventoryData;
+          this.snackBar.open('Failed to load inventory data', 'Close', { duration: 3000 });
         }
       });
   }
 
-  private getStockStatus(currentStock: number, minStock: number): 'healthy' | 'low' | 'critical' | 'overstock' {
+  private getStockStatus(currentStock: number, minStock: number, maxStock: number): 'healthy' | 'low' | 'critical' | 'overstock' {
     if (currentStock === 0) return 'critical';
     if (currentStock <= minStock) return 'low';
-    if (currentStock > minStock * 3) return 'overstock';
+    if (currentStock > maxStock) return 'overstock';
     return 'healthy';
   }
 
@@ -838,19 +855,19 @@ export class InventoryManagementComponent implements OnInit {
   }
 
   getHealthyStock(): number {
-    return this.inventoryData.filter(item => item.status === 'healthy').length;
+    return this.dataSource.filteredData.filter(item => item.status === 'healthy').length;
   }
 
   getLowStock(): number {
-    return this.inventoryData.filter(item => item.status === 'low').length;
+    return this.dataSource.filteredData.filter(item => item.status === 'low').length;
   }
 
   getCriticalStock(): number {
-    return this.inventoryData.filter(item => item.status === 'critical').length;
+    return this.dataSource.filteredData.filter(item => item.status === 'critical').length;
   }
 
   getOverstock(): number {
-    return this.inventoryData.filter(item => item.status === 'overstock').length;
+    return this.dataSource.filteredData.filter(item => item.status === 'overstock').length;
   }
 
   getStockClass(item: InventoryItem): string {

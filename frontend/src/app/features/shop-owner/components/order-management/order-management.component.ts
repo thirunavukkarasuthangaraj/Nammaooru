@@ -194,11 +194,11 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
 
   private categorizeOrders(orders: Order[]): void {
     this.pendingOrders = orders.filter(order => order.status === 'PENDING');
-    this.activeOrders = orders.filter(order => 
+    this.activeOrders = orders.filter(order =>
       ['CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY'].includes(order.status)
     );
-    this.completedOrders = orders.filter(order => 
-      ['DELIVERED', 'CANCELLED'].includes(order.status)
+    this.completedOrders = orders.filter(order =>
+      ['DELIVERED', 'CANCELLED', 'SELF_PICKUP_COLLECTED'].includes(order.status)
     );
   }
 
@@ -211,9 +211,11 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
     
     const totalOrders = todayOrders.length;
     const pendingOrders = todayOrders.filter(o => o.status === 'PENDING').length;
-    const completedOrders = todayOrders.filter(o => o.status === 'DELIVERED').length;
+    const completedOrders = todayOrders.filter(o =>
+      ['DELIVERED', 'SELF_PICKUP_COLLECTED'].includes(o.status)
+    ).length;
     const revenue = todayOrders
-      .filter(o => o.status === 'DELIVERED')
+      .filter(o => ['DELIVERED', 'SELF_PICKUP_COLLECTED'].includes(o.status))
       .reduce((sum, order) => sum + order.totalAmount, 0);
     
     this.todayStats = {

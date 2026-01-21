@@ -190,22 +190,19 @@ export class AuthService {
   logout(): void {
     const token = this.getToken();
 
-    // Call logout API if token exists
+    // Perform local logout immediately (don't wait for API)
+    this.performLocalLogout();
+
+    // Call logout API in background to blacklist token on server
     if (token) {
       this.http.post(`${this.API_URL}/logout`, {}, { withCredentials: true }).subscribe({
         next: () => {
-          console.log('Logout successful');
+          console.log('Logout API: Token blacklisted on server');
         },
         error: (error) => {
           console.error('Logout API error:', error);
-          // Continue with local logout even if API fails
-        },
-        complete: () => {
-          this.performLocalLogout();
         }
       });
-    } else {
-      this.performLocalLogout();
     }
   }
   
