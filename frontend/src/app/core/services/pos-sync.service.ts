@@ -191,7 +191,9 @@ export class PosSyncService implements OnDestroy {
   /**
    * Create POS order (online or offline)
    */
-  async createPosOrder(orderData: any, shopId: number): Promise<{ success: boolean; order?: any; offline?: boolean }> {
+  async createPosOrder(orderData: any, shopId: number, shopName?: string): Promise<{ success: boolean; order?: any; offline?: boolean }> {
+    // Try to get shop name from localStorage if not provided
+    const resolvedShopName = shopName || localStorage.getItem('shop_name') || 'Shop';
     if (navigator.onLine) {
       // Online - send directly to server
       try {
@@ -236,6 +238,9 @@ export class PosSyncService implements OnDestroy {
       success: true,
       order: {
         orderNumber: offlineOrder.offlineOrderId,
+        shopName: resolvedShopName,
+        customerName: orderData.customerName || 'Walk-in Customer',
+        customerPhone: orderData.customerPhone || '',
         ...offlineOrder
       },
       offline: true
