@@ -76,18 +76,18 @@
       </div>
 
       <div class="header-right">
-        <!-- Global Search -->
-        <div class="search-container" *ngIf="!isMobile">
+        <!-- Global Search (hidden on POS Billing page) -->
+        <div class="search-container" *ngIf="!isMobile && shouldShowGlobalSearch()">
           <mat-form-field class="search-field" appearance="outline">
             <mat-icon matPrefix>search</mat-icon>
-            <input 
-              matInput 
+            <input
+              matInput
               placeholder="Search shops, products, orders..."
               [(ngModel)]="searchQuery"
               (input)="onGlobalSearch($event)">
-            <button 
-              matSuffix 
-              mat-icon-button 
+            <button
+              matSuffix
+              mat-icon-button
               *ngIf="searchQuery"
               (click)="clearSearch()">
               <mat-icon>clear</mat-icon>

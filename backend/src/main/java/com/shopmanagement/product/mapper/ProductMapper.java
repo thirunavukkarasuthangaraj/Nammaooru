@@ -42,6 +42,8 @@ public interface ProductMapper {
     @Mapping(target = "displayName", expression = "java(shopProduct.getDisplayName())")
     @Mapping(target = "displayNameTamil", expression = "java(getDisplayNameTamil(shopProduct))")
     @Mapping(target = "nameTamil", expression = "java(getNameTamil(shopProduct))")
+    @Mapping(target = "sku", expression = "java(getSku(shopProduct))")
+    @Mapping(target = "barcode", expression = "java(getBarcode(shopProduct))")
     @Mapping(target = "displayDescription", expression = "java(shopProduct.getDisplayDescription())")
     @Mapping(target = "primaryImageUrl", expression = "java(shopProduct.getPrimaryShopImageUrl())")
     @Mapping(target = "inStock", expression = "java(shopProduct.isInStock())")
@@ -131,6 +133,28 @@ public interface ProductMapper {
         if (shopProduct == null) return null;
         if (shopProduct.getMasterProduct() != null) {
             return shopProduct.getMasterProduct().getNameTamil();
+        }
+        return null;
+    }
+
+    /**
+     * Get SKU - convenience method that returns master product SKU
+     */
+    default String getSku(ShopProduct shopProduct) {
+        if (shopProduct == null) return null;
+        if (shopProduct.getMasterProduct() != null) {
+            return shopProduct.getMasterProduct().getSku();
+        }
+        return null;
+    }
+
+    /**
+     * Get barcode - convenience method that returns master product barcode
+     */
+    default String getBarcode(ShopProduct shopProduct) {
+        if (shopProduct == null) return null;
+        if (shopProduct.getMasterProduct() != null) {
+            return shopProduct.getMasterProduct().getBarcode();
         }
         return null;
     }

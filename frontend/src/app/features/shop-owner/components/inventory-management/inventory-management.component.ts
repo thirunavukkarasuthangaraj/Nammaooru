@@ -822,7 +822,8 @@ export class InventoryManagementComponent implements OnInit, OnDestroy {
 
   private getStockStatus(currentStock: number, minStock: number, maxStock: number): 'healthy' | 'low' | 'critical' | 'overstock' {
     if (currentStock === 0) return 'critical';
-    if (currentStock <= minStock) return 'low';
+    if (currentStock <= minStock * 0.5) return 'critical';  // Below 50% of min stock is critical
+    if (currentStock <= minStock * 1.5) return 'low';  // Up to 150% of min stock is low
     if (currentStock > maxStock) return 'overstock';
     return 'healthy';
   }

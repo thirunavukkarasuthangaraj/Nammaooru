@@ -78,6 +78,22 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   // Language toggle
   showTamil: boolean = false;
 
+  // Quick Edit state
+  editingProduct: CachedProduct | null = null;
+  editPrice: number = 0;
+  editMrp: number = 0;
+  editStock: number = 0;
+  editBarcode: string = '';
+  isSavingEdit: boolean = false;
+
+  // Quick Add Custom Product state
+  showQuickAddDialog: boolean = false;
+  customProductName: string = '';
+  customProductPrice: number = 0;
+  customProductMrp: number = 0;
+  customProductQty: number = 1;
+  private customProductIdCounter: number = -1; // Negative IDs for custom products
+
   private apiUrl = environment.apiUrl;
 
   constructor(
@@ -1046,5 +1062,179 @@ export class PosBillingComponent implements OnInit, OnDestroy {
    */
   toggleCustomerForm(): void {
     this.showCustomerForm = !this.showCustomerForm;
+  }
+
+  /**
+   * Open quick edit dialog for a product
+   */
+  openQuickEdit(product: CachedProduct, event: Event): void {
+    event.stopPropagation(); // Prevent adding to cart
+    this.editingProduct = product;
+    this.editPrice = product.price;
+    this.editMrp = product.originalPrice || product.price;
+    this.editStock = product.stock;
+    this.editBarcode = product.barcode || '';
+  }
+
+  /**
+   * Close quick edit dialog
+   */
+  closeQuickEdit(): void {
+    this.editingProduct = null;
+    this.editPrice = 0;
+    this.editMrp = 0;
+    this.editStock = 0;
+    this.editBarcode = '';
+  }
+
+  /**
+   * Save quick edit changes
+   */
+  async saveQuickEdit(): Promise<void> {
+    if (!this.editingProduct) return;
+
+    // Validation
+    if (this.editPrice <= 0) {
+      this.swal.error('Invalid Price', 'Price must be greater than 0');
+      return;
+    }
+    if (this.editMrp < this.editPrice) {
+      this.swal.error('Invalid MRP', 'MRP cannot be less than selling price');
+      return;
+    }
+    if (this.editStock < 0) {
+      this.swal.error('Invalid Stock', 'Stock cannot be negative');
+      return;
+    }
+
+    this.isSavingEdit = true;
+
+    try {
+      const productId = this.editingProduct.id;
+      const updateData = {
+        price: this.editPrice,
+        originalPrice: this.editMrp,
+        stockQuantity: this.editStock,
+        barcode: this.editBarcode
+      };
+
+      // Call API to update
+      await this.http.patch<any>(
+        `${this.apiUrl}/shop-products/${productId}/quick-update`,
+        updateData
+      ).toPromise();
+
+      // Update local product in list
+      const productIndex = this.products.findIndex(p => p.id === productId);
+      if (productIndex !== -1) {
+        this.products[productIndex].price = this.editPrice;
+        this.products[productIndex].originalPrice = this.editMrp;
+        this.products[productIndex].stock = this.editStock;
+        this.products[productIndex].barcode = this.editBarcode;
+      }
+
+      // Update filtered products
+      const filteredIndex = this.filteredProducts.findIndex(p => p.id === productId);
+      if (filteredIndex !== -1) {
+        this.filteredProducts[filteredIndex].price = this.editPrice;
+        this.filteredProducts[filteredIndex].originalPrice = this.editMrp;
+        this.filteredProducts[filteredIndex].stock = this.editStock;
+        this.filteredProducts[filteredIndex].barcode = this.editBarcode;
+      }
+
+      // Update cart if product is in cart
+      const cartItem = this.cart.find(item => item.product.id === productId);
+      if (cartItem) {
+        cartItem.product.price = this.editPrice;
+        cartItem.product.originalPrice = this.editMrp;
+        cartItem.product.stock = this.editStock;
+        cartItem.unitPrice = this.editPrice;
+        cartItem.mrp = this.editMrp;
+        cartItem.discount = this.editMrp - this.editPrice;
+        cartItem.total = cartItem.quantity * this.editPrice;
+        this.calculateTotals();
+      }
+
+      // Update local cache
+      await this.offlineStorage.saveProducts(this.products, this.shopId);
+
+      this.swal.success('Updated', 'Product updated successfully');
+      this.closeQuickEdit();
+
+    } catch (error: any) {
+      console.error('Failed to update product:', error);
+      this.swal.error('Error', error.message || 'Failed to update product');
+    } finally {
+      this.isSavingEdit = false;
+    }
+  }
+
+  /**
+   * Open quick add dialog for custom product
+   */
+  openQuickAdd(): void {
+    this.showQuickAddDialog = true;
+    this.customProductName = '';
+    this.customProductPrice = 0;
+    this.customProductMrp = 0;
+    this.customProductQty = 1;
+  }
+
+  /**
+   * Close quick add dialog
+   */
+  closeQuickAdd(): void {
+    this.showQuickAddDialog = false;
+    this.customProductName = '';
+    this.customProductPrice = 0;
+    this.customProductMrp = 0;
+    this.customProductQty = 1;
+  }
+
+  /**
+   * Add custom product to cart
+   */
+  addCustomProduct(): void {
+    if (!this.customProductName || this.customProductPrice <= 0) {
+      this.swal.error('Invalid Input', 'Please enter product name and price');
+      return;
+    }
+
+    const mrp = this.customProductMrp || this.customProductPrice;
+    const qty = this.customProductQty || 1;
+
+    // Create a custom product with negative ID (to identify as custom)
+    const customProduct: CachedProduct = {
+      id: this.customProductIdCounter--,
+      shopId: this.shopId,
+      name: this.customProductName,
+      nameTamil: '',
+      price: this.customProductPrice,
+      originalPrice: mrp,
+      stock: 9999, // Unlimited stock for custom products
+      trackInventory: false,
+      sku: 'CUSTOM',
+      barcode: '',
+      image: '',
+      categoryId: undefined,
+      categoryName: 'Custom'
+    };
+
+    const discount = mrp - this.customProductPrice;
+
+    // Add to cart
+    this.cart.push({
+      product: customProduct,
+      quantity: qty,
+      unitPrice: this.customProductPrice,
+      mrp: mrp,
+      total: this.customProductPrice * qty,
+      discount: discount
+    });
+
+    this.calculateTotals();
+    this.closeQuickAdd();
+
+    this.swal.success('Added', `${this.customProductName} added to cart`);
   }
 }

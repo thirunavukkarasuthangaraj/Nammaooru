@@ -86,7 +86,11 @@ export class ErrorInterceptor implements HttpInterceptor {
           });
         }
 
-        return throwError(() => error);
+        // Preserve the error message for downstream handlers
+        const errorToThrow = new Error(errorMessage);
+        (errorToThrow as any).originalError = error;
+        (errorToThrow as any).status = error.status;
+        return throwError(() => errorToThrow);
       })
     );
   }

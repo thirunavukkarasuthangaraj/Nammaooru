@@ -473,6 +473,79 @@ public class ShopOwnerProductController {
         }
     }
 
+    /**
+     * Quick update endpoint for POS - update price, MRP, and stock only
+     */
+    @PatchMapping("/{productId}/quick-update")
+    @PreAuthorize("hasRole('SHOP_OWNER') or hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<ShopProductResponse>> quickUpdateProduct(
+            @PathVariable Long productId,
+            @RequestBody Map<String, Object> updates) {
+
+        log.info("Quick update for product {} - updates: {}", productId, updates);
+
+        // Get current user's shop
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = authentication.getName();
+
+        try {
+            Shop currentShop = shopService.getShopByOwner(currentUsername);
+
+            if (currentShop == null) {
+                log.warn("No shop found for user: {}", currentUsername);
+                return ResponseEntity.badRequest().body(ApiResponse.error(
+                        "No shop found for current user"
+                ));
+            }
+
+            // Build partial update request
+            ShopProductRequest request = new ShopProductRequest();
+
+            if (updates.containsKey("price")) {
+                Object priceObj = updates.get("price");
+                if (priceObj instanceof Number) {
+                    request.setPrice(java.math.BigDecimal.valueOf(((Number) priceObj).doubleValue()));
+                }
+            }
+
+            if (updates.containsKey("originalPrice")) {
+                Object mrpObj = updates.get("originalPrice");
+                if (mrpObj instanceof Number) {
+                    request.setOriginalPrice(java.math.BigDecimal.valueOf(((Number) mrpObj).doubleValue()));
+                }
+            }
+
+            if (updates.containsKey("stockQuantity")) {
+                Object stockObj = updates.get("stockQuantity");
+                if (stockObj instanceof Number) {
+                    request.setStockQuantity(((Number) stockObj).intValue());
+                }
+            }
+
+            if (updates.containsKey("barcode")) {
+                Object barcodeObj = updates.get("barcode");
+                if (barcodeObj != null) {
+                    request.setBarcode(barcodeObj.toString());
+                }
+            }
+
+            ShopProductResponse product = shopProductService.quickUpdateProduct(currentShop.getId(), productId, request);
+
+            log.info("Product quick updated successfully for shop: {} (owner: {})", currentShop.getId(), currentUsername);
+
+            return ResponseEntity.ok(ApiResponse.success(
+                    product,
+                    "Product updated successfully"
+            ));
+
+        } catch (Exception e) {
+            log.error("Error quick updating product {} for user: {}", productId, currentUsername, e);
+            return ResponseEntity.badRequest().body(ApiResponse.error(
+                    "Error updating product: " + e.getMessage()
+            ));
+        }
+    }
+
     @GetMapping("/low-stock")
     @PreAuthorize("hasRole('SHOP_OWNER') or hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<List<ShopProductResponse>>> getLowStockProducts() {

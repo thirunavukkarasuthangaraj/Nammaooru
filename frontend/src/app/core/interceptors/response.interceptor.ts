@@ -68,19 +68,18 @@ export class ResponseInterceptor implements HttpInterceptor {
   }
 
   private getErrorMessage(statusCode: string, message?: string): string {
-    // For auth errors, use the backend message if it's specific
-    if (statusCode === '9999' && message && 
-        (message.toLowerCase().includes('password') || 
-         message.toLowerCase().includes('credentials') ||
-         message.toLowerCase().includes('invalid email'))) {
+    // For general errors (9999), prefer the specific backend message if provided
+    // This handles specific errors like "SKU already exists", auth errors, etc.
+    if (statusCode === '9999' && message && message.trim() !== '') {
+      // Only transform "Bad credentials" to a user-friendly message
       return message === 'Bad credentials' ? 'Invalid email or password' : message;
     }
-    
+
     // First try to get message from our error codes mapping
     if (API_ERROR_MESSAGES[statusCode]) {
       return API_ERROR_MESSAGES[statusCode];
     }
-    
+
     // Fallback to provided message or generic error
     return message || 'An error occurred';
   }

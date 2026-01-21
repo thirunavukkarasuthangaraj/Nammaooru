@@ -54,6 +54,8 @@ public class ShopProductResponse {
     private String displayNameTamil; // Computed: custom name Tamil or master name Tamil
     private String displayDescription; // Computed: custom description or master description
     private String nameTamil; // Top-level convenience field for mobile apps
+    private String sku; // Top-level convenience field from master product
+    private String barcode; // Top-level convenience field from master product
     private Integer displayOrder;
     private String tags;
     

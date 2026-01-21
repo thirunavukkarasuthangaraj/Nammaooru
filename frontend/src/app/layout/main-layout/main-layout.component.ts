@@ -770,6 +770,11 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     return menuItem ? menuItem.title : 'NammaOoru Thiru Software';
   }
 
+  // Hide global search on POS Billing page (has its own search)
+  shouldShowGlobalSearch(): boolean {
+    return !this.router.url.includes('/pos-billing');
+  }
+
   getCurrentPageBreadcrumb(): string {
     const url = this.router.url;
     const segments = url.split('/').filter(segment => segment);

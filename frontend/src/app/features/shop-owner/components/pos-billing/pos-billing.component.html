@@ -80,6 +80,10 @@
           <div class="cart-badge" *ngIf="getCartQuantity(product) > 0">
             <span>{{ getCartQuantity(product) }}</span>
           </div>
+          <!-- Quick Edit Button -->
+          <button class="quick-edit-btn" (click)="openQuickEdit(product, $event)" title="Edit Price/Stock">
+            <mat-icon>edit</mat-icon>
+          </button>
           <div class="product-image">
             <!-- Use cached base64 image if available (for offline), otherwise fetch from URL -->
             <img *ngIf="product.imageBase64 || product.image"
@@ -217,6 +221,101 @@
         <mat-icon>receipt_long</mat-icon>
         Generate Bill - ₹{{ totalAmount | number:'1.0-0' }}
       </button>
+    </div>
+  </div>
+
+  <!-- Quick Add Custom Product Button (Floating) -->
+  <button class="quick-add-fab" (click)="openQuickAdd()" title="Add Custom Product">
+    <mat-icon>add</mat-icon>
+  </button>
+
+  <!-- Quick Edit Dialog -->
+  <div class="quick-edit-overlay" *ngIf="editingProduct" (click)="closeQuickEdit()">
+    <div class="quick-edit-dialog" (click)="$event.stopPropagation()">
+      <div class="dialog-header">
+        <h3>Edit Product</h3>
+        <button mat-icon-button (click)="closeQuickEdit()">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+      <div class="dialog-content">
+        <div class="product-preview">
+          <div class="preview-image" *ngIf="editingProduct.imageBase64 || editingProduct.image">
+            <img [src]="editingProduct.imageBase64 || getImageUrl(editingProduct.image)" [alt]="editingProduct.name">
+          </div>
+          <div class="preview-name">{{ editingProduct.name }}</div>
+          <div class="preview-sku">{{ editingProduct.sku }}</div>
+        </div>
+        <div class="edit-fields">
+          <div class="field-group">
+            <label>Selling Price (₹)</label>
+            <input type="number" [(ngModel)]="editPrice" min="0" step="0.01" class="edit-input">
+          </div>
+          <div class="field-group">
+            <label>MRP (₹)</label>
+            <input type="number" [(ngModel)]="editMrp" min="0" step="0.01" class="edit-input">
+          </div>
+          <div class="field-group">
+            <label>Stock Quantity</label>
+            <input type="number" [(ngModel)]="editStock" min="0" step="1" class="edit-input">
+          </div>
+          <div class="field-group">
+            <label>Barcode</label>
+            <input type="text" [(ngModel)]="editBarcode" placeholder="Enter barcode" class="edit-input">
+          </div>
+        </div>
+      </div>
+      <div class="dialog-actions">
+        <button mat-stroked-button (click)="closeQuickEdit()">Cancel</button>
+        <button mat-raised-button color="primary" (click)="saveQuickEdit()" [disabled]="isSavingEdit">
+          <mat-spinner *ngIf="isSavingEdit" diameter="18"></mat-spinner>
+          <span *ngIf="!isSavingEdit">Save Changes</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Add Custom Product Dialog -->
+  <div class="quick-edit-overlay" *ngIf="showQuickAddDialog" (click)="closeQuickAdd()">
+    <div class="quick-edit-dialog quick-add-dialog" (click)="$event.stopPropagation()">
+      <div class="dialog-header">
+        <h3>Add Custom Product</h3>
+        <button mat-icon-button (click)="closeQuickAdd()">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+      <div class="dialog-content">
+        <div class="edit-fields">
+          <div class="field-group">
+            <label>Product Name *</label>
+            <input type="text" [(ngModel)]="customProductName" placeholder="Enter product name" class="edit-input">
+          </div>
+          <div class="field-group">
+            <label>Selling Price (₹) *</label>
+            <input type="number" [(ngModel)]="customProductPrice" min="0" step="0.01" placeholder="0" class="edit-input">
+          </div>
+          <div class="field-group">
+            <label>MRP (₹)</label>
+            <input type="number" [(ngModel)]="customProductMrp" min="0" step="0.01" placeholder="Same as price" class="edit-input">
+          </div>
+          <div class="field-group">
+            <label>Quantity</label>
+            <input type="number" [(ngModel)]="customProductQty" min="1" step="1" placeholder="1" class="edit-input">
+          </div>
+        </div>
+        <p class="custom-product-note">
+          <mat-icon>info</mat-icon>
+          Custom products are for one-time billing only and won't be saved to inventory.
+        </p>
+      </div>
+      <div class="dialog-actions">
+        <button mat-stroked-button (click)="closeQuickAdd()">Cancel</button>
+        <button mat-raised-button color="primary" (click)="addCustomProduct()"
+                [disabled]="!customProductName || !customProductPrice || customProductPrice <= 0">
+          <mat-icon>add_shopping_cart</mat-icon>
+          Add to Cart
+        </button>
+      </div>
     </div>
   </div>
 </div>

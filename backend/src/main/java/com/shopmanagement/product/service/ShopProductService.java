@@ -529,4 +529,55 @@ public class ShopProductService {
 
         return productMapper.toResponse(shopProduct);
     }
+
+    /**
+     * Quick update product price, MRP, stock, and barcode
+     * Used for POS quick edit feature
+     */
+    public ShopProductResponse quickUpdateProduct(Long shopId, Long productId, ShopProductRequest request) {
+        log.info("Quick updating product: Shop {} - Product {} - Price: {}, MRP: {}, Stock: {}, Barcode: {}",
+                shopId, productId, request.getPrice(), request.getOriginalPrice(), request.getStockQuantity(), request.getBarcode());
+
+        ShopProduct shopProduct = shopProductRepository.findById(productId)
+                .filter(p -> p.getShop().getId().equals(shopId))
+                .orElseThrow(() -> new ProductNotFoundException("Shop product not found"));
+
+        // Update only the specified fields
+        if (request.getPrice() != null) {
+            shopProduct.setPrice(request.getPrice());
+        }
+
+        if (request.getOriginalPrice() != null) {
+            shopProduct.setOriginalPrice(request.getOriginalPrice());
+        }
+
+        if (request.getStockQuantity() != null) {
+            shopProduct.setStockQuantity(request.getStockQuantity());
+
+            // Update status based on stock
+            if (request.getStockQuantity() == 0) {
+                shopProduct.setStatus(ShopProduct.ShopProductStatus.OUT_OF_STOCK);
+                shopProduct.setIsAvailable(false);
+            } else if (shopProduct.getStatus() == ShopProduct.ShopProductStatus.OUT_OF_STOCK) {
+                shopProduct.setStatus(ShopProduct.ShopProductStatus.ACTIVE);
+                shopProduct.setIsAvailable(true);
+            }
+        }
+
+        // Update barcode on master product
+        if (request.getBarcode() != null) {
+            MasterProduct masterProduct = shopProduct.getMasterProduct();
+            masterProduct.setBarcode(request.getBarcode().trim().isEmpty() ? null : request.getBarcode().trim());
+            masterProduct.setUpdatedBy(getCurrentUsername());
+            masterProductRepository.save(masterProduct);
+            log.info("Updated barcode for master product {}: {}", masterProduct.getId(), request.getBarcode());
+        }
+
+        shopProduct.setUpdatedBy(getCurrentUsername());
+        ShopProduct updatedProduct = shopProductRepository.save(shopProduct);
+
+        log.info("Product quick updated successfully: {}", productId);
+
+        return productMapper.toResponse(updatedProduct);
+    }
 }
