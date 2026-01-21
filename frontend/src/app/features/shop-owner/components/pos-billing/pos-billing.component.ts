@@ -936,7 +936,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
         <div class="divider-solid"></div>
 
         <div class="flex-row" style="font-size: 10px; padding: 4px 0;">
-          <span style="font-weight: 600;">Items: ${this.cart.length}</span>
+          <span style="font-weight: 600;">Items: ${this.cart.length} (Qty: ${this.cart.reduce((sum, item) => sum + item.quantity, 0)})</span>
           <span style="font-weight: 700;">₹${this.totalAmount.toFixed(0)}</span>
         </div>
 
