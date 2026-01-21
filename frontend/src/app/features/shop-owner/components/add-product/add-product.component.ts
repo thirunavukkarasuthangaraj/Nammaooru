@@ -76,10 +76,26 @@ import { switchMap, catchError, map } from 'rxjs/operators';
               <div class="form-row">
                 <mat-form-field appearance="outline" class="full-width">
                   <mat-label>Description</mat-label>
-                  <textarea matInput 
-                           formControlName="description" 
+                  <textarea matInput
+                           formControlName="description"
                            placeholder="Enter product description"
                            rows="3"></textarea>
+                </mat-form-field>
+              </div>
+
+              <div class="form-row">
+                <mat-form-field appearance="outline" class="half-width">
+                  <mat-label>Tamil Name</mat-label>
+                  <input matInput formControlName="nameTamil" placeholder="தமிழ் பெயர்">
+                  <mat-icon matPrefix>translate</mat-icon>
+                  <mat-hint>Product name in Tamil for voice search</mat-hint>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="half-width">
+                  <mat-label>Voice Search Tags</mat-label>
+                  <input matInput formControlName="tags" placeholder="tea, chai, தேநீர்">
+                  <mat-icon matPrefix>mic</mat-icon>
+                  <mat-hint>Comma-separated tags (English and Tamil)</mat-hint>
                 </mat-form-field>
               </div>
             </div>
@@ -514,6 +530,8 @@ export class AddProductComponent implements OnInit {
   ) {
     this.productForm = this.fb.group({
       name: ['', Validators.required],
+      nameTamil: [''],
+      tags: [''],
       category: ['', Validators.required],
       brand: [''],
       description: [''],
@@ -814,6 +832,8 @@ export class AddProductComponent implements OnInit {
       // Create master product request
       const masterProductRequest: MasterProductRequest = {
         name: formData.name,
+        nameTamil: formData.nameTamil || '',
+        tags: formData.tags || '',
         description: formData.description || '',
         sku: formData.sku,
         categoryId: formData.category,
