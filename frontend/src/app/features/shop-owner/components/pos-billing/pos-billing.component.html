@@ -137,7 +137,10 @@
             </button>
           </div>
           <div class="item-row-bottom">
-            <div class="item-price">₹{{ item.unitPrice }} x</div>
+            <div class="item-price-section">
+              <span class="item-mrp" *ngIf="item.discount > 0">₹{{ item.mrp }}</span>
+              <span class="item-price">₹{{ item.unitPrice }} x</span>
+            </div>
             <div class="item-quantity">
               <button mat-mini-fab color="basic" (click)="updateQuantity(item, -1)">
                 <mat-icon>remove</mat-icon>
@@ -147,7 +150,10 @@
                 <mat-icon>add</mat-icon>
               </button>
             </div>
-            <div class="item-total">₹{{ item.total }}</div>
+            <div class="item-total-section">
+              <span class="item-total">₹{{ item.total }}</span>
+              <span class="item-discount" *ngIf="item.discount > 0">Save ₹{{ item.discount * item.quantity }}</span>
+            </div>
           </div>
         </div>
 
@@ -174,6 +180,14 @@
 
       <!-- Totals -->
       <div class="totals-section" *ngIf="cart.length > 0">
+        <div class="total-row mrp-total" *ngIf="totalDiscount > 0">
+          <span>MRP Total</span>
+          <span class="mrp-value">₹{{ totalMrp | number:'1.0-0' }}</span>
+        </div>
+        <div class="total-row discount-total" *ngIf="totalDiscount > 0">
+          <span>Discount</span>
+          <span class="discount-value">- ₹{{ totalDiscount | number:'1.0-0' }}</span>
+        </div>
         <div class="total-row grand-total">
           <span>TOTAL</span>
           <span>₹{{ totalAmount | number:'1.0-0' }}</span>

@@ -442,6 +442,23 @@ $text-secondary: #7f8c8d;
         align-items: center;
         justify-content: space-between;
 
+        .item-price-section {
+          display: flex;
+          flex-direction: column;
+          min-width: 70px;
+
+          .item-mrp {
+            font-size: 11px;
+            color: #999;
+            text-decoration: line-through;
+          }
+
+          .item-price {
+            font-size: 13px;
+            color: $text-secondary;
+          }
+        }
+
         .item-price {
           font-size: 13px;
           color: $text-secondary;
@@ -473,6 +490,25 @@ $text-secondary: #7f8c8d;
             font-weight: 700;
             font-size: 16px;
             color: $primary;
+          }
+        }
+
+        .item-total-section {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          min-width: 80px;
+
+          .item-total {
+            font-size: 16px;
+            font-weight: 700;
+            color: $accent;
+          }
+
+          .item-discount {
+            font-size: 10px;
+            color: #4caf50;
+            font-weight: 600;
           }
         }
 
@@ -555,6 +591,20 @@ $text-secondary: #7f8c8d;
       margin-bottom: 8px;
       font-size: 14px;
       color: $text-secondary;
+
+      &.mrp-total {
+        .mrp-value {
+          text-decoration: line-through;
+          color: #999;
+        }
+      }
+
+      &.discount-total {
+        .discount-value {
+          color: #4caf50;
+          font-weight: 600;
+        }
+      }
 
       &.grand-total {
         margin-top: 12px;

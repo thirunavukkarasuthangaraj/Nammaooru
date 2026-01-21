@@ -544,34 +544,39 @@ class ComboDetailBottomSheet extends StatelessWidget {
                                           ),
                                         ],
                                       ),
-                                      const Spacer(),
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.end,
-                                        children: [
-                                          Text(
-                                            '₹${combo.originalPrice.toStringAsFixed(0)}',
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              color: Colors.grey[500],
-                                              decoration: TextDecoration.lineThrough,
-                                            ),
-                                          ),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 12, vertical: 6),
-                                            decoration: BoxDecoration(
-                                              color: Colors.green,
-                                              borderRadius: BorderRadius.circular(20),
-                                            ),
-                                            child: Text(
-                                              saveLabel,
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold,
+                                      const SizedBox(width: 8),
+                                      Flexible(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.end,
+                                          children: [
+                                            Text(
+                                              '₹${combo.originalPrice.toStringAsFixed(0)}',
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                color: Colors.grey[500],
+                                                decoration: TextDecoration.lineThrough,
                                               ),
                                             ),
-                                          ),
-                                        ],
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                  horizontal: 10, vertical: 6),
+                                              decoration: BoxDecoration(
+                                                color: Colors.green,
+                                                borderRadius: BorderRadius.circular(20),
+                                              ),
+                                              child: Text(
+                                                saveLabel,
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 13,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                                maxLines: 1,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -653,14 +658,19 @@ class ComboDetailBottomSheet extends StatelessWidget {
                               : 'Add Combo to Cart  •  ₹${combo.comboPrice.toStringAsFixed(0)}';
                           return Row(
                             mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               const Icon(Icons.shopping_cart),
                               const SizedBox(width: 8),
-                              Text(
-                                buttonText,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
+                              Flexible(
+                                child: Text(
+                                  buttonText,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
                                 ),
                               ),
                             ],

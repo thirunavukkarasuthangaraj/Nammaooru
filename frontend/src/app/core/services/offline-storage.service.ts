@@ -6,6 +6,7 @@ export interface CachedProduct {
   name: string;
   nameTamil?: string;
   price: number;
+  originalPrice?: number;  // MRP price for discount calculation
   stock: number;
   trackInventory: boolean;
   sku: string;
@@ -336,9 +337,26 @@ export class OfflineStorageService {
 
   /**
    * Generate unique offline order ID
+   * Format: POS-XXXX (short, sequential counter with date prefix)
    */
   generateOfflineOrderId(): string {
-    return `OFFLINE-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    // Get current date in DDMM format
+    const now = new Date();
+    const day = now.getDate().toString().padStart(2, '0');
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const datePrefix = `${day}${month}`;
+
+    // Get current counter from localStorage (resets daily)
+    const counterKey = `pos_order_counter_${datePrefix}`;
+    let counter = parseInt(localStorage.getItem(counterKey) || '0', 10);
+    counter++;
+
+    // Save updated counter
+    localStorage.setItem(counterKey, counter.toString());
+
+    // Format: POS-1301-001 (date + sequential)
+    const paddedCounter = counter.toString().padStart(3, '0');
+    return `POS-${datePrefix}-${paddedCounter}`;
   }
 
   /**

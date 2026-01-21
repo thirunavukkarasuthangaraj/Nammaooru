@@ -14,7 +14,9 @@ interface CartItem {
   product: CachedProduct;
   quantity: number;
   unitPrice: number;
+  mrp: number;  // MRP price
   total: number;
+  discount: number;  // Discount per item (mrp - unitPrice)
 }
 
 @Component({
@@ -45,6 +47,8 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   taxAmount: number = 0;
   totalAmount: number = 0;
   taxRate: number = 0; // No tax
+  totalMrp: number = 0;  // Total MRP of all items
+  totalDiscount: number = 0;  // Total discount (MRP - selling price)
 
   // Payment
   selectedPaymentMethod: string = 'CASH_ON_DELIVERY';
@@ -110,6 +114,8 @@ export class PosBillingComponent implements OnInit, OnDestroy {
         if (shop) {
           this.shopId = shop.id;
           this.shopName = shop.name || shop.businessName || 'My Shop';
+          // Save shop name to localStorage for offline receipt use
+          localStorage.setItem('shop_name', this.shopName);
           console.log('POS Billing - Shop loaded:', this.shopId, this.shopName);
         }
       });
@@ -119,11 +125,18 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     if (currentShop) {
       this.shopId = currentShop.id;
       this.shopName = currentShop.name || currentShop.businessName || 'My Shop';
+      // Save shop name to localStorage for offline receipt use
+      localStorage.setItem('shop_name', this.shopName);
     } else {
       // Fallback to localStorage
       const storedShopId = localStorage.getItem('current_shop_id');
       if (storedShopId) {
         this.shopId = parseInt(storedShopId, 10);
+      }
+      // Try to get shop name from localStorage
+      const storedShopName = localStorage.getItem('shop_name');
+      if (storedShopName) {
+        this.shopName = storedShopName;
       }
     }
 
@@ -428,6 +441,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       name: p.displayName || p.customName || p.name || 'Unknown',
       nameTamil: p.nameTamil || p.displayNameTamil || '',
       price: p.price || 0,
+      originalPrice: p.originalPrice || p.mrp || p.price || 0,  // MRP for discount calculation
       stock: p.stockQuantity || 0,
       trackInventory: p.trackInventory ?? true,
       sku: p.sku || p.masterProduct?.sku || '',
@@ -507,6 +521,9 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     // Check if already in cart
     const existingItem = this.cart.find(item => item.product.id === product.id);
 
+    const mrp = product.originalPrice || product.price;
+    const discount = mrp - product.price;
+
     if (existingItem) {
       // Check stock before increasing
       if (product.trackInventory && existingItem.quantity >= product.stock) {
@@ -520,7 +537,9 @@ export class PosBillingComponent implements OnInit, OnDestroy {
         product,
         quantity: 1,
         unitPrice: product.price,
-        total: product.price
+        mrp: mrp,
+        total: product.price,
+        discount: discount
       });
     }
 
@@ -618,6 +637,8 @@ export class PosBillingComponent implements OnInit, OnDestroy {
    */
   private calculateTotals(): void {
     this.subtotal = this.cart.reduce((sum, item) => sum + item.total, 0);
+    this.totalMrp = this.cart.reduce((sum, item) => sum + (item.mrp * item.quantity), 0);
+    this.totalDiscount = this.totalMrp - this.subtotal;
     this.taxAmount = this.subtotal * this.taxRate;
     this.totalAmount = this.subtotal + this.taxAmount;
   }
@@ -687,7 +708,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
         totalAmount: this.totalAmount
       };
 
-      const result = await this.syncService.createPosOrder(orderData, this.shopId);
+      const result = await this.syncService.createPosOrder(orderData, this.shopId, this.shopName);
 
       this.swal.close();
 
@@ -745,15 +766,21 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     const items = this.cart.map(item => {
       const englishName = item.product.name || '';
       const tamilName = item.product.nameTamil || '';
-      const rate = item.product.price || 0;
+      const rate = item.unitPrice || 0;
+      const mrp = item.mrp || rate;
+      const hasDiscount = item.discount > 0;
       // Show Tamil name below English name if available
       const nameHtml = tamilName
         ? `${englishName}<br><span style="font-size: 9px; color: #333;">${tamilName}</span>`
         : englishName;
+      // Show MRP with strikethrough if there's discount
+      const rateHtml = hasDiscount
+        ? `<span style="text-decoration: line-through; color: #999; font-size: 8px;">${mrp}</span><br>${rate}`
+        : `${rate}`;
       return `
       <tr>
         <td style="font-size: 9px; padding: 2px 0; font-weight: 600; word-wrap: break-word; max-width: 60px;">${nameHtml}</td>
-        <td style="font-size: 9px; text-align: right; padding: 2px 0; font-weight: 600; white-space: nowrap;">${rate}</td>
+        <td style="font-size: 9px; text-align: right; padding: 2px 0; font-weight: 600; white-space: nowrap;">${rateHtml}</td>
         <td style="font-size: 9px; text-align: center; padding: 2px 0; font-weight: 700; white-space: nowrap;">${item.quantity}</td>
         <td style="font-size: 9px; text-align: right; padding: 2px 0; font-weight: 700; white-space: nowrap;">${item.total.toFixed(0)}</td>
       </tr>
@@ -761,10 +788,22 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     }).join('');
 
     const isOffline = order.offlineOrderId && !order.id;
-    // Get shop name from order response (API), then localStorage, then fallback
-    const shopName = order.shopName || localStorage.getItem('shop_name') || this.shopName || 'Shop';
+    // Get shop name from order response (API), then localStorage, then component, then fallback
+    // Check for truthy values (not empty strings)
+    const storedShopName = localStorage.getItem('shop_name');
+    const shopName = (order.shopName && order.shopName.trim()) ||
+                     (storedShopName && storedShopName.trim()) ||
+                     (this.shopName && this.shopName !== 'My Shop' ? this.shopName : null) ||
+                     'Shop';
     const customerName = this.customerName || 'Walk-in Customer';
     const customerPhone = this.customerPhone || '';
+
+    console.log('Receipt - shopName sources:', {
+      orderShopName: order.shopName,
+      localStorage: storedShopName,
+      thisShopName: this.shopName,
+      resolved: shopName
+    });
 
     return `
       <!DOCTYPE html>
@@ -901,6 +940,17 @@ export class PosBillingComponent implements OnInit, OnDestroy {
           <span style="font-weight: 700;">₹${this.totalAmount.toFixed(0)}</span>
         </div>
 
+        ${this.totalDiscount > 0 ? `
+        <div class="flex-row" style="font-size: 10px; padding: 2px 0;">
+          <span>MRP Total</span>
+          <span style="text-decoration: line-through; color: #999;">₹${this.totalMrp.toFixed(0)}</span>
+        </div>
+        <div class="flex-row" style="font-size: 10px; padding: 2px 0; color: #4caf50;">
+          <span style="font-weight: 600;">You Save</span>
+          <span style="font-weight: 700;">₹${this.totalDiscount.toFixed(0)}</span>
+        </div>
+        ` : ''}
+
         <div class="flex-row" style="border-top: 1px solid #000; padding-top: 6px; margin-top: 4px;">
           <span style="font-size: 14px; font-weight: 700;">TOTAL</span>
           <span style="font-size: 16px; font-weight: 700;">₹${this.totalAmount.toFixed(0)}</span>
@@ -940,16 +990,30 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.swal.loading('Syncing...');
+    this.swal.loading('Syncing pending orders...');
 
     try {
-      await this.syncService.forceSyncNow(this.shopId);
+      // Sync pending orders
+      const syncResult = await this.syncService.syncPendingOrders();
+      console.log('Sync result:', syncResult);
+
+      // Refresh products
       await this.loadProducts();
       this.swal.close();
-      this.swal.success('Synced', 'Data synchronized successfully');
-    } catch (error) {
+
+      if (syncResult.synced > 0 || syncResult.failed > 0) {
+        if (syncResult.failed > 0) {
+          this.swal.warning('Sync Partial', `Synced: ${syncResult.synced}, Failed: ${syncResult.failed}`);
+        } else {
+          this.swal.success('Synced', `${syncResult.synced} order(s) synced successfully`);
+        }
+      } else {
+        this.swal.success('Synced', 'No pending orders to sync. Products updated.');
+      }
+    } catch (error: any) {
       this.swal.close();
-      this.swal.error('Sync Failed', 'Failed to sync data');
+      console.error('Sync error:', error);
+      this.swal.error('Sync Failed', error.message || 'Failed to sync data');
     }
   }
 
