@@ -119,6 +119,7 @@ export enum ShopProductStatus {
 export interface MasterProductRequest {
   name: string;
   nameTamil?: string;
+  tags?: string;
   description?: string;
   sku: string;
   barcode?: string;
