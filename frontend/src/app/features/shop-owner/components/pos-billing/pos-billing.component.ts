@@ -775,7 +775,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
         : englishName;
       // Show MRP with strikethrough if there's discount
       const rateHtml = hasDiscount
-        ? `<span style="text-decoration: line-through; color: #999; font-size: 8px;">${mrp}</span><br>${rate}`
+        ? `<span style="text-decoration: line-through; color: #666; font-size: 9px; font-weight: 700;">${mrp}</span><br>${rate}`
         : `${rate}`;
       return `
       <tr>
@@ -942,8 +942,8 @@ export class PosBillingComponent implements OnInit, OnDestroy {
 
         ${this.totalDiscount > 0 ? `
         <div class="flex-row" style="font-size: 10px; padding: 2px 0;">
-          <span>MRP Total</span>
-          <span style="text-decoration: line-through; color: #999;">₹${this.totalMrp.toFixed(0)}</span>
+          <span style="font-weight: 600;">MRP Total</span>
+          <span style="text-decoration: line-through; color: #666; font-weight: 700;">₹${this.totalMrp.toFixed(0)}</span>
         </div>
         <div class="flex-row" style="font-size: 10px; padding: 2px 0; color: #4caf50;">
           <span style="font-weight: 600;">You Save</span>
@@ -959,7 +959,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
         <div class="divider"></div>
         <div class="center">
           <span class="payment-badge">
-            ${this.selectedPaymentMethod === 'CASH' ? '💵 CASH' : this.selectedPaymentMethod === 'UPI' ? '📱 UPI' : '💳 CARD'}
+            ${this.selectedPaymentMethod === 'CASH_ON_DELIVERY' ? '💵 CASH' : this.selectedPaymentMethod === 'UPI' ? '📱 UPI' : '💳 CARD'}
           </span>
         </div>
         <div class="divider"></div>
