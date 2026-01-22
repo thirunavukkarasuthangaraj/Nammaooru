@@ -1,15 +1,20 @@
 #!/bin/bash
-# Update Nginx to point to the backend container on fixed port 8085
+# Auto-update Nginx to point to the latest backend container port
 # Run this after starting a new backend container
 
 set -e
 
-echo "🔄 Updating Nginx to use backend port 8085..."
+echo "🔄 Updating Nginx to latest backend port..."
 
-# Fixed backend port (must match docker-compose.yml)
-BACKEND_PORT=8085
+# Get the port of the running backend container
+BACKEND_PORT=$(docker ps --filter "label=com.shop.service=backend" --format "{{.Ports}}" | grep -oP '0.0.0.0:\K[0-9]+' | head -1)
 
-echo "✅ Using fixed backend port: $BACKEND_PORT"
+if [ -z "$BACKEND_PORT" ]; then
+    echo "❌ No backend container found!"
+    exit 1
+fi
+
+echo "✅ Found backend on port: $BACKEND_PORT"
 
 # Update Nginx configuration
 NGINX_CONFIG="/etc/nginx/sites-available/api.nammaoorudelivary.in"
