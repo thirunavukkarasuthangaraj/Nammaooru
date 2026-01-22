@@ -607,8 +607,44 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    // Load cached stats first (instant display)
+    this.loadCachedStats();
+    // Then fetch fresh data from server
     this.loadDashboardData();
     this.startAutoRefresh();
+  }
+
+  /**
+   * Load cached dashboard stats from localStorage (instant)
+   */
+  private loadCachedStats(): void {
+    const cachedStats = localStorage.getItem('dashboard_stats');
+    if (cachedStats) {
+      try {
+        const parsed = JSON.parse(cachedStats);
+        this.stats = {
+          todayOrders: parsed.todayOrders || 0,
+          totalOrders: parsed.totalOrders || 0,
+          pendingOrders: parsed.pendingOrders || 0,
+          todayRevenue: parsed.todayRevenue || 0,
+          monthlyRevenue: parsed.monthlyRevenue || 0,
+          totalProducts: parsed.totalProducts || 0,
+          lowStockProducts: parsed.lowStockProducts || 0,
+          outOfStockProducts: parsed.outOfStockProducts || 0,
+        };
+        this.isLoading = false; // Show cached data immediately
+        console.log('Loaded dashboard stats from cache');
+      } catch (e) {
+        console.warn('Error parsing cached stats:', e);
+      }
+    }
+  }
+
+  /**
+   * Save dashboard stats to localStorage for next instant load
+   */
+  private saveCachedStats(): void {
+    localStorage.setItem('dashboard_stats', JSON.stringify(this.stats));
   }
 
   ngOnDestroy(): void {
@@ -678,11 +714,15 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
               this.soundService.playNotificationSound();
             }
             this.previousOrderCount = this.stats.pendingOrders;
+
+            // Save to cache for instant load next time
+            this.saveCachedStats();
           }
           this.isLoading = false;
         },
         error: () => {
           this.isLoading = false;
+          // If API fails and we have no cached data, keep loading state
         }
       });
   }

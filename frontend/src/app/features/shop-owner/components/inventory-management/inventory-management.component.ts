@@ -8,6 +8,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { FormControl, FormGroup, FormBuilder, Validators } from '@angular/forms';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { AuthService } from '@core/services/auth.service';
+import { OfflineStorageService, CachedProduct } from '@core/services/offline-storage.service';
 import { finalize, takeUntil } from 'rxjs/operators';
 import { Subject } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
@@ -29,6 +30,12 @@ interface InventoryItem {
   status: 'healthy' | 'low' | 'critical' | 'overstock';
   location: string;
   reorderPoint: number;
+  // Barcode fields for search
+  barcode?: string;
+  barcode1?: string;
+  barcode2?: string;
+  barcode3?: string;
+  sku?: string;
 }
 
 @Component({
@@ -129,7 +136,7 @@ interface InventoryItem {
             <div class="filter-group">
               <mat-form-field appearance="outline">
                 <mat-label>Search Products</mat-label>
-                <input matInput [formControl]="searchControl" placeholder="Search by name or category">
+                <input matInput [formControl]="searchControl" placeholder="Search by name, category, or barcode">
                 <mat-icon matPrefix>search</mat-icon>
               </mat-form-field>
 
@@ -725,12 +732,16 @@ export class InventoryManagementComponent implements OnInit, OnDestroy {
   inventoryData: InventoryItem[] = [];
   loading = false;
 
+  // Track if loaded from cache
+  loadedFromCache = false;
+
   constructor(
     private fb: FormBuilder,
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
     private http: HttpClient,
-    private authService: AuthService
+    private authService: AuthService,
+    private offlineStorage: OfflineStorageService
   ) {
     this.dataSource.data = [];
     this.quickUpdateForm = this.fb.group({
@@ -751,19 +762,83 @@ export class InventoryManagementComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  loadInventoryData(): void {
+  async loadInventoryData(): Promise<void> {
     this.loading = true;
-    console.log('Loading inventory data from /shop-products/my-products');
+    console.log('Loading inventory data...');
 
+    // Step 1: Load from local cache first (instant)
+    try {
+      const cachedProducts = await this.offlineStorage.getProducts();
+      if (cachedProducts.length > 0) {
+        console.log(`Loaded ${cachedProducts.length} products from local cache`);
+        this.loadedFromCache = true;
+        this.mapCachedProductsToInventory(cachedProducts);
+        this.loading = false;
+      }
+    } catch (error) {
+      console.warn('Error loading from cache:', error);
+    }
+
+    // Step 2: Sync from server in background (if online)
+    this.syncFromServer();
+  }
+
+  /**
+   * Map cached products to inventory items
+   */
+  private mapCachedProductsToInventory(cachedProducts: CachedProduct[]): void {
+    const inventoryItems = cachedProducts.map((item: CachedProduct) => {
+      const currentStock = item.stock || 0;
+      const minStock = item.minStockLevel || 10;
+      const maxStock = item.maxStockLevel || 100;
+      const price = item.price || 0;
+
+      return {
+        id: item.id,
+        productName: item.name || 'Unknown Product',
+        productNameTamil: item.nameTamil || '',
+        category: item.category || 'Uncategorized',
+        categoryTamil: '',
+        currentStock: currentStock,
+        minStock: minStock,
+        maxStock: maxStock,
+        unit: item.unit || 'piece',
+        price: price,
+        cost: item.costPrice || Math.round(price * 0.7),
+        supplier: 'Local Supplier',
+        lastRestocked: new Date(),
+        status: this.getStockStatus(currentStock, minStock, maxStock),
+        location: 'Main Store',
+        reorderPoint: minStock,
+        // Barcode fields for search
+        barcode: item.barcode || '',
+        barcode1: item.barcode1 || '',
+        barcode2: item.barcode2 || '',
+        barcode3: item.barcode3 || '',
+        sku: item.sku || ''
+      };
+    });
+
+    this.inventoryData = inventoryItems;
+    this.dataSource.data = this.inventoryData;
+
+    // Extract unique categories
+    const categorySet = new Set(inventoryItems.map(item => item.category));
+    this.categories = Array.from(categorySet).filter(c => c !== 'Uncategorized');
+
+    console.log('Mapped inventory data:', inventoryItems.length, 'items');
+  }
+
+  /**
+   * Sync inventory data from server (background)
+   */
+  private syncFromServer(): void {
     const params = new HttpParams()
       .set('page', '0')
       .set('size', '100000');
 
     this.http.get<any>(`${this.apiUrl}/shop-products/my-products`, { params })
-      .pipe(
-        takeUntil(this.destroy$),
-        finalize(() => this.loading = false)
-      )
+      .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
           console.log('Inventory API response:', response);
@@ -800,7 +875,13 @@ export class InventoryManagementComponent implements OnInit, OnDestroy {
               lastRestocked: new Date(item.updatedAt || new Date()),
               status: this.getStockStatus(currentStock, minStock, maxStock),
               location: 'Main Store',
-              reorderPoint: minStock
+              reorderPoint: minStock,
+              // Barcode fields for search
+              barcode: item.barcode || item.masterProduct?.barcode || '',
+              barcode1: item.barcode1 || '',
+              barcode2: item.barcode2 || '',
+              barcode3: item.barcode3 || '',
+              sku: item.sku || item.masterProduct?.sku || ''
             };
           });
 
@@ -811,11 +892,17 @@ export class InventoryManagementComponent implements OnInit, OnDestroy {
           const categorySet = new Set(inventoryItems.map(item => item.category));
           this.categories = Array.from(categorySet).filter(c => c !== 'Uncategorized');
 
-          console.log('Loaded inventory data:', inventoryItems.length, 'items');
+          this.loading = false;
+          this.loadedFromCache = false;
+          console.log('Synced inventory from server:', inventoryItems.length, 'items');
         },
         error: (error) => {
-          console.error('Error loading inventory:', error);
-          this.snackBar.open('Failed to load inventory data', 'Close', { duration: 3000 });
+          console.error('Error syncing from server:', error);
+          this.loading = false;
+          // If we already loaded from cache, don't show error
+          if (!this.loadedFromCache) {
+            this.snackBar.open('Failed to load inventory data', 'Close', { duration: 3000 });
+          }
         }
       });
   }
@@ -842,16 +929,27 @@ export class InventoryManagementComponent implements OnInit, OnDestroy {
   applyFilters(): void {
     this.dataSource.filterPredicate = (data: InventoryItem, filter: string) => {
       const searchTerm = this.searchControl.value?.toLowerCase() || '';
-      const matchesSearch = data.productName.toLowerCase().includes(searchTerm) || 
-                           data.category.toLowerCase().includes(searchTerm);
+
+      // Check name and category
+      const matchesName = data.productName.toLowerCase().includes(searchTerm) ||
+                          data.category.toLowerCase().includes(searchTerm);
+
+      // Check all barcode fields
+      const matchesBarcode = (data.barcode && data.barcode.toLowerCase().includes(searchTerm)) ||
+                             (data.barcode1 && data.barcode1.toLowerCase().includes(searchTerm)) ||
+                             (data.barcode2 && data.barcode2.toLowerCase().includes(searchTerm)) ||
+                             (data.barcode3 && data.barcode3.toLowerCase().includes(searchTerm)) ||
+                             (data.sku && data.sku.toLowerCase().includes(searchTerm));
+
+      const matchesSearch = matchesName || matchesBarcode;
       const matchesCategory = !this.selectedCategory || data.category === this.selectedCategory;
       const matchesStatus = !this.selectedStatus || data.status === this.selectedStatus;
       const matchesLowStock = !this.showOnlyLowStock || data.status === 'low' || data.status === 'critical';
       const matchesCritical = !this.showOnlyCritical || data.status === 'critical';
-      
+
       return matchesSearch && matchesCategory && matchesStatus && matchesLowStock && matchesCritical;
     };
-    
+
     this.dataSource.filter = Math.random().toString();
   }
 

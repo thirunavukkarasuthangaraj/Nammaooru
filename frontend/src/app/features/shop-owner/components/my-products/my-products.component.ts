@@ -11,6 +11,7 @@ import { Subject } from 'rxjs';
 import { takeUntil, debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { environment } from '../../../../../environments/environment';
 import { ShopContextService } from '../../services/shop-context.service';
+import { OfflineStorageService, CachedProduct } from '../../../../core/services/offline-storage.service';
 import { getImageUrl as getImageUrlUtil } from '../../../../core/utils/image-url.util';
 import { PriceUpdateDialogComponent, PriceUpdateData } from '../price-update-dialog/price-update-dialog.component';
 import { StockUpdateDialogComponent, StockUpdateData } from '../stock-update-dialog/stock-update-dialog.component';
@@ -46,6 +47,11 @@ interface ShopProduct {
   category?: string;
   unit?: string;
   sku?: string;
+  // Barcode fields for search
+  barcode?: string;
+  barcode1?: string;
+  barcode2?: string;
+  barcode3?: string;
   masterProductId?: number;
   masterProductName?: string;
   masterProduct?: MasterProduct;
@@ -96,13 +102,17 @@ export class MyProductsComponent implements OnInit, OnDestroy {
   // Table columns
   displayedColumns: string[] = ['select', 'image', 'name', 'price', 'stock', 'status', 'actions'];
 
+  // Track if loaded from cache
+  loadedFromCache = false;
+
   constructor(
     private router: Router,
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
     private http: HttpClient,
     private shopContext: ShopContextService,
-    private shopOwnerProductService: ShopOwnerProductService
+    private shopOwnerProductService: ShopOwnerProductService,
+    private offlineStorage: OfflineStorageService
   ) {}
 
   ngOnInit(): void {
@@ -148,11 +158,69 @@ export class MyProductsComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  loadProducts(): void {
+  async loadProducts(): Promise<void> {
     this.loading = true;
     this.searching = false;
     console.log('Loading ALL products for authenticated user');
 
+    // Step 1: Load from local cache first (instant)
+    try {
+      const cachedProducts = await this.offlineStorage.getProducts();
+      if (cachedProducts.length > 0) {
+        console.log(`Loaded ${cachedProducts.length} products from local cache`);
+        this.loadedFromCache = true;
+        this.mapCachedProducts(cachedProducts);
+        this.loading = false;
+      }
+    } catch (error) {
+      console.warn('Error loading from cache:', error);
+    }
+
+    // Step 2: Sync from server in background
+    this.syncProductsFromServer();
+  }
+
+  /**
+   * Map cached products to ShopProduct format
+   */
+  private mapCachedProducts(cachedProducts: CachedProduct[]): void {
+    this.products = cachedProducts.map((p: CachedProduct) => ({
+      id: p.id,
+      customName: p.name,
+      description: p.description || '',
+      price: p.price,
+      costPrice: p.costPrice,
+      stockQuantity: p.stock,
+      isAvailable: p.isAvailable !== false,
+      status: p.isAvailable !== false ? 'ACTIVE' : 'INACTIVE',
+      category: p.category || '',
+      unit: p.unit || 'piece',
+      sku: p.sku || '',
+      barcode: p.barcode || '',
+      barcode1: p.barcode1 || '',
+      barcode2: p.barcode2 || '',
+      barcode3: p.barcode3 || '',
+      imageUrl: p.imageUrl || '',
+      masterProductId: p.masterProductId,
+      masterProductName: p.name,
+      masterProduct: undefined,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }));
+
+    this.usingFallbackData = false;
+    this.selectedProducts = [];
+    this.selectAll = false;
+    this.applyFilters();
+    this.loadCategories();
+    this.updateSelectAllState();
+    this.currentPageIndex = 0;
+  }
+
+  /**
+   * Sync products from server (background)
+   */
+  private syncProductsFromServer(): void {
     // Load ALL products (unlimited) like mobile app does, then filter client-side
     const params = new HttpParams()
       .set('page', '0')
@@ -210,7 +278,12 @@ export class MyProductsComponent implements OnInit, OnDestroy {
               status: p.status,
               category: p.masterProduct?.category?.name,
               unit: p.baseUnit || p.masterProduct?.baseUnit,
-              sku: p.masterProduct?.sku,
+              sku: p.sku || p.masterProduct?.sku,
+              // Barcode fields for search
+              barcode: p.barcode || p.masterProduct?.barcode || '',
+              barcode1: p.barcode1 || '',
+              barcode2: p.barcode2 || '',
+              barcode3: p.barcode3 || '',
               imageUrl: p.primaryImageUrl,
               masterProductId: p.masterProduct?.id,
               masterProductName: p.masterProduct?.name,
@@ -230,6 +303,7 @@ export class MyProductsComponent implements OnInit, OnDestroy {
           });
           
           this.usingFallbackData = false;
+          this.loadedFromCache = false;
           // Clear previous selections when reloading products
           this.selectedProducts = [];
           this.selectAll = false;
@@ -239,9 +313,18 @@ export class MyProductsComponent implements OnInit, OnDestroy {
           this.updateSelectAllState();
           this.currentPageIndex = 0;
           this.loading = false;
+          console.log('Synced products from server:', this.products.length, 'items');
         },
         error: (error) => {
           console.error('Product API error:', error);
+          this.loading = false;
+
+          // If we already loaded from cache, don't show error or use fallback
+          if (this.loadedFromCache) {
+            console.log('Using cached data - server sync failed');
+            return;
+          }
+
           console.error('Error details:', {
             status: error.status,
             statusText: error.statusText,
@@ -367,13 +450,22 @@ export class MyProductsComponent implements OnInit, OnDestroy {
     const searchLower = this.searchTerm?.toLowerCase().trim() || '';
 
     this.filteredProducts = this.products.filter(product => {
-      // Search matching (same logic as mobile app - search name, category)
-      const matchesSearch = !searchLower ||
+      // Search matching by name, category, description, SKU
+      const matchesNameOrCategory = !searchLower ||
         (product.customName || '').toLowerCase().includes(searchLower) ||
         (product.masterProductName || '').toLowerCase().includes(searchLower) ||
         (product.category || '').toLowerCase().includes(searchLower) ||
         (product.description || '').toLowerCase().includes(searchLower) ||
         (product.sku || '').toLowerCase().includes(searchLower);
+
+      // Search matching by barcode fields
+      const matchesBarcode = !searchLower ||
+        (product.barcode && product.barcode.toLowerCase().includes(searchLower)) ||
+        (product.barcode1 && product.barcode1.toLowerCase().includes(searchLower)) ||
+        (product.barcode2 && product.barcode2.toLowerCase().includes(searchLower)) ||
+        (product.barcode3 && product.barcode3.toLowerCase().includes(searchLower));
+
+      const matchesSearch = matchesNameOrCategory || matchesBarcode;
 
       const matchesCategory = !this.selectedCategory || product.category === this.selectedCategory;
       const matchesStatus = !this.selectedStatus ||
