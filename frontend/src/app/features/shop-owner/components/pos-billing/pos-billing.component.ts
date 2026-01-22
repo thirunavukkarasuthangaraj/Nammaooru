@@ -85,6 +85,9 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   editMrp: number = 0;
   editStock: number = 0;
   editBarcode: string = '';
+  editBarcode1: string = '';
+  editBarcode2: string = '';
+  editBarcode3: string = '';
   isSavingEdit: boolean = false;
 
   // Quick Add Custom Product state
@@ -464,6 +467,9 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       trackInventory: p.trackInventory ?? true,
       sku: p.sku || p.masterProduct?.sku || '',
       barcode: p.barcode || p.masterProduct?.barcode || '',
+      barcode1: p.barcode1 || '',
+      barcode2: p.barcode2 || '',
+      barcode3: p.barcode3 || '',
       image: p.primaryImageUrl || '',
       categoryId: p.categoryId || p.masterProduct?.category?.id,
       categoryName: p.categoryName || p.masterProduct?.category?.name || ''
@@ -491,7 +497,10 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       p.name.toLowerCase().includes(lowerTerm) ||
       (p.nameTamil && p.nameTamil.toLowerCase().includes(lowerTerm)) ||
       (p.sku && p.sku.toLowerCase().includes(lowerTerm)) ||
-      (p.barcode && p.barcode.toLowerCase().includes(lowerTerm))
+      (p.barcode && p.barcode.toLowerCase().includes(lowerTerm)) ||
+      (p.barcode1 && p.barcode1.toLowerCase().includes(lowerTerm)) ||
+      (p.barcode2 && p.barcode2.toLowerCase().includes(lowerTerm)) ||
+      (p.barcode3 && p.barcode3.toLowerCase().includes(lowerTerm))
     );
     this.filteredProducts = this.sortProductsWithCartFirst(filtered);
   }
@@ -502,9 +511,13 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   handleBarcodeScan(barcode: string): void {
     console.log('Barcode scanned:', barcode);
 
-    // Find in loaded products by barcode or SKU
+    // Find in loaded products by barcode, barcode1, barcode2, barcode3, or SKU
     const product = this.products.find(p =>
-      p.barcode === barcode || p.sku === barcode
+      p.barcode === barcode ||
+      p.barcode1 === barcode ||
+      p.barcode2 === barcode ||
+      p.barcode3 === barcode ||
+      p.sku === barcode
     );
 
     if (product) {
@@ -1088,6 +1101,10 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     this.editStock = product.stock;
     // Use barcode if available, otherwise fallback to SKU
     this.editBarcode = product.barcode || product.sku || '';
+    // Shop-level multiple barcodes
+    this.editBarcode1 = product.barcode1 || '';
+    this.editBarcode2 = product.barcode2 || '';
+    this.editBarcode3 = product.barcode3 || '';
   }
 
   /**
@@ -1099,6 +1116,9 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     this.editMrp = 0;
     this.editStock = 0;
     this.editBarcode = '';
+    this.editBarcode1 = '';
+    this.editBarcode2 = '';
+    this.editBarcode3 = '';
   }
 
   /**
@@ -1121,15 +1141,29 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Validate duplicate barcode (check local products)
-    if (this.editBarcode && this.editBarcode.trim() !== '') {
+    // Validate barcode1 is mandatory
+    if (!this.editBarcode1 || this.editBarcode1.trim() === '') {
+      this.swal.error('Barcode Required', 'Barcode 1 is mandatory. Please enter a barcode.');
+      return;
+    }
+
+    // Validate duplicate barcodes (check local products for barcode1, barcode2, barcode3)
+    const barcodesToCheck = [
+      { value: this.editBarcode1, label: 'Barcode 1' },
+      { value: this.editBarcode2, label: 'Barcode 2' },
+      { value: this.editBarcode3, label: 'Barcode 3' }
+    ].filter(b => b.value && b.value.trim() !== '');
+
+    for (const barcodeInfo of barcodesToCheck) {
       const duplicateProduct = this.products.find(p =>
-        p.id !== this.editingProduct!.id &&
-        p.barcode &&
-        p.barcode.toLowerCase() === this.editBarcode.trim().toLowerCase()
+        p.id !== this.editingProduct!.id && (
+          (p.barcode1 && p.barcode1.toLowerCase() === barcodeInfo.value.trim().toLowerCase()) ||
+          (p.barcode2 && p.barcode2.toLowerCase() === barcodeInfo.value.trim().toLowerCase()) ||
+          (p.barcode3 && p.barcode3.toLowerCase() === barcodeInfo.value.trim().toLowerCase())
+        )
       );
       if (duplicateProduct) {
-        this.swal.error('Duplicate Barcode', `Barcode "${this.editBarcode}" already exists for product "${duplicateProduct.name}". Please use a unique barcode.`);
+        this.swal.error('Duplicate Barcode', `${barcodeInfo.label} "${barcodeInfo.value}" already exists for product "${duplicateProduct.name}". Please use a unique barcode.`);
         return;
       }
     }
@@ -1141,7 +1175,10 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       price: this.editPrice,
       originalPrice: this.editMrp,
       stockQuantity: this.editStock,
-      barcode: this.editBarcode
+      barcode: this.editBarcode,
+      barcode1: this.editBarcode1,
+      barcode2: this.editBarcode2,
+      barcode3: this.editBarcode3
     };
 
     // Store previous values for potential rollback
@@ -1149,7 +1186,10 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       price: this.editingProduct.price,
       originalPrice: this.editingProduct.originalPrice,
       stockQuantity: this.editingProduct.stock,
-      barcode: this.editingProduct.barcode
+      barcode: this.editingProduct.barcode,
+      barcode1: this.editingProduct.barcode1,
+      barcode2: this.editingProduct.barcode2,
+      barcode3: this.editingProduct.barcode3
     };
 
     try {
@@ -1182,7 +1222,10 @@ export class PosBillingComponent implements OnInit, OnDestroy {
           price: this.editPrice,
           originalPrice: this.editMrp,
           stockQuantity: this.editStock,
-          barcode: this.editBarcode
+          barcode: this.editBarcode,
+          barcode1: this.editBarcode1,
+          barcode2: this.editBarcode2,
+          barcode3: this.editBarcode3
         },
         previousValues: previousValues,
         createdAt: new Date().toISOString(),
@@ -1200,7 +1243,10 @@ export class PosBillingComponent implements OnInit, OnDestroy {
         price: this.editPrice,
         originalPrice: this.editMrp,
         stock: this.editStock,
-        barcode: this.editBarcode
+        barcode: this.editBarcode,
+        barcode1: this.editBarcode1,
+        barcode2: this.editBarcode2,
+        barcode3: this.editBarcode3
       });
 
       this.swal.success('Saved Offline', 'Changes saved locally. Will sync when online.');
@@ -1225,6 +1271,9 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       this.products[productIndex].originalPrice = updateData.originalPrice;
       this.products[productIndex].stock = updateData.stockQuantity;
       this.products[productIndex].barcode = updateData.barcode;
+      this.products[productIndex].barcode1 = updateData.barcode1;
+      this.products[productIndex].barcode2 = updateData.barcode2;
+      this.products[productIndex].barcode3 = updateData.barcode3;
     }
 
     // Update filtered products
@@ -1234,6 +1283,9 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       this.filteredProducts[filteredIndex].originalPrice = updateData.originalPrice;
       this.filteredProducts[filteredIndex].stock = updateData.stockQuantity;
       this.filteredProducts[filteredIndex].barcode = updateData.barcode;
+      this.filteredProducts[filteredIndex].barcode1 = updateData.barcode1;
+      this.filteredProducts[filteredIndex].barcode2 = updateData.barcode2;
+      this.filteredProducts[filteredIndex].barcode3 = updateData.barcode3;
     }
 
     // Update cart if product is in cart

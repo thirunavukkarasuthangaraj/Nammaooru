@@ -11,6 +11,10 @@ export interface CachedProduct {
   trackInventory: boolean;
   sku: string;
   barcode?: string;
+  // Shop-level multiple barcodes
+  barcode1?: string;
+  barcode2?: string;
+  barcode3?: string;
   image?: string;
   imageBase64?: string;  // Cached image for offline use
   categoryId?: number;
@@ -48,12 +52,18 @@ export interface OfflineEdit {
     originalPrice?: number;
     stockQuantity?: number;
     barcode?: string;
+    barcode1?: string;
+    barcode2?: string;
+    barcode3?: string;
   };
   previousValues: {
     price?: number;
     originalPrice?: number;
     stockQuantity?: number;
     barcode?: string;
+    barcode1?: string;
+    barcode2?: string;
+    barcode3?: string;
   };
   createdAt: string;
   synced: boolean;
@@ -231,7 +241,10 @@ export class OfflineStorageService {
       p.name.toLowerCase().includes(lowerQuery) ||
       (p.nameTamil && p.nameTamil.toLowerCase().includes(lowerQuery)) ||
       (p.sku && p.sku.toLowerCase().includes(lowerQuery)) ||
-      (p.barcode && p.barcode.toLowerCase().includes(lowerQuery))
+      (p.barcode && p.barcode.toLowerCase().includes(lowerQuery)) ||
+      (p.barcode1 && p.barcode1.toLowerCase().includes(lowerQuery)) ||
+      (p.barcode2 && p.barcode2.toLowerCase().includes(lowerQuery)) ||
+      (p.barcode3 && p.barcode3.toLowerCase().includes(lowerQuery))
     );
   }
 
@@ -454,6 +467,9 @@ export class OfflineStorageService {
           if (changes.originalPrice !== undefined) product.originalPrice = changes.originalPrice;
           if (changes.stock !== undefined) product.stock = changes.stock;
           if (changes.barcode !== undefined) product.barcode = changes.barcode;
+          if (changes.barcode1 !== undefined) product.barcode1 = changes.barcode1;
+          if (changes.barcode2 !== undefined) product.barcode2 = changes.barcode2;
+          if (changes.barcode3 !== undefined) product.barcode3 = changes.barcode3;
 
           const putRequest = store.put(product);
           putRequest.onsuccess = () => {

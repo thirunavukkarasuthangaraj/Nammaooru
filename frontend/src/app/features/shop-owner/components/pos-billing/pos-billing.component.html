@@ -260,10 +260,25 @@
             <input type="number" [(ngModel)]="editStock" min="0" step="1" class="edit-input">
           </div>
           <div class="field-group">
-            <label>Barcode / SKU</label>
+            <label>Barcode 1 *</label>
             <input type="text"
-                   [(ngModel)]="editBarcode"
-                   placeholder="Enter barcode or SKU"
+                   [(ngModel)]="editBarcode1"
+                   placeholder="Enter primary barcode (required)"
+                   class="edit-input"
+                   required>
+          </div>
+          <div class="field-group">
+            <label>Barcode 2</label>
+            <input type="text"
+                   [(ngModel)]="editBarcode2"
+                   placeholder="Enter secondary barcode (optional)"
+                   class="edit-input">
+          </div>
+          <div class="field-group">
+            <label>Barcode 3</label>
+            <input type="text"
+                   [(ngModel)]="editBarcode3"
+                   placeholder="Enter tertiary barcode (optional)"
                    class="edit-input">
           </div>
         </div>

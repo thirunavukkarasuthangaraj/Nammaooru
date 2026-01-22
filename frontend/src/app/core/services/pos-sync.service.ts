@@ -158,6 +158,9 @@ export class PosSyncService implements OnDestroy {
       trackInventory: product.trackInventory ?? true,
       sku: product.masterProduct?.sku || product.sku || '',
       barcode: product.masterProduct?.barcode || product.barcode || '',
+      barcode1: product.barcode1 || '',
+      barcode2: product.barcode2 || '',
+      barcode3: product.barcode3 || '',
       image: product.primaryImageUrl || product.masterProduct?.primaryImageUrl || '',
       categoryId: product.masterProduct?.category?.id || product.categoryId,
       categoryName: product.masterProduct?.category?.name || product.categoryName || ''
@@ -339,7 +342,10 @@ export class PosSyncService implements OnDestroy {
           price: edit.changes.price,
           originalPrice: edit.changes.originalPrice,
           stockQuantity: edit.changes.stockQuantity,
-          barcode: edit.changes.barcode
+          barcode: edit.changes.barcode,
+          barcode1: edit.changes.barcode1,
+          barcode2: edit.changes.barcode2,
+          barcode3: edit.changes.barcode3
         };
 
         await this.http.patch(

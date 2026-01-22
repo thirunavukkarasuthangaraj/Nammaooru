@@ -171,6 +171,31 @@
     </div>
 
 <!-- Tamil Name and Voice Tags -->    <mat-form-field appearance="outline" class="full-width">      <mat-label>Tamil Name</mat-label>      <input matInput formControlName="nameTamil" placeholder="தமிழ் பெயர்">      <mat-icon matPrefix>translate</mat-icon>      <mat-hint>Product name in Tamil for voice search</mat-hint>    </mat-form-field>    <mat-form-field appearance="outline" class="full-width">      <mat-label>Voice Search Tags</mat-label>      <input matInput formControlName="tags" placeholder="egg, முட்டை, muttai">      <mat-icon matPrefix>mic</mat-icon>      <mat-hint>Comma-separated tags for voice search (English and Tamil)</mat-hint>    </mat-form-field>
+
+    <!-- Barcodes Section -->
+    <div class="form-row">
+      <mat-form-field appearance="outline">
+        <mat-label>Barcode 1 *</mat-label>
+        <input matInput formControlName="barcode1" placeholder="Primary barcode (required)">
+        <mat-icon matPrefix>qr_code</mat-icon>
+        <mat-error *ngIf="editForm.get('barcode1')?.hasError('required')">
+          Barcode 1 is required
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Barcode 2</mat-label>
+        <input matInput formControlName="barcode2" placeholder="Secondary barcode (optional)">
+        <mat-icon matPrefix>qr_code</mat-icon>
+      </mat-form-field>
+    </div>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Barcode 3</mat-label>
+      <input matInput formControlName="barcode3" placeholder="Tertiary barcode (optional)">
+      <mat-icon matPrefix>qr_code</mat-icon>
+      <mat-hint>Additional barcode for different packaging or supplier codes</mat-hint>
+    </mat-form-field>
   </form>
 </mat-dialog-content>
 

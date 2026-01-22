@@ -22,6 +22,10 @@ export interface ProductEditData {
   nameTamil?: string;
   tags?: string;
   masterProductId?: number;
+  // Shop-level multiple barcodes
+  barcode1?: string;
+  barcode2?: string;
+  barcode3?: string;
 }
 
 @Component({
@@ -69,7 +73,11 @@ export class ProductEditDialogComponent implements OnInit {
       status: [this.data.status || 'ACTIVE'],
       isAvailable: [this.data.isAvailable !== false],
       nameTamil: [this.data.nameTamil || ''],
-      tags: [this.data.tags || '']
+      tags: [this.data.tags || ''],
+      // Shop-level multiple barcodes (barcode1 is required)
+      barcode1: [this.data.barcode1 || '', [Validators.required]],
+      barcode2: [this.data.barcode2 || ''],
+      barcode3: [this.data.barcode3 || '']
     });
   }
 

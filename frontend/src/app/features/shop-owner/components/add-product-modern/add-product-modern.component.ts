@@ -204,7 +204,7 @@ import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
             <mat-form-field appearance="outline" class="full-width">
               <mat-label>Custom Product Name</mat-label>
-              <input matInput formControlName="customName" 
+              <input matInput formControlName="customName"
                      placeholder="e.g., Premium {{ selectedProduct.name }}">
               <mat-hint>Display name in your store (optional)</mat-hint>
             </mat-form-field>
@@ -221,6 +221,37 @@ import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
               </mat-slide-toggle>
               <span class="helper-text">Show in featured section</span>
             </div>
+          </div>
+
+          <!-- Barcodes Section -->
+          <div class="form-section">
+            <h3>
+              <mat-icon>qr_code</mat-icon>
+              Product Barcodes
+            </h3>
+
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Barcode 1 *</mat-label>
+              <input matInput formControlName="barcode1" placeholder="Enter primary barcode (required)">
+              <mat-icon matPrefix>qr_code</mat-icon>
+              <mat-error *ngIf="productForm.get('barcode1')?.hasError('required')">
+                Barcode 1 is required
+              </mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Barcode 2</mat-label>
+              <input matInput formControlName="barcode2" placeholder="Enter secondary barcode (optional)">
+              <mat-icon matPrefix>qr_code</mat-icon>
+              <mat-hint>Optional: Different packaging or supplier code</mat-hint>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Barcode 3</mat-label>
+              <input matInput formControlName="barcode3" placeholder="Enter tertiary barcode (optional)">
+              <mat-icon matPrefix>qr_code</mat-icon>
+              <mat-hint>Optional: Additional barcode</mat-hint>
+            </mat-form-field>
           </div>
 
           <!-- Action Buttons -->
@@ -914,7 +945,11 @@ export class AddProductModernComponent implements OnInit {
       trackInventory: [true],
       customName: [''],
       customDescription: [''],
-      isFeatured: [false]
+      isFeatured: [false],
+      // Shop-level multiple barcodes (barcode1 is required)
+      barcode1: ['', [Validators.required]],
+      barcode2: [''],
+      barcode3: ['']
     });
   }
 
