@@ -3,12 +3,13 @@ import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, Subject, fromEvent, merge } from 'rxjs';
 import { takeUntil, debounceTime } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
-import { OfflineStorageService, CachedProduct, OfflineOrder, OfflineEdit } from './offline-storage.service';
+import { OfflineStorageService, CachedProduct, OfflineOrder, OfflineEdit, OfflineProductCreation } from './offline-storage.service';
 
 export interface SyncStatus {
   isOnline: boolean;
   pendingOrders: number;
   pendingEdits: number;
+  pendingProductCreations: number;
   lastProductSync: Date | null;
   isSyncing: boolean;
 }
@@ -24,6 +25,7 @@ export class PosSyncService implements OnDestroy {
     isOnline: navigator.onLine,
     pendingOrders: 0,
     pendingEdits: 0,
+    pendingProductCreations: 0,
     lastProductSync: null,
     isSyncing: false
   });
@@ -69,6 +71,7 @@ export class PosSyncService implements OnDestroy {
           console.log('Network online - triggering sync');
           this.syncPendingOrders();
           this.syncPendingEdits();  // Sync offline product edits
+          this.syncPendingProductCreations();  // Sync offline product creations
         } else {
           console.log('Network offline');
         }
@@ -92,7 +95,12 @@ export class PosSyncService implements OnDestroy {
   async updatePendingCount(): Promise<void> {
     const ordersCount = await this.offlineStorage.getPendingOrdersCount();
     const editsCount = await this.offlineStorage.getPendingEditsCount();
-    this.updateStatus({ pendingOrders: ordersCount, pendingEdits: editsCount });
+    const productCreationsCount = await this.offlineStorage.getPendingProductCreationsCount();
+    this.updateStatus({
+      pendingOrders: ordersCount,
+      pendingEdits: editsCount,
+      pendingProductCreations: productCreationsCount
+    });
   }
 
   // ==================== PRODUCT SYNC ====================
@@ -371,6 +379,161 @@ export class PosSyncService implements OnDestroy {
     return { synced, failed };
   }
 
+  // ==================== OFFLINE PRODUCT CREATIONS SYNC ====================
+
+  /**
+   * Sync all pending product creations to server
+   */
+  async syncPendingProductCreations(): Promise<{ synced: number; failed: number }> {
+    if (!navigator.onLine) {
+      console.log('Cannot sync product creations - offline');
+      return { synced: 0, failed: 0 };
+    }
+
+    const pendingCreations = await this.offlineStorage.getPendingProductCreations();
+    if (pendingCreations.length === 0) {
+      console.log('No pending product creations to sync');
+      return { synced: 0, failed: 0 };
+    }
+
+    this.updateStatus({ isSyncing: true });
+    console.log(`Syncing ${pendingCreations.length} pending product creations...`);
+
+    let synced = 0;
+    let failed = 0;
+
+    for (const creation of pendingCreations) {
+      try {
+        // Build the request data for creating shop product
+        const requestData = {
+          masterProductId: creation.masterProductId,
+          price: creation.price,
+          originalPrice: creation.originalPrice,
+          costPrice: creation.costPrice,
+          stockQuantity: creation.stockQuantity,
+          minStockLevel: creation.minStockLevel || 10,
+          trackInventory: creation.trackInventory,
+          customName: creation.customName || creation.name,
+          customDescription: creation.customDescription,
+          isFeatured: creation.isFeatured || false,
+          tags: creation.tags,
+          barcode1: creation.barcode1,
+          barcode2: creation.barcode2,
+          barcode3: creation.barcode3,
+          nameTamil: creation.nameTamil,
+          isAvailable: true,
+          status: 'ACTIVE'
+        };
+
+        // Create the product via API
+        const response = await this.http.post<{ data: any }>(
+          `${this.apiUrl}/shop-products`,
+          requestData
+        ).toPromise();
+
+        const createdProduct = response?.data;
+        const realProductId = createdProduct?.id;
+
+        if (realProductId) {
+          // Mark as synced
+          await this.offlineStorage.markProductCreationSynced(creation.offlineProductId, realProductId);
+
+          // Update local cache with real product ID
+          // Find temp ID by matching barcode1
+          const products = await this.offlineStorage.getProducts();
+          const tempProduct = products.find(p =>
+            p.barcode1 === creation.barcode1 && p.id < 0
+          );
+          if (tempProduct) {
+            await this.offlineStorage.updateLocalProductId(tempProduct.id, realProductId);
+          }
+
+          // Remove the offline creation record
+          await this.offlineStorage.removeOfflineProductCreation(creation.offlineProductId);
+
+          synced++;
+          console.log(`Synced product creation: ${creation.offlineProductId} -> ID ${realProductId}`);
+        } else {
+          throw new Error('No product ID returned from API');
+        }
+      } catch (error: any) {
+        console.error(`Failed to sync product creation ${creation.offlineProductId}:`, error);
+        await this.offlineStorage.updateProductCreationError(
+          creation.offlineProductId,
+          error.message || 'Sync failed'
+        );
+        failed++;
+      }
+    }
+
+    await this.updatePendingCount();
+    this.updateStatus({ isSyncing: false });
+
+    console.log(`Product creation sync complete: ${synced} synced, ${failed} failed`);
+    return { synced, failed };
+  }
+
+  /**
+   * Create product offline (saves locally and adds to cache for immediate use)
+   */
+  async createProductOffline(productData: Omit<OfflineProductCreation, 'offlineProductId' | 'createdAt' | 'synced'>): Promise<{
+    success: boolean;
+    tempProductId: number;
+    offlineProductId: string;
+    message: string;
+  }> {
+    try {
+      // Generate IDs
+      const offlineProductId = this.offlineStorage.generateOfflineProductId();
+      const tempProductId = this.offlineStorage.generateTempProductId();
+
+      // Check for duplicate barcode locally
+      const barcodeExists = await this.offlineStorage.isBarcodeExistsLocally(productData.barcode1);
+      if (barcodeExists) {
+        return {
+          success: false,
+          tempProductId: 0,
+          offlineProductId: '',
+          message: `Barcode "${productData.barcode1}" already exists. Please use a unique barcode.`
+        };
+      }
+
+      // Create the offline product creation record
+      const creation: OfflineProductCreation = {
+        offlineProductId,
+        ...productData,
+        createdAt: new Date().toISOString(),
+        synced: false
+      };
+
+      // Save to offline creations store
+      await this.offlineStorage.saveOfflineProductCreation(creation);
+
+      // Add to local products cache for immediate use
+      await this.offlineStorage.addOfflineProductToLocalCache(creation, tempProductId);
+
+      // Update pending count
+      await this.updatePendingCount();
+
+      console.log(`Product created offline: ${offlineProductId}, temp ID: ${tempProductId}`);
+
+      return {
+        success: true,
+        tempProductId,
+        offlineProductId,
+        message: 'Product saved offline. Will sync when online.'
+      };
+    } catch (error: any) {
+      console.error('Failed to create product offline:', error);
+      return {
+        success: false,
+        tempProductId: 0,
+        offlineProductId: '',
+        message: error.message || 'Failed to save product offline'
+      };
+    }
+  }
+
   /**
    * Force sync now
    */
@@ -384,6 +547,9 @@ export class PosSyncService implements OnDestroy {
 
     // Sync product edits
     await this.syncPendingEdits();
+
+    // Sync product creations
+    await this.syncPendingProductCreations();
 
     // Then refresh products
     await this.refreshProductCache(shopId);

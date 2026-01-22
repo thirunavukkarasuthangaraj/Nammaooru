@@ -743,11 +743,19 @@ $text-secondary: #7f8c8d;
   opacity: 1;
 }
 
-// Quick Add Floating Button
-.quick-add-fab {
+// Floating Action Buttons Container
+.fab-container {
   position: fixed;
   bottom: 24px;
   left: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 100;
+}
+
+// Quick Add Floating Button
+.quick-add-fab {
   width: 56px;
   height: 56px;
   border-radius: 50%;
@@ -760,7 +768,6 @@ $text-secondary: #7f8c8d;
   justify-content: center;
   box-shadow: 0 4px 12px rgba($success, 0.4);
   transition: all 0.3s;
-  z-index: 100;
 
   mat-icon {
     font-size: 28px;
@@ -775,6 +782,16 @@ $text-secondary: #7f8c8d;
 
   &:active {
     transform: scale(0.95);
+  }
+
+  // Add New Product FAB - different color
+  &.add-product-fab {
+    background: linear-gradient(135deg, $accent 0%, #2980b9 100%);
+    box-shadow: 0 4px 12px rgba($accent, 0.4);
+
+    &:hover {
+      box-shadow: 0 6px 16px rgba($accent, 0.5);
+    }
   }
 }
 
@@ -814,6 +831,38 @@ $text-secondary: #7f8c8d;
 
   &.quick-add-dialog {
     max-width: 360px;
+  }
+
+  // Add New Product Dialog - wider for more fields
+  &.add-product-dialog {
+    max-width: 480px;
+    max-height: 90vh;
+    overflow-y: auto;
+
+    .dialog-header {
+      background: linear-gradient(135deg, $accent 0%, #2980b9 100%);
+
+      h3 {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        mat-icon {
+          font-size: 22px;
+          width: 22px;
+          height: 22px;
+        }
+
+        .offline-badge {
+          font-size: 12px;
+          font-weight: normal;
+          background: rgba(255, 255, 255, 0.2);
+          padding: 2px 8px;
+          border-radius: 12px;
+          margin-left: 8px;
+        }
+      }
+    }
   }
 
   .dialog-header {
@@ -905,6 +954,43 @@ $text-secondary: #7f8c8d;
             color: #bbb;
           }
         }
+
+        // Toggle group styling
+        &.toggle-group {
+          flex-direction: row;
+          align-items: center;
+          padding-top: 8px;
+        }
+      }
+
+      // Two-column row for fields
+      .field-row {
+        display: flex;
+        gap: 12px;
+
+        .field-group {
+          flex: 1;
+        }
+      }
+    }
+
+    // Product note info box
+    .product-note {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-top: 16px;
+      padding: 12px;
+      background: #e3f2fd;
+      border-radius: 8px;
+      font-size: 12px;
+      color: #1976d2;
+
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
       }
     }
 

@@ -68,6 +68,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     isOnline: true,
     pendingOrders: 0,
     pendingEdits: 0,
+    pendingProductCreations: 0,
     lastProductSync: null,
     isSyncing: false
   };
@@ -97,6 +98,20 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   customProductMrp: number = 0;
   customProductQty: number = 1;
   private customProductIdCounter: number = -1; // Negative IDs for custom products
+
+  // Add New Product (offline capable) state
+  showAddProductDialog: boolean = false;
+  newProductName: string = '';
+  newProductNameTamil: string = '';
+  newProductPrice: number = 0;
+  newProductMrp: number = 0;
+  newProductCostPrice: number = 0;
+  newProductStock: number = 0;
+  newProductBarcode1: string = '';
+  newProductBarcode2: string = '';
+  newProductBarcode3: string = '';
+  newProductTrackInventory: boolean = true;
+  isSavingNewProduct: boolean = false;
 
   private apiUrl = environment.apiUrl;
 
@@ -1402,5 +1417,143 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     this.closeQuickAdd();
 
     this.swal.success('Added', `${this.customProductName} added to cart`);
+  }
+
+  // ==================== ADD NEW PRODUCT (OFFLINE CAPABLE) ====================
+
+  /**
+   * Open add new product dialog
+   */
+  openAddProductDialog(): void {
+    this.showAddProductDialog = true;
+    this.newProductName = '';
+    this.newProductNameTamil = '';
+    this.newProductPrice = 0;
+    this.newProductMrp = 0;
+    this.newProductCostPrice = 0;
+    this.newProductStock = 0;
+    this.newProductBarcode1 = '';
+    this.newProductBarcode2 = '';
+    this.newProductBarcode3 = '';
+    this.newProductTrackInventory = true;
+  }
+
+  /**
+   * Close add new product dialog
+   */
+  closeAddProductDialog(): void {
+    this.showAddProductDialog = false;
+    this.newProductName = '';
+    this.newProductNameTamil = '';
+    this.newProductPrice = 0;
+    this.newProductMrp = 0;
+    this.newProductCostPrice = 0;
+    this.newProductStock = 0;
+    this.newProductBarcode1 = '';
+    this.newProductBarcode2 = '';
+    this.newProductBarcode3 = '';
+    this.newProductTrackInventory = true;
+    this.isSavingNewProduct = false;
+  }
+
+  /**
+   * Save new product (works offline)
+   */
+  async saveNewProduct(): Promise<void> {
+    // Validation
+    if (!this.newProductName || this.newProductName.trim() === '') {
+      this.swal.error('Required', 'Product name is required');
+      return;
+    }
+    if (this.newProductPrice <= 0) {
+      this.swal.error('Invalid Price', 'Price must be greater than 0');
+      return;
+    }
+    if (!this.newProductBarcode1 || this.newProductBarcode1.trim() === '') {
+      this.swal.error('Required', 'Barcode 1 is required');
+      return;
+    }
+
+    // Check duplicate barcode locally
+    const duplicateProduct = this.products.find(p =>
+      p.barcode1 === this.newProductBarcode1 ||
+      p.barcode2 === this.newProductBarcode1 ||
+      p.barcode3 === this.newProductBarcode1
+    );
+    if (duplicateProduct) {
+      this.swal.error('Duplicate Barcode', `Barcode "${this.newProductBarcode1}" already exists for "${duplicateProduct.name}"`);
+      return;
+    }
+
+    this.isSavingNewProduct = true;
+
+    try {
+      const productData = {
+        shopId: this.shopId,
+        name: this.newProductName.trim(),
+        nameTamil: this.newProductNameTamil?.trim() || undefined,
+        price: this.newProductPrice,
+        originalPrice: this.newProductMrp || this.newProductPrice,
+        costPrice: this.newProductCostPrice || undefined,
+        stockQuantity: this.newProductStock || 0,
+        trackInventory: this.newProductTrackInventory,
+        barcode1: this.newProductBarcode1.trim(),
+        barcode2: this.newProductBarcode2?.trim() || undefined,
+        barcode3: this.newProductBarcode3?.trim() || undefined,
+        customName: this.newProductName.trim()
+      };
+
+      // Use sync service to create product (handles both online and offline)
+      const result = await this.syncService.createProductOffline(productData);
+
+      if (result.success) {
+        // Add to local products list for immediate use
+        const newProduct: CachedProduct = {
+          id: result.tempProductId,
+          shopId: this.shopId,
+          name: this.newProductName.trim(),
+          nameTamil: this.newProductNameTamil?.trim(),
+          price: this.newProductPrice,
+          originalPrice: this.newProductMrp || this.newProductPrice,
+          stock: this.newProductStock || 0,
+          trackInventory: this.newProductTrackInventory,
+          sku: '',
+          barcode: this.newProductBarcode1.trim(),
+          barcode1: this.newProductBarcode1.trim(),
+          barcode2: this.newProductBarcode2?.trim(),
+          barcode3: this.newProductBarcode3?.trim(),
+          image: '',
+          categoryId: undefined,
+          categoryName: ''
+        };
+
+        this.products.push(newProduct);
+        this.filteredProducts = this.sortProductsWithCartFirst(this.products);
+
+        this.closeAddProductDialog();
+
+        if (navigator.onLine) {
+          this.swal.success('Product Added', 'Product has been added and will sync shortly.');
+        } else {
+          this.swal.success('Saved Offline', result.message);
+        }
+      } else {
+        this.swal.error('Error', result.message);
+      }
+    } catch (error: any) {
+      console.error('Failed to save new product:', error);
+      this.swal.error('Error', error.message || 'Failed to save product');
+    } finally {
+      this.isSavingNewProduct = false;
+    }
+  }
+
+  /**
+   * Get total pending items count (orders + edits + product creations)
+   */
+  getTotalPendingCount(): number {
+    return this.syncStatus.pendingOrders +
+           (this.syncStatus.pendingEdits || 0) +
+           (this.syncStatus.pendingProductCreations || 0);
   }
 }

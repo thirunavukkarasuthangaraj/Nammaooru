@@ -70,11 +70,45 @@ export interface OfflineEdit {
   syncError?: string;
 }
 
+// Offline product creation (for adding new products when offline)
+export interface OfflineProductCreation {
+  offlineProductId: string;  // Temporary ID for offline product
+  shopId: number;
+  masterProductId?: number;  // If adding from master catalog
+  // Product details
+  name: string;
+  nameTamil?: string;
+  price: number;
+  originalPrice?: number;
+  costPrice?: number;
+  stockQuantity: number;
+  minStockLevel?: number;
+  trackInventory: boolean;
+  // Barcodes
+  barcode1: string;  // Required
+  barcode2?: string;
+  barcode3?: string;
+  // Other fields
+  customName?: string;
+  customDescription?: string;
+  isFeatured?: boolean;
+  tags?: string;
+  // Image (base64 for offline, will be uploaded when syncing)
+  imageBase64?: string;
+  imagePendingUpload?: boolean;
+  // Sync status
+  createdAt: string;
+  synced: boolean;
+  syncedProductId?: number;  // Actual product ID after sync
+  syncError?: string;
+}
+
 const DB_NAME = 'NammaOoruPOS';
-const DB_VERSION = 2;  // Incremented for offlineEdits store
+const DB_VERSION = 3;  // Incremented for offlineProductCreations store
 const PRODUCTS_STORE = 'products';
 const ORDERS_STORE = 'offlineOrders';
 const EDITS_STORE = 'offlineEdits';
+const PRODUCT_CREATIONS_STORE = 'offlineProductCreations';
 const SYNC_META_STORE = 'syncMeta';
 
 @Injectable({
@@ -130,6 +164,15 @@ export class OfflineStorageService {
           editsStore.createIndex('productId', 'productId', { unique: false });
           editsStore.createIndex('synced', 'synced', { unique: false });
           editsStore.createIndex('createdAt', 'createdAt', { unique: false });
+        }
+
+        // Offline product creations store (for new products when offline)
+        if (!db.objectStoreNames.contains(PRODUCT_CREATIONS_STORE)) {
+          const creationsStore = db.createObjectStore(PRODUCT_CREATIONS_STORE, { keyPath: 'offlineProductId' });
+          creationsStore.createIndex('shopId', 'shopId', { unique: false });
+          creationsStore.createIndex('synced', 'synced', { unique: false });
+          creationsStore.createIndex('createdAt', 'createdAt', { unique: false });
+          creationsStore.createIndex('barcode1', 'barcode1', { unique: false });
         }
 
         // Sync metadata store
@@ -561,5 +604,228 @@ export class OfflineStorageService {
       };
       getRequest.onerror = () => reject(getRequest.error);
     });
+  }
+
+  // ==================== OFFLINE PRODUCT CREATIONS ====================
+
+  /**
+   * Generate unique offline product ID
+   * Format: OFFPROD-timestamp-random (negative to distinguish from real IDs)
+   */
+  generateOfflineProductId(): string {
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 8);
+    return `OFFPROD-${timestamp}-${random}`;
+  }
+
+  /**
+   * Generate a temporary numeric ID for local product cache
+   * Uses negative numbers to avoid collision with real product IDs
+   */
+  generateTempProductId(): number {
+    return -Math.floor(Date.now() + Math.random() * 1000);
+  }
+
+  /**
+   * Save offline product creation
+   */
+  async saveOfflineProductCreation(creation: OfflineProductCreation): Promise<void> {
+    const db = await this.getDB();
+    const transaction = db.transaction(PRODUCT_CREATIONS_STORE, 'readwrite');
+    const store = transaction.objectStore(PRODUCT_CREATIONS_STORE);
+
+    return new Promise((resolve, reject) => {
+      const request = store.put(creation);
+      request.onsuccess = () => {
+        console.log('Offline product creation saved:', creation.offlineProductId);
+        resolve();
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Get all pending (unsynced) product creations
+   */
+  async getPendingProductCreations(): Promise<OfflineProductCreation[]> {
+    const allCreations = await this.getAllOfflineProductCreations();
+    return allCreations.filter(creation => creation.synced === false);
+  }
+
+  /**
+   * Get all offline product creations
+   */
+  async getAllOfflineProductCreations(): Promise<OfflineProductCreation[]> {
+    const db = await this.getDB();
+    const transaction = db.transaction(PRODUCT_CREATIONS_STORE, 'readonly');
+    const store = transaction.objectStore(PRODUCT_CREATIONS_STORE);
+
+    return new Promise((resolve, reject) => {
+      const request = store.getAll();
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Mark product creation as synced
+   */
+  async markProductCreationSynced(offlineProductId: string, syncedProductId: number): Promise<void> {
+    const db = await this.getDB();
+    const transaction = db.transaction(PRODUCT_CREATIONS_STORE, 'readwrite');
+    const store = transaction.objectStore(PRODUCT_CREATIONS_STORE);
+
+    return new Promise((resolve, reject) => {
+      const getRequest = store.get(offlineProductId);
+      getRequest.onsuccess = () => {
+        const creation = getRequest.result;
+        if (creation) {
+          creation.synced = true;
+          creation.syncedProductId = syncedProductId;
+          const putRequest = store.put(creation);
+          putRequest.onsuccess = () => resolve();
+          putRequest.onerror = () => reject(putRequest.error);
+        } else {
+          resolve();
+        }
+      };
+      getRequest.onerror = () => reject(getRequest.error);
+    });
+  }
+
+  /**
+   * Update product creation sync error
+   */
+  async updateProductCreationError(offlineProductId: string, error: string): Promise<void> {
+    const db = await this.getDB();
+    const transaction = db.transaction(PRODUCT_CREATIONS_STORE, 'readwrite');
+    const store = transaction.objectStore(PRODUCT_CREATIONS_STORE);
+
+    return new Promise((resolve, reject) => {
+      const getRequest = store.get(offlineProductId);
+      getRequest.onsuccess = () => {
+        const creation = getRequest.result;
+        if (creation) {
+          creation.syncError = error;
+          const putRequest = store.put(creation);
+          putRequest.onsuccess = () => resolve();
+          putRequest.onerror = () => reject(putRequest.error);
+        } else {
+          resolve();
+        }
+      };
+      getRequest.onerror = () => reject(getRequest.error);
+    });
+  }
+
+  /**
+   * Remove offline product creation
+   */
+  async removeOfflineProductCreation(offlineProductId: string): Promise<void> {
+    const db = await this.getDB();
+    const transaction = db.transaction(PRODUCT_CREATIONS_STORE, 'readwrite');
+    const store = transaction.objectStore(PRODUCT_CREATIONS_STORE);
+
+    return new Promise((resolve, reject) => {
+      const request = store.delete(offlineProductId);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Get pending product creations count
+   */
+  async getPendingProductCreationsCount(): Promise<number> {
+    const pending = await this.getPendingProductCreations();
+    return pending.length;
+  }
+
+  /**
+   * Add offline-created product to local products cache
+   * This allows the product to be used immediately for billing
+   */
+  async addOfflineProductToLocalCache(creation: OfflineProductCreation, tempId: number): Promise<void> {
+    const db = await this.getDB();
+    const transaction = db.transaction(PRODUCTS_STORE, 'readwrite');
+    const store = transaction.objectStore(PRODUCTS_STORE);
+
+    const cachedProduct: CachedProduct = {
+      id: tempId,
+      shopId: creation.shopId,
+      name: creation.customName || creation.name,
+      nameTamil: creation.nameTamil,
+      price: creation.price,
+      originalPrice: creation.originalPrice || creation.price,
+      stock: creation.stockQuantity,
+      trackInventory: creation.trackInventory,
+      sku: '',
+      barcode: creation.barcode1,
+      barcode1: creation.barcode1,
+      barcode2: creation.barcode2,
+      barcode3: creation.barcode3,
+      image: '',
+      imageBase64: creation.imageBase64,
+      categoryId: undefined,
+      categoryName: ''
+    };
+
+    return new Promise((resolve, reject) => {
+      const request = store.put(cachedProduct);
+      request.onsuccess = () => {
+        console.log('Offline product added to local cache:', tempId);
+        resolve();
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Update local product ID after sync (replace temp ID with real ID)
+   */
+  async updateLocalProductId(tempId: number, realId: number): Promise<void> {
+    const db = await this.getDB();
+    const transaction = db.transaction(PRODUCTS_STORE, 'readwrite');
+    const store = transaction.objectStore(PRODUCTS_STORE);
+
+    return new Promise((resolve, reject) => {
+      const getRequest = store.get(tempId);
+      getRequest.onsuccess = () => {
+        const product = getRequest.result;
+        if (product) {
+          // Delete the old entry
+          const deleteRequest = store.delete(tempId);
+          deleteRequest.onsuccess = () => {
+            // Add with new ID
+            product.id = realId;
+            const putRequest = store.put(product);
+            putRequest.onsuccess = () => {
+              console.log(`Updated product ID from ${tempId} to ${realId}`);
+              resolve();
+            };
+            putRequest.onerror = () => reject(putRequest.error);
+          };
+          deleteRequest.onerror = () => reject(deleteRequest.error);
+        } else {
+          resolve();
+        }
+      };
+      getRequest.onerror = () => reject(getRequest.error);
+    });
+  }
+
+  /**
+   * Check if barcode already exists in local cache
+   */
+  async isBarcodeExistsLocally(barcode: string, excludeProductId?: number): Promise<boolean> {
+    const products = await this.getProducts();
+    return products.some(p =>
+      p.id !== excludeProductId && (
+        p.barcode === barcode ||
+        p.barcode1 === barcode ||
+        p.barcode2 === barcode ||
+        p.barcode3 === barcode
+      )
+    );
   }
 }
