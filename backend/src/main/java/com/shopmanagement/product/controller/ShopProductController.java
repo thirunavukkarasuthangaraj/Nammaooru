@@ -97,6 +97,7 @@ public class ShopProductController {
             spec = spec.and((root, query, cb) -> cb.or(
                 cb.like(cb.lower(root.get("masterProduct").get("name")), searchPattern),
                 cb.like(cb.lower(root.get("masterProduct").get("sku")), searchPattern),
+                cb.like(cb.lower(cb.coalesce(root.get("masterProduct").get("barcode"), "")), searchPattern),
                 cb.like(cb.lower(root.get("customName")), searchPattern),
                 cb.like(cb.lower(root.get("customDescription")), searchPattern),
                 cb.like(cb.lower(root.get("tags")), searchPattern)

@@ -69,7 +69,7 @@ public class ShopOwnerProductController {
             Specification<ShopProduct> spec = (root, query, cb) ->
                 cb.notEqual(root.get("status"), ShopProduct.ShopProductStatus.INACTIVE);
 
-            // Add search filter - handle null fields with coalesce
+            // Add search filter - handle null fields with coalesce (includes barcode for scanning)
             if (search != null && !search.trim().isEmpty()) {
                 String searchPattern = "%" + search.toLowerCase().trim() + "%";
                 spec = spec.and((root, query, cb) -> cb.or(
@@ -78,6 +78,7 @@ public class ShopOwnerProductController {
                     cb.like(cb.lower(cb.coalesce(root.get("masterProduct").get("name"), "")), searchPattern),
                     cb.like(cb.lower(cb.coalesce(root.get("masterProduct").get("nameTamil"), "")), searchPattern),
                     cb.like(cb.lower(cb.coalesce(root.get("masterProduct").get("sku"), "")), searchPattern),
+                    cb.like(cb.lower(cb.coalesce(root.get("masterProduct").get("barcode"), "")), searchPattern),
                     cb.like(cb.lower(cb.coalesce(root.get("tags"), "")), searchPattern)
                 ));
             }

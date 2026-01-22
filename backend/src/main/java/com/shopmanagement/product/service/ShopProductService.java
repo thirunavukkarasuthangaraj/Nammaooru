@@ -195,7 +195,17 @@ public class ShopProductService {
         }
 
         if (request.getBarcode() != null) {
-            masterProduct.setBarcode(request.getBarcode().trim().isEmpty() ? null : request.getBarcode().trim());
+            String newBarcode = request.getBarcode().trim().isEmpty() ? null : request.getBarcode().trim();
+
+            // Check for duplicate barcode (only if setting a non-null value)
+            if (newBarcode != null) {
+                boolean barcodeExists = masterProductRepository.existsByBarcodeAndIdNot(newBarcode, masterProduct.getId());
+                if (barcodeExists) {
+                    throw new RuntimeException("Barcode already exists: " + newBarcode + ". Please use a unique barcode.");
+                }
+            }
+
+            masterProduct.setBarcode(newBarcode);
             masterProductUpdated = true;
             log.debug("Updating master product barcode to: {}", request.getBarcode());
         }
@@ -564,10 +574,20 @@ public class ShopProductService {
             }
         }
 
-        // Update barcode on master product
+        // Update barcode on master product (with duplicate validation)
         if (request.getBarcode() != null) {
             MasterProduct masterProduct = shopProduct.getMasterProduct();
-            masterProduct.setBarcode(request.getBarcode().trim().isEmpty() ? null : request.getBarcode().trim());
+            String newBarcode = request.getBarcode().trim().isEmpty() ? null : request.getBarcode().trim();
+
+            // Check for duplicate barcode (only if setting a non-null value)
+            if (newBarcode != null) {
+                boolean barcodeExists = masterProductRepository.existsByBarcodeAndIdNot(newBarcode, masterProduct.getId());
+                if (barcodeExists) {
+                    throw new RuntimeException("Barcode already exists: " + newBarcode + ". Please use a unique barcode.");
+                }
+            }
+
+            masterProduct.setBarcode(newBarcode);
             masterProduct.setUpdatedBy(getCurrentUsername());
             masterProductRepository.save(masterProduct);
             log.info("Updated barcode for master product {}: {}", masterProduct.getId(), request.getBarcode());

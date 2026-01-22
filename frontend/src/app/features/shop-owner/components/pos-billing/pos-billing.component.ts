@@ -1122,6 +1122,19 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Validate duplicate barcode (check local products)
+    if (this.editBarcode && this.editBarcode.trim() !== '') {
+      const duplicateProduct = this.products.find(p =>
+        p.id !== this.editingProduct!.id &&
+        p.barcode &&
+        p.barcode.toLowerCase() === this.editBarcode.trim().toLowerCase()
+      );
+      if (duplicateProduct) {
+        this.swal.error('Duplicate Barcode', `Barcode "${this.editBarcode}" already exists for product "${duplicateProduct.name}". Please use a unique barcode.`);
+        return;
+      }
+    }
+
     this.isSavingEdit = true;
 
     const productId = this.editingProduct.id;

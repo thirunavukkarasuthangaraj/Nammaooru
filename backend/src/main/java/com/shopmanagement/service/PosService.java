@@ -52,15 +52,32 @@ public class PosService {
         // 2. Get or create walk-in customer
         Customer customer = getOrCreateWalkInCustomer(request, shop);
 
-        // 3. Process items and deduct inventory
+        // 3. OPTIMIZED: Batch fetch all products at once
+        List<Long> productIds = request.getItems().stream()
+                .map(PosOrderItemRequest::getShopProductId)
+                .toList();
+        List<ShopProduct> shopProducts = shopProductRepository.findAllById(productIds);
+
+        // Create a map for O(1) lookup
+        java.util.Map<Long, ShopProduct> productMap = shopProducts.stream()
+                .collect(java.util.stream.Collectors.toMap(ShopProduct::getId, p -> p));
+
+        // Validate all products exist
+        for (Long productId : productIds) {
+            if (!productMap.containsKey(productId)) {
+                throw new RuntimeException("Product not found: " + productId);
+            }
+        }
+
+        // 4. Process items and prepare inventory updates
         List<OrderItem> orderItems = new ArrayList<>();
+        List<ShopProduct> productsToUpdate = new ArrayList<>();
         BigDecimal subtotal = BigDecimal.ZERO;
 
         for (PosOrderItemRequest itemRequest : request.getItems()) {
-            ShopProduct shopProduct = shopProductRepository.findById(itemRequest.getShopProductId())
-                    .orElseThrow(() -> new RuntimeException("Product not found: " + itemRequest.getShopProductId()));
+            ShopProduct shopProduct = productMap.get(itemRequest.getShopProductId());
 
-            // Check and deduct stock
+            // Check and prepare stock deduction
             if (shopProduct.getTrackInventory() != null && shopProduct.getTrackInventory()) {
                 Integer currentStock = shopProduct.getStockQuantity() != null ? shopProduct.getStockQuantity() : 0;
                 if (currentStock < itemRequest.getQuantity()) {
@@ -76,7 +93,7 @@ public class PosService {
                             stockProductName, currentStock, itemRequest.getQuantity()));
                 }
 
-                // Deduct stock
+                // Deduct stock (will batch save later)
                 int newStock = currentStock - itemRequest.getQuantity();
                 shopProduct.setStockQuantity(newStock);
 
@@ -85,8 +102,8 @@ public class PosService {
                     shopProduct.setIsAvailable(false);
                 }
 
-                shopProductRepository.save(shopProduct);
-                log.info("Stock deducted for product {}: {} -> {}", shopProduct.getId(), currentStock, newStock);
+                productsToUpdate.add(shopProduct);
+                log.debug("Stock prepared for deduction: product {}: {} -> {}", shopProduct.getId(), currentStock, newStock);
             }
 
             // Get price (use override if provided, else product price)
@@ -125,12 +142,18 @@ public class PosService {
             subtotal = subtotal.add(itemTotal);
         }
 
-        // 4. Calculate totals (no delivery fee, no tax for POS walk-in orders)
+        // 5. BATCH save all inventory updates at once
+        if (!productsToUpdate.isEmpty()) {
+            shopProductRepository.saveAll(productsToUpdate);
+            log.info("Batch updated stock for {} products", productsToUpdate.size());
+        }
+
+        // 6. Calculate totals (no delivery fee, no tax for POS walk-in orders)
         BigDecimal taxAmount = BigDecimal.ZERO; // No tax for walk-in orders
         BigDecimal discountAmount = request.getDiscountAmount() != null ? request.getDiscountAmount() : BigDecimal.ZERO;
         BigDecimal totalAmount = subtotal.subtract(discountAmount);
 
-        // 5. Create order
+        // 7. Create order
         Order order = Order.builder()
                 .customer(customer)
                 .shop(shop)
@@ -155,7 +178,7 @@ public class PosService {
         }
         order.setOrderItems(orderItems);
 
-        // 6. Save order
+        // 8. Save order
         Order savedOrder = orderRepository.save(order);
         log.info("POS order created: {} - Total: {}", savedOrder.getOrderNumber(), totalAmount);
 
