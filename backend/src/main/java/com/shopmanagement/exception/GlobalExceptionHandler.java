@@ -43,7 +43,7 @@ public class GlobalExceptionHandler {
         log.error("Product not found: {}", ex.getMessage());
 
         ApiResponse<Void> response = ApiResponse.<Void>builder()
-                .statusCode(ResponseConstants.NOT_FOUND)
+                .statusCode(ResponseConstants.PRODUCT_NOT_FOUND)
                 .message(ex.getMessage())
                 .path(request.getDescription(false).replace("uri=", ""))
                 .build();

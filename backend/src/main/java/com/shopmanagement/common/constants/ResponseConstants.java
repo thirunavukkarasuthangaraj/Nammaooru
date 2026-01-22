@@ -57,7 +57,10 @@ public class ResponseConstants {
     
     public static final String SHOP_ALREADY_REJECTED = "3005";
     public static final String SHOP_ALREADY_REJECTED_MESSAGE = "Shop is already rejected";
-    
+
+    public static final String PRODUCT_NOT_FOUND = "3006";
+    public static final String PRODUCT_NOT_FOUND_MESSAGE = "Product not found";
+
     // File upload errors (4xxx)
     public static final String FILE_UPLOAD_ERROR = "4001";
     public static final String FILE_UPLOAD_ERROR_MESSAGE = "File upload failed";
