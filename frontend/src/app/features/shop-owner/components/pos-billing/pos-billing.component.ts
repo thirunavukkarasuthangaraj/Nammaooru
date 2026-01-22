@@ -334,13 +334,14 @@ export class PosBillingComponent implements OnInit, OnDestroy {
           this.filteredProducts = this.sortProductsWithCartFirst(this.products);
           this.isLoading = false;
 
-          // Cache images in background for offline use
-          console.log('Caching product images...');
-          await this.cacheProductImages();
-
-          // Save to local cache for offline use
+          // Save to local cache immediately (fast)
           await this.offlineStorage.saveProducts(this.products, this.shopId);
-          console.log(`Loaded and cached ${this.products.length} products with images`);
+          console.log(`Loaded and cached ${this.products.length} products`);
+
+          // Cache images in background (non-blocking) - don't await
+          this.cacheProductImages().then(() => {
+            console.log('Background image caching complete');
+          }).catch(err => console.warn('Image caching error:', err));
         },
         error: (error) => {
           console.error('Failed to load products:', error);
@@ -740,17 +741,15 @@ export class PosBillingComponent implements OnInit, OnDestroy {
         // Print receipt
         this.printReceipt(result.order);
 
+        // Update local stock immediately (no need to reload all products)
+        await this.updateLocalStockAfterBill();
+
         // Clear cart
         this.cart = [];
         this.calculateTotals();
         this.customerName = '';
         this.customerPhone = '';
         this.orderNotes = '';
-
-        // Refresh products if online
-        if (!result.offline) {
-          this.loadProducts();
-        }
       }
     } catch (error) {
       this.swal.close();
@@ -1254,6 +1253,34 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     if (navigator.onLine) {
       await this.offlineStorage.saveProducts(this.products, this.shopId);
     }
+  }
+
+  /**
+   * Update local stock after creating a bill (fast - no server reload needed)
+   */
+  private async updateLocalStockAfterBill(): Promise<void> {
+    // Deduct stock for each cart item locally
+    for (const cartItem of this.cart) {
+      const productId = cartItem.product.id;
+      const quantitySold = cartItem.quantity;
+
+      // Update in products array
+      const productIndex = this.products.findIndex(p => p.id === productId);
+      if (productIndex !== -1 && this.products[productIndex].trackInventory) {
+        const currentStock = this.products[productIndex].stock || 0;
+        this.products[productIndex].stock = Math.max(0, currentStock - quantitySold);
+      }
+
+      // Update in filtered products array
+      const filteredIndex = this.filteredProducts.findIndex(p => p.id === productId);
+      if (filteredIndex !== -1 && this.filteredProducts[filteredIndex].trackInventory) {
+        const currentStock = this.filteredProducts[filteredIndex].stock || 0;
+        this.filteredProducts[filteredIndex].stock = Math.max(0, currentStock - quantitySold);
+      }
+    }
+
+    // Save updated products to IndexedDB cache
+    await this.offlineStorage.saveProducts(this.products, this.shopId);
   }
 
   /**
