@@ -231,10 +231,13 @@
   </mat-menu>
 
   <!-- Mobile Sidebar Overlay -->
-  <div 
-    class="sidebar-overlay" 
+  <div
+    class="sidebar-overlay"
     *ngIf="isMobile && isMobileSidebarOpen"
     (click)="closeMobileSidebar()">
   </div>
+
+  <!-- PWA Install Banner -->
+  <app-pwa-install-banner></app-pwa-install-banner>
 
 </div>

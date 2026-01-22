@@ -14,12 +14,14 @@ import { MatInputModule } from '@angular/material/input';
 // import { LocationPickerComponent } from './components/location-picker/location-picker.component'; // Disabled - Google Maps issues
 import { UnauthorizedComponent } from './components/unauthorized/unauthorized.component';
 import { TimeAgoPipe } from './pipes/time-ago.pipe';
+import { PwaInstallBannerComponent } from './components/pwa-install-banner/pwa-install-banner.component';
 
 @NgModule({
   declarations: [
     // LocationPickerComponent, // Disabled - Google Maps issues
     UnauthorizedComponent,
-    TimeAgoPipe
+    TimeAgoPipe,
+    PwaInstallBannerComponent
   ],
   imports: [
     CommonModule,
@@ -37,7 +39,8 @@ import { TimeAgoPipe } from './pipes/time-ago.pipe';
   exports: [
     // LocationPickerComponent, // Disabled - Google Maps issues
     UnauthorizedComponent,
-    TimeAgoPipe
+    TimeAgoPipe,
+    PwaInstallBannerComponent
   ]
 })
 export class SharedModule { }
