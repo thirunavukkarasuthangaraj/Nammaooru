@@ -96,7 +96,7 @@
             <div class="product-name">{{ getProductName(product) }}</div>
             <div class="product-name-secondary" *ngIf="showTamil && product.name">{{ product.name }}</div>
             <div class="product-name-secondary" *ngIf="!showTamil && product.nameTamil">{{ product.nameTamil }}</div>
-            <div class="product-sku">{{ product.sku }}</div>
+            <div class="product-sku">{{ product.barcode || product.sku }}</div>
             <div class="product-price">₹{{ product.price }}</div>
             <div class="product-stock" *ngIf="product.trackInventory">
               <span [class.low-stock]="product.stock <= 5">Stock: {{ product.stock }}</span>
@@ -260,8 +260,11 @@
             <input type="number" [(ngModel)]="editStock" min="0" step="1" class="edit-input">
           </div>
           <div class="field-group">
-            <label>Barcode</label>
-            <input type="text" [(ngModel)]="editBarcode" placeholder="Enter barcode" class="edit-input">
+            <label>Barcode / SKU</label>
+            <input type="text"
+                   [(ngModel)]="editBarcode"
+                   placeholder="Enter barcode or SKU"
+                   class="edit-input">
           </div>
         </div>
       </div>

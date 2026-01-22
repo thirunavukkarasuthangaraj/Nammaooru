@@ -1073,7 +1073,8 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     this.editPrice = product.price;
     this.editMrp = product.originalPrice || product.price;
     this.editStock = product.stock;
-    this.editBarcode = product.barcode || '';
+    // Use barcode if available, otherwise fallback to SKU
+    this.editBarcode = product.barcode || product.sku || '';
   }
 
   /**
