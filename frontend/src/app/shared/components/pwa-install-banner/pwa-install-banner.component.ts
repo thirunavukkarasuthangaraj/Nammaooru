@@ -1,14 +1,17 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { PwaInstallService } from '../../../core/services/pwa-install.service';
 
 @Component({
   selector: 'app-pwa-install-banner',
+  standalone: true,
+  imports: [CommonModule],
   template: `
-    <div class="pwa-install-banner" *ngIf="showBanner" [@slideIn]>
+    <div class="pwa-install-banner" *ngIf="showBanner">
       <div class="banner-content">
         <div class="app-icon">
-          <img src="assets/icons/icon-72x72.png" alt="NammaOoru" />
+          <span class="icon-text">N</span>
         </div>
         <div class="banner-text">
           <h4>Install NammaOoru App</h4>
@@ -64,12 +67,16 @@ import { PwaInstallService } from '../../../core/services/pwa-install.service';
       overflow: hidden;
       flex-shrink: 0;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
-    .app-icon img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
+    .icon-text {
+      font-size: 24px;
+      font-weight: 700;
+      color: white;
     }
 
     .banner-text {

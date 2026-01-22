@@ -14,21 +14,23 @@ import { MatCardModule } from '@angular/material/card';
 import { AuthService } from '../../../core/services/auth.service';
 import { LoginRequest, UserRole } from '../../../core/models/auth.model';
 import { VersionService } from '../../../core/services/version.service';
+import { PwaInstallBannerComponent } from '../../../shared/components/pwa-install-banner/pwa-install-banner.component';
 
 @Component({
   selector: 'app-login',
   standalone: true,
   imports: [
-    CommonModule, 
+    CommonModule,
     ReactiveFormsModule,
     RouterModule,
-    MatIconModule, 
-    MatButtonModule, 
-    MatCheckboxModule, 
+    MatIconModule,
+    MatButtonModule,
+    MatCheckboxModule,
     MatProgressSpinnerModule,
     MatInputModule,
     MatFormFieldModule,
-    MatCardModule
+    MatCardModule,
+    PwaInstallBannerComponent
   ],
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.scss']

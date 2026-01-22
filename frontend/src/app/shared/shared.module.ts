@@ -20,21 +20,23 @@ import { PwaInstallBannerComponent } from './components/pwa-install-banner/pwa-i
   declarations: [
     // LocationPickerComponent, // Disabled - Google Maps issues
     UnauthorizedComponent,
-    TimeAgoPipe,
-    PwaInstallBannerComponent
+    TimeAgoPipe
   ],
   imports: [
     CommonModule,
     ReactiveFormsModule,
     RouterModule,
-    
+
     // Angular Material
     MatProgressSpinnerModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
     MatFormFieldModule,
-    MatInputModule
+    MatInputModule,
+
+    // Standalone Components
+    PwaInstallBannerComponent
   ],
   exports: [
     // LocationPickerComponent, // Disabled - Google Maps issues
