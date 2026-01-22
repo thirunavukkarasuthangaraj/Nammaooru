@@ -927,7 +927,7 @@ export class InventoryManagementComponent implements OnInit, OnDestroy {
   }
 
   applyFilters(): void {
-    this.dataSource.filterPredicate = (data: InventoryItem, filter: string) => {
+    this.dataSource.filterPredicate = (data: InventoryItem, filter: string): boolean => {
       const searchTerm = this.searchControl.value?.toLowerCase() || '';
 
       // Check name and category
@@ -935,11 +935,13 @@ export class InventoryManagementComponent implements OnInit, OnDestroy {
                           data.category.toLowerCase().includes(searchTerm);
 
       // Check all barcode fields
-      const matchesBarcode = (data.barcode && data.barcode.toLowerCase().includes(searchTerm)) ||
-                             (data.barcode1 && data.barcode1.toLowerCase().includes(searchTerm)) ||
-                             (data.barcode2 && data.barcode2.toLowerCase().includes(searchTerm)) ||
-                             (data.barcode3 && data.barcode3.toLowerCase().includes(searchTerm)) ||
-                             (data.sku && data.sku.toLowerCase().includes(searchTerm));
+      const matchesBarcode = !!(
+        (data.barcode && data.barcode.toLowerCase().includes(searchTerm)) ||
+        (data.barcode1 && data.barcode1.toLowerCase().includes(searchTerm)) ||
+        (data.barcode2 && data.barcode2.toLowerCase().includes(searchTerm)) ||
+        (data.barcode3 && data.barcode3.toLowerCase().includes(searchTerm)) ||
+        (data.sku && data.sku.toLowerCase().includes(searchTerm))
+      );
 
       const matchesSearch = matchesName || matchesBarcode;
       const matchesCategory = !this.selectedCategory || data.category === this.selectedCategory;

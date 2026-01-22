@@ -204,7 +204,9 @@
       "Bash(ng build:*)",
       "Bash(mvn:*)",
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJUaGlydWRyaXZlciIsImV4cCI6MTc5OTc0OTYyMCwiaWF0IjoxNzY4MjEzNjIwfQ.qSGLdpvWVMtWgWE8KOdy-skaaDJMJKgWvFn3FWMco9w\")",
-      "Bash(__NEW_LINE_56c4c3f2d6971ce5__ curl -s -X POST http://localhost:8080/api/pos/orders -H \"Content-Type: application/json\" -H \"Authorization: Bearer $TOKEN\" -d '{\n    \"\"items\"\": [{\"\"shopProductId\"\": 2, \"\"quantity\"\": 1, \"\"unitPrice\"\": 99}],\n    \"\"paymentMethod\"\": \"\"UPI\"\",\n    \"\"shopId\"\": 2\n}')"
+      "Bash(__NEW_LINE_56c4c3f2d6971ce5__ curl -s -X POST http://localhost:8080/api/pos/orders -H \"Content-Type: application/json\" -H \"Authorization: Bearer $TOKEN\" -d '{\n    \"\"items\"\": [{\"\"shopProductId\"\": 2, \"\"quantity\"\": 1, \"\"unitPrice\"\": 99}],\n    \"\"paymentMethod\"\": \"\"UPI\"\",\n    \"\"shopId\"\": 2\n}')",
+      "WebSearch",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": [],

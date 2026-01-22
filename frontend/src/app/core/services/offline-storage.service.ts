@@ -5,10 +5,15 @@ export interface CachedProduct {
   shopId?: number;  // Shop ID for the product
   name: string;
   nameTamil?: string;
+  description?: string;
   price: number;
   originalPrice?: number;  // MRP price for discount calculation
+  costPrice?: number;  // Cost price for profit calculation
   stock: number;
+  minStockLevel?: number;  // Minimum stock level for alerts
+  maxStockLevel?: number;  // Maximum stock level
   trackInventory: boolean;
+  isAvailable?: boolean;  // Product availability status
   sku: string;
   barcode?: string;
   // Shop-level multiple barcodes
@@ -16,11 +21,14 @@ export interface CachedProduct {
   barcode2?: string;
   barcode3?: string;
   image?: string;
+  imageUrl?: string;  // Full image URL
   imageBase64?: string;  // Cached image for offline use
   categoryId?: number;
   categoryName?: string;
+  category?: string;  // Category name shorthand
   unit?: string;
   weight?: number;
+  masterProductId?: number;  // Reference to master product
 }
 
 export interface OfflineOrder {

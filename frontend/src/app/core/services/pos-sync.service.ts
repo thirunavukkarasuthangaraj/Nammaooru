@@ -159,19 +159,31 @@ export class PosSyncService implements OnDestroy {
   private mapToCache(product: any): CachedProduct {
     return {
       id: product.id,
+      shopId: product.shopId,
       name: product.displayName || product.customName || product.masterProduct?.name || 'Unknown',
       nameTamil: product.nameTamil || product.displayNameTamil || product.masterProduct?.nameTamil,
+      description: product.displayDescription || product.customDescription || product.masterProduct?.description || '',
       price: product.price,
+      originalPrice: product.originalPrice || product.price,
+      costPrice: product.costPrice,
       stock: product.stockQuantity || 0,
+      minStockLevel: product.minStockLevel || 10,
+      maxStockLevel: product.maxStockLevel || 100,
       trackInventory: product.trackInventory ?? true,
-      sku: product.masterProduct?.sku || product.sku || '',
-      barcode: product.masterProduct?.barcode || product.barcode || '',
+      isAvailable: product.isAvailable ?? true,
+      sku: product.sku || product.masterProduct?.sku || '',
+      barcode: product.barcode || product.masterProduct?.barcode || '',
       barcode1: product.barcode1 || '',
       barcode2: product.barcode2 || '',
       barcode3: product.barcode3 || '',
       image: product.primaryImageUrl || product.masterProduct?.primaryImageUrl || '',
+      imageUrl: product.primaryImageUrl || product.masterProduct?.primaryImageUrl || '',
       categoryId: product.masterProduct?.category?.id || product.categoryId,
-      categoryName: product.masterProduct?.category?.name || product.categoryName || ''
+      categoryName: product.masterProduct?.category?.name || product.categoryName || '',
+      category: product.masterProduct?.category?.name || product.categoryName || '',
+      unit: product.baseUnit || product.masterProduct?.baseUnit || 'piece',
+      weight: product.baseWeight || product.masterProduct?.baseWeight,
+      masterProductId: product.masterProduct?.id
     };
   }
 
