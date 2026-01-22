@@ -39,10 +39,32 @@ export interface OfflineOrder {
   synced: boolean;
 }
 
+export interface OfflineEdit {
+  editId: string;
+  productId: number;
+  shopId: number;
+  changes: {
+    price?: number;
+    originalPrice?: number;
+    stockQuantity?: number;
+    barcode?: string;
+  };
+  previousValues: {
+    price?: number;
+    originalPrice?: number;
+    stockQuantity?: number;
+    barcode?: string;
+  };
+  createdAt: string;
+  synced: boolean;
+  syncError?: string;
+}
+
 const DB_NAME = 'NammaOoruPOS';
-const DB_VERSION = 1;
+const DB_VERSION = 2;  // Incremented for offlineEdits store
 const PRODUCTS_STORE = 'products';
 const ORDERS_STORE = 'offlineOrders';
+const EDITS_STORE = 'offlineEdits';
 const SYNC_META_STORE = 'syncMeta';
 
 @Injectable({
@@ -90,6 +112,14 @@ export class OfflineStorageService {
           const orderStore = db.createObjectStore(ORDERS_STORE, { keyPath: 'offlineOrderId' });
           orderStore.createIndex('synced', 'synced', { unique: false });
           orderStore.createIndex('createdAt', 'createdAt', { unique: false });
+        }
+
+        // Offline edits store (for product updates when offline)
+        if (!db.objectStoreNames.contains(EDITS_STORE)) {
+          const editsStore = db.createObjectStore(EDITS_STORE, { keyPath: 'editId' });
+          editsStore.createIndex('productId', 'productId', { unique: false });
+          editsStore.createIndex('synced', 'synced', { unique: false });
+          editsStore.createIndex('createdAt', 'createdAt', { unique: false });
         }
 
         // Sync metadata store
@@ -313,6 +343,139 @@ export class OfflineStorageService {
   async getPendingOrdersCount(): Promise<number> {
     const pending = await this.getPendingOrders();
     return pending.length;
+  }
+
+  // ==================== OFFLINE EDITS ====================
+
+  /**
+   * Save offline product edit
+   */
+  async saveOfflineEdit(edit: OfflineEdit): Promise<void> {
+    const db = await this.getDB();
+    const transaction = db.transaction(EDITS_STORE, 'readwrite');
+    const store = transaction.objectStore(EDITS_STORE);
+
+    return new Promise((resolve, reject) => {
+      const request = store.put(edit);
+      request.onsuccess = () => {
+        console.log('Offline edit saved:', edit.editId);
+        resolve();
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Get all pending (unsynced) edits
+   */
+  async getPendingEdits(): Promise<OfflineEdit[]> {
+    const allEdits = await this.getAllOfflineEdits();
+    return allEdits.filter(edit => edit.synced === false);
+  }
+
+  /**
+   * Get all offline edits
+   */
+  async getAllOfflineEdits(): Promise<OfflineEdit[]> {
+    const db = await this.getDB();
+    const transaction = db.transaction(EDITS_STORE, 'readonly');
+    const store = transaction.objectStore(EDITS_STORE);
+
+    return new Promise((resolve, reject) => {
+      const request = store.getAll();
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Mark edit as synced
+   */
+  async markEditSynced(editId: string): Promise<void> {
+    const db = await this.getDB();
+    const transaction = db.transaction(EDITS_STORE, 'readwrite');
+    const store = transaction.objectStore(EDITS_STORE);
+
+    return new Promise((resolve, reject) => {
+      const getRequest = store.get(editId);
+      getRequest.onsuccess = () => {
+        const edit = getRequest.result;
+        if (edit) {
+          edit.synced = true;
+          const putRequest = store.put(edit);
+          putRequest.onsuccess = () => resolve();
+          putRequest.onerror = () => reject(putRequest.error);
+        } else {
+          resolve();
+        }
+      };
+      getRequest.onerror = () => reject(getRequest.error);
+    });
+  }
+
+  /**
+   * Remove synced edit
+   */
+  async removeOfflineEdit(editId: string): Promise<void> {
+    const db = await this.getDB();
+    const transaction = db.transaction(EDITS_STORE, 'readwrite');
+    const store = transaction.objectStore(EDITS_STORE);
+
+    return new Promise((resolve, reject) => {
+      const request = store.delete(editId);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Get pending edits count
+   */
+  async getPendingEditsCount(): Promise<number> {
+    const pending = await this.getPendingEdits();
+    return pending.length;
+  }
+
+  /**
+   * Update local product in cache (for offline edits)
+   */
+  async updateLocalProduct(productId: number, changes: Partial<CachedProduct>): Promise<void> {
+    const db = await this.getDB();
+    const transaction = db.transaction(PRODUCTS_STORE, 'readwrite');
+    const store = transaction.objectStore(PRODUCTS_STORE);
+
+    return new Promise((resolve, reject) => {
+      const getRequest = store.get(productId);
+      getRequest.onsuccess = () => {
+        const product = getRequest.result;
+        if (product) {
+          // Apply changes
+          if (changes.price !== undefined) product.price = changes.price;
+          if (changes.originalPrice !== undefined) product.originalPrice = changes.originalPrice;
+          if (changes.stock !== undefined) product.stock = changes.stock;
+          if (changes.barcode !== undefined) product.barcode = changes.barcode;
+
+          const putRequest = store.put(product);
+          putRequest.onsuccess = () => {
+            console.log('Local product updated:', productId);
+            resolve();
+          };
+          putRequest.onerror = () => reject(putRequest.error);
+        } else {
+          resolve();
+        }
+      };
+      getRequest.onerror = () => reject(getRequest.error);
+    });
+  }
+
+  /**
+   * Generate unique offline edit ID
+   */
+  generateOfflineEditId(): string {
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 8);
+    return `EDIT-${timestamp}-${random}`;
   }
 
   // ==================== UTILITIES ====================

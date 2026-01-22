@@ -3,11 +3,12 @@ import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, Subject, fromEvent, merge } from 'rxjs';
 import { takeUntil, debounceTime } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
-import { OfflineStorageService, CachedProduct, OfflineOrder } from './offline-storage.service';
+import { OfflineStorageService, CachedProduct, OfflineOrder, OfflineEdit } from './offline-storage.service';
 
 export interface SyncStatus {
   isOnline: boolean;
   pendingOrders: number;
+  pendingEdits: number;
   lastProductSync: Date | null;
   isSyncing: boolean;
 }
@@ -22,6 +23,7 @@ export class PosSyncService implements OnDestroy {
   private syncStatus$ = new BehaviorSubject<SyncStatus>({
     isOnline: navigator.onLine,
     pendingOrders: 0,
+    pendingEdits: 0,
     lastProductSync: null,
     isSyncing: false
   });
@@ -66,6 +68,7 @@ export class PosSyncService implements OnDestroy {
         if (isOnline) {
           console.log('Network online - triggering sync');
           this.syncPendingOrders();
+          this.syncPendingEdits();  // Sync offline product edits
         } else {
           console.log('Network offline');
         }
@@ -84,11 +87,12 @@ export class PosSyncService implements OnDestroy {
   }
 
   /**
-   * Update pending orders count
+   * Update pending orders and edits count
    */
   async updatePendingCount(): Promise<void> {
-    const count = await this.offlineStorage.getPendingOrdersCount();
-    this.updateStatus({ pendingOrders: count });
+    const ordersCount = await this.offlineStorage.getPendingOrdersCount();
+    const editsCount = await this.offlineStorage.getPendingEditsCount();
+    this.updateStatus({ pendingOrders: ordersCount, pendingEdits: editsCount });
   }
 
   // ==================== PRODUCT SYNC ====================
@@ -306,6 +310,61 @@ export class PosSyncService implements OnDestroy {
     return { synced, failed };
   }
 
+  // ==================== OFFLINE EDITS SYNC ====================
+
+  /**
+   * Sync all pending product edits to server
+   */
+  async syncPendingEdits(): Promise<{ synced: number; failed: number }> {
+    if (!navigator.onLine) {
+      console.log('Cannot sync edits - offline');
+      return { synced: 0, failed: 0 };
+    }
+
+    const pendingEdits = await this.offlineStorage.getPendingEdits();
+    if (pendingEdits.length === 0) {
+      console.log('No pending edits to sync');
+      return { synced: 0, failed: 0 };
+    }
+
+    this.updateStatus({ isSyncing: true });
+    console.log(`Syncing ${pendingEdits.length} pending product edits...`);
+
+    let synced = 0;
+    let failed = 0;
+
+    for (const edit of pendingEdits) {
+      try {
+        const updateData = {
+          price: edit.changes.price,
+          originalPrice: edit.changes.originalPrice,
+          stockQuantity: edit.changes.stockQuantity,
+          barcode: edit.changes.barcode
+        };
+
+        await this.http.patch(
+          `${this.apiUrl}/shop-products/${edit.productId}/quick-update`,
+          updateData
+        ).toPromise();
+
+        // Mark as synced and remove
+        await this.offlineStorage.markEditSynced(edit.editId);
+        await this.offlineStorage.removeOfflineEdit(edit.editId);
+        synced++;
+        console.log(`Synced edit: ${edit.editId} for product ${edit.productId}`);
+      } catch (error) {
+        console.error(`Failed to sync edit ${edit.editId}:`, error);
+        failed++;
+      }
+    }
+
+    await this.updatePendingCount();
+    this.updateStatus({ isSyncing: false });
+
+    console.log(`Edit sync complete: ${synced} synced, ${failed} failed`);
+    return { synced, failed };
+  }
+
   /**
    * Force sync now
    */
@@ -316,6 +375,9 @@ export class PosSyncService implements OnDestroy {
 
     // Sync orders first
     await this.syncPendingOrders();
+
+    // Sync product edits
+    await this.syncPendingEdits();
 
     // Then refresh products
     await this.refreshProductCache(shopId);

@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Subject } from 'rxjs';
 import { takeUntil, debounceTime } from 'rxjs/operators';
 import { environment } from '../../../../../environments/environment';
-import { OfflineStorageService, CachedProduct } from '../../../../core/services/offline-storage.service';
+import { OfflineStorageService, CachedProduct, OfflineEdit } from '../../../../core/services/offline-storage.service';
 import { PosSyncService, SyncStatus } from '../../../../core/services/pos-sync.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { SwalService } from '../../../../core/services/swal.service';
@@ -67,6 +67,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   syncStatus: SyncStatus = {
     isOnline: true,
     pendingOrders: 0,
+    pendingEdits: 0,
     lastProductSync: null,
     isSyncing: false
   };
@@ -1006,25 +1007,38 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.swal.loading('Syncing pending orders...');
+    this.swal.loading('Syncing pending data...');
 
     try {
       // Sync pending orders
-      const syncResult = await this.syncService.syncPendingOrders();
-      console.log('Sync result:', syncResult);
+      const orderSyncResult = await this.syncService.syncPendingOrders();
+      console.log('Order sync result:', orderSyncResult);
+
+      // Sync pending product edits
+      const editSyncResult = await this.syncService.syncPendingEdits();
+      console.log('Edit sync result:', editSyncResult);
 
       // Refresh products
       await this.loadProducts();
       this.swal.close();
 
-      if (syncResult.synced > 0 || syncResult.failed > 0) {
-        if (syncResult.failed > 0) {
-          this.swal.warning('Sync Partial', `Synced: ${syncResult.synced}, Failed: ${syncResult.failed}`);
+      const totalSynced = orderSyncResult.synced + editSyncResult.synced;
+      const totalFailed = orderSyncResult.failed + editSyncResult.failed;
+
+      if (totalSynced > 0 || totalFailed > 0) {
+        if (totalFailed > 0) {
+          this.swal.warning('Sync Partial', `Synced: ${totalSynced}, Failed: ${totalFailed}`);
         } else {
-          this.swal.success('Synced', `${syncResult.synced} order(s) synced successfully`);
+          let message = '';
+          if (orderSyncResult.synced > 0) message += `${orderSyncResult.synced} order(s)`;
+          if (editSyncResult.synced > 0) {
+            if (message) message += ', ';
+            message += `${editSyncResult.synced} product edit(s)`;
+          }
+          this.swal.success('Synced', `${message} synced successfully`);
         }
       } else {
-        this.swal.success('Synced', 'No pending orders to sync. Products updated.');
+        this.swal.success('Synced', 'No pending data to sync. Products updated.');
       }
     } catch (error: any) {
       this.swal.close();
@@ -1089,7 +1103,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Save quick edit changes
+   * Save quick edit changes (supports offline mode)
    */
   async saveQuickEdit(): Promise<void> {
     if (!this.editingProduct) return;
@@ -1110,56 +1124,67 @@ export class PosBillingComponent implements OnInit, OnDestroy {
 
     this.isSavingEdit = true;
 
+    const productId = this.editingProduct.id;
+    const updateData = {
+      price: this.editPrice,
+      originalPrice: this.editMrp,
+      stockQuantity: this.editStock,
+      barcode: this.editBarcode
+    };
+
+    // Store previous values for potential rollback
+    const previousValues = {
+      price: this.editingProduct.price,
+      originalPrice: this.editingProduct.originalPrice,
+      stockQuantity: this.editingProduct.stock,
+      barcode: this.editingProduct.barcode
+    };
+
     try {
-      const productId = this.editingProduct.id;
-      const updateData = {
-        price: this.editPrice,
-        originalPrice: this.editMrp,
-        stockQuantity: this.editStock,
-        barcode: this.editBarcode
-      };
+      if (navigator.onLine) {
+        // Online mode - call API
+        await this.http.patch<any>(
+          `${this.apiUrl}/shop-products/${productId}/quick-update`,
+          updateData
+        ).toPromise();
 
-      // Call API to update
-      await this.http.patch<any>(
-        `${this.apiUrl}/shop-products/${productId}/quick-update`,
-        updateData
-      ).toPromise();
+        // Update succeeded - update local data
+        await this.updateLocalProductData(productId, updateData);
+        this.swal.success('Updated', 'Product updated successfully');
+      } else {
+        // Offline mode - save to offline edits queue
+        const offlineEdit: OfflineEdit = {
+          editId: this.offlineStorage.generateOfflineEditId(),
+          productId: productId,
+          shopId: this.shopId,
+          changes: {
+            price: this.editPrice,
+            originalPrice: this.editMrp,
+            stockQuantity: this.editStock,
+            barcode: this.editBarcode
+          },
+          previousValues: previousValues,
+          createdAt: new Date().toISOString(),
+          synced: false
+        };
 
-      // Update local product in list
-      const productIndex = this.products.findIndex(p => p.id === productId);
-      if (productIndex !== -1) {
-        this.products[productIndex].price = this.editPrice;
-        this.products[productIndex].originalPrice = this.editMrp;
-        this.products[productIndex].stock = this.editStock;
-        this.products[productIndex].barcode = this.editBarcode;
+        // Save to offline edits queue
+        await this.offlineStorage.saveOfflineEdit(offlineEdit);
+
+        // Update local product immediately (optimistic update)
+        await this.updateLocalProductData(productId, updateData);
+
+        // Update local cache in IndexedDB
+        await this.offlineStorage.updateLocalProduct(productId, {
+          price: this.editPrice,
+          originalPrice: this.editMrp,
+          stock: this.editStock,
+          barcode: this.editBarcode
+        });
+
+        this.swal.success('Saved Offline', 'Changes saved locally. Will sync when online.');
       }
 
-      // Update filtered products
-      const filteredIndex = this.filteredProducts.findIndex(p => p.id === productId);
-      if (filteredIndex !== -1) {
-        this.filteredProducts[filteredIndex].price = this.editPrice;
-        this.filteredProducts[filteredIndex].originalPrice = this.editMrp;
-        this.filteredProducts[filteredIndex].stock = this.editStock;
-        this.filteredProducts[filteredIndex].barcode = this.editBarcode;
-      }
-
-      // Update cart if product is in cart
-      const cartItem = this.cart.find(item => item.product.id === productId);
-      if (cartItem) {
-        cartItem.product.price = this.editPrice;
-        cartItem.product.originalPrice = this.editMrp;
-        cartItem.product.stock = this.editStock;
-        cartItem.unitPrice = this.editPrice;
-        cartItem.mrp = this.editMrp;
-        cartItem.discount = this.editMrp - this.editPrice;
-        cartItem.total = cartItem.quantity * this.editPrice;
-        this.calculateTotals();
-      }
-
-      // Update local cache
-      await this.offlineStorage.saveProducts(this.products, this.shopId);
-
-      this.swal.success('Updated', 'Product updated successfully');
       this.closeQuickEdit();
 
     } catch (error: any) {
@@ -1167,6 +1192,47 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       this.swal.error('Error', error.message || 'Failed to update product');
     } finally {
       this.isSavingEdit = false;
+    }
+  }
+
+  /**
+   * Update local product data in memory (for both online and offline modes)
+   */
+  private async updateLocalProductData(productId: number, updateData: any): Promise<void> {
+    // Update local product in list
+    const productIndex = this.products.findIndex(p => p.id === productId);
+    if (productIndex !== -1) {
+      this.products[productIndex].price = updateData.price;
+      this.products[productIndex].originalPrice = updateData.originalPrice;
+      this.products[productIndex].stock = updateData.stockQuantity;
+      this.products[productIndex].barcode = updateData.barcode;
+    }
+
+    // Update filtered products
+    const filteredIndex = this.filteredProducts.findIndex(p => p.id === productId);
+    if (filteredIndex !== -1) {
+      this.filteredProducts[filteredIndex].price = updateData.price;
+      this.filteredProducts[filteredIndex].originalPrice = updateData.originalPrice;
+      this.filteredProducts[filteredIndex].stock = updateData.stockQuantity;
+      this.filteredProducts[filteredIndex].barcode = updateData.barcode;
+    }
+
+    // Update cart if product is in cart
+    const cartItem = this.cart.find(item => item.product.id === productId);
+    if (cartItem) {
+      cartItem.product.price = updateData.price;
+      cartItem.product.originalPrice = updateData.originalPrice;
+      cartItem.product.stock = updateData.stockQuantity;
+      cartItem.unitPrice = updateData.price;
+      cartItem.mrp = updateData.originalPrice;
+      cartItem.discount = updateData.originalPrice - updateData.price;
+      cartItem.total = cartItem.quantity * updateData.price;
+      this.calculateTotals();
+    }
+
+    // Update local cache (for online mode)
+    if (navigator.onLine) {
+      await this.offlineStorage.saveProducts(this.products, this.shopId);
     }
   }
 
