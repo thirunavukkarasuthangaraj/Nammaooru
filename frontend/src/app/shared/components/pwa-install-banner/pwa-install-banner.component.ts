@@ -26,6 +26,22 @@ import { PwaInstallService } from '../../../core/services/pwa-install.service';
         </div>
       </div>
     </div>
+
+    <!-- Manual install banner when automatic prompt doesn't appear -->
+    <div class="pwa-install-banner" *ngIf="showManualInstall && !showBanner">
+      <div class="banner-content">
+        <div class="app-icon">
+          <span class="icon-text">N</span>
+        </div>
+        <div class="banner-text">
+          <h4>Install NammaOoru App</h4>
+          <p>Click the <strong>install icon</strong> in your browser's address bar</p>
+        </div>
+        <div class="banner-actions">
+          <button class="btn-dismiss" (click)="dismissManual()">Got it</button>
+        </div>
+      </div>
+    </div>
   `,
   styles: [`
     .pwa-install-banner {
@@ -169,11 +185,16 @@ import { PwaInstallService } from '../../../core/services/pwa-install.service';
 })
 export class PwaInstallBannerComponent implements OnInit, OnDestroy {
   showBanner = false;
+  showManualInstall = false;
+  isChrome = false;
   private subscriptions: Subscription[] = [];
 
   constructor(private pwaService: PwaInstallService) {}
 
   ngOnInit(): void {
+    // Check if Chrome browser
+    this.isChrome = /Chrome/.test(navigator.userAgent) && !/Edge|Edg/.test(navigator.userAgent);
+
     // Check if should show banner
     if (!this.pwaService.shouldShowBanner()) {
       return;
@@ -184,6 +205,17 @@ export class PwaInstallBannerComponent implements OnInit, OnDestroy {
       this.showBanner = installable && this.pwaService.shouldShowBanner();
     });
     this.subscriptions.push(sub);
+
+    // Show manual install option after 2 seconds if automatic banner doesn't appear
+    setTimeout(() => {
+      if (!this.showBanner && this.isChrome && this.pwaService.shouldShowBanner()) {
+        // Check if not in standalone mode (not already installed)
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+        if (!isStandalone) {
+          this.showManualInstall = true;
+        }
+      }
+    }, 2000);
   }
 
   ngOnDestroy(): void {
@@ -199,6 +231,11 @@ export class PwaInstallBannerComponent implements OnInit, OnDestroy {
 
   dismiss(): void {
     this.showBanner = false;
+    this.pwaService.dismissInstallBanner();
+  }
+
+  dismissManual(): void {
+    this.showManualInstall = false;
     this.pwaService.dismissInstallBanner();
   }
 }
