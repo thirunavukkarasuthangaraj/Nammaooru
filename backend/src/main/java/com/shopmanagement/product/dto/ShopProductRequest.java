@@ -81,6 +81,16 @@ public class ShopProductRequest {
     @Size(max = 100, message = "Barcode must be less than 100 characters")
     private String barcode;
 
+    // Shop-level multiple barcodes (different packaging, supplier codes, etc.)
+    @Size(max = 100, message = "Barcode1 must be less than 100 characters")
+    private String barcode1;
+
+    @Size(max = 100, message = "Barcode2 must be less than 100 characters")
+    private String barcode2;
+
+    @Size(max = 100, message = "Barcode3 must be less than 100 characters")
+    private String barcode3;
+
     // Master product voice search tags (comma-separated tags for voice search)
     @Size(max = 2000, message = "Voice search tags must be less than 2000 characters")
     private String voiceSearchTags;

@@ -101,6 +101,10 @@ public class ShopProductService {
         if (request.getPrice() == null) {
             throw new IllegalArgumentException("Price is required when adding a product to shop");
         }
+        // barcode1 is mandatory for shop products
+        if (request.getBarcode1() == null || request.getBarcode1().trim().isEmpty()) {
+            throw new IllegalArgumentException("Barcode 1 is required when adding a product to shop");
+        }
 
         // Get shop
         Shop shop = shopRepository.findById(shopId)
@@ -134,6 +138,9 @@ public class ShopProductService {
                 .customAttributes(request.getCustomAttributes())
                 .displayOrder(request.getDisplayOrder())
                 .tags(request.getTags())
+                .barcode1(request.getBarcode1() != null ? request.getBarcode1().trim() : null)
+                .barcode2(request.getBarcode2() != null ? request.getBarcode2().trim() : null)
+                .barcode3(request.getBarcode3() != null ? request.getBarcode3().trim() : null)
                 .createdBy(getCurrentUsername())
                 .updatedBy(getCurrentUsername())
                 .build();
@@ -226,6 +233,17 @@ public class ShopProductService {
             masterProduct.setUpdatedBy(getCurrentUsername());
             masterProductRepository.save(masterProduct);
             log.info("Master product {} updated with SKU/barcode/tags/Tamil name", masterProduct.getId());
+        }
+
+        // Update shop-level barcodes (barcode1, barcode2, barcode3)
+        if (request.getBarcode1() != null) {
+            shopProduct.setBarcode1(request.getBarcode1().trim().isEmpty() ? null : request.getBarcode1().trim());
+        }
+        if (request.getBarcode2() != null) {
+            shopProduct.setBarcode2(request.getBarcode2().trim().isEmpty() ? null : request.getBarcode2().trim());
+        }
+        if (request.getBarcode3() != null) {
+            shopProduct.setBarcode3(request.getBarcode3().trim().isEmpty() ? null : request.getBarcode3().trim());
         }
 
         // Update shop images if provided
@@ -591,6 +609,20 @@ public class ShopProductService {
             masterProduct.setUpdatedBy(getCurrentUsername());
             masterProductRepository.save(masterProduct);
             log.info("Updated barcode for master product {}: {}", masterProduct.getId(), request.getBarcode());
+        }
+
+        // Update shop-level barcodes (barcode1, barcode2, barcode3)
+        if (request.getBarcode1() != null) {
+            String newBarcode = request.getBarcode1().trim().isEmpty() ? null : request.getBarcode1().trim();
+            shopProduct.setBarcode1(newBarcode);
+        }
+        if (request.getBarcode2() != null) {
+            String newBarcode = request.getBarcode2().trim().isEmpty() ? null : request.getBarcode2().trim();
+            shopProduct.setBarcode2(newBarcode);
+        }
+        if (request.getBarcode3() != null) {
+            String newBarcode = request.getBarcode3().trim().isEmpty() ? null : request.getBarcode3().trim();
+            shopProduct.setBarcode3(newBarcode);
         }
 
         shopProduct.setUpdatedBy(getCurrentUsername());

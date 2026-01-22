@@ -69,7 +69,7 @@ public class ShopOwnerProductController {
             Specification<ShopProduct> spec = (root, query, cb) ->
                 cb.notEqual(root.get("status"), ShopProduct.ShopProductStatus.INACTIVE);
 
-            // Add search filter - handle null fields with coalesce (includes barcode for scanning)
+            // Add search filter - handle null fields with coalesce (includes all barcodes for scanning)
             if (search != null && !search.trim().isEmpty()) {
                 String searchPattern = "%" + search.toLowerCase().trim() + "%";
                 spec = spec.and((root, query, cb) -> cb.or(
@@ -79,6 +79,9 @@ public class ShopOwnerProductController {
                     cb.like(cb.lower(cb.coalesce(root.get("masterProduct").get("nameTamil"), "")), searchPattern),
                     cb.like(cb.lower(cb.coalesce(root.get("masterProduct").get("sku"), "")), searchPattern),
                     cb.like(cb.lower(cb.coalesce(root.get("masterProduct").get("barcode"), "")), searchPattern),
+                    cb.like(cb.lower(cb.coalesce(root.get("barcode1"), "")), searchPattern),
+                    cb.like(cb.lower(cb.coalesce(root.get("barcode2"), "")), searchPattern),
+                    cb.like(cb.lower(cb.coalesce(root.get("barcode3"), "")), searchPattern),
                     cb.like(cb.lower(cb.coalesce(root.get("tags"), "")), searchPattern)
                 ));
             }
@@ -528,6 +531,20 @@ public class ShopOwnerProductController {
                 if (barcodeObj != null) {
                     request.setBarcode(barcodeObj.toString());
                 }
+            }
+
+            // Shop-level multiple barcodes
+            if (updates.containsKey("barcode1")) {
+                Object barcodeObj = updates.get("barcode1");
+                request.setBarcode1(barcodeObj != null ? barcodeObj.toString() : null);
+            }
+            if (updates.containsKey("barcode2")) {
+                Object barcodeObj = updates.get("barcode2");
+                request.setBarcode2(barcodeObj != null ? barcodeObj.toString() : null);
+            }
+            if (updates.containsKey("barcode3")) {
+                Object barcodeObj = updates.get("barcode3");
+                request.setBarcode3(barcodeObj != null ? barcodeObj.toString() : null);
             }
 
             ShopProductResponse product = shopProductService.quickUpdateProduct(currentShop.getId(), productId, request);

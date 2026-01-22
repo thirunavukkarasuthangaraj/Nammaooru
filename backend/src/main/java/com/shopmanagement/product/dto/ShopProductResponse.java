@@ -56,6 +56,12 @@ public class ShopProductResponse {
     private String nameTamil; // Top-level convenience field for mobile apps
     private String sku; // Top-level convenience field from master product
     private String barcode; // Top-level convenience field from master product
+
+    // Shop-level multiple barcodes
+    private String barcode1;
+    private String barcode2;
+    private String barcode3;
+
     private Integer displayOrder;
     private String tags;
     

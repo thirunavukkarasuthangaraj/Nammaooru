@@ -109,6 +109,19 @@ public class ShopProduct {
     @Size(max = 1000)
     private String tags; // Comma-separated tags
 
+    // Multiple barcodes support (shop-level)
+    @Size(max = 100)
+    @Column(name = "barcode1")
+    private String barcode1;
+
+    @Size(max = 100)
+    @Column(name = "barcode2")
+    private String barcode2;
+
+    @Size(max = 100)
+    @Column(name = "barcode3")
+    private String barcode3;
+
     @Column(name = "created_by")
     private String createdBy;
 

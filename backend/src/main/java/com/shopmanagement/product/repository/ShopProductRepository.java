@@ -61,12 +61,15 @@ public interface ShopProductRepository extends JpaRepository<ShopProduct, Long>,
             @Param("maxPrice") BigDecimal maxPrice,
             Pageable pageable);
 
-    // Search within shop products - includes English name, Tamil name, SKU, barcode, and brand
+    // Search within shop products - includes English name, Tamil name, SKU, all barcodes, and brand
     @Query("SELECT sp FROM ShopProduct sp WHERE sp.shop = :shop AND " +
            "(LOWER(COALESCE(sp.customName, sp.masterProduct.name)) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
            "LOWER(COALESCE(sp.customDescription, sp.masterProduct.description)) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
            "LOWER(sp.masterProduct.sku) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
            "LOWER(COALESCE(sp.masterProduct.barcode, '')) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(COALESCE(sp.barcode1, '')) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(COALESCE(sp.barcode2, '')) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(COALESCE(sp.barcode3, '')) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
            "LOWER(sp.masterProduct.brand) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
            "LOWER(COALESCE(sp.masterProduct.nameTamil, '')) LIKE LOWER(CONCAT('%', :search, '%')))")
     Page<ShopProduct> searchProductsInShop(@Param("shop") Shop shop, @Param("search") String search, Pageable pageable);
@@ -134,12 +137,21 @@ public interface ShopProductRepository extends JpaRepository<ShopProduct, Long>,
     @Query("SELECT COUNT(sp) FROM ShopProduct sp WHERE sp.shop = :shop AND sp.masterProduct.category.name = :categoryName AND sp.isAvailable = true")
     int countByShopAndCategory(@Param("shop") Shop shop, @Param("categoryName") String categoryName);
 
-    // Barcode and SKU lookup for POS
+    // Barcode and SKU lookup for POS (checks master barcode + shop barcode1/2/3)
+    @Query("SELECT sp FROM ShopProduct sp WHERE sp.shop.id = :shopId AND sp.isAvailable = true AND " +
+           "(sp.masterProduct.barcode = :barcode OR sp.barcode1 = :barcode OR sp.barcode2 = :barcode OR sp.barcode3 = :barcode)")
+    Optional<ShopProduct> findByShopIdAndBarcode(@Param("shopId") Long shopId, @Param("barcode") String barcode);
+
     @Query("SELECT sp FROM ShopProduct sp WHERE sp.shop.id = :shopId AND sp.masterProduct.barcode = :barcode AND sp.isAvailable = true")
     Optional<ShopProduct> findByShopIdAndMasterProductBarcode(@Param("shopId") Long shopId, @Param("barcode") String barcode);
 
     @Query("SELECT sp FROM ShopProduct sp WHERE sp.shop.id = :shopId AND sp.masterProduct.sku = :sku AND sp.isAvailable = true")
     Optional<ShopProduct> findByShopIdAndMasterProductSku(@Param("shopId") Long shopId, @Param("sku") String sku);
+
+    // Check if barcode exists in shop (for duplicate validation)
+    @Query("SELECT COUNT(sp) > 0 FROM ShopProduct sp WHERE sp.shop.id = :shopId AND sp.id != :excludeId AND " +
+           "(sp.barcode1 = :barcode OR sp.barcode2 = :barcode OR sp.barcode3 = :barcode)")
+    boolean existsByShopIdAndBarcodeAndIdNot(@Param("shopId") Long shopId, @Param("barcode") String barcode, @Param("excludeId") Long excludeId);
 
     // Get all available products for offline cache
     List<ShopProduct> findByShopIdAndIsAvailable(Long shopId, Boolean isAvailable);
