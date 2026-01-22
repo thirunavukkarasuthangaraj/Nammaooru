@@ -2,6 +2,7 @@ package com.shopmanagement.exception;
 
 import com.shopmanagement.common.constants.ResponseConstants;
 import com.shopmanagement.common.dto.ApiResponse;
+import com.shopmanagement.product.exception.ProductNotFoundException;
 import com.shopmanagement.shop.exception.ShopNotFoundException;
 import com.shopmanagement.shop.exception.ShopValidationException;
 import lombok.extern.slf4j.Slf4j;
@@ -27,13 +28,26 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ShopNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleShopNotFoundException(ShopNotFoundException ex, WebRequest request) {
         log.error("Shop not found: {}", ex.getMessage());
-        
+
         ApiResponse<Void> response = ApiResponse.<Void>builder()
                 .statusCode(ResponseConstants.SHOP_NOT_FOUND)
                 .message(ex.getMessage())
                 .path(request.getDescription(false).replace("uri=", ""))
                 .build();
-        
+
+        return new ResponseEntity<>(response, HttpStatus.OK);  // Always return 200
+    }
+
+    @ExceptionHandler(ProductNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleProductNotFoundException(ProductNotFoundException ex, WebRequest request) {
+        log.error("Product not found: {}", ex.getMessage());
+
+        ApiResponse<Void> response = ApiResponse.<Void>builder()
+                .statusCode(ResponseConstants.NOT_FOUND)
+                .message(ex.getMessage())
+                .path(request.getDescription(false).replace("uri=", ""))
+                .build();
+
         return new ResponseEntity<>(response, HttpStatus.OK);  // Always return 200
     }
 
