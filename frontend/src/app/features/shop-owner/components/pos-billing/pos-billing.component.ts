@@ -1141,55 +1141,62 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     };
 
     try {
+      // Try API call first (even if navigator.onLine is true, network might be down)
       if (navigator.onLine) {
-        // Online mode - call API
-        await this.http.patch<any>(
-          `${this.apiUrl}/shop-products/${productId}/quick-update`,
-          updateData
-        ).toPromise();
+        try {
+          // Online mode - call API
+          await this.http.patch<any>(
+            `${this.apiUrl}/shop-products/${productId}/quick-update`,
+            updateData
+          ).toPromise();
 
-        // Update succeeded - update local data
-        await this.updateLocalProductData(productId, updateData);
-        this.swal.success('Updated', 'Product updated successfully');
-      } else {
-        // Offline mode - save to offline edits queue
-        const offlineEdit: OfflineEdit = {
-          editId: this.offlineStorage.generateOfflineEditId(),
-          productId: productId,
-          shopId: this.shopId,
-          changes: {
-            price: this.editPrice,
-            originalPrice: this.editMrp,
-            stockQuantity: this.editStock,
-            barcode: this.editBarcode
-          },
-          previousValues: previousValues,
-          createdAt: new Date().toISOString(),
-          synced: false
-        };
-
-        // Save to offline edits queue
-        await this.offlineStorage.saveOfflineEdit(offlineEdit);
-
-        // Update local product immediately (optimistic update)
-        await this.updateLocalProductData(productId, updateData);
-
-        // Update local cache in IndexedDB
-        await this.offlineStorage.updateLocalProduct(productId, {
-          price: this.editPrice,
-          originalPrice: this.editMrp,
-          stock: this.editStock,
-          barcode: this.editBarcode
-        });
-
-        this.swal.success('Saved Offline', 'Changes saved locally. Will sync when online.');
+          // Update succeeded - update local data
+          await this.updateLocalProductData(productId, updateData);
+          this.swal.success('Updated', 'Product updated successfully');
+          this.closeQuickEdit();
+          return;
+        } catch (apiError) {
+          // API failed - fall through to offline save
+          console.warn('API call failed, saving offline:', apiError);
+        }
       }
 
+      // Offline mode OR API failed - save to offline edits queue
+      const offlineEdit: OfflineEdit = {
+        editId: this.offlineStorage.generateOfflineEditId(),
+        productId: productId,
+        shopId: this.shopId,
+        changes: {
+          price: this.editPrice,
+          originalPrice: this.editMrp,
+          stockQuantity: this.editStock,
+          barcode: this.editBarcode
+        },
+        previousValues: previousValues,
+        createdAt: new Date().toISOString(),
+        synced: false
+      };
+
+      // Save to offline edits queue
+      await this.offlineStorage.saveOfflineEdit(offlineEdit);
+
+      // Update local product immediately (optimistic update)
+      await this.updateLocalProductData(productId, updateData);
+
+      // Update local cache in IndexedDB
+      await this.offlineStorage.updateLocalProduct(productId, {
+        price: this.editPrice,
+        originalPrice: this.editMrp,
+        stock: this.editStock,
+        barcode: this.editBarcode
+      });
+
+      this.swal.success('Saved Offline', 'Changes saved locally. Will sync when online.');
       this.closeQuickEdit();
 
     } catch (error: any) {
-      console.error('Failed to update product:', error);
-      this.swal.error('Error', error.message || 'Failed to update product');
+      console.error('Failed to save product edit:', error);
+      this.swal.error('Error', error.message || 'Failed to save product edit');
     } finally {
       this.isSavingEdit = false;
     }
