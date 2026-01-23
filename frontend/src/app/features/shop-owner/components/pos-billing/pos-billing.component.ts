@@ -1156,12 +1156,6 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Validate barcode1 is mandatory
-    if (!this.editBarcode1 || this.editBarcode1.trim() === '') {
-      this.swal.error('Barcode Required', 'Barcode 1 is mandatory. Please enter a barcode.');
-      return;
-    }
-
     // Validate duplicate barcodes (check local products for barcode1, barcode2, barcode3)
     const barcodesToCheck = [
       { value: this.editBarcode1, label: 'Barcode 1' },
@@ -1469,20 +1463,18 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       this.swal.error('Invalid Price', 'Price must be greater than 0');
       return;
     }
-    if (!this.newProductBarcode1 || this.newProductBarcode1.trim() === '') {
-      this.swal.error('Required', 'Barcode 1 is required');
-      return;
-    }
 
-    // Check duplicate barcode locally
-    const duplicateProduct = this.products.find(p =>
-      p.barcode1 === this.newProductBarcode1 ||
-      p.barcode2 === this.newProductBarcode1 ||
-      p.barcode3 === this.newProductBarcode1
-    );
-    if (duplicateProduct) {
-      this.swal.error('Duplicate Barcode', `Barcode "${this.newProductBarcode1}" already exists for "${duplicateProduct.name}"`);
-      return;
+    // Check duplicate barcode locally (only if barcode1 is provided)
+    if (this.newProductBarcode1 && this.newProductBarcode1.trim() !== '') {
+      const duplicateProduct = this.products.find(p =>
+        p.barcode1 === this.newProductBarcode1 ||
+        p.barcode2 === this.newProductBarcode1 ||
+        p.barcode3 === this.newProductBarcode1
+      );
+      if (duplicateProduct) {
+        this.swal.error('Duplicate Barcode', `Barcode "${this.newProductBarcode1}" already exists for "${duplicateProduct.name}"`);
+        return;
+      }
     }
 
     this.isSavingNewProduct = true;
@@ -1497,7 +1489,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
         costPrice: this.newProductCostPrice || undefined,
         stockQuantity: this.newProductStock || 0,
         trackInventory: this.newProductTrackInventory,
-        barcode1: this.newProductBarcode1.trim(),
+        barcode1: this.newProductBarcode1?.trim() || undefined,
         barcode2: this.newProductBarcode2?.trim() || undefined,
         barcode3: this.newProductBarcode3?.trim() || undefined,
         customName: this.newProductName.trim()
@@ -1518,8 +1510,8 @@ export class PosBillingComponent implements OnInit, OnDestroy {
           stock: this.newProductStock || 0,
           trackInventory: this.newProductTrackInventory,
           sku: '',
-          barcode: this.newProductBarcode1.trim(),
-          barcode1: this.newProductBarcode1.trim(),
+          barcode: this.newProductBarcode1?.trim() || '',
+          barcode1: this.newProductBarcode1?.trim() || '',
           barcode2: this.newProductBarcode2?.trim(),
           barcode3: this.newProductBarcode3?.trim(),
           image: '',

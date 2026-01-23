@@ -825,9 +825,10 @@ $text-secondary: #7f8c8d;
   border-radius: 16px;
   width: 90%;
   max-width: 400px;
+  max-height: 85vh;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
   animation: slideUp 0.3s ease;
-  overflow: hidden;
+  overflow-y: auto;
 
   &.quick-add-dialog {
     max-width: 360px;
@@ -970,6 +971,18 @@ $text-secondary: #7f8c8d;
 
         .field-group {
           flex: 1;
+        }
+
+        // Three-column layout
+        &.three-cols {
+          .field-group {
+            flex: 1;
+            min-width: 0;
+
+            .edit-input {
+              width: 100%;
+            }
+          }
         }
       }
     }

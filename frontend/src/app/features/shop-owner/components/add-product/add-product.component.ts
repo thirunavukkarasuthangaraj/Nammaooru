@@ -165,11 +165,11 @@ import { switchMap, catchError, map } from 'rxjs/operators';
             <!-- Product Details -->
             <div class="form-section">
               <h3 class="section-title">Product Details</h3>
-              
+
               <div class="form-row">
                 <mat-form-field appearance="outline" class="half-width">
-                  <mat-label>SKU/Barcode</mat-label>
-                  <input matInput formControlName="sku" placeholder="Enter SKU or barcode">
+                  <mat-label>SKU</mat-label>
+                  <input matInput formControlName="sku" placeholder="Enter SKU">
                 </mat-form-field>
 
                 <mat-form-field appearance="outline" class="half-width">
@@ -189,6 +189,31 @@ import { switchMap, catchError, map } from 'rxjs/operators';
                   <input matInput [matDatepicker]="expiryPicker" formControlName="expiryDate">
                   <mat-datepicker-toggle matSuffix [for]="expiryPicker"></mat-datepicker-toggle>
                   <mat-datepicker #expiryPicker></mat-datepicker>
+                </mat-form-field>
+              </div>
+            </div>
+
+            <!-- Barcodes Section -->
+            <div class="form-section">
+              <h3 class="section-title">Product Barcodes</h3>
+
+              <div class="form-row">
+                <mat-form-field appearance="outline" class="third-width">
+                  <mat-label>Barcode 1</mat-label>
+                  <input matInput formControlName="barcode1" placeholder="Primary barcode (optional)">
+                  <mat-icon matPrefix>qr_code</mat-icon>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="third-width">
+                  <mat-label>Barcode 2</mat-label>
+                  <input matInput formControlName="barcode2" placeholder="Secondary barcode (optional)">
+                  <mat-icon matPrefix>qr_code</mat-icon>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="third-width">
+                  <mat-label>Barcode 3</mat-label>
+                  <input matInput formControlName="barcode3" placeholder="Tertiary barcode (optional)">
+                  <mat-icon matPrefix>qr_code</mat-icon>
                 </mat-form-field>
               </div>
             </div>
@@ -542,6 +567,10 @@ export class AddProductComponent implements OnInit {
       minStock: [''],
       maxStock: [''],
       sku: [''],
+      // Shop-level barcodes (all optional)
+      barcode1: [''],
+      barcode2: [''],
+      barcode3: [''],
       supplier: [''],
       location: [''],
       expiryDate: [''],

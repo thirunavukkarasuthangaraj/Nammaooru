@@ -252,39 +252,44 @@
           <div class="preview-sku">{{ editingProduct.sku }}</div>
         </div>
         <div class="edit-fields">
-          <div class="field-group">
-            <label>Selling Price (₹)</label>
-            <input type="number" [(ngModel)]="editPrice" min="0" step="0.01" class="edit-input">
+          <!-- Price, MRP, Stock in one row -->
+          <div class="field-row three-cols">
+            <div class="field-group">
+              <label>Selling Price (₹)</label>
+              <input type="number" [(ngModel)]="editPrice" min="0" step="0.01" class="edit-input">
+            </div>
+            <div class="field-group">
+              <label>MRP (₹)</label>
+              <input type="number" [(ngModel)]="editMrp" min="0" step="0.01" class="edit-input">
+            </div>
+            <div class="field-group">
+              <label>Stock Quantity</label>
+              <input type="number" [(ngModel)]="editStock" min="0" step="1" class="edit-input">
+            </div>
           </div>
-          <div class="field-group">
-            <label>MRP (₹)</label>
-            <input type="number" [(ngModel)]="editMrp" min="0" step="0.01" class="edit-input">
-          </div>
-          <div class="field-group">
-            <label>Stock Quantity</label>
-            <input type="number" [(ngModel)]="editStock" min="0" step="1" class="edit-input">
-          </div>
-          <div class="field-group">
-            <label>Barcode 1 *</label>
-            <input type="text"
-                   [(ngModel)]="editBarcode1"
-                   placeholder="Enter primary barcode (required)"
-                   class="edit-input"
-                   required>
-          </div>
-          <div class="field-group">
-            <label>Barcode 2</label>
-            <input type="text"
-                   [(ngModel)]="editBarcode2"
-                   placeholder="Enter secondary barcode (optional)"
-                   class="edit-input">
-          </div>
-          <div class="field-group">
-            <label>Barcode 3</label>
-            <input type="text"
-                   [(ngModel)]="editBarcode3"
-                   placeholder="Enter tertiary barcode (optional)"
-                   class="edit-input">
+          <!-- Barcodes in one row -->
+          <div class="field-row three-cols">
+            <div class="field-group">
+              <label>Barcode 1</label>
+              <input type="text"
+                     [(ngModel)]="editBarcode1"
+                     placeholder="Primary barcode"
+                     class="edit-input">
+            </div>
+            <div class="field-group">
+              <label>Barcode 2</label>
+              <input type="text"
+                     [(ngModel)]="editBarcode2"
+                     placeholder="Secondary barcode"
+                     class="edit-input">
+            </div>
+            <div class="field-group">
+              <label>Barcode 3</label>
+              <input type="text"
+                     [(ngModel)]="editBarcode3"
+                     placeholder="Tertiary barcode"
+                     class="edit-input">
+            </div>
           </div>
         </div>
       </div>
@@ -363,14 +368,8 @@
             <input type="text" [(ngModel)]="newProductName" placeholder="Enter product name" class="edit-input" required>
           </div>
 
-          <!-- Tamil Name (Optional) -->
-          <div class="field-group">
-            <label>Tamil Name</label>
-            <input type="text" [(ngModel)]="newProductNameTamil" placeholder="தமிழ் பெயர் (optional)" class="edit-input">
-          </div>
-
-          <!-- Prices Row -->
-          <div class="field-row">
+          <!-- Price, MRP, Stock in one row -->
+          <div class="field-row three-cols">
             <div class="field-group">
               <label>Selling Price (₹) *</label>
               <input type="number" [(ngModel)]="newProductPrice" min="0" step="0.01" placeholder="0" class="edit-input" required>
@@ -379,35 +378,25 @@
               <label>MRP (₹)</label>
               <input type="number" [(ngModel)]="newProductMrp" min="0" step="0.01" placeholder="Same as price" class="edit-input">
             </div>
-          </div>
-
-          <!-- Cost Price & Stock Row -->
-          <div class="field-row">
-            <div class="field-group">
-              <label>Cost Price (₹)</label>
-              <input type="number" [(ngModel)]="newProductCostPrice" min="0" step="0.01" placeholder="0" class="edit-input">
-            </div>
             <div class="field-group">
               <label>Stock Quantity</label>
               <input type="number" [(ngModel)]="newProductStock" min="0" step="1" placeholder="0" class="edit-input">
             </div>
           </div>
 
-          <!-- Barcode 1 (Required) -->
-          <div class="field-group">
-            <label>Barcode 1 * (Primary)</label>
-            <input type="text" [(ngModel)]="newProductBarcode1" placeholder="Enter primary barcode (required)" class="edit-input" required>
-          </div>
-
-          <!-- Barcode 2 & 3 Row -->
-          <div class="field-row">
+          <!-- Barcodes in one row -->
+          <div class="field-row three-cols">
+            <div class="field-group">
+              <label>Barcode 1</label>
+              <input type="text" [(ngModel)]="newProductBarcode1" placeholder="Primary barcode" class="edit-input">
+            </div>
             <div class="field-group">
               <label>Barcode 2</label>
-              <input type="text" [(ngModel)]="newProductBarcode2" placeholder="Optional" class="edit-input">
+              <input type="text" [(ngModel)]="newProductBarcode2" placeholder="Secondary barcode" class="edit-input">
             </div>
             <div class="field-group">
               <label>Barcode 3</label>
-              <input type="text" [(ngModel)]="newProductBarcode3" placeholder="Optional" class="edit-input">
+              <input type="text" [(ngModel)]="newProductBarcode3" placeholder="Tertiary barcode" class="edit-input">
             </div>
           </div>
 
@@ -428,7 +417,7 @@
       <div class="dialog-actions">
         <button mat-stroked-button (click)="closeAddProductDialog()">Cancel</button>
         <button mat-raised-button color="primary" (click)="saveNewProduct()"
-                [disabled]="!newProductName || !newProductPrice || newProductPrice <= 0 || !newProductBarcode1 || isSavingNewProduct">
+                [disabled]="!newProductName || !newProductPrice || newProductPrice <= 0 || isSavingNewProduct">
           <mat-spinner *ngIf="isSavingNewProduct" diameter="18"></mat-spinner>
           <mat-icon *ngIf="!isSavingNewProduct">save</mat-icon>
           <span *ngIf="!isSavingNewProduct">Save Product</span>
