@@ -1483,15 +1483,15 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       const productData = {
         shopId: this.shopId,
         name: this.newProductName.trim(),
-        nameTamil: this.newProductNameTamil?.trim() || undefined,
+        nameTamil: this.newProductNameTamil?.trim() || '',
         price: this.newProductPrice,
         originalPrice: this.newProductMrp || this.newProductPrice,
-        costPrice: this.newProductCostPrice || undefined,
+        costPrice: this.newProductCostPrice || 0,
         stockQuantity: this.newProductStock || 0,
         trackInventory: this.newProductTrackInventory,
-        barcode1: this.newProductBarcode1?.trim() || undefined,
-        barcode2: this.newProductBarcode2?.trim() || undefined,
-        barcode3: this.newProductBarcode3?.trim() || undefined,
+        barcode1: this.newProductBarcode1?.trim() || '',
+        barcode2: this.newProductBarcode2?.trim() || '',
+        barcode3: this.newProductBarcode3?.trim() || '',
         customName: this.newProductName.trim()
       };
 
