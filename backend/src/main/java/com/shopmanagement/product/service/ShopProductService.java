@@ -232,15 +232,28 @@ public class ShopProductService {
             log.info("Master product {} updated with SKU/barcode/tags/Tamil name", masterProduct.getId());
         }
 
-        // Update shop-level barcodes (barcode1, barcode2, barcode3)
+        // Update shop-level barcodes (barcode1, barcode2, barcode3) with duplicate validation
+        Long shopId = shopProduct.getShop().getId();
         if (request.getBarcode1() != null) {
-            shopProduct.setBarcode1(request.getBarcode1().trim().isEmpty() ? null : request.getBarcode1().trim());
+            String newBarcode = request.getBarcode1().trim().isEmpty() ? null : request.getBarcode1().trim();
+            if (newBarcode != null && shopProductRepository.existsByShopIdAndBarcodeAndIdNot(shopId, newBarcode, productId)) {
+                throw new RuntimeException("Barcode '" + newBarcode + "' already exists in this shop. Please use a unique barcode.");
+            }
+            shopProduct.setBarcode1(newBarcode);
         }
         if (request.getBarcode2() != null) {
-            shopProduct.setBarcode2(request.getBarcode2().trim().isEmpty() ? null : request.getBarcode2().trim());
+            String newBarcode = request.getBarcode2().trim().isEmpty() ? null : request.getBarcode2().trim();
+            if (newBarcode != null && shopProductRepository.existsByShopIdAndBarcodeAndIdNot(shopId, newBarcode, productId)) {
+                throw new RuntimeException("Barcode '" + newBarcode + "' already exists in this shop. Please use a unique barcode.");
+            }
+            shopProduct.setBarcode2(newBarcode);
         }
         if (request.getBarcode3() != null) {
-            shopProduct.setBarcode3(request.getBarcode3().trim().isEmpty() ? null : request.getBarcode3().trim());
+            String newBarcode = request.getBarcode3().trim().isEmpty() ? null : request.getBarcode3().trim();
+            if (newBarcode != null && shopProductRepository.existsByShopIdAndBarcodeAndIdNot(shopId, newBarcode, productId)) {
+                throw new RuntimeException("Barcode '" + newBarcode + "' already exists in this shop. Please use a unique barcode.");
+            }
+            shopProduct.setBarcode3(newBarcode);
         }
 
         // Update shop images if provided
@@ -608,17 +621,27 @@ public class ShopProductService {
             log.info("Updated barcode for master product {}: {}", masterProduct.getId(), request.getBarcode());
         }
 
-        // Update shop-level barcodes (barcode1, barcode2, barcode3)
+        // Update shop-level barcodes (barcode1, barcode2, barcode3) with duplicate validation
+        Long shopId = shopProduct.getShop().getId();
         if (request.getBarcode1() != null) {
             String newBarcode = request.getBarcode1().trim().isEmpty() ? null : request.getBarcode1().trim();
+            if (newBarcode != null && shopProductRepository.existsByShopIdAndBarcodeAndIdNot(shopId, newBarcode, productId)) {
+                throw new RuntimeException("Barcode '" + newBarcode + "' already exists in this shop. Please use a unique barcode.");
+            }
             shopProduct.setBarcode1(newBarcode);
         }
         if (request.getBarcode2() != null) {
             String newBarcode = request.getBarcode2().trim().isEmpty() ? null : request.getBarcode2().trim();
+            if (newBarcode != null && shopProductRepository.existsByShopIdAndBarcodeAndIdNot(shopId, newBarcode, productId)) {
+                throw new RuntimeException("Barcode '" + newBarcode + "' already exists in this shop. Please use a unique barcode.");
+            }
             shopProduct.setBarcode2(newBarcode);
         }
         if (request.getBarcode3() != null) {
             String newBarcode = request.getBarcode3().trim().isEmpty() ? null : request.getBarcode3().trim();
+            if (newBarcode != null && shopProductRepository.existsByShopIdAndBarcodeAndIdNot(shopId, newBarcode, productId)) {
+                throw new RuntimeException("Barcode '" + newBarcode + "' already exists in this shop. Please use a unique barcode.");
+            }
             shopProduct.setBarcode3(newBarcode);
         }
 

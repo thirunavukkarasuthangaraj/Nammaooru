@@ -1216,27 +1216,28 @@ export class PosBillingComponent implements OnInit, OnDestroy {
           .label {
             width: 50mm;
             height: 30mm;
-            padding: 2mm 2mm;
+            padding: 1.5mm 2mm 2mm 2mm;
             display: flex;
             flex-direction: column;
             border: 1px dashed #ddd;
-            overflow: hidden;
             background: white;
           }
           .label-header {
             text-align: center;
-            margin-bottom: 1mm;
             border-bottom: 0.5px solid #eee;
-            padding-bottom: 1mm;
+            padding-bottom: 0.5mm;
+            margin-bottom: 0.5mm;
           }
           .product-name {
-            font-size: 10px;
+            font-size: 9px;
             font-weight: 700;
             color: #000;
-            line-height: 1.2;
-            margin-bottom: 1mm;
+            line-height: 1.1;
+            margin-bottom: 0.5mm;
             word-wrap: break-word;
             overflow-wrap: break-word;
+            max-height: 6mm;
+            overflow: hidden;
           }
           .price-row {
             display: flex;
@@ -1258,11 +1259,12 @@ export class PosBillingComponent implements OnInit, OnDestroy {
             flex: 1;
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start;
             align-items: center;
+            padding-top: 1mm;
           }
           .barcode {
-            height: 14mm;
+            height: 12mm;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -1273,12 +1275,13 @@ export class PosBillingComponent implements OnInit, OnDestroy {
             max-width: 44mm;
           }
           .barcode-text {
-            font-size: 9px;
+            font-size: 10px;
             font-family: 'Courier New', monospace;
             font-weight: 700;
             letter-spacing: 2px;
-            margin-top: 1mm;
-            color: #333;
+            margin-top: 0.5mm;
+            color: #000;
+            padding-bottom: 1mm;
           }
         </style>
       </head>
