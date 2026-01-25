@@ -1162,6 +1162,9 @@ $text-secondary: #7f8c8d;
   max-width: 420px !important;
   border-radius: 12px;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
 
   .compact-header {
     padding: 12px 16px;
@@ -1230,6 +1233,9 @@ $text-secondary: #7f8c8d;
   .compact-content {
     padding: 16px;
     background: $light-bg;
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
   }
 
   .two-column-grid {
@@ -1504,6 +1510,9 @@ $text-secondary: #7f8c8d;
     padding: 12px 16px;
     background: white;
     gap: 8px;
+    flex-shrink: 0;
+    border-top: 1px solid $border;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
 
     button {
       min-width: 80px;
