@@ -92,12 +92,9 @@ public class ShopProductService {
     }
 
     public ShopProductResponse addProductToShop(Long shopId, ShopProductRequest request) {
-        log.info("Adding product to shop: {} - Product: {}", shopId, request.getMasterProductId());
+        log.info("Adding product to shop: {} - MasterProductId: {}, CustomName: {}", shopId, request.getMasterProductId(), request.getCustomName());
 
         // Validate required fields for CREATE operation
-        if (request.getMasterProductId() == null) {
-            throw new IllegalArgumentException("Master product ID is required when adding a product to shop");
-        }
         if (request.getPrice() == null) {
             throw new IllegalArgumentException("Price is required when adding a product to shop");
         }
@@ -106,14 +103,39 @@ public class ShopProductService {
         // Get shop
         Shop shop = shopRepository.findById(shopId)
                 .orElseThrow(() -> new RuntimeException("Shop not found with id: " + shopId));
-        
-        // Get master product
-        MasterProduct masterProduct = masterProductRepository.findById(request.getMasterProductId())
-                .orElseThrow(() -> new RuntimeException("Master product not found with id: " + request.getMasterProductId()));
-        
-        // Check if product already exists in shop
-        if (shopProductRepository.existsByShopAndMasterProduct(shop, masterProduct)) {
-            throw new RuntimeException("Product already exists in shop");
+
+        MasterProduct masterProduct;
+
+        // If masterProductId is provided, use existing master product
+        if (request.getMasterProductId() != null) {
+            masterProduct = masterProductRepository.findById(request.getMasterProductId())
+                    .orElseThrow(() -> new RuntimeException("Master product not found with id: " + request.getMasterProductId()));
+
+            // Check if product already exists in shop
+            if (shopProductRepository.existsByShopAndMasterProduct(shop, masterProduct)) {
+                throw new RuntimeException("Product already exists in shop");
+            }
+        } else {
+            // Auto-create a master product for custom/offline products
+            log.info("Creating master product for custom shop product: {}", request.getCustomName());
+
+            String productName = request.getCustomName() != null ? request.getCustomName() : "Custom Product";
+            String sku = "CUSTOM-" + System.currentTimeMillis();
+
+            masterProduct = MasterProduct.builder()
+                    .name(productName)
+                    .nameTamil(request.getNameTamil())
+                    .description(request.getCustomDescription())
+                    .sku(sku)
+                    .barcode(request.getBarcode1())
+                    .baseUnit(request.getBaseUnit() != null ? request.getBaseUnit() : "piece")
+                    .status(MasterProduct.ProductStatus.ACTIVE)
+                    .createdBy(getCurrentUsername())
+                    .updatedBy(getCurrentUsername())
+                    .build();
+
+            masterProduct = masterProductRepository.save(masterProduct);
+            log.info("Created master product with ID: {} for custom product: {}", masterProduct.getId(), productName);
         }
         
         // Create shop product

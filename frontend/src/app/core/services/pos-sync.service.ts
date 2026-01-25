@@ -437,9 +437,9 @@ export class PosSyncService implements OnDestroy {
           status: 'ACTIVE'
         };
 
-        // Create the product via API
+        // Create the product via API - use /create endpoint
         const response = await this.http.post<{ data: any }>(
-          `${this.apiUrl}/shop-products`,
+          `${this.apiUrl}/shop-products/create`,
           requestData
         ).toPromise();
 
