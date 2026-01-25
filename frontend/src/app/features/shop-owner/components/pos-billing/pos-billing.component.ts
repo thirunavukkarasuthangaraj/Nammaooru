@@ -1534,20 +1534,20 @@ export class PosBillingComponent implements OnInit, OnDestroy {
           this.closeQuickEdit();
           return;
         } catch (apiError: any) {
-          // Check if it's a validation error (not a network error)
-          if (apiError?.error?.message) {
-            // Backend validation error - show to user and don't save offline
-            this.isSavingEdit = false;
-            this.swal.error('Validation Error', apiError.error.message);
-            return;
-          }
-          if (apiError?.status && apiError.status !== 0) {
-            // Server returned an error (not network failure)
+          console.log('API Error caught:', apiError);
+
+          // Check if it's a server error (not a network error)
+          // Network errors have status 0 or no status
+          const isNetworkError = !apiError?.status || apiError.status === 0;
+
+          if (!isNetworkError) {
+            // Server responded with an error - show to user and don't save offline
             this.isSavingEdit = false;
             const errorMsg = apiError?.error?.message || apiError?.message || 'Failed to update product';
             this.swal.error('Error', errorMsg);
             return;
           }
+
           // Network error (status 0) - fall through to offline save
           console.warn('Network error, saving offline:', apiError);
         }
