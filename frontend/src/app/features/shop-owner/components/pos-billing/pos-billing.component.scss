@@ -1226,17 +1226,26 @@ $text-secondary: #7f8c8d;
       }
     }
 
-    button {
+    button.mat-icon-button {
       color: white;
-      width: 32px;
-      height: 32px;
-      line-height: 32px;
-      background: rgba(255, 255, 255, 0.15);
+      width: 34px;
+      height: 34px;
+      line-height: 34px;
+      background: rgba(255, 255, 255, 0.2);
       border-radius: 50%;
       transition: all 0.2s;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+
+      mat-icon {
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+      }
 
       &:hover {
-        background: rgba(255, 255, 255, 0.25);
+        background: rgba(255, 255, 255, 0.35);
+        border-color: rgba(255, 255, 255, 0.5);
+        transform: scale(1.05);
       }
     }
   }
@@ -1529,38 +1538,48 @@ $text-secondary: #7f8c8d;
   }
 
   .compact-actions {
-    padding: 12px 16px;
-    background: white;
+    padding: 14px 18px;
+    background: #fafbfc;
     display: flex;
     justify-content: flex-end;
-    gap: 10px;
+    gap: 12px;
     flex-shrink: 0;
-    border-top: 1px solid #eef0f5;
+    border-top: 1px solid #e5e7eb;
 
     button {
-      min-width: 90px;
-      padding: 8px 20px;
-      font-size: 13px;
+      min-width: 100px;
+      padding: 10px 24px;
+      font-size: 14px;
       font-weight: 600;
-      border-radius: 6px;
+      border-radius: 8px;
       transition: all 0.2s;
+      cursor: pointer;
+    }
 
-      &[mat-stroked-button] {
-        border: 1.5px solid #ddd;
-        color: #666;
+    button[mat-stroked-button] {
+      background: white;
+      border: 2px solid #e0e0e0;
+      color: #555;
 
-        &:hover {
-          background: #f5f5f5;
-        }
+      &:hover {
+        background: #f5f5f5;
+        border-color: #ccc;
+      }
+    }
+
+    button[mat-raised-button] {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+
+      &:hover {
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        transform: translateY(-1px);
       }
 
-      &[mat-raised-button] {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.35);
-
-        &:hover {
-          box-shadow: 0 4px 12px rgba(102, 126, 234, 0.45);
-        }
+      &:active {
+        transform: translateY(0);
       }
     }
   }
