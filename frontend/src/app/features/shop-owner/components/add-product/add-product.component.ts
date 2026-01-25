@@ -1092,6 +1092,30 @@ export class AddProductComponent implements OnInit {
 
       await this.offlineStorage.saveOfflineProductCreation(offlineProduct);
 
+      // Also add to local cache for immediate display in My Products
+      const tempId = this.offlineStorage.generateTempProductId();
+      const cachedProduct = {
+        id: tempId,
+        shopId: this.currentShop.id,
+        name: offlineProduct.name,
+        nameTamil: offlineProduct.nameTamil,
+        price: offlineProduct.price,
+        originalPrice: offlineProduct.originalPrice,
+        costPrice: offlineProduct.costPrice,
+        stock: offlineProduct.stockQuantity,
+        trackInventory: offlineProduct.trackInventory,
+        isAvailable: true,
+        sku: offlineProduct.sku || '',
+        barcode: offlineProduct.barcode1 || '',
+        barcode1: offlineProduct.barcode1 || '',
+        barcode2: offlineProduct.barcode2 || '',
+        barcode3: offlineProduct.barcode3 || '',
+        category: offlineProduct.categoryName || '',
+        unit: offlineProduct.unit || 'piece',
+        imageUrl: ''
+      };
+      await this.offlineStorage.addProductToCache(cachedProduct);
+
       this.isLoading = false;
       this.snackBar.open('Product saved offline. Will sync when online.', 'Close', { duration: 4000 });
       this.router.navigate(['/shop-owner/my-products']);

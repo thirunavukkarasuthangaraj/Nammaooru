@@ -167,32 +167,56 @@ export class MyProductsComponent implements OnInit, OnDestroy {
     try {
       let cachedProducts = await this.offlineStorage.getProducts();
 
-      // Also load pending offline-created products and merge them
+      // Also load pending offline-created products and merge them (avoid duplicates)
       try {
         const pendingCreations = await this.offlineStorage.getPendingProductCreations();
         if (pendingCreations.length > 0) {
           console.log(`Found ${pendingCreations.length} pending offline products`);
-          const offlineProducts: CachedProduct[] = pendingCreations.map(creation => ({
-            id: this.offlineStorage.generateTempProductId(),
-            shopId: creation.shopId,
-            name: creation.name || creation.customName || 'New Product',
-            nameTamil: creation.nameTamil,
-            price: creation.price,
-            originalPrice: creation.originalPrice,
-            costPrice: creation.costPrice,
-            stock: creation.stockQuantity,
-            trackInventory: creation.trackInventory,
-            isAvailable: true,
-            sku: creation.sku || '',
-            barcode: creation.barcode1,
-            barcode1: creation.barcode1,
-            barcode2: creation.barcode2,
-            barcode3: creation.barcode3,
-            category: creation.categoryName,
-            unit: creation.unit,
-            masterProductId: creation.masterProductId
-          }));
-          cachedProducts = [...offlineProducts, ...cachedProducts];
+
+          // Filter out creations that already exist in cache (by barcode or name match)
+          const newCreations = pendingCreations.filter(creation => {
+            const creationBarcode = creation.barcode1?.toLowerCase();
+            const creationName = (creation.name || creation.customName)?.toLowerCase();
+
+            return !cachedProducts.some(p => {
+              // Match by barcode
+              if (creationBarcode && (
+                p.barcode1?.toLowerCase() === creationBarcode ||
+                p.barcode?.toLowerCase() === creationBarcode
+              )) {
+                return true;
+              }
+              // Match by name (for products without barcode)
+              if (!creationBarcode && creationName && p.name?.toLowerCase() === creationName) {
+                return true;
+              }
+              return false;
+            });
+          });
+
+          if (newCreations.length > 0) {
+            const offlineProducts: CachedProduct[] = newCreations.map(creation => ({
+              id: this.offlineStorage.generateTempProductId(),
+              shopId: creation.shopId,
+              name: creation.name || creation.customName || 'New Product',
+              nameTamil: creation.nameTamil,
+              price: creation.price,
+              originalPrice: creation.originalPrice,
+              costPrice: creation.costPrice,
+              stock: creation.stockQuantity,
+              trackInventory: creation.trackInventory,
+              isAvailable: true,
+              sku: creation.sku || '',
+              barcode: creation.barcode1,
+              barcode1: creation.barcode1,
+              barcode2: creation.barcode2,
+              barcode3: creation.barcode3,
+              category: creation.categoryName,
+              unit: creation.unit,
+              masterProductId: creation.masterProductId
+            }));
+            cachedProducts = [...offlineProducts, ...cachedProducts];
+          }
         }
       } catch (err) {
         console.warn('Failed to load pending offline products:', err);
