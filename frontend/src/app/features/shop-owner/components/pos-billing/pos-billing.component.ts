@@ -1443,11 +1443,29 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Validate duplicate barcodes (check local products for barcode1, barcode2, barcode3)
+    // Validate duplicate barcodes within same product
+    const b1 = this.editBarcode1?.trim() || '';
+    const b2 = this.editBarcode2?.trim() || '';
+    const b3 = this.editBarcode3?.trim() || '';
+
+    if (b1 && b2 && b1.toLowerCase() === b2.toLowerCase()) {
+      this.swal.error('Duplicate Barcode', 'Barcode 1 and Barcode 2 cannot be the same.');
+      return;
+    }
+    if (b1 && b3 && b1.toLowerCase() === b3.toLowerCase()) {
+      this.swal.error('Duplicate Barcode', 'Barcode 1 and Barcode 3 cannot be the same.');
+      return;
+    }
+    if (b2 && b3 && b2.toLowerCase() === b3.toLowerCase()) {
+      this.swal.error('Duplicate Barcode', 'Barcode 2 and Barcode 3 cannot be the same.');
+      return;
+    }
+
+    // Validate duplicate barcodes against other products
     const barcodesToCheck = [
-      { value: this.editBarcode1, label: 'Barcode 1' },
-      { value: this.editBarcode2, label: 'Barcode 2' },
-      { value: this.editBarcode3, label: 'Barcode 3' }
+      { value: b1, label: 'Barcode 1' },
+      { value: b2, label: 'Barcode 2' },
+      { value: b3, label: 'Barcode 3' }
     ].filter(b => b.value && b.value.trim() !== '');
 
     for (const barcodeInfo of barcodesToCheck) {

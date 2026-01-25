@@ -688,11 +688,60 @@ export class OfflineStorageService {
   }
 
   /**
+   * Validate barcodes for a product (used for both create and edit)
+   * Returns error message if validation fails, null if valid
+   */
+  async validateBarcodes(barcode1: string | null, barcode2: string | null, barcode3: string | null, excludeProductId?: number): Promise<string | null> {
+    const b1 = barcode1?.trim() || null;
+    const b2 = barcode2?.trim() || null;
+    const b3 = barcode3?.trim() || null;
+
+    // Check for duplicate barcodes within same product
+    if (b1 && b2 && b1.toLowerCase() === b2.toLowerCase()) {
+      return 'Barcode 1 and Barcode 2 cannot be the same.';
+    }
+    if (b1 && b3 && b1.toLowerCase() === b3.toLowerCase()) {
+      return 'Barcode 1 and Barcode 3 cannot be the same.';
+    }
+    if (b2 && b3 && b2.toLowerCase() === b3.toLowerCase()) {
+      return 'Barcode 2 and Barcode 3 cannot be the same.';
+    }
+
+    // Check for duplicate barcodes against other products
+    if (b1 && await this.isBarcodeExists(b1, excludeProductId)) {
+      return `Barcode '${b1}' already exists. Please use a unique barcode.`;
+    }
+    if (b2 && await this.isBarcodeExists(b2, excludeProductId)) {
+      return `Barcode '${b2}' already exists. Please use a unique barcode.`;
+    }
+    if (b3 && await this.isBarcodeExists(b3, excludeProductId)) {
+      return `Barcode '${b3}' already exists. Please use a unique barcode.`;
+    }
+
+    return null; // Validation passed
+  }
+
+  /**
    * Save offline product creation with duplicate barcode validation
    */
   async saveOfflineProductCreation(creation: OfflineProductCreation): Promise<void> {
-    // Validate duplicate barcodes before saving
-    const barcodesToCheck = [creation.barcode1, creation.barcode2, creation.barcode3].filter(b => b && b.trim() !== '');
+    const b1 = creation.barcode1?.trim() || null;
+    const b2 = creation.barcode2?.trim() || null;
+    const b3 = creation.barcode3?.trim() || null;
+
+    // Check for duplicate barcodes within same product
+    if (b1 && b2 && b1.toLowerCase() === b2.toLowerCase()) {
+      throw new Error('Barcode 1 and Barcode 2 cannot be the same.');
+    }
+    if (b1 && b3 && b1.toLowerCase() === b3.toLowerCase()) {
+      throw new Error('Barcode 1 and Barcode 3 cannot be the same.');
+    }
+    if (b2 && b3 && b2.toLowerCase() === b3.toLowerCase()) {
+      throw new Error('Barcode 2 and Barcode 3 cannot be the same.');
+    }
+
+    // Validate duplicate barcodes against other products
+    const barcodesToCheck = [b1, b2, b3].filter(b => b && b.trim() !== '');
 
     for (const barcode of barcodesToCheck) {
       if (barcode && await this.isBarcodeExists(barcode)) {
