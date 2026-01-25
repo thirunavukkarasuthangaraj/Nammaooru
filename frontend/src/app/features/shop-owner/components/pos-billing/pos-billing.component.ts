@@ -1367,7 +1367,8 @@ export class PosBillingComponent implements OnInit, OnDestroy {
    * Generate HTML for a single label
    */
   private generateSingleLabelHtml(product: CachedProduct, barcode: string): string {
-    const name = product.name || '';
+    // Use Tamil name if Tamil language is selected and Tamil name is available
+    const name = (this.showTamil && product.nameTamil) ? product.nameTamil : (product.name || '');
     const price = this.editPrice || product.price || 0;
     const mrp = this.editMrp || product.originalPrice || price;
     const showMrp = mrp > price;
