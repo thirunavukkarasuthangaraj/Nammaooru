@@ -299,10 +299,9 @@ export class MyProductsComponent implements OnInit, OnDestroy {
           }
 
           console.log('Products to display:', products.length);
-          
+
           // Map API response to component interface
-          this.products = products.map((p: any) => {
-            console.log('Processing product from API:', p);
+          const serverProducts = products.map((p: any) => {
             return {
               id: p.id,
               customName: p.displayName || p.customName || p.masterProduct?.name,
@@ -337,6 +336,9 @@ export class MyProductsComponent implements OnInit, OnDestroy {
               updatedAt: p.updatedAt
             };
           });
+
+          // Merge pending offline-created products (not yet synced to server)
+          this.mergeOfflineProducts(serverProducts);
           
           this.usingFallbackData = false;
           this.loadedFromCache = false;
@@ -896,6 +898,51 @@ export class MyProductsComponent implements OnInit, OnDestroy {
             this.handleError('Failed to delete product');
           }
         });
+    }
+  }
+
+  /**
+   * Merge pending offline-created products with server products
+   */
+  private async mergeOfflineProducts(serverProducts: ShopProduct[]): Promise<void> {
+    try {
+      const pendingCreations = await this.offlineStorage.getPendingProductCreations();
+
+      if (pendingCreations.length > 0) {
+        console.log(`Merging ${pendingCreations.length} pending offline products with server products`);
+
+        const offlineProducts: ShopProduct[] = pendingCreations.map(creation => ({
+          id: this.offlineStorage.generateTempProductId(),
+          customName: creation.name || creation.customName || 'New Product',
+          description: creation.customDescription || '',
+          price: creation.price,
+          costPrice: creation.costPrice,
+          stockQuantity: creation.stockQuantity,
+          isAvailable: true,
+          status: 'ACTIVE',
+          category: creation.categoryName || '',
+          unit: creation.unit || 'piece',
+          sku: creation.sku || '',
+          barcode: creation.barcode1 || '',
+          barcode1: creation.barcode1 || '',
+          barcode2: creation.barcode2 || '',
+          barcode3: creation.barcode3 || '',
+          imageUrl: '',
+          masterProductId: creation.masterProductId,
+          masterProductName: creation.name || creation.customName,
+          masterProduct: undefined,
+          createdAt: creation.createdAt,
+          updatedAt: creation.createdAt
+        }));
+
+        // Prepend offline products to server products
+        this.products = [...offlineProducts, ...serverProducts];
+      } else {
+        this.products = serverProducts;
+      }
+    } catch (error) {
+      console.warn('Failed to merge offline products:', error);
+      this.products = serverProducts;
     }
   }
 
