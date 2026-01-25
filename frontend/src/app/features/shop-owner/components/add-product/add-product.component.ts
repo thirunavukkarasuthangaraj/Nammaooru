@@ -7,6 +7,7 @@ import { ShopProductService } from '@core/services/shop-product.service';
 import { ShopService } from '@core/services/shop.service';
 import { ProductCategoryService } from '@core/services/product-category.service';
 import { AuthService } from '@core/services/auth.service';
+import { OfflineStorageService, OfflineProductCreation } from '@core/services/offline-storage.service';
 import { MasterProductRequest, ShopProductRequest, ProductCategory, ProductStatus, ShopProductStatus } from '@core/models/product.model';
 import { Shop, BusinessType, ShopStatus } from '@core/models/shop.model';
 import { forkJoin, of } from 'rxjs';
@@ -551,7 +552,8 @@ export class AddProductComponent implements OnInit {
     private shopProductService: ShopProductService,
     private shopService: ShopService,
     private categoryService: ProductCategoryService,
-    private authService: AuthService
+    private authService: AuthService,
+    private offlineStorage: OfflineStorageService
   ) {
     this.productForm = this.fb.group({
       name: ['', Validators.required],
@@ -874,8 +876,14 @@ export class AddProductComponent implements OnInit {
         return;
       }
 
+      // Check if offline - save locally
+      if (!navigator.onLine) {
+        this.saveProductOffline(formData);
+        return;
+      }
+
       this.isLoading = true;
-      
+
       // Create master product request
       const masterProductRequest: MasterProductRequest = {
         name: formData.name,
@@ -996,5 +1004,55 @@ export class AddProductComponent implements OnInit {
     Object.keys(this.productForm.controls).forEach(key => {
       this.productForm.get(key)?.markAsTouched();
     });
+  }
+
+  /**
+   * Save product offline when no internet connection
+   */
+  private async saveProductOffline(formData: any): Promise<void> {
+    if (!this.currentShop) {
+      this.snackBar.open('Shop information not available. Cannot save offline.', 'Close', { duration: 3000 });
+      return;
+    }
+
+    this.isLoading = true;
+
+    try {
+      const offlineProduct: OfflineProductCreation = {
+        offlineProductId: this.offlineStorage.generateOfflineProductId(),
+        shopId: this.currentShop.id,
+        name: formData.name?.trim() || '',
+        nameTamil: formData.nameTamil?.trim() || '',
+        customName: formData.name?.trim() || '',
+        price: formData.price || 0,
+        originalPrice: formData.price || 0,
+        costPrice: formData.costPrice || 0,
+        stockQuantity: formData.initialStock || 0,
+        minStockLevel: formData.minStock || 0,
+        trackInventory: formData.trackStock !== false,
+        barcode1: formData.barcode1?.trim() || '',
+        barcode2: formData.barcode2?.trim() || '',
+        barcode3: formData.barcode3?.trim() || '',
+        sku: formData.sku?.trim() || '',
+        categoryName: this.categories.find(c => c.id === formData.category)?.name || '',
+        categoryId: formData.category,
+        unit: formData.unit || 'piece',
+        tags: formData.tags?.trim() || '',
+        isFeatured: formData.isFeatured || false,
+        createdAt: new Date().toISOString(),
+        synced: false
+      };
+
+      await this.offlineStorage.saveOfflineProductCreation(offlineProduct);
+
+      this.isLoading = false;
+      this.snackBar.open('Product saved offline. Will sync when online.', 'Close', { duration: 4000 });
+      this.router.navigate(['/shop-owner/my-products']);
+
+    } catch (error: any) {
+      this.isLoading = false;
+      const errorMessage = error?.message || 'Failed to save product offline.';
+      this.snackBar.open(errorMessage, 'Close', { duration: 5000 });
+    }
   }
 }
