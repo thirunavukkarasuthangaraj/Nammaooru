@@ -213,8 +213,12 @@ export class ProductEditDialogComponent implements OnInit {
   }
   
   private uploadImageNow(file: File): void {
-    // Get shop ID from environment or localStorage - use string shopId directly
-    const shopId = localStorage.getItem('current_shop_id') || localStorage.getItem('current_shop_numeric_id') || '57';
+    // Get shop ID from localStorage
+    const shopId = localStorage.getItem('current_shop_id') || localStorage.getItem('current_shop_numeric_id');
+    if (!shopId) {
+      console.error('No shop ID found - cannot upload image');
+      return;
+    }
     let productId = this.data.id;
     
     console.log('Upload Debug - Shop ID:', shopId);

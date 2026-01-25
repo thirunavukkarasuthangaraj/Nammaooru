@@ -107,19 +107,30 @@ export class ProductsPricingComponent implements OnInit, AfterViewInit {
   }
 
   private getShopId(): number {
+    // First try to get from current_shop_id (set during login for shop owners)
+    const storedShopId = localStorage.getItem('current_shop_id');
+    if (storedShopId) {
+      const shopId = parseInt(storedShopId, 10);
+      if (!isNaN(shopId) && shopId > 0) {
+        return shopId;
+      }
+    }
+
+    // Fallback: try user data
     const user = localStorage.getItem('shop_management_user') || localStorage.getItem('currentUser');
     if (user) {
       try {
         const userData = JSON.parse(user);
-        if (userData.username === 'shopowner1') {
-          return 11; // Test Grocery Store
+        if (userData.shopId && userData.shopId > 0) {
+          return userData.shopId;
         }
-        return userData.shopId || 1;
       } catch (e) {
         console.error('Error parsing user data:', e);
       }
     }
-    return 11; // Default to shopowner1's shop
+
+    console.error('No valid shop ID found for current user!');
+    return 0;
   }
 
   transformProducts(data: any[]): ProductPricing[] {

@@ -109,27 +109,33 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     console.log('Order Management Component initialized');
-    
-    // Always start with fallback shopId and load data immediately
-    this.shopId = "2";
-    console.log('Starting with hardcoded shopId: 2 for demo');
-    
-    // Load data immediately
-    this.loadAllData();
-    this.startAutoRefresh();
-    
-    // Also try to get shop context in parallel but don't wait for it
+
+    // Try to get shop ID from localStorage first
+    const storedShopId = localStorage.getItem('current_shop_id');
+    if (storedShopId) {
+      this.shopId = storedShopId;
+      console.log('Using shop ID from localStorage:', this.shopId);
+    } else {
+      console.warn('No shop ID in localStorage');
+    }
+
+    // Load data immediately if we have a shop ID
+    if (this.shopId) {
+      this.loadAllData();
+      this.startAutoRefresh();
+    }
+
+    // Also try to get shop context in parallel
     this.shopContext.shop$.pipe(
       takeUntil(this.destroy$)
     ).subscribe(shop => {
       if (shop) {
         console.log('Shop context loaded:', shop, 'Updating shopId to:', shop.id);
-        // Only update shopId if we get a valid shop context
         this.shopId = shop.id.toString();
-        // Reload data with correct shop ID
+        localStorage.setItem('current_shop_id', this.shopId);
         this.loadAllData();
-      } else {
-        console.log('No shop context available, continuing with fallback shopId: 2');
+      } else if (!this.shopId) {
+        console.error('No shop context available and no shop ID in localStorage');
       }
     });
   }

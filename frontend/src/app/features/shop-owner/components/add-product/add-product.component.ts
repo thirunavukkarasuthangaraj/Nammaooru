@@ -622,21 +622,33 @@ export class AddProductComponent implements OnInit {
   }
 
   private getShopId(): number {
+    // First try to get from current_shop_id (set during login for shop owners)
+    const storedShopId = localStorage.getItem('current_shop_id');
+    if (storedShopId) {
+      const shopId = parseInt(storedShopId, 10);
+      if (!isNaN(shopId) && shopId > 0) {
+        console.log('Using shop ID from current_shop_id:', shopId);
+        return shopId;
+      }
+    }
+
+    // Fallback: try user data
     const user = localStorage.getItem('shop_management_user') || localStorage.getItem('currentUser');
     if (user) {
       try {
         const userData = JSON.parse(user);
-        // For shopowner1, use shop ID 11 (Test Grocery Store)
-        if (userData.username === 'shopowner1') {
-          return 11;
+        if (userData.shopId && userData.shopId > 0) {
+          console.log('Using shop ID from user data:', userData.shopId);
+          return userData.shopId;
         }
-        // For other shop owners, try to get from user data
-        return userData.shopId || 1;
       } catch (e) {
         console.error('Error parsing user data:', e);
       }
     }
-    return 11; // Default to shopowner1's shop
+
+    // No valid shop ID found - log error
+    console.error('No valid shop ID found for current user! Products will not be created correctly.');
+    return 0; // Return 0 to indicate no valid shop
   }
 
   private loadInitialData(): void {
@@ -865,6 +877,12 @@ export class AddProductComponent implements OnInit {
 
   onSubmit(): void {
     if (this.productForm.valid && this.currentShop) {
+      // Validate shop ID is valid
+      if (!this.currentShop.id || this.currentShop.id === 0) {
+        this.snackBar.open('Shop information not available. Please log out and log in again.', 'Close', { duration: 5000 });
+        return;
+      }
+
       const formData = this.productForm.value;
 
       // Validate duplicate barcodes within same product
