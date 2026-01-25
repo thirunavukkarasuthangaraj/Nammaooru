@@ -1235,6 +1235,7 @@ $text-secondary: #7f8c8d;
     background: $light-bg;
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     min-height: 0;
   }
 
