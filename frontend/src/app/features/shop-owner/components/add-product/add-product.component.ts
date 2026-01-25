@@ -854,9 +854,27 @@ export class AddProductComponent implements OnInit {
 
   onSubmit(): void {
     if (this.productForm.valid && this.currentShop) {
-      this.isLoading = true;
-      
       const formData = this.productForm.value;
+
+      // Validate duplicate barcodes within same product
+      const b1 = formData.barcode1?.trim() || '';
+      const b2 = formData.barcode2?.trim() || '';
+      const b3 = formData.barcode3?.trim() || '';
+
+      if (b1 && b2 && b1.toLowerCase() === b2.toLowerCase()) {
+        this.snackBar.open('Barcode 1 and Barcode 2 cannot be the same.', 'Close', { duration: 3000 });
+        return;
+      }
+      if (b1 && b3 && b1.toLowerCase() === b3.toLowerCase()) {
+        this.snackBar.open('Barcode 1 and Barcode 3 cannot be the same.', 'Close', { duration: 3000 });
+        return;
+      }
+      if (b2 && b3 && b2.toLowerCase() === b3.toLowerCase()) {
+        this.snackBar.open('Barcode 2 and Barcode 3 cannot be the same.', 'Close', { duration: 3000 });
+        return;
+      }
+
+      this.isLoading = true;
       
       // Create master product request
       const masterProductRequest: MasterProductRequest = {

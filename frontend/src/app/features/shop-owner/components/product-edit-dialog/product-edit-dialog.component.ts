@@ -84,6 +84,25 @@ export class ProductEditDialogComponent implements OnInit {
   onSubmit(): void {
     if (this.editForm.valid) {
       const formValue = this.editForm.value;
+
+      // Validate duplicate barcodes within same product
+      const b1 = formValue.barcode1?.trim() || '';
+      const b2 = formValue.barcode2?.trim() || '';
+      const b3 = formValue.barcode3?.trim() || '';
+
+      if (b1 && b2 && b1.toLowerCase() === b2.toLowerCase()) {
+        this.snackBar.open('Barcode 1 and Barcode 2 cannot be the same.', 'Close', { duration: 3000 });
+        return;
+      }
+      if (b1 && b3 && b1.toLowerCase() === b3.toLowerCase()) {
+        this.snackBar.open('Barcode 1 and Barcode 3 cannot be the same.', 'Close', { duration: 3000 });
+        return;
+      }
+      if (b2 && b3 && b2.toLowerCase() === b3.toLowerCase()) {
+        this.snackBar.open('Barcode 2 and Barcode 3 cannot be the same.', 'Close', { duration: 3000 });
+        return;
+      }
+
       const updatedProduct = {
         ...this.data,
         ...formValue,

@@ -1769,15 +1769,39 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Check duplicate barcode locally (only if barcode1 is provided)
-    if (this.newProductBarcode1 && this.newProductBarcode1.trim() !== '') {
+    // Validate duplicate barcodes within same product
+    const b1 = this.newProductBarcode1?.trim() || '';
+    const b2 = this.newProductBarcode2?.trim() || '';
+    const b3 = this.newProductBarcode3?.trim() || '';
+
+    if (b1 && b2 && b1.toLowerCase() === b2.toLowerCase()) {
+      this.swal.error('Duplicate Barcode', 'Barcode 1 and Barcode 2 cannot be the same.');
+      return;
+    }
+    if (b1 && b3 && b1.toLowerCase() === b3.toLowerCase()) {
+      this.swal.error('Duplicate Barcode', 'Barcode 1 and Barcode 3 cannot be the same.');
+      return;
+    }
+    if (b2 && b3 && b2.toLowerCase() === b3.toLowerCase()) {
+      this.swal.error('Duplicate Barcode', 'Barcode 2 and Barcode 3 cannot be the same.');
+      return;
+    }
+
+    // Check all barcodes against other products
+    const barcodesToCheck = [
+      { value: b1, label: 'Barcode 1' },
+      { value: b2, label: 'Barcode 2' },
+      { value: b3, label: 'Barcode 3' }
+    ].filter(b => b.value !== '');
+
+    for (const barcodeInfo of barcodesToCheck) {
       const duplicateProduct = this.products.find(p =>
-        p.barcode1 === this.newProductBarcode1 ||
-        p.barcode2 === this.newProductBarcode1 ||
-        p.barcode3 === this.newProductBarcode1
+        (p.barcode1 && p.barcode1.toLowerCase() === barcodeInfo.value.toLowerCase()) ||
+        (p.barcode2 && p.barcode2.toLowerCase() === barcodeInfo.value.toLowerCase()) ||
+        (p.barcode3 && p.barcode3.toLowerCase() === barcodeInfo.value.toLowerCase())
       );
       if (duplicateProduct) {
-        this.swal.error('Duplicate Barcode', `Barcode "${this.newProductBarcode1}" already exists for "${duplicateProduct.name}"`);
+        this.swal.error('Duplicate Barcode', `${barcodeInfo.label} "${barcodeInfo.value}" already exists for "${duplicateProduct.name}"`);
         return;
       }
     }
