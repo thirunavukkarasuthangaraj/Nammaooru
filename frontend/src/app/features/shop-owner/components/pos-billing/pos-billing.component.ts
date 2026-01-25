@@ -1367,7 +1367,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
         <title>Label - ${product.name}</title>
         <style>
           @page {
-            size: 50mm 25mm landscape;
+            size: 50mm 30mm;
             margin: 0;
           }
           @media print {
@@ -1375,7 +1375,6 @@ export class PosBillingComponent implements OnInit, OnDestroy {
               margin: 0;
               padding: 0;
               width: 50mm;
-              height: 25mm;
             }
             .label {
               page-break-after: always;
@@ -1389,15 +1388,14 @@ export class PosBillingComponent implements OnInit, OnDestroy {
           }
           .label {
             width: 50mm;
-            height: 25mm;
-            padding: 1mm 2mm;
+            min-height: 25mm;
+            padding: 1.5mm 2mm;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: space-between;
             border: 1px dashed #ccc;
             background: white;
-            overflow: hidden;
           }
           .label-top {
             width: 100%;
@@ -1470,9 +1468,10 @@ export class PosBillingComponent implements OnInit, OnDestroy {
             display: flex;
             flex-direction: column;
             align-items: center;
+            margin-top: 1mm;
           }
           .barcode {
-            height: 8mm;
+            height: 9mm;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -1483,13 +1482,14 @@ export class PosBillingComponent implements OnInit, OnDestroy {
             max-width: 46mm;
           }
           .barcode-text {
-            font-size: 8px;
+            font-size: 10px;
             font-family: 'Courier New', monospace;
-            font-weight: 700;
-            letter-spacing: 1px;
+            font-weight: 800;
+            letter-spacing: 2px;
             color: #000;
             text-align: center;
-            margin-top: 0.3mm;
+            margin-top: 1mm;
+            padding-bottom: 1mm;
           }
         </style>
       </head>
