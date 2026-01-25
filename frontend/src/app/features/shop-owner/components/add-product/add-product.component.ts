@@ -106,8 +106,8 @@ import { switchMap, catchError, map } from 'rxjs/operators';
               <h3 class="section-title">Pricing & Stock</h3>
               
               <div class="form-row">
-                <mat-form-field appearance="outline" class="third-width">
-                  <mat-label>Price (₹)</mat-label>
+                <mat-form-field appearance="outline" class="half-width">
+                  <mat-label>Selling Price (₹)*</mat-label>
                   <input matInput type="number" formControlName="price" placeholder="0.00">
                   <mat-error *ngIf="productForm.get('price')?.hasError('required')">
                     Price is required
@@ -117,13 +117,21 @@ import { switchMap, catchError, map } from 'rxjs/operators';
                   </mat-error>
                 </mat-form-field>
 
+                <mat-form-field appearance="outline" class="half-width">
+                  <mat-label>Original Price / MRP (₹)</mat-label>
+                  <input matInput type="number" formControlName="originalPrice" placeholder="0.00">
+                  <mat-hint>For discounts: Set higher than selling price</mat-hint>
+                </mat-form-field>
+              </div>
+
+              <div class="form-row">
                 <mat-form-field appearance="outline" class="third-width">
                   <mat-label>Cost Price (₹)</mat-label>
                   <input matInput type="number" formControlName="costPrice" placeholder="0.00">
                 </mat-form-field>
 
                 <mat-form-field appearance="outline" class="third-width">
-                  <mat-label>Unit</mat-label>
+                  <mat-label>Unit*</mat-label>
                   <mat-select formControlName="unit">
                     <mat-option value="kg">Kilogram (kg)</mat-option>
                     <mat-option value="gram">Gram (g)</mat-option>
@@ -563,6 +571,7 @@ export class AddProductComponent implements OnInit {
       brand: [''],
       description: [''],
       price: ['', [Validators.required, Validators.min(0.01)]],
+      originalPrice: [''],
       costPrice: [''],
       unit: ['', Validators.required],
       initialStock: ['', [Validators.required, Validators.min(0)]],
@@ -907,6 +916,7 @@ export class AddProductComponent implements OnInit {
             const shopProductRequest: ShopProductRequest = {
               masterProductId: masterProduct.id,
               price: formData.price,
+              originalPrice: formData.originalPrice || formData.price || 0,
               costPrice: formData.costPrice || 0,
               stockQuantity: formData.initialStock || 0,
               minStockLevel: formData.minStock || 0,
@@ -1025,7 +1035,7 @@ export class AddProductComponent implements OnInit {
         nameTamil: formData.nameTamil?.trim() || '',
         customName: formData.name?.trim() || '',
         price: formData.price || 0,
-        originalPrice: formData.price || 0,
+        originalPrice: formData.originalPrice || formData.price || 0,
         costPrice: formData.costPrice || 0,
         stockQuantity: formData.initialStock || 0,
         minStockLevel: formData.minStock || 0,
