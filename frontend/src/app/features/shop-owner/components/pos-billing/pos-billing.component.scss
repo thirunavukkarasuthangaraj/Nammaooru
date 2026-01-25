@@ -1159,7 +1159,8 @@ $text-secondary: #7f8c8d;
 // COMPACT EDIT DIALOG - Modern Design
 // ========================================
 .compact-dialog {
-  max-width: 420px !important;
+  max-width: 520px !important;
+  width: 95%;
   border-radius: 12px;
   overflow: hidden;
   display: flex;
