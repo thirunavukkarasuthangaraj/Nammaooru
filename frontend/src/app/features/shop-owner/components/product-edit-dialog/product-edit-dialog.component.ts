@@ -4,6 +4,7 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
+import { OfflineStorageService } from '../../../../core/services/offline-storage.service';
 
 export interface ProductEditData {
   id: number;
@@ -44,10 +45,13 @@ export class ProductEditDialogComponent implements OnInit {
   currentImageUrl: string | null = null;
   private apiUrl = environment.apiUrl;
 
+  isSaving = false;
+
   constructor(
     private fb: FormBuilder,
     private snackBar: MatSnackBar,
     private http: HttpClient,
+    private offlineStorage: OfflineStorageService,
     public dialogRef: MatDialogRef<ProductEditDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: ProductEditData
   ) {}
@@ -103,17 +107,43 @@ export class ProductEditDialogComponent implements OnInit {
         return;
       }
 
-      const updatedProduct = {
-        ...this.data,
-        ...formValue,
-        imageUrl: this.currentImageUrl || this.data.imageUrl,
-        // Map frontend field names to backend field names
-        voiceSearchTags: formValue.tags // Backend expects voiceSearchTags for voice search tags
-      };
-      this.dialogRef.close(updatedProduct);
+      // Validate barcodes against other products (async)
+      this.validateAndSave(formValue, b1, b2, b3);
     } else {
       this.snackBar.open('Please fill all required fields', 'Close', { duration: 2000 });
     }
+  }
+
+  /**
+   * Validate barcodes against other products and save
+   */
+  private async validateAndSave(formValue: any, b1: string, b2: string, b3: string): Promise<void> {
+    this.isSaving = true;
+
+    // Validate barcodes against other products (SKU, barcode, barcode1/2/3)
+    const barcodeValidationError = await this.offlineStorage.validateBarcodes(
+      b1 || null,
+      b2 || null,
+      b3 || null,
+      this.data.id  // Exclude current product from check
+    );
+
+    if (barcodeValidationError) {
+      this.isSaving = false;
+      this.snackBar.open(barcodeValidationError, 'Close', { duration: 5000 });
+      return;
+    }
+
+    // All validations passed - close dialog with updated product
+    const updatedProduct = {
+      ...this.data,
+      ...formValue,
+      imageUrl: this.currentImageUrl || this.data.imageUrl,
+      // Map frontend field names to backend field names
+      voiceSearchTags: formValue.tags // Backend expects voiceSearchTags for voice search tags
+    };
+    this.isSaving = false;
+    this.dialogRef.close(updatedProduct);
   }
 
   onCancel(): void {

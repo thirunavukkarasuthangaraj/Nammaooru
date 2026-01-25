@@ -885,31 +885,48 @@ export class AddProductComponent implements OnInit {
         return;
       }
 
-      // Check if offline - save locally
-      if (!navigator.onLine) {
-        this.saveProductOffline(formData);
-        return;
-      }
+      // Validate barcodes against other products (SKU, barcode, barcode1/2/3)
+      this.validateBarcodesAndSubmit(formData, b1, b2, b3);
+    }
+  }
 
-      this.isLoading = true;
+  /**
+   * Validate barcodes against existing products then submit
+   */
+  private async validateBarcodesAndSubmit(formData: any, b1: string, b2: string, b3: string): Promise<void> {
+    // Check barcodes against existing products
+    const barcodeValidationError = await this.offlineStorage.validateBarcodes(b1 || null, b2 || null, b3 || null);
 
-      // Create master product request
-      const masterProductRequest: MasterProductRequest = {
-        name: formData.name,
-        nameTamil: formData.nameTamil || '',
-        tags: formData.tags || '',
-        description: formData.description || '',
-        sku: formData.sku,
-        categoryId: formData.category,
-        brand: formData.brand || '',
-        baseUnit: formData.unit,
-        status: formData.isActive ? ProductStatus.ACTIVE : ProductStatus.INACTIVE,
-        isFeatured: formData.isFeatured || false,
-        isGlobal: false // Shop-specific product
-      };
+    if (barcodeValidationError) {
+      this.snackBar.open(barcodeValidationError, 'Close', { duration: 5000 });
+      return;
+    }
 
-      // Create the master product first
-      this.productService.createMasterProduct(masterProductRequest)
+    // Check if offline - save locally
+    if (!navigator.onLine) {
+      this.saveProductOffline(formData);
+      return;
+    }
+
+    this.isLoading = true;
+
+    // Create master product request
+    const masterProductRequest: MasterProductRequest = {
+      name: formData.name,
+      nameTamil: formData.nameTamil || '',
+      tags: formData.tags || '',
+      description: formData.description || '',
+      sku: formData.sku,
+      categoryId: formData.category,
+      brand: formData.brand || '',
+      baseUnit: formData.unit,
+      status: formData.isActive ? ProductStatus.ACTIVE : ProductStatus.INACTIVE,
+      isFeatured: formData.isFeatured || false,
+      isGlobal: false // Shop-specific product
+    };
+
+    // Create the master product first
+    this.productService.createMasterProduct(masterProductRequest)
         .pipe(
           switchMap(masterProduct => {
             // Create shop product request
@@ -986,13 +1003,6 @@ export class AddProductComponent implements OnInit {
             // Error already handled in catchError
           }
         });
-    } else {
-      if (!this.currentShop) {
-        this.snackBar.open('Shop information not loaded. Please refresh the page.', 'Close', { duration: 5000 });
-      } else {
-        this.markAllFieldsAsTouched();
-      }
-    }
   }
 
   saveDraft(): void {
