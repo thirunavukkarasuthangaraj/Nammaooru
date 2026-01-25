@@ -233,7 +233,7 @@ public class ShopProductService {
         }
 
         // Update shop-level barcodes (barcode1, barcode2, barcode3) with duplicate validation
-        Long shopId = shopProduct.getShop().getId();
+        Long barcodeShopId = shopProduct.getShop().getId();
         String barcode1 = request.getBarcode1() != null ? (request.getBarcode1().trim().isEmpty() ? null : request.getBarcode1().trim()) : shopProduct.getBarcode1();
         String barcode2 = request.getBarcode2() != null ? (request.getBarcode2().trim().isEmpty() ? null : request.getBarcode2().trim()) : shopProduct.getBarcode2();
         String barcode3 = request.getBarcode3() != null ? (request.getBarcode3().trim().isEmpty() ? null : request.getBarcode3().trim()) : shopProduct.getBarcode3();
@@ -250,13 +250,13 @@ public class ShopProductService {
         }
 
         // Check for duplicate barcodes in other products
-        if (barcode1 != null && shopProductRepository.existsByShopIdAndBarcodeAndIdNot(shopId, barcode1, productId)) {
+        if (barcode1 != null && shopProductRepository.existsByShopIdAndBarcodeAndIdNot(barcodeShopId, barcode1, productId)) {
             throw new RuntimeException("Barcode '" + barcode1 + "' already exists in this shop. Please use a unique barcode.");
         }
-        if (barcode2 != null && shopProductRepository.existsByShopIdAndBarcodeAndIdNot(shopId, barcode2, productId)) {
+        if (barcode2 != null && shopProductRepository.existsByShopIdAndBarcodeAndIdNot(barcodeShopId, barcode2, productId)) {
             throw new RuntimeException("Barcode '" + barcode2 + "' already exists in this shop. Please use a unique barcode.");
         }
-        if (barcode3 != null && shopProductRepository.existsByShopIdAndBarcodeAndIdNot(shopId, barcode3, productId)) {
+        if (barcode3 != null && shopProductRepository.existsByShopIdAndBarcodeAndIdNot(barcodeShopId, barcode3, productId)) {
             throw new RuntimeException("Barcode '" + barcode3 + "' already exists in this shop. Please use a unique barcode.");
         }
 
@@ -630,7 +630,7 @@ public class ShopProductService {
         }
 
         // Update shop-level barcodes (barcode1, barcode2, barcode3) with duplicate validation
-        Long shopId = shopProduct.getShop().getId();
+        Long barcodeShopId = shopProduct.getShop().getId();
         String barcode1 = request.getBarcode1() != null ? (request.getBarcode1().trim().isEmpty() ? null : request.getBarcode1().trim()) : shopProduct.getBarcode1();
         String barcode2 = request.getBarcode2() != null ? (request.getBarcode2().trim().isEmpty() ? null : request.getBarcode2().trim()) : shopProduct.getBarcode2();
         String barcode3 = request.getBarcode3() != null ? (request.getBarcode3().trim().isEmpty() ? null : request.getBarcode3().trim()) : shopProduct.getBarcode3();
@@ -647,13 +647,13 @@ public class ShopProductService {
         }
 
         // Check for duplicate barcodes in other products
-        if (barcode1 != null && shopProductRepository.existsByShopIdAndBarcodeAndIdNot(shopId, barcode1, productId)) {
+        if (barcode1 != null && shopProductRepository.existsByShopIdAndBarcodeAndIdNot(barcodeShopId, barcode1, productId)) {
             throw new RuntimeException("Barcode '" + barcode1 + "' already exists in this shop. Please use a unique barcode.");
         }
-        if (barcode2 != null && shopProductRepository.existsByShopIdAndBarcodeAndIdNot(shopId, barcode2, productId)) {
+        if (barcode2 != null && shopProductRepository.existsByShopIdAndBarcodeAndIdNot(barcodeShopId, barcode2, productId)) {
             throw new RuntimeException("Barcode '" + barcode2 + "' already exists in this shop. Please use a unique barcode.");
         }
-        if (barcode3 != null && shopProductRepository.existsByShopIdAndBarcodeAndIdNot(shopId, barcode3, productId)) {
+        if (barcode3 != null && shopProductRepository.existsByShopIdAndBarcodeAndIdNot(barcodeShopId, barcode3, productId)) {
             throw new RuntimeException("Barcode '" + barcode3 + "' already exists in this shop. Please use a unique barcode.");
         }
 
