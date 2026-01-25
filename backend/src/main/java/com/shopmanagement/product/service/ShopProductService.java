@@ -646,15 +646,15 @@ public class ShopProductService {
             throw new RuntimeException("Barcode 2 and Barcode 3 cannot be the same.");
         }
 
-        // Check for duplicate barcodes in other products
-        if (barcode1 != null && shopProductRepository.existsByShopIdAndBarcodeAndIdNot(barcodeShopId, barcode1, productId)) {
-            throw new RuntimeException("Barcode '" + barcode1 + "' already exists in this shop. Please use a unique barcode.");
+        // Check for duplicate barcodes in other products (barcode1/2/3, SKU, and master barcode)
+        if (barcode1 != null) {
+            validateBarcodeNotDuplicate(barcodeShopId, barcode1, productId);
         }
-        if (barcode2 != null && shopProductRepository.existsByShopIdAndBarcodeAndIdNot(barcodeShopId, barcode2, productId)) {
-            throw new RuntimeException("Barcode '" + barcode2 + "' already exists in this shop. Please use a unique barcode.");
+        if (barcode2 != null) {
+            validateBarcodeNotDuplicate(barcodeShopId, barcode2, productId);
         }
-        if (barcode3 != null && shopProductRepository.existsByShopIdAndBarcodeAndIdNot(barcodeShopId, barcode3, productId)) {
-            throw new RuntimeException("Barcode '" + barcode3 + "' already exists in this shop. Please use a unique barcode.");
+        if (barcode3 != null) {
+            validateBarcodeNotDuplicate(barcodeShopId, barcode3, productId);
         }
 
         shopProduct.setBarcode1(barcode1);
@@ -667,5 +667,23 @@ public class ShopProductService {
         log.info("Product quick updated successfully: {}", productId);
 
         return productMapper.toResponse(updatedProduct);
+    }
+
+    /**
+     * Validate that a barcode doesn't already exist in any barcode field, SKU, or master barcode
+     */
+    private void validateBarcodeNotDuplicate(Long shopId, String barcode, Long excludeProductId) {
+        // Check against other products' barcode1, barcode2, barcode3
+        if (shopProductRepository.existsByShopIdAndBarcodeAndIdNot(shopId, barcode, excludeProductId)) {
+            throw new RuntimeException("Barcode '" + barcode + "' already exists in this shop. Please use a unique barcode.");
+        }
+        // Check against SKU
+        if (shopProductRepository.existsByShopIdAndSkuAndIdNot(shopId, barcode, excludeProductId)) {
+            throw new RuntimeException("Barcode '" + barcode + "' matches an existing product SKU. Please use a unique barcode.");
+        }
+        // Check against master product barcode
+        if (shopProductRepository.existsByShopIdAndMasterBarcodeAndIdNot(shopId, barcode, excludeProductId)) {
+            throw new RuntimeException("Barcode '" + barcode + "' matches an existing product barcode. Please use a unique barcode.");
+        }
     }
 }

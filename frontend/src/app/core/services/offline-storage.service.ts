@@ -654,17 +654,19 @@ export class OfflineStorageService {
 
   /**
    * Check if a barcode already exists in products or pending creations
+   * Checks against: SKU, master barcode, barcode1, barcode2, barcode3
    */
   async isBarcodeExists(barcode: string, excludeProductId?: number): Promise<boolean> {
     if (!barcode || barcode.trim() === '') return false;
 
     const trimmedBarcode = barcode.trim().toLowerCase();
 
-    // Check in cached products
+    // Check in cached products (including SKU)
     const products = await this.getProducts();
     const existsInProducts = products.some(p => {
       if (excludeProductId && p.id === excludeProductId) return false;
       return (
+        (p.sku && p.sku.toLowerCase() === trimmedBarcode) ||
         (p.barcode && p.barcode.toLowerCase() === trimmedBarcode) ||
         (p.barcode1 && p.barcode1.toLowerCase() === trimmedBarcode) ||
         (p.barcode2 && p.barcode2.toLowerCase() === trimmedBarcode) ||
@@ -678,6 +680,7 @@ export class OfflineStorageService {
     const pendingCreations = await this.getPendingProductCreations();
     const existsInPending = pendingCreations.some(c => {
       return (
+        (c.sku && c.sku.toLowerCase() === trimmedBarcode) ||
         (c.barcode1 && c.barcode1.toLowerCase() === trimmedBarcode) ||
         (c.barcode2 && c.barcode2.toLowerCase() === trimmedBarcode) ||
         (c.barcode3 && c.barcode3.toLowerCase() === trimmedBarcode)

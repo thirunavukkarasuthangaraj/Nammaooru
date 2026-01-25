@@ -1469,11 +1469,14 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     ].filter(b => b.value && b.value.trim() !== '');
 
     for (const barcodeInfo of barcodesToCheck) {
+      const barcodeValue = barcodeInfo.value.trim().toLowerCase();
       const duplicateProduct = this.products.find(p =>
         p.id !== this.editingProduct!.id && (
-          (p.barcode1 && p.barcode1.toLowerCase() === barcodeInfo.value.trim().toLowerCase()) ||
-          (p.barcode2 && p.barcode2.toLowerCase() === barcodeInfo.value.trim().toLowerCase()) ||
-          (p.barcode3 && p.barcode3.toLowerCase() === barcodeInfo.value.trim().toLowerCase())
+          (p.sku && p.sku.toLowerCase() === barcodeValue) ||
+          (p.barcode && p.barcode.toLowerCase() === barcodeValue) ||
+          (p.barcode1 && p.barcode1.toLowerCase() === barcodeValue) ||
+          (p.barcode2 && p.barcode2.toLowerCase() === barcodeValue) ||
+          (p.barcode3 && p.barcode3.toLowerCase() === barcodeValue)
         )
       );
       if (duplicateProduct) {

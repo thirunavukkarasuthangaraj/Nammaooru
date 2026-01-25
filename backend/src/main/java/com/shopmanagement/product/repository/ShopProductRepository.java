@@ -153,6 +153,16 @@ public interface ShopProductRepository extends JpaRepository<ShopProduct, Long>,
            "(LOWER(sp.barcode1) = LOWER(:barcode) OR LOWER(sp.barcode2) = LOWER(:barcode) OR LOWER(sp.barcode3) = LOWER(:barcode))")
     boolean existsByShopIdAndBarcodeAndIdNot(@Param("shopId") Long shopId, @Param("barcode") String barcode, @Param("excludeId") Long excludeId);
 
+    // Check if barcode matches any product's SKU (case insensitive)
+    @Query("SELECT COUNT(sp) > 0 FROM ShopProduct sp WHERE sp.shop.id = :shopId AND sp.id != :excludeId AND " +
+           "LOWER(sp.masterProduct.sku) = LOWER(:barcode)")
+    boolean existsByShopIdAndSkuAndIdNot(@Param("shopId") Long shopId, @Param("barcode") String barcode, @Param("excludeId") Long excludeId);
+
+    // Check if barcode matches any master product's barcode (case insensitive)
+    @Query("SELECT COUNT(sp) > 0 FROM ShopProduct sp WHERE sp.shop.id = :shopId AND sp.id != :excludeId AND " +
+           "LOWER(sp.masterProduct.barcode) = LOWER(:barcode)")
+    boolean existsByShopIdAndMasterBarcodeAndIdNot(@Param("shopId") Long shopId, @Param("barcode") String barcode, @Param("excludeId") Long excludeId);
+
     // Get all available products for offline cache
     List<ShopProduct> findByShopIdAndIsAvailable(Long shopId, Boolean isAvailable);
 }
