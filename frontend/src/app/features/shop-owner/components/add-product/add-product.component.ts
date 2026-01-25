@@ -986,9 +986,37 @@ export class AddProductComponent implements OnInit {
           })
         )
         .subscribe({
-          next: (shopProduct) => {
+          next: async (shopProduct) => {
             this.isLoading = false;
-            
+
+            // Add new product to local cache for immediate display
+            try {
+              const newCachedProduct = {
+                id: shopProduct.id,
+                shopId: this.currentShop!.id,
+                name: shopProduct.displayName || shopProduct.customName || formData.name,
+                nameTamil: formData.nameTamil,
+                price: shopProduct.price,
+                originalPrice: shopProduct.originalPrice || shopProduct.price,
+                costPrice: shopProduct.costPrice,
+                stock: shopProduct.stockQuantity,
+                trackInventory: formData.trackStock,
+                isAvailable: shopProduct.isAvailable,
+                sku: formData.sku || '',
+                barcode: formData.barcode1 || '',
+                barcode1: formData.barcode1 || '',
+                barcode2: formData.barcode2 || '',
+                barcode3: formData.barcode3 || '',
+                category: '',
+                unit: formData.unit || 'piece',
+                imageUrl: shopProduct.primaryImageUrl || ''
+              };
+              await this.offlineStorage.addProductToCache(newCachedProduct);
+              console.log('Added new product to local cache:', newCachedProduct);
+            } catch (err) {
+              console.warn('Failed to add product to cache:', err);
+            }
+
             this.snackBar.open('Product created and added to your shop successfully!', 'Close', {
               duration: 3000,
               horizontalPosition: 'end',

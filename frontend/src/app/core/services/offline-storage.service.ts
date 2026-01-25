@@ -253,6 +253,24 @@ export class OfflineStorageService {
   }
 
   /**
+   * Add a single product to cache (for newly created products)
+   */
+  async addProductToCache(product: Partial<CachedProduct>): Promise<void> {
+    const db = await this.getDB();
+    const transaction = db.transaction(PRODUCTS_STORE, 'readwrite');
+    const store = transaction.objectStore(PRODUCTS_STORE);
+
+    return new Promise((resolve, reject) => {
+      const request = store.put(product);
+      request.onsuccess = () => {
+        console.log('Product added to cache:', product.id);
+        resolve();
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
    * Get all cached products
    */
   async getProducts(): Promise<CachedProduct[]> {
