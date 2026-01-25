@@ -234,27 +234,35 @@ public class ShopProductService {
 
         // Update shop-level barcodes (barcode1, barcode2, barcode3) with duplicate validation
         Long shopId = shopProduct.getShop().getId();
-        if (request.getBarcode1() != null) {
-            String newBarcode = request.getBarcode1().trim().isEmpty() ? null : request.getBarcode1().trim();
-            if (newBarcode != null && shopProductRepository.existsByShopIdAndBarcodeAndIdNot(shopId, newBarcode, productId)) {
-                throw new RuntimeException("Barcode '" + newBarcode + "' already exists in this shop. Please use a unique barcode.");
-            }
-            shopProduct.setBarcode1(newBarcode);
+        String barcode1 = request.getBarcode1() != null ? (request.getBarcode1().trim().isEmpty() ? null : request.getBarcode1().trim()) : shopProduct.getBarcode1();
+        String barcode2 = request.getBarcode2() != null ? (request.getBarcode2().trim().isEmpty() ? null : request.getBarcode2().trim()) : shopProduct.getBarcode2();
+        String barcode3 = request.getBarcode3() != null ? (request.getBarcode3().trim().isEmpty() ? null : request.getBarcode3().trim()) : shopProduct.getBarcode3();
+
+        // Check for duplicate barcodes within same product
+        if (barcode1 != null && barcode2 != null && barcode1.equalsIgnoreCase(barcode2)) {
+            throw new RuntimeException("Barcode 1 and Barcode 2 cannot be the same.");
         }
-        if (request.getBarcode2() != null) {
-            String newBarcode = request.getBarcode2().trim().isEmpty() ? null : request.getBarcode2().trim();
-            if (newBarcode != null && shopProductRepository.existsByShopIdAndBarcodeAndIdNot(shopId, newBarcode, productId)) {
-                throw new RuntimeException("Barcode '" + newBarcode + "' already exists in this shop. Please use a unique barcode.");
-            }
-            shopProduct.setBarcode2(newBarcode);
+        if (barcode1 != null && barcode3 != null && barcode1.equalsIgnoreCase(barcode3)) {
+            throw new RuntimeException("Barcode 1 and Barcode 3 cannot be the same.");
         }
-        if (request.getBarcode3() != null) {
-            String newBarcode = request.getBarcode3().trim().isEmpty() ? null : request.getBarcode3().trim();
-            if (newBarcode != null && shopProductRepository.existsByShopIdAndBarcodeAndIdNot(shopId, newBarcode, productId)) {
-                throw new RuntimeException("Barcode '" + newBarcode + "' already exists in this shop. Please use a unique barcode.");
-            }
-            shopProduct.setBarcode3(newBarcode);
+        if (barcode2 != null && barcode3 != null && barcode2.equalsIgnoreCase(barcode3)) {
+            throw new RuntimeException("Barcode 2 and Barcode 3 cannot be the same.");
         }
+
+        // Check for duplicate barcodes in other products
+        if (barcode1 != null && shopProductRepository.existsByShopIdAndBarcodeAndIdNot(shopId, barcode1, productId)) {
+            throw new RuntimeException("Barcode '" + barcode1 + "' already exists in this shop. Please use a unique barcode.");
+        }
+        if (barcode2 != null && shopProductRepository.existsByShopIdAndBarcodeAndIdNot(shopId, barcode2, productId)) {
+            throw new RuntimeException("Barcode '" + barcode2 + "' already exists in this shop. Please use a unique barcode.");
+        }
+        if (barcode3 != null && shopProductRepository.existsByShopIdAndBarcodeAndIdNot(shopId, barcode3, productId)) {
+            throw new RuntimeException("Barcode '" + barcode3 + "' already exists in this shop. Please use a unique barcode.");
+        }
+
+        shopProduct.setBarcode1(barcode1);
+        shopProduct.setBarcode2(barcode2);
+        shopProduct.setBarcode3(barcode3);
 
         // Update shop images if provided
         if (request.getShopImageUrls() != null) {
@@ -623,27 +631,35 @@ public class ShopProductService {
 
         // Update shop-level barcodes (barcode1, barcode2, barcode3) with duplicate validation
         Long shopId = shopProduct.getShop().getId();
-        if (request.getBarcode1() != null) {
-            String newBarcode = request.getBarcode1().trim().isEmpty() ? null : request.getBarcode1().trim();
-            if (newBarcode != null && shopProductRepository.existsByShopIdAndBarcodeAndIdNot(shopId, newBarcode, productId)) {
-                throw new RuntimeException("Barcode '" + newBarcode + "' already exists in this shop. Please use a unique barcode.");
-            }
-            shopProduct.setBarcode1(newBarcode);
+        String barcode1 = request.getBarcode1() != null ? (request.getBarcode1().trim().isEmpty() ? null : request.getBarcode1().trim()) : shopProduct.getBarcode1();
+        String barcode2 = request.getBarcode2() != null ? (request.getBarcode2().trim().isEmpty() ? null : request.getBarcode2().trim()) : shopProduct.getBarcode2();
+        String barcode3 = request.getBarcode3() != null ? (request.getBarcode3().trim().isEmpty() ? null : request.getBarcode3().trim()) : shopProduct.getBarcode3();
+
+        // Check for duplicate barcodes within same product
+        if (barcode1 != null && barcode2 != null && barcode1.equalsIgnoreCase(barcode2)) {
+            throw new RuntimeException("Barcode 1 and Barcode 2 cannot be the same.");
         }
-        if (request.getBarcode2() != null) {
-            String newBarcode = request.getBarcode2().trim().isEmpty() ? null : request.getBarcode2().trim();
-            if (newBarcode != null && shopProductRepository.existsByShopIdAndBarcodeAndIdNot(shopId, newBarcode, productId)) {
-                throw new RuntimeException("Barcode '" + newBarcode + "' already exists in this shop. Please use a unique barcode.");
-            }
-            shopProduct.setBarcode2(newBarcode);
+        if (barcode1 != null && barcode3 != null && barcode1.equalsIgnoreCase(barcode3)) {
+            throw new RuntimeException("Barcode 1 and Barcode 3 cannot be the same.");
         }
-        if (request.getBarcode3() != null) {
-            String newBarcode = request.getBarcode3().trim().isEmpty() ? null : request.getBarcode3().trim();
-            if (newBarcode != null && shopProductRepository.existsByShopIdAndBarcodeAndIdNot(shopId, newBarcode, productId)) {
-                throw new RuntimeException("Barcode '" + newBarcode + "' already exists in this shop. Please use a unique barcode.");
-            }
-            shopProduct.setBarcode3(newBarcode);
+        if (barcode2 != null && barcode3 != null && barcode2.equalsIgnoreCase(barcode3)) {
+            throw new RuntimeException("Barcode 2 and Barcode 3 cannot be the same.");
         }
+
+        // Check for duplicate barcodes in other products
+        if (barcode1 != null && shopProductRepository.existsByShopIdAndBarcodeAndIdNot(shopId, barcode1, productId)) {
+            throw new RuntimeException("Barcode '" + barcode1 + "' already exists in this shop. Please use a unique barcode.");
+        }
+        if (barcode2 != null && shopProductRepository.existsByShopIdAndBarcodeAndIdNot(shopId, barcode2, productId)) {
+            throw new RuntimeException("Barcode '" + barcode2 + "' already exists in this shop. Please use a unique barcode.");
+        }
+        if (barcode3 != null && shopProductRepository.existsByShopIdAndBarcodeAndIdNot(shopId, barcode3, productId)) {
+            throw new RuntimeException("Barcode '" + barcode3 + "' already exists in this shop. Please use a unique barcode.");
+        }
+
+        shopProduct.setBarcode1(barcode1);
+        shopProduct.setBarcode2(barcode2);
+        shopProduct.setBarcode3(barcode3);
 
         shopProduct.setUpdatedBy(getCurrentUsername());
         ShopProduct updatedProduct = shopProductRepository.save(shopProduct);
