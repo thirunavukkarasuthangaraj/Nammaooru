@@ -1511,10 +1511,19 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       if (navigator.onLine) {
         try {
           // Online mode - call API
-          await this.http.patch<any>(
+          const response = await this.http.patch<any>(
             `${this.apiUrl}/shop-products/${productId}/quick-update`,
             updateData
           ).toPromise();
+
+          // Check response statusCode (backend returns 200 even for errors)
+          // statusCode "0000" = success, anything else = error
+          if (response?.statusCode && response.statusCode !== '0000') {
+            // Backend returned an error in the response body
+            this.isSavingEdit = false;
+            this.swal.error('Validation Error', response.message || 'Failed to update product');
+            return;
+          }
 
           // Update succeeded - update local data
           await this.updateLocalProductData(productId, updateData);
