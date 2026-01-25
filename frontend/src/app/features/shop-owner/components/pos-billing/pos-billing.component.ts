@@ -1541,7 +1541,21 @@ export class PosBillingComponent implements OnInit, OnDestroy {
         }
       }
 
-      // Offline mode OR API failed - save to offline edits queue
+      // Offline mode OR API failed - validate barcodes against local data first
+      const barcodeValidationError = await this.offlineStorage.validateBarcodes(
+        this.editBarcode1,
+        this.editBarcode2,
+        this.editBarcode3,
+        productId
+      );
+
+      if (barcodeValidationError) {
+        this.isSavingEdit = false;
+        this.swal.error('Duplicate Barcode', barcodeValidationError);
+        return;
+      }
+
+      // Save to offline edits queue
       const offlineEdit: OfflineEdit = {
         editId: this.offlineStorage.generateOfflineEditId(),
         productId: productId,
