@@ -1367,12 +1367,20 @@ export class PosBillingComponent implements OnInit, OnDestroy {
         <title>Label - ${product.name}</title>
         <style>
           @page {
-            size: 58mm 30mm;
+            size: 50mm 25mm landscape;
             margin: 0;
           }
           @media print {
-            body { margin: 0; padding: 0; }
-            .label { page-break-after: always; }
+            html, body {
+              margin: 0;
+              padding: 0;
+              width: 50mm;
+              height: 25mm;
+            }
+            .label {
+              page-break-after: always;
+              page-break-inside: avoid;
+            }
             .label:last-child { page-break-after: auto; }
           }
           * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -1380,15 +1388,16 @@ export class PosBillingComponent implements OnInit, OnDestroy {
             font-family: 'Noto Sans Tamil', 'Segoe UI', Arial, sans-serif;
           }
           .label {
-            width: 58mm;
-            height: 30mm;
-            padding: 1.5mm 2mm;
+            width: 50mm;
+            height: 25mm;
+            padding: 1mm 2mm;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: space-between;
             border: 1px dashed #ccc;
             background: white;
+            overflow: hidden;
           }
           .label-top {
             width: 100%;
@@ -1463,7 +1472,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
             align-items: center;
           }
           .barcode {
-            height: 10mm;
+            height: 8mm;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -1471,16 +1480,16 @@ export class PosBillingComponent implements OnInit, OnDestroy {
           .barcode svg {
             height: 100%;
             width: auto;
-            max-width: 52mm;
+            max-width: 46mm;
           }
           .barcode-text {
-            font-size: 9px;
+            font-size: 8px;
             font-family: 'Courier New', monospace;
             font-weight: 700;
-            letter-spacing: 1.5px;
+            letter-spacing: 1px;
             color: #000;
             text-align: center;
-            margin-top: 0.5mm;
+            margin-top: 0.3mm;
           }
         </style>
       </head>
