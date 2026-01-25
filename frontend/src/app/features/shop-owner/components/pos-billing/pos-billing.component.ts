@@ -301,12 +301,43 @@ export class PosBillingComponent implements OnInit, OnDestroy {
         setTimeout(() => reject(new Error('Cache timeout')), 3000)
       );
 
-      const cachedProducts = await Promise.race([cachePromise, timeoutPromise]);
+      let cachedProducts = await Promise.race([cachePromise, timeoutPromise]);
+
+      // Also load pending offline-created products and merge them
+      try {
+        const pendingCreations = await this.offlineStorage.getPendingProductCreations();
+        if (pendingCreations.length > 0) {
+          console.log(`Found ${pendingCreations.length} pending offline products`);
+          const offlineProducts: CachedProduct[] = pendingCreations.map(creation => ({
+            id: this.offlineStorage.generateTempProductId(),
+            shopId: creation.shopId,
+            name: creation.name || creation.customName || 'New Product',
+            nameTamil: creation.nameTamil,
+            price: creation.price,
+            originalPrice: creation.originalPrice,
+            costPrice: creation.costPrice,
+            stock: creation.stockQuantity,
+            trackInventory: creation.trackInventory,
+            isAvailable: true,
+            sku: creation.sku || '',
+            barcode: creation.barcode1,
+            barcode1: creation.barcode1,
+            barcode2: creation.barcode2,
+            barcode3: creation.barcode3,
+            category: creation.categoryName,
+            unit: creation.unit,
+            masterProductId: creation.masterProductId
+          }));
+          cachedProducts = [...offlineProducts, ...cachedProducts];
+        }
+      } catch (err) {
+        console.warn('Failed to load pending offline products:', err);
+      }
 
       if (cachedProducts.length > 0) {
         this.products = cachedProducts;
         this.filteredProducts = this.sortProductsWithCartFirst(this.products);
-        console.log(`Loaded ${this.products.length} products from cache`);
+        console.log(`Loaded ${this.products.length} products from cache (including offline)`);
 
         // Extract shopId from cached products if not set
         if ((!this.shopId || this.shopId === 0) && cachedProducts.length > 0) {

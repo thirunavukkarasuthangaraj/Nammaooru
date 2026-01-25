@@ -101,6 +101,10 @@ export interface OfflineProductCreation {
   customDescription?: string;
   isFeatured?: boolean;
   tags?: string;
+  sku?: string;
+  categoryName?: string;
+  categoryId?: number;
+  unit?: string;
   // Image (base64 for offline, will be uploaded when syncing)
   imageBase64?: string;
   imagePendingUpload?: boolean;
@@ -649,9 +653,53 @@ export class OfflineStorageService {
   }
 
   /**
-   * Save offline product creation
+   * Check if a barcode already exists in products or pending creations
+   */
+  async isBarcodeExists(barcode: string, excludeProductId?: number): Promise<boolean> {
+    if (!barcode || barcode.trim() === '') return false;
+
+    const trimmedBarcode = barcode.trim().toLowerCase();
+
+    // Check in cached products
+    const products = await this.getProducts();
+    const existsInProducts = products.some(p => {
+      if (excludeProductId && p.id === excludeProductId) return false;
+      return (
+        (p.barcode && p.barcode.toLowerCase() === trimmedBarcode) ||
+        (p.barcode1 && p.barcode1.toLowerCase() === trimmedBarcode) ||
+        (p.barcode2 && p.barcode2.toLowerCase() === trimmedBarcode) ||
+        (p.barcode3 && p.barcode3.toLowerCase() === trimmedBarcode)
+      );
+    });
+
+    if (existsInProducts) return true;
+
+    // Check in pending offline creations
+    const pendingCreations = await this.getPendingProductCreations();
+    const existsInPending = pendingCreations.some(c => {
+      return (
+        (c.barcode1 && c.barcode1.toLowerCase() === trimmedBarcode) ||
+        (c.barcode2 && c.barcode2.toLowerCase() === trimmedBarcode) ||
+        (c.barcode3 && c.barcode3.toLowerCase() === trimmedBarcode)
+      );
+    });
+
+    return existsInPending;
+  }
+
+  /**
+   * Save offline product creation with duplicate barcode validation
    */
   async saveOfflineProductCreation(creation: OfflineProductCreation): Promise<void> {
+    // Validate duplicate barcodes before saving
+    const barcodesToCheck = [creation.barcode1, creation.barcode2, creation.barcode3].filter(b => b && b.trim() !== '');
+
+    for (const barcode of barcodesToCheck) {
+      if (barcode && await this.isBarcodeExists(barcode)) {
+        throw new Error(`Barcode '${barcode}' already exists. Please use a unique barcode.`);
+      }
+    }
+
     const db = await this.getDB();
     const transaction = db.transaction(PRODUCT_CREATIONS_STORE, 'readwrite');
     const store = transaction.objectStore(PRODUCT_CREATIONS_STORE);
