@@ -1280,6 +1280,7 @@ $text-secondary: #7f8c8d;
     border-radius: 10px;
     padding: 12px;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
 
     .card-title {
       display: flex;
@@ -1311,26 +1312,29 @@ $text-secondary: #7f8c8d;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
+      gap: 8px;
 
       label {
         font-size: 12px;
         font-weight: 600;
         color: #64748b;
         white-space: nowrap;
+        flex-shrink: 0;
       }
 
       input {
-        width: 85px;
-        padding: 8px 10px;
+        width: 70px;
+        max-width: 70px;
+        padding: 7px 8px;
         border: 1.5px solid #e2e8f0;
         border-radius: 6px;
-        font-size: 14px;
+        font-size: 13px;
         font-weight: 700;
         text-align: right;
         outline: none;
         transition: all 0.2s;
         background: #fafbfc;
+        box-sizing: border-box;
 
         &:focus {
           border-color: #667eea;
@@ -1347,6 +1351,7 @@ $text-secondary: #7f8c8d;
         overflow: hidden;
         transition: all 0.2s;
         background: #fafbfc;
+        max-width: 100px;
 
         &:focus-within {
           border-color: #667eea;
@@ -1355,20 +1360,22 @@ $text-secondary: #7f8c8d;
         }
 
         .prefix {
-          padding: 8px 10px;
+          padding: 7px 8px;
           background: #eef0f5;
           color: #64748b;
-          font-size: 13px;
+          font-size: 12px;
           font-weight: 700;
           border-right: 1.5px solid #e2e8f0;
+          flex-shrink: 0;
         }
 
         input {
-          width: 65px;
+          width: 55px;
+          max-width: 55px;
           border: none;
           border-radius: 0;
           text-align: right;
-          padding: 8px 10px;
+          padding: 7px 8px;
           background: transparent;
 
           &:focus {
@@ -1378,7 +1385,8 @@ $text-secondary: #7f8c8d;
       }
 
       .stock-input {
-        width: 75px;
+        width: 65px;
+        max-width: 65px;
         text-align: center;
       }
     }
@@ -1391,6 +1399,7 @@ $text-secondary: #7f8c8d;
     padding: 12px;
     margin-bottom: 12px;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
 
     .barcode-header {
       display: flex;
@@ -1431,16 +1440,18 @@ $text-secondary: #7f8c8d;
 
       .barcode-input-field {
         width: 100%;
-        padding: 10px 12px;
+        max-width: 100%;
+        padding: 8px 10px;
         border: 1.5px solid #e2e8f0;
         border-radius: 6px;
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 600;
         font-family: 'SF Mono', 'Consolas', monospace;
         letter-spacing: 0.5px;
         outline: none;
         transition: all 0.2s;
         background: #fafbfc;
+        box-sizing: border-box;
 
         &:focus {
           border-color: #667eea;
@@ -1449,7 +1460,7 @@ $text-secondary: #7f8c8d;
         }
 
         &::placeholder {
-          font-size: 12px;
+          font-size: 11px;
           font-weight: 400;
           letter-spacing: 0;
           color: #cbd5e1;
