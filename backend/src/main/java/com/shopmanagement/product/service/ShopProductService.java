@@ -101,10 +101,7 @@ public class ShopProductService {
         if (request.getPrice() == null) {
             throw new IllegalArgumentException("Price is required when adding a product to shop");
         }
-        // barcode1 is mandatory for shop products
-        if (request.getBarcode1() == null || request.getBarcode1().trim().isEmpty()) {
-            throw new IllegalArgumentException("Barcode 1 is required when adding a product to shop");
-        }
+        // barcode1 is now optional - shops can add products without barcodes
 
         // Get shop
         Shop shop = shopRepository.findById(shopId)

@@ -715,7 +715,7 @@ export class MyProductsComponent implements OnInit, OnDestroy {
     console.log('Editing product:', product);
     console.log('Product ID:', product.id);
     console.log('Shop ID:', this.shopId);
-    
+
     const dialogRef = this.dialog.open(ProductEditDialogComponent, {
       width: '600px',
       data: {
@@ -733,7 +733,11 @@ export class MyProductsComponent implements OnInit, OnDestroy {
         imageUrl: product.imageUrl,
         nameTamil: product.masterProduct?.nameTamil || '',
         tags: product.masterProduct?.tags || '',
-        masterProductId: product.masterProduct?.id
+        masterProductId: product.masterProduct?.id,
+        // Shop-level multiple barcodes
+        barcode1: product.barcode1 || '',
+        barcode2: product.barcode2 || '',
+        barcode3: product.barcode3 || ''
       }
     });
 

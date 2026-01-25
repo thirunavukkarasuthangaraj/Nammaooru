@@ -131,24 +131,33 @@ export class OfflineStorageService {
   }
 
   /**
-   * Initialize IndexedDB
+   * Initialize IndexedDB with timeout
    */
   private initializeDB(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      // Timeout after 5 seconds to prevent hanging
+      const timeout = setTimeout(() => {
+        console.error('IndexedDB initialization timed out');
+        reject(new Error('IndexedDB initialization timed out'));
+      }, 5000);
 
-      request.onerror = () => {
-        console.error('Failed to open IndexedDB:', request.error);
-        reject(request.error);
-      };
+      try {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-      request.onsuccess = () => {
-        this.db = request.result;
-        console.log('IndexedDB initialized successfully');
-        resolve(this.db);
-      };
+        request.onerror = () => {
+          clearTimeout(timeout);
+          console.error('Failed to open IndexedDB:', request.error);
+          reject(request.error);
+        };
 
-      request.onupgradeneeded = (event) => {
+        request.onsuccess = () => {
+          clearTimeout(timeout);
+          this.db = request.result;
+          console.log('IndexedDB initialized successfully');
+          resolve(this.db);
+        };
+
+        request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
 
         // Products store - indexed by id, barcode, sku for fast lookup
@@ -188,6 +197,11 @@ export class OfflineStorageService {
           db.createObjectStore(SYNC_META_STORE, { keyPath: 'key' });
         }
       };
+      } catch (e) {
+        clearTimeout(timeout);
+        console.error('IndexedDB not available:', e);
+        reject(e);
+      }
     });
   }
 

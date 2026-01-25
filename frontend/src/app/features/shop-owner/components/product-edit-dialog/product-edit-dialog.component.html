@@ -175,17 +175,14 @@
     <!-- Barcodes Section -->
     <div class="form-row">
       <mat-form-field appearance="outline">
-        <mat-label>Barcode 1 *</mat-label>
-        <input matInput formControlName="barcode1" placeholder="Primary barcode (required)">
+        <mat-label>Barcode 1</mat-label>
+        <input matInput formControlName="barcode1" placeholder="Primary barcode">
         <mat-icon matPrefix>qr_code</mat-icon>
-        <mat-error *ngIf="editForm.get('barcode1')?.hasError('required')">
-          Barcode 1 is required
-        </mat-error>
       </mat-form-field>
 
       <mat-form-field appearance="outline">
         <mat-label>Barcode 2</mat-label>
-        <input matInput formControlName="barcode2" placeholder="Secondary barcode (optional)">
+        <input matInput formControlName="barcode2" placeholder="Secondary barcode">
         <mat-icon matPrefix>qr_code</mat-icon>
       </mat-form-field>
     </div>

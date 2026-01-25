@@ -91,6 +91,9 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   editBarcode3: string = '';
   isSavingEdit: boolean = false;
 
+  // Label Print state
+  labelQuantity: number = 1;
+
   // Quick Add Custom Product state
   showQuickAddDialog: boolean = false;
   customProductName: string = '';
@@ -291,33 +294,43 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     this.isLoading = true;
     console.log('Loading products for POS...');
 
-    // Try to load from local cache first (instant)
-    const cachedProducts = await this.offlineStorage.getProducts();
-    if (cachedProducts.length > 0) {
-      this.products = cachedProducts;
-      this.filteredProducts = this.sortProductsWithCartFirst(this.products);
-      console.log(`Loaded ${this.products.length} products from cache`);
+    try {
+      // Try to load from local cache first (instant) with timeout
+      const cachePromise = this.offlineStorage.getProducts();
+      const timeoutPromise = new Promise<CachedProduct[]>((_, reject) =>
+        setTimeout(() => reject(new Error('Cache timeout')), 3000)
+      );
 
-      // Extract shopId from cached products if not set
-      if ((!this.shopId || this.shopId === 0) && cachedProducts.length > 0) {
-        const firstProductWithShopId = cachedProducts.find(p => p.shopId);
-        if (firstProductWithShopId && firstProductWithShopId.shopId) {
-          this.shopId = firstProductWithShopId.shopId;
-          localStorage.setItem('current_shop_id', String(this.shopId));
-          console.log('POS: Extracted shopId from cached products:', this.shopId);
+      const cachedProducts = await Promise.race([cachePromise, timeoutPromise]);
+
+      if (cachedProducts.length > 0) {
+        this.products = cachedProducts;
+        this.filteredProducts = this.sortProductsWithCartFirst(this.products);
+        console.log(`Loaded ${this.products.length} products from cache`);
+
+        // Extract shopId from cached products if not set
+        if ((!this.shopId || this.shopId === 0) && cachedProducts.length > 0) {
+          const firstProductWithShopId = cachedProducts.find(p => p.shopId);
+          if (firstProductWithShopId && firstProductWithShopId.shopId) {
+            this.shopId = firstProductWithShopId.shopId;
+            localStorage.setItem('current_shop_id', String(this.shopId));
+            console.log('POS: Extracted shopId from cached products:', this.shopId);
+          }
         }
-      }
 
-      this.isLoading = false;
+        this.isLoading = false;
 
-      // Sync in background if online
-      if (navigator.onLine) {
-        this.syncProductsInBackground();
+        // Sync in background if online
+        if (navigator.onLine) {
+          this.syncProductsInBackground();
+        }
+        return;
       }
-      return;
+    } catch (error) {
+      console.warn('Failed to load from cache, loading from server:', error);
     }
 
-    // No cache - load from server
+    // No cache or cache failed - load from server
     this.loadProductsFromServer();
   }
 
@@ -1116,8 +1129,8 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     this.editStock = product.stock;
     // Use barcode if available, otherwise fallback to SKU
     this.editBarcode = product.barcode || product.sku || '';
-    // Shop-level multiple barcodes
-    this.editBarcode1 = product.barcode1 || '';
+    // Shop-level multiple barcodes - auto-fill barcode1 with SKU if empty
+    this.editBarcode1 = product.barcode1 || product.sku || '';
     this.editBarcode2 = product.barcode2 || '';
     this.editBarcode3 = product.barcode3 || '';
   }
@@ -1134,6 +1147,245 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     this.editBarcode1 = '';
     this.editBarcode2 = '';
     this.editBarcode3 = '';
+    this.labelQuantity = 1;
+  }
+
+  /**
+   * Print product label with barcode
+   * Optimized for 50x25mm thermal labels
+   */
+  printLabel(): void {
+    if (!this.editingProduct) return;
+
+    const product = this.editingProduct;
+    const barcode = this.editBarcode1 || this.editBarcode || product.sku || '';
+    const quantity = this.labelQuantity || 1;
+
+    if (!barcode) {
+      this.swal.warning('No Barcode', 'Please add a barcode to print labels');
+      return;
+    }
+
+    // Generate labels HTML
+    const labelsHtml = this.generateLabelsHtml(product, barcode, quantity);
+
+    // Open print window
+    const printWindow = window.open('', '_blank', 'width=400,height=600');
+    if (!printWindow) {
+      this.swal.error('Error', 'Please allow popups to print labels');
+      return;
+    }
+
+    printWindow.document.write(labelsHtml);
+    printWindow.document.close();
+
+    setTimeout(() => {
+      printWindow.print();
+    }, 300);
+  }
+
+  /**
+   * Generate HTML for multiple labels
+   */
+  private generateLabelsHtml(product: CachedProduct, barcode: string, quantity: number): string {
+    let labels = '';
+    for (let i = 0; i < quantity; i++) {
+      labels += this.generateSingleLabelHtml(product, barcode);
+    }
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Label - ${product.name}</title>
+        <style>
+          @page {
+            size: 50mm 30mm;
+            margin: 0;
+          }
+          @media print {
+            body { margin: 0; padding: 0; }
+            .label { page-break-after: always; }
+            .label:last-child { page-break-after: auto; }
+          }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+          }
+          .label {
+            width: 50mm;
+            height: 30mm;
+            padding: 2mm 2mm;
+            display: flex;
+            flex-direction: column;
+            border: 1px dashed #ddd;
+            overflow: hidden;
+            background: white;
+          }
+          .label-header {
+            text-align: center;
+            margin-bottom: 1mm;
+            border-bottom: 0.5px solid #eee;
+            padding-bottom: 1mm;
+          }
+          .product-name {
+            font-size: 10px;
+            font-weight: 700;
+            color: #000;
+            line-height: 1.2;
+            margin-bottom: 1mm;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+          }
+          .price-row {
+            display: flex;
+            justify-content: center;
+            align-items: baseline;
+            gap: 3mm;
+          }
+          .mrp {
+            font-size: 9px;
+            text-decoration: line-through;
+            color: #888;
+          }
+          .price {
+            font-size: 14px;
+            font-weight: 900;
+            color: #000;
+          }
+          .barcode-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+          }
+          .barcode {
+            height: 14mm;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+          }
+          .barcode svg {
+            height: 100%;
+            width: auto;
+            max-width: 44mm;
+          }
+          .barcode-text {
+            font-size: 9px;
+            font-family: 'Courier New', monospace;
+            font-weight: 700;
+            letter-spacing: 2px;
+            margin-top: 1mm;
+            color: #333;
+          }
+        </style>
+      </head>
+      <body>
+        ${labels}
+        <script>
+          // Code128 barcode generator
+          function generateCode128SVG(text) {
+            const CODE128_PATTERNS = {
+              ' ': '11011001100', '!': '11001101100', '"': '11001100110', '#': '10010011000',
+              '$': '10010001100', '%': '10001001100', '&': '10011001000', "'": '10011000100',
+              '(': '10001100100', ')': '11001001000', '*': '11001000100', '+': '11000100100',
+              ',': '10110011100', '-': '10011011100', '.': '10011001110', '/': '10111001100',
+              '0': '10011101100', '1': '11001110010', '2': '11001011100', '3': '11001001110',
+              '4': '11011100100', '5': '11001110100', '6': '11101101110', '7': '11101001100',
+              '8': '11100101100', '9': '11100100110', ':': '11101100100', ';': '11100110100',
+              '<': '11100110010', '=': '11011011000', '>': '11011000110', '?': '11000110110',
+              '@': '10100011000', 'A': '10001011000', 'B': '10001000110', 'C': '10110001000',
+              'D': '10001101000', 'E': '10001100010', 'F': '11010001000', 'G': '11000101000',
+              'H': '11000100010', 'I': '10110111000', 'J': '10110001110', 'K': '10001101110',
+              'L': '10111011000', 'M': '10111000110', 'N': '10001110110', 'O': '11101110110',
+              'P': '11010001110', 'Q': '11000101110', 'R': '11011101000', 'S': '11011100010',
+              'T': '11011101110', 'U': '11101011000', 'V': '11101000110', 'W': '11100010110',
+              'X': '11101101000', 'Y': '11101100010', 'Z': '11100011010', '[': '11101111010',
+              '\\\\': '11001000010', ']': '11110001010', '^': '10100110000', '_': '10100001100',
+              '\`': '10010110000', 'a': '10010000110', 'b': '10000101100', 'c': '10000100110',
+              'd': '10110010000', 'e': '10110000100', 'f': '10011010000', 'g': '10011000010',
+              'h': '10000110100', 'i': '10000110010', 'j': '11000010010', 'k': '11001010000',
+              'l': '11110111010', 'm': '11000010100', 'n': '10001111010', 'o': '10100111100',
+              'p': '10010111100', 'q': '10010011110', 'r': '10111100100', 's': '10011110100',
+              't': '10011110010', 'u': '11110100100', 'v': '11110010100', 'w': '11110010010',
+              'x': '11011011110', 'y': '11011110110', 'z': '11110110110', '{': '10101111000',
+              '|': '10100011110', '}': '10001011110', '~': '10111101000'
+            };
+            const START_B = '11010010000';
+            const STOP = '1100011101011';
+
+            let pattern = START_B;
+            let checksum = 104; // Start B value
+
+            for (let i = 0; i < text.length; i++) {
+              const char = text[i];
+              if (CODE128_PATTERNS[char]) {
+                pattern += CODE128_PATTERNS[char];
+                checksum += (i + 1) * (char.charCodeAt(0) - 32);
+              }
+            }
+
+            // Add checksum
+            const checksumChar = String.fromCharCode((checksum % 103) + 32);
+            if (CODE128_PATTERNS[checksumChar]) {
+              pattern += CODE128_PATTERNS[checksumChar];
+            }
+            pattern += STOP;
+
+            // Generate SVG
+            const barWidth = 1;
+            const height = 40;
+            let svg = '<svg xmlns="http://www.w3.org/2000/svg" height="' + height + '" width="' + (pattern.length * barWidth) + '">';
+            for (let i = 0; i < pattern.length; i++) {
+              if (pattern[i] === '1') {
+                svg += '<rect x="' + (i * barWidth) + '" y="0" width="' + barWidth + '" height="' + height + '" fill="black"/>';
+              }
+            }
+            svg += '</svg>';
+            return svg;
+          }
+
+          // Generate barcodes
+          document.querySelectorAll('.barcode').forEach(el => {
+            const code = el.getAttribute('data-code');
+            if (code) {
+              el.innerHTML = generateCode128SVG(code);
+            }
+          });
+        </script>
+      </body>
+      </html>
+    `;
+  }
+
+  /**
+   * Generate HTML for a single label
+   */
+  private generateSingleLabelHtml(product: CachedProduct, barcode: string): string {
+    const name = product.name || '';
+    const price = this.editPrice || product.price || 0;
+    const mrp = this.editMrp || product.originalPrice || price;
+    const showMrp = mrp > price;
+
+    const mrpHtml = showMrp ? `<span class="mrp">₹${mrp}</span>` : '';
+
+    return `
+      <div class="label">
+        <div class="label-header">
+          <div class="product-name">${name}</div>
+          <div class="price-row">
+            ${mrpHtml}
+            <span class="price">₹${price}</span>
+          </div>
+        </div>
+        <div class="barcode-area">
+          <div class="barcode" data-code="${barcode}"></div>
+          <div class="barcode-text">${barcode}</div>
+        </div>
+      </div>
+    `;
   }
 
   /**

@@ -74,8 +74,8 @@ export class ProductEditDialogComponent implements OnInit {
       isAvailable: [this.data.isAvailable !== false],
       nameTamil: [this.data.nameTamil || ''],
       tags: [this.data.tags || ''],
-      // Shop-level multiple barcodes (barcode1 is required)
-      barcode1: [this.data.barcode1 || '', [Validators.required]],
+      // Shop-level multiple barcodes (all optional)
+      barcode1: [this.data.barcode1 || ''],
       barcode2: [this.data.barcode2 || ''],
       barcode3: [this.data.barcode3 || '']
     });
