@@ -1462,6 +1462,15 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     }
 
     // Validate duplicate barcodes against other products
+    // Get original barcodes from the editing product (to skip validation if unchanged)
+    const originalBarcodes = [
+      this.editingProduct?.barcode1?.toLowerCase(),
+      this.editingProduct?.barcode2?.toLowerCase(),
+      this.editingProduct?.barcode3?.toLowerCase(),
+      this.editingProduct?.barcode?.toLowerCase(),
+      this.editingProduct?.sku?.toLowerCase()
+    ].filter(b => b);
+
     const barcodesToCheck = [
       { value: b1, label: 'Barcode 1' },
       { value: b2, label: 'Barcode 2' },
@@ -1470,15 +1479,34 @@ export class PosBillingComponent implements OnInit, OnDestroy {
 
     for (const barcodeInfo of barcodesToCheck) {
       const barcodeValue = barcodeInfo.value.trim().toLowerCase();
-      const duplicateProduct = this.products.find(p =>
-        p.id !== this.editingProduct!.id && (
+
+      // Skip validation if this barcode is unchanged from the original product
+      if (originalBarcodes.includes(barcodeValue)) {
+        continue;
+      }
+
+      const duplicateProduct = this.products.find(p => {
+        // Skip if same product (by ID or by matching barcodes for offline products)
+        if (p.id === this.editingProduct!.id) return false;
+
+        // For offline products (negative ID), also check if it's the same product by barcode match
+        if (this.editingProduct!.id < 0 && p.id < 0) {
+          const pBarcodes = [p.barcode1, p.barcode2, p.barcode3, p.barcode, p.sku]
+            .filter(b => b).map(b => b!.toLowerCase());
+          const editBarcodes = originalBarcodes;
+          const hasCommonBarcode = pBarcodes.some(pb => editBarcodes.includes(pb));
+          if (hasCommonBarcode) return false;
+        }
+
+        return (
           (p.sku && p.sku.toLowerCase() === barcodeValue) ||
           (p.barcode && p.barcode.toLowerCase() === barcodeValue) ||
           (p.barcode1 && p.barcode1.toLowerCase() === barcodeValue) ||
           (p.barcode2 && p.barcode2.toLowerCase() === barcodeValue) ||
           (p.barcode3 && p.barcode3.toLowerCase() === barcodeValue)
-        )
-      );
+        );
+      });
+
       if (duplicateProduct) {
         this.swal.error('Duplicate Barcode', `${barcodeInfo.label} "${barcodeInfo.value}" already exists for product "${duplicateProduct.name}". Please use a unique barcode.`);
         return;
@@ -1554,17 +1582,33 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       }
 
       // Offline mode OR API failed - validate barcodes against local data first
-      const barcodeValidationError = await this.offlineStorage.validateBarcodes(
-        this.editBarcode1,
-        this.editBarcode2,
-        this.editBarcode3,
-        productId
-      );
+      // Only validate barcodes that have actually changed
+      const origB1 = this.editingProduct?.barcode1?.toLowerCase() || '';
+      const origB2 = this.editingProduct?.barcode2?.toLowerCase() || '';
+      const origB3 = this.editingProduct?.barcode3?.toLowerCase() || '';
 
-      if (barcodeValidationError) {
-        this.isSavingEdit = false;
-        this.swal.error('Duplicate Barcode', barcodeValidationError);
-        return;
+      const newB1 = (this.editBarcode1 || '').toLowerCase();
+      const newB2 = (this.editBarcode2 || '').toLowerCase();
+      const newB3 = (this.editBarcode3 || '').toLowerCase();
+
+      // Only validate if barcodes have actually changed
+      const b1Changed = newB1 !== origB1;
+      const b2Changed = newB2 !== origB2;
+      const b3Changed = newB3 !== origB3;
+
+      if (b1Changed || b2Changed || b3Changed) {
+        const barcodeValidationError = await this.offlineStorage.validateBarcodes(
+          b1Changed ? this.editBarcode1 : null,
+          b2Changed ? this.editBarcode2 : null,
+          b3Changed ? this.editBarcode3 : null,
+          productId
+        );
+
+        if (barcodeValidationError) {
+          this.isSavingEdit = false;
+          this.swal.error('Duplicate Barcode', barcodeValidationError);
+          return;
+        }
       }
 
       // Save to offline edits queue
