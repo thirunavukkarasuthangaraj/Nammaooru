@@ -26,6 +26,10 @@ export interface CachedProduct {
   categoryId?: number;
   categoryName?: string;
   category?: string;  // Category name shorthand
+  // Label printing fields (saved with product)
+  netQty?: string;  // e.g. "250g", "1kg"
+  packedDate?: string;  // MM/YY format
+  expiryDate?: string;  // MM/YY format
   unit?: string;
   weight?: number;
   masterProductId?: number;  // Reference to master product
@@ -63,6 +67,11 @@ export interface OfflineEdit {
     barcode1?: string;
     barcode2?: string;
     barcode3?: string;
+    customName?: string;
+    nameTamil?: string;
+    netQty?: string;
+    packedDate?: string;
+    expiryDate?: string;
   };
   previousValues: {
     price?: number;
@@ -72,6 +81,11 @@ export interface OfflineEdit {
     barcode1?: string;
     barcode2?: string;
     barcode3?: string;
+    name?: string;
+    nameTamil?: string;
+    netQty?: string;
+    packedDate?: string;
+    expiryDate?: string;
   };
   createdAt: string;
   synced: boolean;
@@ -557,6 +571,12 @@ export class OfflineStorageService {
           if (changes.barcode1 !== undefined) product.barcode1 = changes.barcode1;
           if (changes.barcode2 !== undefined) product.barcode2 = changes.barcode2;
           if (changes.barcode3 !== undefined) product.barcode3 = changes.barcode3;
+          if (changes.name !== undefined) product.name = changes.name;
+          if (changes.nameTamil !== undefined) product.nameTamil = changes.nameTamil;
+          if (changes.imageBase64 !== undefined) product.imageBase64 = changes.imageBase64;
+          if (changes.netQty !== undefined) product.netQty = changes.netQty;
+          if (changes.packedDate !== undefined) product.packedDate = changes.packedDate;
+          if (changes.expiryDate !== undefined) product.expiryDate = changes.expiryDate;
 
           const putRequest = store.put(product);
           putRequest.onsuccess = () => {

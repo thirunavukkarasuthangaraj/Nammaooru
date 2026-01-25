@@ -19,6 +19,18 @@ interface CartItem {
   discount: number;  // Discount per item (mrp - unitPrice)
 }
 
+interface LabelConfig {
+  showShopName: boolean;
+  showTamilName: boolean;
+  showEnglishName: boolean;
+  showNetQty: boolean;
+  showMrp: boolean;
+  showPackedDate: boolean;
+  showExpiryDate: boolean;
+  showBarcode: boolean;
+  showBarcodeNumber: boolean;
+}
+
 @Component({
   selector: 'app-pos-billing',
   templateUrl: './pos-billing.component.html',
@@ -89,10 +101,29 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   editBarcode1: string = '';
   editBarcode2: string = '';
   editBarcode3: string = '';
+  editName: string = '';
+  editNameTamil: string = '';
+  editImageFile: File | null = null;
+  editImagePreview: string = '';
   isSavingEdit: boolean = false;
 
   // Label Print state
   labelQuantity: number = 1;
+  showLabelConfigDialog: boolean = false;
+  labelConfig: LabelConfig = {
+    showShopName: true,
+    showTamilName: true,
+    showEnglishName: true,
+    showNetQty: true,
+    showMrp: true,
+    showPackedDate: true,
+    showExpiryDate: true,
+    showBarcode: true,
+    showBarcodeNumber: true
+  };
+  labelPackedDate: string = '';
+  labelExpiryDate: string = '';
+  labelNetQty: string = '';
 
   // Quick Add Custom Product state
   showQuickAddDialog: boolean = false;
@@ -130,6 +161,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.loadShopInfo();
     this.loadLanguagePreference();
+    this.loadLabelConfig();
     this.initSyncStatus();
     this.initSearch();
     this.initBarcodeScanner();
@@ -187,6 +219,29 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   private loadLanguagePreference(): void {
     const saved = localStorage.getItem('pos_language');
     this.showTamil = saved === 'tamil';
+  }
+
+  /**
+   * Load label configuration from localStorage
+   */
+  private loadLabelConfig(): void {
+    const saved = localStorage.getItem('pos_label_config');
+    if (saved) {
+      try {
+        this.labelConfig = { ...this.labelConfig, ...JSON.parse(saved) };
+      } catch (e) {
+        console.warn('Failed to parse saved label config:', e);
+      }
+    }
+  }
+
+  /**
+   * Save label configuration to localStorage
+   */
+  saveLabelConfig(): void {
+    localStorage.setItem('pos_label_config', JSON.stringify(this.labelConfig));
+    this.showLabelConfigDialog = false;
+    this.swal.success('Saved', 'Label settings saved');
   }
 
   /**
@@ -1164,6 +1219,47 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     this.editBarcode1 = product.barcode1 || product.sku || '';
     this.editBarcode2 = product.barcode2 || '';
     this.editBarcode3 = product.barcode3 || '';
+    // Editable name fields
+    this.editName = product.name || '';
+    this.editNameTamil = product.nameTamil || '';
+    // Reset image edit state
+    this.editImageFile = null;
+    this.editImagePreview = '';
+
+    // Load saved label fields from product (if available)
+    this.labelNetQty = product.netQty || '';
+    this.labelPackedDate = product.packedDate || '';
+    this.labelExpiryDate = product.expiryDate || '';
+    this.labelQuantity = 1;
+  }
+
+  /**
+   * Auto-format date input (MM/YY format)
+   * Automatically adds "/" after 2 digits
+   */
+  formatDateInput(event: Event, field: 'pkd' | 'exp'): void {
+    const input = event.target as HTMLInputElement;
+    let value = input.value.replace(/[^0-9]/g, ''); // Remove non-digits
+
+    // Limit to 4 digits max
+    if (value.length > 4) {
+      value = value.substring(0, 4);
+    }
+
+    // Auto-add "/" after 2 digits
+    if (value.length >= 2) {
+      value = value.substring(0, 2) + '/' + value.substring(2);
+    }
+
+    // Update the correct field
+    if (field === 'pkd') {
+      this.labelPackedDate = value;
+    } else {
+      this.labelExpiryDate = value;
+    }
+
+    // Update input value
+    input.value = value;
   }
 
   /**
@@ -1178,7 +1274,46 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     this.editBarcode1 = '';
     this.editBarcode2 = '';
     this.editBarcode3 = '';
+    this.editName = '';
+    this.editNameTamil = '';
+    this.editImageFile = null;
+    this.editImagePreview = '';
     this.labelQuantity = 1;
+  }
+
+  /**
+   * Handle image file selection for editing
+   */
+  onEditImageSelect(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        this.swal.error('Invalid File', 'Please select an image file');
+        return;
+      }
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        this.swal.error('File Too Large', 'Image must be less than 5MB');
+        return;
+      }
+      this.editImageFile = file;
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        this.editImagePreview = e.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  /**
+   * Remove selected image
+   */
+  removeEditImage(): void {
+    this.editImageFile = null;
+    this.editImagePreview = '';
   }
 
   /**
@@ -1232,7 +1367,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
         <title>Label - ${product.name}</title>
         <style>
           @page {
-            size: 50mm 30mm;
+            size: 58mm 30mm;
             margin: 0;
           }
           @media print {
@@ -1242,60 +1377,93 @@ export class PosBillingComponent implements OnInit, OnDestroy {
           }
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body {
-            font-family: 'Segoe UI', Arial, sans-serif;
+            font-family: 'Noto Sans Tamil', 'Segoe UI', Arial, sans-serif;
           }
           .label {
-            width: 50mm;
+            width: 58mm;
             height: 30mm;
-            padding: 1.5mm 2mm 2mm 2mm;
+            padding: 1.5mm 2mm;
             display: flex;
             flex-direction: column;
-            border: 1px dashed #ddd;
+            align-items: center;
+            justify-content: space-between;
+            border: 1px dashed #ccc;
             background: white;
           }
-          .label-header {
+          .label-top {
+            width: 100%;
             text-align: center;
-            border-bottom: 0.5px solid #eee;
-            padding-bottom: 0.5mm;
+          }
+          .shop-name {
+            font-size: 8px;
+            font-weight: 800;
+            color: #000;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            line-height: 1.3;
+            margin-bottom: 1mm;
+          }
+          .tamil-name {
+            font-size: 8px;
+            font-weight: 600;
+            color: #000;
+            font-family: 'Noto Sans Tamil', 'Latha', 'Tamil Sangam MN', Arial, sans-serif;
+            line-height: 1.3;
             margin-bottom: 0.5mm;
           }
-          .product-name {
-            font-size: 9px;
+          .english-name {
+            font-size: 8px;
+            font-weight: 600;
+            color: #000;
+            line-height: 1.3;
+            margin-bottom: 0.5mm;
+          }
+          .info-row {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            font-size: 7px;
             font-weight: 700;
             color: #000;
-            line-height: 1.1;
-            margin-bottom: 0.5mm;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-            max-height: 6mm;
-            overflow: hidden;
+            margin-top: 1mm;
+            padding: 0 2mm;
           }
-          .price-row {
+          .info-item {
+            white-space: nowrap;
+          }
+          .info-item.info-left {
+            text-align: left;
+          }
+          .info-item.info-right {
+            text-align: right;
+          }
+          .date-row {
             display: flex;
-            justify-content: center;
-            align-items: baseline;
-            gap: 3mm;
+            justify-content: space-between;
+            width: 100%;
+            font-size: 6px;
+            font-weight: 600;
+            color: #333;
+            margin-top: 0.5mm;
+            padding: 0 2mm;
           }
-          .mrp {
-            font-size: 9px;
-            text-decoration: line-through;
-            color: #888;
+          .date-item {
+            white-space: nowrap;
           }
-          .price {
-            font-size: 14px;
-            font-weight: 900;
-            color: #000;
+          .date-item.date-left {
+            text-align: left;
           }
-          .barcode-area {
-            flex: 1;
+          .date-item.date-right {
+            text-align: right;
+          }
+          .label-bottom {
+            width: 100%;
             display: flex;
             flex-direction: column;
-            justify-content: flex-start;
             align-items: center;
-            padding-top: 1mm;
           }
           .barcode {
-            height: 12mm;
+            height: 10mm;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -1303,16 +1471,16 @@ export class PosBillingComponent implements OnInit, OnDestroy {
           .barcode svg {
             height: 100%;
             width: auto;
-            max-width: 44mm;
+            max-width: 52mm;
           }
           .barcode-text {
-            font-size: 10px;
+            font-size: 9px;
             font-family: 'Courier New', monospace;
             font-weight: 700;
-            letter-spacing: 2px;
-            margin-top: 0.5mm;
+            letter-spacing: 1.5px;
             color: #000;
-            padding-bottom: 1mm;
+            text-align: center;
+            margin-top: 0.5mm;
           }
         </style>
       </head>
@@ -1396,31 +1564,71 @@ export class PosBillingComponent implements OnInit, OnDestroy {
 
   /**
    * Generate HTML for a single label
+   * Uses labelConfig for customizable label elements
    */
   private generateSingleLabelHtml(product: CachedProduct, barcode: string): string {
-    // Use Tamil name if Tamil language is selected and Tamil name is available
-    const name = (this.showTamil && product.nameTamil) ? product.nameTamil : (product.name || '');
+    const config = this.labelConfig;
     const price = this.editPrice || product.price || 0;
     const mrp = this.editMrp || product.originalPrice || price;
-    const showMrp = mrp > price;
 
-    const mrpHtml = showMrp ? `<span class="mrp">₹${mrp}</span>` : '';
+    let html = '<div class="label">';
 
-    return `
-      <div class="label">
-        <div class="label-header">
-          <div class="product-name">${name}</div>
-          <div class="price-row">
-            ${mrpHtml}
-            <span class="price">₹${price}</span>
-          </div>
-        </div>
-        <div class="barcode-area">
-          <div class="barcode" data-code="${barcode}"></div>
-          <div class="barcode-text">${barcode}</div>
-        </div>
-      </div>
-    `;
+    // Top section - text content
+    html += '<div class="label-top">';
+
+    // Shop name row
+    if (config.showShopName && this.shopName) {
+      html += `<div class="shop-name">${this.shopName}</div>`;
+    }
+
+    // Tamil name row
+    if (config.showTamilName && product.nameTamil) {
+      html += `<div class="tamil-name">${product.nameTamil}</div>`;
+    }
+
+    // English name row
+    if (config.showEnglishName && product.name) {
+      html += `<div class="english-name">${product.name}</div>`;
+    }
+
+    // Info row (NET QTY on left, MRP on right)
+    const showNetQty = config.showNetQty && this.labelNetQty;
+    const showMrp = config.showMrp;
+    if (showNetQty || showMrp) {
+      html += '<div class="info-row">';
+      html += `<span class="info-item info-left">${showNetQty ? 'NET QTY: ' + this.labelNetQty : ''}</span>`;
+      html += `<span class="info-item info-right">${showMrp ? 'MRP: ₹' + mrp : ''}</span>`;
+      html += '</div>';
+    }
+
+    // Date row (PKD on left, EXP on right)
+    const showPkd = config.showPackedDate && this.labelPackedDate;
+    const showExp = config.showExpiryDate && this.labelExpiryDate;
+    if (showPkd || showExp) {
+      html += '<div class="date-row">';
+      html += `<span class="date-item date-left">${showPkd ? 'PKD: ' + this.labelPackedDate : ''}</span>`;
+      html += `<span class="date-item date-right">${showExp ? 'EXP: ' + this.labelExpiryDate : ''}</span>`;
+      html += '</div>';
+    }
+
+    html += '</div>'; // close label-top
+
+    // Bottom section - barcode
+    html += '<div class="label-bottom">';
+
+    // Barcode
+    if (config.showBarcode) {
+      html += `<div class="barcode" data-code="${barcode}"></div>`;
+    }
+
+    // Barcode number
+    if (config.showBarcodeNumber) {
+      html += `<div class="barcode-text">${barcode}</div>`;
+    }
+
+    html += '</div>'; // close label-bottom
+    html += '</div>'; // close label
+    return html;
   }
 
   /**
@@ -1516,14 +1724,19 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     this.isSavingEdit = true;
 
     const productId = this.editingProduct.id;
-    const updateData = {
+    const updateData: any = {
       price: this.editPrice,
       originalPrice: this.editMrp,
       stockQuantity: this.editStock,
       barcode: this.editBarcode,
       barcode1: this.editBarcode1,
       barcode2: this.editBarcode2,
-      barcode3: this.editBarcode3
+      barcode3: this.editBarcode3,
+      customName: this.editName,
+      nameTamil: this.editNameTamil,
+      netQty: this.labelNetQty,
+      packedDate: this.labelPackedDate,
+      expiryDate: this.labelExpiryDate
     };
 
     // Store previous values for potential rollback
@@ -1534,7 +1747,12 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       barcode: this.editingProduct.barcode,
       barcode1: this.editingProduct.barcode1,
       barcode2: this.editingProduct.barcode2,
-      barcode3: this.editingProduct.barcode3
+      barcode3: this.editingProduct.barcode3,
+      name: this.editingProduct.name,
+      nameTamil: this.editingProduct.nameTamil,
+      netQty: this.editingProduct.netQty,
+      packedDate: this.editingProduct.packedDate,
+      expiryDate: this.editingProduct.expiryDate
     };
 
     try {
@@ -1542,10 +1760,35 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       if (navigator.onLine) {
         try {
           // Online mode - call API
-          const response = await this.http.patch<any>(
-            `${this.apiUrl}/shop-products/${productId}/quick-update`,
-            updateData
-          ).toPromise();
+          let response: any;
+
+          // Use FormData if there's an image to upload
+          if (this.editImageFile) {
+            const formData = new FormData();
+            formData.append('price', this.editPrice.toString());
+            formData.append('originalPrice', this.editMrp.toString());
+            formData.append('stockQuantity', this.editStock.toString());
+            if (this.editBarcode) formData.append('barcode', this.editBarcode);
+            if (this.editBarcode1) formData.append('barcode1', this.editBarcode1);
+            if (this.editBarcode2) formData.append('barcode2', this.editBarcode2);
+            if (this.editBarcode3) formData.append('barcode3', this.editBarcode3);
+            if (this.editName) formData.append('customName', this.editName);
+            if (this.editNameTamil) formData.append('nameTamil', this.editNameTamil);
+            if (this.labelNetQty) formData.append('netQty', this.labelNetQty);
+            if (this.labelPackedDate) formData.append('packedDate', this.labelPackedDate);
+            if (this.labelExpiryDate) formData.append('expiryDate', this.labelExpiryDate);
+            formData.append('image', this.editImageFile);
+
+            response = await this.http.patch<any>(
+              `${this.apiUrl}/shop-products/${productId}/quick-update`,
+              formData
+            ).toPromise();
+          } else {
+            response = await this.http.patch<any>(
+              `${this.apiUrl}/shop-products/${productId}/quick-update`,
+              updateData
+            ).toPromise();
+          }
 
           // Check response statusCode (backend returns 200 even for errors)
           // statusCode "0000" = success, anything else = error
@@ -1557,6 +1800,10 @@ export class PosBillingComponent implements OnInit, OnDestroy {
           }
 
           // Update succeeded - update local data
+          // Add image preview to updateData if image was uploaded
+          if (this.editImagePreview) {
+            updateData.imageBase64 = this.editImagePreview;
+          }
           await this.updateLocalProductData(productId, updateData);
           this.swal.success('Updated', 'Product updated successfully');
           this.closeQuickEdit();
@@ -1623,7 +1870,12 @@ export class PosBillingComponent implements OnInit, OnDestroy {
           barcode: this.editBarcode,
           barcode1: this.editBarcode1,
           barcode2: this.editBarcode2,
-          barcode3: this.editBarcode3
+          barcode3: this.editBarcode3,
+          customName: this.editName,
+          nameTamil: this.editNameTamil,
+          netQty: this.labelNetQty,
+          packedDate: this.labelPackedDate,
+          expiryDate: this.labelExpiryDate
         },
         previousValues: previousValues,
         createdAt: new Date().toISOString(),
@@ -1632,6 +1884,11 @@ export class PosBillingComponent implements OnInit, OnDestroy {
 
       // Save to offline edits queue
       await this.offlineStorage.saveOfflineEdit(offlineEdit);
+
+      // Add image preview to updateData if image was selected (for local display)
+      if (this.editImagePreview) {
+        updateData.imageBase64 = this.editImagePreview;
+      }
 
       // Update local product immediately (optimistic update)
       await this.updateLocalProductData(productId, updateData);
@@ -1644,7 +1901,13 @@ export class PosBillingComponent implements OnInit, OnDestroy {
         barcode: this.editBarcode,
         barcode1: this.editBarcode1,
         barcode2: this.editBarcode2,
-        barcode3: this.editBarcode3
+        barcode3: this.editBarcode3,
+        name: this.editName,
+        nameTamil: this.editNameTamil,
+        imageBase64: this.editImagePreview || undefined,
+        netQty: this.labelNetQty,
+        packedDate: this.labelPackedDate,
+        expiryDate: this.labelExpiryDate
       });
 
       this.swal.success('Saved Offline', 'Changes saved locally. Will sync when online.');
@@ -1672,6 +1935,12 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       this.products[productIndex].barcode1 = updateData.barcode1;
       this.products[productIndex].barcode2 = updateData.barcode2;
       this.products[productIndex].barcode3 = updateData.barcode3;
+      if (updateData.customName) this.products[productIndex].name = updateData.customName;
+      if (updateData.nameTamil !== undefined) this.products[productIndex].nameTamil = updateData.nameTamil;
+      if (updateData.imageBase64) this.products[productIndex].imageBase64 = updateData.imageBase64;
+      if (updateData.netQty !== undefined) this.products[productIndex].netQty = updateData.netQty;
+      if (updateData.packedDate !== undefined) this.products[productIndex].packedDate = updateData.packedDate;
+      if (updateData.expiryDate !== undefined) this.products[productIndex].expiryDate = updateData.expiryDate;
     }
 
     // Update filtered products
@@ -1684,6 +1953,12 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       this.filteredProducts[filteredIndex].barcode1 = updateData.barcode1;
       this.filteredProducts[filteredIndex].barcode2 = updateData.barcode2;
       this.filteredProducts[filteredIndex].barcode3 = updateData.barcode3;
+      if (updateData.customName) this.filteredProducts[filteredIndex].name = updateData.customName;
+      if (updateData.nameTamil !== undefined) this.filteredProducts[filteredIndex].nameTamil = updateData.nameTamil;
+      if (updateData.imageBase64) this.filteredProducts[filteredIndex].imageBase64 = updateData.imageBase64;
+      if (updateData.netQty !== undefined) this.filteredProducts[filteredIndex].netQty = updateData.netQty;
+      if (updateData.packedDate !== undefined) this.filteredProducts[filteredIndex].packedDate = updateData.packedDate;
+      if (updateData.expiryDate !== undefined) this.filteredProducts[filteredIndex].expiryDate = updateData.expiryDate;
     }
 
     // Update cart if product is in cart
@@ -1692,6 +1967,9 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       cartItem.product.price = updateData.price;
       cartItem.product.originalPrice = updateData.originalPrice;
       cartItem.product.stock = updateData.stockQuantity;
+      if (updateData.customName) cartItem.product.name = updateData.customName;
+      if (updateData.nameTamil !== undefined) cartItem.product.nameTamil = updateData.nameTamil;
+      if (updateData.imageBase64) cartItem.product.imageBase64 = updateData.imageBase64;
       cartItem.unitPrice = updateData.price;
       cartItem.mrp = updateData.originalPrice;
       cartItem.discount = updateData.originalPrice - updateData.price;

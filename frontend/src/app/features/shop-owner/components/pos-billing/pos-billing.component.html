@@ -254,6 +254,54 @@
       </div>
 
       <div class="dialog-content compact-content">
+        <!-- Product Names Section -->
+        <div class="names-section">
+          <div class="name-field">
+            <label>
+              <mat-icon>translate</mat-icon>
+              English Name
+            </label>
+            <input type="text" [(ngModel)]="editName" placeholder="Product name in English" class="name-input">
+          </div>
+          <div class="name-field">
+            <label>
+              <mat-icon>language</mat-icon>
+              Tamil Name (தமிழ்)
+            </label>
+            <input type="text" [(ngModel)]="editNameTamil" placeholder="பொருளின் பெயர்" class="name-input tamil-input">
+          </div>
+        </div>
+
+        <!-- Image Section -->
+        <div class="image-section">
+          <div class="current-image">
+            <label>Product Image</label>
+            <div class="image-preview-container">
+              <!-- Show new preview if selected, otherwise show current image -->
+              <img *ngIf="editImagePreview" [src]="editImagePreview" alt="New image preview" class="preview-img">
+              <img *ngIf="!editImagePreview && (editingProduct?.imageBase64 || editingProduct?.image)"
+                   [src]="editingProduct?.imageBase64 || getImageUrl(editingProduct?.image)"
+                   alt="Current image" class="preview-img">
+              <div *ngIf="!editImagePreview && !editingProduct?.imageBase64 && !editingProduct?.image" class="no-image">
+                <mat-icon>image</mat-icon>
+                <span>No image</span>
+              </div>
+              <!-- Remove new image button -->
+              <button *ngIf="editImagePreview" class="remove-image-btn" (click)="removeEditImage()" title="Remove new image">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          </div>
+          <div class="image-upload">
+            <input type="file" #imageInput accept="image/*" (change)="onEditImageSelect($event)" style="display: none;">
+            <button class="upload-btn" (click)="imageInput.click()">
+              <mat-icon>add_photo_alternate</mat-icon>
+              {{ editImagePreview ? 'Change Image' : 'Upload Image' }}
+            </button>
+            <span class="upload-hint">Max 5MB, JPG/PNG</span>
+          </div>
+        </div>
+
         <!-- Two Column Layout -->
         <div class="two-column-grid">
           <!-- Left Column: Pricing -->
@@ -280,16 +328,28 @@
             </div>
           </div>
 
-          <!-- Right Column: Stock -->
+          <!-- Right Column: Stock & Label Info -->
           <div class="edit-card">
             <div class="card-title">
               <mat-icon>inventory_2</mat-icon>
-              Stock
+              Stock & Label
             </div>
             <div class="card-fields">
               <div class="inline-field">
-                <label>Quantity</label>
+                <label>Stock</label>
                 <input type="number" [(ngModel)]="editStock" min="0" step="1" class="stock-input">
+              </div>
+              <div class="inline-field">
+                <label>Net Qty</label>
+                <input type="text" [(ngModel)]="labelNetQty" placeholder="250g" class="label-input">
+              </div>
+              <div class="inline-field">
+                <label>PKD</label>
+                <input type="text" [ngModel]="labelPackedDate" (input)="formatDateInput($event, 'pkd')" placeholder="MM/YY" class="label-input" maxlength="5">
+              </div>
+              <div class="inline-field">
+                <label>EXP</label>
+                <input type="text" [ngModel]="labelExpiryDate" (input)="formatDateInput($event, 'exp')" placeholder="MM/YY" class="label-input" maxlength="5">
               </div>
             </div>
           </div>
@@ -329,11 +389,14 @@
           </div>
         </div>
 
-        <!-- Print Label - Inline compact -->
+        <!-- Print Label Row -->
         <div class="print-label-inline">
           <div class="print-left">
             <mat-icon>print</mat-icon>
             <span>Print Labels</span>
+            <button class="label-config-btn" (click)="showLabelConfigDialog = true" title="Label Settings">
+              <mat-icon>settings</mat-icon>
+            </button>
           </div>
           <div class="print-right">
             <input type="number" [(ngModel)]="labelQuantity" min="1" max="100" class="qty-input">
@@ -414,10 +477,16 @@
       </div>
       <div class="dialog-content">
         <div class="edit-fields">
-          <!-- Product Name -->
-          <div class="field-group">
-            <label>Product Name *</label>
-            <input type="text" [(ngModel)]="newProductName" placeholder="Enter product name" class="edit-input" required>
+          <!-- Product Names Row -->
+          <div class="field-row two-cols">
+            <div class="field-group">
+              <label>Product Name (English) *</label>
+              <input type="text" [(ngModel)]="newProductName" placeholder="Enter product name" class="edit-input" required>
+            </div>
+            <div class="field-group">
+              <label>Tamil Name (தமிழ் பெயர்)</label>
+              <input type="text" [(ngModel)]="newProductNameTamil" placeholder="பொருளின் பெயர்" class="edit-input tamil-input">
+            </div>
           </div>
 
           <!-- Price, MRP, Stock in one row -->
@@ -473,6 +542,93 @@
           <mat-spinner *ngIf="isSavingNewProduct" diameter="18"></mat-spinner>
           <mat-icon *ngIf="!isSavingNewProduct">save</mat-icon>
           <span *ngIf="!isSavingNewProduct">Save Product</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Label Configuration Dialog -->
+  <div class="label-config-overlay" *ngIf="showLabelConfigDialog" (click)="showLabelConfigDialog = false">
+    <div class="label-config-dialog" (click)="$event.stopPropagation()">
+      <div class="config-header">
+        <h3>
+          <mat-icon>tune</mat-icon>
+          Label Settings
+        </h3>
+        <button mat-icon-button (click)="showLabelConfigDialog = false">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div class="config-content">
+        <!-- Label Data Fields - at top for easy access -->
+        <div class="config-section">
+          <div class="section-title">Label Data</div>
+
+          <div class="config-field">
+            <label>Net Qty</label>
+            <input type="text" [(ngModel)]="labelNetQty" placeholder="e.g. 250g, 1kg">
+          </div>
+          <div class="config-field-row">
+            <div class="config-field">
+              <label>PKD (Packed)</label>
+              <input type="text" [(ngModel)]="labelPackedDate" placeholder="MM/YY">
+            </div>
+            <div class="config-field">
+              <label>EXP (Expiry)</label>
+              <input type="text" [(ngModel)]="labelExpiryDate" placeholder="MM/YY">
+            </div>
+          </div>
+        </div>
+
+        <!-- Toggle switches section -->
+        <div class="config-section">
+          <div class="section-title">Show/Hide Elements</div>
+
+          <div class="config-item">
+            <span>Shop Name</span>
+            <mat-slide-toggle [(ngModel)]="labelConfig.showShopName" color="primary"></mat-slide-toggle>
+          </div>
+          <div class="config-item">
+            <span>Tamil Name</span>
+            <mat-slide-toggle [(ngModel)]="labelConfig.showTamilName" color="primary"></mat-slide-toggle>
+          </div>
+          <div class="config-item">
+            <span>English Name</span>
+            <mat-slide-toggle [(ngModel)]="labelConfig.showEnglishName" color="primary"></mat-slide-toggle>
+          </div>
+          <div class="config-item">
+            <span>Net Quantity</span>
+            <mat-slide-toggle [(ngModel)]="labelConfig.showNetQty" color="primary"></mat-slide-toggle>
+          </div>
+          <div class="config-item">
+            <span>MRP</span>
+            <mat-slide-toggle [(ngModel)]="labelConfig.showMrp" color="primary"></mat-slide-toggle>
+          </div>
+          <div class="config-item">
+            <span>Packed Date (PKD)</span>
+            <mat-slide-toggle [(ngModel)]="labelConfig.showPackedDate" color="primary"></mat-slide-toggle>
+          </div>
+          <div class="config-item">
+            <span>Expiry Date (EXP)</span>
+            <mat-slide-toggle [(ngModel)]="labelConfig.showExpiryDate" color="primary"></mat-slide-toggle>
+          </div>
+          <div class="config-item">
+            <span>Barcode</span>
+            <mat-slide-toggle [(ngModel)]="labelConfig.showBarcode" color="primary"></mat-slide-toggle>
+          </div>
+          <div class="config-item">
+            <span>Barcode Number</span>
+            <mat-slide-toggle [(ngModel)]="labelConfig.showBarcodeNumber" color="primary"></mat-slide-toggle>
+          </div>
+        </div>
+      </div>
+
+      <div class="config-actions">
+        <button mat-stroked-button (click)="showLabelConfigDialog = false">Cancel</button>
+        <button mat-raised-button color="primary" (click)="saveLabelConfig()">
+          <mat-icon>save</mat-icon>
+          Save Settings
         </button>
       </div>
     </div>
