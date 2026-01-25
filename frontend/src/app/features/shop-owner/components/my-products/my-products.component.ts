@@ -165,9 +165,41 @@ export class MyProductsComponent implements OnInit, OnDestroy {
 
     // Step 1: Load from local cache first (instant)
     try {
-      const cachedProducts = await this.offlineStorage.getProducts();
+      let cachedProducts = await this.offlineStorage.getProducts();
+
+      // Also load pending offline-created products and merge them
+      try {
+        const pendingCreations = await this.offlineStorage.getPendingProductCreations();
+        if (pendingCreations.length > 0) {
+          console.log(`Found ${pendingCreations.length} pending offline products`);
+          const offlineProducts: CachedProduct[] = pendingCreations.map(creation => ({
+            id: this.offlineStorage.generateTempProductId(),
+            shopId: creation.shopId,
+            name: creation.name || creation.customName || 'New Product',
+            nameTamil: creation.nameTamil,
+            price: creation.price,
+            originalPrice: creation.originalPrice,
+            costPrice: creation.costPrice,
+            stock: creation.stockQuantity,
+            trackInventory: creation.trackInventory,
+            isAvailable: true,
+            sku: creation.sku || '',
+            barcode: creation.barcode1,
+            barcode1: creation.barcode1,
+            barcode2: creation.barcode2,
+            barcode3: creation.barcode3,
+            category: creation.categoryName,
+            unit: creation.unit,
+            masterProductId: creation.masterProductId
+          }));
+          cachedProducts = [...offlineProducts, ...cachedProducts];
+        }
+      } catch (err) {
+        console.warn('Failed to load pending offline products:', err);
+      }
+
       if (cachedProducts.length > 0) {
-        console.log(`Loaded ${cachedProducts.length} products from local cache`);
+        console.log(`Loaded ${cachedProducts.length} products from local cache (including offline)`);
         this.loadedFromCache = true;
         this.mapCachedProducts(cachedProducts);
         this.loading = false;
@@ -176,8 +208,12 @@ export class MyProductsComponent implements OnInit, OnDestroy {
       console.warn('Error loading from cache:', error);
     }
 
-    // Step 2: Sync from server in background
-    this.syncProductsFromServer();
+    // Step 2: Sync from server in background (only if online)
+    if (navigator.onLine) {
+      this.syncProductsFromServer();
+    } else {
+      this.loading = false;
+    }
   }
 
   /**
