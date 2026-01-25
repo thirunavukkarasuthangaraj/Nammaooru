@@ -876,6 +876,12 @@ export class MyProductsComponent implements OnInit, OnDestroy {
     if (confirm(`Are you sure you want to delete ${product.customName}?`)) {
       console.log('Deleting product:', product.id);
 
+      // Check if this is an offline-created product (negative ID)
+      if (product.id < 0) {
+        this.deleteOfflineProduct(product);
+        return;
+      }
+
       this.http.delete(`${this.apiUrl}/shop-products/${product.id}`)
         .pipe(takeUntil(this.destroy$))
         .subscribe({
@@ -890,6 +896,40 @@ export class MyProductsComponent implements OnInit, OnDestroy {
             this.handleError('Failed to delete product');
           }
         });
+    }
+  }
+
+  /**
+   * Delete an offline-created product from IndexedDB
+   */
+  private async deleteOfflineProduct(product: ShopProduct): Promise<void> {
+    try {
+      // Get all pending creations and find the one matching this product
+      const pendingCreations = await this.offlineStorage.getPendingProductCreations();
+      console.log('Looking for offline product to delete:', product.customName);
+      console.log('Pending creations:', pendingCreations);
+
+      // Find by matching name or barcode since temp IDs change on each load
+      const matchingCreation = pendingCreations.find(c =>
+        (c.name && c.name === product.customName) ||
+        (c.customName && c.customName === product.customName) ||
+        (c.barcode1 && product.barcode1 && c.barcode1 === product.barcode1)
+      );
+
+      if (matchingCreation) {
+        await this.offlineStorage.removeOfflineProductCreation(matchingCreation.offlineProductId);
+        console.log('Offline product creation removed:', matchingCreation.offlineProductId);
+      } else {
+        console.log('No matching offline creation found for product:', product.customName);
+      }
+
+      // Remove from local array regardless
+      this.products = this.products.filter(p => p.id !== product.id);
+      this.applyFilters();
+      this.snackBar.open(matchingCreation ? 'Offline product deleted' : 'Product removed from list', 'Close', { duration: 2000 });
+    } catch (error) {
+      console.error('Error deleting offline product:', error);
+      this.snackBar.open('Failed to delete offline product', 'Close', { duration: 3000 });
     }
   }
 
