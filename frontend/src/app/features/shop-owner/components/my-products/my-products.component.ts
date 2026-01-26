@@ -11,7 +11,7 @@ import { Subject } from 'rxjs';
 import { takeUntil, debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { environment } from '../../../../../environments/environment';
 import { ShopContextService } from '../../services/shop-context.service';
-import { OfflineStorageService, CachedProduct } from '../../../../core/services/offline-storage.service';
+import { OfflineStorageService, CachedProduct, OfflineEdit } from '../../../../core/services/offline-storage.service';
 import { getImageUrl as getImageUrlUtil } from '../../../../core/utils/image-url.util';
 import { PriceUpdateDialogComponent, PriceUpdateData } from '../price-update-dialog/price-update-dialog.component';
 import { StockUpdateDialogComponent, StockUpdateData } from '../stock-update-dialog/stock-update-dialog.component';
@@ -817,46 +817,119 @@ export class MyProductsComponent implements OnInit, OnDestroy {
     console.log('Shop ID:', this.shopId);
     console.log('Updated data:', updatedData);
     console.log('Using fallback data?:', this.usingFallbackData);
-    
+
     // Image is already uploaded in the dialog component
     // The updatedData already contains the new imageUrl from server
-    
+
+    // Get previous values before updating for offline edit record
+    const currentProduct = this.products.find(p => p.id === productId);
+    const previousValues = currentProduct ? {
+      price: currentProduct.price,
+      originalPrice: (currentProduct as any).originalPrice,
+      stockQuantity: currentProduct.stockQuantity,
+      sku: currentProduct.sku,
+      barcode1: currentProduct.barcode1,
+      barcode2: currentProduct.barcode2,
+      barcode3: currentProduct.barcode3,
+      name: currentProduct.customName,
+      nameTamil: (currentProduct as any).nameTamil
+    } : {};
+
     // If using fallback data, just update locally without API calls
     if (this.usingFallbackData) {
       const index = this.products.findIndex(p => p.id === productId);
       if (index !== -1) {
-        // Replace old image URL with new one
         this.products[index] = { ...this.products[index], ...updatedData };
         this.applyFilters();
       }
-      this.snackBar.open('Product updated (demo mode)', 'Close', { duration: 2000 });
+      this.saveEditOffline(productId, updatedData, previousValues);
+      this.snackBar.open('Product updated (saved offline)', 'Close', { duration: 2000 });
       return;
     }
 
-    // For real products, update locally first with new image URL
+    // For real products, update locally first
     const index = this.products.findIndex(p => p.id === productId);
     if (index !== -1) {
-      // This replaces the old imageUrl with the new one from updatedData
       this.products[index] = { ...this.products[index], ...updatedData };
       this.applyFilters();
     }
 
-    // Try to update in backend (image already uploaded, just update other fields)
+    // For offline-created products (negative temp ID), save offline only
+    if (productId < 0) {
+      this.saveEditOffline(productId, updatedData, previousValues);
+      this.snackBar.open('Product updated (saved offline)', 'Close', { duration: 2000 });
+      return;
+    }
+
+    // Try to update in backend if online
+    if (!navigator.onLine) {
+      this.saveEditOffline(productId, updatedData, previousValues);
+      this.snackBar.open('Product updated (saved offline, will sync when online)', 'Close', { duration: 3000 });
+      return;
+    }
+
     this.http.put(`${this.apiUrl}/shop-products/${productId}`, updatedData)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: () => {
-          // Refresh from database to get the latest data with new image
           this.loadProducts();
           this.snackBar.open('Product updated successfully', 'Close', { duration: 2000 });
         },
         error: (error) => {
-          console.warn('Backend update failed, but local update successful:', error);
-          // Still refresh to get latest data
-          this.loadProducts();
-          this.snackBar.open('Product updated', 'Close', { duration: 2000 });
+          console.warn('Backend update failed, saving offline:', error);
+          const isNetworkError = !error?.status || error.status === 0;
+          if (isNetworkError) {
+            this.saveEditOffline(productId, updatedData, previousValues);
+            this.snackBar.open('Product updated (saved offline, will sync when online)', 'Close', { duration: 3000 });
+          } else {
+            this.loadProducts();
+            this.snackBar.open('Product updated', 'Close', { duration: 2000 });
+          }
         }
       });
+  }
+
+  private async saveEditOffline(productId: number, updatedData: any, previousValues: any): Promise<void> {
+    try {
+      const offlineEdit: OfflineEdit = {
+        editId: this.offlineStorage.generateOfflineEditId(),
+        productId: productId,
+        shopId: this.shopId || 0,
+        changes: {
+          price: updatedData.price,
+          originalPrice: updatedData.originalPrice,
+          stockQuantity: updatedData.stockQuantity,
+          sku: updatedData.sku,
+          barcode1: updatedData.barcode1,
+          barcode2: updatedData.barcode2,
+          barcode3: updatedData.barcode3,
+          customName: updatedData.customName,
+          nameTamil: updatedData.nameTamil
+        },
+        previousValues: previousValues,
+        createdAt: new Date().toISOString(),
+        synced: false
+      };
+
+      await this.offlineStorage.saveOfflineEdit(offlineEdit);
+
+      // Update IndexedDB cache
+      await this.offlineStorage.updateLocalProduct(productId, {
+        price: updatedData.price,
+        originalPrice: updatedData.originalPrice,
+        stock: updatedData.stockQuantity,
+        sku: updatedData.sku,
+        barcode1: updatedData.barcode1,
+        barcode2: updatedData.barcode2,
+        barcode3: updatedData.barcode3,
+        name: updatedData.customName,
+        nameTamil: updatedData.nameTamil
+      });
+
+      console.log('Edit saved offline for product:', productId);
+    } catch (err) {
+      console.error('Failed to save edit offline:', err);
+    }
   }
 
   private updateProductWithoutImage(productId: number, updatedData: any): void {

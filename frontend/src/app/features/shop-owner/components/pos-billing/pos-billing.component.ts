@@ -2002,6 +2002,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
         price: this.editPrice,
         originalPrice: this.editMrp,
         stock: this.editStock,
+        sku: this.editSku,
         barcode: this.editBarcode,
         barcode1: this.editBarcode1,
         barcode2: this.editBarcode2,
