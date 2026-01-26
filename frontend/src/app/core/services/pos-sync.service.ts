@@ -358,6 +358,16 @@ export class PosSyncService implements OnDestroy {
 
     for (const edit of pendingEdits) {
       try {
+        // Skip edits for offline-created products (negative temp IDs)
+        // These products don't exist on the server yet — product creation sync handles them
+        if (edit.productId < 0) {
+          console.log(`Skipping edit ${edit.editId} for offline product ${edit.productId} (temp ID)`);
+          await this.offlineStorage.markEditSynced(edit.editId);
+          await this.offlineStorage.removeOfflineEdit(edit.editId);
+          synced++;
+          continue;
+        }
+
         const updateData = {
           price: edit.changes.price,
           originalPrice: edit.changes.originalPrice,
