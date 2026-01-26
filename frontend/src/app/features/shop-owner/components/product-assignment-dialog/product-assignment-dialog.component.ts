@@ -9,8 +9,10 @@ export interface ProductAssignmentData {
   product: {
     id: number;
     name: string;
+    nameTamil?: string;
     description?: string;
     sku?: string;
+    barcode?: string;
     category?: {
       id: number;
       name: string;
@@ -20,6 +22,8 @@ export interface ProductAssignmentData {
     primaryImageUrl?: string;
     minPrice?: number;
     maxPrice?: number;
+    voiceSearchTags?: string;
+    tags?: string;
   };
 }
 
@@ -50,13 +54,13 @@ export class ProductAssignmentDialogComponent implements OnInit {
       costPrice: [null, [Validators.min(0)]],
       customName: [''],
       customDescription: [''],
-      sku: ['', [Validators.required]],
-      barcode1: [''],
+      sku: [data.product.sku || '', [Validators.required]],
+      barcode1: [data.product.barcode || ''],
       barcode2: [''],
       barcode3: [''],
-      nameTamil: [''],
-      tags: [''],
-      voiceSearchTags: [''],
+      nameTamil: [data.product.nameTamil || ''],
+      tags: [data.product.tags || ''],
+      voiceSearchTags: [data.product.voiceSearchTags || ''],
       isAvailable: [true]
     });
   }

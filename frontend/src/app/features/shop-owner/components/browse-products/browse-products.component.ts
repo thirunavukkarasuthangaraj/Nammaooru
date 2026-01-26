@@ -13,6 +13,7 @@ import { getImageUrl as getImageUrlUtil } from '../../../../core/utils/image-url
 interface MasterProduct {
   id: number;
   name: string;
+  nameTamil?: string;
   description?: string;
   sku?: string;
   barcode?: string;
@@ -33,6 +34,8 @@ interface MasterProduct {
   shopCount?: number;
   minPrice?: number;
   maxPrice?: number;
+  voiceSearchTags?: string;
+  tags?: string;
 }
 
 @Component({
@@ -315,14 +318,18 @@ export class BrowseProductsComponent implements OnInit, OnDestroy {
       product: {
         id: product.id,
         name: product.name,
+        nameTamil: product.nameTamil,
         description: product.description,
         sku: product.sku,
+        barcode: product.barcode,
         category: product.category,
         brand: product.brand,
         baseUnit: product.baseUnit,
         primaryImageUrl: product.primaryImageUrl,
         minPrice: product.minPrice,
-        maxPrice: product.maxPrice
+        maxPrice: product.maxPrice,
+        voiceSearchTags: product.voiceSearchTags,
+        tags: product.tags
       }
     };
 
