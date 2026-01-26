@@ -63,6 +63,7 @@ export interface OfflineEdit {
     price?: number;
     originalPrice?: number;
     stockQuantity?: number;
+    sku?: string;
     barcode?: string;
     barcode1?: string;
     barcode2?: string;
@@ -77,6 +78,7 @@ export interface OfflineEdit {
     price?: number;
     originalPrice?: number;
     stockQuantity?: number;
+    sku?: string;
     barcode?: string;
     barcode1?: string;
     barcode2?: string;
@@ -926,6 +928,7 @@ export class OfflineStorageService {
     price?: number;
     originalPrice?: number;
     stockQuantity?: number;
+    sku?: string;
     barcode?: string;
     barcode1?: string;
     barcode2?: string;
@@ -942,6 +945,7 @@ export class OfflineStorageService {
     if (changes.price !== undefined) creation.price = changes.price;
     if (changes.originalPrice !== undefined) creation.originalPrice = changes.originalPrice;
     if (changes.stockQuantity !== undefined) creation.stockQuantity = changes.stockQuantity;
+    if (changes.sku !== undefined) creation.sku = changes.sku;
     if (changes.barcode1 !== undefined) creation.barcode1 = changes.barcode1;
     if (changes.barcode2 !== undefined) creation.barcode2 = changes.barcode2;
     if (changes.barcode3 !== undefined) creation.barcode3 = changes.barcode3;

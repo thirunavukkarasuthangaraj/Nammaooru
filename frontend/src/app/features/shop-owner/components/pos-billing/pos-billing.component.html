@@ -355,13 +355,21 @@
           </div>
         </div>
 
-        <!-- Multiple Barcodes Section -->
+        <!-- SKU & Barcodes Section -->
         <div class="barcode-section">
           <div class="barcode-header">
             <mat-icon>qr_code_scanner</mat-icon>
-            <span>Barcodes</span>
+            <span>SKU & Barcodes</span>
           </div>
           <div class="barcode-grid">
+            <div class="barcode-field">
+              <label>SKU ID</label>
+              <input type="text"
+                     [(ngModel)]="editSku"
+                     placeholder="SKU identifier"
+                     class="barcode-input-field"
+                     autocomplete="off">
+            </div>
             <div class="barcode-field">
               <label>Barcode 1 (Primary)</label>
               <input type="text"

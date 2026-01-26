@@ -98,6 +98,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   editMrp: number = 0;
   editStock: number = 0;
   editBarcode: string = '';
+  editSku: string = '';
   editBarcode1: string = '';
   editBarcode2: string = '';
   editBarcode3: string = '';
@@ -1255,6 +1256,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     this.editPrice = product.price;
     this.editMrp = product.originalPrice || product.price;
     this.editStock = product.stock;
+    this.editSku = product.sku || '';
     // Use barcode fields only - never fallback to SKU (SKU is not a barcode)
     this.editBarcode = product.barcode || '';
     this.editBarcode1 = product.barcode1 || '';
@@ -1312,6 +1314,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     this.editMrp = 0;
     this.editStock = 0;
     this.editBarcode = '';
+    this.editSku = '';
     this.editBarcode1 = '';
     this.editBarcode2 = '';
     this.editBarcode3 = '';
@@ -1825,6 +1828,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       price: this.editPrice,
       originalPrice: this.editMrp,
       stockQuantity: this.editStock,
+      sku: this.editSku,
       barcode1: this.editBarcode1,
       barcode2: this.editBarcode2,
       barcode3: this.editBarcode3,
@@ -1966,6 +1970,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
           price: this.editPrice,
           originalPrice: this.editMrp,
           stockQuantity: this.editStock,
+          sku: this.editSku,
           barcode: this.editBarcode,
           barcode1: this.editBarcode1,
           barcode2: this.editBarcode2,
@@ -2030,6 +2035,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       this.products[productIndex].price = updateData.price;
       this.products[productIndex].originalPrice = updateData.originalPrice;
       this.products[productIndex].stock = updateData.stockQuantity;
+      if (updateData.sku !== undefined) this.products[productIndex].sku = updateData.sku;
       this.products[productIndex].barcode = updateData.barcode;
       this.products[productIndex].barcode1 = updateData.barcode1;
       this.products[productIndex].barcode2 = updateData.barcode2;
@@ -2048,6 +2054,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       this.filteredProducts[filteredIndex].price = updateData.price;
       this.filteredProducts[filteredIndex].originalPrice = updateData.originalPrice;
       this.filteredProducts[filteredIndex].stock = updateData.stockQuantity;
+      if (updateData.sku !== undefined) this.filteredProducts[filteredIndex].sku = updateData.sku;
       this.filteredProducts[filteredIndex].barcode = updateData.barcode;
       this.filteredProducts[filteredIndex].barcode1 = updateData.barcode1;
       this.filteredProducts[filteredIndex].barcode2 = updateData.barcode2;

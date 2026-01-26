@@ -374,6 +374,7 @@ export class PosSyncService implements OnDestroy {
           price: edit.changes.price,
           originalPrice: edit.changes.originalPrice,
           stockQuantity: edit.changes.stockQuantity,
+          sku: edit.changes.sku,
           barcode: edit.changes.barcode,
           barcode1: edit.changes.barcode1,
           barcode2: edit.changes.barcode2,
