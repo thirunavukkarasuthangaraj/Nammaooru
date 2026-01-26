@@ -1104,6 +1104,7 @@ export class AddProductComponent implements OnInit {
         unit: formData.unit || 'piece',
         tags: formData.tags?.trim() || '',
         isFeatured: formData.isFeatured || false,
+        tempProductId: this.offlineStorage.generateTempProductId(),
         createdAt: new Date().toISOString(),
         synced: false
       };
@@ -1111,7 +1112,7 @@ export class AddProductComponent implements OnInit {
       await this.offlineStorage.saveOfflineProductCreation(offlineProduct);
 
       // Also add to local cache for immediate display in My Products
-      const tempId = this.offlineStorage.generateTempProductId();
+      const tempId = offlineProduct.tempProductId!;
       const cachedProduct = {
         id: tempId,
         shopId: this.currentShop.id,

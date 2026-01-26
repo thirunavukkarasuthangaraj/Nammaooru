@@ -433,6 +433,15 @@ export class PosSyncService implements OnDestroy {
 
     for (const creation of pendingCreations) {
       try {
+        console.log('Syncing creation record:', JSON.stringify({
+          offlineProductId: creation.offlineProductId,
+          name: creation.name,
+          barcode1: creation.barcode1,
+          barcode2: creation.barcode2,
+          barcode3: creation.barcode3,
+          price: creation.price
+        }));
+
         // Build the request data for creating shop product
         const requestData = {
           masterProductId: creation.masterProductId,
@@ -446,6 +455,7 @@ export class PosSyncService implements OnDestroy {
           customDescription: creation.customDescription,
           isFeatured: creation.isFeatured || false,
           tags: creation.tags,
+          sku: creation.sku || '',
           barcode1: creation.barcode1,
           barcode2: creation.barcode2,
           barcode3: creation.barcode3,

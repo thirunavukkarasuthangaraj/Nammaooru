@@ -2270,6 +2270,12 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     this.isSavingNewProduct = true;
 
     try {
+      // Auto-generate SKU from product name
+      const nameForSku = this.newProductName.trim();
+      const skuPrefix = nameForSku.substring(0, 3).toUpperCase();
+      const skuTimestamp = Date.now().toString().slice(-6);
+      const generatedSku = `${skuPrefix}${skuTimestamp}`;
+
       const productData = {
         shopId: this.shopId,
         name: this.newProductName.trim(),
@@ -2282,7 +2288,8 @@ export class PosBillingComponent implements OnInit, OnDestroy {
         barcode1: this.newProductBarcode1?.trim() || '',
         barcode2: this.newProductBarcode2?.trim() || '',
         barcode3: this.newProductBarcode3?.trim() || '',
-        customName: this.newProductName.trim()
+        customName: this.newProductName.trim(),
+        sku: generatedSku
       };
 
       // Use sync service to create product (handles both online and offline)
@@ -2299,7 +2306,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
           originalPrice: this.newProductMrp || this.newProductPrice,
           stock: this.newProductStock || 0,
           trackInventory: this.newProductTrackInventory,
-          sku: '',
+          sku: generatedSku,
           barcode: this.newProductBarcode1?.trim() || '',
           barcode1: this.newProductBarcode1?.trim() || '',
           barcode2: this.newProductBarcode2?.trim(),
