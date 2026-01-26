@@ -141,11 +141,14 @@
 
       <div class="form-row">
         <mat-form-field appearance="outline" class="half-width">
-          <mat-label>SKU ID (Optional)</mat-label>
+          <mat-label>SKU ID *</mat-label>
           <mat-icon matPrefix>qr_code</mat-icon>
           <input matInput
                  formControlName="sku"
-                 placeholder="SKU identifier">
+                 placeholder="Enter SKU ID">
+          <mat-error *ngIf="assignmentForm.get('sku')?.hasError('required')">
+            SKU ID is required
+          </mat-error>
           <mat-hint>Unique product SKU</mat-hint>
         </mat-form-field>
 

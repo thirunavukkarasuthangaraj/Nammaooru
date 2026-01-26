@@ -50,7 +50,7 @@ export class ProductAssignmentDialogComponent implements OnInit {
       costPrice: [null, [Validators.min(0)]],
       customName: [''],
       customDescription: [''],
-      sku: [''],
+      sku: ['', [Validators.required]],
       barcode1: [''],
       barcode2: [''],
       barcode3: [''],
