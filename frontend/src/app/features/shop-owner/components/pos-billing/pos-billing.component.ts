@@ -1331,6 +1331,95 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Generate Code128B barcode as a PNG data URL using Canvas
+   * Produces pixel-perfect bars that scanners can reliably read
+   */
+  private generateCode128DataUrl(text: string): string {
+    const CODE128_PATTERNS: { [key: string]: string } = {
+      ' ': '11011001100', '!': '11001101100', '"': '11001100110', '#': '10010011000',
+      '$': '10010001100', '%': '10001001100', '&': '10011001000', "'": '10011000100',
+      '(': '10001100100', ')': '11001001000', '*': '11001000100', '+': '11000100100',
+      ',': '10110011100', '-': '10011011100', '.': '10011001110', '/': '10111001100',
+      '0': '10011101100', '1': '11001110010', '2': '11001011100', '3': '11001001110',
+      '4': '11011100100', '5': '11001110100', '6': '11101101110', '7': '11101001100',
+      '8': '11100101100', '9': '11100100110', ':': '11101100100', ';': '11100110100',
+      '<': '11100110010', '=': '11011011000', '>': '11011000110', '?': '11000110110',
+      '@': '10100011000', 'A': '10001011000', 'B': '10001000110', 'C': '10110001000',
+      'D': '10001101000', 'E': '10001100010', 'F': '11010001000', 'G': '11000101000',
+      'H': '11000100010', 'I': '10110111000', 'J': '10110001110', 'K': '10001101110',
+      'L': '10111011000', 'M': '10111000110', 'N': '10001110110', 'O': '11101110110',
+      'P': '11010001110', 'Q': '11000101110', 'R': '11011101000', 'S': '11011100010',
+      'T': '11011101110', 'U': '11101011000', 'V': '11101000110', 'W': '11100010110',
+      'X': '11101101000', 'Y': '11101100010', 'Z': '11100011010', '[': '11101111010',
+      '\\': '11001000010', ']': '11110001010', '^': '10100110000', '_': '10100001100',
+      '`': '10010110000', 'a': '10010000110', 'b': '10000101100', 'c': '10000100110',
+      'd': '10110010000', 'e': '10110000100', 'f': '10011010000', 'g': '10011000010',
+      'h': '10000110100', 'i': '10000110010', 'j': '11000010010', 'k': '11001010000',
+      'l': '11110111010', 'm': '11000010100', 'n': '10001111010', 'o': '10100111100',
+      'p': '10010111100', 'q': '10010011110', 'r': '10111100100', 's': '10011110100',
+      't': '10011110010', 'u': '11110100100', 'v': '11110010100', 'w': '11110010010',
+      'x': '11011011110', 'y': '11011110110', 'z': '11110110110', '{': '10101111000',
+      '|': '10100011110', '}': '10001011110', '~': '10111101000'
+    };
+    const START_B = '11010010000';
+    const STOP = '1100011101011';
+
+    let pattern = START_B;
+    let checksum = 104;
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      if (CODE128_PATTERNS[char]) {
+        pattern += CODE128_PATTERNS[char];
+        checksum += (i + 1) * (char.charCodeAt(0) - 32);
+      }
+    }
+
+    const checksumChar = String.fromCharCode((checksum % 103) + 32);
+    if (CODE128_PATTERNS[checksumChar]) {
+      pattern += CODE128_PATTERNS[checksumChar];
+    }
+    pattern += STOP;
+
+    // Canvas rendering - pixel perfect
+    const moduleWidth = 2;       // 2 pixels per module
+    const scale = 3;             // 3x for print quality
+    const mw = moduleWidth * scale; // 6 actual pixels per module
+    const quietZone = 10 * mw;  // 10 modules quiet zone
+    const height = 100 * scale;  // bar height in pixels
+    const canvasWidth = (pattern.length * mw) + (quietZone * 2);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = canvasWidth;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return '';
+
+    // White background
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, canvasWidth, height);
+
+    // Draw bars - merge consecutive black modules into single rectangles
+    ctx.fillStyle = '#000000';
+    let idx = 0;
+    while (idx < pattern.length) {
+      if (pattern[idx] === '1') {
+        const startX = quietZone + (idx * mw);
+        let barWidth = 0;
+        while (idx < pattern.length && pattern[idx] === '1') {
+          barWidth += mw;
+          idx++;
+        }
+        ctx.fillRect(startX, 0, barWidth, height);
+      } else {
+        idx++;
+      }
+    }
+
+    return canvas.toDataURL('image/png');
+  }
+
+  /**
    * Print product label with barcode
    * Optimized for 50x25mm thermal labels
    */
@@ -1510,8 +1599,12 @@ export class PosBillingComponent implements OnInit, OnDestroy {
             justify-content: center;
             align-items: center;
           }
-          .barcode svg {
+          .barcode img {
             height: 8mm;
+            width: auto;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
           }
           .barcode-text {
             font-size: 5pt;
@@ -1523,7 +1616,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
             margin-top: 0.3mm;
           }
         </style>
-      </head>~
+      </head>
       <body>
         <div class="print-instructions">
           <strong>Printer Settings (Important):</strong>
@@ -1534,84 +1627,6 @@ export class PosBillingComponent implements OnInit, OnDestroy {
           </ul>
         </div>
         ${labels}
-        <script>
-          // Code128 barcode generator
-          function generateCode128SVG(text) {
-            const CODE128_PATTERNS = {
-              ' ': '11011001100', '!': '11001101100', '"': '11001100110', '#': '10010011000',
-              '$': '10010001100', '%': '10001001100', '&': '10011001000', "'": '10011000100',
-              '(': '10001100100', ')': '11001001000', '*': '11001000100', '+': '11000100100',
-              ',': '10110011100', '-': '10011011100', '.': '10011001110', '/': '10111001100',
-              '0': '10011101100', '1': '11001110010', '2': '11001011100', '3': '11001001110',
-              '4': '11011100100', '5': '11001110100', '6': '11101101110', '7': '11101001100',
-              '8': '11100101100', '9': '11100100110', ':': '11101100100', ';': '11100110100',
-              '<': '11100110010', '=': '11011011000', '>': '11011000110', '?': '11000110110',
-              '@': '10100011000', 'A': '10001011000', 'B': '10001000110', 'C': '10110001000',
-              'D': '10001101000', 'E': '10001100010', 'F': '11010001000', 'G': '11000101000',
-              'H': '11000100010', 'I': '10110111000', 'J': '10110001110', 'K': '10001101110',
-              'L': '10111011000', 'M': '10111000110', 'N': '10001110110', 'O': '11101110110',
-              'P': '11010001110', 'Q': '11000101110', 'R': '11011101000', 'S': '11011100010',
-              'T': '11011101110', 'U': '11101011000', 'V': '11101000110', 'W': '11100010110',
-              'X': '11101101000', 'Y': '11101100010', 'Z': '11100011010', '[': '11101111010',
-              '\\\\': '11001000010', ']': '11110001010', '^': '10100110000', '_': '10100001100',
-              '\`': '10010110000', 'a': '10010000110', 'b': '10000101100', 'c': '10000100110',
-              'd': '10110010000', 'e': '10110000100', 'f': '10011010000', 'g': '10011000010',
-              'h': '10000110100', 'i': '10000110010', 'j': '11000010010', 'k': '11001010000',
-              'l': '11110111010', 'm': '11000010100', 'n': '10001111010', 'o': '10100111100',
-              'p': '10010111100', 'q': '10010011110', 'r': '10111100100', 's': '10011110100',
-              't': '10011110010', 'u': '11110100100', 'v': '11110010100', 'w': '11110010010',
-              'x': '11011011110', 'y': '11011110110', 'z': '11110110110', '{': '10101111000',
-              '|': '10100011110', '}': '10001011110', '~': '10111101000'
-            };
-            const START_B = '11010010000';
-            const STOP = '1100011101011';
-
-            let pattern = START_B;
-            let checksum = 104; // Start B value
-
-            for (let i = 0; i < text.length; i++) {
-              const char = text[i];
-              if (CODE128_PATTERNS[char]) {
-                pattern += CODE128_PATTERNS[char];
-                checksum += (i + 1) * (char.charCodeAt(0) - 32);
-              }
-            }
-
-            // Add checksum
-            const checksumChar = String.fromCharCode((checksum % 103) + 32);
-            if (CODE128_PATTERNS[checksumChar]) {
-              pattern += CODE128_PATTERNS[checksumChar];
-            }
-            pattern += STOP;
-
-            // Generate SVG - scanner-friendly proportions
-            // Each module = 0.33mm, height = 8mm for 50x25mm labels
-            const moduleWidth = 0.33;
-            const quietZone = 10 * moduleWidth; // 10 modules quiet zone each side
-            const height = 8;
-            const totalWidth = (pattern.length * moduleWidth) + (quietZone * 2);
-
-            let svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + totalWidth.toFixed(2) + ' ' + height + '" width="' + totalWidth.toFixed(2) + 'mm" height="' + height + 'mm">';
-            // White background for quiet zones
-            svg += '<rect x="0" y="0" width="' + totalWidth.toFixed(2) + '" height="' + height + '" fill="white"/>';
-            for (let i = 0; i < pattern.length; i++) {
-              if (pattern[i] === '1') {
-                const x = quietZone + (i * moduleWidth);
-                svg += '<rect x="' + x.toFixed(3) + '" y="0" width="' + moduleWidth + '" height="' + height + '" fill="black"/>';
-              }
-            }
-            svg += '</svg>';
-            return svg;
-          }
-
-          // Generate barcodes
-          document.querySelectorAll('.barcode').forEach(el => {
-            const code = el.getAttribute('data-code');
-            if (code) {
-              el.innerHTML = generateCode128SVG(code);
-            }
-          });
-        </script>
       </body>
       </html>
     `;
@@ -1671,9 +1686,10 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     // Bottom section - barcode
     html += '<div class="label-bottom">';
 
-    // Barcode
+    // Barcode (Canvas-rendered PNG for pixel-perfect scanning)
     if (config.showBarcode) {
-      html += `<div class="barcode" data-code="${barcode}"></div>`;
+      const barcodeDataUrl = this.generateCode128DataUrl(barcode);
+      html += `<div class="barcode"><img src="${barcodeDataUrl}" alt="${barcode}"></div>`;
     }
 
     // Barcode number
