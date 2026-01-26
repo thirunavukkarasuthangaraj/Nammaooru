@@ -470,13 +470,8 @@ export class PosSyncService implements OnDestroy {
           await this.offlineStorage.markProductCreationSynced(creation.offlineProductId, realProductId);
 
           // Update local cache with real product ID
-          // Find temp ID by matching barcode1
-          const products = await this.offlineStorage.getProducts();
-          const tempProduct = products.find(p =>
-            p.barcode1 === creation.barcode1 && p.id < 0
-          );
-          if (tempProduct) {
-            await this.offlineStorage.updateLocalProductId(tempProduct.id, realProductId);
+          if (creation.tempProductId) {
+            await this.offlineStorage.updateLocalProductId(creation.tempProductId, realProductId);
           }
 
           // Remove the offline creation record
@@ -518,8 +513,8 @@ export class PosSyncService implements OnDestroy {
       const offlineProductId = this.offlineStorage.generateOfflineProductId();
       const tempProductId = this.offlineStorage.generateTempProductId();
 
-      // Check for duplicate barcode locally
-      const barcodeExists = await this.offlineStorage.isBarcodeExistsLocally(productData.barcode1);
+      // Check for duplicate barcode in cached products AND pending offline creations
+      const barcodeExists = await this.offlineStorage.isBarcodeExists(productData.barcode1);
       if (barcodeExists) {
         return {
           success: false,
@@ -533,6 +528,7 @@ export class PosSyncService implements OnDestroy {
       const creation: OfflineProductCreation = {
         offlineProductId,
         ...productData,
+        tempProductId,
         createdAt: new Date().toISOString(),
         synced: false
       };

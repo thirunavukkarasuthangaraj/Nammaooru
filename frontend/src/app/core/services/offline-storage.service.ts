@@ -123,6 +123,7 @@ export interface OfflineProductCreation {
   imageBase64?: string;
   imagePendingUpload?: boolean;
   // Sync status
+  tempProductId?: number;  // Negative temp ID used in local cache
   createdAt: string;
   synced: boolean;
   syncedProductId?: number;  // Actual product ID after sync
