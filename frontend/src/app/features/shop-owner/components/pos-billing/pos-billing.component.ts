@@ -1852,8 +1852,12 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     };
 
     try {
+      // For offline-created products (negative temp ID), always save offline
+      // They don't exist on the server yet, so API calls would fail
+      const isOfflineProduct = productId < 0;
+
       // Try API call first (even if navigator.onLine is true, network might be down)
-      if (navigator.onLine) {
+      if (navigator.onLine && !isOfflineProduct) {
         try {
           // Online mode - call API
           let response: any;
