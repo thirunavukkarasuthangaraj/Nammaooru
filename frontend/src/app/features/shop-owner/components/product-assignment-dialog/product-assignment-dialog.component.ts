@@ -45,6 +45,7 @@ export class ProductAssignmentDialogComponent implements OnInit {
         data.product.minPrice || data.product.maxPrice || 100,
         [Validators.required, Validators.min(0.01)]
       ],
+      originalPrice: [null, [Validators.min(0)]],
       stockQuantity: [0, [Validators.min(0)]],
       costPrice: [null, [Validators.min(0)]],
       customName: [''],
@@ -94,6 +95,7 @@ export class ProductAssignmentDialogComponent implements OnInit {
     const productData = {
       masterProductId: this.data.product.id,
       price: formValue.price,
+      originalPrice: formValue.originalPrice || null,
       stockQuantity: formValue.stockQuantity || 0,
       costPrice: formValue.costPrice || null,
       isAvailable: formValue.isAvailable,
