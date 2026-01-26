@@ -42,13 +42,20 @@ export class ProductAssignmentDialogComponent implements OnInit {
   ) {
     this.assignmentForm = this.fb.group({
       price: [
-        data.product.minPrice || data.product.maxPrice || 100, 
+        data.product.minPrice || data.product.maxPrice || 100,
         [Validators.required, Validators.min(0.01)]
       ],
       stockQuantity: [0, [Validators.min(0)]],
       costPrice: [null, [Validators.min(0)]],
       customName: [''],
       customDescription: [''],
+      sku: [''],
+      barcode1: [''],
+      barcode2: [''],
+      barcode3: [''],
+      nameTamil: [''],
+      tags: [''],
+      voiceSearchTags: [''],
       isAvailable: [true]
     });
   }
@@ -91,7 +98,14 @@ export class ProductAssignmentDialogComponent implements OnInit {
       costPrice: formValue.costPrice || null,
       isAvailable: formValue.isAvailable,
       customName: formValue.customName || undefined,
-      customDescription: formValue.customDescription || undefined
+      customDescription: formValue.customDescription || undefined,
+      sku: formValue.sku || undefined,
+      barcode1: formValue.barcode1 || undefined,
+      barcode2: formValue.barcode2 || undefined,
+      barcode3: formValue.barcode3 || undefined,
+      nameTamil: formValue.nameTamil || undefined,
+      tags: formValue.tags || undefined,
+      voiceSearchTags: formValue.voiceSearchTags || undefined
     };
 
     console.log('Assigning product with data:', productData);

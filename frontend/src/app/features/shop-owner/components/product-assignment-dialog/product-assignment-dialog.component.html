@@ -96,8 +96,8 @@
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Custom Product Name (Optional)</mat-label>
           <mat-icon matPrefix>edit</mat-icon>
-          <input matInput 
-                 formControlName="customName" 
+          <input matInput
+                 formControlName="customName"
                  placeholder="Override product name">
           <mat-hint>Leave empty to use default name</mat-hint>
         </mat-form-field>
@@ -105,14 +105,84 @@
 
       <div class="form-row">
         <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Tamil Name (Optional)</mat-label>
+          <mat-icon matPrefix>translate</mat-icon>
+          <input matInput
+                 formControlName="nameTamil"
+                 placeholder="தமிழ் பெயர்">
+          <mat-hint>Product name in Tamil</mat-hint>
+        </mat-form-field>
+      </div>
+
+      <div class="form-row">
+        <mat-form-field appearance="outline" class="full-width">
           <mat-label>Custom Description (Optional)</mat-label>
           <mat-icon matPrefix>description</mat-icon>
-          <textarea matInput 
-                    formControlName="customDescription" 
+          <textarea matInput
+                    formControlName="customDescription"
                     rows="3"
                     placeholder="Add your own product description">
           </textarea>
           <mat-hint>Personalize the description for your customers</mat-hint>
+        </mat-form-field>
+      </div>
+
+      <div class="form-row">
+        <mat-form-field appearance="outline" class="half-width">
+          <mat-label>SKU ID (Optional)</mat-label>
+          <mat-icon matPrefix>qr_code</mat-icon>
+          <input matInput
+                 formControlName="sku"
+                 placeholder="SKU identifier">
+          <mat-hint>Unique product SKU</mat-hint>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="half-width">
+          <mat-label>Barcode 1 (Optional)</mat-label>
+          <mat-icon matPrefix>qr_code_scanner</mat-icon>
+          <input matInput
+                 formControlName="barcode1"
+                 placeholder="Primary barcode">
+        </mat-form-field>
+      </div>
+
+      <div class="form-row">
+        <mat-form-field appearance="outline" class="half-width">
+          <mat-label>Barcode 2 (Optional)</mat-label>
+          <mat-icon matPrefix>qr_code_scanner</mat-icon>
+          <input matInput
+                 formControlName="barcode2"
+                 placeholder="Secondary barcode">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="half-width">
+          <mat-label>Barcode 3 (Optional)</mat-label>
+          <mat-icon matPrefix>qr_code_scanner</mat-icon>
+          <input matInput
+                 formControlName="barcode3"
+                 placeholder="Tertiary barcode">
+        </mat-form-field>
+      </div>
+
+      <div class="form-row">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Tags (Optional)</mat-label>
+          <mat-icon matPrefix>label</mat-icon>
+          <input matInput
+                 formControlName="tags"
+                 placeholder="e.g. snacks, organic, spicy">
+          <mat-hint>Comma-separated tags for search</mat-hint>
+        </mat-form-field>
+      </div>
+
+      <div class="form-row">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Voice Search Tags (Optional)</mat-label>
+          <mat-icon matPrefix>mic</mat-icon>
+          <input matInput
+                 formControlName="voiceSearchTags"
+                 placeholder="e.g. vim, dishwash, cleaning gel">
+          <mat-hint>Tags for voice search discovery</mat-hint>
         </mat-form-field>
       </div>
 
