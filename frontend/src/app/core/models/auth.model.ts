@@ -22,6 +22,7 @@ export interface AuthResponse {
   userId?: number;
   passwordChangeRequired: boolean;
   isTemporaryPassword: boolean;
+  profileImageUrl?: string;
 }
 
 export interface User {
@@ -31,6 +32,7 @@ export interface User {
   role: UserRole;
   isActive: boolean;
   shopId?: number;
+  profileImageUrl?: string;
   createdAt: Date;
   updatedAt: Date;
 }

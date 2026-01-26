@@ -17,4 +17,5 @@ public class AuthResponse {
     private boolean requiresOtp;
     private Boolean passwordChangeRequired;
     private Boolean isTemporaryPassword;
+    private String profileImageUrl;
 }

@@ -312,6 +312,7 @@ export class AuthService {
         email: authResponse.email,
         role: authResponse.role as UserRole,
         isActive: true,
+        profileImageUrl: authResponse.profileImageUrl || undefined,
         createdAt: new Date(),
         updatedAt: new Date()
       };

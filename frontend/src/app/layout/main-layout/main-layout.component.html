@@ -130,8 +130,8 @@
             [matMenuTriggerFor]="userMenu"
             matTooltip="User menu">
             <div class="header-user-avatar">
-              <img 
-                [src]="getUserAvatar((currentUser$ | async)?.username)" 
+              <img
+                [src]="getUserAvatar(currentUser$ | async)"
                 [alt]="(currentUser$ | async)?.username"
                 class="header-avatar-img"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">

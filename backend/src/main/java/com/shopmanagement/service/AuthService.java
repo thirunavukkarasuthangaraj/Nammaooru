@@ -95,6 +95,7 @@ public class AuthService {
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .role(user.getRole().name())
+                .profileImageUrl(user.getProfileImageUrl())
                 .build();
     }
 
@@ -144,6 +145,7 @@ public class AuthService {
                 .role(user.getRole().name())
                 .passwordChangeRequired(user.getPasswordChangeRequired())
                 .isTemporaryPassword(user.getIsTemporaryPassword())
+                .profileImageUrl(user.getProfileImageUrl())
                 .build();
     }
     

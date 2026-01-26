@@ -711,9 +711,13 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       .toUpperCase();
   }
 
-  getUserAvatar(username?: string): string {
-    // Return a default avatar URL or generate one based on username
-    return `https://ui-avatars.com/api/?name=${username || 'User'}&background=0ea5e9&color=fff&size=40&rounded=true`;
+  getUserAvatar(user?: any): string {
+    // Use profile image if available, otherwise generate initials avatar
+    if (user?.profileImageUrl) {
+      return user.profileImageUrl;
+    }
+    const name = user?.username || 'User';
+    return `https://ui-avatars.com/api/?name=${name}&background=0ea5e9&color=fff&size=40&rounded=true`;
   }
 
   getUserRoleDisplay(role?: string): string {
