@@ -359,31 +359,45 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       let cachedProducts = await Promise.race([cachePromise, timeoutPromise]);
 
       // Also load pending offline-created products and merge them
+      // Only add if not already in the cached products (to avoid duplicates)
       try {
         const pendingCreations = await this.offlineStorage.getPendingProductCreations();
         if (pendingCreations.length > 0) {
           console.log(`Found ${pendingCreations.length} pending offline products`);
-          const offlineProducts: CachedProduct[] = pendingCreations.map(creation => ({
-            id: this.offlineStorage.generateTempProductId(),
-            shopId: creation.shopId,
-            name: creation.name || creation.customName || 'New Product',
-            nameTamil: creation.nameTamil,
-            price: creation.price,
-            originalPrice: creation.originalPrice,
-            costPrice: creation.costPrice,
-            stock: creation.stockQuantity,
-            trackInventory: creation.trackInventory,
-            isAvailable: true,
-            sku: creation.sku || '',
-            barcode: creation.barcode1,
-            barcode1: creation.barcode1,
-            barcode2: creation.barcode2,
-            barcode3: creation.barcode3,
-            category: creation.categoryName,
-            unit: creation.unit,
-            masterProductId: creation.masterProductId
-          }));
-          cachedProducts = [...offlineProducts, ...cachedProducts];
+          // Filter out creations that are already in the cache (by matching name + barcode)
+          const newCreations = pendingCreations.filter(creation => {
+            const creationName = (creation.name || creation.customName || '').toLowerCase();
+            const creationBarcode = (creation.barcode1 || '').toLowerCase();
+            return !cachedProducts.some(p => {
+              const nameMatch = p.name.toLowerCase() === creationName;
+              const barcodeMatch = creationBarcode && p.barcode1 && p.barcode1.toLowerCase() === creationBarcode;
+              return nameMatch || barcodeMatch;
+            });
+          });
+          if (newCreations.length > 0) {
+            const offlineProducts: CachedProduct[] = newCreations.map(creation => ({
+              id: this.offlineStorage.generateTempProductId(),
+              shopId: creation.shopId,
+              name: creation.name || creation.customName || 'New Product',
+              nameTamil: creation.nameTamil,
+              price: creation.price,
+              originalPrice: creation.originalPrice,
+              costPrice: creation.costPrice,
+              stock: creation.stockQuantity,
+              trackInventory: creation.trackInventory,
+              isAvailable: true,
+              sku: creation.sku || '',
+              barcode: creation.barcode1,
+              barcode1: creation.barcode1,
+              barcode2: creation.barcode2,
+              barcode3: creation.barcode3,
+              category: creation.categoryName,
+              unit: creation.unit,
+              masterProductId: creation.masterProductId
+            }));
+            cachedProducts = [...offlineProducts, ...cachedProducts];
+            console.log(`Added ${newCreations.length} new offline products (skipped ${pendingCreations.length - newCreations.length} already in cache)`);
+          }
         }
       } catch (err) {
         console.warn('Failed to load pending offline products:', err);
@@ -1367,73 +1381,94 @@ export class PosBillingComponent implements OnInit, OnDestroy {
         <title>Label - ${product.name}</title>
         <style>
           @page {
-            size: 50mm 30mm;
+            size: 50mm 25mm;
             margin: 0;
+            padding: 0;
           }
           @media print {
             html, body {
-              margin: 0;
-              padding: 0;
-              width: 50mm;
+              margin: 0 !important;
+              padding: 0 !important;
+              width: 50mm !important;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
             }
+            .print-instructions { display: none !important; }
             .label {
               page-break-after: always;
               page-break-inside: avoid;
+              border: none !important;
             }
             .label:last-child { page-break-after: auto; }
           }
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body {
             font-family: 'Noto Sans Tamil', 'Segoe UI', Arial, sans-serif;
+            width: 50mm;
           }
+          .print-instructions {
+            width: 320px;
+            margin: 10px auto;
+            padding: 12px 16px;
+            background: #fffbeb;
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            color: #92400e;
+            line-height: 1.6;
+          }
+          .print-instructions strong { color: #78350f; }
+          .print-instructions ul { margin: 4px 0 0 16px; }
           .label {
             width: 50mm;
-            min-height: 25mm;
-            padding: 1.5mm 2mm;
+            height: 25mm;
+            padding: 1mm 2mm;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: space-between;
             border: 1px dashed #ccc;
             background: white;
+            overflow: hidden;
           }
           .label-top {
             width: 100%;
             text-align: center;
           }
           .shop-name {
-            font-size: 8px;
+            font-size: 6pt;
             font-weight: 800;
             color: #000;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            line-height: 1.3;
-            margin-bottom: 1mm;
+            letter-spacing: 0.3px;
+            line-height: 1.2;
+            margin-bottom: 0.3mm;
           }
           .tamil-name {
-            font-size: 8px;
+            font-size: 5pt;
             font-weight: 600;
             color: #000;
             font-family: 'Noto Sans Tamil', 'Latha', 'Tamil Sangam MN', Arial, sans-serif;
-            line-height: 1.3;
-            margin-bottom: 0.5mm;
+            line-height: 1.2;
+            margin-bottom: 0.3mm;
           }
           .english-name {
-            font-size: 8px;
+            font-size: 5pt;
             font-weight: 600;
             color: #000;
-            line-height: 1.3;
-            margin-bottom: 0.5mm;
+            line-height: 1.2;
+            margin-bottom: 0.3mm;
           }
           .info-row {
             display: flex;
             justify-content: space-between;
             width: 100%;
-            font-size: 7px;
+            font-size: 5pt;
             font-weight: 700;
             color: #000;
-            margin-top: 1mm;
-            padding: 0 2mm;
+            margin-top: 0.3mm;
+            padding: 0 1mm;
           }
           .info-item {
             white-space: nowrap;
@@ -1448,11 +1483,11 @@ export class PosBillingComponent implements OnInit, OnDestroy {
             display: flex;
             justify-content: space-between;
             width: 100%;
-            font-size: 6px;
+            font-size: 4.5pt;
             font-weight: 600;
             color: #333;
-            margin-top: 0.5mm;
-            padding: 0 2mm;
+            margin-top: 0.3mm;
+            padding: 0 1mm;
           }
           .date-item {
             white-space: nowrap;
@@ -1479,18 +1514,25 @@ export class PosBillingComponent implements OnInit, OnDestroy {
             height: 8mm;
           }
           .barcode-text {
-            font-size: 9px;
+            font-size: 5pt;
             font-family: 'Courier New', monospace;
             font-weight: 700;
-            letter-spacing: 1.5px;
+            letter-spacing: 1px;
             color: #000;
             text-align: center;
-            margin-top: 0.5mm;
-            padding-bottom: 0.5mm;
+            margin-top: 0.3mm;
           }
         </style>
-      </head>
+      </head>~
       <body>
+        <div class="print-instructions">
+          <strong>Printer Settings (Important):</strong>
+          <ul>
+            <li>Paper size: <strong>50 x 25 mm</strong> (or custom)</li>
+            <li>Margins: <strong>None</strong></li>
+            <li>Scale: <strong>100%</strong> (not "Fit to page")</li>
+          </ul>
+        </div>
         ${labels}
         <script>
           // Code128 barcode generator
