@@ -358,12 +358,21 @@ export class PosBillingComponent implements OnInit, OnDestroy {
 
       let cachedProducts = await Promise.race([cachePromise, timeoutPromise]);
 
+      // Filter cached products by current shop ID to prevent cross-shop mixing
+      if (this.shopId) {
+        cachedProducts = cachedProducts.filter(p => !p.shopId || p.shopId === this.shopId);
+      }
+
       // Also load pending offline-created products and merge them
       // Only add if not already in the cached products (to avoid duplicates)
       try {
-        const pendingCreations = await this.offlineStorage.getPendingProductCreations();
+        const allPendingCreations = await this.offlineStorage.getPendingProductCreations();
+        // Filter by current shop ID to prevent cross-shop product leaking
+        const pendingCreations = this.shopId
+          ? allPendingCreations.filter(c => c.shopId === this.shopId)
+          : allPendingCreations;
         if (pendingCreations.length > 0) {
-          console.log(`Found ${pendingCreations.length} pending offline products`);
+          console.log(`Found ${pendingCreations.length} pending offline products for shop ${this.shopId}`);
           // Filter out creations that are already in the cache (by matching name + barcode)
           const newCreations = pendingCreations.filter(creation => {
             const creationName = (creation.name || creation.customName || '').toLowerCase();
@@ -1227,10 +1236,9 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     this.editPrice = product.price;
     this.editMrp = product.originalPrice || product.price;
     this.editStock = product.stock;
-    // Use barcode if available, otherwise fallback to SKU
-    this.editBarcode = product.barcode || product.sku || '';
-    // Shop-level multiple barcodes - auto-fill barcode1 with SKU if empty
-    this.editBarcode1 = product.barcode1 || product.sku || '';
+    // Use barcode fields only - never fallback to SKU (SKU is not a barcode)
+    this.editBarcode = product.barcode || '';
+    this.editBarcode1 = product.barcode1 || '';
     this.editBarcode2 = product.barcode2 || '';
     this.editBarcode3 = product.barcode3 || '';
     // Editable name fields
@@ -1765,17 +1773,16 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       }
 
       const duplicateProduct = this.products.find(p => {
-        // Skip if same product (by ID or by matching barcodes for offline products)
+        // Skip if same product by ID
         if (p.id === this.editingProduct!.id) return false;
 
-        // For offline products (negative ID), also check if it's the same product by barcode match
-        if (this.editingProduct!.id < 0 && p.id < 0) {
-          const pBarcodes = [p.barcode1, p.barcode2, p.barcode3, p.barcode, p.sku]
-            .filter(b => b).map(b => b!.toLowerCase());
-          const editBarcodes = originalBarcodes;
-          const hasCommonBarcode = pBarcodes.some(pb => editBarcodes.includes(pb));
-          if (hasCommonBarcode) return false;
-        }
+        // Also skip if the product shares any original barcode with the editing product
+        // This handles: temp ID vs real ID mismatch after background sync,
+        // and offline products with different temp IDs
+        const pBarcodes = [p.barcode1, p.barcode2, p.barcode3, p.barcode, p.sku]
+          .filter(b => b).map(b => b!.toLowerCase());
+        const hasCommonBarcode = pBarcodes.some(pb => originalBarcodes.includes(pb));
+        if (hasCommonBarcode) return false;
 
         return (
           (p.sku && p.sku.toLowerCase() === barcodeValue) ||
@@ -1799,7 +1806,6 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       price: this.editPrice,
       originalPrice: this.editMrp,
       stockQuantity: this.editStock,
-      barcode: this.editBarcode,
       barcode1: this.editBarcode1,
       barcode2: this.editBarcode2,
       barcode3: this.editBarcode3,
@@ -1839,7 +1845,6 @@ export class PosBillingComponent implements OnInit, OnDestroy {
             formData.append('price', this.editPrice.toString());
             formData.append('originalPrice', this.editMrp.toString());
             formData.append('stockQuantity', this.editStock.toString());
-            if (this.editBarcode) formData.append('barcode', this.editBarcode);
             if (this.editBarcode1) formData.append('barcode1', this.editBarcode1);
             if (this.editBarcode2) formData.append('barcode2', this.editBarcode2);
             if (this.editBarcode3) formData.append('barcode3', this.editBarcode3);
@@ -2288,6 +2293,10 @@ export class PosBillingComponent implements OnInit, OnDestroy {
 
         if (navigator.onLine) {
           this.swal.success('Product Added', 'Product has been added and will sync shortly.');
+          // Trigger sync immediately when online
+          this.syncService.syncPendingProductCreations().then(() => {
+            console.log('Product creation synced after online create');
+          }).catch(err => console.warn('Auto-sync after creation failed:', err));
         } else {
           this.swal.success('Saved Offline', result.message);
         }

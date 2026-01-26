@@ -116,10 +116,6 @@ export class ShopContextService {
             localStorage.setItem('shop_name', shopName.trim());
           }
         } else {
-          // For shopowner1, use shop ID 11 as fallback
-          if (username === 'shopowner1') {
-            return this.getShopById(11);
-          }
           this.errorSubject.next('No shop found for this user');
         }
         

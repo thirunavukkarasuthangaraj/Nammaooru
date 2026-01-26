@@ -715,8 +715,23 @@ export class OfflineStorageService {
     if (existsInProducts) return true;
 
     // Check in pending offline creations
+    // If excludeProductId is provided, also skip pending creations that match
+    // (the product being edited might be in the pending creations store)
     const pendingCreations = await this.getPendingProductCreations();
     const existsInPending = pendingCreations.some(c => {
+      // Skip if this pending creation is for the product being edited
+      // Match by checking if the excluded product's barcodes overlap with this creation's barcodes
+      if (excludeProductId) {
+        const excludedProduct = products.find(p => p.id === excludeProductId);
+        if (excludedProduct) {
+          const excludedBarcodes = [excludedProduct.barcode1, excludedProduct.barcode2, excludedProduct.barcode3]
+            .filter(b => b).map(b => b!.toLowerCase());
+          const creationBarcodes = [c.barcode1, c.barcode2, c.barcode3]
+            .filter(b => b).map(b => b!.toLowerCase());
+          const isMatch = creationBarcodes.some(cb => excludedBarcodes.includes(cb));
+          if (isMatch) return false;
+        }
+      }
       return (
         (c.sku && c.sku.toLowerCase() === trimmedBarcode) ||
         (c.barcode1 && c.barcode1.toLowerCase() === trimmedBarcode) ||
@@ -978,13 +993,16 @@ export class OfflineStorageService {
    * Check if barcode already exists in local cache
    */
   async isBarcodeExistsLocally(barcode: string, excludeProductId?: number): Promise<boolean> {
+    if (!barcode || barcode.trim() === '') return false;
+
+    const trimmedBarcode = barcode.trim().toLowerCase();
     const products = await this.getProducts();
     return products.some(p =>
       p.id !== excludeProductId && (
-        p.barcode === barcode ||
-        p.barcode1 === barcode ||
-        p.barcode2 === barcode ||
-        p.barcode3 === barcode
+        (p.barcode && p.barcode.toLowerCase() === trimmedBarcode) ||
+        (p.barcode1 && p.barcode1.toLowerCase() === trimmedBarcode) ||
+        (p.barcode2 && p.barcode2.toLowerCase() === trimmedBarcode) ||
+        (p.barcode3 && p.barcode3.toLowerCase() === trimmedBarcode)
       )
     );
   }

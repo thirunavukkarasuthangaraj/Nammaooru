@@ -402,9 +402,14 @@ export class PosSyncService implements OnDestroy {
       return { synced: 0, failed: 0 };
     }
 
-    const pendingCreations = await this.offlineStorage.getPendingProductCreations();
+    const allPendingCreations = await this.offlineStorage.getPendingProductCreations();
+    // Only sync creations belonging to the current shop to prevent cross-shop syncing
+    const currentShopId = parseInt(localStorage.getItem('current_shop_id') || '0', 10);
+    const pendingCreations = currentShopId
+      ? allPendingCreations.filter(c => c.shopId === currentShopId)
+      : allPendingCreations;
     if (pendingCreations.length === 0) {
-      console.log('No pending product creations to sync');
+      console.log('No pending product creations to sync for current shop');
       return { synced: 0, failed: 0 };
     }
 
