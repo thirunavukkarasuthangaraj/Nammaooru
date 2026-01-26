@@ -1468,28 +1468,25 @@ export class PosBillingComponent implements OnInit, OnDestroy {
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin-top: 1mm;
+            margin-top: 0.5mm;
           }
           .barcode {
-            height: 9mm;
             display: flex;
             justify-content: center;
             align-items: center;
           }
           .barcode svg {
-            height: 100%;
-            width: auto;
-            max-width: 46mm;
+            height: 8mm;
           }
           .barcode-text {
-            font-size: 10px;
+            font-size: 9px;
             font-family: 'Courier New', monospace;
-            font-weight: 800;
-            letter-spacing: 2px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
             color: #000;
             text-align: center;
-            margin-top: 1mm;
-            padding-bottom: 1mm;
+            margin-top: 0.5mm;
+            padding-bottom: 0.5mm;
           }
         </style>
       </head>
@@ -1545,13 +1542,20 @@ export class PosBillingComponent implements OnInit, OnDestroy {
             }
             pattern += STOP;
 
-            // Generate SVG
-            const barWidth = 1;
-            const height = 40;
-            let svg = '<svg xmlns="http://www.w3.org/2000/svg" height="' + height + '" width="' + (pattern.length * barWidth) + '">';
+            // Generate SVG - scanner-friendly proportions
+            // Each module = 0.33mm, height = 8mm for 50x25mm labels
+            const moduleWidth = 0.33;
+            const quietZone = 10 * moduleWidth; // 10 modules quiet zone each side
+            const height = 8;
+            const totalWidth = (pattern.length * moduleWidth) + (quietZone * 2);
+
+            let svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + totalWidth.toFixed(2) + ' ' + height + '" width="' + totalWidth.toFixed(2) + 'mm" height="' + height + 'mm">';
+            // White background for quiet zones
+            svg += '<rect x="0" y="0" width="' + totalWidth.toFixed(2) + '" height="' + height + '" fill="white"/>';
             for (let i = 0; i < pattern.length; i++) {
               if (pattern[i] === '1') {
-                svg += '<rect x="' + (i * barWidth) + '" y="0" width="' + barWidth + '" height="' + height + '" fill="black"/>';
+                const x = quietZone + (i * moduleWidth);
+                svg += '<rect x="' + x.toFixed(3) + '" y="0" width="' + moduleWidth + '" height="' + height + '" fill="black"/>';
               }
             }
             svg += '</svg>';
