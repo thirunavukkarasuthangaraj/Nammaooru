@@ -934,19 +934,8 @@ export class OfflineStorageService {
     nameTamil?: string;
   }): Promise<boolean> {
     const pendingCreations = await this.getPendingProductCreations();
-    // Find creation by matching against the cached temp product
-    const products = await this.getProducts();
-    const tempProduct = products.find(p => p.id === tempProductId);
-    if (!tempProduct) return false;
-
-    // Match by name + shopId since barcode might be empty at creation time
-    const creation = pendingCreations.find(c => {
-      const nameMatch = (c.customName || c.name) === tempProduct.name;
-      const shopMatch = c.shopId === tempProduct.shopId;
-      // Also try barcode match if both have barcodes
-      const barcodeMatch = c.barcode1 && tempProduct.barcode1 && c.barcode1 === tempProduct.barcode1;
-      return (nameMatch && shopMatch) || barcodeMatch;
-    });
+    // Match directly by tempProductId stored in the creation record
+    const creation = pendingCreations.find(c => c.tempProductId === tempProductId);
     if (!creation) return false;
 
     // Merge changes into creation
