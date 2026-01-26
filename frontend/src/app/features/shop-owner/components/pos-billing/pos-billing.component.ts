@@ -1167,12 +1167,16 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       const editSyncResult = await this.syncService.syncPendingEdits();
       console.log('Edit sync result:', editSyncResult);
 
+      // Sync pending product creations
+      const productCreationResult = await this.syncService.syncPendingProductCreations();
+      console.log('Product creation sync result:', productCreationResult);
+
       // Refresh products
       await this.loadProducts();
       this.swal.close();
 
-      const totalSynced = orderSyncResult.synced + editSyncResult.synced;
-      const totalFailed = orderSyncResult.failed + editSyncResult.failed;
+      const totalSynced = orderSyncResult.synced + editSyncResult.synced + productCreationResult.synced;
+      const totalFailed = orderSyncResult.failed + editSyncResult.failed + productCreationResult.failed;
 
       if (totalSynced > 0 || totalFailed > 0) {
         if (totalFailed > 0) {
@@ -1183,6 +1187,10 @@ export class PosBillingComponent implements OnInit, OnDestroy {
           if (editSyncResult.synced > 0) {
             if (message) message += ', ';
             message += `${editSyncResult.synced} product edit(s)`;
+          }
+          if (productCreationResult.synced > 0) {
+            if (message) message += ', ';
+            message += `${productCreationResult.synced} product(s) created`;
           }
           this.swal.success('Synced', `${message} synced successfully`);
         }
