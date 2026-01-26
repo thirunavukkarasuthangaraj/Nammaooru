@@ -917,6 +917,58 @@ export class OfflineStorageService {
   }
 
   /**
+   * Apply edit changes to a pending offline product creation record.
+   * Used when a product is created offline, then edited offline before sync.
+   * The edit values are merged into the creation so the server gets the latest data.
+   */
+  async applyEditToProductCreation(tempProductId: number, changes: {
+    price?: number;
+    originalPrice?: number;
+    stockQuantity?: number;
+    barcode?: string;
+    barcode1?: string;
+    barcode2?: string;
+    barcode3?: string;
+    customName?: string;
+    nameTamil?: string;
+  }): Promise<boolean> {
+    const pendingCreations = await this.getPendingProductCreations();
+    // Find creation by matching barcode1 from products cache with temp ID
+    const products = await this.getProducts();
+    const tempProduct = products.find(p => p.id === tempProductId);
+    if (!tempProduct) return false;
+
+    const creation = pendingCreations.find(c =>
+      c.barcode1 && tempProduct.barcode1 && c.barcode1 === tempProduct.barcode1
+    );
+    if (!creation) return false;
+
+    // Merge changes into creation
+    if (changes.price !== undefined) creation.price = changes.price;
+    if (changes.originalPrice !== undefined) creation.originalPrice = changes.originalPrice;
+    if (changes.stockQuantity !== undefined) creation.stockQuantity = changes.stockQuantity;
+    if (changes.barcode1 !== undefined) creation.barcode1 = changes.barcode1;
+    if (changes.barcode2 !== undefined) creation.barcode2 = changes.barcode2;
+    if (changes.barcode3 !== undefined) creation.barcode3 = changes.barcode3;
+    if (changes.customName !== undefined) creation.customName = changes.customName;
+    if (changes.nameTamil !== undefined) creation.nameTamil = changes.nameTamil;
+
+    // Save updated creation back
+    const db = await this.getDB();
+    const transaction = db.transaction(PRODUCT_CREATIONS_STORE, 'readwrite');
+    const store = transaction.objectStore(PRODUCT_CREATIONS_STORE);
+
+    return new Promise((resolve, reject) => {
+      const request = store.put(creation);
+      request.onsuccess = () => {
+        console.log('Applied edit changes to offline creation:', creation.offlineProductId);
+        resolve(true);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
    * Add offline-created product to local products cache
    * This allows the product to be used immediately for billing
    */

@@ -70,8 +70,8 @@ export class PosSyncService implements OnDestroy {
         if (isOnline) {
           console.log('Network online - triggering sync');
           this.syncPendingOrders();
-          this.syncPendingEdits();  // Sync offline product edits
-          this.syncPendingProductCreations();  // Sync offline product creations
+          // Edits must sync before creations so offline edits merge into creation records first
+          this.syncPendingEdits().then(() => this.syncPendingProductCreations());
         } else {
           console.log('Network offline');
         }
@@ -359,9 +359,11 @@ export class PosSyncService implements OnDestroy {
     for (const edit of pendingEdits) {
       try {
         // Skip edits for offline-created products (negative temp IDs)
-        // These products don't exist on the server yet — product creation sync handles them
+        // These products don't exist on the server yet — merge edit into the creation record
+        // so the creation sync sends the latest values
         if (edit.productId < 0) {
-          console.log(`Skipping edit ${edit.editId} for offline product ${edit.productId} (temp ID)`);
+          console.log(`Merging edit ${edit.editId} into offline creation for temp product ${edit.productId}`);
+          await this.offlineStorage.applyEditToProductCreation(edit.productId, edit.changes);
           await this.offlineStorage.markEditSynced(edit.editId);
           await this.offlineStorage.removeOfflineEdit(edit.editId);
           synced++;
