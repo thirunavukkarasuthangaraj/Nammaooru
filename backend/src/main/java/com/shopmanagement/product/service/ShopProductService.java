@@ -123,7 +123,9 @@ public class ShopProductService {
             log.info("Creating master product for custom shop product: {}", request.getCustomName());
 
             String productName = request.getCustomName() != null ? request.getCustomName() : "Custom Product";
-            String sku = "CUSTOM-" + System.currentTimeMillis();
+            String sku = (request.getSku() != null && !request.getSku().trim().isEmpty())
+                    ? request.getSku().trim()
+                    : "CUSTOM-" + System.currentTimeMillis();
 
             // Resolve category: use provided categoryId, or find by name, or default to "General"
             ProductCategory category = null;
@@ -710,6 +712,22 @@ public class ShopProductService {
         shopProduct.setBarcode1(barcode1);
         shopProduct.setBarcode2(barcode2);
         shopProduct.setBarcode3(barcode3);
+
+        // Update SKU on master product
+        if (request.getSku() != null) {
+            MasterProduct masterProduct = shopProduct.getMasterProduct();
+            String newSku = request.getSku().trim().isEmpty() ? null : request.getSku().trim();
+
+            if (newSku != null) {
+                // Validate SKU is not duplicate
+                validateBarcodeNotDuplicate(barcodeShopId, newSku, productId);
+            }
+
+            masterProduct.setSku(newSku);
+            masterProduct.setUpdatedBy(getCurrentUsername());
+            masterProductRepository.save(masterProduct);
+            log.info("Updated SKU for master product {}: {}", masterProduct.getId(), newSku);
+        }
 
         shopProduct.setUpdatedBy(getCurrentUsername());
         ShopProduct updatedProduct = shopProductRepository.save(shopProduct);

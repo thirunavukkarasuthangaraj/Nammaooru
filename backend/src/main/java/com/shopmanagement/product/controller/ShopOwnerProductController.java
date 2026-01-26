@@ -547,6 +547,11 @@ public class ShopOwnerProductController {
                 request.setBarcode3(barcodeObj != null ? barcodeObj.toString() : null);
             }
 
+            if (updates.containsKey("sku")) {
+                Object skuObj = updates.get("sku");
+                request.setSku(skuObj != null ? skuObj.toString() : null);
+            }
+
             ShopProductResponse product = shopProductService.quickUpdateProduct(currentShop.getId(), productId, request);
 
             log.info("Product quick updated successfully for shop: {} (owner: {})", currentShop.getId(), currentUsername);
