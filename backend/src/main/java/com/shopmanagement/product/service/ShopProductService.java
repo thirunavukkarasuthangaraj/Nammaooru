@@ -3,11 +3,13 @@ package com.shopmanagement.product.service;
 import com.shopmanagement.product.dto.ShopProductRequest;
 import com.shopmanagement.product.dto.ShopProductResponse;
 import com.shopmanagement.product.entity.MasterProduct;
+import com.shopmanagement.product.entity.ProductCategory;
 import com.shopmanagement.product.entity.ShopProduct;
 import com.shopmanagement.product.entity.ShopProductImage;
 import com.shopmanagement.product.exception.ProductNotFoundException;
 import com.shopmanagement.product.mapper.ProductMapper;
 import com.shopmanagement.product.repository.MasterProductRepository;
+import com.shopmanagement.product.repository.ProductCategoryRepository;
 import com.shopmanagement.product.repository.ShopProductRepository;
 import com.shopmanagement.shop.entity.Shop;
 import com.shopmanagement.shop.exception.ShopNotFoundException;
@@ -36,6 +38,7 @@ public class ShopProductService {
     private final ShopProductRepository shopProductRepository;
     private final MasterProductRepository masterProductRepository;
     private final ShopRepository shopRepository;
+    private final ProductCategoryRepository categoryRepository;
     private final ProductMapper productMapper;
 
     @Transactional(readOnly = true)
@@ -122,6 +125,30 @@ public class ShopProductService {
             String productName = request.getCustomName() != null ? request.getCustomName() : "Custom Product";
             String sku = "CUSTOM-" + System.currentTimeMillis();
 
+            // Resolve category: use provided categoryId, or find by name, or default to "General"
+            ProductCategory category = null;
+            if (request.getCategoryId() != null) {
+                category = categoryRepository.findById(request.getCategoryId()).orElse(null);
+            }
+            if (category == null && request.getCategoryName() != null && !request.getCategoryName().isBlank()) {
+                category = categoryRepository.findByNameIgnoreCase(request.getCategoryName()).orElse(null);
+            }
+            if (category == null) {
+                // Find or create a default "General" category
+                category = categoryRepository.findByName("General").orElseGet(() -> {
+                    log.info("Creating default 'General' category for offline product creation");
+                    ProductCategory general = ProductCategory.builder()
+                            .name("General")
+                            .slug("general")
+                            .isActive(true)
+                            .sortOrder(0)
+                            .createdBy(getCurrentUsername())
+                            .updatedBy(getCurrentUsername())
+                            .build();
+                    return categoryRepository.save(general);
+                });
+            }
+
             masterProduct = MasterProduct.builder()
                     .name(productName)
                     .nameTamil(request.getNameTamil())
@@ -129,13 +156,14 @@ public class ShopProductService {
                     .sku(sku)
                     .barcode(request.getBarcode1())
                     .baseUnit(request.getBaseUnit() != null ? request.getBaseUnit() : "piece")
+                    .category(category)
                     .status(MasterProduct.ProductStatus.ACTIVE)
                     .createdBy(getCurrentUsername())
                     .updatedBy(getCurrentUsername())
                     .build();
 
             masterProduct = masterProductRepository.save(masterProduct);
-            log.info("Created master product with ID: {} for custom product: {}", masterProduct.getId(), productName);
+            log.info("Created master product with ID: {} for custom product: {} (category: {})", masterProduct.getId(), productName, category.getName());
         }
         
         // Create shop product

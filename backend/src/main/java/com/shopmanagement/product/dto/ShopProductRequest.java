@@ -98,4 +98,10 @@ public class ShopProductRequest {
     // Tamil name for the product
     @Size(max = 255, message = "Tamil name must be less than 255 characters")
     private String nameTamil;
+
+    // Category for auto-created master products (offline/custom product creation)
+    private Long categoryId;
+
+    @Size(max = 100, message = "Category name must be less than 100 characters")
+    private String categoryName;
 }

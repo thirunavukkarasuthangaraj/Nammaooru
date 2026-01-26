@@ -438,6 +438,8 @@ export class PosSyncService implements OnDestroy {
           barcode2: creation.barcode2,
           barcode3: creation.barcode3,
           nameTamil: creation.nameTamil,
+          categoryId: creation.categoryId,
+          categoryName: creation.categoryName,
           isAvailable: true,
           status: 'ACTIVE'
         };
