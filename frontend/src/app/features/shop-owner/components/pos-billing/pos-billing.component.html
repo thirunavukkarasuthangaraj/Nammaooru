@@ -96,7 +96,7 @@
             <div class="product-name">{{ getProductName(product) }}</div>
             <div class="product-name-secondary" *ngIf="showTamil && product.name">{{ product.name }}</div>
             <div class="product-name-secondary" *ngIf="!showTamil && product.nameTamil">{{ product.nameTamil }}</div>
-            <div class="product-sku">{{ product.barcode || product.sku }}</div>
+            <div class="product-sku" *ngIf="getDisplayBarcode(product)">{{ getDisplayBarcode(product) }}</div>
             <div class="product-price">₹{{ product.price }}</div>
             <div class="product-stock" *ngIf="product.trackInventory">
               <span [class.low-stock]="product.stock <= 5">Stock: {{ product.stock }}</span>

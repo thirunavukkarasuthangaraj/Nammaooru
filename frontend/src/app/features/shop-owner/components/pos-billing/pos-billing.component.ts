@@ -263,6 +263,17 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Get displayable barcode/SKU for product card.
+   * Hides auto-generated CUSTOM- SKUs since they are not meaningful to the user.
+   */
+  getDisplayBarcode(product: CachedProduct): string {
+    if (product.barcode1) return product.barcode1;
+    if (product.barcode) return product.barcode;
+    if (product.sku && !product.sku.startsWith('CUSTOM-')) return product.sku;
+    return '';
+  }
+
+  /**
    * Handle image load error
    */
   onImageError(event: Event): void {
