@@ -382,9 +382,12 @@ public class BulkProductImportService {
                     .findByShopIdAndMasterProductId(shopId, masterProduct.getId());
 
             if (existingShopProduct.isPresent()) {
-                // Shop already has this product - just update the image
-                shopProductId = existingShopProduct.get().getId();
-                log.info("Shop already has product (ID: {}), updating image only", shopProductId);
+                // Shop already has this product - update prices and fields
+                ShopProduct existing = existingShopProduct.get();
+                shopProductId = existing.getId();
+                ShopProductRequest shopProductRequest = buildShopProductRequest(request, masterProduct.getId());
+                shopProductService.updateShopProduct(shopId, shopProductId, shopProductRequest);
+                log.info("Shop already has product (ID: {}), updated prices and fields", shopProductId);
             } else {
                 // Create new shop product
                 ShopProductRequest shopProductRequest = buildShopProductRequest(request, masterProduct.getId());
@@ -405,7 +408,7 @@ public class BulkProductImportService {
             }
 
             String message = existingShopProduct.isPresent()
-                    ? "Product exists - image updated"
+                    ? "Product exists - prices and image updated"
                     : "Product imported successfully";
 
             return BulkImportResponse.ImportResult.builder()
