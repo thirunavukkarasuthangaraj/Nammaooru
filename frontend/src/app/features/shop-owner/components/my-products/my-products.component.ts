@@ -39,6 +39,7 @@ interface ShopProduct {
   customName: string;
   description?: string;
   price: number;
+  originalPrice?: number;
   costPrice?: number;
   stockQuantity: number;
   isAvailable: boolean;
