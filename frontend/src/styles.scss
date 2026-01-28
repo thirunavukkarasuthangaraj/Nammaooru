@@ -144,12 +144,12 @@ $professional-warn: mat.define-palette((
 // Professional Typography Configuration - Modern Angular Material
 $professional-typography: mat.define-typography-config(
   $font-family: '"Inter", "Roboto", "Helvetica Neue", Arial, sans-serif',
-  $headline-1: mat.define-typography-level(96px, 96px, 300, 'Poppins', -1.5px),
-  $headline-2: mat.define-typography-level(60px, 60px, 300, 'Poppins', -0.5px),
-  $headline-3: mat.define-typography-level(48px, 48px, 400, 'Poppins', 0px),
-  $headline-4: mat.define-typography-level(34px, 40px, 400, 'Poppins', 0.25px),
-  $headline-5: mat.define-typography-level(24px, 32px, 600, 'Poppins', 0px),
-  $headline-6: mat.define-typography-level(20px, 32px, 600, 'Poppins', 0.15px),
+  $headline-1: mat.define-typography-level(96px, 96px, 300, 'Inter', -1.5px),
+  $headline-2: mat.define-typography-level(60px, 60px, 300, 'Inter', -0.5px),
+  $headline-3: mat.define-typography-level(48px, 48px, 400, 'Inter', 0px),
+  $headline-4: mat.define-typography-level(34px, 40px, 400, 'Inter', 0.25px),
+  $headline-5: mat.define-typography-level(24px, 32px, 600, 'Inter', 0px),
+  $headline-6: mat.define-typography-level(20px, 32px, 600, 'Inter', 0.15px),
   $subtitle-1: mat.define-typography-level(16px, 28px, 500, 'Inter', 0.15px),
   $subtitle-2: mat.define-typography-level(14px, 22px, 500, 'Inter', 0.1px),
   $body-1: mat.define-typography-level(16px, 24px, 400, 'Inter', 0.5px),
@@ -394,7 +394,7 @@ body {
 
 /* Professional Typography Classes */
 .heading-1 {
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: var(--font-size-5xl);
   font-weight: var(--font-weight-bold);
   line-height: var(--line-height-tight);
@@ -402,7 +402,7 @@ body {
 }
 
 .heading-2 {
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: var(--font-size-4xl);
   font-weight: var(--font-weight-bold);
   line-height: var(--line-height-tight);
@@ -410,7 +410,7 @@ body {
 }
 
 .heading-3 {
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: var(--font-size-3xl);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-snug);
@@ -418,7 +418,7 @@ body {
 }
 
 .heading-4 {
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-snug);
@@ -546,7 +546,7 @@ body {
 }
 
 .professional-card-title {
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
   color: var(--text-primary);
@@ -620,7 +620,7 @@ body {
 }
 
 .nav-brand {
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
   color: var(--primary-600);

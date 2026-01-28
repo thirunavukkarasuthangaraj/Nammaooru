@@ -1097,15 +1097,16 @@ export class MyProductsComponent implements OnInit, OnDestroy {
     const cachedProducts: CachedProduct[] = serverProducts.map(p => ({
       id: p.id,
       shopId: this.shopId || 0,
-      name: p.customName,
+      name: p.customName || '',
       nameTamil: p.masterProduct?.nameTamil,
       description: p.description,
       price: p.price,
       originalPrice: p.originalPrice,
       costPrice: p.costPrice,
       stock: p.stockQuantity,
+      trackInventory: true,
       isAvailable: p.isAvailable,
-      sku: p.sku,
+      sku: p.sku || '',
       barcode: p.barcode,
       barcode1: p.barcode1,
       barcode2: p.barcode2,
@@ -1116,7 +1117,7 @@ export class MyProductsComponent implements OnInit, OnDestroy {
       masterProductId: p.masterProductId
     }));
 
-    this.offlineStorage.saveProducts(cachedProducts).then(() => {
+    this.offlineStorage.saveProducts(cachedProducts, this.shopId || 0).then(() => {
       console.log(`Saved ${cachedProducts.length} products to IndexedDB cache`);
     }).catch(err => {
       console.warn('Failed to save products to cache:', err);
