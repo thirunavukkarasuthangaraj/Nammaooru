@@ -297,58 +297,60 @@
         </div>
       </div>
 
-      <!-- Customer Info (Collapsible) -->
-      <div class="customer-section">
-        <button mat-button (click)="toggleCustomerForm()" class="customer-toggle">
-          <mat-icon>{{ showCustomerForm ? 'expand_less' : 'expand_more' }}</mat-icon>
-          Customer Details (Optional)
-        </button>
-        <div *ngIf="showCustomerForm" class="customer-form">
-          <input type="text" [(ngModel)]="customerName" placeholder="Customer Name" class="customer-input">
-          <input type="tel" [(ngModel)]="customerPhone" placeholder="Phone Number" class="customer-input">
-          <input type="text" [(ngModel)]="orderNotes" placeholder="Notes" class="customer-input">
-        </div>
-      </div>
-
-      <!-- Totals -->
-      <div class="totals-section" *ngIf="cart.length > 0">
-        <div class="total-row mrp-total" *ngIf="totalDiscount > 0">
-          <span>MRP Total</span>
-          <span class="mrp-value">₹{{ totalMrp | number:'1.0-0' }}</span>
-        </div>
-        <div class="total-row discount-total" *ngIf="totalDiscount > 0">
-          <span>Discount</span>
-          <span class="discount-value">- ₹{{ totalDiscount | number:'1.0-0' }}</span>
-        </div>
-        <div class="total-row grand-total">
-          <span>TOTAL</span>
-          <span>₹{{ totalAmount | number:'1.0-0' }}</span>
-        </div>
-      </div>
-
-      <!-- Payment Methods -->
-      <div class="payment-section" *ngIf="cart.length > 0">
-        <div class="payment-label">Payment Method</div>
-        <div class="payment-options">
-          <button *ngFor="let method of paymentMethods"
-                  mat-stroked-button
-                  [class.selected]="selectedPaymentMethod === method.value"
-                  (click)="selectedPaymentMethod = method.value">
-            <mat-icon>{{ method.icon }}</mat-icon>
-            {{ method.label }}
+      <!-- Cart Footer - fixed at bottom -->
+      <div class="cart-footer">
+        <!-- Customer Info (Collapsible) -->
+        <div class="customer-section">
+          <button mat-button (click)="toggleCustomerForm()" class="customer-toggle">
+            <mat-icon>{{ showCustomerForm ? 'expand_less' : 'expand_more' }}</mat-icon>
+            Customer Details (Optional)
           </button>
+          <div *ngIf="showCustomerForm" class="customer-form">
+            <input type="text" [(ngModel)]="customerName" placeholder="Customer Name" class="customer-input">
+            <input type="tel" [(ngModel)]="customerPhone" placeholder="Phone Number" class="customer-input">
+            <input type="text" [(ngModel)]="orderNotes" placeholder="Notes" class="customer-input">
+          </div>
         </div>
-      </div>
 
-      <!-- Generate Bill Button -->
-      <button mat-raised-button
-              color="primary"
-              class="generate-btn"
-              [disabled]="cart.length === 0"
-              (click)="generateBill()">
-        <mat-icon>receipt_long</mat-icon>
-        Generate Bill - ₹{{ totalAmount | number:'1.0-0' }}
-      </button>
+        <!-- Totals -->
+        <div class="totals-section" *ngIf="cart.length > 0">
+          <div class="total-row mrp-total" *ngIf="totalDiscount > 0">
+            <span>MRP Total</span>
+            <span class="mrp-value">₹{{ totalMrp | number:'1.0-0' }}</span>
+          </div>
+          <div class="total-row discount-total" *ngIf="totalDiscount > 0">
+            <span>Discount</span>
+            <span class="discount-value">- ₹{{ totalDiscount | number:'1.0-0' }}</span>
+          </div>
+          <div class="total-row grand-total">
+            <span>TOTAL</span>
+            <span>₹{{ totalAmount | number:'1.0-0' }}</span>
+          </div>
+        </div>
+
+        <!-- Payment Methods -->
+        <div class="payment-section" *ngIf="cart.length > 0">
+          <div class="payment-label">Payment Method</div>
+          <div class="payment-options">
+            <button *ngFor="let method of paymentMethods"
+                    mat-stroked-button
+                    [class.selected]="selectedPaymentMethod === method.value"
+                    (click)="selectedPaymentMethod = method.value">
+              {{ method.label }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Generate Bill Button -->
+        <button mat-raised-button
+                color="primary"
+                class="generate-btn"
+                [disabled]="cart.length === 0"
+                (click)="generateBill()">
+          <mat-icon>receipt_long</mat-icon>
+          Generate Bill - ₹{{ totalAmount | number:'1.0-0' }}
+        </button>
+      </div>
     </div>
   </div>
 

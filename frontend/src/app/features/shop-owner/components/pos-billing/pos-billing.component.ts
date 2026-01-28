@@ -1182,6 +1182,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
             }
+            .no-print { display: none !important; }
           }
           body {
             font-family: 'Noto Sans Tamil', 'Latha', 'Tamil Sangam MN', Arial, sans-serif;
@@ -1328,6 +1329,30 @@ export class PosBillingComponent implements OnInit, OnDestroy {
         <div class="center footer-text">
           Thank you for your order!<br>
           Printed: ${new Date().toLocaleString('en-IN')}
+        </div>
+
+        <!-- Print Button (hidden during print) -->
+        <div class="no-print" style="margin-top: 15px; text-align: center;">
+          <button onclick="window.print()" style="
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+          ">🖨️ PRINT</button>
+          <button onclick="window.close()" style="
+            background: #666;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 14px;
+            border-radius: 5px;
+            cursor: pointer;
+          ">Close</button>
         </div>
       </body>
       </html>

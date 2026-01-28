@@ -14,7 +14,8 @@ $text-secondary: #7f8c8d;
 .pos-billing-container {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: calc(100vh - 130px); // Account for main layout header + breadcrumb
+  max-height: calc(100vh - 130px);
   background: $light-bg;
   overflow: hidden;
 }
@@ -1460,9 +1461,18 @@ $text-secondary: #7f8c8d;
     }
   }
 
+  // Cart footer - fixed at bottom, doesn't scroll
+  .cart-footer {
+    flex-shrink: 0;
+    border-top: 1px solid $border;
+    background: white;
+    max-height: 45%;
+    overflow-y: auto;
+  }
+
   .customer-section {
     border-top: 1px solid $border;
-    padding: 12px;
+    padding: 8px 12px;
 
     .customer-toggle {
       width: 100%;
