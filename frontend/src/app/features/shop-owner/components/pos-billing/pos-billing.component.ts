@@ -53,6 +53,10 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   searchTerm: string = '';
   barcodeBuffer: string = '';
 
+  // Barcode debounce to prevent duplicate scans
+  private lastScannedBarcode: string = '';
+  private lastScanTime: number = 0;
+
   // Cart
   cart: CartItem[] = [];
   subtotal: number = 0;
@@ -658,6 +662,17 @@ export class PosBillingComponent implements OnInit, OnDestroy {
    * Handle barcode scan
    */
   handleBarcodeScan(barcode: string): void {
+    const now = Date.now();
+
+    // Prevent duplicate scans - ignore if same barcode within 500ms
+    if (barcode === this.lastScannedBarcode && (now - this.lastScanTime) < 500) {
+      console.log('Ignoring duplicate barcode scan:', barcode);
+      return;
+    }
+
+    this.lastScannedBarcode = barcode;
+    this.lastScanTime = now;
+
     console.log('Barcode scanned:', barcode);
 
     // Find in loaded products by barcode, barcode1, barcode2, barcode3, or SKU
