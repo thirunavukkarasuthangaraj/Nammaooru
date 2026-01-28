@@ -1,5 +1,5 @@
 <div class="pos-billing-container">
-  <!-- Compact Header with all controls on left -->
+  <!-- Compact Header with all controls in one row -->
   <div class="pos-header">
     <div class="header-left">
       <h1>POS Billing</h1>
@@ -21,18 +21,26 @@
         <span *ngIf="!syncStatus.isOnline">Offline</span>
         <span *ngIf="syncStatus.isSyncing">Syncing...</span>
       </div>
-    </div>
-    <div class="header-right">
-      <!-- Pending Items Badge (orders + edits + products) -->
+      <!-- Pending Items Badge -->
       <div class="pending-badge" *ngIf="getTotalPendingCount() > 0" (click)="manualSync()">
         <mat-icon>sync_problem</mat-icon>
         <span>{{ getTotalPendingCount() }} pending</span>
       </div>
       <!-- Sync Button -->
       <button mat-icon-button (click)="manualSync()" [disabled]="!syncStatus.isOnline || syncStatus.isSyncing"
-              title="Sync Now">
+              title="Sync Now" class="sync-btn">
         <mat-icon>sync</mat-icon>
       </button>
+    </div>
+    <!-- Cart Header in top row -->
+    <div class="header-right">
+      <div class="cart-header-inline">
+        <mat-icon>shopping_cart</mat-icon>
+        <span>Cart ({{ cart.length }})</span>
+        <button mat-icon-button class="clear-cart-btn" *ngIf="cart.length > 0" (click)="clearCart()" title="Clear Cart">
+          <mat-icon>delete_outline</mat-icon>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -268,19 +276,8 @@
       </div>
     </div>
 
-    <!-- Right Panel: Cart & Billing -->
-    <div class="cart-panel">
-      <!-- Cart Header -->
-      <div class="cart-header">
-        <h2>
-          <mat-icon>shopping_cart</mat-icon>
-          Cart ({{ cart.length }})
-        </h2>
-        <button mat-icon-button color="warn" (click)="clearCart()" *ngIf="cart.length > 0" title="Clear Cart">
-          <mat-icon>delete_sweep</mat-icon>
-        </button>
-      </div>
-
+    <!-- Right Panel: Cart & Billing (header moved to top) -->
+    <div class="cart-panel no-header">
       <!-- Cart Items -->
       <div class="cart-items">
         <div *ngFor="let item of cart" class="cart-item">

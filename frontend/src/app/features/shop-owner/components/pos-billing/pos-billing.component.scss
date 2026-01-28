@@ -54,6 +54,47 @@ $text-secondary: #7f8c8d;
     gap: 8px;
   }
 
+  .sync-btn {
+    mat-icon {
+      font-size: 20px;
+    }
+  }
+
+  .cart-header-inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    background: linear-gradient(135deg, $accent 0%, darken($accent, 10%) 100%);
+    border-radius: 8px;
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+
+    mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+
+    .clear-cart-btn {
+      width: 24px;
+      height: 24px;
+      line-height: 24px;
+
+      mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+        color: rgba(255, 255, 255, 0.8);
+      }
+
+      &:hover mat-icon {
+        color: white;
+      }
+    }
+  }
+
   .language-toggle {
     display: flex;
     align-items: center;
@@ -236,14 +277,14 @@ $text-secondary: #7f8c8d;
     }
   }
 
-  // Tab Header Styles
+  // Tab Header Styles - compact
   .pos-tabs {
     display: flex;
     gap: 4px;
-    margin-bottom: 8px;
-    padding: 4px;
+    margin-bottom: 6px;
+    padding: 3px;
     background: white;
-    border-radius: 8px;
+    border-radius: 6px;
     border: 1px solid $border;
 
     .tab-btn {
@@ -251,21 +292,21 @@ $text-secondary: #7f8c8d;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      padding: 12px 20px;
+      gap: 6px;
+      padding: 8px 12px;
       border: none;
       background: transparent;
-      border-radius: 8px;
-      font-size: 14px;
+      border-radius: 6px;
+      font-size: 13px;
       font-weight: 500;
       color: $text-secondary;
       cursor: pointer;
       transition: all 0.2s ease;
 
       mat-icon {
-        font-size: 20px;
-        width: 20px;
-        height: 20px;
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
       }
 
       &:hover {
@@ -276,7 +317,7 @@ $text-secondary: #7f8c8d;
       &.active {
         background: linear-gradient(135deg, $accent 0%, #2980b9 100%);
         color: white;
-        box-shadow: 0 4px 12px rgba($accent, 0.3);
+        box-shadow: 0 2px 8px rgba($accent, 0.3);
 
         mat-icon {
           color: white;
@@ -1174,6 +1215,13 @@ $text-secondary: #7f8c8d;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+
+  &.no-header {
+    // Header moved to top row - no extra padding needed
+    .cart-items {
+      padding-top: 8px;
+    }
+  }
 
   .cart-header {
     display: flex;
