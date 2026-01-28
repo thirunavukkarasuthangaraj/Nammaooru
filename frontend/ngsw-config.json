@@ -43,34 +43,13 @@
       }
     },
     {
-      "name": "api-images",
+      "name": "images",
       "urls": [
-        "/uploads/**",
-        "/api/uploads/**",
-        "**/uploads/**",
-        "https://api.nammaoorudelivary.in/uploads/**",
-        "https://api.nammaoorudelivary.in/api/uploads/**",
-        "https://storage.googleapis.com/**",
-        "https://*.googleusercontent.com/**",
-        "https://firebasestorage.googleapis.com/**"
+        "/uploads/**"
       ],
       "cacheConfig": {
         "maxSize": 1000,
         "maxAge": "30d",
-        "timeout": "5s",
-        "strategy": "performance"
-      }
-    },
-    {
-      "name": "external-images",
-      "urls": [
-        "https://images.unsplash.com/**",
-        "https://*.cloudinary.com/**",
-        "https://*.amazonaws.com/**"
-      ],
-      "cacheConfig": {
-        "maxSize": 200,
-        "maxAge": "7d",
         "timeout": "5s",
         "strategy": "performance"
       }

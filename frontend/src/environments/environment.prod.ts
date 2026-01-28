@@ -3,7 +3,7 @@ import packageInfo from '../../package.json';
 export const environment = {
   production: true,
   apiUrl: 'https://api.nammaoorudelivary.in/api',
-  imageBaseUrl: 'https://api.nammaoorudelivary.in', // Images served from backend API
+  imageBaseUrl: '', // Images served from same origin via nginx proxy (enables service worker caching)
   appUrl: 'https://nammaoorudelivary.in',
   googleMapsApiKey: 'AIzaSyAr_uGbaOnhebjRyz7ohU6N-hWZJVV_R3U',
   websocketUrl: 'wss://api.nammaoorudelivary.in/ws',
