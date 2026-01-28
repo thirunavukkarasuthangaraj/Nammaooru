@@ -73,6 +73,7 @@ export interface OfflineEdit {
     netQty?: string;
     packedDate?: string;
     expiryDate?: string;
+    isAvailable?: boolean;
   };
   previousValues: {
     price?: number;
@@ -88,6 +89,7 @@ export interface OfflineEdit {
     netQty?: string;
     packedDate?: string;
     expiryDate?: string;
+    isAvailable?: boolean;
   };
   createdAt: string;
   synced: boolean;
