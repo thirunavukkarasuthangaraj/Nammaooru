@@ -106,6 +106,10 @@ export class MyProductsComponent implements OnInit, OnDestroy {
   // Track if loaded from cache
   loadedFromCache = false;
 
+  // Cache timing - only sync from server if cache is older than this (in ms)
+  private readonly CACHE_VALIDITY_MS = 5 * 60 * 1000; // 5 minutes
+  private readonly CACHE_TIMESTAMP_KEY = 'my_products_last_sync';
+
   constructor(
     private router: Router,
     private dialog: MatDialog,
@@ -233,12 +237,32 @@ export class MyProductsComponent implements OnInit, OnDestroy {
       console.warn('Error loading from cache:', error);
     }
 
-    // Step 2: Sync from server in background (only if online)
+    // Step 2: Sync from server (only if online AND cache is stale)
     if (navigator.onLine) {
-      this.syncProductsFromServer();
+      const lastSync = localStorage.getItem(this.CACHE_TIMESTAMP_KEY);
+      const lastSyncTime = lastSync ? parseInt(lastSync, 10) : 0;
+      const cacheAge = Date.now() - lastSyncTime;
+
+      if (!this.loadedFromCache || cacheAge > this.CACHE_VALIDITY_MS) {
+        // No cache or cache is old - sync from server
+        console.log('Cache is stale or empty, syncing from server...');
+        this.syncProductsFromServer();
+      } else {
+        // Cache is fresh - skip API call
+        console.log(`Using cached data (age: ${Math.round(cacheAge / 1000)}s, max: ${this.CACHE_VALIDITY_MS / 1000}s)`);
+        this.loading = false;
+      }
     } else {
       this.loading = false;
     }
+  }
+
+  /**
+   * Force refresh products from server (ignores cache)
+   */
+  forceRefreshProducts(): void {
+    localStorage.removeItem(this.CACHE_TIMESTAMP_KEY);
+    this.loadProducts();
   }
 
   /**
@@ -1118,6 +1142,8 @@ export class MyProductsComponent implements OnInit, OnDestroy {
     }));
 
     this.offlineStorage.saveProducts(cachedProducts, this.shopId || 0).then(() => {
+      // Save timestamp for cache validity check
+      localStorage.setItem(this.CACHE_TIMESTAMP_KEY, Date.now().toString());
       console.log(`Saved ${cachedProducts.length} products to IndexedDB cache`);
     }).catch(err => {
       console.warn('Failed to save products to cache:', err);
@@ -1246,8 +1272,10 @@ export class MyProductsComponent implements OnInit, OnDestroy {
   }
 
   refreshProducts(): void {
+    // Force refresh by clearing cache timestamp
+    localStorage.removeItem(this.CACHE_TIMESTAMP_KEY);
     this.loadProducts();
-    this.snackBar.open('Products refreshed', 'Close', { duration: 2000 });
+    this.snackBar.open('Products refreshed from server', 'Close', { duration: 2000 });
   }
   
   private handleError(message: string): void {
