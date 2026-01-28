@@ -1,11 +1,9 @@
 <div class="pos-billing-container">
-  <!-- Header with Sync Status -->
+  <!-- Compact Header with all controls on left -->
   <div class="pos-header">
     <div class="header-left">
       <h1>POS Billing</h1>
       <span class="shop-name">{{ shopName }}</span>
-    </div>
-    <div class="header-right">
       <!-- Language Toggle -->
       <div class="language-toggle">
         <span class="lang-label" [class.active]="!showTamil">EN</span>
@@ -16,7 +14,6 @@
         </mat-slide-toggle>
         <span class="lang-label" [class.active]="showTamil">தமிழ்</span>
       </div>
-
       <!-- Offline/Online Status -->
       <div class="sync-status" [class.offline]="!syncStatus.isOnline" [class.syncing]="syncStatus.isSyncing">
         <mat-icon>{{ syncStatus.isOnline ? 'cloud_done' : 'cloud_off' }}</mat-icon>
@@ -24,13 +21,13 @@
         <span *ngIf="!syncStatus.isOnline">Offline</span>
         <span *ngIf="syncStatus.isSyncing">Syncing...</span>
       </div>
-
+    </div>
+    <div class="header-right">
       <!-- Pending Items Badge (orders + edits + products) -->
       <div class="pending-badge" *ngIf="getTotalPendingCount() > 0" (click)="manualSync()">
         <mat-icon>sync_problem</mat-icon>
         <span>{{ getTotalPendingCount() }} pending</span>
       </div>
-
       <!-- Sync Button -->
       <button mat-icon-button (click)="manualSync()" [disabled]="!syncStatus.isOnline || syncStatus.isSyncing"
               title="Sync Now">

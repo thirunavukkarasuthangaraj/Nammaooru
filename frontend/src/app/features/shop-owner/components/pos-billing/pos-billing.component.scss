@@ -19,34 +19,39 @@ $text-secondary: #7f8c8d;
   overflow: hidden;
 }
 
-// Header
+// Header - compact single row
 .pos-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 24px;
+  padding: 6px 12px;
   background: white;
   border-bottom: 1px solid $border;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 
   .header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
     h1 {
       margin: 0;
-      font-size: 24px;
+      font-size: 16px;
       font-weight: 600;
       color: $primary;
     }
 
     .shop-name {
-      font-size: 14px;
+      font-size: 12px;
       color: $text-secondary;
+      padding-right: 8px;
+      border-right: 1px solid $border;
     }
   }
 
   .header-right {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 8px;
   }
 
   .language-toggle {
@@ -148,12 +153,13 @@ $text-secondary: #7f8c8d;
   overflow: hidden;
 }
 
-// Products Panel (Left)
+// Products Panel (Left) - shrinks to give cart priority
 .products-panel {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  padding: 16px;
+  padding: 8px 12px;
   overflow: hidden;
 
   .search-section {
@@ -233,11 +239,11 @@ $text-secondary: #7f8c8d;
   // Tab Header Styles
   .pos-tabs {
     display: flex;
-    gap: 8px;
-    margin-bottom: 16px;
+    gap: 4px;
+    margin-bottom: 8px;
     padding: 4px;
     background: white;
-    border-radius: 12px;
+    border-radius: 8px;
     border: 1px solid $border;
 
     .tab-btn {
@@ -1158,10 +1164,11 @@ $text-secondary: #7f8c8d;
   }
 }
 
-// Cart Panel (Right)
+// Cart Panel (Right) - ensure always visible
 .cart-panel {
-  width: 420px;
-  min-width: 380px;
+  width: 380px;
+  min-width: 340px;
+  flex-shrink: 0;
   background: white;
   border-left: 1px solid $border;
   display: flex;
