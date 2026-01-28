@@ -287,7 +287,66 @@ $text-secondary: #7f8c8d;
     overflow: hidden;
   }
 
-  // Quick Bill Tab Styles
+  // Single Search Bar for Quick Bill
+  .quick-search-bar {
+    display: flex;
+    align-items: center;
+    background: white;
+    border: 2px solid $border;
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    transition: all 0.2s ease;
+
+    &:focus-within {
+      border-color: $accent;
+      box-shadow: 0 0 0 4px rgba($accent, 0.1);
+    }
+
+    .search-icon {
+      color: $accent;
+      font-size: 24px;
+      width: 24px;
+      height: 24px;
+      margin-right: 12px;
+    }
+
+    .quick-search-input {
+      flex: 1;
+      border: none;
+      outline: none;
+      font-size: 16px;
+      background: transparent;
+      color: $text-primary;
+
+      &::placeholder {
+        color: lighten($text-secondary, 10%);
+      }
+    }
+
+    .barcode-icon {
+      color: $text-secondary;
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+      margin-left: 8px;
+      opacity: 0.5;
+    }
+
+    .clear-btn {
+      margin-left: 8px;
+      width: 28px;
+      height: 28px;
+
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+    }
+  }
+
+  // Quick Bill Tab Styles (old - keep for backward compatibility)
   .quick-search-section {
     display: flex;
     gap: 12px;

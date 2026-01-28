@@ -657,6 +657,31 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Handle Enter key in Quick Bill search - if exact barcode match, auto-add to cart
+   */
+  onQuickSearchEnter(): void {
+    if (!this.searchTerm.trim()) return;
+
+    // Check for exact barcode/SKU match
+    const exactMatch = this.products.find(p =>
+      p.barcode === this.searchTerm ||
+      p.barcode1 === this.searchTerm ||
+      p.barcode2 === this.searchTerm ||
+      p.barcode3 === this.searchTerm ||
+      p.sku === this.searchTerm
+    );
+
+    if (exactMatch) {
+      // Exact barcode match - add to cart and clear
+      this.addToCart(exactMatch);
+      this.playBeep(true);
+      this.searchTerm = '';
+      this.onSearchChange();
+    }
+    // If no exact match, just keep showing filtered results
+  }
+
   // ========== Temp Price/Qty Methods for Quick Bill (not saved to DB) ==========
 
   /**

@@ -56,31 +56,21 @@
 
       <!-- Quick Bill Tab Content - Only show searched/scanned products -->
       <div class="tab-content" *ngIf="activeTab === 'quick'">
-        <!-- Search Section -->
-        <div class="search-section">
-          <div class="search-row">
-            <div class="search-box">
-              <mat-icon>search</mat-icon>
-              <input #searchInput
-                     type="text"
-                     [(ngModel)]="searchTerm"
-                     (input)="onSearchChange()"
-                     placeholder="Search products by name, SKU, or barcode..."
-                     class="search-input">
-              <button *ngIf="searchTerm" mat-icon-button (click)="searchTerm = ''; onSearchChange()">
-                <mat-icon>close</mat-icon>
-              </button>
-            </div>
-            <div class="barcode-box">
-              <mat-icon>qr_code_scanner</mat-icon>
-              <input #barcodeInput
-                     type="text"
-                     [(ngModel)]="barcodeBuffer"
-                     (keyup.enter)="onBarcodeSubmit()"
-                     placeholder="Scan barcode..."
-                     class="barcode-input">
-            </div>
-          </div>
+        <!-- Single Search/Scan Input -->
+        <div class="quick-search-bar">
+          <mat-icon class="search-icon">search</mat-icon>
+          <input #searchInput
+                 type="text"
+                 [(ngModel)]="searchTerm"
+                 (input)="onSearchChange()"
+                 (keyup.enter)="onQuickSearchEnter()"
+                 placeholder="Search or scan barcode..."
+                 class="quick-search-input"
+                 autofocus>
+          <mat-icon class="barcode-icon">qr_code_scanner</mat-icon>
+          <button *ngIf="searchTerm" mat-icon-button class="clear-btn" (click)="searchTerm = ''; onSearchChange()">
+            <mat-icon>close</mat-icon>
+          </button>
         </div>
 
         <!-- Empty State - Show when no search/scan -->
