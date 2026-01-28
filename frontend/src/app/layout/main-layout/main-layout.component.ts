@@ -459,12 +459,13 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       .subscribe(shop => {
         if (shop) {
           this.shopName = shop.name || shop.businessName || '';
-          // Get logo from shop images
-          const logoImage = shop.images?.find((img: any) => img.isPrimary || img.type === 'LOGO');
+          // Get logo from shop images (cast to any for flexibility)
+          const shopAny = shop as any;
+          const logoImage = shopAny.images?.find((img: any) => img.isPrimary || img.type === 'LOGO');
           if (logoImage?.imageUrl) {
             this.shopLogoUrl = getImageUrl(logoImage.imageUrl);
-          } else if (shop.logoUrl) {
-            this.shopLogoUrl = getImageUrl(shop.logoUrl);
+          } else if (shopAny.logoUrl) {
+            this.shopLogoUrl = getImageUrl(shopAny.logoUrl);
           }
         }
       });
@@ -493,7 +494,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
 
   isShopOwner(): boolean {
     const user = this.authService.getCurrentUser();
-    return user && (user.role === 'SHOP_OWNER' || (user.role as any) === UserRole.SHOP_OWNER);
+    return !!(user && (user.role === 'SHOP_OWNER' || (user.role as any) === UserRole.SHOP_OWNER));
   }
   
   private loadVersionInfo(): void {
