@@ -863,6 +863,190 @@ $text-secondary: #7f8c8d;
         }
       }
     }
+
+    // Billing Controls for Quick Bill mode
+    .billing-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px dashed $border;
+
+      .price-edit {
+        display: flex;
+        align-items: center;
+        background: $light-bg;
+        border: 1px solid $border;
+        border-radius: 6px;
+        padding: 4px 8px;
+        flex: 1;
+
+        .price-label {
+          font-size: 14px;
+          font-weight: 600;
+          color: $accent;
+          margin-right: 2px;
+        }
+
+        .price-input {
+          width: 50px;
+          border: none;
+          background: transparent;
+          font-size: 14px;
+          font-weight: 600;
+          color: $text-primary;
+          outline: none;
+          text-align: left;
+
+          &::-webkit-inner-spin-button,
+          &::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+          }
+          -moz-appearance: textfield;
+        }
+      }
+
+      .qty-controls {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        background: $light-bg;
+        border: 1px solid $border;
+        border-radius: 6px;
+        padding: 2px;
+
+        .qty-btn {
+          width: 24px;
+          height: 24px;
+          border: none;
+          background: white;
+          border-radius: 4px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.15s;
+
+          mat-icon {
+            font-size: 16px;
+            width: 16px;
+            height: 16px;
+            color: $text-secondary;
+          }
+
+          &:hover {
+            background: $accent;
+            mat-icon {
+              color: white;
+            }
+          }
+
+          &.minus:hover {
+            background: $danger;
+          }
+
+          &.plus:hover {
+            background: $success;
+          }
+        }
+
+        .qty-value {
+          font-size: 14px;
+          font-weight: 600;
+          color: $text-primary;
+          min-width: 20px;
+          text-align: center;
+        }
+      }
+
+      .add-btn {
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: $success;
+        border-radius: 6px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s;
+
+        mat-icon {
+          font-size: 18px;
+          width: 18px;
+          height: 18px;
+          color: white;
+        }
+
+        &:hover {
+          background: darken($success, 10%);
+          transform: scale(1.05);
+        }
+
+        &:disabled {
+          background: $border;
+          cursor: not-allowed;
+          transform: none;
+        }
+      }
+    }
+
+    // Billing card specific styles
+    &.billing-card {
+      cursor: default;
+
+      &:hover {
+        transform: none;
+      }
+
+      .product-image {
+        cursor: pointer;
+
+        &:hover {
+          opacity: 0.9;
+        }
+      }
+    }
+  }
+
+  // Quick Bill Grid - slightly larger cards
+  .quick-bill-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
+
+  // Quick Bill Empty State
+  .quick-bill-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 40px;
+    text-align: center;
+    color: $text-secondary;
+
+    mat-icon {
+      font-size: 80px;
+      width: 80px;
+      height: 80px;
+      color: $accent;
+      opacity: 0.3;
+      margin-bottom: 24px;
+    }
+
+    h3 {
+      margin: 0 0 8px;
+      font-size: 20px;
+      font-weight: 600;
+      color: $text-primary;
+    }
+
+    p {
+      margin: 0;
+      font-size: 14px;
+      color: $text-secondary;
+    }
   }
 
   .empty-products,

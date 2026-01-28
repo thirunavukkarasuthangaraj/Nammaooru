@@ -59,6 +59,10 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   // Active Tab: 'quick' = Quick Bill (scan/search + cart only), 'browse' = Browse all products
   activeTab: 'quick' | 'browse' = 'quick';
 
+  // Temporary price/qty for Quick Bill (not saved to database, just for billing)
+  private tempPrices: Map<number, number> = new Map();
+  private tempQtys: Map<number, number> = new Map();
+
   // Barcode debounce to prevent duplicate scans
   private lastScannedBarcode: string = '';
   private lastScanTime: number = 0;
@@ -651,6 +655,70 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       this.searchTerm = '';
       this.onSearchChange();
     }
+  }
+
+  // ========== Temp Price/Qty Methods for Quick Bill (not saved to DB) ==========
+
+  /**
+   * Get temporary price for a product (defaults to product's actual price)
+   */
+  getTempPrice(product: CachedProduct): number {
+    return this.tempPrices.get(product.id) ?? product.price;
+  }
+
+  /**
+   * Set temporary price for a product (billing only, not saved)
+   */
+  setTempPrice(product: CachedProduct, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const price = parseFloat(input.value) || 0;
+    this.tempPrices.set(product.id, price);
+  }
+
+  /**
+   * Get temporary quantity for a product (defaults to 1)
+   */
+  getTempQty(product: CachedProduct): number {
+    return this.tempQtys.get(product.id) ?? 1;
+  }
+
+  /**
+   * Increment temporary quantity
+   */
+  incrementTempQty(product: CachedProduct): void {
+    const current = this.getTempQty(product);
+    this.tempQtys.set(product.id, current + 1);
+  }
+
+  /**
+   * Decrement temporary quantity
+   */
+  decrementTempQty(product: CachedProduct): void {
+    const current = this.getTempQty(product);
+    if (current > 0) {
+      this.tempQtys.set(product.id, current - 1);
+    }
+  }
+
+  /**
+   * Add to cart with temporary price and quantity (Quick Bill mode)
+   */
+  addToCartWithTempValues(product: CachedProduct): void {
+    const tempPrice = this.getTempPrice(product);
+    const tempQty = this.getTempQty(product);
+
+    if (tempQty <= 0) return;
+
+    // Create a modified product with the temporary price
+    const modifiedProduct = { ...product, price: tempPrice };
+
+    // Add to cart with the specified quantity
+    for (let i = 0; i < tempQty; i++) {
+      this.addToCart(modifiedProduct);
+    }
+
+    // Reset temp qty after adding
+    this.tempQtys.set(product.id, 1);
   }
 
   /**
