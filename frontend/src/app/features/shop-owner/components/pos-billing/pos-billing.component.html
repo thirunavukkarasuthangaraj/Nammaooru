@@ -1,62 +1,33 @@
 <div class="pos-billing-container">
-  <!-- Compact Header with all controls in one row -->
-  <div class="pos-header">
-    <div class="header-left">
-      <h1>POS Billing</h1>
-      <span class="shop-name">{{ shopName }}</span>
-      <!-- Language Toggle -->
-      <div class="language-toggle">
-        <span class="lang-label" [class.active]="!showTamil">EN</span>
-        <mat-slide-toggle
-          [checked]="showTamil"
-          (change)="toggleLanguage()"
-          color="primary">
-        </mat-slide-toggle>
-        <span class="lang-label" [class.active]="showTamil">தமிழ்</span>
-      </div>
-      <!-- Offline/Online Status -->
-      <div class="sync-status" [class.offline]="!syncStatus.isOnline" [class.syncing]="syncStatus.isSyncing">
-        <mat-icon>{{ syncStatus.isOnline ? 'cloud_done' : 'cloud_off' }}</mat-icon>
-        <span *ngIf="syncStatus.isOnline && !syncStatus.isSyncing">Online</span>
-        <span *ngIf="!syncStatus.isOnline">Offline</span>
-        <span *ngIf="syncStatus.isSyncing">Syncing...</span>
-      </div>
-      <!-- Pending Items Badge -->
-      <div class="pending-badge" *ngIf="getTotalPendingCount() > 0" (click)="manualSync()">
-        <mat-icon>sync_problem</mat-icon>
-        <span>{{ getTotalPendingCount() }} pending</span>
-      </div>
-      <!-- Sync Button -->
-      <button mat-icon-button (click)="manualSync()" [disabled]="!syncStatus.isOnline || syncStatus.isSyncing"
-              title="Sync Now" class="sync-btn">
-        <mat-icon>sync</mat-icon>
-      </button>
-    </div>
-    <!-- Cart Header in top row -->
-    <div class="header-right">
-      <div class="cart-header-inline">
-        <mat-icon>shopping_cart</mat-icon>
-        <span>Cart ({{ cart.length }})</span>
-        <button mat-icon-button class="clear-cart-btn" *ngIf="cart.length > 0" (click)="clearCart()" title="Clear Cart">
-          <mat-icon>delete_outline</mat-icon>
-        </button>
-      </div>
-    </div>
-  </div>
-
   <div class="pos-content">
     <!-- Left Panel: Tabs for Quick Bill / Browse -->
     <div class="products-panel">
-      <!-- Tab Header -->
-      <div class="pos-tabs">
-        <button class="tab-btn" [class.active]="activeTab === 'quick'" (click)="activeTab = 'quick'">
-          <mat-icon>bolt</mat-icon>
-          <span>Quick Bill</span>
-        </button>
-        <button class="tab-btn" [class.active]="activeTab === 'browse'" (click)="activeTab = 'browse'; onPosModeChange()">
-          <mat-icon>grid_view</mat-icon>
-          <span>Browse Products</span>
-        </button>
+      <!-- Tab Header with controls -->
+      <div class="pos-tabs-row">
+        <div class="pos-tabs">
+          <button class="tab-btn" [class.active]="activeTab === 'quick'" (click)="activeTab = 'quick'">
+            <mat-icon>bolt</mat-icon>
+            <span>Quick Bill</span>
+          </button>
+          <button class="tab-btn" [class.active]="activeTab === 'browse'" (click)="activeTab = 'browse'; onPosModeChange()">
+            <mat-icon>grid_view</mat-icon>
+            <span>Browse Products</span>
+          </button>
+        </div>
+        <!-- Controls: Language, Status, Sync -->
+        <div class="pos-controls">
+          <div class="language-toggle">
+            <span class="lang-label" [class.active]="!showTamil">EN</span>
+            <mat-slide-toggle [checked]="showTamil" (change)="toggleLanguage()" color="primary"></mat-slide-toggle>
+            <span class="lang-label" [class.active]="showTamil">தமிழ்</span>
+          </div>
+          <div class="sync-status" [class.offline]="!syncStatus.isOnline">
+            <mat-icon>{{ syncStatus.isOnline ? 'cloud_done' : 'cloud_off' }}</mat-icon>
+          </div>
+          <button mat-icon-button (click)="manualSync()" [disabled]="!syncStatus.isOnline || syncStatus.isSyncing" class="sync-btn">
+            <mat-icon>sync</mat-icon>
+          </button>
+        </div>
       </div>
 
       <!-- Quick Bill Tab Content - Only show searched/scanned products -->
@@ -276,8 +247,18 @@
       </div>
     </div>
 
-    <!-- Right Panel: Cart & Billing (header moved to top) -->
-    <div class="cart-panel no-header">
+    <!-- Right Panel: Cart & Billing -->
+    <div class="cart-panel">
+      <!-- Cart Header -->
+      <div class="cart-header">
+        <h2>
+          <mat-icon>shopping_cart</mat-icon>
+          Cart ({{ cart.length }})
+        </h2>
+        <button mat-icon-button color="warn" (click)="clearCart()" *ngIf="cart.length > 0" title="Clear Cart">
+          <mat-icon>delete_sweep</mat-icon>
+        </button>
+      </div>
       <!-- Cart Items -->
       <div class="cart-items">
         <div *ngFor="let item of cart" class="cart-item">

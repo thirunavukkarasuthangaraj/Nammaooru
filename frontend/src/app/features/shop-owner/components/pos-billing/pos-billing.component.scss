@@ -14,7 +14,7 @@ $text-secondary: #7f8c8d;
 .pos-billing-container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
   background: $light-bg;
   overflow: hidden;
 }
@@ -277,12 +277,57 @@ $text-secondary: #7f8c8d;
     }
   }
 
-  // Tab Header Styles - compact
+  // Tabs row with controls
+  .pos-tabs-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  // Controls on right of tabs
+  .pos-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .language-toggle {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+
+      .lang-label {
+        color: $text-secondary;
+        &.active { color: $accent; font-weight: 600; }
+      }
+
+      ::ng-deep .mat-slide-toggle {
+        .mat-slide-toggle-bar { width: 28px; height: 14px; }
+        .mat-slide-toggle-thumb { width: 12px; height: 12px; }
+      }
+    }
+
+    .sync-status {
+      display: flex;
+      align-items: center;
+      mat-icon { font-size: 18px; color: $success; }
+      &.offline mat-icon { color: $danger; }
+    }
+
+    .sync-btn {
+      width: 28px;
+      height: 28px;
+      mat-icon { font-size: 18px; }
+    }
+  }
+
+  // Tab Header Styles - very compact
   .pos-tabs {
     display: flex;
-    gap: 4px;
-    margin-bottom: 6px;
-    padding: 3px;
+    gap: 2px;
+    padding: 2px;
     background: white;
     border-radius: 6px;
     border: 1px solid $border;
@@ -292,21 +337,21 @@ $text-secondary: #7f8c8d;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
-      padding: 8px 12px;
+      gap: 4px;
+      padding: 6px 10px;
       border: none;
       background: transparent;
-      border-radius: 6px;
-      font-size: 13px;
+      border-radius: 4px;
+      font-size: 12px;
       font-weight: 500;
       color: $text-secondary;
       cursor: pointer;
       transition: all 0.2s ease;
 
       mat-icon {
-        font-size: 18px;
-        width: 18px;
-        height: 18px;
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
       }
 
       &:hover {
@@ -970,13 +1015,13 @@ $text-secondary: #7f8c8d;
       }
     }
 
-    // Billing Controls for Quick Bill mode
+    // Billing Controls for Quick Bill mode - compact
     .billing-controls {
       display: flex;
       align-items: center;
-      gap: 4px;
-      margin-top: 8px;
-      padding-top: 8px;
+      gap: 3px;
+      margin-top: 4px;
+      padding-top: 4px;
       border-top: 1px dashed $border;
       flex-wrap: nowrap;
 
@@ -985,23 +1030,23 @@ $text-secondary: #7f8c8d;
         align-items: center;
         background: $light-bg;
         border: 1px solid $border;
-        border-radius: 6px;
-        padding: 4px 6px;
+        border-radius: 4px;
+        padding: 2px 4px;
         flex: 0 1 auto;
-        min-width: 60px;
+        min-width: 50px;
 
         .price-label {
-          font-size: 14px;
+          font-size: 12px;
           font-weight: 600;
           color: $accent;
-          margin-right: 2px;
+          margin-right: 1px;
         }
 
         .price-input {
-          width: 50px;
+          width: 40px;
           border: none;
           background: transparent;
-          font-size: 14px;
+          font-size: 12px;
           font-weight: 600;
           color: $text-primary;
           outline: none;
@@ -1019,19 +1064,19 @@ $text-secondary: #7f8c8d;
       .qty-controls {
         display: flex;
         align-items: center;
-        gap: 2px;
+        gap: 1px;
         background: $light-bg;
         border: 1px solid $border;
-        border-radius: 6px;
-        padding: 2px;
+        border-radius: 4px;
+        padding: 1px;
         flex-shrink: 0;
 
         .qty-btn {
-          width: 24px;
-          height: 24px;
+          width: 20px;
+          height: 20px;
           border: none;
           background: white;
-          border-radius: 4px;
+          border-radius: 3px;
           cursor: pointer;
           display: flex;
           align-items: center;
@@ -1039,9 +1084,9 @@ $text-secondary: #7f8c8d;
           transition: all 0.15s;
 
           mat-icon {
-            font-size: 16px;
-            width: 16px;
-            height: 16px;
+            font-size: 14px;
+            width: 14px;
+            height: 14px;
             color: $text-secondary;
           }
 
@@ -1062,22 +1107,22 @@ $text-secondary: #7f8c8d;
         }
 
         .qty-value {
-          font-size: 14px;
+          font-size: 12px;
           font-weight: 600;
           color: $text-primary;
-          min-width: 20px;
+          min-width: 16px;
           text-align: center;
         }
       }
 
       .add-btn {
-        width: 32px;
-        height: 32px;
-        min-width: 32px;
+        width: 24px;
+        height: 24px;
+        min-width: 24px;
         flex-shrink: 0;
         border: none;
         background: $success;
-        border-radius: 6px;
+        border-radius: 4px;
         cursor: pointer;
         display: flex;
         align-items: center;
@@ -1085,15 +1130,14 @@ $text-secondary: #7f8c8d;
         transition: all 0.15s;
 
         mat-icon {
-          font-size: 18px;
-          width: 18px;
-          height: 18px;
+          font-size: 14px;
+          width: 14px;
+          height: 14px;
           color: white;
         }
 
         &:hover {
           background: darken($success, 10%);
-          transform: scale(1.05);
         }
 
         &:disabled {
