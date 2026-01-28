@@ -856,6 +856,12 @@ export class PosBillingComponent implements OnInit, OnDestroy {
         return;
       }
       existingItem.quantity++;
+      // Update price if different (for temp price changes in Quick Bill mode)
+      if (existingItem.unitPrice !== product.price) {
+        existingItem.unitPrice = product.price;
+        existingItem.mrp = mrp;
+        existingItem.discount = discount;
+      }
       existingItem.total = existingItem.quantity * existingItem.unitPrice;
     } else {
       this.cart.push({
@@ -870,9 +876,15 @@ export class PosBillingComponent implements OnInit, OnDestroy {
 
     this.calculateTotals();
 
-    // Clear search and re-sort to show cart items first
-    this.searchTerm = '';
-    this.filteredProducts = this.sortProductsWithCartFirst(this.products);
+    // In Quick Bill mode, clear search to show empty state (user scans next item)
+    // In Browse mode, keep showing all products sorted with cart items first
+    if (this.activeTab === 'quick') {
+      this.searchTerm = '';
+      this.filteredProducts = [];
+    } else {
+      this.searchTerm = '';
+      this.filteredProducts = this.sortProductsWithCartFirst(this.products);
+    }
   }
 
   /**
@@ -932,8 +944,11 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     if (index > -1) {
       this.cart.splice(index, 1);
       this.calculateTotals();
-      // Re-sort products list since cart changed
-      this.filteredProducts = this.sortProductsWithCartFirst(this.products);
+      // In Quick Bill mode, keep products list empty (user scans next item)
+      // In Browse mode, re-sort to reflect cart changes
+      if (this.activeTab !== 'quick') {
+        this.filteredProducts = this.sortProductsWithCartFirst(this.products);
+      }
     }
   }
 
@@ -951,8 +966,13 @@ export class PosBillingComponent implements OnInit, OnDestroy {
           this.customerName = '';
           this.customerPhone = '';
           this.orderNotes = '';
-          // Re-sort products list since cart is now empty
-          this.filteredProducts = this.sortProductsWithCartFirst(this.products);
+          // In Quick Bill mode, keep products list empty
+          // In Browse mode, show all products
+          if (this.activeTab !== 'quick') {
+            this.filteredProducts = this.sortProductsWithCartFirst(this.products);
+          } else {
+            this.filteredProducts = [];
+          }
         }
       });
   }
