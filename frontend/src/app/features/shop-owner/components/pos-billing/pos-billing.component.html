@@ -42,35 +42,55 @@
   <div class="pos-content">
     <!-- Left Panel: Product Search & List -->
     <div class="products-panel">
-      <!-- Search Bar -->
+      <!-- Mode Toggle & Search Bar -->
       <div class="search-section">
-        <div class="search-box">
-          <mat-icon>search</mat-icon>
-          <input #searchInput
-                 type="text"
-                 [(ngModel)]="searchTerm"
-                 (input)="onSearchChange()"
-                 placeholder="Search products by name, SKU, or barcode..."
-                 class="search-input">
-          <button *ngIf="searchTerm" mat-icon-button (click)="searchTerm = ''; onSearchChange()">
-            <mat-icon>close</mat-icon>
-          </button>
+        <!-- POS Mode Toggle -->
+        <div class="pos-mode-toggle">
+          <mat-radio-group [(ngModel)]="posMode" (change)="onPosModeChange()">
+            <mat-radio-button value="scanner">
+              <mat-icon>qr_code_scanner</mat-icon> Scanner
+            </mat-radio-button>
+            <mat-radio-button value="browse">
+              <mat-icon>grid_view</mat-icon> Browse
+            </mat-radio-button>
+          </mat-radio-group>
         </div>
 
-        <!-- Barcode Input -->
-        <div class="barcode-box">
-          <mat-icon>qr_code_scanner</mat-icon>
-          <input #barcodeInput
-                 type="text"
-                 [(ngModel)]="barcodeBuffer"
-                 (keyup.enter)="onBarcodeSubmit()"
-                 placeholder="Scan barcode..."
-                 class="barcode-input">
+        <div class="search-row">
+          <div class="search-box">
+            <mat-icon>search</mat-icon>
+            <input #searchInput
+                   type="text"
+                   [(ngModel)]="searchTerm"
+                   (input)="onSearchChange()"
+                   placeholder="Search products by name, SKU, or barcode..."
+                   class="search-input">
+            <button *ngIf="searchTerm" mat-icon-button (click)="searchTerm = ''; onSearchChange()">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+
+          <!-- Barcode Input -->
+          <div class="barcode-box">
+            <mat-icon>qr_code_scanner</mat-icon>
+            <input #barcodeInput
+                   type="text"
+                   [(ngModel)]="barcodeBuffer"
+                   (keyup.enter)="onBarcodeSubmit()"
+                   placeholder="Scan barcode..."
+                   class="barcode-input">
+          </div>
         </div>
       </div>
 
+      <!-- Scanner Mode Empty State -->
+      <div class="scanner-mode-hint" *ngIf="!isLoading && posMode === 'scanner' && filteredProducts.length === 0 && !searchTerm">
+        <mat-icon>qr_code_scanner</mat-icon>
+        <p>Scan barcode or search to find products</p>
+      </div>
+
       <!-- Products Grid -->
-      <div class="products-grid" *ngIf="!isLoading">
+      <div class="products-grid" *ngIf="!isLoading && (posMode === 'browse' || filteredProducts.length > 0 || searchTerm)">
         <div *ngFor="let product of filteredProducts"
              class="product-card"
              [class.out-of-stock]="product.trackInventory && product.stock <= 0"

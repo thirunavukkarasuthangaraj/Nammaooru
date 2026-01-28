@@ -53,6 +53,9 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   searchTerm: string = '';
   barcodeBuffer: string = '';
 
+  // POS Mode: 'scanner' = only show searched items, 'browse' = show all products
+  posMode: 'scanner' | 'browse' = 'browse';
+
   // Barcode debounce to prevent duplicate scans
   private lastScannedBarcode: string = '';
   private lastScanTime: number = 0;
@@ -640,8 +643,13 @@ export class PosBillingComponent implements OnInit, OnDestroy {
    * Filter products by search term
    */
   private filterProducts(term: string): void {
+    // In scanner mode, show empty list when no search term
     if (!term || term.length < 2) {
-      this.filteredProducts = this.sortProductsWithCartFirst(this.products);
+      if (this.posMode === 'scanner') {
+        this.filteredProducts = [];
+      } else {
+        this.filteredProducts = this.sortProductsWithCartFirst(this.products);
+      }
       return;
     }
 
@@ -656,6 +664,11 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       (p.barcode3 && p.barcode3.toLowerCase().includes(lowerTerm))
     );
     this.filteredProducts = this.sortProductsWithCartFirst(filtered);
+  }
+
+  // Switch POS mode and refresh display
+  onPosModeChange(): void {
+    this.filterProducts(this.searchTerm);
   }
 
   /**
