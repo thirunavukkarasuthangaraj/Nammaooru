@@ -73,14 +73,66 @@
           </button>
         </div>
 
-        <!-- Empty State - Show when no search/scan -->
-        <div class="quick-bill-empty" *ngIf="!searchTerm && !isLoading">
+        <!-- Empty State - Show when no search/scan AND no cart items -->
+        <div class="quick-bill-empty" *ngIf="!searchTerm && cart.length === 0 && !isLoading">
           <mat-icon>qr_code_scanner</mat-icon>
           <h3>Scan or Search to Add Products</h3>
           <p>Search by name, SKU, or scan barcode to find products</p>
         </div>
 
-        <!-- Products Grid - Only show when searching -->
+        <!-- Cart Products Section - Show products in cart when not searching -->
+        <div class="products-grid quick-bill-grid" *ngIf="!searchTerm && cart.length > 0 && !isLoading">
+          <div class="section-header">
+            <mat-icon>shopping_cart</mat-icon>
+            <span>Products in Cart ({{ cart.length }})</span>
+          </div>
+          <div *ngFor="let product of getCartProducts()"
+               class="product-card billing-card in-cart">
+            <!-- In Cart Badge -->
+            <div class="cart-badge">
+              <span>{{ getCartQuantity(product) }}</span>
+            </div>
+            <div class="product-image" (click)="addToCart(product)">
+              <img *ngIf="product.imageBase64 || product.image"
+                   [src]="product.imageBase64 || getImageUrl(product.image)"
+                   [alt]="product.name"
+                   (error)="onImageError($event)">
+              <div *ngIf="!product.image && !product.imageBase64" class="product-initial">{{ product.name[0] }}</div>
+            </div>
+            <div class="product-info">
+              <div class="product-name">{{ getProductName(product) }}</div>
+              <div class="product-sku" *ngIf="getDisplayBarcode(product)">{{ getDisplayBarcode(product) }}</div>
+            </div>
+            <!-- Editable Price & Quantity Section (for billing only, not saved) -->
+            <div class="billing-controls">
+              <div class="price-edit">
+                <span class="price-label">₹</span>
+                <input type="number"
+                       class="price-input"
+                       [value]="getTempPrice(product)"
+                       (change)="setTempPrice(product, $event)"
+                       (click)="$event.stopPropagation()"
+                       min="0"
+                       step="0.01">
+              </div>
+              <div class="qty-controls">
+                <button class="qty-btn minus" (click)="decrementTempQty(product); $event.stopPropagation()">
+                  <mat-icon>remove</mat-icon>
+                </button>
+                <span class="qty-value">{{ getTempQty(product) }}</span>
+                <button class="qty-btn plus" (click)="incrementTempQty(product); $event.stopPropagation()">
+                  <mat-icon>add</mat-icon>
+                </button>
+              </div>
+              <button class="add-btn" (click)="addToCartWithTempValues(product); $event.stopPropagation()"
+                      [disabled]="getTempQty(product) === 0">
+                <mat-icon>add_shopping_cart</mat-icon>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Search Results - Show when searching -->
         <div class="products-grid quick-bill-grid" *ngIf="searchTerm && !isLoading">
           <div *ngFor="let product of filteredProducts"
                class="product-card billing-card"

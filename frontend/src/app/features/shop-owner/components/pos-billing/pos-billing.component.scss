@@ -1073,6 +1073,27 @@ $text-secondary: #7f8c8d;
   // Quick Bill Grid - slightly larger cards
   .quick-bill-grid {
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+
+    .section-header {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: linear-gradient(135deg, rgba($accent, 0.1) 0%, rgba($primary, 0.05) 100%);
+      border-radius: 8px;
+      margin-bottom: 8px;
+      color: $primary;
+      font-weight: 500;
+      font-size: 14px;
+
+      mat-icon {
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+        color: $accent;
+      }
+    }
   }
 
   // Quick Bill Empty State

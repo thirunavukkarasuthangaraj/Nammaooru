@@ -903,6 +903,13 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Get products that are currently in the cart (for Quick Bill display)
+   */
+  getCartProducts(): CachedProduct[] {
+    return this.cart.map(item => item.product);
+  }
+
+  /**
    * Sort products to show cart items first
    */
   private sortProductsWithCartFirst(products: CachedProduct[]): CachedProduct[] {
