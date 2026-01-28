@@ -56,6 +56,9 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   // POS Mode: 'scanner' = only show searched items, 'browse' = show all products
   posMode: 'scanner' | 'browse' = 'browse';
 
+  // Active Tab: 'quick' = Quick Bill (scan/search + cart only), 'browse' = Browse all products
+  activeTab: 'quick' | 'browse' = 'quick';
+
   // Barcode debounce to prevent duplicate scans
   private lastScannedBarcode: string = '';
   private lastScanTime: number = 0;
@@ -637,6 +640,17 @@ export class PosBillingComponent implements OnInit, OnDestroy {
    */
   onSearchChange(): void {
     this.searchSubject.next(this.searchTerm);
+  }
+
+  /**
+   * Add the first search result to cart (on Enter key in Quick Bill tab)
+   */
+  addFirstSearchResult(): void {
+    if (this.filteredProducts.length > 0) {
+      this.addToCart(this.filteredProducts[0]);
+      this.searchTerm = '';
+      this.onSearchChange();
+    }
   }
 
   /**

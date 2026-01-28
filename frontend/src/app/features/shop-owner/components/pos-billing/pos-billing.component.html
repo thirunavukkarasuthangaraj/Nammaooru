@@ -40,38 +40,38 @@
   </div>
 
   <div class="pos-content">
-    <!-- Left Panel: Product Search & List -->
+    <!-- Left Panel: Tabs for Quick Bill / Browse -->
     <div class="products-panel">
-      <!-- Mode Toggle & Search Bar -->
-      <div class="search-section">
-        <!-- POS Mode Toggle -->
-        <div class="pos-mode-toggle">
-          <mat-radio-group [(ngModel)]="posMode" (change)="onPosModeChange()">
-            <mat-radio-button value="scanner">
-              <mat-icon>qr_code_scanner</mat-icon> Scanner
-            </mat-radio-button>
-            <mat-radio-button value="browse">
-              <mat-icon>grid_view</mat-icon> Browse
-            </mat-radio-button>
-          </mat-radio-group>
-        </div>
+      <!-- Tab Header -->
+      <div class="pos-tabs">
+        <button class="tab-btn" [class.active]="activeTab === 'quick'" (click)="activeTab = 'quick'">
+          <mat-icon>bolt</mat-icon>
+          <span>Quick Bill</span>
+        </button>
+        <button class="tab-btn" [class.active]="activeTab === 'browse'" (click)="activeTab = 'browse'; onPosModeChange()">
+          <mat-icon>grid_view</mat-icon>
+          <span>Browse Products</span>
+        </button>
+      </div>
 
-        <div class="search-row">
-          <div class="search-box">
+      <!-- Quick Bill Tab Content -->
+      <div class="tab-content" *ngIf="activeTab === 'quick'">
+        <!-- Search & Barcode Section -->
+        <div class="quick-search-section">
+          <div class="search-box large">
             <mat-icon>search</mat-icon>
             <input #searchInput
                    type="text"
                    [(ngModel)]="searchTerm"
                    (input)="onSearchChange()"
-                   placeholder="Search products by name, SKU, or barcode..."
+                   (keyup.enter)="addFirstSearchResult()"
+                   placeholder="Search by name, SKU, or barcode..."
                    class="search-input">
             <button *ngIf="searchTerm" mat-icon-button (click)="searchTerm = ''; onSearchChange()">
               <mat-icon>close</mat-icon>
             </button>
           </div>
-
-          <!-- Barcode Input -->
-          <div class="barcode-box">
+          <div class="barcode-box large">
             <mat-icon>qr_code_scanner</mat-icon>
             <input #barcodeInput
                    type="text"
@@ -81,60 +81,166 @@
                    class="barcode-input">
           </div>
         </div>
+
+        <!-- Search Results Dropdown -->
+        <div class="search-results-dropdown" *ngIf="searchTerm && filteredProducts.length > 0">
+          <div class="search-result-item"
+               *ngFor="let product of filteredProducts | slice:0:8"
+               (click)="addToCart(product); searchTerm = ''; onSearchChange()">
+            <div class="result-image">
+              <img *ngIf="product.imageBase64 || product.image"
+                   [src]="product.imageBase64 || getImageUrl(product.image)"
+                   [alt]="product.name"
+                   (error)="onImageError($event)">
+              <div *ngIf="!product.image && !product.imageBase64" class="result-initial">{{ product.name[0] }}</div>
+            </div>
+            <div class="result-info">
+              <div class="result-name">{{ getProductName(product) }}</div>
+              <div class="result-sku">{{ getDisplayBarcode(product) }}</div>
+            </div>
+            <div class="result-price">₹{{ product.price }}</div>
+            <div class="result-stock" *ngIf="product.trackInventory">
+              <span [class.low-stock]="product.stock <= 5">{{ product.stock }} in stock</span>
+            </div>
+            <mat-icon class="add-icon">add_circle</mat-icon>
+          </div>
+        </div>
+
+        <!-- No Results Message -->
+        <div class="no-search-results" *ngIf="searchTerm && filteredProducts.length === 0">
+          <mat-icon>search_off</mat-icon>
+          <span>No products found for "{{ searchTerm }}"</span>
+        </div>
+
+        <!-- Selected Items (Cart Preview) -->
+        <div class="selected-items-section">
+          <div class="section-header">
+            <h3>
+              <mat-icon>shopping_basket</mat-icon>
+              Selected Items ({{ cart.length }})
+            </h3>
+            <button mat-icon-button color="warn" (click)="clearCart()" *ngIf="cart.length > 0" title="Clear All">
+              <mat-icon>delete_sweep</mat-icon>
+            </button>
+          </div>
+
+          <div class="selected-items-list" *ngIf="cart.length > 0">
+            <div class="selected-item" *ngFor="let item of cart">
+              <div class="item-image">
+                <img *ngIf="item.product.imageBase64 || item.product.image"
+                     [src]="item.product.imageBase64 || getImageUrl(item.product.image)"
+                     [alt]="item.product.name"
+                     (error)="onImageError($event)">
+                <div *ngIf="!item.product.image && !item.product.imageBase64" class="item-initial">{{ item.product.name[0] }}</div>
+              </div>
+              <div class="item-details">
+                <div class="item-name">{{ getProductName(item.product) }}</div>
+                <div class="item-price-info">
+                  <span class="item-mrp" *ngIf="item.discount > 0">₹{{ item.mrp }}</span>
+                  <span class="item-unit-price">₹{{ item.unitPrice }}</span>
+                </div>
+              </div>
+              <div class="item-quantity-controls">
+                <button mat-mini-fab (click)="updateQuantity(item, -1)">
+                  <mat-icon>remove</mat-icon>
+                </button>
+                <span class="qty-display">{{ item.quantity }}</span>
+                <button mat-mini-fab (click)="updateQuantity(item, 1)">
+                  <mat-icon>add</mat-icon>
+                </button>
+              </div>
+              <div class="item-total">
+                <span class="total-amount">₹{{ item.total }}</span>
+                <span class="item-savings" *ngIf="item.discount > 0">Save ₹{{ item.discount * item.quantity }}</span>
+              </div>
+              <button mat-icon-button color="warn" (click)="removeFromCart(item)" class="remove-item-btn">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          </div>
+
+          <!-- Empty State -->
+          <div class="empty-selected-items" *ngIf="cart.length === 0">
+            <mat-icon>qr_code_scanner</mat-icon>
+            <p>Scan barcode or search to add items</p>
+            <span>Items will appear here</span>
+          </div>
+        </div>
       </div>
 
-      <!-- Scanner Mode Empty State -->
-      <div class="scanner-mode-hint" *ngIf="!isLoading && posMode === 'scanner' && filteredProducts.length === 0 && !searchTerm">
-        <mat-icon>qr_code_scanner</mat-icon>
-        <p>Scan barcode or search to find products</p>
-      </div>
-
-      <!-- Products Grid -->
-      <div class="products-grid" *ngIf="!isLoading && (posMode === 'browse' || filteredProducts.length > 0 || searchTerm)">
-        <div *ngFor="let product of filteredProducts"
-             class="product-card"
-             [class.out-of-stock]="product.trackInventory && product.stock <= 0"
-             [class.in-cart]="isInCart(product)"
-             (click)="addToCart(product)">
-          <!-- In Cart Badge -->
-          <div class="cart-badge" *ngIf="getCartQuantity(product) > 0">
-            <span>{{ getCartQuantity(product) }}</span>
-          </div>
-          <!-- Quick Edit Button -->
-          <button class="quick-edit-btn" (click)="openQuickEdit(product, $event)" title="Edit Price/Stock">
-            <mat-icon>edit</mat-icon>
-          </button>
-          <div class="product-image">
-            <!-- Use cached base64 image if available (for offline), otherwise fetch from URL -->
-            <img *ngIf="product.imageBase64 || product.image"
-                 [src]="product.imageBase64 || getImageUrl(product.image)"
-                 [alt]="product.name"
-                 (error)="onImageError($event)">
-            <div *ngIf="!product.image && !product.imageBase64" class="product-initial">{{ product.name[0] }}</div>
-          </div>
-          <div class="product-info">
-            <div class="product-name">{{ getProductName(product) }}</div>
-            <div class="product-name-secondary" *ngIf="showTamil && product.name">{{ product.name }}</div>
-            <div class="product-name-secondary" *ngIf="!showTamil && product.nameTamil">{{ product.nameTamil }}</div>
-            <div class="product-sku" *ngIf="getDisplayBarcode(product)">{{ getDisplayBarcode(product) }}</div>
-            <div class="product-price">₹{{ product.price }}</div>
-            <div class="product-stock" *ngIf="product.trackInventory">
-              <span [class.low-stock]="product.stock <= 5">Stock: {{ product.stock }}</span>
+      <!-- Browse Tab Content -->
+      <div class="tab-content" *ngIf="activeTab === 'browse'">
+        <!-- Search Section for Browse -->
+        <div class="search-section">
+          <div class="search-row">
+            <div class="search-box">
+              <mat-icon>search</mat-icon>
+              <input type="text"
+                     [(ngModel)]="searchTerm"
+                     (input)="onSearchChange()"
+                     placeholder="Search products by name, SKU, or barcode..."
+                     class="search-input">
+              <button *ngIf="searchTerm" mat-icon-button (click)="searchTerm = ''; onSearchChange()">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+            <div class="barcode-box">
+              <mat-icon>qr_code_scanner</mat-icon>
+              <input type="text"
+                     [(ngModel)]="barcodeBuffer"
+                     (keyup.enter)="onBarcodeSubmit()"
+                     placeholder="Scan barcode..."
+                     class="barcode-input">
             </div>
           </div>
         </div>
 
-        <!-- Empty State -->
-        <div *ngIf="filteredProducts.length === 0" class="empty-products">
-          <mat-icon>inventory_2</mat-icon>
-          <p>No products found</p>
-        </div>
-      </div>
+        <!-- Products Grid -->
+        <div class="products-grid" *ngIf="!isLoading">
+          <div *ngFor="let product of filteredProducts"
+               class="product-card"
+               [class.out-of-stock]="product.trackInventory && product.stock <= 0"
+               [class.in-cart]="isInCart(product)"
+               (click)="addToCart(product)">
+            <!-- In Cart Badge -->
+            <div class="cart-badge" *ngIf="getCartQuantity(product) > 0">
+              <span>{{ getCartQuantity(product) }}</span>
+            </div>
+            <!-- Quick Edit Button -->
+            <button class="quick-edit-btn" (click)="openQuickEdit(product, $event)" title="Edit Price/Stock">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <div class="product-image">
+              <img *ngIf="product.imageBase64 || product.image"
+                   [src]="product.imageBase64 || getImageUrl(product.image)"
+                   [alt]="product.name"
+                   (error)="onImageError($event)">
+              <div *ngIf="!product.image && !product.imageBase64" class="product-initial">{{ product.name[0] }}</div>
+            </div>
+            <div class="product-info">
+              <div class="product-name">{{ getProductName(product) }}</div>
+              <div class="product-name-secondary" *ngIf="showTamil && product.name">{{ product.name }}</div>
+              <div class="product-name-secondary" *ngIf="!showTamil && product.nameTamil">{{ product.nameTamil }}</div>
+              <div class="product-sku" *ngIf="getDisplayBarcode(product)">{{ getDisplayBarcode(product) }}</div>
+              <div class="product-price">₹{{ product.price }}</div>
+              <div class="product-stock" *ngIf="product.trackInventory">
+                <span [class.low-stock]="product.stock <= 5">Stock: {{ product.stock }}</span>
+              </div>
+            </div>
+          </div>
 
-      <!-- Loading State -->
-      <div *ngIf="isLoading" class="loading-state">
-        <mat-spinner diameter="40"></mat-spinner>
-        <p>Loading products...</p>
+          <!-- Empty State -->
+          <div *ngIf="filteredProducts.length === 0" class="empty-products">
+            <mat-icon>inventory_2</mat-icon>
+            <p>No products found</p>
+          </div>
+        </div>
+
+        <!-- Loading State -->
+        <div *ngIf="isLoading" class="loading-state">
+          <mat-spinner diameter="40"></mat-spinner>
+          <p>Loading products...</p>
+        </div>
       </div>
     </div>
 
