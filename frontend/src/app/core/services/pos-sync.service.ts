@@ -370,21 +370,31 @@ export class PosSyncService implements OnDestroy {
           continue;
         }
 
-        const updateData = {
-          price: edit.changes.price,
-          originalPrice: edit.changes.originalPrice,
-          stockQuantity: edit.changes.stockQuantity,
-          sku: edit.changes.sku,
-          barcode: edit.changes.barcode,
-          barcode1: edit.changes.barcode1,
-          barcode2: edit.changes.barcode2,
-          barcode3: edit.changes.barcode3
-        };
+        // Sync availability change via dedicated endpoint
+        if (edit.changes.isAvailable !== undefined) {
+          await this.http.patch(
+            `${this.apiUrl}/shop-products/${edit.productId}/availability`,
+            { isAvailable: edit.changes.isAvailable }
+          ).toPromise();
+        }
 
-        await this.http.patch(
-          `${this.apiUrl}/shop-products/${edit.productId}/quick-update`,
-          updateData
-        ).toPromise();
+        // Sync other field changes via quick-update
+        const updateData: any = {};
+        if (edit.changes.price !== undefined) updateData.price = edit.changes.price;
+        if (edit.changes.originalPrice !== undefined) updateData.originalPrice = edit.changes.originalPrice;
+        if (edit.changes.stockQuantity !== undefined) updateData.stockQuantity = edit.changes.stockQuantity;
+        if (edit.changes.sku !== undefined) updateData.sku = edit.changes.sku;
+        if (edit.changes.barcode !== undefined) updateData.barcode = edit.changes.barcode;
+        if (edit.changes.barcode1 !== undefined) updateData.barcode1 = edit.changes.barcode1;
+        if (edit.changes.barcode2 !== undefined) updateData.barcode2 = edit.changes.barcode2;
+        if (edit.changes.barcode3 !== undefined) updateData.barcode3 = edit.changes.barcode3;
+
+        if (Object.keys(updateData).length > 0) {
+          await this.http.patch(
+            `${this.apiUrl}/shop-products/${edit.productId}/quick-update`,
+            updateData
+          ).toPromise();
+        }
 
         // Mark as synced and remove
         await this.offlineStorage.markEditSynced(edit.editId);

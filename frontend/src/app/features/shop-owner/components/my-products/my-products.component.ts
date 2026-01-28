@@ -574,6 +574,8 @@ export class MyProductsComponent implements OnInit, OnDestroy {
     }
 
     if (!navigator.onLine) {
+      // Save as offline edit so it syncs when internet returns
+      this.saveEditOffline(product.id, { isAvailable }, { isAvailable: !isAvailable });
       this.snackBar.open(`Product ${isAvailable ? 'activated' : 'deactivated'} (saved offline)`, 'Close', { duration: 2000 });
       return;
     }
