@@ -629,6 +629,28 @@ public class ShopProductService {
     }
 
     /**
+     * Update product availability (active/inactive)
+     */
+    @Transactional
+    public ShopProductResponse updateProductAvailability(Long shopId, Long productId, Boolean isAvailable) {
+        log.info("Updating availability for product {} in shop {} to {}", productId, shopId, isAvailable);
+
+        ShopProduct shopProduct = shopProductRepository.findById(productId)
+                .orElseThrow(() -> new ProductNotFoundException("Shop product not found with id: " + productId));
+
+        log.info("Found product {} belonging to shop {}, requested shop {}", productId, shopProduct.getShop().getId(), shopId);
+
+        shopProduct.setIsAvailable(isAvailable);
+        shopProduct.setStatus(isAvailable ? ShopProduct.ShopProductStatus.ACTIVE : ShopProduct.ShopProductStatus.INACTIVE);
+        shopProduct.setUpdatedBy(getCurrentUsername());
+
+        ShopProduct updated = shopProductRepository.save(shopProduct);
+        log.info("Product {} availability updated to {}", productId, isAvailable);
+
+        return productMapper.toResponse(updated);
+    }
+
+    /**
      * Quick update product price, MRP, stock, and barcode
      * Used for POS quick edit feature
      */

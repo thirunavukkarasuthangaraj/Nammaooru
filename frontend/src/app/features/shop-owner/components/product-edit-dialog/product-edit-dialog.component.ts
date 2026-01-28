@@ -36,7 +36,7 @@ export interface ProductEditData {
 })
 export class ProductEditDialogComponent implements OnInit {
   editForm!: FormGroup;
-  categories = ['Electronics', 'Food & Beverages', 'Clothing', 'Garden', 'Medicine', 'Groceries', 'Other'];
+  categories: string[] = [];
   units = ['piece', 'kg', 'gram', 'liter', 'ml', 'dozen', 'pack', 'box', 'bag'];
   statuses = ['ACTIVE', 'INACTIVE', 'OUT_OF_STOCK'];
   
@@ -57,10 +57,42 @@ export class ProductEditDialogComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    this.loadCategories();
     this.initForm();
     if (this.data.imageUrl) {
       this.currentImageUrl = this.data.imageUrl;
     }
+  }
+
+  private loadCategories(): void {
+    // Load active categories from API
+    this.http.get<any>(`${this.apiUrl}/products/categories`, {
+      params: { page: '0', size: '1000', sortBy: 'name', sortDirection: 'ASC', isActive: 'true' }
+    }).subscribe({
+      next: (response) => {
+        const cats: string[] = [];
+        const items = response?.data?.content || response?.data || response || [];
+        // Known unit values to exclude (these are not categories)
+        const unitValues = new Set(['piece', 'kg', 'gram', 'g', 'liter', 'ml', 'cm', 'mm', 'l', 'dozen', 'pack', 'box', 'bag', 'pc', 'pcs']);
+        if (Array.isArray(items)) {
+          items.forEach((c: any) => {
+            const name = typeof c === 'string' ? c : c.name;
+            if (name && name.length > 2 && !unitValues.has(name.toLowerCase()) && !cats.includes(name)) {
+              cats.push(name);
+            }
+          });
+        }
+        // Ensure the product's current category is in the list
+        if (this.data.category && !cats.includes(this.data.category)) {
+          cats.push(this.data.category);
+        }
+        this.categories = cats.sort();
+      },
+      error: () => {
+        // Fallback: just use the product's current category
+        this.categories = this.data.category ? [this.data.category] : [];
+      }
+    });
   }
 
   initForm(): void {

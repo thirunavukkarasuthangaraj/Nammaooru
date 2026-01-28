@@ -556,6 +556,33 @@ export class MyProductsComponent implements OnInit, OnDestroy {
     this.loadCategories(); // Update categories based on filtered products
   }
 
+  onStatusDropdownChange(product: ShopProduct, event: Event): void {
+    const newStatus = (event.target as HTMLSelectElement).value;
+    const isAvailable = newStatus === 'ACTIVE';
+    product.status = newStatus;
+    product.isAvailable = isAvailable;
+
+    if (this.usingFallbackData) {
+      this.snackBar.open(`Product ${isAvailable ? 'activated' : 'deactivated'} (demo mode)`, 'Close', { duration: 2000 });
+      return;
+    }
+
+    this.http.patch(`${this.apiUrl}/shop-products/${product.id}/availability`, {
+      isAvailable: isAvailable
+    }).pipe(takeUntil(this.destroy$))
+    .subscribe({
+      next: () => {
+        this.snackBar.open(`Product ${isAvailable ? 'activated' : 'deactivated'} successfully`, 'Close', { duration: 2000 });
+      },
+      error: (error) => {
+        console.error('Error updating product status:', error);
+        product.isAvailable = !isAvailable;
+        product.status = isAvailable ? 'INACTIVE' : 'ACTIVE';
+        this.snackBar.open('Failed to update product status', 'Close', { duration: 3000 });
+      }
+    });
+  }
+
   getStatusClass(status: string): string {
     switch (status?.toUpperCase()) {
       case 'ACTIVE': return 'status-active';

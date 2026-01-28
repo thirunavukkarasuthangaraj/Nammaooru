@@ -65,9 +65,8 @@ public class ShopOwnerProductController {
             Sort.Direction direction = sortDirection.equalsIgnoreCase("ASC") ? Sort.Direction.ASC : Sort.Direction.DESC;
             Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
 
-            // Build specification with filters
-            Specification<ShopProduct> spec = (root, query, cb) ->
-                cb.notEqual(root.get("status"), ShopProduct.ShopProductStatus.INACTIVE);
+            // Build specification - show all products (including INACTIVE) so owner can manage them
+            Specification<ShopProduct> spec = Specification.where(null);
 
             // Add search filter - handle null fields with coalesce (includes all barcodes for scanning)
             if (search != null && !search.trim().isEmpty()) {
@@ -344,6 +343,50 @@ public class ShopOwnerProductController {
             log.error("Error fetching product {} for user: {}", productId, currentUsername, e);
             return ResponseEntity.badRequest().body(ApiResponse.error(
                     "Error fetching product: " + e.getMessage()
+            ));
+        }
+    }
+
+    @PatchMapping("/{productId}/availability")
+    @PreAuthorize("hasRole('SHOP_OWNER') or hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<ShopProductResponse>> updateProductAvailability(
+            @PathVariable Long productId,
+            @RequestBody Map<String, Object> request) {
+
+        log.info("Updating availability for product {} - request: {}", productId, request);
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = authentication.getName();
+
+        try {
+            Shop currentShop = shopService.getShopByOwner(currentUsername);
+
+            if (currentShop == null) {
+                log.warn("No shop found for user: {}", currentUsername);
+                return ResponseEntity.badRequest().body(ApiResponse.error(
+                        "No shop found for current user"
+                ));
+            }
+
+            Boolean isAvailable = (Boolean) request.get("isAvailable");
+            if (isAvailable == null) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("isAvailable field is required"));
+            }
+
+            ShopProductResponse product = shopProductService.updateProductAvailability(
+                    currentShop.getId(), productId, isAvailable);
+
+            log.info("Product availability updated successfully for shop: {} (owner: {})", currentShop.getId(), currentUsername);
+
+            return ResponseEntity.ok(ApiResponse.success(
+                    product,
+                    isAvailable ? "Product activated successfully" : "Product deactivated successfully"
+            ));
+
+        } catch (Exception e) {
+            log.error("Error updating availability for product {} for user: {}", productId, currentUsername, e);
+            return ResponseEntity.badRequest().body(ApiResponse.error(
+                    "Error updating product availability: " + e.getMessage()
             ));
         }
     }

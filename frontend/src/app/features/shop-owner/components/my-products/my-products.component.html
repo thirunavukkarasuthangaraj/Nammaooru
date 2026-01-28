@@ -155,9 +155,12 @@
         <ng-container matColumnDef="status">
           <th mat-header-cell *matHeaderCellDef> Status </th>
           <td mat-cell *matCellDef="let product">
-            <span class="status-badge" [ngClass]="getStatusClass(product.status)">
-              {{ product.status }}
-            </span>
+            <select class="status-dropdown" [ngClass]="product.status === 'ACTIVE' ? 'status-active' : 'status-inactive'"
+                    [value]="product.status"
+                    (change)="onStatusDropdownChange(product, $event)">
+              <option value="ACTIVE">Active</option>
+              <option value="INACTIVE">Inactive</option>
+            </select>
           </td>
         </ng-container>
 
@@ -172,7 +175,7 @@
               </button>
               <button mat-icon-button (click)="updatePrice(product)" 
                       matTooltip="Update Price">
-                <mat-icon>attach_money</mat-icon>
+                <mat-icon>currency_rupee</mat-icon>
               </button>
               <button mat-icon-button (click)="updateStockDialog(product)" 
                       matTooltip="Update Stock">
