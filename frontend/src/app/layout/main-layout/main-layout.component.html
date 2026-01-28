@@ -5,12 +5,17 @@
     <!-- Brand Header -->
     <div class="brand-header">
       <div class="brand-logo">
-        <div class="brand-icon">
+        <!-- Shop Logo for Shop Owners -->
+        <div class="brand-icon" *ngIf="isShopOwner() && shopLogoUrl">
+          <img [src]="shopLogoUrl" alt="Shop Logo" class="shop-logo-img" (error)="shopLogoUrl = ''">
+        </div>
+        <!-- Default Icon for others or if no shop logo -->
+        <div class="brand-icon" *ngIf="!isShopOwner() || !shopLogoUrl">
           <mat-icon class="brand-icon-graphic">storefront</mat-icon>
         </div>
         <div class="brand-text" *ngIf="!isSidebarCollapsed">
-          <h2 class="brand-title">NammaOoru</h2>
-          <p class="brand-subtitle">Thiru Software</p>
+          <h2 class="brand-title">{{ isShopOwner() && shopName ? shopName : 'NammaOoru' }}</h2>
+          <p class="brand-subtitle">{{ isShopOwner() ? 'Shop Owner' : 'Thiru Software' }}</p>
         </div>
       </div>
       <button 

@@ -6,7 +6,9 @@ import { VersionService } from '../../core/services/version.service';
 import { OrderService } from '../../core/services/order.service';
 import { SoundService } from '../../core/services/sound.service';
 import { MenuPermissionService, MENU_PERMISSION_ROUTES } from '../../core/services/menu-permission.service';
+import { ShopContextService } from '../../features/shop-owner/services/shop-context.service';
 import { User, UserRole } from '../../core/models/auth.model';
+import { getImageUrl } from '../../core/utils/image-url.util';
 import { Observable, Subject, debounceTime, distinctUntilChanged, filter, interval } from 'rxjs';
 import { takeUntil, catchError, switchMap } from 'rxjs/operators';
 import { of } from 'rxjs';
@@ -54,6 +56,10 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
 
   // User menu permissions (for shop owners)
   userMenuPermissions: Set<string> = new Set();
+
+  // Shop info for sidebar (shop owners)
+  shopLogoUrl: string = '';
+  shopName: string = '';
 
   // SUPER ADMIN - Can see ALL menus from all roles
   superAdminMenuItems = [
@@ -425,7 +431,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     private versionService: VersionService,
     private orderService: OrderService,
     private soundService: SoundService,
-    private menuPermissionService: MenuPermissionService
+    private menuPermissionService: MenuPermissionService,
+    private shopContext: ShopContextService
   ) {
     this.currentUser$ = this.authService.currentUser$;
   }
@@ -437,12 +444,29 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     this.loadVersionInfo();
     this.loadNotifications();
     this.loadMenuPermissions();
+    this.loadShopInfo();
 
     // Subscribe to menu permissions changes
     this.menuPermissionService.menuPermissions$
       .pipe(takeUntil(this.destroy$))
       .subscribe(permissions => {
         this.userMenuPermissions = permissions;
+      });
+
+    // Subscribe to shop context for logo updates
+    this.shopContext.shop$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(shop => {
+        if (shop) {
+          this.shopName = shop.name || shop.businessName || '';
+          // Get logo from shop images
+          const logoImage = shop.images?.find((img: any) => img.isPrimary || img.type === 'LOGO');
+          if (logoImage?.imageUrl) {
+            this.shopLogoUrl = getImageUrl(logoImage.imageUrl);
+          } else if (shop.logoUrl) {
+            this.shopLogoUrl = getImageUrl(shop.logoUrl);
+          }
+        }
       });
 
     // Auto-refresh notifications every 60 seconds
@@ -458,6 +482,18 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     if (currentUser && this.authService.isAuthenticated()) {
       this.menuPermissionService.loadMyMenuPermissions();
     }
+  }
+
+  private loadShopInfo(): void {
+    const currentUser = this.authService.getCurrentUser();
+    if (currentUser && (currentUser.role === 'SHOP_OWNER' || (currentUser.role as any) === UserRole.SHOP_OWNER)) {
+      this.shopContext.refreshShop();
+    }
+  }
+
+  isShopOwner(): boolean {
+    const user = this.authService.getCurrentUser();
+    return user && (user.role === 'SHOP_OWNER' || (user.role as any) === UserRole.SHOP_OWNER);
   }
   
   private loadVersionInfo(): void {
