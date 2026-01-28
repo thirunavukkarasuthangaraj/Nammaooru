@@ -1075,11 +1075,12 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       this.swal.close();
 
       if (result.success) {
-        const offlineMsg = result.offline ? ' (Saved offline - will sync when online)' : '';
+        const offlineMsg = result.offline ? ' (Saved offline)' : '';
 
-        this.swal.success(
-          'Bill Created',
-          `Order ${result.order?.orderNumber || ''} - ₹${this.totalAmount.toFixed(0)}${offlineMsg}`
+        // Use toast notification instead of modal (doesn't block print)
+        this.swal.toast(
+          `Bill Created - ₹${this.totalAmount.toFixed(0)}${offlineMsg}`,
+          'success'
         );
 
         // Print receipt
