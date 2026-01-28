@@ -366,7 +366,10 @@ export class MyProductsComponent implements OnInit, OnDestroy {
 
           // Merge pending offline-created products (not yet synced to server)
           this.mergeOfflineProducts(serverProducts);
-          
+
+          // Save server products to IndexedDB cache for fast loading next time
+          this.saveProductsToCache(serverProducts);
+
           this.usingFallbackData = false;
           this.loadedFromCache = false;
           // Clear previous selections when reloading products
@@ -1085,6 +1088,39 @@ export class MyProductsComponent implements OnInit, OnDestroy {
       console.warn('Failed to merge offline products:', error);
       this.products = serverProducts;
     }
+  }
+
+  /**
+   * Save products to IndexedDB cache for fast loading next time
+   */
+  private saveProductsToCache(serverProducts: ShopProduct[]): void {
+    const cachedProducts: CachedProduct[] = serverProducts.map(p => ({
+      id: p.id,
+      shopId: this.shopId || 0,
+      name: p.customName,
+      nameTamil: p.masterProduct?.nameTamil,
+      description: p.description,
+      price: p.price,
+      originalPrice: p.originalPrice,
+      costPrice: p.costPrice,
+      stock: p.stockQuantity,
+      isAvailable: p.isAvailable,
+      sku: p.sku,
+      barcode: p.barcode,
+      barcode1: p.barcode1,
+      barcode2: p.barcode2,
+      barcode3: p.barcode3,
+      category: p.category,
+      unit: p.unit,
+      imageUrl: p.imageUrl,
+      masterProductId: p.masterProductId
+    }));
+
+    this.offlineStorage.saveProducts(cachedProducts).then(() => {
+      console.log(`Saved ${cachedProducts.length} products to IndexedDB cache`);
+    }).catch(err => {
+      console.warn('Failed to save products to cache:', err);
+    });
   }
 
   /**
