@@ -21,14 +21,16 @@ export class SwalService {
     });
   }
 
-  // Error alert
-  error(title: string, text?: string): Promise<SweetAlertResult> {
+  // Error alert (optional timer for auto-close, e.g. 2000 = 2 seconds)
+  error(title: string, text?: string, timer?: number): Promise<SweetAlertResult> {
     return Swal.fire({
       title: title,
       text: text,
       icon: 'error',
       confirmButtonText: 'OK',
-      confirmButtonColor: '#ef4444'
+      confirmButtonColor: '#ef4444',
+      timer: timer,
+      timerProgressBar: timer ? true : false
     });
   }
 

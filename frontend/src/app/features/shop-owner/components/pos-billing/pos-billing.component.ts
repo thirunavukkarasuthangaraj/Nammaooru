@@ -688,7 +688,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       this.addToCart(product);
       this.playBeep(true);
     } else {
-      this.swal.error('Not Found', `Product with barcode "${barcode}" not found`);
+      this.swal.error('Not Found', `Product with barcode "${barcode}" not found`, 2000);
       this.playBeep(false);
     }
   }
