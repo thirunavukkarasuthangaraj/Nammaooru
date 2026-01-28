@@ -48,7 +48,7 @@
         "/uploads/**"
       ],
       "cacheConfig": {
-        "maxSize": 1000,
+        "maxSize": 3000,
         "maxAge": "30d",
         "timeout": "5s",
         "strategy": "performance"
