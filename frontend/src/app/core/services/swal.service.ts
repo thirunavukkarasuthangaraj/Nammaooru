@@ -8,16 +8,17 @@ export class SwalService {
 
   constructor() { }
 
-  // Success alert
-  success(title: string, text?: string): Promise<SweetAlertResult> {
+  // Success alert with auto-close timer (default 2 seconds)
+  success(title: string, text?: string, timer: number = 2000): Promise<SweetAlertResult> {
     return Swal.fire({
       title: title,
       text: text,
       icon: 'success',
       confirmButtonText: 'OK',
       confirmButtonColor: '#667eea',
-      timer: 3000,
-      timerProgressBar: true
+      timer: timer,
+      timerProgressBar: true,
+      showConfirmButton: timer > 0 ? false : true
     });
   }
 
