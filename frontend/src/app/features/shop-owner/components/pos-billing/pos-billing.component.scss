@@ -927,10 +927,11 @@ $text-secondary: #7f8c8d;
     .billing-controls {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 4px;
       margin-top: 8px;
       padding-top: 8px;
       border-top: 1px dashed $border;
+      flex-wrap: nowrap;
 
       .price-edit {
         display: flex;
@@ -938,8 +939,9 @@ $text-secondary: #7f8c8d;
         background: $light-bg;
         border: 1px solid $border;
         border-radius: 6px;
-        padding: 4px 8px;
-        flex: 1;
+        padding: 4px 6px;
+        flex: 0 1 auto;
+        min-width: 60px;
 
         .price-label {
           font-size: 14px;
@@ -970,11 +972,12 @@ $text-secondary: #7f8c8d;
       .qty-controls {
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 2px;
         background: $light-bg;
         border: 1px solid $border;
         border-radius: 6px;
         padding: 2px;
+        flex-shrink: 0;
 
         .qty-btn {
           width: 24px;
@@ -1023,6 +1026,8 @@ $text-secondary: #7f8c8d;
       .add-btn {
         width: 32px;
         height: 32px;
+        min-width: 32px;
+        flex-shrink: 0;
         border: none;
         background: $success;
         border-radius: 6px;
@@ -1070,9 +1075,9 @@ $text-secondary: #7f8c8d;
     }
   }
 
-  // Quick Bill Grid - slightly larger cards
+  // Quick Bill Grid - wider cards to fit billing controls
   .quick-bill-grid {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
 
     .section-header {
       grid-column: 1 / -1;

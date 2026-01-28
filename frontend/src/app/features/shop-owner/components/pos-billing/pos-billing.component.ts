@@ -685,10 +685,20 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   // ========== Temp Price/Qty Methods for Quick Bill (not saved to DB) ==========
 
   /**
-   * Get temporary price for a product (defaults to product's actual price)
+   * Get temporary price for a product (defaults to cart price if in cart, else product's actual price)
    */
   getTempPrice(product: CachedProduct): number {
-    return this.tempPrices.get(product.id) ?? product.price;
+    // If temp price is set, use it
+    if (this.tempPrices.has(product.id)) {
+      return this.tempPrices.get(product.id)!;
+    }
+    // If product is in cart, use the cart item's unitPrice
+    const cartItem = this.cart.find(item => item.product.id === product.id);
+    if (cartItem) {
+      return cartItem.unitPrice;
+    }
+    // Otherwise use product's price
+    return product.price;
   }
 
   /**
