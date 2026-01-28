@@ -563,8 +563,18 @@ export class MyProductsComponent implements OnInit, OnDestroy {
     product.status = newStatus;
     product.isAvailable = isAvailable;
 
+    // Always update local cache
+    this.offlineStorage.updateLocalProduct(product.id, { isAvailable }).catch(err =>
+      console.warn('Failed to update offline cache:', err)
+    );
+
     if (this.usingFallbackData) {
       this.snackBar.open(`Product ${isAvailable ? 'activated' : 'deactivated'} (demo mode)`, 'Close', { duration: 2000 });
+      return;
+    }
+
+    if (!navigator.onLine) {
+      this.snackBar.open(`Product ${isAvailable ? 'activated' : 'deactivated'} (saved offline)`, 'Close', { duration: 2000 });
       return;
     }
 
