@@ -780,8 +780,18 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     );
 
     if (product) {
-      this.addToCart(product);
-      this.playBeep(true);
+      // In Quick Bill mode: show product card (so user can edit price/qty before adding)
+      // In Browse mode: auto-add to cart
+      if (this.activeTab === 'quick') {
+        // Put barcode in search to show the product card
+        this.searchTerm = barcode;
+        this.onSearchChange();
+        this.playBeep(true);
+      } else {
+        // Browse mode - auto add to cart
+        this.addToCart(product);
+        this.playBeep(true);
+      }
     } else {
       this.swal.error('Not Found', `Product with barcode "${barcode}" not found`, 2000);
       this.playBeep(false);
