@@ -1331,6 +1331,11 @@ export class ShopProfileComponent implements OnInit {
             upiId: response.upiId || ''
           });
 
+          // Save UPI ID to localStorage for POS Billing
+          if (response.upiId) {
+            localStorage.setItem('shop_upi_id', response.upiId);
+          }
+
           // Refresh shop context so other pages (like POS Billing) get updated data
           this.shopContext.refreshShop();
 
