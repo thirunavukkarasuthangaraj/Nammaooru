@@ -76,10 +76,6 @@ export class BulkEditComponent implements OnInit, OnDestroy {
   // Version info
   clientVersion = '';
 
-  // Cache timing
-  private readonly CACHE_TIMESTAMP_KEY = 'my_products_last_sync';
-  private readonly CACHE_VALIDITY_MS = 5 * 60 * 1000; // 5 minutes
-
   constructor(
     private http: HttpClient,
     private snackBar: MatSnackBar,
@@ -121,15 +117,9 @@ export class BulkEditComponent implements OnInit, OnDestroy {
       console.warn('Error loading from cache:', error);
     }
 
-    // Step 2: Sync from server if cache is stale
+    // Step 2: Always sync from server when online to get latest data
     if (navigator.onLine) {
-      const lastSync = localStorage.getItem(this.CACHE_TIMESTAMP_KEY);
-      const lastSyncTime = lastSync ? parseInt(lastSync, 10) : 0;
-      const cacheAge = Date.now() - lastSyncTime;
-
-      if (this.products.length === 0 || cacheAge > this.CACHE_VALIDITY_MS) {
-        this.syncProductsFromServer();
-      }
+      this.syncProductsFromServer();
     }
   }
 
@@ -241,9 +231,6 @@ export class BulkEditComponent implements OnInit, OnDestroy {
       this.applyFilters();
       this.extractCategories();
       this.loading = false;
-
-      // Update cache timestamp
-      localStorage.setItem(this.CACHE_TIMESTAMP_KEY, Date.now().toString());
     } catch (error) {
       console.error('Failed to sync products:', error);
       this.loading = false;
