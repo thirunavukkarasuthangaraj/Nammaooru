@@ -183,7 +183,8 @@ export class PosSyncService implements OnDestroy {
       category: product.masterProduct?.category?.name || product.categoryName || '',
       unit: product.baseUnit || product.masterProduct?.baseUnit || 'piece',
       weight: product.baseWeight || product.masterProduct?.baseWeight,
-      masterProductId: product.masterProduct?.id
+      masterProductId: product.masterProduct?.id,
+      tags: product.tags || product.masterProduct?.tags || []
     };
   }
 

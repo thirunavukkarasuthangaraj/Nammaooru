@@ -33,6 +33,7 @@ export interface CachedProduct {
   unit?: string;
   weight?: number;
   masterProductId?: number;  // Reference to master product
+  tags?: string[];  // Product tags for categorization
 }
 
 export interface OfflineOrder {

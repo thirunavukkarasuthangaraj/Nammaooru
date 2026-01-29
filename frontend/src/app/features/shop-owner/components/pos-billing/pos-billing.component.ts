@@ -635,7 +635,8 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       barcode3: p.barcode3 || '',
       image: p.primaryImageUrl || '',
       categoryId: p.categoryId || p.masterProduct?.category?.id,
-      categoryName: p.categoryName || p.masterProduct?.category?.name || ''
+      categoryName: p.categoryName || p.masterProduct?.category?.name || '',
+      tags: p.tags || p.masterProduct?.tags || []
     };
   }
 
