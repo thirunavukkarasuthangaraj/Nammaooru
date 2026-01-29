@@ -14,6 +14,7 @@ import { MatCardModule } from '@angular/material/card';
 import { AuthService } from '../../../core/services/auth.service';
 import { LoginRequest, UserRole } from '../../../core/models/auth.model';
 import { VersionService } from '../../../core/services/version.service';
+import { DataPreloadService } from '../../../core/services/data-preload.service';
 import { PwaInstallBannerComponent } from '../../../shared/components/pwa-install-banner/pwa-install-banner.component';
 
 @Component({
@@ -50,7 +51,8 @@ export class LoginComponent implements OnInit, OnDestroy {
     private authService: AuthService,
     private router: Router,
     private route: ActivatedRoute,
-    public versionService: VersionService
+    public versionService: VersionService,
+    private dataPreloadService: DataPreloadService
   ) {
     this.initializeForm();
   }
@@ -116,7 +118,14 @@ export class LoginComponent implements OnInit, OnDestroy {
 
   private redirectAfterLogin(): void {
     const user = this.authService.getCurrentUser();
-    
+
+    // Start preloading data in background (non-blocking)
+    this.dataPreloadService.preloadAllData().then(() => {
+      console.log('Data preload complete');
+    }).catch(err => {
+      console.warn('Data preload failed:', err);
+    });
+
     if (this.returnUrl && this.returnUrl !== '/dashboard' && this.returnUrl !== '/shop-owner/dashboard') {
       this.router.navigate([this.returnUrl]);
       return;
