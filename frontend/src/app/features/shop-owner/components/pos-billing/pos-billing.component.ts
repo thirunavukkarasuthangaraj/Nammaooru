@@ -1358,6 +1358,16 @@ export class PosBillingComponent implements OnInit, OnDestroy {
             ${this.selectedPaymentMethod === 'CASH_ON_DELIVERY' ? '💵 CASH' : this.selectedPaymentMethod === 'UPI' ? '📱 UPI' : '💳 CARD'}
           </span>
         </div>
+
+        ${this.selectedPaymentMethod === 'UPI' && this.shopUpiId ? `
+        <div class="divider"></div>
+        <div class="center" style="margin: 8px 0;">
+          <div style="font-size: 10px; font-weight: 600; margin-bottom: 4px;">Scan to Pay</div>
+          <img src="${this.getUpiQrCodeUrl()}" alt="UPI QR" style="width: 100px; height: 100px; margin: 4px auto;">
+          <div style="font-size: 9px; color: #333; margin-top: 4px; word-break: break-all;">${this.shopUpiId}</div>
+          <div style="font-size: 11px; font-weight: 700; margin-top: 2px;">Pay ₹${this.totalAmount.toFixed(0)}</div>
+        </div>
+        ` : ''}
         <div class="divider"></div>
 
         <div class="center footer-text">
