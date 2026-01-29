@@ -874,7 +874,8 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       }
       existingItem.total = existingItem.quantity * existingItem.unitPrice;
     } else {
-      this.cart.push({
+      // Add new items at top of cart list
+      this.cart.unshift({
         product,
         quantity: 1,
         unitPrice: product.price,
@@ -2379,8 +2380,8 @@ export class PosBillingComponent implements OnInit, OnDestroy {
 
     const discount = mrp - this.customProductPrice;
 
-    // Add to cart
-    this.cart.push({
+    // Add to cart (at top)
+    this.cart.unshift({
       product: customProduct,
       quantity: qty,
       unitPrice: this.customProductPrice,
