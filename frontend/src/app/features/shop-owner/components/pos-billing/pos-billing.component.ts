@@ -1363,7 +1363,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
         <div class="divider"></div>
         <div class="center" style="margin: 8px 0;">
           <div style="font-size: 10px; font-weight: 600; margin-bottom: 4px;">Scan to Pay via UPI</div>
-          <img src="${this.getUpiQrCodeUrl()}" alt="UPI QR" style="width: 100px; height: 100px; margin: 4px auto;">
+          <img src="${this.getUpiQrCodeUrl(120)}" alt="UPI QR" style="width: 120px; height: 120px; margin: 4px auto; display: block;">
           <div style="font-size: 9px; color: #333; margin-top: 4px; word-break: break-all;">${this.shopUpiId}</div>
           <div style="font-size: 11px; font-weight: 700; margin-top: 2px;">₹${this.totalAmount.toFixed(0)}</div>
         </div>
@@ -1412,12 +1412,12 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Generate UPI QR Code URL using Google Chart API
+   * Generate UPI QR Code URL using QR Server API
    */
-  getUpiQrCodeUrl(): string {
+  getUpiQrCodeUrl(size: number = 150): string {
     if (!this.shopUpiId) return '';
-    const upiUrl = `upi://pay?pa=${encodeURIComponent(this.shopUpiId)}&pn=${encodeURIComponent(this.shopName)}&am=${this.totalAmount}&cu=INR`;
-    return `https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${encodeURIComponent(upiUrl)}&choe=UTF-8`;
+    const upiUrl = `upi://pay?pa=${this.shopUpiId}&pn=${encodeURIComponent(this.shopName)}&am=${this.totalAmount}&cu=INR`;
+    return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(upiUrl)}`;
   }
 
   /**
