@@ -61,6 +61,8 @@ export interface OfflineEdit {
   productId: number;
   shopId: number;
   changes: {
+    customName?: string;
+    nameTamil?: string;
     price?: number;
     originalPrice?: number;
     stockQuantity?: number;
@@ -69,8 +71,6 @@ export interface OfflineEdit {
     barcode1?: string;
     barcode2?: string;
     barcode3?: string;
-    customName?: string;
-    nameTamil?: string;
     netQty?: string;
     packedDate?: string;
     expiryDate?: string;

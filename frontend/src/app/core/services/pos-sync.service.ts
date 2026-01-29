@@ -381,6 +381,8 @@ export class PosSyncService implements OnDestroy {
 
         // Sync other field changes via quick-update
         const updateData: any = {};
+        if (edit.changes.customName !== undefined) updateData.customName = edit.changes.customName;
+        if (edit.changes.nameTamil !== undefined) updateData.nameTamil = edit.changes.nameTamil;
         if (edit.changes.price !== undefined) updateData.price = edit.changes.price;
         if (edit.changes.originalPrice !== undefined) updateData.originalPrice = edit.changes.originalPrice;
         if (edit.changes.stockQuantity !== undefined) updateData.stockQuantity = edit.changes.stockQuantity;
