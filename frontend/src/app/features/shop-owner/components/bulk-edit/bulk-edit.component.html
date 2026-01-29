@@ -84,6 +84,7 @@
             <th class="col-row-num">#</th>
             <th class="col-image">IMG</th>
             <th class="col-product-name">PRODUCT NAME</th>
+            <th class="col-category">CATEGORY</th>
             <th class="col-tamil-name">TAMIL NAME</th>
             <th class="col-sku">SKU</th>
             <th class="col-barcode">BARCODE 1</th>
@@ -116,6 +117,19 @@
                      [class.modified]="isCellModified(product, 'customName')"
                      [value]="product.customName"
                      (change)="onProductNameChange(product, $any($event.target).value)">
+            </td>
+
+            <!-- Category (Editable Dropdown) -->
+            <td class="col-category">
+              <select class="cell-input category-dropdown"
+                      [class.modified]="isCellModified(product, 'category')"
+                      [value]="product.category || ''"
+                      (change)="onCategoryFieldChange(product, $any($event.target).value)">
+                <option value="">-</option>
+                <option *ngFor="let cat of categories" [value]="cat" [selected]="product.category === cat">
+                  {{ cat }}
+                </option>
+              </select>
             </td>
 
             <!-- Tamil Name (Editable) -->

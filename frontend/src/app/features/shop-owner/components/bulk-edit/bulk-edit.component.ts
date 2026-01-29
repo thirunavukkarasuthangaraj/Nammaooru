@@ -28,6 +28,7 @@ interface BulkEditProduct {
   // Track original values for change detection
   originalValues: {
     customName: string;
+    category?: string;
     price: number;
     originalPrice?: number;
     stockQuantity: number;
@@ -143,6 +144,7 @@ export class BulkEditComponent implements OnInit, OnDestroy {
       imageUrl: p.imageUrl || '',
       originalValues: {
         customName: p.name,
+        category: p.category || '',
         price: p.price,
         originalPrice: p.originalPrice,
         stockQuantity: p.stock,
@@ -214,6 +216,7 @@ export class BulkEditComponent implements OnInit, OnDestroy {
         imageUrl: p.primaryImageUrl || '',
         originalValues: {
           customName: p.displayName || p.customName || p.masterProduct?.name,
+          category: p.masterProduct?.category?.name || '',
           price: p.price,
           originalPrice: p.originalPrice,
           stockQuantity: p.stockQuantity,
@@ -359,10 +362,16 @@ export class BulkEditComponent implements OnInit, OnDestroy {
     this.markModified(product);
   }
 
+  onCategoryFieldChange(product: BulkEditProduct, value: string): void {
+    product.category = value;
+    this.markModified(product);
+  }
+
   private markModified(product: BulkEditProduct): void {
     const orig = product.originalValues;
     const isModified =
       product.customName !== orig.customName ||
+      product.category !== orig.category ||
       product.price !== orig.price ||
       product.originalPrice !== orig.originalPrice ||
       product.stockQuantity !== orig.stockQuantity ||
@@ -391,6 +400,7 @@ export class BulkEditComponent implements OnInit, OnDestroy {
     const orig = product.originalValues;
     switch (field) {
       case 'customName': return product.customName !== orig.customName;
+      case 'category': return product.category !== orig.category;
       case 'price': return product.price !== orig.price;
       case 'mrp': return product.originalPrice !== orig.originalPrice;
       case 'stock': return product.stockQuantity !== orig.stockQuantity;
@@ -517,6 +527,7 @@ export class BulkEditComponent implements OnInit, OnDestroy {
         // Update original values after successful save
         product.originalValues = {
           customName: product.customName,
+          category: product.category,
           price: product.price,
           originalPrice: product.originalPrice,
           stockQuantity: product.stockQuantity,
@@ -552,6 +563,7 @@ export class BulkEditComponent implements OnInit, OnDestroy {
     return new Promise((resolve, reject) => {
       const updateData = {
         customName: product.customName,
+        category: product.category,
         price: product.price,
         originalPrice: product.originalPrice,
         stockQuantity: product.stockQuantity,
@@ -640,6 +652,7 @@ export class BulkEditComponent implements OnInit, OnDestroy {
     // Restore original values
     this.modifiedProducts.forEach((product) => {
       product.customName = product.originalValues.customName;
+      product.category = product.originalValues.category;
       product.price = product.originalValues.price;
       product.originalPrice = product.originalValues.originalPrice;
       product.stockQuantity = product.originalValues.stockQuantity;

@@ -145,7 +145,7 @@
 
     .excel-grid {
       width: 100%;
-      min-width: 1600px;
+      min-width: 1720px;
       border-collapse: collapse;
 
       thead {
@@ -208,6 +208,10 @@
       .col-product-name {
         min-width: 180px;
         max-width: 220px;
+      }
+
+      .col-category {
+        width: 120px;
       }
 
       .col-tamil-name {
@@ -320,6 +324,11 @@
       .tags-input {
         text-align: left;
         font-size: 0.75rem;
+      }
+
+      .category-dropdown {
+        font-size: 0.75rem;
+        cursor: pointer;
       }
 
       // Status Dropdown
