@@ -1141,6 +1141,9 @@ export class PosBillingComponent implements OnInit, OnDestroy {
    * Print receipt
    */
   printReceipt(order: any): void {
+    console.log('Print Receipt - shopUpiId:', this.shopUpiId);
+    console.log('Print Receipt - QR URL:', this.getUpiQrCodeUrl(120));
+
     const receiptWindow = window.open('', '_blank', 'width=300,height=600');
     if (!receiptWindow) return;
 
