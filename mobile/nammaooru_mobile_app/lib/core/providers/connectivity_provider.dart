@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../services/connectivity_service.dart';
@@ -19,6 +20,13 @@ class ConnectivityProvider extends ChangeNotifier {
 
   bool _isInitialized = false;
   bool get isInitialized => _isInitialized;
+
+  // Cooldown management - don't show alert again for 60 seconds after dismissal
+  DateTime? _lastDismissedAt;
+  static const Duration _cooldownDuration = Duration(seconds: 60);
+
+  // Auto-dismiss timer
+  Timer? _autoDismissTimer;
 
   ConnectivityProvider() {
     _initialize();
@@ -58,22 +66,45 @@ class ConnectivityProvider extends ChangeNotifier {
   }
 
   void _checkAndShowAlert(ConnectionQuality quality) {
+    // Cancel any pending auto-dismiss
+    _autoDismissTimer?.cancel();
+
     // Only show alert for very slow or offline connections
     // "Slow" is acceptable for most operations and shouldn't interrupt the user
     if (quality == ConnectionQuality.verySlow ||
         quality == ConnectionQuality.offline) {
+      // Check if we're in cooldown period (user dismissed recently)
+      if (_lastDismissedAt != null) {
+        final timeSinceDismiss = DateTime.now().difference(_lastDismissedAt!);
+        if (timeSinceDismiss < _cooldownDuration) {
+          // Still in cooldown, don't show alert
+          debugPrint('📡 Alert suppressed - in cooldown (${_cooldownDuration.inSeconds - timeSinceDismiss.inSeconds}s remaining)');
+          return;
+        }
+      }
+
       _showAlert = true;
       _alertMessage = _connectivityService.getConnectionStatusMessage();
       _alertMessageTamil = _connectivityService.getConnectionStatusMessageTamil();
     } else {
-      _showAlert = false;
+      // Connection is good now - auto-dismiss with small delay
+      if (_showAlert) {
+        _autoDismissTimer = Timer(const Duration(milliseconds: 500), () {
+          _showAlert = false;
+          notifyListeners();
+          debugPrint('📡 Alert auto-dismissed - connection restored');
+        });
+      }
     }
   }
 
-  /// Manually dismiss alert
+  /// Manually dismiss alert - starts cooldown period
   void dismissAlert() {
     _showAlert = false;
+    _lastDismissedAt = DateTime.now();
+    _autoDismissTimer?.cancel();
     notifyListeners();
+    debugPrint('📡 Alert dismissed - cooldown started for ${_cooldownDuration.inSeconds}s');
   }
 
   /// Check if internet is available
@@ -134,6 +165,7 @@ class ConnectivityProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _autoDismissTimer?.cancel();
     _connectivityService.dispose();
     super.dispose();
   }

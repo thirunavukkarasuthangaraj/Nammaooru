@@ -23,6 +23,7 @@ export interface Shop {
   commissionRate: number;
   gstNumber?: string;
   panNumber?: string;
+  upiId?: string;
   status: ShopStatus;
   isActive: boolean;
   isVerified: boolean;
@@ -69,6 +70,7 @@ export interface ShopCreateRequest {
   commissionRate?: number;
   gstNumber?: string;
   panNumber?: string;
+  upiId?: string;
 }
 
 export interface ShopUpdateRequest {
@@ -93,6 +95,7 @@ export interface ShopUpdateRequest {
   commissionRate?: number;
   gstNumber?: string;
   panNumber?: string;
+  upiId?: string;
   status?: ShopStatus;
   isActive?: boolean;
   isVerified?: boolean;

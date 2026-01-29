@@ -17,6 +17,8 @@ class CartProvider with ChangeNotifier {
   double _promoDiscount = 0.0;
   final CartService _cartService = CartService();
   bool _isLoading = false;
+  bool _isShopOpen = true; // Track if current shop is open
+  String? _shopName; // Track current shop name for error messages
 
   List<CartItem> get items => List.unmodifiable(_items);
   int get itemCount => _items.fold(0, (sum, item) => sum + item.quantity);
@@ -47,6 +49,17 @@ class CartProvider with ChangeNotifier {
   // Set delivery fee
   void setDeliveryFee(double fee) {
     _deliveryFee = fee;
+    notifyListeners();
+  }
+
+  // Shop open status - set when entering shop, checked at checkout
+  bool get isShopOpen => _isShopOpen;
+  String? get shopName => _shopName;
+
+  void setShopStatus({required bool isOpen, String? shopName}) {
+    _isShopOpen = isOpen;
+    if (shopName != null) _shopName = shopName;
+    _saveCartToStorage();
     notifyListeners();
   }
 
@@ -220,6 +233,8 @@ class CartProvider with ChangeNotifier {
     _items.clear();
     _promoCode = null;
     _promoDiscount = 0.0;
+    _isShopOpen = true;
+    _shopName = null;
     _saveCartToStorage();
     notifyListeners();
   }
@@ -281,6 +296,8 @@ class CartProvider with ChangeNotifier {
       'items': _items.map((item) => item.toJson()).toList(),
       'promoCode': _promoCode,
       'promoDiscount': _promoDiscount,
+      'isShopOpen': _isShopOpen,
+      'shopName': _shopName,
     };
     LocalStorage.setString('cart_data', jsonEncode(cartData));
   }
@@ -353,6 +370,8 @@ class CartProvider with ChangeNotifier {
             .toList();
         _promoCode = cartData['promoCode'];
         _promoDiscount = cartData['promoDiscount']?.toDouble() ?? 0.0;
+        _isShopOpen = cartData['isShopOpen'] ?? true;
+        _shopName = cartData['shopName'];
         notifyListeners();
       } catch (e) {
         print('Error loading cart from storage: $e');

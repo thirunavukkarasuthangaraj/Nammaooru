@@ -82,6 +82,9 @@ public class ShopUpdateRequest {
     @Size(max = 10, message = "PAN number cannot exceed 10 characters")
     private String panNumber;
 
+    @Size(max = 100, message = "UPI ID cannot exceed 100 characters")
+    private String upiId;
+
     @Pattern(regexp = "PENDING|APPROVED|REJECTED|SUSPENDED", message = "Status must be PENDING, APPROVED, REJECTED, or SUSPENDED")
     private String status;
 

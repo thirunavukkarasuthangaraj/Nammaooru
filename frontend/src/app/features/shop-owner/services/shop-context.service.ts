@@ -21,6 +21,7 @@ export interface Shop {
   country: string;
   businessType: string;
   gstNumber?: string;
+  upiId?: string;
   status: string;
   isActive: boolean;
   slug?: string;

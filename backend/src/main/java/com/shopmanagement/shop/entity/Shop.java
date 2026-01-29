@@ -148,6 +148,11 @@ public class Shop {
     @Column(name = "pan_number")
     private String panNumber;
 
+    // Payment Information
+    @Size(max = 100)
+    @Column(name = "upi_id")
+    private String upiId;
+
     // Status and Flags
     @Enumerated(EnumType.STRING)
     @Builder.Default

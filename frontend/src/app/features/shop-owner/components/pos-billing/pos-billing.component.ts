@@ -46,6 +46,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   // Shop info
   shopId: number = 0;
   shopName: string = '';
+  shopUpiId: string = '';
 
   // Products
   products: CachedProduct[] = [];
@@ -203,8 +204,12 @@ export class PosBillingComponent implements OnInit, OnDestroy {
         if (shop) {
           this.shopId = shop.id;
           this.shopName = shop.name || shop.businessName || 'My Shop';
-          // Save shop name to localStorage for offline receipt use
+          this.shopUpiId = shop.upiId || '';
+          // Save shop info to localStorage for offline use
           localStorage.setItem('shop_name', this.shopName);
+          if (this.shopUpiId) {
+            localStorage.setItem('shop_upi_id', this.shopUpiId);
+          }
           console.log('POS Billing - Shop loaded:', this.shopId, this.shopName);
         }
       });
@@ -214,8 +219,12 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     if (currentShop) {
       this.shopId = currentShop.id;
       this.shopName = currentShop.name || currentShop.businessName || 'My Shop';
-      // Save shop name to localStorage for offline receipt use
+      this.shopUpiId = currentShop.upiId || '';
+      // Save shop info to localStorage for offline use
       localStorage.setItem('shop_name', this.shopName);
+      if (this.shopUpiId) {
+        localStorage.setItem('shop_upi_id', this.shopUpiId);
+      }
     } else {
       // Fallback to localStorage
       const storedShopId = localStorage.getItem('current_shop_id');
@@ -226,6 +235,11 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       const storedShopName = localStorage.getItem('shop_name');
       if (storedShopName) {
         this.shopName = storedShopName;
+      }
+      // Try to get UPI ID from localStorage
+      const storedUpiId = localStorage.getItem('shop_upi_id');
+      if (storedUpiId) {
+        this.shopUpiId = storedUpiId;
       }
     }
 
@@ -1385,6 +1399,15 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   getPaymentLabel(method: string): string {
     const found = this.paymentMethods.find(m => m.value === method);
     return found ? found.label : method;
+  }
+
+  /**
+   * Generate UPI QR Code URL using Google Chart API
+   */
+  getUpiQrCodeUrl(): string {
+    if (!this.shopUpiId) return '';
+    const upiUrl = `upi://pay?pa=${encodeURIComponent(this.shopUpiId)}&pn=${encodeURIComponent(this.shopName)}&am=${this.totalAmount}&cu=INR`;
+    return `https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${encodeURIComponent(upiUrl)}&choe=UTF-8`;
   }
 
   /**

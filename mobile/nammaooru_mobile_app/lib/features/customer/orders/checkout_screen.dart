@@ -2444,44 +2444,36 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         return;
       }
 
-      // Check if shop is open before placing order
-      try {
-        final shopDetails = await ShopApiService().getShopById(shopId is int ? shopId : int.parse(shopId.toString()));
-        final isShopOpen = shopDetails['data']?['isOpenNow'] ?? shopDetails['data']?['isActive'] ?? false;
-
-        if (!isShopOpen) {
-          if (mounted) {
-            await showDialog(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: Row(
-                  children: [
-                    Icon(Icons.store_outlined, color: Colors.red.shade400),
-                    const SizedBox(width: 8),
-                    const Text('Shop Closed'),
-                  ],
-                ),
-                content: Text(
-                  'Sorry, ${shopDetails['data']?['name'] ?? 'the shop'} is currently closed and not accepting orders. Please try again during business hours.',
-                ),
-                actions: [
-                  ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: VillageTheme.primaryGreen,
-                    ),
-                    child: const Text('OK', style: TextStyle(color: Colors.white)),
-                  ),
+      // Check if shop is open before placing order (using cached status, no API call needed)
+      if (!cartProvider.isShopOpen) {
+        if (mounted) {
+          await showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.store_outlined, color: Colors.red.shade400),
+                  const SizedBox(width: 8),
+                  const Text('Shop Closed'),
                 ],
               ),
-            );
-          }
-          setState(() => _isPlacingOrder = false);
-          return;
+              content: Text(
+                'Sorry, ${cartProvider.shopName ?? 'the shop'} is currently closed and not accepting orders. Please try again during business hours.',
+              ),
+              actions: [
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: VillageTheme.primaryGreen,
+                  ),
+                  child: const Text('OK', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            ),
+          );
         }
-      } catch (e) {
-        print('⚠️ Could not verify shop status: $e');
-        // Continue with order if we can't verify (backend will validate)
+        setState(() => _isPlacingOrder = false);
+        return;
       }
 
       // Get device UUID for promo code tracking

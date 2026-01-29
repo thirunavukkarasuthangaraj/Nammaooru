@@ -894,7 +894,8 @@ export class ShopProfileComponent implements OnInit {
       email: [{value: '', disabled: true}],
       address: ['', [Validators.required]],
       city: ['', [Validators.required]],
-      pincode: ['', [Validators.required]]
+      pincode: ['', [Validators.required]],
+      upiId: ['']
     });
   }
 
@@ -956,6 +957,12 @@ export class ShopProfileComponent implements OnInit {
         control: 'pincode',
         type: 'text',
         placeholder: 'Enter PIN code'
+      },
+      {
+        label: 'UPI ID',
+        control: 'upiId',
+        type: 'text',
+        placeholder: 'e.g., yourname@upi'
       }
     ];
   }
@@ -1112,7 +1119,8 @@ export class ShopProfileComponent implements OnInit {
       email: 'email',
       address: 'location_on',
       city: 'location_city',
-      pincode: 'markunread_mailbox'
+      pincode: 'markunread_mailbox',
+      upiId: 'qr_code'
     };
     return iconMap[controlName] || 'info';
   }
@@ -1198,7 +1206,8 @@ export class ShopProfileComponent implements OnInit {
             phone: shop.ownerPhone || shop.phone || '',
             address: shop.addressLine1 || shop.address || '',
             city: shop.city || '',
-            pincode: shop.postalCode || shop.pincode || ''
+            pincode: shop.postalCode || shop.pincode || '',
+            upiId: shop.upiId || ''
           });
           
           // Set email separately since it's disabled
@@ -1298,7 +1307,8 @@ export class ShopProfileComponent implements OnInit {
         // Email is disabled and should not be updated
         addressLine1: this.shopForm.value.address,
         city: this.shopForm.value.city,
-        postalCode: this.shopForm.value.pincode
+        postalCode: this.shopForm.value.pincode,
+        upiId: this.shopForm.value.upiId
       };
       
       this.shopService.updateShop(this.shop.id, updatedShop).subscribe({
@@ -1315,7 +1325,8 @@ export class ShopProfileComponent implements OnInit {
             phone: response.ownerPhone || '',
             address: response.addressLine1 || '',
             city: response.city || '',
-            pincode: response.postalCode || ''
+            pincode: response.postalCode || '',
+            upiId: response.upiId || ''
           });
 
           this.snackBar.open('Shop profile updated successfully!', 'Close', {

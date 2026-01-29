@@ -2177,29 +2177,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                         );
                       }
 
-                      // Show disabled button when shop is closed
-                      if (!_isShopOpen) {
-                        return Container(
-                          width: double.infinity,
-                          height: 24,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[400],
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Center(
-                            child: Text(
-                              context.loc?.translate('closed') ?? 'Closed',
-                              style: const TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ),
-                        );
-                      }
-
+                      // Allow adding to cart even when shop is closed
+                      // Order placement will be blocked at checkout
                       if (cartQuantity == 0) {
                         return GestureDetector(
                           onTap: () async {
@@ -2323,20 +2302,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
 
   Future<void> _handleAddToCart(BuildContext context, CartProvider cartProvider,
       ProductModel product) async {
-    // Check if shop is open
-    if (!_isShopOpen) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(context.loc?.translate('shop_closed_message', args: [_shop?['name'] ?? 'This shop']) ??
-                'This shop is currently closed. Please try again during business hours.'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-      return;
-    }
+    // Allow adding to cart even when shop is closed
+    // Order placement will be blocked at checkout screen
 
     // Check stock availability before adding
     final currentCartQuantity = cartProvider.getQuantity(product.id);
@@ -2359,16 +2326,11 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     final success = await cartProvider.addToCart(product);
 
     if (success) {
-      // Successfully added to cart
-      if (context.mounted) {
-        // ScaffoldMessenger.of(context).showSnackBar(
-        //   SnackBar(
-        //     content: Text('${product.name} added to cart'),
-        //     backgroundColor: const Color(0xFF4CAF50),
-        //     duration: const Duration(seconds: 2),
-        //   ),
-        // );
-      }
+      // Store shop open status for checkout validation (no API call needed later)
+      cartProvider.setShopStatus(
+        isOpen: _isShopOpen,
+        shopName: _shop?['name'],
+      );
     } else {
       // Show dialog for different shop
       if (context.mounted) {
@@ -2399,7 +2361,14 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
 
         if (shouldClearCart == true) {
           cartProvider.clearCart();
-          await cartProvider.addToCart(product, clearCartConfirmed: true);
+          final addedSuccess = await cartProvider.addToCart(product, clearCartConfirmed: true);
+          if (addedSuccess) {
+            // Store shop open status for new shop
+            cartProvider.setShopStatus(
+              isOpen: _isShopOpen,
+              shopName: _shop?['name'],
+            );
+          }
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(

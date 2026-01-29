@@ -349,6 +349,16 @@
               {{ method.label }}
             </button>
           </div>
+          <!-- UPI QR Code -->
+          <div class="upi-qr-section" *ngIf="selectedPaymentMethod === 'UPI' && shopUpiId">
+            <div class="qr-code-container">
+              <img [src]="getUpiQrCodeUrl()" alt="UPI QR Code" class="qr-code-img">
+            </div>
+            <div class="upi-info">
+              <span class="upi-id">{{ shopUpiId }}</span>
+              <span class="upi-amount">Pay ₹{{ totalAmount | number:'1.0-0' }}</span>
+            </div>
+          </div>
         </div>
 
         <!-- Generate Bill Button -->

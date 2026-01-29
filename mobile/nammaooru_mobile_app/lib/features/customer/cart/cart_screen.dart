@@ -878,54 +878,38 @@ class _CartScreenState extends State<CartScreen> {
       return;
     }
 
-    // Check if shop is open before proceeding
-    if (cartProvider.items.isNotEmpty) {
-      final shopDatabaseId = cartProvider.items.first.product.shopDatabaseId;
-      if (shopDatabaseId != null) {
-        try {
-          final shopDetails = await ShopApiService().getShopById(
-            shopDatabaseId is int ? shopDatabaseId : int.parse(shopDatabaseId.toString())
-          );
-          final isShopOpen = shopDetails['data']?['isOpenNow'] ?? shopDetails['data']?['isActive'] ?? false;
-
-          if (!isShopOpen && mounted) {
-            final shopName = shopDetails['data']?['name'] ?? 'The shop';
-            await showDialog(
-              context: context,
-              builder: (ctx) => AlertDialog(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                title: Row(
-                  children: [
-                    Icon(Icons.store_outlined, color: Colors.red.shade400),
-                    const SizedBox(width: 8),
-                    Text(
-                      context.loc?.translate('shop_closed') ?? 'Shop Closed',
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                  ],
-                ),
-                content: Text(
-                  '$shopName is currently closed and not accepting orders. Please try again during business hours.',
-                  style: const TextStyle(fontSize: 13),
-                ),
-                actions: [
-                  ElevatedButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: VillageTheme.primaryGreen,
-                    ),
-                    child: const Text('OK', style: TextStyle(color: Colors.white)),
-                  ),
-                ],
+    // Check if shop is open before proceeding (using cached status, no API call needed)
+    if (!cartProvider.isShopOpen && mounted) {
+      await showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          title: Row(
+            children: [
+              Icon(Icons.store_outlined, color: Colors.red.shade400),
+              const SizedBox(width: 8),
+              Text(
+                context.loc?.translate('shop_closed') ?? 'Shop Closed',
+                style: const TextStyle(fontSize: 16),
               ),
-            );
-            return;
-          }
-        } catch (e) {
-          debugPrint('⚠️ Could not verify shop status: $e');
-          // Continue if we can't verify - backend will validate
-        }
-      }
+            ],
+          ),
+          content: Text(
+            '${cartProvider.shopName ?? 'The shop'} is currently closed and not accepting orders. Please try again during business hours.',
+            style: const TextStyle(fontSize: 13),
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: VillageTheme.primaryGreen,
+              ),
+              child: const Text('OK', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
+      return;
     }
 
     // User is logged in and shop is open, proceed to checkout

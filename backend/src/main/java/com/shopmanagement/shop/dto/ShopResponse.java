@@ -43,7 +43,8 @@ public class ShopResponse {
     
     private String gstNumber;
     private String panNumber;
-    
+    private String upiId;
+
     private String status;
     private Boolean isActive;
     private Boolean isVerified;

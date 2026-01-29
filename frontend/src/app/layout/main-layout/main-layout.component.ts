@@ -249,7 +249,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     {
       category: 'Main',
       items: [
-        { title: 'Dashboard', icon: 'dashboard', route: '/shop-owner/dashboard', badge: null }
+        { title: 'Dashboard', icon: 'space_dashboard', route: '/shop-owner/dashboard', badge: null }
       ]
     },
     {
@@ -261,36 +261,36 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     {
       category: 'Orders',
       items: [
-        { title: 'Order Management', icon: 'assignment_turned_in', route: '/shop-owner/orders-management', badge: '7' },
-        { title: 'Notifications', icon: 'notifications', route: '/shop-owner/notifications', badge: '5' }
+        { title: 'Order Management', icon: 'list_alt', route: '/shop-owner/orders-management', badge: '7' },
+        { title: 'Notifications', icon: 'notifications_active', route: '/shop-owner/notifications', badge: '5' }
       ]
     },
     {
       category: 'Products',
       items: [
-        { title: 'My Products', icon: 'inventory_2', route: '/shop-owner/my-products', badge: null },
-        { title: 'Bulk Edit', icon: 'table_chart', route: '/shop-owner/bulk-edit', badge: null },
-        { title: 'Browse Products', icon: 'search', route: '/shop-owner/browse-products', badge: null },
-        { title: 'Combos', icon: 'card_giftcard', route: '/shop-owner/combos', badge: null },
-        { title: 'Bulk Import', icon: 'cloud_upload', route: '/products/bulk-import', badge: null }
+        { title: 'My Products', icon: 'shopping_bag', route: '/shop-owner/my-products', badge: null },
+        { title: 'Bulk Edit', icon: 'edit_note', route: '/shop-owner/bulk-edit', badge: null },
+        { title: 'Browse Products', icon: 'manage_search', route: '/shop-owner/browse-products', badge: null },
+        { title: 'Combos', icon: 'widgets', route: '/shop-owner/combos', badge: null },
+        { title: 'Bulk Import', icon: 'upload_file', route: '/products/bulk-import', badge: null }
       ]
     },
     {
       category: 'Inventory',
       items: [
-        { title: 'Stock Management', icon: 'inventory', route: '/shop-owner/inventory', badge: null }
+        { title: 'Stock Management', icon: 'warehouse', route: '/shop-owner/inventory', badge: null }
       ]
     },
     {
       category: 'Thiru Software',
       items: [
-        { title: 'Shop Profile', icon: 'store', route: '/shop-owner/profile', badge: null }
+        { title: 'Shop Profile', icon: 'storefront', route: '/shop-owner/profile', badge: null }
       ]
     },
     {
       category: 'Marketing',
       items: [
-        { title: 'Promo Codes', icon: 'local_offer', route: '/shop-owner/promo-codes', badge: null }
+        { title: 'Promo Codes', icon: 'sell', route: '/shop-owner/promo-codes', badge: null }
       ]
     }
   ];

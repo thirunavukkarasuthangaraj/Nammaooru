@@ -73,6 +73,7 @@ public class OrderService {
     private final PromotionService promotionService;
     private final com.shopmanagement.repository.PromotionRepository promotionRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final BusinessHoursService businessHoursService;
 
     public OrderService(
             OrderRepository orderRepository,
@@ -90,7 +91,8 @@ public class OrderService {
             @Lazy DeliveryConfirmationService deliveryConfirmationService,
             PromotionService promotionService,
             com.shopmanagement.repository.PromotionRepository promotionRepository,
-            SimpMessagingTemplate messagingTemplate) {
+            SimpMessagingTemplate messagingTemplate,
+            BusinessHoursService businessHoursService) {
         this.orderRepository = orderRepository;
         this.customerRepository = customerRepository;
         this.userRepository = userRepository;
@@ -107,8 +109,9 @@ public class OrderService {
         this.deliveryConfirmationService = deliveryConfirmationService;
         this.promotionService = promotionService;
         this.promotionRepository = promotionRepository;
+        this.businessHoursService = businessHoursService;
     }
-    
+
     @Transactional
     public OrderResponse createOrder(OrderRequest request) {
         log.info("Creating order for customer: {} at shop: {}", request.getCustomerId(), request.getShopId());
@@ -136,7 +139,14 @@ public class OrderService {
         // Validate shop
         Shop shop = shopRepository.findById(request.getShopId())
                 .orElseThrow(() -> new RuntimeException("Shop not found"));
-        
+
+        // Check if shop is currently open
+        boolean isShopOpen = businessHoursService.isShopOpenNow(shop.getId());
+        if (!isShopOpen) {
+            log.warn("Order rejected - Shop {} ({}) is currently closed", shop.getName(), shop.getId());
+            throw new RuntimeException("Shop is currently closed. Please try again during business hours.");
+        }
+
         // Calculate order totals and validate stock
         BigDecimal subtotal = BigDecimal.ZERO;
         List<OrderItem> orderItems = request.getOrderItems().stream()
