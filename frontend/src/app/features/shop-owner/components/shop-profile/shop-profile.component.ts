@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { ShopService } from '@core/services/shop.service';
 import { Shop } from '@core/models/shop.model';
 import { getImageUrl } from '@core/utils/image-url.util';
+import { ShopContextService } from '../../services/shop-context.service';
 
 @Component({
   selector: 'app-shop-profile',
@@ -884,7 +885,8 @@ export class ShopProfileComponent implements OnInit {
     private fb: FormBuilder,
     private shopService: ShopService,
     private snackBar: MatSnackBar,
-    private router: Router
+    private router: Router,
+    private shopContext: ShopContextService
   ) {
     this.shopForm = this.fb.group({
       name: ['', [Validators.required]],
@@ -1328,6 +1330,9 @@ export class ShopProfileComponent implements OnInit {
             pincode: response.postalCode || '',
             upiId: response.upiId || ''
           });
+
+          // Refresh shop context so other pages (like POS Billing) get updated data
+          this.shopContext.refreshShop();
 
           this.snackBar.open('Shop profile updated successfully!', 'Close', {
             duration: 3000,
