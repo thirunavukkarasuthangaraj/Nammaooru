@@ -302,7 +302,7 @@ $text-secondary: #7f8c8d;
       &.online { background: #e8f5e9; color: $success; }
       &.offline { background: #ffebee; color: $danger; }
     }
-    .sync-btn { width: 28px; height: 28px; mat-icon { font-size: 18px; &.spinning { animation: spin 1s linear infinite; } } }
+    .sync-btn { mat-icon { font-size: 18px; &.spinning { animation: spin 1s linear infinite; } } }
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -870,46 +870,12 @@ $text-secondary: #7f8c8d;
     }
 
     .product-info {
-      .product-name {
-        font-size: 13px;
-        font-weight: 600;
-        color: $text-primary;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        margin-bottom: 4px;
-      }
-
-      .product-name-secondary {
-        font-size: 11px;
-        color: $text-secondary;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        margin-bottom: 2px;
-      }
-
-      .product-sku {
-        font-size: 11px;
-        color: $text-secondary;
-        margin-bottom: 4px;
-      }
-
-      .product-price {
-        font-size: 16px;
-        font-weight: 700;
-        color: $accent;
-      }
-
-      .product-stock {
-        font-size: 11px;
-        color: $success;
-        margin-top: 4px;
-
-        .low-stock {
-          color: $warning;
-        }
-      }
+      .product-name { font-size: 13px; font-weight: 600; color: $text-primary; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
+      .product-name-secondary { font-size: 11px; color: $text-secondary; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
+      .product-sku { font-size: 11px; color: $text-secondary; margin-bottom: 4px; }
+      .product-price { font-size: 16px; font-weight: 700; color: $accent; }
+      .product-stock { font-size: 11px; color: $success; margin-top: 4px; .low-stock { color: $warning; } }
+      .product-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; .tag { font-size: 9px; padding: 2px 6px; background: #e3f2fd; color: #1976d2; border-radius: 10px; } }
     }
 
     // Billing Controls for Quick Bill mode - compact

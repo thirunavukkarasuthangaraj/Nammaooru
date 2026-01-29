@@ -79,6 +79,9 @@
             <div class="product-info">
               <div class="product-name">{{ getProductName(product) }}</div>
               <div class="product-sku" *ngIf="getDisplayBarcode(product)">{{ getDisplayBarcode(product) }}</div>
+              <div class="product-tags" *ngIf="product.tags && product.tags.length > 0">
+                <span class="tag" *ngFor="let tag of product.tags.slice(0, 1)">{{ tag }}</span>
+              </div>
             </div>
             <!-- Editable Price & Quantity Section (for billing only, not saved) -->
             <div class="billing-controls">
@@ -129,6 +132,9 @@
             <div class="product-info">
               <div class="product-name">{{ getProductName(product) }}</div>
               <div class="product-sku" *ngIf="getDisplayBarcode(product)">{{ getDisplayBarcode(product) }}</div>
+              <div class="product-tags" *ngIf="product.tags && product.tags.length > 0">
+                <span class="tag" *ngFor="let tag of product.tags.slice(0, 1)">{{ tag }}</span>
+              </div>
             </div>
             <!-- Editable Price & Quantity Section (for billing only, not saved) -->
             <div class="billing-controls">
@@ -229,6 +235,9 @@
               <div class="product-price">₹{{ product.price }}</div>
               <div class="product-stock" *ngIf="product.trackInventory">
                 <span [class.low-stock]="product.stock <= 5">Stock: {{ product.stock }}</span>
+              </div>
+              <div class="product-tags" *ngIf="product.tags && product.tags.length > 0">
+                <span class="tag" *ngFor="let tag of product.tags.slice(0, 2)">{{ tag }}</span>
               </div>
             </div>
           </div>
