@@ -296,9 +296,15 @@ $text-secondary: #7f8c8d;
       .lang-label { color: $text-secondary; &.active { color: $accent; font-weight: 600; } }
       ::ng-deep .mat-slide-toggle { .mat-slide-toggle-bar { width: 28px; height: 14px; } .mat-slide-toggle-thumb { width: 12px; height: 12px; } }
     }
-    .sync-status { display: flex; align-items: center; mat-icon { font-size: 18px; color: $success; } &.offline mat-icon { color: $danger; } }
-    .sync-btn { width: 28px; height: 28px; mat-icon { font-size: 18px; } }
+    .sync-status {
+      display: flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 16px; font-size: 11px; font-weight: 600;
+      mat-icon { font-size: 16px; width: 16px; height: 16px; }
+      &.online { background: #e8f5e9; color: $success; }
+      &.offline { background: #ffebee; color: $danger; }
+    }
+    .sync-btn { width: 28px; height: 28px; mat-icon { font-size: 18px; &.spinning { animation: spin 1s linear infinite; } } }
   }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
   // Tab Header Styles - very compact
   .pos-tabs {
@@ -310,41 +316,11 @@ $text-secondary: #7f8c8d;
     border: 1px solid $border;
 
     .tab-btn {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-      padding: 6px 10px;
-      border: none;
-      background: transparent;
-      border-radius: 4px;
-      font-size: 12px;
-      font-weight: 500;
-      color: $text-secondary;
-      cursor: pointer;
-      transition: all 0.2s ease;
-
-      mat-icon {
-        font-size: 16px;
-        width: 16px;
-        height: 16px;
-      }
-
-      &:hover {
-        background: $light-bg;
-        color: $text-primary;
-      }
-
-      &.active {
-        background: linear-gradient(135deg, $accent 0%, #2980b9 100%);
-        color: white;
-        box-shadow: 0 2px 8px rgba($accent, 0.3);
-
-        mat-icon {
-          color: white;
-        }
-      }
+      flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 6px 10px;
+      border: none; background: transparent; border-radius: 4px; font-size: 12px; font-weight: 500; color: $text-secondary; cursor: pointer;
+      mat-icon { font-size: 16px; width: 16px; height: 16px; }
+      &:hover { background: $light-bg; color: $text-primary; }
+      &.active { background: linear-gradient(135deg, $accent 0%, #2980b9 100%); color: white; box-shadow: 0 2px 8px rgba($accent, 0.3); mat-icon { color: white; } }
     }
   }
 

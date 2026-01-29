@@ -21,11 +21,12 @@
             <mat-slide-toggle [checked]="showTamil" (change)="toggleLanguage()" color="primary"></mat-slide-toggle>
             <span class="lang-label" [class.active]="showTamil">தமிழ்</span>
           </div>
-          <div class="sync-status" [class.offline]="!syncStatus.isOnline">
+          <div class="sync-status" [class.offline]="!syncStatus.isOnline" [class.online]="syncStatus.isOnline">
             <mat-icon>{{ syncStatus.isOnline ? 'cloud_done' : 'cloud_off' }}</mat-icon>
+            <span class="sync-label">{{ syncStatus.isOnline ? 'Online' : 'Offline' }}</span>
           </div>
-          <button mat-icon-button (click)="manualSync()" [disabled]="!syncStatus.isOnline || syncStatus.isSyncing" class="sync-btn">
-            <mat-icon>sync</mat-icon>
+          <button mat-icon-button (click)="manualSync()" [disabled]="!syncStatus.isOnline || syncStatus.isSyncing" class="sync-btn" *ngIf="syncStatus.isOnline">
+            <mat-icon [class.spinning]="syncStatus.isSyncing">sync</mat-icon>
           </button>
         </div>
       </div>
