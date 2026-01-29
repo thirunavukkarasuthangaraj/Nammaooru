@@ -14,8 +14,8 @@ $text-secondary: #7f8c8d;
 .pos-billing-container {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 130px); // Account for main layout header + breadcrumb
-  max-height: calc(100vh - 130px);
+  height: calc(100vh - 115px); // Account for main layout header
+  max-height: calc(100vh - 115px);
   background: $light-bg;
   overflow: hidden;
 }
@@ -895,16 +895,15 @@ $text-secondary: #7f8c8d;
   .product-card {
     background: white;
     border: 1px solid $border;
-    border-radius: 8px;
-    padding: 12px;
+    border-radius: 6px;
+    padding: 8px;
     cursor: pointer;
     transition: all 0.2s;
     position: relative;
 
     &:hover {
       border-color: $accent;
-      box-shadow: 0 4px 12px rgba($accent, 0.15);
-      transform: translateY(-2px);
+      box-shadow: 0 2px 8px rgba($accent, 0.15);
     }
 
     &.out-of-stock {
@@ -912,7 +911,6 @@ $text-secondary: #7f8c8d;
       cursor: not-allowed;
 
       &:hover {
-        transform: none;
         box-shadow: none;
       }
     }
@@ -921,11 +919,9 @@ $text-secondary: #7f8c8d;
     &.in-cart {
       border: 2px solid $success;
       background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);
-      box-shadow: 0 2px 8px rgba($success, 0.25);
 
       &:hover {
         border-color: $success;
-        box-shadow: 0 4px 16px rgba($success, 0.3);
       }
     }
 
@@ -1167,27 +1163,28 @@ $text-secondary: #7f8c8d;
     }
   }
 
-  // Quick Bill Grid - wider cards to fit billing controls
+  // Quick Bill Grid - compact cards
   .quick-bill-grid {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 8px;
 
     .section-header {
       grid-column: 1 / -1;
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 12px 16px;
+      gap: 6px;
+      padding: 8px 12px;
       background: linear-gradient(135deg, rgba($accent, 0.1) 0%, rgba($primary, 0.05) 100%);
-      border-radius: 8px;
-      margin-bottom: 8px;
+      border-radius: 6px;
+      margin-bottom: 4px;
       color: $primary;
       font-weight: 500;
-      font-size: 14px;
+      font-size: 13px;
 
       mat-icon {
-        font-size: 20px;
-        width: 20px;
-        height: 20px;
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
         color: $accent;
       }
     }
@@ -1199,13 +1196,13 @@ $text-secondary: #7f8c8d;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 80px 40px;
+    padding: 40px 20px;
     text-align: center;
     color: $text-secondary;
 
     mat-icon {
-      font-size: 80px;
-      width: 80px;
+      font-size: 60px;
+      width: 60px;
       height: 80px;
       color: $accent;
       opacity: 0.3;
@@ -1461,12 +1458,12 @@ $text-secondary: #7f8c8d;
     }
   }
 
-  // Cart footer - fixed at bottom, doesn't scroll
+  // Cart footer - fixed at bottom, compact
   .cart-footer {
     flex-shrink: 0;
     border-top: 1px solid $border;
     background: white;
-    max-height: 45%;
+    max-height: 40%;
     overflow-y: auto;
   }
 
@@ -1501,15 +1498,15 @@ $text-secondary: #7f8c8d;
   }
 
   .totals-section {
-    padding: 16px;
+    padding: 8px 12px;
     border-top: 1px solid $border;
     background: $light-bg;
 
     .total-row {
       display: flex;
       justify-content: space-between;
-      margin-bottom: 8px;
-      font-size: 14px;
+      margin-bottom: 4px;
+      font-size: 13px;
       color: $text-secondary;
 
       &.mrp-total {
@@ -1527,10 +1524,10 @@ $text-secondary: #7f8c8d;
       }
 
       &.grand-total {
-        margin-top: 12px;
-        padding-top: 12px;
+        margin-top: 6px;
+        padding-top: 6px;
         border-top: 2px solid $primary;
-        font-size: 20px;
+        font-size: 16px;
         font-weight: 700;
         color: $primary;
       }
@@ -1538,18 +1535,18 @@ $text-secondary: #7f8c8d;
   }
 
   .payment-section {
-    padding: 12px 16px;
+    padding: 8px 12px;
     border-top: 1px solid $border;
 
     .payment-label {
-      font-size: 13px;
+      font-size: 12px;
       color: $text-secondary;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
 
     .payment-options {
       display: flex;
-      gap: 8px;
+      gap: 6px;
 
       button {
         flex: 1;
@@ -1576,14 +1573,15 @@ $text-secondary: #7f8c8d;
   }
 
   .generate-btn {
-    margin: 16px;
-    padding: 16px;
-    font-size: 16px;
+    margin: 8px 12px 12px;
+    padding: 12px;
+    font-size: 14px;
     font-weight: 600;
     border-radius: 8px;
 
     mat-icon {
-      margin-right: 8px;
+      margin-right: 6px;
+      font-size: 18px;
     }
   }
 }
