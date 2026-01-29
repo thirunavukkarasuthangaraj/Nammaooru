@@ -177,18 +177,21 @@ export class BulkEditComponent implements OnInit, OnDestroy {
         ).toPromise();
 
         let products = [];
+        let totalElements = 0;
         if (response?.data?.content) {
           products = response.data.content;
           totalPages = response.data.totalPages || 1;
+          totalElements = response.data.totalElements || 0;
         } else if (Array.isArray(response?.data)) {
           products = response.data;
-          totalPages = 1; // No pagination info
+          totalPages = 1;
         } else if (Array.isArray(response)) {
           products = response;
           totalPages = 1;
         }
 
         allProducts = allProducts.concat(products);
+        console.log(`Page ${currentPage + 1}/${totalPages}: fetched ${products.length}, total so far: ${allProducts.length}, server says totalElements: ${totalElements}`);
         currentPage++;
 
         // Safety: prevent infinite loop
