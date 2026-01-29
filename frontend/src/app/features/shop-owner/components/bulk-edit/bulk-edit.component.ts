@@ -406,6 +406,54 @@ export class BulkEditComponent implements OnInit, OnDestroy {
     return value !== undefined && !isNaN(value) && value >= 0 && Number.isInteger(value);
   }
 
+  // Check if a barcode/SKU is duplicate across all products
+  isDuplicateBarcode(product: BulkEditProduct, field: string): boolean {
+    const value = (product as any)[field]?.trim().toLowerCase();
+    if (!value) return false;
+
+    return this.products.some(p => {
+      if (p.id === product.id) return false; // Skip same product
+
+      // Check against all barcode fields and SKU
+      const fieldsToCheck = ['sku', 'barcode1', 'barcode2', 'barcode3'];
+      return fieldsToCheck.some(f => {
+        const otherValue = (p as any)[f]?.trim().toLowerCase();
+        return otherValue && otherValue === value;
+      });
+    });
+  }
+
+  // Check if barcode is duplicate within same product
+  isDuplicateWithinProduct(product: BulkEditProduct, field: string): boolean {
+    const value = (product as any)[field]?.trim().toLowerCase();
+    if (!value) return false;
+
+    const fieldsToCheck = ['sku', 'barcode1', 'barcode2', 'barcode3'].filter(f => f !== field);
+    return fieldsToCheck.some(f => {
+      const otherValue = (product as any)[f]?.trim().toLowerCase();
+      return otherValue && otherValue === value;
+    });
+  }
+
+  // Combined duplicate check
+  hasDuplicateError(product: BulkEditProduct, field: string): boolean {
+    return this.isDuplicateBarcode(product, field) || this.isDuplicateWithinProduct(product, field);
+  }
+
+  // Get duplicate error message
+  getDuplicateErrorMessage(product: BulkEditProduct, field: string): string {
+    const value = (product as any)[field]?.trim();
+    if (!value) return '';
+
+    if (this.isDuplicateWithinProduct(product, field)) {
+      return `'${value}' is used in another field of same product`;
+    }
+    if (this.isDuplicateBarcode(product, field)) {
+      return `'${value}' already exists in another product`;
+    }
+    return '';
+  }
+
   // Save changes
   async saveChanges(): Promise<void> {
     if (this.modifiedProducts.size === 0) {
@@ -425,6 +473,14 @@ export class BulkEditComponent implements OnInit, OnDestroy {
       if (!this.isValidStock(product.stockQuantity)) {
         invalidProducts.push(`${product.customName}: Invalid stock`);
       }
+      // Check for duplicate barcodes/SKU
+      const barcodeFields = ['sku', 'barcode1', 'barcode2', 'barcode3'];
+      barcodeFields.forEach(field => {
+        if (this.hasDuplicateError(product, field)) {
+          const value = (product as any)[field];
+          invalidProducts.push(`${product.customName}: Duplicate ${field.toUpperCase()} '${value}'`);
+        }
+      });
     });
 
     if (invalidProducts.length > 0) {
