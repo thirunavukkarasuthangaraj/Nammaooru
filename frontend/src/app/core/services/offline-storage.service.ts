@@ -291,6 +291,24 @@ export class OfflineStorageService {
   }
 
   /**
+   * Remove a product from cache by ID
+   */
+  async removeProductFromCache(productId: number): Promise<void> {
+    const db = await this.getDB();
+    const transaction = db.transaction(PRODUCTS_STORE, 'readwrite');
+    const store = transaction.objectStore(PRODUCTS_STORE);
+
+    return new Promise((resolve, reject) => {
+      const request = store.delete(productId);
+      request.onsuccess = () => {
+        console.log('Product removed from cache:', productId);
+        resolve();
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
    * Get all cached products
    */
   async getProducts(): Promise<CachedProduct[]> {

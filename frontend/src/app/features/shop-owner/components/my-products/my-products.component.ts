@@ -1058,6 +1058,10 @@ export class MyProductsComponent implements OnInit, OnDestroy {
             console.log('Product deleted successfully');
             this.products = this.products.filter(p => p.id !== product.id);
             this.applyFilters();
+            // Also remove from IndexedDB cache
+            this.offlineStorage.removeProductFromCache(product.id).catch(err =>
+              console.warn('Failed to remove product from cache:', err)
+            );
             this.snackBar.open('Product deleted successfully', 'Close', { duration: 2000 });
           },
           error: (error) => {
@@ -1220,6 +1224,12 @@ export class MyProductsComponent implements OnInit, OnDestroy {
           this.products = this.products.filter(p => !productIds.includes(p.id));
           this.clearProductSelection();
           this.applyFilters();
+          // Also remove from IndexedDB cache
+          productIds.forEach(id => {
+            this.offlineStorage.removeProductFromCache(id).catch(err =>
+              console.warn('Failed to remove product from cache:', err)
+            );
+          });
           this.snackBar.open(`${count} products deleted successfully`, 'Close', { duration: 3000 });
         },
         error: (error) => {
