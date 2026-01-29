@@ -20,7 +20,6 @@ export interface PreloadStatus {
 export class DataPreloadService {
   private apiUrl = environment.apiUrl;
   private readonly PRODUCTS_CACHE_KEY = 'products_preload_timestamp';
-  private readonly CACHE_VALIDITY_MS = 30 * 60 * 1000; // 30 minutes
 
   private statusSubject = new BehaviorSubject<PreloadStatus>({
     isLoading: false,
@@ -55,15 +54,18 @@ export class DataPreloadService {
       return;
     }
 
-    // Check if cache is still valid
-    const lastPreload = localStorage.getItem(this.PRODUCTS_CACHE_KEY);
-    const lastPreloadTime = lastPreload ? parseInt(lastPreload, 10) : 0;
-    const cacheAge = Date.now() - lastPreloadTime;
-
-    if (cacheAge < this.CACHE_VALIDITY_MS) {
-      console.log('Cache is still valid, skipping preload');
-      return;
+    // Check if cache exists - only preload if no cache
+    try {
+      const cachedProducts = await this.offlineStorage.getProducts();
+      if (cachedProducts && cachedProducts.length > 0) {
+        console.log(`Cache exists with ${cachedProducts.length} products, skipping preload`);
+        return;
+      }
+    } catch (error) {
+      console.warn('Error checking cache:', error);
     }
+
+    console.log('No cache found, starting preload...');
 
     this.updateStatus({
       isLoading: true,
@@ -100,11 +102,40 @@ export class DataPreloadService {
   }
 
   /**
-   * Force preload (ignore cache validity)
+   * Force preload - fetches fresh data from server and updates cache
+   * Use when user wants to refresh all data manually
    */
   async forcePreload(): Promise<void> {
-    localStorage.removeItem(this.PRODUCTS_CACHE_KEY);
-    await this.preloadAllData();
+    this.updateStatus({
+      isLoading: true,
+      progress: 0,
+      message: 'Refreshing products...',
+      productsLoaded: 0,
+      totalProducts: 0
+    });
+
+    try {
+      await this.preloadProducts();
+      localStorage.setItem(this.PRODUCTS_CACHE_KEY, Date.now().toString());
+
+      this.updateStatus({
+        isLoading: false,
+        progress: 100,
+        message: 'Refresh complete',
+        productsLoaded: this.statusSubject.value.productsLoaded,
+        totalProducts: this.statusSubject.value.totalProducts
+      });
+    } catch (error: any) {
+      console.error('Force preload failed:', error);
+      this.updateStatus({
+        isLoading: false,
+        progress: 0,
+        message: 'Refresh failed',
+        productsLoaded: 0,
+        totalProducts: 0,
+        error: error.message
+      });
+    }
   }
 
   /**
