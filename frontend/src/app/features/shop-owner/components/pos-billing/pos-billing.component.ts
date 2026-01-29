@@ -99,6 +99,10 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     isSyncing: false
   };
 
+  // Cache validity - only sync from server if cache is older than this
+  private readonly CACHE_VALIDITY_MS = 5 * 60 * 1000; // 5 minutes
+  private readonly POS_CACHE_TIMESTAMP_KEY = 'pos_products_last_sync';
+
   // UI state
   isLoading: boolean = true;
   showCustomerForm: boolean = false;
@@ -455,9 +459,18 @@ export class PosBillingComponent implements OnInit, OnDestroy {
 
         this.isLoading = false;
 
-        // Sync in background if online
+        // Only sync from server if cache is stale (older than 5 minutes)
         if (navigator.onLine) {
-          this.syncProductsInBackground();
+          const lastSync = localStorage.getItem(this.POS_CACHE_TIMESTAMP_KEY);
+          const lastSyncTime = lastSync ? parseInt(lastSync, 10) : 0;
+          const cacheAge = Date.now() - lastSyncTime;
+
+          if (cacheAge > this.CACHE_VALIDITY_MS) {
+            console.log(`POS cache is stale (age: ${Math.round(cacheAge / 1000)}s), syncing from server...`);
+            this.syncProductsInBackground();
+          } else {
+            console.log(`POS using cached data (age: ${Math.round(cacheAge / 1000)}s, max: ${this.CACHE_VALIDITY_MS / 1000}s)`);
+          }
         }
         return;
       }
@@ -473,7 +486,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
    * Load products from server
    */
   private loadProductsFromServer(): void {
-    this.http.get<any>(`${this.apiUrl}/shop-products/my-products?page=0&size=1000`)
+    this.http.get<any>(`${this.apiUrl}/shop-products/my-products?page=0&size=100000`)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: async (response) => {
@@ -502,6 +515,8 @@ export class PosBillingComponent implements OnInit, OnDestroy {
 
           // Save to local cache immediately (fast)
           await this.offlineStorage.saveProducts(this.products, this.shopId);
+          // Save sync timestamp
+          localStorage.setItem(this.POS_CACHE_TIMESTAMP_KEY, Date.now().toString());
           console.log(`Loaded and cached ${this.products.length} products`);
 
           // Cache images in background (non-blocking) - don't await
@@ -584,7 +599,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
    * Sync products in background
    */
   private syncProductsInBackground(): void {
-    this.http.get<any>(`${this.apiUrl}/shop-products/my-products?page=0&size=1000`)
+    this.http.get<any>(`${this.apiUrl}/shop-products/my-products?page=0&size=100000`)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: async (response) => {
@@ -601,13 +616,16 @@ export class PosBillingComponent implements OnInit, OnDestroy {
           // Update cache
           await this.offlineStorage.saveProducts(newProducts, this.shopId);
 
+          // Save sync timestamp
+          localStorage.setItem(this.POS_CACHE_TIMESTAMP_KEY, Date.now().toString());
+
           // Update UI if products changed
           if (newProducts.length !== this.products.length) {
             this.products = newProducts;
             this.filteredProducts = this.sortProductsWithCartFirst(this.products);
           }
 
-          console.log('Background sync complete');
+          console.log(`Background sync complete: ${newProducts.length} products`);
         },
         error: (error) => {
           console.warn('Background sync failed:', error);

@@ -14,9 +14,13 @@ import java.util.List;
 @AllArgsConstructor
 public class BulkImportResponse {
 
-    private int totalRows;
+    private int totalRows;           // Rows with valid product name
     private int successCount;
     private int failureCount;
+    private int updatedCount;        // Products that already existed and were updated
+    private int createdCount;        // New products created
+    private int skippedEmptyRows;    // Rows skipped because they were empty
+    private int totalExcelRows;      // Total physical rows in Excel (for diagnostics)
     private List<ImportResult> results;
     private String message;
 
@@ -31,6 +35,7 @@ public class BulkImportResponse {
         private String message;
         private Long productId;
         private String imageUploadStatus;
+        private boolean wasUpdated;  // true if existing product was updated, false if new product created
     }
 
     public void addResult(ImportResult result) {

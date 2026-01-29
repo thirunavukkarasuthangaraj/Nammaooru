@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { BulkImportService, BulkImportResponse, BulkImportResult } from '../../services/bulk-import.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '../../../../core/services/auth.service';
+import { OfflineStorageService } from '../../../../core/services/offline-storage.service';
 
 @Component({
   selector: 'app-product-bulk-import',
@@ -23,7 +24,8 @@ export class ProductBulkImportComponent implements OnInit {
   constructor(
     private bulkImportService: BulkImportService,
     private snackBar: MatSnackBar,
-    private authService: AuthService
+    private authService: AuthService,
+    private offlineStorage: OfflineStorageService
   ) {}
 
   ngOnInit(): void {
@@ -82,6 +84,13 @@ export class ProductBulkImportComponent implements OnInit {
 
           // Clear the file after successful import to prevent re-uploading same file
           this.selectedFile = null;
+
+          // Clear local product cache so next page load fetches fresh data from server
+          localStorage.removeItem('my_products_last_sync');
+          this.offlineStorage.saveProducts([], 0).catch(err =>
+            console.warn('Failed to clear product cache:', err)
+          );
+          console.log('Product cache cleared after bulk import');
 
           const message = `Import completed! Success: ${response.data.successCount}, Failed: ${response.data.failureCount}`;
           this.snackBar.open(message, 'Close', {

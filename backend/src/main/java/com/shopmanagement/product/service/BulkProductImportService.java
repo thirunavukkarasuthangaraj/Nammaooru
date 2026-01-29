@@ -79,6 +79,9 @@ public class BulkProductImportService {
             List<BulkImportRequest> requests = parseExcelFile(excelFile);
             response.setTotalRows(requests.size());
 
+            int updatedCount = 0;
+            int createdCount = 0;
+
             for (BulkImportRequest request : requests) {
                 // Use self to invoke through Spring proxy (ensures @Transactional REQUIRES_NEW works)
                 BulkImportResponse.ImportResult result = self.processShopProductImport(shopId, request, images);
@@ -86,14 +89,21 @@ public class BulkProductImportService {
 
                 if ("SUCCESS".equals(result.getStatus())) {
                     response.setSuccessCount(response.getSuccessCount() + 1);
+                    if (result.isWasUpdated()) {
+                        updatedCount++;
+                    } else {
+                        createdCount++;
+                    }
                 } else {
                     response.setFailureCount(response.getFailureCount() + 1);
                 }
             }
 
+            response.setUpdatedCount(updatedCount);
+            response.setCreatedCount(createdCount);
             response.setMessage(String.format(
-                    "Import completed. Total: %d, Success: %d, Failed: %d",
-                    response.getTotalRows(), response.getSuccessCount(), response.getFailureCount()
+                    "Import completed. Total: %d, Success: %d (Created: %d, Updated: %d), Failed: %d",
+                    response.getTotalRows(), response.getSuccessCount(), createdCount, updatedCount, response.getFailureCount()
             ));
 
         } catch (Exception e) {
@@ -157,7 +167,13 @@ public class BulkProductImportService {
              Workbook workbook = new XSSFWorkbook(inputStream)) {
 
             Sheet sheet = workbook.getSheetAt(0);
+            int totalPhysicalRows = sheet.getPhysicalNumberOfRows();
+            int lastRowNum = sheet.getLastRowNum();
+            log.info("EXCEL PARSING: Physical rows={}, Last row number={}", totalPhysicalRows, lastRowNum);
+
             int rowNum = 0;
+            int skippedEmpty = 0;
+            int skippedNoName = 0;
 
             for (Row row : sheet) {
                 // Skip header row
@@ -168,6 +184,19 @@ public class BulkProductImportService {
 
                 // Skip empty rows
                 if (isRowEmpty(row)) {
+                    skippedEmpty++;
+                    rowNum++;
+                    continue;
+                }
+
+                // Check if product name (column A) is empty - skip if so
+                String productName = getCellValueAsString(row.getCell(0));
+                if (productName == null || productName.trim().isEmpty()) {
+                    skippedNoName++;
+                    if (skippedNoName <= 10) {
+                        log.warn("Row {} skipped: Product name (column A) is empty", rowNum + 1);
+                    }
+                    rowNum++;
                     continue;
                 }
 
@@ -175,6 +204,9 @@ public class BulkProductImportService {
                 requests.add(request);
                 rowNum++;
             }
+
+            log.info("EXCEL PARSING SUMMARY: Total rows processed={}, Valid products={}, Skipped empty={}, Skipped no name={}",
+                     rowNum, requests.size(), skippedEmpty, skippedNoName);
         }
 
         return requests;
@@ -407,7 +439,8 @@ public class BulkProductImportService {
                 log.warn("Skipping image upload: imagePath is null or empty for product '{}'", request.getName());
             }
 
-            String message = existingShopProduct.isPresent()
+            boolean wasUpdated = existingShopProduct.isPresent();
+            String message = wasUpdated
                     ? "Product exists - prices and image updated"
                     : "Product imported successfully";
 
@@ -418,6 +451,7 @@ public class BulkProductImportService {
                     .message(message)
                     .productId(shopProductId)
                     .imageUploadStatus(imageStatus)
+                    .wasUpdated(wasUpdated)
                     .build();
 
         } catch (Exception e) {
