@@ -60,6 +60,7 @@ import { ComboFormComponent } from './components/combo-management/combo-form.com
 import { ShopPromoListComponent } from './components/promo-codes/shop-promo-list.component';
 import { ShopPromoFormComponent } from './components/promo-codes/shop-promo-form.component';
 import { PosBillingComponent } from './components/pos-billing/pos-billing.component';
+import { BulkEditComponent } from './components/bulk-edit/bulk-edit.component';
 
 @NgModule({
   declarations: [
@@ -91,7 +92,8 @@ import { PosBillingComponent } from './components/pos-billing/pos-billing.compon
     ComboFormComponent,
     ShopPromoListComponent,
     ShopPromoFormComponent,
-    PosBillingComponent
+    PosBillingComponent,
+    BulkEditComponent
   ],
   imports: [
     CommonModule,

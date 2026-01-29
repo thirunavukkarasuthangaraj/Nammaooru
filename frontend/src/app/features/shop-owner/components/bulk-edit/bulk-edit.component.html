@@ -1,0 +1,266 @@
+<div class="bulk-edit-container">
+  <!-- Header Section -->
+  <div class="bulk-edit-header">
+    <div class="header-left">
+      <h1>Bulk Edit Products</h1>
+      <p class="breadcrumb">Home / Shop-owner / Bulk-edit</p>
+    </div>
+    <div class="header-right">
+      <span class="version-info">v{{ clientVersion }}</span>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>Search products...</mat-label>
+        <input matInput
+               [value]="searchTerm"
+               (input)="onSearchChange($event)"
+               placeholder="Search by name, SKU, or tags">
+        <mat-icon matSuffix>search</mat-icon>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>Category</mat-label>
+        <mat-select [value]="selectedCategory" (selectionChange)="onCategoryChange($event.value)">
+          <mat-option value="">All Categories</mat-option>
+          <mat-option *ngFor="let category of categories" [value]="category">
+            {{ category }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <div class="toolbar-right">
+      <button mat-raised-button
+              color="primary"
+              class="save-btn"
+              [disabled]="modifiedProducts.size === 0 || saving"
+              (click)="saveChanges()">
+        <mat-icon>save</mat-icon>
+        Save Changes
+        <span class="pending-count" *ngIf="modifiedProducts.size > 0">
+          ({{ modifiedProducts.size }} pending)
+        </span>
+        <mat-spinner diameter="18" *ngIf="saving"></mat-spinner>
+      </button>
+    </div>
+  </div>
+
+  <!-- Status Bar -->
+  <div class="status-bar">
+    <div class="status-left">
+      <span class="product-count">{{ totalProducts }} products</span>
+      <span class="modified-count" *ngIf="modifiedProducts.size > 0">
+        • {{ modifiedProducts.size }} modified (unsaved)
+      </span>
+    </div>
+    <div class="status-right">
+      <button mat-button
+              color="warn"
+              class="discard-btn"
+              *ngIf="modifiedProducts.size > 0"
+              (click)="discardChanges()">
+        <mat-icon>undo</mat-icon>
+        Discard All
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-container" *ngIf="loading">
+    <mat-spinner diameter="40"></mat-spinner>
+    <p>Loading products...</p>
+  </div>
+
+  <!-- Excel-like Grid -->
+  <div class="grid-container" *ngIf="!loading">
+    <div class="grid-wrapper">
+      <table class="excel-grid">
+        <thead>
+          <tr>
+            <th class="col-row-num">#</th>
+            <th class="col-image">IMG</th>
+            <th class="col-product-name">PRODUCT NAME</th>
+            <th class="col-tamil-name">TAMIL NAME</th>
+            <th class="col-sku">SKU</th>
+            <th class="col-barcode">BARCODE 1</th>
+            <th class="col-barcode">BARCODE 2</th>
+            <th class="col-barcode">BARCODE 3</th>
+            <th class="col-price">PRICE</th>
+            <th class="col-mrp">MRP</th>
+            <th class="col-stock">STOCK</th>
+            <th class="col-status">STATUS</th>
+            <th class="col-tags">TAGS</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let product of paginatedProducts; let i = index"
+              [class.modified-row]="isModified(product)">
+            <!-- Row Number -->
+            <td class="col-row-num">{{ getRowNumber(i) }}</td>
+
+            <!-- Image -->
+            <td class="col-image">
+              <div class="product-image">
+                <img [src]="getProductImageUrl(product)" [alt]="product.customName">
+              </div>
+            </td>
+
+            <!-- Product Name (Editable) -->
+            <td class="col-product-name">
+              <input type="text"
+                     class="cell-input name-input"
+                     [class.modified]="isCellModified(product, 'customName')"
+                     [value]="product.customName"
+                     (change)="onProductNameChange(product, $any($event.target).value)">
+            </td>
+
+            <!-- Tamil Name (Editable) -->
+            <td class="col-tamil-name">
+              <input type="text"
+                     class="cell-input tamil-input"
+                     [class.modified]="isCellModified(product, 'nameTamil')"
+                     [value]="product.nameTamil || ''"
+                     (change)="onTamilNameChange(product, $any($event.target).value)"
+                     placeholder="-">
+            </td>
+
+            <!-- SKU (Editable) -->
+            <td class="col-sku">
+              <input type="text"
+                     class="cell-input sku-input"
+                     [class.modified]="isCellModified(product, 'sku')"
+                     [value]="product.sku || ''"
+                     (change)="onSkuChange(product, $any($event.target).value)"
+                     placeholder="-">
+            </td>
+
+            <!-- Barcode 1 (Editable) -->
+            <td class="col-barcode">
+              <input type="text"
+                     class="cell-input barcode-input"
+                     [class.modified]="isCellModified(product, 'barcode1')"
+                     [value]="product.barcode1 || ''"
+                     (change)="onBarcode1Change(product, $any($event.target).value)"
+                     placeholder="-">
+            </td>
+
+            <!-- Barcode 2 (Editable) -->
+            <td class="col-barcode">
+              <input type="text"
+                     class="cell-input barcode-input"
+                     [class.modified]="isCellModified(product, 'barcode2')"
+                     [value]="product.barcode2 || ''"
+                     (change)="onBarcode2Change(product, $any($event.target).value)"
+                     placeholder="-">
+            </td>
+
+            <!-- Barcode 3 (Editable) -->
+            <td class="col-barcode">
+              <input type="text"
+                     class="cell-input barcode-input"
+                     [class.modified]="isCellModified(product, 'barcode3')"
+                     [value]="product.barcode3 || ''"
+                     (change)="onBarcode3Change(product, $any($event.target).value)"
+                     placeholder="-">
+            </td>
+
+            <!-- Price (Editable) -->
+            <td class="col-price">
+              <input type="number"
+                     class="cell-input"
+                     [class.modified]="isCellModified(product, 'price')"
+                     [class.invalid]="!isValidPrice(product.price)"
+                     [value]="product.price"
+                     (change)="onPriceChange(product, $any($event.target).value)"
+                     min="0"
+                     step="0.01">
+            </td>
+
+            <!-- MRP (Editable) -->
+            <td class="col-mrp">
+              <input type="number"
+                     class="cell-input"
+                     [class.modified]="isCellModified(product, 'mrp')"
+                     [class.invalid]="product.originalPrice !== undefined && !isValidPrice(product.originalPrice)"
+                     [value]="product.originalPrice"
+                     (change)="onMrpChange(product, $any($event.target).value)"
+                     min="0"
+                     step="0.01">
+            </td>
+
+            <!-- Stock (Editable) -->
+            <td class="col-stock">
+              <input type="number"
+                     class="cell-input"
+                     [class.modified]="isCellModified(product, 'stock')"
+                     [class.invalid]="!isValidStock(product.stockQuantity)"
+                     [value]="product.stockQuantity"
+                     (change)="onStockChange(product, $any($event.target).value)"
+                     min="0"
+                     step="1">
+            </td>
+
+            <!-- Status (Editable Dropdown) -->
+            <td class="col-status">
+              <select class="status-dropdown"
+                      [class.modified]="isCellModified(product, 'status')"
+                      [class.status-active]="product.status === 'ACTIVE'"
+                      [class.status-inactive]="product.status === 'INACTIVE'"
+                      [value]="product.status"
+                      (change)="onStatusDropdownChange(product, $any($event.target).value)">
+                <option value="ACTIVE">Active</option>
+                <option value="INACTIVE">Inactive</option>
+              </select>
+            </td>
+
+            <!-- Tags (Editable) -->
+            <td class="col-tags">
+              <input type="text"
+                     class="cell-input tags-input"
+                     [class.modified]="isCellModified(product, 'tags')"
+                     [value]="product.tags || ''"
+                     (change)="onTagsChange(product, $any($event.target).value)"
+                     placeholder="-">
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Empty State -->
+  <div class="empty-state" *ngIf="!loading && filteredProducts.length === 0">
+    <div class="empty-icon">
+      <mat-icon>inventory_2</mat-icon>
+    </div>
+    <h3>No products found</h3>
+    <p>Try adjusting your search or filter criteria.</p>
+  </div>
+
+  <!-- Pagination -->
+  <div class="pagination-container" *ngIf="filteredProducts.length > 0">
+    <mat-paginator
+      [length]="totalProducts"
+      [pageSize]="pageSize"
+      [pageSizeOptions]="pageSizeOptions"
+      [showFirstLastButtons]="true"
+      (page)="onPageChange($event)">
+    </mat-paginator>
+  </div>
+
+  <!-- Legend -->
+  <div class="legend" *ngIf="!loading && filteredProducts.length > 0">
+    <span class="legend-item">
+      <span class="legend-color modified"></span>
+      Modified cell (yellow)
+    </span>
+    <span class="legend-item">
+      <span class="legend-color invalid"></span>
+      Invalid value (red border)
+    </span>
+  </div>
+</div>

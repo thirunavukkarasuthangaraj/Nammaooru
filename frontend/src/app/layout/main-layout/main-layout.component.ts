@@ -269,6 +269,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       category: 'Products',
       items: [
         { title: 'My Products', icon: 'inventory_2', route: '/shop-owner/my-products', badge: null },
+        { title: 'Bulk Edit', icon: 'table_chart', route: '/shop-owner/bulk-edit', badge: null },
         { title: 'Browse Products', icon: 'search', route: '/shop-owner/browse-products', badge: null },
         { title: 'Combos', icon: 'card_giftcard', route: '/shop-owner/combos', badge: null },
         { title: 'Bulk Import', icon: 'cloud_upload', route: '/products/bulk-import', badge: null }

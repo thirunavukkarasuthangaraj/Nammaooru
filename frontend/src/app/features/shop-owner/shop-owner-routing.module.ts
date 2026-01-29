@@ -21,6 +21,7 @@ import { BrowseProductsComponent } from './components/browse-products/browse-pro
 import { ComboListComponent } from './components/combo-management/combo-list.component';
 import { ShopPromoListComponent } from './components/promo-codes/shop-promo-list.component';
 import { PosBillingComponent } from './components/pos-billing/pos-billing.component';
+import { BulkEditComponent } from './components/bulk-edit/bulk-edit.component';
 
 const routes: Routes = [
   {
@@ -96,6 +97,10 @@ const routes: Routes = [
   {
     path: 'pos-billing',
     component: PosBillingComponent
+  },
+  {
+    path: 'bulk-edit',
+    component: BulkEditComponent
   },
   {
     path: 'inventory',
