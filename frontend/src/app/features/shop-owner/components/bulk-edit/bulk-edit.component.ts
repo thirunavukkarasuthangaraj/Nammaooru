@@ -171,65 +171,86 @@ export class BulkEditComponent implements OnInit, OnDestroy {
     this.extractCategories();
   }
 
-  private syncProductsFromServer(): void {
-    this.http.get<any>(`${this.apiUrl}/shop-products/my-products?page=0&size=100000`)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          let products = [];
-          if (response?.data?.content) {
-            products = response.data.content;
-          } else if (Array.isArray(response?.data)) {
-            products = response.data;
-          } else if (Array.isArray(response)) {
-            products = response;
-          }
+  private async syncProductsFromServer(): Promise<void> {
+    const pageSize = 500;
+    let allProducts: any[] = [];
+    let currentPage = 0;
+    let totalPages = 1;
 
-          this.products = products.map((p: any) => ({
-            id: p.id,
-            customName: p.displayName || p.customName || p.masterProduct?.name,
-            nameTamil: p.masterProduct?.nameTamil || '',
-            description: p.displayDescription || p.customDescription || p.masterProduct?.description,
-            sku: p.sku || p.masterProduct?.sku || '',
-            barcode1: p.barcode1 || '',
-            barcode2: p.barcode2 || '',
-            barcode3: p.barcode3 || '',
-            price: p.price,
-            originalPrice: p.originalPrice,
-            stockQuantity: p.stockQuantity,
-            status: p.status || (p.isAvailable ? 'ACTIVE' : 'INACTIVE'),
-            isAvailable: p.isAvailable,
-            tags: p.masterProduct?.tags || '',
-            category: p.masterProduct?.category?.name || '',
-            imageUrl: p.primaryImageUrl || '',
-            originalValues: {
-              customName: p.displayName || p.customName || p.masterProduct?.name,
-              price: p.price,
-              originalPrice: p.originalPrice,
-              stockQuantity: p.stockQuantity,
-              status: p.status || (p.isAvailable ? 'ACTIVE' : 'INACTIVE'),
-              isAvailable: p.isAvailable,
-              tags: p.masterProduct?.tags || '',
-              sku: p.sku || p.masterProduct?.sku || '',
-              barcode1: p.barcode1 || '',
-              barcode2: p.barcode2 || '',
-              barcode3: p.barcode3 || '',
-              nameTamil: p.masterProduct?.nameTamil || ''
-            }
-          }));
+    try {
+      // Fetch all pages
+      while (currentPage < totalPages) {
+        const response: any = await this.http.get<any>(
+          `${this.apiUrl}/shop-products/my-products?page=${currentPage}&size=${pageSize}`
+        ).toPromise();
 
-          this.applyFilters();
-          this.extractCategories();
-          this.loading = false;
-        },
-        error: (error) => {
-          console.error('Failed to sync products:', error);
-          this.loading = false;
-          if (this.products.length === 0) {
-            this.snackBar.open('Failed to load products', 'Close', { duration: 3000 });
-          }
+        let products = [];
+        if (response?.data?.content) {
+          products = response.data.content;
+          totalPages = response.data.totalPages || 1;
+        } else if (Array.isArray(response?.data)) {
+          products = response.data;
+          totalPages = 1; // No pagination info
+        } else if (Array.isArray(response)) {
+          products = response;
+          totalPages = 1;
         }
-      });
+
+        allProducts = allProducts.concat(products);
+        currentPage++;
+
+        // Safety: prevent infinite loop
+        if (currentPage > 100) break;
+      }
+
+      console.log(`Loaded ${allProducts.length} products from ${currentPage} pages`);
+
+      this.products = allProducts.map((p: any) => ({
+        id: p.id,
+        customName: p.displayName || p.customName || p.masterProduct?.name,
+        nameTamil: p.masterProduct?.nameTamil || '',
+        description: p.displayDescription || p.customDescription || p.masterProduct?.description,
+        sku: p.sku || p.masterProduct?.sku || '',
+        barcode1: p.barcode1 || '',
+        barcode2: p.barcode2 || '',
+        barcode3: p.barcode3 || '',
+        price: p.price,
+        originalPrice: p.originalPrice,
+        stockQuantity: p.stockQuantity,
+        status: p.status || (p.isAvailable ? 'ACTIVE' : 'INACTIVE'),
+        isAvailable: p.isAvailable,
+        tags: p.masterProduct?.tags || '',
+        category: p.masterProduct?.category?.name || '',
+        imageUrl: p.primaryImageUrl || '',
+        originalValues: {
+          customName: p.displayName || p.customName || p.masterProduct?.name,
+          price: p.price,
+          originalPrice: p.originalPrice,
+          stockQuantity: p.stockQuantity,
+          status: p.status || (p.isAvailable ? 'ACTIVE' : 'INACTIVE'),
+          isAvailable: p.isAvailable,
+          tags: p.masterProduct?.tags || '',
+          sku: p.sku || p.masterProduct?.sku || '',
+          barcode1: p.barcode1 || '',
+          barcode2: p.barcode2 || '',
+          barcode3: p.barcode3 || '',
+          nameTamil: p.masterProduct?.nameTamil || ''
+        }
+      }));
+
+      this.applyFilters();
+      this.extractCategories();
+      this.loading = false;
+
+      // Update cache timestamp
+      localStorage.setItem(this.CACHE_TIMESTAMP_KEY, Date.now().toString());
+    } catch (error) {
+      console.error('Failed to sync products:', error);
+      this.loading = false;
+      if (this.products.length === 0) {
+        this.snackBar.open('Failed to load products', 'Close', { duration: 3000 });
+      }
+    }
   }
 
   private extractCategories(): void {
