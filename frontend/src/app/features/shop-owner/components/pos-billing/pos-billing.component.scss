@@ -282,44 +282,22 @@ $text-secondary: #7f8c8d;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
+    padding: 8px 12px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   }
 
-  // Controls on right of tabs
   .pos-controls {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-
+    display: flex; align-items: center; gap: 8px;
     .language-toggle {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 11px;
-
-      .lang-label {
-        color: $text-secondary;
-        &.active { color: $accent; font-weight: 600; }
-      }
-
-      ::ng-deep .mat-slide-toggle {
-        .mat-slide-toggle-bar { width: 28px; height: 14px; }
-        .mat-slide-toggle-thumb { width: 12px; height: 12px; }
-      }
+      display: flex; align-items: center; gap: 4px; font-size: 11px;
+      .lang-label { color: $text-secondary; &.active { color: $accent; font-weight: 600; } }
+      ::ng-deep .mat-slide-toggle { .mat-slide-toggle-bar { width: 28px; height: 14px; } .mat-slide-toggle-thumb { width: 12px; height: 12px; } }
     }
-
-    .sync-status {
-      display: flex;
-      align-items: center;
-      mat-icon { font-size: 18px; color: $success; }
-      &.offline mat-icon { color: $danger; }
-    }
-
-    .sync-btn {
-      width: 28px;
-      height: 28px;
-      mat-icon { font-size: 18px; }
-    }
+    .sync-status { display: flex; align-items: center; mat-icon { font-size: 18px; color: $success; } &.offline mat-icon { color: $danger; } }
+    .sync-btn { width: 28px; height: 28px; mat-icon { font-size: 18px; } }
   }
 
   // Tab Header Styles - very compact
