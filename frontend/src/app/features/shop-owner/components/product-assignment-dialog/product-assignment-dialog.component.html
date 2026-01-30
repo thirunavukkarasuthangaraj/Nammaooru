@@ -2,7 +2,7 @@
   <div class="dialog-header">
     <h2 mat-dialog-title>
       <mat-icon>add_business</mat-icon>
-      Add Product to Your Shop
+      Add to Shop
     </h2>
     <button mat-icon-button mat-dialog-close>
       <mat-icon>close</mat-icon>
@@ -10,204 +10,83 @@
   </div>
 
   <mat-dialog-content class="dialog-content">
-    <!-- Product Info Section -->
+    <!-- Product Info -->
     <div class="product-preview">
       <div class="product-image">
-        <img [src]="data.product.primaryImageUrl || '/assets/images/product-placeholder.jpg'" 
-             [alt]="data.product.name">
+        <img [src]="data.product.primaryImageUrl || '/assets/images/product-placeholder.svg'"
+             [alt]="data.product.name"
+             onerror="this.src='/assets/images/product-placeholder.svg'">
       </div>
       <div class="product-info">
         <h3>{{ data.product.name }}</h3>
-        <p class="product-description">{{ data.product.description || 'No description available' }}</p>
         <div class="product-meta">
-          <span class="meta-item">
+          <span class="meta-item" *ngIf="data.product.category?.name">
             <mat-icon>category</mat-icon>
-            {{ data.product.category?.name || 'Uncategorized' }}
-          </span>
-          <span class="meta-item" *ngIf="data.product.brand">
-            <mat-icon>branding_watermark</mat-icon>
-            {{ data.product.brand }}
-          </span>
-          <span class="meta-item" *ngIf="data.product.baseUnit">
-            <mat-icon>straighten</mat-icon>
-            {{ data.product.baseUnit }}
-          </span>
-        </div>
-        <div class="market-price" *ngIf="data.product.minPrice && data.product.maxPrice">
-          <span class="price-label">Market Price Range:</span>
-          <span class="price-range">
-            ₹{{ data.product.minPrice | number:'1.2-2' }} - ₹{{ data.product.maxPrice | number:'1.2-2' }}
+            {{ data.product.category?.name }}
           </span>
         </div>
       </div>
     </div>
 
-    <!-- Assignment Form -->
+    <!-- Form -->
     <form [formGroup]="assignmentForm" class="assignment-form">
       <div class="form-row">
         <mat-form-field appearance="outline" class="half-width">
-          <mat-label>Your Selling Price *</mat-label>
-          <mat-icon matPrefix>currency_rupee</mat-icon>
-          <input matInput
-                 type="number"
-                 formControlName="price"
-                 placeholder="Enter your price"
-                 step="0.01"
-                 min="0">
-          <mat-error *ngIf="assignmentForm.get('price')?.hasError('required')">
-            Price is required
-          </mat-error>
-          <mat-error *ngIf="assignmentForm.get('price')?.hasError('min')">
-            Price must be greater than 0
-          </mat-error>
-          <mat-hint>Selling price for customers</mat-hint>
+          <mat-label>Selling Price *</mat-label>
+          <span matPrefix>₹</span>
+          <input matInput type="number" formControlName="price" placeholder="0.00">
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="half-width">
-          <mat-label>MRP (Optional)</mat-label>
-          <mat-icon matPrefix>currency_rupee</mat-icon>
-          <input matInput
-                 type="number"
-                 formControlName="originalPrice"
-                 placeholder="Enter MRP"
-                 step="0.01"
-                 min="0">
-          <mat-hint>Maximum retail price</mat-hint>
+          <mat-label>MRP</mat-label>
+          <span matPrefix>₹</span>
+          <input matInput type="number" formControlName="originalPrice" placeholder="Optional">
         </mat-form-field>
       </div>
 
       <div class="form-row">
         <mat-form-field appearance="outline" class="half-width">
-          <mat-label>Initial Stock Quantity</mat-label>
-          <mat-icon matPrefix>inventory</mat-icon>
-          <input matInput 
-                 type="number" 
-                 formControlName="stockQuantity" 
-                 placeholder="Enter quantity"
-                 min="0">
-          <mat-error *ngIf="assignmentForm.get('stockQuantity')?.hasError('min')">
-            Stock cannot be negative
-          </mat-error>
-          <mat-hint>You can update stock later</mat-hint>
+          <mat-label>Stock Qty</mat-label>
+          <input matInput type="number" formControlName="stockQuantity" placeholder="0">
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="half-width">
-          <mat-label>Cost Price (Optional)</mat-label>
-          <mat-icon matPrefix>currency_rupee</mat-icon>
-           <input matInput 
-                 type="number" 
-                 formControlName="costPrice" 
-                 placeholder="Enter cost price"
-                 step="0.01"
-                 min="0">
-          <mat-hint>For profit calculation</mat-hint>
+          <mat-label>Cost Price</mat-label>
+          <span matPrefix>₹</span>
+          <input matInput type="number" formControlName="costPrice" placeholder="Optional">
+        </mat-form-field>
+      </div>
+
+      <div class="form-row">
+        <mat-form-field appearance="outline" class="half-width">
+          <mat-label>SKU *</mat-label>
+          <input matInput formControlName="sku" placeholder="Product SKU">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="half-width">
+          <mat-label>Barcode</mat-label>
+          <input matInput formControlName="barcode1" placeholder="Optional">
         </mat-form-field>
       </div>
 
       <div class="form-row">
         <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Custom Product Name (Optional)</mat-label>
-          <mat-icon matPrefix>edit</mat-icon>
-          <input matInput
-                 formControlName="customName"
-                 placeholder="Override product name">
-          <mat-hint>Leave empty to use default name</mat-hint>
+          <mat-label>Custom Name</mat-label>
+          <input matInput formControlName="customName" placeholder="Override product name (optional)">
         </mat-form-field>
       </div>
 
       <div class="form-row">
         <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Tamil Name (Optional)</mat-label>
-          <mat-icon matPrefix>translate</mat-icon>
-          <input matInput
-                 formControlName="nameTamil"
-                 placeholder="தமிழ் பெயர்">
-          <mat-hint>Product name in Tamil</mat-hint>
-        </mat-form-field>
-      </div>
-
-      <div class="form-row">
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Custom Description (Optional)</mat-label>
-          <mat-icon matPrefix>description</mat-icon>
-          <textarea matInput
-                    formControlName="customDescription"
-                    rows="3"
-                    placeholder="Add your own product description">
-          </textarea>
-          <mat-hint>Personalize the description for your customers</mat-hint>
-        </mat-form-field>
-      </div>
-
-      <div class="form-row">
-        <mat-form-field appearance="outline" class="half-width">
-          <mat-label>SKU ID *</mat-label>
-          <mat-icon matPrefix>qr_code</mat-icon>
-          <input matInput
-                 formControlName="sku"
-                 placeholder="Enter SKU ID">
-          <mat-error *ngIf="assignmentForm.get('sku')?.hasError('required')">
-            SKU ID is required
-          </mat-error>
-          <mat-hint>Unique product SKU</mat-hint>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" class="half-width">
-          <mat-label>Barcode 1 (Optional)</mat-label>
-          <mat-icon matPrefix>qr_code_scanner</mat-icon>
-          <input matInput
-                 formControlName="barcode1"
-                 placeholder="Primary barcode">
-        </mat-form-field>
-      </div>
-
-      <div class="form-row">
-        <mat-form-field appearance="outline" class="half-width">
-          <mat-label>Barcode 2 (Optional)</mat-label>
-          <mat-icon matPrefix>qr_code_scanner</mat-icon>
-          <input matInput
-                 formControlName="barcode2"
-                 placeholder="Secondary barcode">
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" class="half-width">
-          <mat-label>Barcode 3 (Optional)</mat-label>
-          <mat-icon matPrefix>qr_code_scanner</mat-icon>
-          <input matInput
-                 formControlName="barcode3"
-                 placeholder="Tertiary barcode">
-        </mat-form-field>
-      </div>
-
-      <div class="form-row">
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Tags (Optional)</mat-label>
-          <mat-icon matPrefix>label</mat-icon>
-          <input matInput
-                 formControlName="tags"
-                 placeholder="e.g. snacks, organic, spicy">
-          <mat-hint>Comma-separated tags for search</mat-hint>
-        </mat-form-field>
-      </div>
-
-      <div class="form-row">
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Voice Search Tags (Optional)</mat-label>
-          <mat-icon matPrefix>mic</mat-icon>
-          <input matInput
-                 formControlName="voiceSearchTags"
-                 placeholder="e.g. vim, dishwash, cleaning gel">
-          <mat-hint>Tags for voice search discovery</mat-hint>
+          <mat-label>Tamil Name</mat-label>
+          <input matInput formControlName="nameTamil" placeholder="தமிழ் பெயர் (optional)">
         </mat-form-field>
       </div>
 
       <div class="form-row">
         <div class="availability-toggle">
           <mat-slide-toggle formControlName="isAvailable" color="primary">
-            <span class="toggle-label">
-              <mat-icon>{{ assignmentForm.get('isAvailable')?.value ? 'visibility' : 'visibility_off' }}</mat-icon>
-              {{ assignmentForm.get('isAvailable')?.value ? 'Available for customers' : 'Hidden from customers' }}
-            </span>
+            {{ assignmentForm.get('isAvailable')?.value ? 'Available' : 'Hidden' }}
           </mat-slide-toggle>
         </div>
       </div>
@@ -216,12 +95,9 @@
       <div class="profit-preview" *ngIf="assignmentForm.get('price')?.value && assignmentForm.get('costPrice')?.value">
         <mat-card class="profit-card">
           <div class="profit-info">
-            <span class="profit-label">Expected Profit per Unit:</span>
-            <span class="profit-value" 
-                  [class.positive]="getProfit() > 0" 
-                  [class.negative]="getProfit() < 0">
-              ₹{{ getProfit() | number:'1.2-2' }}
-              ({{ getProfitPercentage() | number:'1.1-1' }}%)
+            <span class="profit-label">Profit:</span>
+            <span class="profit-value" [class.positive]="getProfit() > 0" [class.negative]="getProfit() < 0">
+              ₹{{ getProfit() | number:'1.0-0' }} ({{ getProfitPercentage() | number:'1.0-0' }}%)
             </span>
           </div>
         </mat-card>
@@ -230,15 +106,13 @@
   </mat-dialog-content>
 
   <mat-dialog-actions class="dialog-actions">
-    <button mat-stroked-button mat-dialog-close>
-      Cancel
-    </button>
-    <button mat-raised-button 
-            color="primary" 
+    <button mat-stroked-button mat-dialog-close>Cancel</button>
+    <button mat-raised-button
+            color="primary"
             [disabled]="assignmentForm.invalid || isLoading"
             (click)="assignProduct()">
-      <mat-icon *ngIf="!isLoading">add_business</mat-icon>
-      <mat-progress-spinner *ngIf="isLoading" diameter="20"></mat-progress-spinner>
+      <mat-icon *ngIf="!isLoading">add</mat-icon>
+      <mat-progress-spinner *ngIf="isLoading" diameter="18" mode="indeterminate"></mat-progress-spinner>
       {{ isLoading ? 'Adding...' : 'Add to Shop' }}
     </button>
   </mat-dialog-actions>

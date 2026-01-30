@@ -52,7 +52,12 @@
   <!-- Status Bar -->
   <div class="status-bar">
     <div class="status-left">
-      <span class="product-count">{{ totalProducts }} products</span>
+      <span class="product-count" *ngIf="totalProducts > 0">
+        Showing {{ (currentPageIndex * pageSize) + 1 }}-{{ min((currentPageIndex + 1) * pageSize, totalProducts) }} of {{ totalProducts }} products
+      </span>
+      <span class="product-count" *ngIf="totalProducts === 0">
+        No products found
+      </span>
       <span class="modified-count" *ngIf="modifiedProducts.size > 0">
         • {{ modifiedProducts.size }} modified (unsaved)
       </span>
@@ -103,11 +108,36 @@
             <!-- Row Number -->
             <td class="col-row-num">{{ getRowNumber(i) }}</td>
 
-            <!-- Image -->
+            <!-- Image (with Menu) -->
             <td class="col-image">
-              <div class="product-image">
+              <div class="product-image clickable"
+                   [matMenuTriggerFor]="imageMenu"
+                   [class.uploading]="isUploadingImage(product)"
+                   matTooltip="Click for options">
                 <img [src]="getProductImageUrl(product)" [alt]="product.customName">
+                <div class="image-overlay">
+                  <mat-icon *ngIf="!isUploadingImage(product)">more_vert</mat-icon>
+                  <mat-spinner *ngIf="isUploadingImage(product)" diameter="20"></mat-spinner>
+                </div>
               </div>
+
+              <!-- Image Options Menu -->
+              <mat-menu #imageMenu="matMenu">
+                <button mat-menu-item (click)="triggerImageUpload(product, imageInput)">
+                  <mat-icon>add_photo_alternate</mat-icon>
+                  <span>Change Image</span>
+                </button>
+                <button mat-menu-item (click)="removeImage(product)" *ngIf="product.imageUrl">
+                  <mat-icon color="warn">delete</mat-icon>
+                  <span>Remove Image</span>
+                </button>
+              </mat-menu>
+
+              <input type="file"
+                     #imageInput
+                     hidden
+                     accept="image/*"
+                     (change)="onImageSelected($event, product)">
             </td>
 
             <!-- Product Name (Editable) -->
@@ -252,6 +282,17 @@
         </tbody>
       </table>
     </div>
+
+    <!-- Pagination -->
+    <mat-paginator
+      [length]="totalProducts"
+      [pageSize]="pageSize"
+      [pageSizeOptions]="pageSizeOptions"
+      [pageIndex]="currentPageIndex"
+      (page)="onPageChange($event)"
+      showFirstLastButtons
+      aria-label="Select page">
+    </mat-paginator>
   </div>
 
   <!-- Empty State -->
@@ -263,16 +304,6 @@
     <p>Try adjusting your search or filter criteria.</p>
   </div>
 
-  <!-- Pagination -->
-  <div class="pagination-container" *ngIf="filteredProducts.length > 0">
-    <mat-paginator
-      [length]="totalProducts"
-      [pageSize]="pageSize"
-      [pageSizeOptions]="pageSizeOptions"
-      [showFirstLastButtons]="true"
-      (page)="onPageChange($event)">
-    </mat-paginator>
-  </div>
 
   <!-- Legend -->
   <div class="legend" *ngIf="!loading && filteredProducts.length > 0">

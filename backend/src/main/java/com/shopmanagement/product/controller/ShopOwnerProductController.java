@@ -1,9 +1,11 @@
 package com.shopmanagement.product.controller;
 
 import com.shopmanagement.common.dto.ApiResponse;
+import com.shopmanagement.product.dto.ProductImageResponse;
 import com.shopmanagement.product.dto.ShopProductRequest;
 import com.shopmanagement.product.dto.ShopProductResponse;
 import com.shopmanagement.product.entity.ShopProduct;
+import com.shopmanagement.product.service.ProductImageService;
 import com.shopmanagement.product.service.ShopProductService;
 import com.shopmanagement.shop.entity.Shop;
 import com.shopmanagement.shop.service.ShopService;
@@ -16,11 +18,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -33,6 +37,7 @@ public class ShopOwnerProductController {
 
     private final ShopProductService shopProductService;
     private final ShopService shopService;
+    private final ProductImageService productImageService;
 
     @GetMapping("/my-products")
     @PreAuthorize("hasRole('SHOP_OWNER') or hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
@@ -645,6 +650,100 @@ public class ShopOwnerProductController {
             log.error("Error fetching low stock products for user: {}", currentUsername, e);
             return ResponseEntity.badRequest().body(ApiResponse.error(
                     "Error fetching low stock products: " + e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Upload image for a shop product
+     */
+    @PostMapping(value = "/{productId}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('SHOP_OWNER') or hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, String>>> uploadProductImage(
+            @PathVariable Long productId,
+            @RequestParam("file") MultipartFile file) {
+
+        log.info("Uploading image for product: {}", productId);
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = authentication.getName();
+
+        try {
+            Shop currentShop = shopService.getShopByOwner(currentUsername);
+
+            if (currentShop == null) {
+                log.warn("No shop found for user: {}", currentUsername);
+                return ResponseEntity.badRequest().body(ApiResponse.error(
+                        "No shop found for current user"
+                ));
+            }
+
+            // Upload the image using ProductImageService
+            MultipartFile[] files = new MultipartFile[]{file};
+            List<ProductImageResponse> images = productImageService.uploadShopProductImages(
+                    currentShop.getId(), productId, files, null);
+
+            if (images.isEmpty()) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("Failed to upload image"));
+            }
+
+            String imageUrl = images.get(0).getImageUrl();
+            log.info("Image uploaded successfully for product {}: {}", productId, imageUrl);
+
+            return ResponseEntity.ok(ApiResponse.success(
+                    Map.of("imageUrl", imageUrl),
+                    "Image uploaded successfully"
+            ));
+
+        } catch (Exception e) {
+            log.error("Error uploading image for product {}: {}", productId, e.getMessage(), e);
+            return ResponseEntity.badRequest().body(ApiResponse.error(
+                    "Error uploading image: " + e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Delete/remove image from a shop product
+     */
+    @DeleteMapping("/{productId}/image")
+    @PreAuthorize("hasRole('SHOP_OWNER') or hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteProductImage(@PathVariable Long productId) {
+
+        log.info("Deleting image for product: {}", productId);
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = authentication.getName();
+
+        try {
+            Shop currentShop = shopService.getShopByOwner(currentUsername);
+
+            if (currentShop == null) {
+                log.warn("No shop found for user: {}", currentUsername);
+                return ResponseEntity.badRequest().body(ApiResponse.error(
+                        "No shop found for current user"
+                ));
+            }
+
+            // Get the product images and delete them
+            List<ProductImageResponse> images = productImageService.getShopProductImages(
+                    currentShop.getId(), productId);
+
+            for (ProductImageResponse image : images) {
+                productImageService.deleteProductImage(image.getId());
+            }
+
+            log.info("All images deleted for product {}", productId);
+
+            return ResponseEntity.ok(ApiResponse.success(
+                    null,
+                    "Image removed successfully"
+            ));
+
+        } catch (Exception e) {
+            log.error("Error deleting image for product {}: {}", productId, e.getMessage(), e);
+            return ResponseEntity.badRequest().body(ApiResponse.error(
+                    "Error removing image: " + e.getMessage()
             ));
         }
     }

@@ -12,6 +12,7 @@ import { OfflineStorageService, CachedProduct } from '@core/services/offline-sto
 import { finalize, takeUntil } from 'rxjs/operators';
 import { Subject } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
+import * as XLSX from 'xlsx';
 
 interface InventoryItem {
   id: number;
@@ -62,6 +63,10 @@ interface InventoryItem {
           <button mat-raised-button color="primary" (click)="openBulkUpdate()">
             <mat-icon>system_update_alt</mat-icon>
             Bulk Update
+          </button>
+          <button mat-raised-button color="accent" (click)="bulkDownload()" [disabled]="exporting">
+            <mat-icon>{{ exporting ? 'hourglass_empty' : 'download' }}</mat-icon>
+            {{ exporting ? 'Exporting...' : 'Bulk Download' }}
           </button>
           <button mat-stroked-button (click)="generateReport()">
             <mat-icon>assessment</mat-icon>
@@ -731,9 +736,13 @@ export class InventoryManagementComponent implements OnInit, OnDestroy {
   categories: string[] = [];
   inventoryData: InventoryItem[] = [];
   loading = false;
+  exporting = false;
 
   // Track if loaded from cache
   loadedFromCache = false;
+
+  // Store raw API data for export
+  private rawProductData: any[] = [];
 
   constructor(
     private fb: FormBuilder,
@@ -851,6 +860,9 @@ export class InventoryManagementComponent implements OnInit, OnDestroy {
               products = response.data;
             }
           }
+
+          // Store raw data for export
+          this.rawProductData = products;
 
           // Map API response to InventoryItem interface
           const inventoryItems = products.map((item: any) => {
@@ -1083,6 +1095,138 @@ export class InventoryManagementComponent implements OnInit, OnDestroy {
       
       this.snackBar.open('Stock updated successfully', 'Close', { duration: 3000 });
       this.closeQuickUpdate();
+    }
+  }
+
+  /**
+   * Bulk Download - Export all products to Excel
+   */
+  async bulkDownload(): Promise<void> {
+    this.exporting = true;
+
+    try {
+      // If raw data is not loaded, fetch from API
+      if (this.rawProductData.length === 0) {
+        const params = new HttpParams()
+          .set('page', '0')
+          .set('size', '100000');
+
+        const response: any = await this.http.get(`${this.apiUrl}/shop-products/my-products`, { params }).toPromise();
+
+        if (response && response.data) {
+          if (response.data.content) {
+            this.rawProductData = response.data.content;
+          } else if (Array.isArray(response.data)) {
+            this.rawProductData = response.data;
+          }
+        }
+      }
+
+      if (this.rawProductData.length === 0) {
+        this.snackBar.open('No products to export', 'Close', { duration: 3000 });
+        this.exporting = false;
+        return;
+      }
+
+      // Map products to export format with all columns including multiple barcodes
+      const exportData = this.rawProductData.map((item: any) => {
+        const price = item.price || 0;
+        const originalPrice = item.originalPrice || price;
+        const discountPercent = originalPrice > 0 ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
+
+        return {
+          'name': item.customName || item.displayName || item.masterProduct?.name || '',
+          'nameTamil': item.customNameTamil || item.masterProduct?.nameTamil || '',
+          'description': item.customDescription || item.masterProduct?.description || '',
+          'descriptionTamil': item.masterProduct?.descriptionTamil || '',
+          'categoryName': item.masterProduct?.category?.name || '',
+          'brand': item.masterProduct?.brand || '',
+          'sku': item.sku || item.masterProduct?.sku || '',
+          'searchQuery': item.masterProduct?.searchQuery || '',
+          'downloadLink': '',
+          'baseUnit': item.masterProduct?.baseUnit || item.unit || 'piece',
+          'baseWeight': item.masterProduct?.baseWeight || 0,
+          'originalPrice': originalPrice,
+          'discountPercentage': discountPercent,
+          'sellingPrice': price,
+          'costPrice': item.costPrice || 0,
+          'stockQuantity': item.stockQuantity || 0,
+          'minStockLevel': item.minStockLevel || 10,
+          'maxStockLevel': item.maxStockLevel || 500,
+          'trackInventory': item.trackInventory !== false ? 'TRUE' : 'FALSE',
+          'status': item.status || 'ACTIVE',
+          'isFeatured': item.isFeatured ? 'TRUE' : 'FALSE',
+          'isAvailable': item.isAvailable !== false ? 'TRUE' : 'FALSE',
+          'tags': item.tags || item.masterProduct?.tags || '',
+          'imagePath': item.primaryImageUrl || item.masterProduct?.primaryImageUrl || '',
+          'barcode': item.barcode || item.masterProduct?.barcode || '',
+          'barcode1': item.barcode1 || '',
+          'barcode2': item.barcode2 || '',
+          'barcode3': item.barcode3 || ''
+        };
+      });
+
+      // Create workbook and worksheet
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Products');
+
+      // Set column widths for better readability
+      const columnWidths = [
+        { wch: 30 },  // name
+        { wch: 25 },  // nameTamil
+        { wch: 40 },  // description
+        { wch: 30 },  // descriptionTamil
+        { wch: 15 },  // categoryName
+        { wch: 15 },  // brand
+        { wch: 15 },  // sku
+        { wch: 15 },  // searchQuery
+        { wch: 20 },  // downloadLink
+        { wch: 10 },  // baseUnit
+        { wch: 12 },  // baseWeight
+        { wch: 12 },  // originalPrice
+        { wch: 18 },  // discountPercentage
+        { wch: 12 },  // sellingPrice
+        { wch: 12 },  // costPrice
+        { wch: 14 },  // stockQuantity
+        { wch: 14 },  // minStockLevel
+        { wch: 14 },  // maxStockLevel
+        { wch: 14 },  // trackInventory
+        { wch: 10 },  // status
+        { wch: 12 },  // isFeatured
+        { wch: 12 },  // isAvailable
+        { wch: 20 },  // tags
+        { wch: 40 },  // imagePath
+        { wch: 20 },  // barcode (main)
+        { wch: 20 },  // barcode1
+        { wch: 20 },  // barcode2
+        { wch: 20 },  // barcode3
+      ];
+      worksheet['!cols'] = columnWidths;
+
+      // Generate Excel file
+      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().slice(0, 10);
+      const filename = `products_export_${timestamp}.xlsx`;
+
+      // Save file using native browser download
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.click();
+      window.URL.revokeObjectURL(url);
+
+      this.snackBar.open(`Exported ${exportData.length} products successfully!`, 'Close', { duration: 3000 });
+
+    } catch (error) {
+      console.error('Export failed:', error);
+      this.snackBar.open('Failed to export products', 'Close', { duration: 3000 });
+    } finally {
+      this.exporting = false;
     }
   }
 }

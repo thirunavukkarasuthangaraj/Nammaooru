@@ -67,8 +67,8 @@ export class BulkEditComponent implements OnInit, OnDestroy {
 
   // Pagination
   totalProducts = 0;
-  pageSize = 50;
-  pageSizeOptions = [25, 50, 100, 200];
+  pageSize = 100;
+  pageSizeOptions = [50, 100, 200, 500];
   currentPageIndex = 0;
 
   // Track modifications
@@ -692,5 +692,96 @@ export class BulkEditComponent implements OnInit, OnDestroy {
   // Get row number
   getRowNumber(index: number): number {
     return this.currentPageIndex * this.pageSize + index + 1;
+  }
+
+  // Helper for min in template
+  min(a: number, b: number): number {
+    return Math.min(a, b);
+  }
+
+  // Image upload handling
+  uploadingImageFor: number | null = null;
+
+  triggerImageUpload(product: BulkEditProduct, fileInput: HTMLInputElement): void {
+    this.uploadingImageFor = product.id;
+    fileInput.click();
+  }
+
+  async onImageSelected(event: Event, product: BulkEditProduct): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) {
+      this.uploadingImageFor = null;
+      return;
+    }
+
+    const file = input.files[0];
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      this.snackBar.open('Please select an image file', 'Close', { duration: 3000 });
+      this.uploadingImageFor = null;
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      this.snackBar.open('Image must be less than 5MB', 'Close', { duration: 3000 });
+      this.uploadingImageFor = null;
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response: any = await this.http.post(
+        `${this.apiUrl}/shop-products/${product.id}/image`,
+        formData
+      ).toPromise();
+
+      // Update local image URL
+      if (response?.data?.imageUrl || response?.imageUrl) {
+        product.imageUrl = response?.data?.imageUrl || response?.imageUrl;
+        this.snackBar.open('Image updated successfully', 'Close', { duration: 2000 });
+      } else {
+        // Reload products to get new image
+        this.loadProducts(true);
+        this.snackBar.open('Image uploaded', 'Close', { duration: 2000 });
+      }
+    } catch (error: any) {
+      console.error('Failed to upload image:', error);
+      this.snackBar.open(error?.error?.message || 'Failed to upload image', 'Close', { duration: 3000 });
+    } finally {
+      this.uploadingImageFor = null;
+      input.value = ''; // Reset file input
+    }
+  }
+
+  isUploadingImage(product: BulkEditProduct): boolean {
+    return this.uploadingImageFor === product.id;
+  }
+
+  // Remove image
+  async removeImage(product: BulkEditProduct): Promise<void> {
+    const confirmed = confirm('Remove this product image?');
+    if (!confirmed) return;
+
+    this.uploadingImageFor = product.id;
+
+    try {
+      // Call API to remove image
+      await this.http.delete(`${this.apiUrl}/shop-products/${product.id}/image`).toPromise();
+
+      // Clear local image URL
+      product.imageUrl = '';
+      this.snackBar.open('Image removed', 'Close', { duration: 2000 });
+    } catch (error: any) {
+      console.error('Failed to remove image:', error);
+      // Even if API fails, clear locally
+      product.imageUrl = '';
+      this.snackBar.open('Image removed locally', 'Close', { duration: 2000 });
+    } finally {
+      this.uploadingImageFor = null;
+    }
   }
 }

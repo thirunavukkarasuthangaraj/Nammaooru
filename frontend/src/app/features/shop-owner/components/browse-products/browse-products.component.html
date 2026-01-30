@@ -1,243 +1,133 @@
 <div class="browse-products-container">
-  <!-- Modern Header -->
-  <div class="modern-header">
-    <div class="header-content">
-      <div class="header-info">
-        <h1 class="page-title">
-          <mat-icon>inventory_2</mat-icon>
-          Product Catalog
-        </h1>
-        <p class="page-subtitle">Browse and add products from the master catalog to your shop</p>
-      </div>
-      <div class="header-stats">
-        <div class="stat-card">
-          <span class="stat-value">{{ totalProducts }}</span>
-          <span class="stat-label">Total Products</span>
-        </div>
-        <div class="stat-card" *ngIf="selectedProducts.length > 0">
-          <span class="stat-value">{{ selectedProducts.length }}</span>
-          <span class="stat-label">Selected</span>
-        </div>
-      </div>
-    </div>
-    
-    <div class="header-actions" *ngIf="selectedProducts.length > 0">
-      <button mat-stroked-button (click)="clearSelection()">
-        <mat-icon>clear</mat-icon>
-        Clear Selection
-      </button>
-      <button mat-raised-button color="primary" (click)="assignSelectedProducts()" [disabled]="loading">
-        <mat-icon>add_shopping_cart</mat-icon>
-        Add {{ selectedProducts.length }} Products to Shop
-      </button>
-    </div>
-  </div>
-
-  <!-- Modern Filter Section -->
+  <!-- Combined Filter Bar -->
   <mat-card class="filter-card">
-    <div class="filter-header">
-      <h3>
-        <mat-icon>filter_list</mat-icon>
-        Filter Products
-      </h3>
-      <button mat-icon-button (click)="clearFilters()" matTooltip="Clear all filters">
-        <mat-icon>clear_all</mat-icon>
-      </button>
-    </div>
-    
     <div class="filter-controls">
-      <div class="select-all-control" *ngIf="filteredProducts.length > 0">
-        <mat-checkbox
-          [checked]="areAllProductsSelected()"
-          (change)="areAllProductsSelected() ? clearSelection() : selectAllProducts()"
-          matTooltip="Select/Deselect all products on this page">
-          Select All
-        </mat-checkbox>
-        <span class="selection-count" *ngIf="selectedProducts.length > 0">
-          ({{ selectedProducts.length }} selected)
-        </span>
-      </div>
-
       <mat-form-field appearance="outline" class="search-field">
-        <mat-label>Search products</mat-label>
         <mat-icon matPrefix>search</mat-icon>
         <input matInput
                [(ngModel)]="searchTerm"
                (ngModelChange)="onSearchChange()"
-               placeholder="Type product name, brand, or SKU...">
-        <button mat-icon-button matSuffix *ngIf="searchTerm" (click)="searchTerm = ''; onSearchChange()">
-          <mat-icon>close</mat-icon>
-        </button>
+               placeholder="Search products...">
       </mat-form-field>
-      
+
       <mat-form-field appearance="outline">
-        <mat-label>Category</mat-label>
-        <mat-icon matPrefix>category</mat-icon>
         <mat-select [(ngModel)]="selectedCategory" (selectionChange)="onCategoryChange()">
-          <mat-option value="">
-            <mat-icon>all_inclusive</mat-icon>
-            All Categories
-          </mat-option>
-          <mat-option *ngFor="let category of categories" [value]="category">
-            <mat-icon>label</mat-icon>
-            {{ category }}
-          </mat-option>
+          <mat-option value="">All Categories</mat-option>
+          <mat-option *ngFor="let category of categories" [value]="category">{{ category }}</mat-option>
         </mat-select>
       </mat-form-field>
 
       <mat-form-field appearance="outline">
-        <mat-label>Sort By</mat-label>
-        <mat-icon matPrefix>sort</mat-icon>
         <mat-select [(ngModel)]="sortBy" (selectionChange)="onSortChange()">
-          <mat-option value="name">Name (A-Z)</mat-option>
-          <mat-option value="name-desc">Name (Z-A)</mat-option>
-          <mat-option value="price-low">Price: Low to High</mat-option>
-          <mat-option value="price-high">Price: High to Low</mat-option>
-          <mat-option value="popular">Most Popular</mat-option>
-          <mat-option value="newest">Newest First</mat-option>
+          <mat-option value="name">A-Z</mat-option>
+          <mat-option value="name-desc">Z-A</mat-option>
+          <mat-option value="price-low">Price ↑</mat-option>
+          <mat-option value="price-high">Price ↓</mat-option>
         </mat-select>
       </mat-form-field>
 
       <div class="filter-chips">
         <mat-chip-listbox>
           <mat-chip-option (click)="filterByTag('featured')" [selected]="activeFilters.includes('featured')">
-            <mat-icon>star</mat-icon>
-            Featured
+            <mat-icon>star</mat-icon> Featured
           </mat-chip-option>
           <mat-chip-option (click)="filterByTag('global')" [selected]="activeFilters.includes('global')">
-            <mat-icon>public</mat-icon>
-            Global Products
+            <mat-icon>public</mat-icon> Global
           </mat-chip-option>
           <mat-chip-option (click)="filterByTag('new')" [selected]="activeFilters.includes('new')">
-            <mat-icon>new_releases</mat-icon>
-            New Arrivals
-          </mat-chip-option>
-          <mat-chip-option (click)="filterByTag('trending')" [selected]="activeFilters.includes('trending')">
-            <mat-icon>trending_up</mat-icon>
-            Trending
+            <mat-icon>fiber_new</mat-icon> New
           </mat-chip-option>
         </mat-chip-listbox>
+      </div>
+
+      <div class="select-all-control" *ngIf="filteredProducts.length > 0">
+        <mat-checkbox
+          [checked]="areAllProductsSelected()"
+          (change)="areAllProductsSelected() ? clearSelection() : selectAllProducts()">
+          Select All
+        </mat-checkbox>
+        <span class="selection-count" *ngIf="selectedProducts.length > 0">({{ selectedProducts.length }})</span>
       </div>
     </div>
   </mat-card>
 
-  <!-- Loading State -->
-  <div class="loading-state" *ngIf="loading">
-    <mat-progress-spinner mode="indeterminate" diameter="50"></mat-progress-spinner>
-    <h3>Loading Product Catalog</h3>
-    <p>Please wait while we fetch the latest products...</p>
+  <!-- Bulk Actions Bar -->
+  <div class="modern-header" *ngIf="selectedProducts.length > 0">
+    <div class="header-actions">
+      <button mat-stroked-button (click)="clearSelection()">
+        <mat-icon>clear</mat-icon> Clear
+      </button>
+      <button mat-raised-button color="primary" (click)="assignSelectedProducts()" [disabled]="loading">
+        <mat-icon>add_shopping_cart</mat-icon> Add {{ selectedProducts.length }} to Shop
+      </button>
+    </div>
   </div>
 
-  <!-- Modern Products Grid -->
+  <!-- Loading -->
+  <div class="loading-state" *ngIf="loading">
+    <mat-progress-spinner mode="indeterminate" diameter="36"></mat-progress-spinner>
+    <h3>Loading products...</h3>
+  </div>
+
+  <!-- Products Grid -->
   <div class="modern-products-grid" *ngIf="!loading && filteredProducts.length > 0">
-    <mat-card class="product-card" 
+    <mat-card class="product-card"
               *ngFor="let product of filteredProducts; trackBy: trackByProductId"
               [class.selected]="isProductSelected(product)">
-      
-      <!-- Product Image Section -->
+
       <div class="product-image-container" (click)="toggleProductSelection(product)">
-        <img [src]="product.primaryImageUrl || '/assets/images/product-placeholder.jpg'" 
+        <img [src]="product.primaryImageUrl || '/assets/images/product-placeholder.svg'"
              [alt]="product.name"
-             loading="lazy">
-        
-        <!-- Selection Overlay -->
+             loading="lazy"
+             onerror="this.src='/assets/images/product-placeholder.svg'">
+
         <div class="selection-overlay">
-          <mat-checkbox 
+          <mat-checkbox
             [checked]="isProductSelected(product)"
             (click)="$event.stopPropagation()"
             (change)="toggleProductSelection(product)">
           </mat-checkbox>
         </div>
-        
-        <!-- Product Badges -->
+
         <div class="product-badges">
-          <span class="badge featured" *ngIf="product.isFeatured">
-            <mat-icon>star</mat-icon>
-            Featured
-          </span>
-          <span class="badge new" *ngIf="product.isNew">
-            <mat-icon>new_releases</mat-icon>
-            New
-          </span>
-          <span class="badge global" *ngIf="product.isGlobal">
-            <mat-icon>public</mat-icon>
-            Global
-          </span>
+          <span class="badge featured" *ngIf="product.isFeatured"><mat-icon>star</mat-icon></span>
+          <span class="badge global" *ngIf="product.isGlobal"><mat-icon>public</mat-icon></span>
+          <span class="badge new" *ngIf="product.isNew"><mat-icon>fiber_new</mat-icon></span>
         </div>
 
-        <!-- Quick Actions -->
         <div class="quick-actions">
-          <button mat-mini-fab color="primary" (click)="quickView(product)" matTooltip="Quick View">
-            <mat-icon>visibility</mat-icon>
-          </button>
-          <button mat-mini-fab color="accent" (click)="openAssignmentDialog(product)" matTooltip="Add to Shop">
-            <mat-icon>add_shopping_cart</mat-icon>
+          <button mat-mini-fab (click)="$event.stopPropagation(); openAssignmentDialog(product)">
+            <mat-icon>add</mat-icon>
           </button>
         </div>
       </div>
-      
-      <!-- Product Details -->
+
       <mat-card-content>
         <div class="product-header">
           <h3 class="product-name">{{ product.name }}</h3>
-          <div class="product-rating" *ngIf="product.rating">
-            <mat-icon>star</mat-icon>
-            <span>{{ product.rating | number:'1.1-1' }}</span>
-          </div>
         </div>
-        
-        <p class="product-description">
-          {{ product.description || 'No description available' }}
-        </p>
-        
-        <!-- Product Info Grid -->
+
         <div class="product-info-grid">
-          <div class="info-item">
+          <div class="info-item" *ngIf="product.category?.name">
             <mat-icon>category</mat-icon>
-            <span>{{ product.category?.name || 'Uncategorized' }}</span>
+            {{ product.category?.name }}
           </div>
           <div class="info-item" *ngIf="product.brand">
-            <mat-icon>branding_watermark</mat-icon>
-            <span>{{ product.brand }}</span>
-          </div>
-          <div class="info-item" *ngIf="product.baseUnit">
-            <mat-icon>straighten</mat-icon>
-            <span>{{ product.baseUnit }}</span>
-          </div>
-          <div class="info-item" *ngIf="product.sku">
-            <mat-icon>qr_code_2</mat-icon>
-            <span>{{ product.sku }}</span>
-          </div>
-        </div>
-        
-        <!-- Price Section -->
-        <div class="price-section">
-          <div class="price-range" *ngIf="product.minPrice && product.maxPrice">
-            <span class="price-label">Price Range</span>
-            <div class="price-values">
-              <span class="price-min">₹{{ product.minPrice | number:'1.2-2' }}</span>
-              <span class="price-separator">-</span>
-              <span class="price-max">₹{{ product.maxPrice | number:'1.2-2' }}</span>
-            </div>
-          </div>
-          <div class="shops-count" *ngIf="product.shopCount && product.shopCount > 0">
-            <mat-icon>store</mat-icon>
-            <span>{{ product.shopCount }} shops</span>
+            <mat-icon>sell</mat-icon>
+            {{ product.brand }}
           </div>
         </div>
       </mat-card-content>
-      
-      <!-- Card Actions -->
+
       <mat-card-actions>
-        <button mat-stroked-button 
+        <button mat-stroked-button
                 (click)="toggleProductSelection(product)"
-                [color]="isProductSelected(product) ? 'warn' : 'primary'">
-          <mat-icon>{{ isProductSelected(product) ? 'remove_circle' : 'add_circle' }}</mat-icon>
-          {{ isProductSelected(product) ? 'Remove' : 'Select' }}
+                [class.selected]="isProductSelected(product)">
+          <mat-icon>{{ isProductSelected(product) ? 'check' : 'add' }}</mat-icon>
+          {{ isProductSelected(product) ? 'Selected' : 'Select' }}
         </button>
         <button mat-raised-button color="primary" (click)="openAssignmentDialog(product)">
-          <mat-icon>add_business</mat-icon>
-          Add to Shop
+          <mat-icon>add</mat-icon> Add
         </button>
       </mat-card-actions>
     </mat-card>
@@ -248,7 +138,7 @@
     <mat-paginator
       [length]="totalProducts"
       [pageSize]="pageSize"
-      [pageSizeOptions]="[12, 24, 48, 96, 200]"
+      [pageSizeOptions]="[12, 24, 48]"
       [pageIndex]="currentPage"
       [showFirstLastButtons]="true"
       (page)="onPageChange($event)">
@@ -261,22 +151,10 @@
       <mat-icon>inventory_2</mat-icon>
     </div>
     <h2>No Products Found</h2>
-    <p *ngIf="searchTerm || selectedCategory">
-      We couldn't find any products matching your search criteria.
-      Try adjusting your filters or search terms.
-    </p>
-    <p *ngIf="!searchTerm && !selectedCategory">
-      The product catalog is currently empty.
-      Please check back later or contact support.
-    </p>
+    <p>Try adjusting your search or filters</p>
     <div class="empty-actions">
-      <button mat-raised-button color="primary" (click)="clearFilters()" *ngIf="searchTerm || selectedCategory">
-        <mat-icon>refresh</mat-icon>
-        Reset Filters
-      </button>
-      <button mat-stroked-button (click)="loadProducts()">
-        <mat-icon>sync</mat-icon>
-        Refresh Catalog
+      <button mat-raised-button color="primary" (click)="clearFilters()">
+        <mat-icon>refresh</mat-icon> Reset Filters
       </button>
     </div>
   </mat-card>
