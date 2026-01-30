@@ -712,7 +712,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       this.addToCart(exactMatch);
       this.playBeep(true);
       this.searchTerm = '';
-      this.onSearchChange();
+      this.filterProducts(''); // Direct filter - no debounce delay
     }
     // If no exact match, just keep showing filtered results
   }
@@ -858,9 +858,9 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       // In Quick Bill mode: show product card (so user can edit price/qty before adding)
       // In Browse mode: auto-add to cart
       if (this.activeTab === 'quick') {
-        // Put barcode in search to show the product card
+        // Put barcode in search and filter immediately (bypass debounce for instant response)
         this.searchTerm = barcode;
-        this.onSearchChange();
+        this.filterProducts(barcode); // Direct filter - no debounce delay
         this.playBeep(true);
       } else {
         // Browse mode - auto add to cart
