@@ -23,24 +23,17 @@ interface DashboardStats {
 @Component({
   selector: 'app-shop-owner-dashboard',
   template: `
-    <div class="dashboard-container">
-      <!-- Header Section -->
-      <div class="dashboard-header">
-        <div class="header-content">
-          <span class="welcome-text">Welcome back,</span>
-          <h1 class="user-name">{{ (currentUser$ | async)?.username }}</h1>
+    <div class="dashboard-wrapper">
+      <!-- Welcome Header -->
+      <div class="welcome-section">
+        <div class="welcome-content">
+          <h1 class="greeting">Good {{ getGreeting() }}, {{ (currentUser$ | async)?.username }}!</h1>
+          <p class="date-text">{{ getCurrentDate() }}</p>
         </div>
-        <div class="header-actions">
-          <button mat-icon-button class="notification-btn" routerLink="/shop-owner/notifications">
-            <mat-icon [matBadge]="unreadNotificationCount"
-                     [matBadgeHidden]="unreadNotificationCount === 0"
-                     matBadgeColor="warn"
-                     matBadgeSize="small">notifications</mat-icon>
-          </button>
-          <button mat-icon-button (click)="refreshDashboard()" matTooltip="Refresh">
-            <mat-icon>refresh</mat-icon>
-          </button>
-        </div>
+        <button class="refresh-btn" (click)="refreshDashboard()">
+          <mat-icon>refresh</mat-icon>
+          Refresh
+        </button>
       </div>
 
       <!-- Loading State -->
@@ -49,145 +42,160 @@ interface DashboardStats {
       </div>
 
       <div class="dashboard-content" *ngIf="!isLoading">
-        <!-- Orders Overview Section -->
-        <div class="section">
-          <div class="section-title">
-            <mat-icon>shopping_cart</mat-icon>
-            <span>Orders Overview</span>
+        <!-- Top Stats Row - Horizontal Cards -->
+        <div class="stats-grid">
+          <div class="stat-card" routerLink="/shop-owner/orders-management">
+            <div class="stat-icon blue">
+              <mat-icon>shopping_bag</mat-icon>
+            </div>
+            <div class="stat-info">
+              <span class="stat-value">{{ stats.todayOrders }}</span>
+              <span class="stat-label">Today's Orders</span>
+            </div>
           </div>
-          <div class="metrics-row three-col">
-            <div class="metric-card clickable" routerLink="/shop-owner/orders-management">
-              <div class="metric-icon blue">
-                <mat-icon>today</mat-icon>
-              </div>
-              <div class="metric-value blue">{{ stats.todayOrders }}</div>
-              <div class="metric-label">Today's Orders</div>
+
+          <div class="stat-card" [class.alert]="stats.pendingOrders > 0" routerLink="/shop-owner/orders-management">
+            <div class="stat-icon orange">
+              <mat-icon>pending_actions</mat-icon>
             </div>
-            <div class="metric-card clickable"
-                 [class.highlight]="stats.pendingOrders > 0"
-                 routerLink="/shop-owner/orders-management">
-              <div class="metric-icon orange">
-                <mat-icon>pending_actions</mat-icon>
-              </div>
-              <div class="metric-value orange">{{ stats.pendingOrders }}</div>
-              <div class="metric-label">Pending</div>
+            <div class="stat-info">
+              <span class="stat-value">{{ stats.pendingOrders }}</span>
+              <span class="stat-label">Pending</span>
             </div>
-            <div class="metric-card clickable" routerLink="/shop-owner/orders-management">
-              <div class="metric-icon purple">
-                <mat-icon>receipt_long</mat-icon>
-              </div>
-              <div class="metric-value purple">{{ stats.totalOrders }}</div>
-              <div class="metric-label">Total Orders</div>
+          </div>
+
+          <div class="stat-card" routerLink="/shop-owner/orders-management">
+            <div class="stat-icon green">
+              <mat-icon>check_circle</mat-icon>
+            </div>
+            <div class="stat-info">
+              <span class="stat-value">{{ stats.totalOrders }}</span>
+              <span class="stat-label">Total Orders</span>
+            </div>
+          </div>
+
+          <div class="stat-card revenue-highlight">
+            <div class="stat-icon dark-green">
+              <mat-icon>currency_rupee</mat-icon>
+            </div>
+            <div class="stat-info">
+              <span class="stat-value">₹{{ formatCurrency(stats.todayRevenue) }}</span>
+              <span class="stat-label">Today's Revenue</span>
             </div>
           </div>
         </div>
 
-        <!-- Revenue Section -->
-        <div class="section">
-          <div class="section-title">
-            <mat-icon>account_balance_wallet</mat-icon>
-            <span>Revenue</span>
-          </div>
-          <div class="revenue-row">
-            <div class="revenue-card green">
-              <div class="revenue-header">
-                <mat-icon>currency_rupee</mat-icon>
-                <span>Today</span>
+        <!-- Main Content Grid -->
+        <div class="content-grid">
+          <!-- Left Column -->
+          <div class="main-column">
+            <!-- Revenue Overview Card -->
+            <div class="card">
+              <div class="card-header">
+                <h2 class="card-title">Revenue Overview</h2>
+                <span class="period-badge">This Month</span>
               </div>
-              <div class="revenue-value">
-                <span class="currency">₹</span>
-                <span class="amount">{{ formatCurrency(stats.todayRevenue) }}</span>
+              <div class="revenue-stats">
+                <div class="revenue-item">
+                  <span class="revenue-label">Today</span>
+                  <div class="revenue-amount">
+                    <span class="currency">₹</span>
+                    <span class="amount">{{ formatCurrency(stats.todayRevenue) }}</span>
+                  </div>
+                  <span class="trend up" *ngIf="stats.todayRevenue > 0">
+                    <mat-icon>trending_up</mat-icon> Active
+                  </span>
+                </div>
+                <div class="revenue-divider"></div>
+                <div class="revenue-item">
+                  <span class="revenue-label">This Month</span>
+                  <div class="revenue-amount">
+                    <span class="currency">₹</span>
+                    <span class="amount">{{ formatCurrency(stats.monthlyRevenue) }}</span>
+                  </div>
+                  <span class="trend neutral">
+                    <mat-icon>calendar_today</mat-icon> Monthly
+                  </span>
+                </div>
               </div>
             </div>
-            <div class="revenue-card teal">
-              <div class="revenue-header">
-                <mat-icon>calendar_month</mat-icon>
-                <span>This Month</span>
-              </div>
-              <div class="revenue-value">
-                <span class="currency">₹</span>
-                <span class="amount">{{ formatCurrency(stats.monthlyRevenue) }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        <!-- Inventory Section -->
-        <div class="section">
-          <div class="section-title">
-            <mat-icon>inventory_2</mat-icon>
-            <span>Inventory</span>
-          </div>
-          <div class="inventory-card clickable"
-               [class.alert]="hasStockAlert"
-               routerLink="/shop-owner/my-products">
-            <div class="inventory-stats">
-              <div class="inventory-stat">
-                <mat-icon class="purple">inventory_2</mat-icon>
-                <div class="stat-value purple">{{ stats.totalProducts }}</div>
-                <div class="stat-label">Total</div>
+            <!-- Inventory Status Card -->
+            <div class="card">
+              <div class="card-header">
+                <h2 class="card-title">Inventory Status</h2>
+                <button class="card-action-btn" routerLink="/shop-owner/my-products">
+                  <mat-icon>arrow_forward</mat-icon>
+                </button>
               </div>
-              <div class="stat-divider"></div>
-              <div class="inventory-stat">
-                <mat-icon [class.orange]="stats.lowStockProducts > 0"
-                         [class.grey]="stats.lowStockProducts === 0">warning_amber</mat-icon>
-                <div class="stat-value"
-                     [class.orange]="stats.lowStockProducts > 0"
-                     [class.grey]="stats.lowStockProducts === 0">{{ stats.lowStockProducts }}</div>
-                <div class="stat-label">Low Stock</div>
+              <div class="inventory-grid">
+                <div class="inventory-item">
+                  <div class="inv-icon green">
+                    <mat-icon>inventory_2</mat-icon>
+                  </div>
+                  <span class="inv-value">{{ stats.totalProducts }}</span>
+                  <span class="inv-label">Total Products</span>
+                </div>
+                <div class="inventory-item" [class.warning]="stats.lowStockProducts > 0">
+                  <div class="inv-icon yellow">
+                    <mat-icon>warning_amber</mat-icon>
+                  </div>
+                  <span class="inv-value">{{ stats.lowStockProducts }}</span>
+                  <span class="inv-label">Low Stock</span>
+                </div>
+                <div class="inventory-item" [class.danger]="stats.outOfStockProducts > 0">
+                  <div class="inv-icon red">
+                    <mat-icon>error_outline</mat-icon>
+                  </div>
+                  <span class="inv-value">{{ stats.outOfStockProducts }}</span>
+                  <span class="inv-label">Out of Stock</span>
+                </div>
               </div>
-              <div class="stat-divider"></div>
-              <div class="inventory-stat">
-                <mat-icon [class.red]="stats.outOfStockProducts > 0"
-                         [class.grey]="stats.outOfStockProducts === 0">error_outline</mat-icon>
-                <div class="stat-value"
-                     [class.red]="stats.outOfStockProducts > 0"
-                     [class.grey]="stats.outOfStockProducts === 0">{{ stats.outOfStockProducts }}</div>
-                <div class="stat-label">Out of Stock</div>
+              <div class="inventory-alert" *ngIf="hasStockAlert" routerLink="/shop-owner/my-products">
+                <mat-icon>notifications_active</mat-icon>
+                <span>{{ stats.lowStockProducts + stats.outOfStockProducts }} items need attention</span>
+                <mat-icon class="arrow">chevron_right</mat-icon>
               </div>
             </div>
-            <div class="alert-banner" *ngIf="hasStockAlert">
-              <mat-icon>warning_amber</mat-icon>
-              <span>Stock needs attention! Click to manage.</span>
-              <mat-icon>arrow_forward_ios</mat-icon>
-            </div>
           </div>
-        </div>
 
-        <!-- Quick Actions Section -->
-        <div class="section">
-          <div class="section-title">
-            <mat-icon>flash_on</mat-icon>
-            <span>Quick Actions</span>
-          </div>
-          <div class="actions-grid">
-            <div class="action-card" routerLink="/shop-owner/orders-management">
-              <div class="action-icon blue">
-                <mat-icon>receipt_long</mat-icon>
+          <!-- Right Column -->
+          <div class="side-column">
+            <!-- Quick Actions Card -->
+            <div class="card">
+              <div class="card-header">
+                <h2 class="card-title">Quick Actions</h2>
               </div>
-              <span class="action-label">Orders</span>
-              <mat-icon class="action-arrow">arrow_forward_ios</mat-icon>
-            </div>
-            <div class="action-card" routerLink="/shop-owner/my-products">
-              <div class="action-icon purple">
-                <mat-icon>category</mat-icon>
+              <div class="actions-list">
+                <button class="action-btn" routerLink="/shop-owner/pos-billing">
+                  <div class="action-icon green">
+                    <mat-icon>point_of_sale</mat-icon>
+                  </div>
+                  <span class="action-text">POS Billing</span>
+                  <mat-icon class="action-arrow">chevron_right</mat-icon>
+                </button>
+                <button class="action-btn" routerLink="/shop-owner/orders-management">
+                  <div class="action-icon blue">
+                    <mat-icon>receipt_long</mat-icon>
+                  </div>
+                  <span class="action-text">View Orders</span>
+                  <mat-icon class="action-arrow">chevron_right</mat-icon>
+                </button>
+                <button class="action-btn" routerLink="/shop-owner/my-products">
+                  <div class="action-icon purple">
+                    <mat-icon>category</mat-icon>
+                  </div>
+                  <span class="action-text">My Products</span>
+                  <mat-icon class="action-arrow">chevron_right</mat-icon>
+                </button>
+                <button class="action-btn" routerLink="/shop-owner/bulk-edit">
+                  <div class="action-icon orange">
+                    <mat-icon>table_chart</mat-icon>
+                  </div>
+                  <span class="action-text">Bulk Edit</span>
+                  <mat-icon class="action-arrow">chevron_right</mat-icon>
+                </button>
               </div>
-              <span class="action-label">Products</span>
-              <mat-icon class="action-arrow">arrow_forward_ios</mat-icon>
-            </div>
-            <div class="action-card" routerLink="/shop-owner/shop-profile">
-              <div class="action-icon green">
-                <mat-icon>store</mat-icon>
-              </div>
-              <span class="action-label">Shop Profile</span>
-              <mat-icon class="action-arrow">arrow_forward_ios</mat-icon>
-            </div>
-            <div class="action-card" routerLink="/shop-owner/notifications">
-              <div class="action-icon orange">
-                <mat-icon>notifications</mat-icon>
-              </div>
-              <span class="action-label">Notifications</span>
-              <mat-icon class="action-arrow">arrow_forward_ios</mat-icon>
             </div>
           </div>
         </div>
@@ -195,379 +203,520 @@ interface DashboardStats {
     </div>
   `,
   styles: [`
-    .dashboard-container {
-      min-height: 100vh;
-      background: #f5f7fa;
+    /* Modern Dashboard Wrapper */
+    .dashboard-wrapper {
+      padding: 24px;
+      background: #f8fafc;
+      min-height: calc(100vh - 64px);
     }
 
-    .dashboard-header {
-      background: linear-gradient(135deg, #1B5E20 0%, #388E3C 100%);
-      padding: 24px 20px 32px;
+    /* Welcome Section */
+    .welcome-section {
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
+      align-items: center;
+      margin-bottom: 28px;
     }
 
-    .header-content {
-      color: white;
+    .welcome-content .greeting {
+      font-size: 26px;
+      font-weight: 700;
+      color: #1e293b;
+      margin: 0 0 4px 0;
+      letter-spacing: -0.5px;
     }
 
-    .welcome-text {
+    .welcome-content .date-text {
       font-size: 14px;
-      opacity: 0.8;
+      color: #64748b;
+      margin: 0;
+      font-weight: 500;
     }
 
-    .user-name {
-      font-size: 22px;
-      font-weight: 600;
-      margin: 4px 0 0 0;
-    }
-
-    .header-actions {
+    .refresh-btn {
       display: flex;
-      gap: 4px;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      background: white;
+      color: #475569;
+      font-weight: 500;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
     }
 
-    .header-actions button {
-      color: white;
+    .refresh-btn:hover {
+      border-color: #4ade80;
+      color: #16a34a;
+      background: #f0fdf4;
     }
 
-    .notification-btn ::ng-deep .mat-badge-content {
-      background: #f44336;
+    .refresh-btn mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
     }
 
+    /* Loading */
     .loading-container {
       display: flex;
       justify-content: center;
-      padding: 60px;
+      padding: 80px;
     }
 
-    .dashboard-content {
-      padding: 16px;
-      margin-top: -16px;
+    /* Stats Grid - Top Row */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      margin-bottom: 28px;
     }
 
-    .section {
-      margin-bottom: 24px;
-    }
-
-    .section-title {
+    .stat-card {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
       display: flex;
       align-items: center;
-      gap: 8px;
-      font-size: 16px;
-      font-weight: 600;
-      color: #212121;
-      margin-bottom: 12px;
-    }
-
-    .section-title mat-icon {
-      font-size: 20px;
-      width: 20px;
-      height: 20px;
-      color: #424242;
-    }
-
-    /* Metrics Row */
-    .metrics-row {
-      display: grid;
-      gap: 12px;
-    }
-
-    .metrics-row.three-col {
-      grid-template-columns: repeat(3, 1fr);
-    }
-
-    .metric-card {
-      background: white;
-      border-radius: 12px;
-      padding: 16px 12px;
-      text-align: center;
-      border: 1px solid #e0e0e0;
+      gap: 16px;
+      border: 1px solid #f1f5f9;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      cursor: pointer;
       transition: all 0.2s ease;
     }
 
-    .metric-card.clickable {
-      cursor: pointer;
-    }
-
-    .metric-card.clickable:hover {
+    .stat-card:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
       transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
 
-    .metric-card.highlight {
-      background: rgba(230, 81, 0, 0.1);
-      border-color: #E65100;
-      border-width: 2px;
+    .stat-card.alert {
+      background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+      border-color: #fcd34d;
     }
 
-    .metric-icon {
-      width: 40px;
-      height: 40px;
-      border-radius: 8px;
+    .stat-card.revenue-highlight {
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      border-color: #86efac;
+    }
+
+    .stat-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: 0 auto 8px;
+      flex-shrink: 0;
     }
 
-    .metric-icon mat-icon {
+    .stat-icon mat-icon {
+      font-size: 24px;
+      width: 24px;
+      height: 24px;
       color: white;
-      font-size: 22px;
-      width: 22px;
-      height: 22px;
     }
 
-    .metric-icon.blue { background: rgba(25, 118, 210, 0.15); }
-    .metric-icon.blue mat-icon { color: #1976D2; }
-    .metric-icon.orange { background: rgba(230, 81, 0, 0.15); }
-    .metric-icon.orange mat-icon { color: #E65100; }
-    .metric-icon.purple { background: rgba(123, 31, 162, 0.15); }
-    .metric-icon.purple mat-icon { color: #7B1FA2; }
+    .stat-icon.blue { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
+    .stat-icon.orange { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+    .stat-icon.green { background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%); }
+    .stat-icon.dark-green { background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); }
+    .stat-icon.purple { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); }
+    .stat-icon.yellow { background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); }
+    .stat-icon.red { background: linear-gradient(135deg, #f87171 0%, #ef4444 100%); }
 
-    .metric-value {
-      font-size: 22px;
+    .stat-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .stat-info .stat-value {
+      font-size: 24px;
       font-weight: 700;
-      margin-bottom: 4px;
+      color: #1e293b;
+      letter-spacing: -0.5px;
     }
 
-    .metric-value.blue { color: #1976D2; }
-    .metric-value.orange { color: #E65100; }
-    .metric-value.purple { color: #7B1FA2; }
-
-    .metric-label {
-      font-size: 11px;
-      color: #757575;
+    .stat-info .stat-label {
+      font-size: 13px;
+      color: #64748b;
+      font-weight: 500;
     }
 
-    /* Revenue Cards */
-    .revenue-row {
+    /* Content Grid */
+    .content-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
+      grid-template-columns: 1fr 380px;
+      gap: 24px;
     }
 
-    .revenue-card {
-      padding: 16px;
-      border-radius: 12px;
-      color: white;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    .main-column, .side-column {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
     }
 
-    .revenue-card.green {
-      background: linear-gradient(135deg, #2E7D32 0%, #43A047 100%);
+    /* Card Base */
+    .card {
+      background: white;
+      border-radius: 16px;
+      border: 1px solid #f1f5f9;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      overflow: hidden;
     }
 
-    .revenue-card.teal {
-      background: linear-gradient(135deg, #00796B 0%, #00897B 100%);
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 24px 16px;
     }
 
-    .revenue-header {
+    .card-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1e293b;
+      margin: 0;
+      letter-spacing: -0.2px;
+    }
+
+    .period-badge {
+      background: #f0fdf4;
+      color: #16a34a;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .card-action-btn {
+      width: 36px;
+      height: 36px;
+      background: #f8fafc;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 6px;
-      opacity: 0.9;
-      font-size: 13px;
-      margin-bottom: 12px;
+      justify-content: center;
+      transition: all 0.2s ease;
     }
 
-    .revenue-header mat-icon {
+    .card-action-btn mat-icon {
       font-size: 18px;
       width: 18px;
       height: 18px;
+      color: #64748b;
     }
 
-    .revenue-value {
+    .card-action-btn:hover {
+      background: #f0fdf4;
+    }
+
+    .card-action-btn:hover mat-icon {
+      color: #16a34a;
+    }
+
+    /* Revenue Card */
+    .revenue-stats {
       display: flex;
-      align-items: flex-start;
+      padding: 0 24px 24px;
+      gap: 32px;
     }
 
-    .revenue-value .currency {
-      font-size: 16px;
+    .revenue-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .revenue-label {
+      font-size: 13px;
+      color: #64748b;
       font-weight: 500;
+    }
+
+    .revenue-amount {
+      display: flex;
+      align-items: baseline;
+    }
+
+    .revenue-amount .currency {
+      font-size: 18px;
+      font-weight: 600;
+      color: #64748b;
       margin-right: 2px;
     }
 
-    .revenue-value .amount {
-      font-size: 26px;
+    .revenue-amount .amount {
+      font-size: 32px;
       font-weight: 700;
+      color: #1e293b;
+      letter-spacing: -1px;
+    }
+
+    .trend {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .trend mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+    }
+
+    .trend.up { color: #16a34a; }
+    .trend.neutral { color: #64748b; }
+
+    .revenue-divider {
+      width: 1px;
+      background: linear-gradient(180deg, transparent 0%, #e2e8f0 20%, #e2e8f0 80%, transparent 100%);
     }
 
     /* Inventory Card */
-    .inventory-card {
-      background: white;
+    .inventory-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      padding: 0 24px;
+    }
+
+    .inventory-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 16px;
+      background: #f8fafc;
       border-radius: 12px;
-      padding: 16px;
-      border: 1px solid #e0e0e0;
       transition: all 0.2s ease;
     }
 
-    .inventory-card.clickable {
-      cursor: pointer;
+    .inventory-item.warning {
+      background: #fffbeb;
     }
 
-    .inventory-card.clickable:hover {
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    .inventory-item.warning .inv-value {
+      color: #d97706;
     }
 
-    .inventory-card.alert {
-      border-color: #FF9800;
-      border-width: 2px;
+    .inventory-item.danger {
+      background: #fef2f2;
     }
 
-    .inventory-stats {
+    .inventory-item.danger .inv-value {
+      color: #dc2626;
+    }
+
+    .inv-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
       display: flex;
       align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
     }
 
-    .inventory-stat {
-      flex: 1;
-      text-align: center;
-    }
-
-    .inventory-stat mat-icon {
+    .inv-icon mat-icon {
       font-size: 22px;
       width: 22px;
       height: 22px;
-      margin-bottom: 6px;
+      color: white;
     }
 
-    .inventory-stat .stat-value {
-      font-size: 20px;
+    .inv-value {
+      font-size: 28px;
       font-weight: 700;
-      margin-bottom: 2px;
+      color: #1e293b;
+      letter-spacing: -0.5px;
     }
 
-    .inventory-stat .stat-label {
-      font-size: 10px;
-      color: #757575;
+    .inv-label {
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 500;
+      margin-top: 4px;
     }
 
-    .stat-divider {
-      width: 1px;
-      height: 50px;
-      background: #e0e0e0;
-    }
-
-    .purple { color: #7B1FA2; }
-    .orange { color: #FF9800; }
-    .red { color: #f44336; }
-    .grey { color: #9e9e9e; }
-
-    .alert-banner {
+    .inventory-alert {
       display: flex;
       align-items: center;
-      gap: 8px;
-      background: #FFF3E0;
-      padding: 8px 12px;
-      border-radius: 8px;
-      margin-top: 12px;
+      gap: 10px;
+      margin: 20px 24px 24px;
+      padding: 14px 16px;
+      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
     }
 
-    .alert-banner mat-icon:first-child {
-      color: #E65100;
+    .inventory-alert:hover {
+      transform: translateX(4px);
+    }
+
+    .inventory-alert mat-icon {
+      color: #b45309;
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+
+    .inventory-alert span {
+      flex: 1;
+      font-size: 13px;
+      font-weight: 600;
+      color: #92400e;
+    }
+
+    .inventory-alert .arrow {
       font-size: 18px;
       width: 18px;
       height: 18px;
     }
 
-    .alert-banner span {
-      flex: 1;
-      font-size: 12px;
-      font-weight: 500;
-      color: #E65100;
+    /* Quick Actions Card */
+    .actions-list {
+      padding: 0 16px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
 
-    .alert-banner mat-icon:last-child {
-      color: #E65100;
-      font-size: 14px;
-      width: 14px;
-      height: 14px;
-    }
-
-    /* Action Cards */
-    .actions-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
-    }
-
-    .action-card {
-      background: white;
-      border-radius: 12px;
-      padding: 16px 12px;
+    .action-btn {
       display: flex;
       align-items: center;
-      gap: 12px;
-      border: 1px solid #e0e0e0;
+      gap: 14px;
+      width: 100%;
+      padding: 14px 16px;
+      background: #f8fafc;
+      border: 1px solid transparent;
+      border-radius: 12px;
       cursor: pointer;
       transition: all 0.2s ease;
     }
 
-    .action-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    .action-btn:hover {
+      background: white;
+      border-color: #e2e8f0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    }
+
+    .action-btn:hover .action-arrow {
+      transform: translateX(4px);
+      color: #4ade80;
     }
 
     .action-icon {
-      width: 44px;
-      height: 44px;
+      width: 40px;
+      height: 40px;
       border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
+      flex-shrink: 0;
     }
 
     .action-icon mat-icon {
-      font-size: 22px;
-      width: 22px;
-      height: 22px;
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+      color: white;
     }
 
-    .action-icon.blue { background: rgba(25, 118, 210, 0.15); }
-    .action-icon.blue mat-icon { color: #1976D2; }
-    .action-icon.purple { background: rgba(123, 31, 162, 0.15); }
-    .action-icon.purple mat-icon { color: #7B1FA2; }
-    .action-icon.green { background: rgba(46, 125, 50, 0.15); }
-    .action-icon.green mat-icon { color: #2E7D32; }
-    .action-icon.orange { background: rgba(230, 81, 0, 0.15); }
-    .action-icon.orange mat-icon { color: #E65100; }
-
-    .action-label {
+    .action-text {
       flex: 1;
       font-size: 14px;
       font-weight: 600;
-      color: #212121;
+      color: #1e293b;
+      text-align: left;
     }
 
     .action-arrow {
-      font-size: 16px;
-      width: 16px;
-      height: 16px;
-      color: #bdbdbd;
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      color: #94a3b8;
+      transition: all 0.2s ease;
     }
 
-    /* Responsive */
-    @media (max-width: 480px) {
-      .metrics-row.three-col {
-        grid-template-columns: repeat(3, 1fr);
+    /* Responsive Design */
+    @media (max-width: 1200px) {
+      .content-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 600px) {
+      .dashboard-wrapper {
+        padding: 16px;
       }
 
-      .metric-card {
-        padding: 12px 8px;
+      .welcome-section {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
       }
 
-      .metric-value {
-        font-size: 18px;
-      }
-
-      .metric-label {
-        font-size: 9px;
-      }
-
-      .revenue-value .amount {
+      .welcome-content .greeting {
         font-size: 22px;
+      }
+
+      .stats-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      .stat-card {
+        padding: 16px;
+      }
+
+      .stat-icon {
+        width: 44px;
+        height: 44px;
+      }
+
+      .stat-info .stat-value {
+        font-size: 20px;
+      }
+
+      .inventory-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        padding: 0 16px;
+      }
+
+      .revenue-stats {
+        flex-direction: column;
+        gap: 20px;
+        padding: 0 16px 16px;
+      }
+
+      .revenue-divider {
+        width: 100%;
+        height: 1px;
+      }
+
+      .card-header {
+        padding: 16px 16px 12px;
+      }
+
+      .inventory-alert {
+        margin: 16px;
       }
     }
   `]
@@ -606,17 +755,29 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
     return this.stats.lowStockProducts > 0 || this.stats.outOfStockProducts > 0;
   }
 
+  getGreeting(): string {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'morning';
+    if (hour < 17) return 'afternoon';
+    return 'evening';
+  }
+
+  getCurrentDate(): string {
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    };
+    return new Date().toLocaleDateString('en-IN', options);
+  }
+
   ngOnInit(): void {
-    // Load cached stats first (instant display)
     this.loadCachedStats();
-    // Then fetch fresh data from server
     this.loadDashboardData();
     this.startAutoRefresh();
   }
 
-  /**
-   * Load cached dashboard stats from localStorage (instant)
-   */
   private loadCachedStats(): void {
     const cachedStats = localStorage.getItem('dashboard_stats');
     if (cachedStats) {
@@ -632,17 +793,13 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
           lowStockProducts: parsed.lowStockProducts || 0,
           outOfStockProducts: parsed.outOfStockProducts || 0,
         };
-        this.isLoading = false; // Show cached data immediately
-        console.log('Loaded dashboard stats from cache');
+        this.isLoading = false;
       } catch (e) {
         console.warn('Error parsing cached stats:', e);
       }
     }
   }
 
-  /**
-   * Save dashboard stats to localStorage for next instant load
-   */
   private saveCachedStats(): void {
     localStorage.setItem('dashboard_stats', JSON.stringify(this.stats));
   }
@@ -656,18 +813,14 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
   loadDashboardData(): void {
     this.isLoading = true;
 
-    // Always fetch fresh shopId from my-shop endpoint to ensure we have the correct value
     this.http.get<any>(`${environment.apiUrl}/shops/my-shop`, { withCredentials: true })
       .subscribe({
         next: (response) => {
           if (response.data && response.data.shopId) {
-            // Store numeric ID in current_shop_id for other APIs
             if (response.data.id) {
               localStorage.setItem('current_shop_id', response.data.id.toString());
             }
-            // Store string shopId for dashboard API
             localStorage.setItem('current_shop_string_id', response.data.shopId);
-            // Load dashboard with the fetched string shopId
             this.fetchDashboardStats(response.data.shopId);
           } else {
             console.error('No shop found for this user');
@@ -676,7 +829,6 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
         },
         error: (error) => {
           console.error('Error fetching shop:', error);
-          // Fallback to localStorage if API fails
           const cachedStringId = localStorage.getItem('current_shop_string_id');
           if (cachedStringId) {
             this.fetchDashboardStats(cachedStringId);
@@ -688,7 +840,6 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
   }
 
   private fetchDashboardStats(shopId: string): void {
-    // Fetch dashboard data from API
     this.http.get<any>(`${environment.apiUrl}/shops/${shopId}/dashboard`, { withCredentials: true })
       .subscribe({
         next: (response) => {
@@ -709,20 +860,17 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
 
             this.unreadNotificationCount = this.stats.pendingOrders;
 
-            // Play sound for new orders
             if (this.stats.pendingOrders > this.previousOrderCount && this.previousOrderCount > 0) {
               this.soundService.playNotificationSound();
             }
             this.previousOrderCount = this.stats.pendingOrders;
 
-            // Save to cache for instant load next time
             this.saveCachedStats();
           }
           this.isLoading = false;
         },
         error: () => {
           this.isLoading = false;
-          // If API fails and we have no cached data, keep loading state
         }
       });
   }
@@ -741,7 +889,6 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
   }
 
   private startAutoRefresh(): void {
-    // Refresh every 30 seconds
     this.refreshSubscription = interval(30000).subscribe(() => {
       this.loadDashboardData();
     });

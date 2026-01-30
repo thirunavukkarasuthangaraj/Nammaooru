@@ -287,4 +287,46 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
   viewAnalytics(): void {
     console.log('Viewing detailed analytics');
   }
+
+  // Helper methods for UI
+  getGreeting(): string {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'morning';
+    if (hour < 17) return 'afternoon';
+    return 'evening';
+  }
+
+  getCurrentDate(): string {
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    };
+    return new Date().toLocaleDateString('en-IN', options);
+  }
+
+  getShopOwnerName(): string {
+    // Try to get from localStorage or use default
+    const shopData = localStorage.getItem('shopData');
+    if (shopData) {
+      try {
+        const parsed = JSON.parse(shopData);
+        return parsed.ownerName || parsed.shopName || 'Shop Owner';
+      } catch {
+        return 'Shop Owner';
+      }
+    }
+    return 'Shop Owner';
+  }
+
+  formatCurrency(value: number): string {
+    if (!value) return '0';
+    if (value >= 100000) {
+      return (value / 100000).toFixed(1) + 'L';
+    } else if (value >= 1000) {
+      return (value / 1000).toFixed(1) + 'K';
+    }
+    return value.toLocaleString('en-IN');
+  }
 }

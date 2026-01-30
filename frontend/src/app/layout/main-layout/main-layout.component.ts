@@ -464,13 +464,21 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       .subscribe(shop => {
         if (shop) {
           this.shopName = shop.name || shop.businessName || '';
+          // Save shop name to localStorage
+          if (this.shopName) {
+            localStorage.setItem('shop_name', this.shopName);
+          }
           // Get logo from shop images (cast to any for flexibility)
           const shopAny = shop as any;
-          const logoImage = shopAny.images?.find((img: any) => img.isPrimary || img.type === 'LOGO');
+          const logoImage = shopAny.images?.find((img: any) => img.isPrimary || img.imageType === 'LOGO' || img.type === 'LOGO');
           if (logoImage?.imageUrl) {
             this.shopLogoUrl = getImageUrl(logoImage.imageUrl);
           } else if (shopAny.logoUrl) {
             this.shopLogoUrl = getImageUrl(shopAny.logoUrl);
+          }
+          // Store logo URL in localStorage for persistence
+          if (this.shopLogoUrl) {
+            localStorage.setItem('shop_logo_url', this.shopLogoUrl);
           }
         }
       });
@@ -493,6 +501,16 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   private loadShopInfo(): void {
     const currentUser = this.authService.getCurrentUser();
     if (currentUser && (currentUser.role === 'SHOP_OWNER' || (currentUser.role as any) === UserRole.SHOP_OWNER)) {
+      // Try to load from localStorage first for instant display
+      const cachedLogoUrl = localStorage.getItem('shop_logo_url');
+      if (cachedLogoUrl) {
+        this.shopLogoUrl = cachedLogoUrl;
+      }
+      const cachedShopName = localStorage.getItem('shop_name');
+      if (cachedShopName) {
+        this.shopName = cachedShopName;
+      }
+      // Then refresh from API
       this.shopContext.refreshShop();
     }
   }

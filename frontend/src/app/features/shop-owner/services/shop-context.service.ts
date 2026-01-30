@@ -4,6 +4,13 @@ import { BehaviorSubject, Observable, of } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
 
+export interface ShopImage {
+  id: number;
+  imageUrl: string;
+  imageType?: string;
+  isPrimary?: boolean;
+}
+
 export interface Shop {
   id: number;
   shopId: string; // The string identifier used for API calls
@@ -34,6 +41,7 @@ export interface Shop {
   deliveryFee?: number;
   createdBy: string;
   productCount?: number;
+  images?: ShopImage[];
 }
 
 @Injectable({
@@ -78,6 +86,8 @@ export class ShopContextService {
           if (shopName && shopName.trim()) {
             localStorage.setItem('shop_name', shopName.trim());
           }
+          // Extract and save logo URL
+          this.extractAndSaveLogoUrl(shop);
         }
       }),
       catchError(error => {
@@ -148,6 +158,8 @@ export class ShopContextService {
         if (shopName && shopName.trim()) {
           localStorage.setItem('shop_name', shopName.trim());
         }
+        // Extract and save logo URL
+        this.extractAndSaveLogoUrl(shop);
         return shop;
       }),
       catchError(error => {
@@ -267,12 +279,47 @@ export class ShopContextService {
     if (!shopId) {
       return of(null);
     }
-    
+
     return this.http.get(`${this.apiUrl}/shops/${shopId}/dashboard`).pipe(
       catchError(error => {
         console.error('Error loading dashboard data:', error);
         return of(null);
       })
     );
+  }
+
+  /**
+   * Extract and save logo URL from shop data
+   */
+  private extractAndSaveLogoUrl(shop: any): void {
+    if (!shop) return;
+
+    let logoUrl: string | null = null;
+
+    // Try to get logo from images array
+    if (shop.images && shop.images.length > 0) {
+      const logoImage = shop.images.find((img: any) =>
+        img.imageType === 'LOGO' || img.type === 'LOGO' || img.isPrimary
+      ) || shop.images[0];
+
+      if (logoImage?.imageUrl) {
+        logoUrl = logoImage.imageUrl;
+      }
+    }
+
+    // Fallback to logoUrl field
+    if (!logoUrl && shop.logoUrl) {
+      logoUrl = shop.logoUrl;
+    }
+
+    // Save to localStorage if we found a logo
+    if (logoUrl) {
+      // Ensure full URL
+      if (!logoUrl.startsWith('http')) {
+        logoUrl = `${environment.apiUrl.replace('/api', '')}${logoUrl}`;
+      }
+      localStorage.setItem('shop_logo_url', logoUrl);
+      console.log('Shop logo URL saved:', logoUrl);
+    }
   }
 }

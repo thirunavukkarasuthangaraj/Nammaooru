@@ -296,9 +296,9 @@ import { ShopContextService } from '../../services/shop-context.service';
       margin: -24px;
     }
 
-    /* Clean Header */
+    /* Clean Header - Green Theme */
     .profile-header {
-      background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+      background: linear-gradient(135deg, #16a34a 0%, #4ade80 100%);
       color: white;
       padding: 24px;
     }
@@ -387,14 +387,14 @@ import { ShopContextService } from '../../services/shop-context.service';
     }
 
     .tab-button:hover {
-      color: #3b82f6;
-      background: #f3f4f6;
+      color: #16a34a;
+      background: #f0fdf4;
     }
 
     .tab-button.active {
-      color: #3b82f6;
-      border-bottom-color: #3b82f6;
-      background: #eff6ff;
+      color: #16a34a;
+      border-bottom-color: #4ade80;
+      background: #f0fdf4;
     }
 
     /* Tab Content */
@@ -522,8 +522,8 @@ import { ShopContextService } from '../../services/shop-context.service';
     }
 
     .holiday-recurring {
-      background: #dbeafe;
-      color: #1e40af;
+      background: #dcfce7;
+      color: #166534;
       padding: 2px 8px;
       border-radius: 4px;
       font-size: 0.8rem;
@@ -556,7 +556,7 @@ import { ShopContextService } from '../../services/shop-context.service';
     }
 
     .setting-left mat-icon {
-      color: #3b82f6;
+      color: #16a34a;
       width: 20px;
       height: 20px;
       font-size: 20px;
@@ -608,7 +608,7 @@ import { ShopContextService } from '../../services/shop-context.service';
       font-size: 24px;
     }
 
-    .dashboard-action mat-icon { color: #3b82f6; }
+    .dashboard-action mat-icon { color: #16a34a; }
     .products-action mat-icon { color: #10b981; }
     .orders-action mat-icon { color: #f59e0b; }
     .customers-action mat-icon { color: #8b5cf6; }
@@ -663,8 +663,8 @@ import { ShopContextService } from '../../services/shop-context.service';
     }
 
     .logo-preview:hover {
-      border-color: #3b82f6;
-      background: #eff6ff;
+      border-color: #4ade80;
+      background: #f0fdf4;
     }
 
     .logo-preview:hover .upload-overlay {
@@ -703,7 +703,7 @@ import { ShopContextService } from '../../services/shop-context.service';
       left: 0;
       right: 0;
       bottom: 0;
-      background: rgba(59, 130, 246, 0.85);
+      background: rgba(74, 222, 128, 0.9);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -756,7 +756,7 @@ import { ShopContextService } from '../../services/shop-context.service';
     }
 
     .upload-progress span {
-      color: #3b82f6;
+      color: #16a34a;
       font-size: 0.9rem;
     }
 
