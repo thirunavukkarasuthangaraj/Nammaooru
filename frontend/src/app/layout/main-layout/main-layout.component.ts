@@ -46,6 +46,10 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   // Notifications - loaded from API
   notificationCount = 0;
 
+  // Dynamic counts for sidebar badges
+  activeOrderCount = 0;
+  unreadNotificationCount = 0;
+
   // Version info
   versionInfo: any = null;
   notifications: HeaderNotification[] = [];
@@ -261,8 +265,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     {
       category: 'Orders',
       items: [
-        { title: 'Order Management', icon: 'list_alt', route: '/shop-owner/orders-management', badge: '7' },
-        { title: 'Notifications', icon: 'notifications_active', route: '/shop-owner/notifications', badge: '5' }
+        { title: 'Order Management', icon: 'list_alt', route: '/shop-owner/orders-management', badge: null },
+        { title: 'Notifications', icon: 'notifications_active', route: '/shop-owner/notifications', badge: null }
       ]
     },
     {
@@ -541,12 +545,33 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
               .slice(0, 5)
               .map((order: any) => this.orderToNotification(order));
             this.notificationCount = this.notifications.filter(n => !n.read).length;
+
+            // Update sidebar badge counts
+            this.activeOrderCount = currentPendingCount;
+            this.unreadNotificationCount = this.notificationCount;
+            this.updateSidebarBadges();
+
             this.notificationsLoading = false;
           },
           error: () => {
             this.notificationsLoading = false;
           }
         });
+    }
+  }
+
+  private updateSidebarBadges(): void {
+    // Update Order Management badge
+    const ordersCategory = this.shopOwnerMenuItems.find(c => c.category === 'Orders');
+    if (ordersCategory) {
+      const orderItem = ordersCategory.items.find(i => i.title === 'Order Management');
+      if (orderItem) {
+        orderItem.badge = this.activeOrderCount > 0 ? String(this.activeOrderCount) : null;
+      }
+      const notifItem = ordersCategory.items.find(i => i.title === 'Notifications');
+      if (notifItem) {
+        notifItem.badge = this.unreadNotificationCount > 0 ? String(this.unreadNotificationCount) : null;
+      }
     }
   }
 
