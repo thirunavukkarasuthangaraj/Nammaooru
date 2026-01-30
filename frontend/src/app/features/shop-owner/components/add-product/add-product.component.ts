@@ -1025,9 +1025,10 @@ export class AddProductComponent implements OnInit {
                 barcode1: formData.barcode1 || '',
                 barcode2: formData.barcode2 || '',
                 barcode3: formData.barcode3 || '',
-                category: '',
+                category: formData.category || '',
                 unit: formData.unit || 'piece',
-                imageUrl: shopProduct.primaryImageUrl || ''
+                imageUrl: shopProduct.primaryImageUrl || '',
+                tags: formData.tags || ''
               };
               await this.offlineStorage.addProductToCache(newCachedProduct);
               console.log('Added new product to local cache:', newCachedProduct);
@@ -1131,7 +1132,8 @@ export class AddProductComponent implements OnInit {
         barcode3: offlineProduct.barcode3 || '',
         category: offlineProduct.categoryName || '',
         unit: offlineProduct.unit || 'piece',
-        imageUrl: ''
+        imageUrl: '',
+        tags: offlineProduct.tags || ''
       };
       await this.offlineStorage.addProductToCache(cachedProduct);
 

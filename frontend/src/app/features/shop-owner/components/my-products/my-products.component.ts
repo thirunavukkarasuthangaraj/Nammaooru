@@ -1499,24 +1499,54 @@ export class MyProductsComponent implements OnInit, OnDestroy {
       customDescription: assignmentData.customDescription
     }).pipe(takeUntil(this.destroy$))
     .subscribe({
-      next: (newProduct) => {
+      next: async (newProduct: any) => {
         console.log('Product assigned successfully:', newProduct);
+
+        // Add to IndexedDB cache immediately for POS Billing search
+        try {
+          const cachedProduct: CachedProduct = {
+            id: newProduct.id,
+            shopId: this.shopId!,
+            name: newProduct.customName || assignmentData.masterProduct.name || '',
+            nameTamil: newProduct.nameTamil || assignmentData.masterProduct.nameTamil || '',
+            price: newProduct.price || assignmentData.sellingPrice,
+            originalPrice: newProduct.originalPrice || assignmentData.sellingPrice,
+            costPrice: newProduct.costPrice || 0,
+            stock: newProduct.stockQuantity || assignmentData.initialStock || 0,
+            trackInventory: true,
+            isAvailable: newProduct.isAvailable !== false,
+            sku: newProduct.sku || assignmentData.masterProduct.sku || '',
+            barcode: newProduct.barcode1 || '',
+            barcode1: newProduct.barcode1 || '',
+            barcode2: newProduct.barcode2 || '',
+            barcode3: newProduct.barcode3 || '',
+            category: newProduct.category || '',
+            unit: newProduct.unit || 'piece',
+            imageUrl: newProduct.imageUrl || newProduct.primaryImageUrl || '',
+            tags: newProduct.tags || assignmentData.masterProduct.tags || ''
+          };
+          await this.offlineStorage.addProductToCache(cachedProduct);
+          console.log('Added new product to IndexedDB cache:', cachedProduct);
+        } catch (err) {
+          console.warn('Failed to add product to cache:', err);
+        }
+
         this.snackBar.open(`Product "${assignmentData.masterProduct.name}" assigned to your shop!`, 'Close', { duration: 3000 });
-        
+
         // Reload products to show the new assignment
         this.loadProducts();
       },
       error: (error) => {
         console.error('Error assigning product:', error);
         let errorMessage = 'Failed to assign product to shop';
-        
+
         // Check for specific error messages
         if (error?.error?.message) {
           errorMessage = error.error.message;
         } else if (error?.message) {
           errorMessage = error.message;
         }
-        
+
         this.snackBar.open(errorMessage, 'Close', { duration: 5000 });
       }
     });
