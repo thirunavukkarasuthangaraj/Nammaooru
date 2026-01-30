@@ -262,7 +262,7 @@ import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
             <button mat-raised-button class="draft-button" type="button" (click)="saveAsDraft()">
               <mat-icon>save_as</mat-icon> Save as Draft
             </button>
-            <button mat-raised-button class="save-button" type="submit" 
+            <button mat-raised-button class="save-button" type="button"
                     (click)="saveProduct()" [disabled]="productForm.invalid || saving">
               <mat-spinner *ngIf="saving" diameter="20"></mat-spinner>
               <mat-icon *ngIf="!saving">check_circle</mat-icon>
