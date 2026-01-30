@@ -77,7 +77,7 @@
   <!-- Products List -->
   <div class="products-list" *ngIf="!loading">
     <mat-card class="list-container">
-      <table mat-table [dataSource]="filteredProducts | slice: currentPageIndex * pageSize : (currentPageIndex + 1) * pageSize" class="products-table">
+      <table mat-table [dataSource]="filteredProducts" class="products-table">
 
         <!-- Select Checkbox Column -->
         <ng-container matColumnDef="select">
@@ -238,13 +238,4 @@
     </div>
   </div>
 
-  <!-- Pagination -->
-  <mat-paginator 
-    [length]="totalProducts" 
-    [pageSize]="pageSize" 
-    [pageSizeOptions]="dynamicPageSizeOptions"
-    [showFirstLastButtons]="true"
-    (page)="onPageChange($event)"
-    *ngIf="filteredProducts.length > 0">
-  </mat-paginator>
 </div>
