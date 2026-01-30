@@ -68,6 +68,12 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   private lastScannedBarcode: string = '';
   private lastScanTime: number = 0;
 
+  // Barcode scanner keyboard handler (stored for cleanup)
+  private barcodeKeyHandler: ((event: KeyboardEvent) => void) | null = null;
+
+  // Beep cooldown to prevent continuous sound
+  private lastBeepTime: number = 0;
+
   // Cart
   cart: CartItem[] = [];
   subtotal: number = 0;
@@ -191,6 +197,12 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+
+    // Remove barcode scanner keyboard listener to prevent memory leaks and duplicate handlers
+    if (this.barcodeKeyHandler) {
+      document.removeEventListener('keypress', this.barcodeKeyHandler);
+      this.barcodeKeyHandler = null;
+    }
   }
 
   /**
@@ -358,7 +370,8 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     let lastKeyTime = 0;
     let buffer = '';
 
-    document.addEventListener('keypress', (event: KeyboardEvent) => {
+    // Store the handler reference so we can remove it on destroy
+    this.barcodeKeyHandler = (event: KeyboardEvent) => {
       // Ignore if typing in an input field (search box, barcode input, etc.)
       const target = event.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
@@ -385,7 +398,9 @@ export class PosBillingComponent implements OnInit, OnDestroy {
         this.handleBarcodeScan(barcode);
         buffer = '';
       }
-    });
+    };
+
+    document.addEventListener('keypress', this.barcodeKeyHandler);
   }
 
   /**
@@ -909,13 +924,30 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Manual barcode input
+   * Manual barcode input - same fast approach as Quick Bill
    */
   onBarcodeSubmit(): void {
-    if (this.barcodeBuffer.trim()) {
-      this.handleBarcodeScan(this.barcodeBuffer.trim());
-      this.barcodeBuffer = '';
+    const barcode = this.barcodeBuffer.trim();
+    if (!barcode) return;
+
+    // Find exact barcode match (same as Quick Bill)
+    const exactMatch = this.products.find(p =>
+      p.barcode === barcode ||
+      p.barcode1 === barcode ||
+      p.barcode2 === barcode ||
+      p.barcode3 === barcode ||
+      p.sku === barcode
+    );
+
+    if (exactMatch) {
+      this.addToCart(exactMatch);
+      this.playBeep(true);
+    } else {
+      this.swal.error('Not Found', `Product with barcode "${barcode}" not found`, 2000);
+      this.playBeep(false);
     }
+
+    this.barcodeBuffer = '';
   }
 
   /**
@@ -1518,27 +1550,11 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Play beep sound
+   * Play beep sound - DISABLED to fix continuous sound issue
    */
   private playBeep(success: boolean): void {
-    try {
-      const context = new AudioContext();
-      const oscillator = context.createOscillator();
-      const gainNode = context.createGain();
-
-      oscillator.connect(gainNode);
-      gainNode.connect(context.destination);
-
-      oscillator.frequency.value = success ? 800 : 300;
-      oscillator.type = 'sine';
-
-      gainNode.gain.value = 0.1;
-
-      oscillator.start();
-      setTimeout(() => oscillator.stop(), success ? 100 : 200);
-    } catch (e) {
-      // Audio not supported
-    }
+    // Sound disabled for now
+    return;
   }
 
   /**
