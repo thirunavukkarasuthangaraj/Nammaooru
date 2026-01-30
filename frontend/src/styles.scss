@@ -989,6 +989,33 @@ html, body {
   font-size: 0.875rem;
 }
 
+/* Snackbar Styles */
+.error-snackbar {
+  --mdc-snackbar-container-color: #f44336 !important;
+  --mdc-snackbar-supporting-text-color: white !important;
+}
+
+.error-snackbar .mdc-snackbar__surface {
+  background-color: #f44336 !important;
+}
+
+.error-snackbar .mat-mdc-snack-bar-label {
+  color: white !important;
+}
+
+.success-snackbar {
+  --mdc-snackbar-container-color: #4caf50 !important;
+  --mdc-snackbar-supporting-text-color: white !important;
+}
+
+.success-snackbar .mdc-snackbar__surface {
+  background-color: #4caf50 !important;
+}
+
+.success-snackbar .mat-mdc-snack-bar-label {
+  color: white !important;
+}
+
 .loading-container {
   display: flex;
   justify-content: center;

@@ -127,13 +127,16 @@ import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
             </h3>
             
             <div class="price-inputs">
-              <div class="price-field main-price">
-                <label>Selling Price</label>
-                <div class="price-input-group">
+              <div class="price-field main-price" [class.invalid]="productForm.get('price')?.invalid && productForm.get('price')?.touched">
+                <label class="required-label">Selling Price</label>
+                <div class="price-input-group" [class.invalid]="productForm.get('price')?.invalid && productForm.get('price')?.touched">
                   <span class="currency">₹</span>
                   <input type="number" formControlName="price" placeholder="0.00">
                 </div>
-                <mat-error *ngIf="productForm.get('price')?.invalid">Required</mat-error>
+                <div class="validation-error" *ngIf="productForm.get('price')?.invalid && productForm.get('price')?.touched">
+                  <mat-icon>error</mat-icon>
+                  <span>Selling price is required</span>
+                </div>
               </div>
 
               <div class="price-field">
@@ -168,16 +171,20 @@ import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
             </h3>
 
             <div class="inventory-controls">
-              <div class="stock-field">
-                <label>Current Stock</label>
-                <div class="stock-input">
-                  <button mat-icon-button (click)="decrementStock()">
+              <div class="stock-field" [class.invalid]="productForm.get('stockQuantity')?.invalid && productForm.get('stockQuantity')?.touched">
+                <label class="required-label">Current Stock</label>
+                <div class="stock-input" [class.invalid]="productForm.get('stockQuantity')?.invalid && productForm.get('stockQuantity')?.touched">
+                  <button mat-icon-button (click)="decrementStock()" type="button">
                     <mat-icon>remove_circle</mat-icon>
                   </button>
                   <input type="number" formControlName="stockQuantity" min="0">
-                  <button mat-icon-button (click)="incrementStock()">
+                  <button mat-icon-button (click)="incrementStock()" type="button">
                     <mat-icon>add_circle</mat-icon>
                   </button>
+                </div>
+                <div class="validation-error" *ngIf="productForm.get('stockQuantity')?.invalid && productForm.get('stockQuantity')?.touched">
+                  <mat-icon>error</mat-icon>
+                  <span>Stock quantity is required</span>
                 </div>
               </div>
 
@@ -230,11 +237,13 @@ import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
               Product Barcodes
             </h3>
 
-            <mat-form-field appearance="outline" class="full-width">
+            <mat-form-field appearance="outline" class="full-width"
+                            [class.mat-form-field-invalid]="productForm.get('barcode1')?.invalid && productForm.get('barcode1')?.touched">
               <mat-label>Barcode 1 *</mat-label>
               <input matInput formControlName="barcode1" placeholder="Enter primary barcode (required)">
               <mat-icon matPrefix>qr_code</mat-icon>
               <mat-error *ngIf="productForm.get('barcode1')?.hasError('required')">
+                <mat-icon style="font-size: 14px; width: 14px; height: 14px; vertical-align: middle;">error</mat-icon>
                 Barcode 1 is required
               </mat-error>
             </mat-form-field>
@@ -263,7 +272,7 @@ import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
               <mat-icon>save_as</mat-icon> Save as Draft
             </button>
             <button mat-raised-button class="save-button" type="button"
-                    (click)="saveProduct()" [disabled]="productForm.invalid || saving">
+                    (click)="saveProduct()" [disabled]="saving">
               <mat-spinner *ngIf="saving" diameter="20"></mat-spinner>
               <mat-icon *ngIf="!saving">check_circle</mat-icon>
               Add to Store
@@ -905,6 +914,66 @@ import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
     .draft-button:hover {
       background: #66bb6a !important;
     }
+
+    /* Validation Styles - Red Color for Invalid Fields */
+    .price-input-group.invalid {
+      border-color: #f44336 !important;
+      background: #ffebee;
+    }
+
+    .price-input-group.invalid:focus-within {
+      box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.15);
+    }
+
+    .price-input-group.invalid .currency {
+      background: #f44336;
+      color: white;
+    }
+
+    .price-field.invalid label,
+    .stock-field.invalid label {
+      color: #f44336;
+    }
+
+    .stock-input.invalid {
+      border-color: #f44336 !important;
+      background: #ffebee;
+    }
+
+    .validation-error {
+      color: #f44336;
+      font-size: 0.75rem;
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .validation-error mat-icon {
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
+    }
+
+    /* Required field asterisk */
+    .required-label::after {
+      content: ' *';
+      color: #f44336;
+    }
+
+    /* Material form field invalid state */
+    ::ng-deep .mat-form-field.ng-invalid.ng-touched .mat-form-field-outline {
+      color: #f44336 !important;
+    }
+
+    ::ng-deep .mat-form-field.ng-invalid.ng-touched .mat-form-field-label {
+      color: #f44336 !important;
+    }
+
+    ::ng-deep .mat-error {
+      color: #f44336;
+      font-size: 0.75rem;
+    }
   `]
 })
 export class AddProductModernComponent implements OnInit {
@@ -1071,24 +1140,43 @@ export class AddProductModernComponent implements OnInit {
   }
 
   saveProduct(): void {
+    // Mark all fields as touched to show validation errors
+    if (this.productForm.invalid) {
+      this.markFormGroupTouched(this.productForm);
+      this.snackBar.open('Please fill all required fields', 'Close', {
+        duration: 3000,
+        panelClass: ['error-snackbar']
+      });
+      return;
+    }
+
     if (this.productForm.valid && this.selectedProduct) {
       this.saving = true;
-      
+
       const payload = {
         masterProductId: this.selectedProduct.id,
         ...this.productForm.value
       };
-      
+
       // API call to save product
       setTimeout(() => {
         this.saving = false;
-        this.snackBar.open('Product added to your store!', 'Close', { 
+        this.snackBar.open('Product added to your store!', 'Close', {
           duration: 3000,
           panelClass: ['success-snackbar']
         });
         this.router.navigate(['/shop-owner/products']);
       }, 1500);
     }
+  }
+
+  // Helper method to mark all form controls as touched
+  markFormGroupTouched(formGroup: FormGroup): void {
+    Object.keys(formGroup.controls).forEach(key => {
+      const control = formGroup.get(key);
+      control?.markAsTouched();
+      control?.markAsDirty();
+    });
   }
 
   cancel(): void {

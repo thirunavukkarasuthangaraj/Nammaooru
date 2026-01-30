@@ -104,18 +104,20 @@ export class BulkEditComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  async loadProducts(): Promise<void> {
+  async loadProducts(forceRefresh: boolean = false): Promise<void> {
     this.loading = true;
 
-    // Step 1: Load from local cache first (instant)
-    try {
-      const cachedProducts = await this.offlineStorage.getProducts();
-      if (cachedProducts.length > 0) {
-        this.mapCachedProducts(cachedProducts);
-        this.loading = false;
+    // Step 1: Load from local cache first (instant) - skip if force refresh
+    if (!forceRefresh) {
+      try {
+        const cachedProducts = await this.offlineStorage.getProducts();
+        if (cachedProducts.length > 0) {
+          this.mapCachedProducts(cachedProducts);
+          this.loading = false;
+        }
+      } catch (error) {
+        console.warn('Error loading from cache:', error);
       }
-    } catch (error) {
-      console.warn('Error loading from cache:', error);
     }
 
     // Step 2: Always sync from server when online to get latest data
