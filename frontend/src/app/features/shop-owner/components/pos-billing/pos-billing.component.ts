@@ -289,10 +289,12 @@ export class PosBillingComponent implements OnInit, OnDestroy {
    * Get product display name based on language setting
    */
   getProductName(product: CachedProduct): string {
+    if (!product) return 'Unknown Product';
     if (this.showTamil && product.nameTamil) {
       return product.nameTamil;
     }
-    return product.name;
+    // Try multiple name fields with fallback
+    return product.name || (product as any).customName || 'Loading...';
   }
 
   /**

@@ -271,7 +271,8 @@
       </div>
       <!-- Cart Items -->
       <div class="cart-items">
-        <div *ngFor="let item of cart" class="cart-item">
+        <ng-container *ngFor="let item of cart">
+          <div class="cart-item" *ngIf="item?.product">
           <div class="item-row-top">
             <div class="item-name">{{ getProductName(item.product) }}</div>
             <button mat-icon-button color="warn" (click)="removeFromCart(item)" class="remove-btn">
@@ -298,6 +299,7 @@
             </div>
           </div>
         </div>
+        </ng-container>
 
         <!-- Empty Cart -->
         <div *ngIf="cart.length === 0" class="empty-cart">
