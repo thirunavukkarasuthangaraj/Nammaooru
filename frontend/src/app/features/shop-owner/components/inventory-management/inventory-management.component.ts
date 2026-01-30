@@ -60,10 +60,7 @@ interface InventoryItem {
             </mat-slide-toggle>
             <span class="lang-label tamil" [class.active]="showTamil">தமிழ்</span>
           </div>
-          <button mat-raised-button color="primary" (click)="openBulkUpdate()">
-            <mat-icon>system_update_alt</mat-icon>
-            Bulk Update
-          </button>
+        
           <button mat-raised-button color="accent" (click)="bulkDownload()" [disabled]="exporting">
             <mat-icon>{{ exporting ? 'hourglass_empty' : 'download' }}</mat-icon>
             {{ exporting ? 'Exporting...' : 'Bulk Download' }}
