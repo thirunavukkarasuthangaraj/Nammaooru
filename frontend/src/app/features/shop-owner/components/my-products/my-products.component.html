@@ -4,7 +4,10 @@
     <div class="header-left">
       <h1>My Products</h1>
       <p>
-        {{ products.length }} products in your shop • {{ filteredProducts.length }} showing
+        {{ products.length }} products in your shop •
+        <span class="active-count">{{ getActiveCount() }} Active</span> •
+        <span class="inactive-count">{{ getInactiveCount() }} Inactive</span>
+        <span *ngIf="filteredProducts.length !== products.length"> • {{ filteredProducts.length }} showing</span>
         <span *ngIf="selectedProducts.length > 0" class="selection-count">
           • <strong>{{ selectedProducts.length }} selected</strong>
         </span>

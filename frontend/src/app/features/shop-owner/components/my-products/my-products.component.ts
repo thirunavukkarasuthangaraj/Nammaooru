@@ -538,6 +538,14 @@ export class MyProductsComponent implements OnInit, OnDestroy {
     this.applyFilters();
   }
 
+  getActiveCount(): number {
+    return this.products.filter(p => p.status === 'ACTIVE' || p.isAvailable === true).length;
+  }
+
+  getInactiveCount(): number {
+    return this.products.filter(p => p.status === 'INACTIVE' || p.isAvailable === false).length;
+  }
+
   applyFilters(): void {
     const searchLower = this.searchTerm?.toLowerCase().trim() || '';
 
@@ -1523,7 +1531,7 @@ export class MyProductsComponent implements OnInit, OnDestroy {
             category: newProduct.category || '',
             unit: newProduct.unit || 'piece',
             imageUrl: newProduct.imageUrl || newProduct.primaryImageUrl || '',
-            tags: newProduct.tags || assignmentData.masterProduct.tags || ''
+            tags: newProduct.tags ? (Array.isArray(newProduct.tags) ? newProduct.tags : newProduct.tags.split(',').map((t: string) => t.trim())) : (assignmentData.masterProduct.tags ? assignmentData.masterProduct.tags.split(',').map(t => t.trim()) : [])
           };
           await this.offlineStorage.addProductToCache(cachedProduct);
           console.log('Added new product to IndexedDB cache:', cachedProduct);

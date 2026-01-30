@@ -11,6 +11,7 @@ export interface BrowseMasterProductsDialogData {
 export interface MasterProduct {
   id: number;
   name: string;
+  nameTamil?: string;
   description: string;
   sku: string;
   brand: string;
@@ -23,6 +24,7 @@ export interface MasterProduct {
   status: string;
   isFeatured: boolean;
   primaryImageUrl?: string;
+  tags?: string;
 }
 
 export interface ProductAssignmentResult {

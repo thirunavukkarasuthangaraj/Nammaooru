@@ -459,9 +459,10 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       }
 
       if (cachedProducts.length > 0) {
-        this.products = cachedProducts;
+        // Filter out inactive products - only show active/available products in POS
+        this.products = cachedProducts.filter(p => p.isAvailable !== false);
         this.filteredProducts = this.sortProductsWithCartFirst(this.products);
-        console.log(`Loaded ${this.products.length} products from cache (including offline)`);
+        console.log(`Loaded ${this.products.length} active products from cache (filtered from ${cachedProducts.length} total)`);
 
         // Extract shopId from cached products if not set
         if ((!this.shopId || this.shopId === 0) && cachedProducts.length > 0) {
@@ -524,13 +525,15 @@ export class PosBillingComponent implements OnInit, OnDestroy {
             }
           }
 
-          // Map to CachedProduct format
-          this.products = rawProducts.map((p: any) => this.mapProduct(p));
+          // Map to CachedProduct format and filter out inactive products
+          const allProducts = rawProducts.map((p: any) => this.mapProduct(p));
+          this.products = allProducts.filter(p => p.isAvailable !== false);
           this.filteredProducts = this.sortProductsWithCartFirst(this.products);
           this.isLoading = false;
+          console.log(`Loaded ${this.products.length} active products (filtered from ${allProducts.length} total)`);
 
-          // Save to local cache immediately (fast)
-          await this.offlineStorage.saveProducts(this.products, this.shopId);
+          // Save ALL products to local cache (including inactive) for My Products page
+          await this.offlineStorage.saveProducts(allProducts, this.shopId);
           // Save sync timestamp
           localStorage.setItem(this.POS_CACHE_TIMESTAMP_KEY, Date.now().toString());
           console.log(`Loaded and cached ${this.products.length} products`);
@@ -627,21 +630,22 @@ export class PosBillingComponent implements OnInit, OnDestroy {
             rawProducts = response.data;
           }
 
-          const newProducts = rawProducts.map((p: any) => this.mapProduct(p));
+          const allProducts = rawProducts.map((p: any) => this.mapProduct(p));
+          const activeProducts = allProducts.filter(p => p.isAvailable !== false);
 
-          // Update cache
-          await this.offlineStorage.saveProducts(newProducts, this.shopId);
+          // Update cache with ALL products (including inactive) for My Products page
+          await this.offlineStorage.saveProducts(allProducts, this.shopId);
 
           // Save sync timestamp
           localStorage.setItem(this.POS_CACHE_TIMESTAMP_KEY, Date.now().toString());
 
-          // Update UI if products changed
-          if (newProducts.length !== this.products.length) {
-            this.products = newProducts;
+          // Update UI with only active products
+          if (activeProducts.length !== this.products.length) {
+            this.products = activeProducts;
             this.filteredProducts = this.sortProductsWithCartFirst(this.products);
           }
 
-          console.log(`Background sync complete: ${newProducts.length} products`);
+          console.log(`Background sync complete: ${activeProducts.length} active products (${allProducts.length} total)`);
         },
         error: (error) => {
           console.warn('Background sync failed:', error);

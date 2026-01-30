@@ -1028,7 +1028,7 @@ export class AddProductComponent implements OnInit {
                 category: formData.category || '',
                 unit: formData.unit || 'piece',
                 imageUrl: shopProduct.primaryImageUrl || '',
-                tags: formData.tags || ''
+                tags: formData.tags ? formData.tags.split(',').map((t: string) => t.trim()) : []
               };
               await this.offlineStorage.addProductToCache(newCachedProduct);
               console.log('Added new product to local cache:', newCachedProduct);
@@ -1133,7 +1133,7 @@ export class AddProductComponent implements OnInit {
         category: offlineProduct.categoryName || '',
         unit: offlineProduct.unit || 'piece',
         imageUrl: '',
-        tags: offlineProduct.tags || ''
+        tags: offlineProduct.tags ? offlineProduct.tags.split(',').map(t => t.trim()) : []
       };
       await this.offlineStorage.addProductToCache(cachedProduct);
 

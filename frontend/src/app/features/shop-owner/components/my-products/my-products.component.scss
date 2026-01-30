@@ -22,6 +22,16 @@
         color: #666;
         font-size: 0.875rem;
 
+        .active-count {
+          color: #4caf50;
+          font-weight: 500;
+        }
+
+        .inactive-count {
+          color: #f44336;
+          font-weight: 500;
+        }
+
         .selection-count {
           color: #d32f2f;
         }
