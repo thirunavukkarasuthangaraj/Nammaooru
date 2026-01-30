@@ -744,10 +744,15 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Get temporary quantity for a product (defaults to 1)
+   * Get temporary quantity for a product (defaults to cart qty if in cart, else 1)
    */
   getTempQty(product: CachedProduct): number {
-    return this.tempQtys.get(product.id) ?? 1;
+    if (this.tempQtys.has(product.id)) {
+      return this.tempQtys.get(product.id)!;
+    }
+    // If product is in cart, show cart quantity
+    const cartQty = this.getCartQuantity(product);
+    return cartQty > 0 ? cartQty : 1;
   }
 
   /**
