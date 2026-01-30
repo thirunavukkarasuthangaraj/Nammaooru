@@ -566,11 +566,11 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     if (ordersCategory) {
       const orderItem = ordersCategory.items.find(i => i.title === 'Order Management');
       if (orderItem) {
-        orderItem.badge = this.activeOrderCount > 0 ? String(this.activeOrderCount) : null;
+        (orderItem as any).badge = this.activeOrderCount > 0 ? String(this.activeOrderCount) : null;
       }
       const notifItem = ordersCategory.items.find(i => i.title === 'Notifications');
       if (notifItem) {
-        notifItem.badge = this.unreadNotificationCount > 0 ? String(this.unreadNotificationCount) : null;
+        (notifItem as any).badge = this.unreadNotificationCount > 0 ? String(this.unreadNotificationCount) : null;
       }
     }
   }
