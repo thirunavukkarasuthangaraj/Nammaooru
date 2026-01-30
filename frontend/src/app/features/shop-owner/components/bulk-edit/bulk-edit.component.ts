@@ -514,17 +514,13 @@ export class BulkEditComponent implements OnInit, OnDestroy {
     let successCount = 0;
     let errorCount = 0;
 
-    // Save each modified product
-    for (const product of modifiedArray) {
+    // Save all modified products in parallel for speed
+    const savePromises = modifiedArray.map(async (product) => {
       try {
         if (!navigator.onLine) {
-          // Save offline
           await this.saveEditOffline(product);
-          successCount++;
         } else {
-          // Save to server
           await this.saveProductToServer(product);
-          successCount++;
         }
 
         // Update original values after successful save
@@ -544,11 +540,16 @@ export class BulkEditComponent implements OnInit, OnDestroy {
           nameTamil: product.nameTamil
         };
         this.modifiedProducts.delete(product.id);
+        return { success: true, product };
       } catch (error) {
         console.error(`Failed to save product ${product.id}:`, error);
-        errorCount++;
+        return { success: false, product, error };
       }
-    }
+    });
+
+    const results = await Promise.all(savePromises);
+    successCount = results.filter(r => r.success).length;
+    errorCount = results.filter(r => !r.success).length;
 
     this.saving = false;
 
@@ -558,8 +559,13 @@ export class BulkEditComponent implements OnInit, OnDestroy {
       this.snackBar.open(`Saved ${successCount} products, ${errorCount} failed`, 'Close', { duration: 5000 });
     }
 
-    // Update local cache
+    // Update local cache and refresh display
     this.updateLocalCache();
+
+    // Force refresh to show updated data
+    if (navigator.onLine) {
+      this.loadProducts(true);
+    }
   }
 
   private saveProductToServer(product: BulkEditProduct): Promise<void> {
