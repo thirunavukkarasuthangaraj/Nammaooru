@@ -828,15 +828,33 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     }
 
     const lowerTerm = term.toLowerCase();
-    const filtered = this.products.filter(p =>
-      p.name.toLowerCase().includes(lowerTerm) ||
-      (p.nameTamil && p.nameTamil.toLowerCase().includes(lowerTerm)) ||
-      (p.sku && p.sku.toLowerCase().includes(lowerTerm)) ||
-      (p.barcode && p.barcode.toLowerCase().includes(lowerTerm)) ||
-      (p.barcode1 && p.barcode1.toLowerCase().includes(lowerTerm)) ||
-      (p.barcode2 && p.barcode2.toLowerCase().includes(lowerTerm)) ||
-      (p.barcode3 && p.barcode3.toLowerCase().includes(lowerTerm))
-    );
+
+    // Fast path: exact barcode match (most common for scanner)
+    if (term.length >= 5 && /^\d+$/.test(term)) {
+      const exactMatch = this.products.find(p =>
+        p.barcode === term || p.barcode1 === term || p.barcode2 === term || p.barcode3 === term
+      );
+      if (exactMatch) {
+        this.filteredProducts = [exactMatch];
+        return;
+      }
+    }
+
+    // Regular search with limit for performance
+    const filtered: CachedProduct[] = [];
+    for (const p of this.products) {
+      if (filtered.length >= 50) break; // Limit results for performance
+
+      if (p.name.toLowerCase().includes(lowerTerm) ||
+          (p.nameTamil && p.nameTamil.toLowerCase().includes(lowerTerm)) ||
+          (p.sku && p.sku.toLowerCase().includes(lowerTerm)) ||
+          (p.barcode && p.barcode.includes(term)) ||
+          (p.barcode1 && p.barcode1.includes(term)) ||
+          (p.barcode2 && p.barcode2.includes(term)) ||
+          (p.barcode3 && p.barcode3.includes(term))) {
+        filtered.push(p);
+      }
+    }
     this.filteredProducts = this.sortProductsWithCartFirst(filtered);
   }
 
@@ -981,9 +999,16 @@ export class PosBillingComponent implements OnInit, OnDestroy {
    * Sort products to show cart items first
    */
   private sortProductsWithCartFirst(products: CachedProduct[]): CachedProduct[] {
+    // Use Set for O(1) lookup instead of O(n) find in loop
+    const cartProductIds = new Set(this.cart.map(item => item.product.id));
+
+    if (cartProductIds.size === 0) {
+      return products; // No sorting needed if cart is empty
+    }
+
     return [...products].sort((a, b) => {
-      const aInCart = this.isInCart(a);
-      const bInCart = this.isInCart(b);
+      const aInCart = cartProductIds.has(a.id);
+      const bInCart = cartProductIds.has(b.id);
       if (aInCart && !bInCart) return -1;
       if (!aInCart && bInCart) return 1;
       return 0;
