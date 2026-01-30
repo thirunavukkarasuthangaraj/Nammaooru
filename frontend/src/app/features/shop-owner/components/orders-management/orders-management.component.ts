@@ -525,6 +525,42 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     this.applyFilter();
   }
 
+  // Validate and fix date range when "from" date changes
+  onFromDateChange(): void {
+    if (this.fromDate && this.toDate) {
+      const from = new Date(this.fromDate);
+      const to = new Date(this.toDate);
+      // If "from" is after "to", set "to" = "from"
+      if (from > to) {
+        this.toDate = this.fromDate;
+      }
+    }
+    this.applyFilter();
+  }
+
+  // Validate and fix date range when "to" date changes
+  onToDateChange(): void {
+    if (this.fromDate && this.toDate) {
+      const from = new Date(this.fromDate);
+      const to = new Date(this.toDate);
+      // If "to" is before "from", set "from" = "to"
+      if (to < from) {
+        this.fromDate = this.toDate;
+      }
+    }
+    this.applyFilter();
+  }
+
+  // Get max date for "from" input (cannot be after "to" date)
+  getMaxFromDate(): string {
+    return this.toDate || '';
+  }
+
+  // Get min date for "to" input (cannot be before "from" date)
+  getMinToDate(): string {
+    return this.fromDate || '';
+  }
+
   onTabChange(event: MatTabChangeEvent): void {
     this.selectedTabIndex = event.index;
   }

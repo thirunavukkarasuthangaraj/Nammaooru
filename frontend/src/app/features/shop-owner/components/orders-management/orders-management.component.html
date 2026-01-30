@@ -72,13 +72,15 @@
       <input type="date"
              placeholder="From Date"
              [(ngModel)]="fromDate"
-             (change)="applyFilter()"
+             [max]="getMaxFromDate()"
+             (change)="onFromDateChange()"
              class="date-input">
       <span class="date-separator">to</span>
       <input type="date"
              placeholder="To Date"
              [(ngModel)]="toDate"
-             (change)="applyFilter()"
+             [min]="getMinToDate()"
+             (change)="onToDateChange()"
              class="date-input">
       <button class="filter-btn" (click)="clearDateFilter()">Clear</button>
     </div>

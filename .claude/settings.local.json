@@ -223,7 +223,9 @@
       "Bash(cmd /c \"cd /d D:\\\\AAWS\\\\nammaooru\\\\shop-management-system\\\\backend && mvn clean compile -DskipTests\")",
       "Bash(mvnw compile:*)",
       "Bash(cmd.exe /c \"cd /d D:\\\\AAWS\\\\nammaooru\\\\shop-management-system\\\\backend && mvnw.cmd compile -q\")",
-      "Bash(cmd.exe /c \"cd /d D:\\\\AAWS\\\\nammaooru\\\\shop-management-system\\\\backend && mvn compile -q 2>&1\")"
+      "Bash(cmd.exe /c \"cd /d D:\\\\AAWS\\\\nammaooru\\\\shop-management-system\\\\backend && mvn compile -q 2>&1\")",
+      "Bash(npm run build:prod:*)",
+      "Bash(npm version:*)"
     ],
     "deny": [],
     "ask": [],

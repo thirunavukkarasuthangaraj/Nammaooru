@@ -1,168 +1,60 @@
 // Professional Theme Colors
-$primary-color: #2c3e50;      // Dark blue-gray
-$primary-light: #34495e;      // Lighter shade
-$primary-lighter: #ecf0f1;    // Very light shade for backgrounds
-$accent-color: #3498db;        // Professional blue accent
-$text-primary: #2c3e50;        // Dark text
-$text-secondary: #7f8c8d;      // Secondary text
-$border-color: #dfe6e9;        // Light border
-$background: #f5f6fa;          // Light background
+$primary-color: #2c3e50;
+$primary-light: #34495e;
+$primary-lighter: #ecf0f1;
+$accent-color: #3498db;
+$text-primary: #2c3e50;
+$text-secondary: #7f8c8d;
+$border-color: #e0e0e0;
+$background: #f8f9fa;
 $white: #ffffff;
 
 .orders-page {
-  padding: 24px;
-  max-width: 1400px;
+  padding: 12px 16px;
+  max-width: 1600px;
   margin: 0 auto;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: $background;
   min-height: 100vh;
 }
 
-// Page Header
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-  background: $white;
-  border-radius: 8px;
-  padding: 20px 24px;
-  box-shadow: 0 2px 4px rgba($primary-color, 0.08);
-  border: 1px solid $border-color;
-
-  h1 {
-    margin: 0;
-    font-size: 24px;
-    font-weight: 600;
-    color: $primary-color;
-  }
-
-  .header-actions {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-
-    button {
-      font-size: 14px;
-      padding: 10px 20px;
-      border-radius: 6px;
-      background: $primary-color;
-      border: none;
-      color: white;
-      font-weight: 500;
-      transition: all 0.2s ease;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-
-      mat-icon {
-        font-size: 18px;
-        width: 18px;
-        height: 18px;
-      }
-
-      &:hover {
-        background: $primary-light;
-        transform: translateY(-1px);
-        box-shadow: 0 2px 8px rgba($primary-color, 0.2);
-      }
-    }
-  }
-}
-
-// Quick Stats
-.quick-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
-
-  .stat {
-    background: $white;
-    border-radius: 8px;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    border: 1px solid $border-color;
-    box-shadow: 0 2px 4px rgba($primary-color, 0.05);
-    transition: all 0.2s ease;
-    position: relative;
-    overflow: hidden;
-
-    &::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 3px;
-      background: $accent-color;
-    }
-
-    &:hover {
-      box-shadow: 0 4px 12px rgba($primary-color, 0.1);
-      transform: translateY(-2px);
-    }
-
-    .number {
-      font-size: 28px;
-      font-weight: 600;
-      color: $primary-color;
-      line-height: 1;
-      margin-bottom: 8px;
-    }
-
-    .label {
-      font-size: 13px;
-      color: $text-secondary;
-      margin-top: 4px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      font-weight: 500;
-    }
-  }
-}
-
-// Main Header (Tabs + Actions combined)
+// Main Header - Compact
 .main-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   background: $white;
-  border-radius: 10px;
-  padding: 8px 12px;
-  box-shadow: 0 2px 6px rgba($primary-color, 0.08);
+  border-radius: 8px;
+  padding: 6px 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
   border: 1px solid $border-color;
 
   .main-tabs {
     display: flex;
     gap: 0;
     background: rgba($primary-color, 0.05);
-    border-radius: 8px;
-    padding: 4px;
+    border-radius: 6px;
+    padding: 3px;
 
     .main-tab {
       display: flex;
       align-items: center;
-      gap: 6px;
-      padding: 8px 16px;
+      gap: 5px;
+      padding: 6px 14px;
       border: none;
       background: transparent;
       color: $text-secondary;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 500;
       cursor: pointer;
-      border-radius: 6px;
+      border-radius: 5px;
       transition: all 0.2s ease;
 
       mat-icon {
-        font-size: 18px;
-        width: 18px;
-        height: 18px;
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
       }
 
       &:hover {
@@ -173,21 +65,17 @@ $white: #ffffff;
       &.active {
         background: $accent-color;
         color: white;
-        box-shadow: 0 2px 8px rgba($accent-color, 0.3);
-
-        mat-icon {
-          color: white;
-        }
+        box-shadow: 0 2px 6px rgba($accent-color, 0.3);
       }
 
       .main-tab-badge {
         background: #e74c3c;
         color: white;
-        font-size: 11px;
+        font-size: 10px;
         font-weight: 600;
-        padding: 2px 6px;
+        padding: 1px 5px;
         border-radius: 8px;
-        min-width: 18px;
+        min-width: 16px;
         text-align: center;
         animation: pulse 2s infinite;
       }
@@ -196,104 +84,90 @@ $white: #ffffff;
 
   .header-actions {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     align-items: center;
 
     button {
-      font-size: 12px;
-      padding: 6px 12px;
-      border-radius: 6px;
+      font-size: 11px;
+      padding: 5px 10px;
+      border-radius: 5px;
       font-weight: 500;
       display: flex;
       align-items: center;
       gap: 4px;
 
       mat-icon {
-        font-size: 16px;
-        width: 16px;
-        height: 16px;
+        font-size: 14px;
+        width: 14px;
+        height: 14px;
       }
     }
   }
 }
 
 @keyframes pulse {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
 }
 
-// Compact Stats Bar
+// Compact Stats Bar - Inline
 .stats-bar {
   display: flex;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: 8px;
+  margin-bottom: 10px;
   flex-wrap: wrap;
 
   .stat-item {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
     background: $white;
-    padding: 8px 14px;
-    border-radius: 8px;
+    padding: 5px 10px;
+    border-radius: 6px;
     border: 1px solid $border-color;
-    box-shadow: 0 1px 3px rgba($primary-color, 0.05);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
 
     .stat-value {
-      font-size: 18px;
+      font-size: 15px;
       font-weight: 700;
       color: $primary-color;
 
-      &.pending {
-        color: #f39c12;
-      }
-      &.success {
-        color: #27ae60;
-      }
-      &.danger {
-        color: #e74c3c;
-      }
-      &.revenue {
-        color: #8e44ad;
-      }
+      &.pending { color: #f39c12; }
+      &.success { color: #27ae60; }
+      &.danger { color: #e74c3c; }
+      &.revenue { color: #8e44ad; }
     }
 
     .stat-label {
-      font-size: 11px;
+      font-size: 10px;
       color: $text-secondary;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.3px;
     }
   }
 }
 
-// Filters
+// Filters - Compact single row
 .filters {
   display: flex;
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 10px;
+  margin-bottom: 10px;
   flex-wrap: wrap;
   background: $white;
-  border-radius: 8px;
-  padding: 16px;
-  box-shadow: 0 2px 4px rgba($primary-color, 0.05);
+  border-radius: 6px;
+  padding: 8px 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
   border: 1px solid $border-color;
   align-items: center;
 
   .search-input,
-  .status-filter,
   .date-input {
-    padding: 8px 12px;
+    padding: 6px 10px;
     border: 1px solid $border-color;
     border-radius: 4px;
-    font-size: 14px;
+    font-size: 13px;
     background: $white;
     transition: all 0.2s ease;
-    font-weight: 400;
     color: $text-primary;
 
     &:focus {
@@ -309,38 +183,33 @@ $white: #ffffff;
 
   .search-input {
     flex: 1;
-    min-width: 250px;
-    max-width: 400px;
-  }
-
-  .status-filter {
-    min-width: 150px;
-    cursor: pointer;
+    min-width: 200px;
+    max-width: 350px;
   }
 
   .date-filters {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
 
     .date-input {
-      padding: 8px 12px;
-      min-width: 130px;
+      padding: 6px 10px;
+      min-width: 120px;
     }
 
     .date-separator {
       font-weight: 500;
-      color: $text-primary;
-      font-size: 14px;
+      color: $text-secondary;
+      font-size: 12px;
     }
 
     .filter-btn {
-      padding: 8px 16px;
+      padding: 6px 12px;
       background: $text-secondary;
       color: white;
       border: none;
       border-radius: 4px;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 500;
       cursor: pointer;
       transition: all 0.2s ease;
@@ -352,23 +221,23 @@ $white: #ffffff;
   }
 }
 
-// Status Tabs
+// Status Tabs - Compact
 .status-tabs {
   display: flex;
-  gap: 4px;
-  margin-bottom: 24px;
+  gap: 3px;
+  margin-bottom: 10px;
   overflow-x: auto;
-  padding: 4px;
+  padding: 3px;
   background: $white;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba($primary-color, 0.05);
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
   border: 1px solid $border-color;
 
   .tab-btn {
-    padding: 10px 16px;
+    padding: 6px 12px;
     border: none;
     border-radius: 4px;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -386,78 +255,36 @@ $white: #ffffff;
       background: $primary-color;
     }
 
-    // Status-specific colors (subtle variations)
-    &.tab-pending.active {
-      background: lighten($accent-color, 10%);
-    }
-
-    &.tab-confirmed.active {
-      background: $accent-color;
-    }
-
-    &.tab-preparing.active {
-      background: darken($accent-color, 10%);
-    }
-
-    &.tab-ready.active {
-      background: darken($primary-color, 5%);
-    }
-
-    &.tab-delivered.active {
-      background: $text-secondary;
-    }
+    &.tab-pending.active { background: #f39c12; }
+    &.tab-confirmed.active { background: $accent-color; }
+    &.tab-preparing.active { background: #e67e22; }
+    &.tab-ready.active { background: #27ae60; }
+    &.tab-delivered.active { background: $text-secondary; }
+    &.tab-walkin.active { background: #9C27B0 !important; }
+    &.tab-online.active { background: #4CAF50 !important; }
+    &.tab-self-pickup.active { background: #2196F3 !important; }
+    &.tab-returns.active { background: #FF5722 !important; }
+    &.tab-cancelled.active { background: #ef4444 !important; }
   }
 }
 
-// Orders Grid
+// Orders Grid - Tighter spacing
 .orders-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 12px;
 }
 
-// Order Cards
+// Order Cards - Compact
 .order-card {
   background: $white;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 2px 4px rgba($primary-color, 0.05);
+  border-radius: 6px;
+  padding: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
   border: 1px solid $border-color;
   transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
-
-  // Loading Overlay
-  .order-loading-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(255, 255, 255, 0.9);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10;
-    border-radius: 8px;
-
-    .loading-spinner {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-      color: #2196F3;
-
-      i {
-        font-size: 32px;
-      }
-
-      span {
-        font-size: 14px;
-        font-weight: 500;
-      }
-    }
-  }
 
   &::before {
     content: '';
@@ -470,56 +297,69 @@ $white: #ffffff;
   }
 
   &:hover {
-    box-shadow: 0 4px 12px rgba($primary-color, 0.1);
-    transform: translateY(-2px);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    transform: translateY(-1px);
   }
 
-  // Status-based left border colors (using theme colors)
-  &.status-pending::before {
-    background: lighten($accent-color, 10%);
-  }
+  &.status-pending::before { background: #f39c12; }
+  &.status-confirmed::before { background: $accent-color; }
+  &.status-preparing::before { background: #e67e22; }
+  &.status-ready_for_pickup::before { background: #27ae60; }
+  &.status-delivered::before { background: $text-secondary; }
+  &.status-cancelled::before { background: #ef4444; }
+  &.status-returning_to_shop { border-left: 3px solid #FF9800; }
+  &.status-returned_to_shop { border-left: 3px solid #4CAF50; }
 
-  &.status-confirmed::before {
-    background: $accent-color;
-  }
+  .order-loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255,255,255,0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    border-radius: 6px;
 
-  &.status-preparing::before {
-    background: darken($accent-color, 10%);
-  }
+    .loading-spinner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      color: #2196F3;
 
-  &.status-ready_for_pickup::before {
-    background: $primary-color;
-  }
-
-  &.status-delivered::before {
-    background: $text-secondary;
+      i { font-size: 24px; }
+      span { font-size: 12px; font-weight: 500; }
+    }
   }
 }
 
-// Card Header
+// Card Header - Compact
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
   border-bottom: 1px solid $border-color;
 
   .header-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
   }
 
   .header-btn {
-    padding: 6px 12px;
+    padding: 4px 8px;
     border: 1px solid $border-color;
     border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 500;
     transition: all 0.2s ease;
     background: $white;
@@ -532,25 +372,13 @@ $white: #ffffff;
     }
   }
 
-  .print-header-btn {
-    background: $accent-color;
-    color: white;
-    border-color: $accent-color;
-
-    &:hover {
-      background: darken($accent-color, 10%);
-      border-color: darken($accent-color, 10%);
-      color: white;
-    }
-  }
-
   .small-print-btn {
-    padding: 6px 12px;
-    border: 2px solid #f39c12;
+    padding: 4px 8px;
+    border: 1px solid #f39c12;
     border-radius: 4px;
     background: #fff8e1;
     color: #e67e22;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
 
     &:hover {
@@ -558,84 +386,87 @@ $white: #ffffff;
       color: white;
     }
   }
-
-  .details-header-btn {
-    background: $primary-lighter;
-    color: $primary-color;
-    border-color: $border-color;
-
-    &:hover {
-      background: $primary-color;
-      color: white;
-      border-color: $primary-color;
-    }
-  }
 }
 
 .order-info {
   .order-number {
-    font-size: 16px;
+    font-size: 13px;
     font-weight: 600;
     color: $primary-color;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
   }
 
   .order-time {
-    font-size: 12px;
+    font-size: 11px;
     color: $text-secondary;
   }
 }
 
 .status-badge {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 500;
+  padding: 3px 6px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  min-width: 80px;
+  letter-spacing: 0.3px;
+  min-width: 60px;
   text-align: center;
 
   &.status-pending {
-    background: rgba($accent-color, 0.15);
-    color: darken($accent-color, 20%);
-    border: 1px solid rgba($accent-color, 0.3);
+    background: rgba(#f39c12, 0.15);
+    color: #d68910;
+    border: 1px solid rgba(#f39c12, 0.3);
   }
-
   &.status-confirmed {
     background: rgba($accent-color, 0.1);
     color: $accent-color;
     border: 1px solid $accent-color;
   }
-
   &.status-preparing {
-    background: rgba(darken($accent-color, 10%), 0.1);
-    color: darken($accent-color, 10%);
-    border: 1px solid darken($accent-color, 10%);
+    background: rgba(#e67e22, 0.1);
+    color: #d35400;
+    border: 1px solid #e67e22;
   }
-
   &.status-ready {
-    background: rgba($primary-color, 0.1);
-    color: $primary-color;
-    border: 1px solid $primary-color;
+    background: rgba(#27ae60, 0.1);
+    color: #27ae60;
+    border: 1px solid #27ae60;
   }
-
   &.status-delivered {
     background: $primary-lighter;
     color: $text-secondary;
     border: 1px solid $border-color;
   }
+  &.status-collected {
+    background: rgba(#4CAF50, 0.2);
+    color: #1B5E20;
+    border: 1px solid rgba(#4CAF50, 0.4);
+  }
+  &.status-cancelled {
+    background: rgba(#ef4444, 0.15);
+    color: #dc2626;
+    border: 1px solid rgba(#ef4444, 0.3);
+  }
+  &.status-returning {
+    background: rgba(#FF9800, 0.15);
+    color: #E65100;
+    border: 1px solid rgba(#FF9800, 0.3);
+  }
+  &.status-returned {
+    background: rgba(#4CAF50, 0.15);
+    color: #2E7D32;
+    border: 1px solid rgba(#4CAF50, 0.3);
+  }
 }
 
 // Delivery Type Badge
 .delivery-type-badge {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 10px;
+  padding: 3px 6px;
+  border-radius: 3px;
+  font-size: 9px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-right: 8px;
+  letter-spacing: 0.3px;
 
   &.self-pickup-badge {
     background: rgba(#2196F3, 0.1);
@@ -650,22 +481,22 @@ $white: #ffffff;
   }
 }
 
-// Customer Section
+// Customer Section - Compact
 .customer-section {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-  padding: 12px;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 8px;
   background: $primary-lighter;
-  border-radius: 6px;
+  border-radius: 5px;
   border: 1px solid $border-color;
 }
 
 .customer-avatar {
   .avatar-circle {
-    width: 40px;
-    height: 40px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     background: $primary-color;
     display: flex;
@@ -673,64 +504,105 @@ $white: #ffffff;
     justify-content: center;
     color: white;
     font-weight: 600;
-    font-size: 16px;
+    font-size: 13px;
     flex-shrink: 0;
   }
 }
 
 .customer-details {
   .customer-name {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     color: $primary-color;
-    margin-bottom: 2px;
+    margin-bottom: 1px;
   }
 
   .customer-phone {
-    font-size: 12px;
+    font-size: 11px;
     color: $text-secondary;
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
   }
 }
 
-// Items Section
+// Pending Actions Section - Compact
+.pending-actions-section {
+  background: rgba(#f39c12, 0.1);
+  border: 1px solid #f39c12;
+  border-radius: 5px;
+  padding: 8px;
+  margin-bottom: 10px;
+
+  .pending-alert {
+    text-align: center;
+    font-weight: 600;
+    color: #d68910;
+    margin-bottom: 8px;
+    font-size: 12px;
+  }
+
+  .pending-buttons {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+  }
+
+  .pending-btn {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    font-weight: 500;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 90px;
+
+    &.accept-pending-btn {
+      background: #27ae60;
+      color: white;
+      &:hover { background: #219a52; }
+    }
+
+    &.reject-pending-btn {
+      background: $text-secondary;
+      color: white;
+      &:hover { background: darken($text-secondary, 10%); }
+    }
+  }
+}
+
+// Items Section - Compact
 .items-section {
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .items-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-
-  .items-icon {
-    font-size: 16px;
-    color: $text-secondary;
-  }
+  gap: 6px;
+  margin-bottom: 8px;
 
   .items-label {
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 600;
     color: $text-primary;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
   }
 }
 
 .items-grid {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .item-card {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px;
+  gap: 8px;
+  padding: 6px 8px;
   background: white;
   border: 1px solid $border-color;
   border-radius: 4px;
@@ -742,8 +614,8 @@ $white: #ffffff;
   }
 
   .item-image-container {
-    width: 50px;
-    height: 50px;
+    width: 40px;
+    height: 40px;
     flex-shrink: 0;
     position: relative;
     border-radius: 4px;
@@ -772,58 +644,37 @@ $white: #ffffff;
     border-radius: 4px;
   }
 
-  .item-image-price {
-    position: absolute;
-    bottom: -8px;
-    right: -8px;
-    font-size: 10px;
-    font-weight: 600;
-    color: $primary-color;
-    background: $white;
-    padding: 2px 6px;
-    border-radius: 3px;
-    border: 1px solid $border-color;
-    box-shadow: 0 1px 2px rgba($primary-color, 0.1);
-  }
-
   .item-icon {
-    font-size: 24px;
-    width: 32px;
-    text-align: center;
-    flex-shrink: 0;
-  }
-
-  .fallback-icon {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    font-size: 16px;
+    color: #6c757d;
+    font-weight: bold;
   }
 
   .item-info {
     flex: 1;
+    min-width: 0;
   }
 
   .item-name {
     font-weight: 600;
     color: $primary-color;
-    font-size: 14px;
-    margin-bottom: 4px;
+    font-size: 12px;
+    margin-bottom: 2px;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     flex-wrap: wrap;
   }
 
   .added-by-shop-badge {
-    font-size: 9px;
+    font-size: 8px;
     font-weight: 600;
     background: linear-gradient(135deg, #ff9800, #f57c00);
     color: white;
-    padding: 2px 6px;
-    border-radius: 4px;
+    padding: 1px 4px;
+    border-radius: 3px;
     text-transform: uppercase;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.2px;
     white-space: nowrap;
   }
 
@@ -831,36 +682,36 @@ $white: #ffffff;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
 
     .item-quantity-badge {
       background: rgba($accent-color, 0.1);
       color: $accent-color;
-      padding: 2px 8px;
+      padding: 1px 6px;
       border-radius: 3px;
       font-weight: 600;
-      font-size: 12px;
-      min-width: 24px;
+      font-size: 11px;
+      min-width: 20px;
       text-align: center;
       border: 1px solid rgba($accent-color, 0.2);
     }
 
-    .item-price {
-      font-weight: 600;
-      color: $primary-color;
-      font-size: 13px;
+    .item-calculation {
+      font-weight: 500;
+      color: $text-secondary;
+      font-size: 11px;
+      font-family: 'Courier New', monospace;
     }
   }
 
-  // Remove item button
   .remove-item-btn {
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
     border: none;
     background: #ffebee;
     color: #e53935;
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 600;
     cursor: pointer;
     display: flex;
@@ -876,37 +727,33 @@ $white: #ffffff;
       opacity: 1;
       transform: scale(1.1);
     }
-
-    &:active {
-      transform: scale(0.95);
-    }
   }
 }
 
-// Total Section
+// Total Section - Compact
 .total-section {
-  margin-bottom: 16px;
-  padding: 12px;
-  background: rgba($primary-color, 0.05);
-  border-radius: 6px;
-  border: 1px solid rgba($primary-color, 0.1);
+  margin-bottom: 10px;
+  padding: 8px;
+  background: rgba($primary-color, 0.04);
+  border-radius: 5px;
+  border: 1px solid rgba($primary-color, 0.08);
 }
 
 .total-amount {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 
   .total-label {
-    font-size: 13px;
+    font-size: 12px;
     color: $text-secondary;
     font-weight: 500;
   }
 
   .total-price {
-    font-size: 20px;
-    font-weight: 600;
+    font-size: 16px;
+    font-weight: 700;
     color: $primary-color;
   }
 }
@@ -914,139 +761,107 @@ $white: #ffffff;
 .payment-info {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  gap: 4px;
+  font-size: 11px;
   color: $text-secondary;
-
-  .payment-icon {
-    font-size: 14px;
-  }
 
   .payment-text {
     font-weight: 400;
   }
 }
 
-// Card Actions
+// Promo Info Styles (inline in HTML, keeping consistent)
+.promo-info {
+  font-size: 12px !important;
+
+  strong {
+    font-size: 12px !important;
+  }
+}
+
+// Card Actions - Compact
 .card-actions {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .action-btn {
-  padding: 8px 16px;
+  padding: 6px 12px;
   border: none;
   border-radius: 4px;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: center;
+  flex: 1;
+  min-width: fit-content;
 
   &:hover {
     transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba($primary-color, 0.2);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
   }
 
   &.accept-btn {
-    background: $primary-color;
+    background: #27ae60;
     color: white;
-
-    &:hover {
-      background: $primary-light;
-    }
+    &:hover { background: #219a52; }
   }
 
   &.reject-btn {
     background: $text-secondary;
     color: white;
-
-    &:hover {
-      background: darken($text-secondary, 10%);
-    }
+    &:hover { background: darken($text-secondary, 10%); }
   }
 
   &.update-btn {
     background: #9C27B0;
     color: white;
-
-    &:hover {
-      background: darken(#9C27B0, 10%);
-    }
+    &:hover { background: darken(#9C27B0, 10%); }
   }
 
   &.prepare-btn {
-    background: $accent-color;
+    background: #e67e22;
     color: white;
-
-    &:hover {
-      background: darken($accent-color, 10%);
-    }
+    &:hover { background: #d35400; }
   }
 
   &.ready-btn {
-    background: darken($accent-color, 5%);
+    background: $accent-color;
     color: white;
-
-    &:hover {
-      background: darken($accent-color, 15%);
-    }
-  }
-
-  &.assign-btn {
-    background: $primary-light;
-    color: white;
-
-    &:hover {
-      background: darken($primary-light, 10%);
-    }
+    &:hover { background: darken($accent-color, 10%); }
   }
 
   &.print-btn {
     background: $text-secondary;
     color: white;
-
-    &:hover {
-      background: darken($text-secondary, 10%);
-    }
+    &:hover { background: darken($text-secondary, 10%); }
   }
 
   &.details-btn {
     background: $white;
     color: $primary-color;
     border: 1px solid $primary-color;
-
-    &:hover {
-      background: $primary-lighter;
-    }
+    &:hover { background: $primary-lighter; }
   }
 
   &.success-btn {
     background: #4CAF50;
     color: white;
-
-    &:hover {
-      background: darken(#4CAF50, 10%);
-    }
+    &:hover { background: darken(#4CAF50, 10%); }
   }
 
   &.warning-btn {
     background: #FF9800;
     color: white;
-
-    &:hover {
-      background: darken(#FF9800, 10%);
-    }
+    &:hover { background: darken(#FF9800, 10%); }
   }
 
   &.find-driver-btn {
     background: #9C27B0;
     color: white;
-
-    &:hover {
-      background: darken(#9C27B0, 10%);
-    }
+    &:hover { background: darken(#9C27B0, 10%); }
   }
 
   &.searching-btn {
@@ -1054,34 +869,20 @@ $white: #ffffff;
     color: white;
     cursor: not-allowed;
     opacity: 0.9;
-
-    i {
-      margin-right: 6px;
-    }
-
-    &:disabled {
-      background: #FF9800;
-      opacity: 0.9;
-    }
+    i { margin-right: 4px; }
   }
 
   &.collect-btn {
     background: #4CAF50;
     color: white;
     font-weight: 600;
-
-    &:hover {
-      background: darken(#4CAF50, 10%);
-    }
+    &:hover { background: darken(#4CAF50, 10%); }
   }
 
   &.cancel-btn {
     background: #ef4444;
     color: white;
-
-    &:hover {
-      background: darken(#ef4444, 10%);
-    }
+    &:hover { background: darken(#ef4444, 10%); }
   }
 }
 
@@ -1089,507 +890,61 @@ $white: #ffffff;
 .return-status-card {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  border-radius: 8px;
-  margin-bottom: 12px;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-bottom: 8px;
 
-  .return-icon {
-    font-size: 24px;
-  }
+  .return-icon { font-size: 20px; }
 
   .return-text {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 1px;
 
-    strong {
-      font-size: 14px;
-      font-weight: 600;
-    }
-
-    span {
-      font-size: 12px;
-      color: rgba(0, 0, 0, 0.6);
-    }
+    strong { font-size: 12px; font-weight: 600; }
+    span { font-size: 11px; color: rgba(0,0,0,0.6); }
   }
 
   &.returning {
     background: rgba(#FF9800, 0.1);
     border: 1px solid rgba(#FF9800, 0.3);
-
-    strong {
-      color: #E65100;
-    }
+    strong { color: #E65100; }
   }
 
   &.returned {
     background: rgba(#4CAF50, 0.1);
     border: 1px solid rgba(#4CAF50, 0.3);
-
-    strong {
-      color: #2E7D32;
-    }
+    strong { color: #2E7D32; }
   }
 }
 
-// Tab styles for Returns and Self Pickup
-.tab-returns {
-  &.active {
-    background: #FF5722 !important;
-    color: white !important;
-    border-color: #FF5722 !important;
-  }
-}
-
-.tab-self-pickup {
-  &.active {
-    background: #2196F3 !important;
-    color: white !important;
-    border-color: #2196F3 !important;
-  }
-}
-
-// Walk-in (POS/Counter sales) - Purple color
-.tab-walkin {
-  &.active {
-    background: #9C27B0 !important;
-    color: white !important;
-    border-color: #9C27B0 !important;
-  }
-}
-
-// Online orders - Green color
-.tab-online {
-  &.active {
-    background: #4CAF50 !important;
-    color: white !important;
-    border-color: #4CAF50 !important;
-  }
-}
-
-.tab-cancelled {
-  &.active {
-    background: #ef4444 !important;
-    color: white !important;
-    border-color: #ef4444 !important;
-  }
-}
-
-// Status badges for return statuses
-.status-returning {
-  background: rgba(#FF9800, 0.15);
-  color: #E65100;
-  border: 1px solid rgba(#FF9800, 0.3);
-}
-
-.status-returned {
-  background: rgba(#4CAF50, 0.15);
-  color: #2E7D32;
-  border: 1px solid rgba(#4CAF50, 0.3);
-}
-
-.status-collected {
-  background: rgba(#4CAF50, 0.2);
-  color: #1B5E20;
-  border: 1px solid rgba(#4CAF50, 0.4);
-}
-
-.status-cancelled {
-  background: rgba(#ef4444, 0.15);
-  color: #dc2626;
-  border: 1px solid rgba(#ef4444, 0.3);
-}
-
-// Order card status background for returns and cancelled
-.order-card {
-  &.status-returning_to_shop {
-    border-left: 4px solid #FF9800;
-  }
-
-  &.status-returned_to_shop {
-    border-left: 4px solid #4CAF50;
-  }
-
-  &.status-cancelled {
-    border-left: 4px solid #ef4444;
-    opacity: 0.8;
-
-    &::before {
-      background: #ef4444;
-    }
-  }
-}
-
-// Orders List
-.orders-list {
-  .order-row {
-    display: grid;
-    grid-template-columns: 1.5fr 1.5fr 2fr 1fr 0.8fr 1.5fr;
-    gap: 16px;
-    padding: 20px 24px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-    align-items: center;
-    transition: all 0.3s ease;
-    position: relative;
-
-    &:hover {
-      background: rgba(102, 126, 234, 0.05);
-      transform: translateX(4px);
-    }
-
-    &:last-child {
-      border-bottom: none;
-    }
-
-    // Status-based row styling with modern colors
-    &.status-pending {
-      border-left: 4px solid #ff6b35;
-
-      &::before {
-        content: '';
-        position: absolute;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        width: 4px;
-        background: linear-gradient(180deg, #ff6b35, #f7931e);
-      }
-    }
-
-    &.status-confirmed {
-      border-left: 4px solid #4facfe;
-
-      &::before {
-        content: '';
-        position: absolute;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        width: 4px;
-        background: linear-gradient(180deg, #4facfe, #00f2fe);
-      }
-    }
-
-    &.status-preparing {
-      border-left: 4px solid #fa709a;
-
-      &::before {
-        content: '';
-        position: absolute;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        width: 4px;
-        background: linear-gradient(180deg, #fa709a, #fee140);
-      }
-    }
-
-    &.status-ready_for_pickup {
-      border-left: 4px solid #a8edea;
-
-      &::before {
-        content: '';
-        position: absolute;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        width: 4px;
-        background: linear-gradient(180deg, #a8edea, #fed6e3);
-      }
-    }
-
-    &.status-delivered {
-      border-left: 4px solid #c3cfe2;
-      opacity: 0.8;
-
-      &::before {
-        content: '';
-        position: absolute;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        width: 4px;
-        background: linear-gradient(180deg, #c3cfe2, #f5f7fa);
-      }
-    }
-  }
-}
-
-// Column Styles
-.col-order {
-  .order-id {
-    font-weight: 600;
-    color: #1a1a1a;
-    font-size: 14px;
-  }
-
-  .order-time {
-    font-size: 12px;
-    color: #666;
-    margin-top: 2px;
-  }
-}
-
-.col-customer {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-
-  .customer-avatar {
-    .avatar-circle {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: 700;
-      font-size: 16px;
-      flex-shrink: 0;
-    }
-  }
-
-  .customer-details {
-    .customer-name {
-      font-weight: 600;
-      color: #1a1a1a;
-      font-size: 14px;
-      margin-bottom: 2px;
-    }
-
-    .customer-phone {
-      font-size: 12px;
-      color: #666;
-    }
-  }
-}
-
-.col-items {
-  .items-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-
-    .item-chip {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 10px;
-      background: rgba(102, 126, 234, 0.1);
-      border-radius: 20px;
-      font-size: 12px;
-      border: 1px solid rgba(102, 126, 234, 0.2);
-
-      .item-icon {
-        font-size: 16px;
-      }
-
-      .item-text {
-        font-weight: 500;
-        color: #333;
-      }
-    }
-  }
-}
-
-.col-amount {
-  .amount {
-    font-weight: 700;
-    color: #1a1a1a;
-    font-size: 16px;
-    margin-bottom: 4px;
-  }
-
-  .payment-method {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 11px;
-    color: #666;
-    background: rgba(102, 126, 234, 0.1);
-    padding: 4px 8px;
-    border-radius: 12px;
-    border: 1px solid rgba(102, 126, 234, 0.2);
-
-    .payment-icon {
-      font-size: 14px;
-    }
-  }
-}
-
-.col-status {
-  .status-badge {
-    display: inline-block;
-    padding: 8px 16px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    min-width: 80px;
-    text-align: center;
-
-    &.status-pending {
-      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-      color: white;
-      box-shadow: 0 2px 8px rgba(251, 191, 36, 0.3);
-    }
-
-    &.status-confirmed {
-      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-      color: white;
-      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
-    }
-
-    &.status-preparing {
-      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-      color: white;
-      box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
-    }
-
-    &.status-ready {
-      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-      color: white;
-      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
-    }
-
-    &.status-delivered {
-      background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
-      color: white;
-      box-shadow: 0 2px 8px rgba(107, 114, 128, 0.3);
-    }
-  }
-}
-
-// Action Buttons
-.action-buttons {
-  display: flex;
-  gap: 8px;
-  flex-direction: column;
-
-  .btn {
-    padding: 10px 16px;
-    border: none;
-    border-radius: 25px;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-    text-align: center;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
-
-    &::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-      transition: left 0.6s;
-    }
-
-    &:hover::before {
-      left: 100%;
-    }
-
-    &.btn-accept {
-      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-      color: white;
-
-      &:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
-      }
-    }
-
-    &.btn-reject {
-      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-      color: white;
-
-      &:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
-      }
-    }
-
-    &.btn-prepare {
-      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-      color: white;
-
-      &:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
-      }
-    }
-
-    &.btn-ready {
-      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-      color: white;
-
-      &:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
-      }
-    }
-
-    &.btn-assign {
-      background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-      color: white;
-
-      &:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
-      }
-    }
-
-    &.btn-details {
-      background: rgba(102, 126, 234, 0.1);
-      color: #667eea;
-      border: 2px solid rgba(102, 126, 234, 0.3);
-      font-weight: 600;
-
-      &:hover {
-        background: rgba(102, 126, 234, 0.2);
-        border-color: rgba(102, 126, 234, 0.5);
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
-      }
-    }
-  }
-}
-
-// Enhanced Empty State
+// Empty State
 .empty-state {
   grid-column: 1 / -1;
   text-align: center;
-  padding: 48px 20px;
+  padding: 32px 16px;
   background: $white;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba($primary-color, 0.05);
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
   border: 1px solid $border-color;
 
   .empty-icon {
-    font-size: 48px;
-    margin-bottom: 16px;
-    opacity: 0.5;
+    font-size: 36px;
+    margin-bottom: 12px;
+    opacity: 0.4;
     color: $text-secondary;
   }
 
   .empty-title {
-    font-size: 18px;
+    font-size: 15px;
     font-weight: 600;
     color: $primary-color;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
   }
 
   .empty-subtitle {
-    font-size: 14px;
+    font-size: 13px;
     color: $text-secondary;
     margin: 0;
   }
@@ -1598,14 +953,14 @@ $white: #ffffff;
 // Messages
 .message {
   position: fixed;
-  top: 20px;
-  right: 20px;
-  padding: 12px 16px;
+  top: 16px;
+  right: 16px;
+  padding: 10px 14px;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   z-index: 1000;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 
   &.success {
     background: #d4edda;
@@ -1623,33 +978,26 @@ $white: #ffffff;
 // Mobile Responsive
 @media (max-width: 768px) {
   .orders-page {
-    padding: 12px;
+    padding: 8px;
   }
 
-  .page-header {
+  .main-header {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
+    align-items: stretch;
+    gap: 8px;
+    padding: 8px;
 
-    h1 {
-      font-size: 20px;
+    .main-tabs {
+      justify-content: center;
+    }
+
+    .header-actions {
+      justify-content: center;
     }
   }
 
-  .quick-stats {
-    gap: 16px;
-
-    .stat {
-      min-width: 60px;
-
-      .number {
-        font-size: 18px;
-      }
-
-      .label {
-        font-size: 11px;
-      }
-    }
+  .stats-bar {
+    justify-content: center;
   }
 
   .filters {
@@ -1657,147 +1005,48 @@ $white: #ffffff;
 
     .search-input {
       max-width: none;
+      width: 100%;
+    }
+
+    .date-filters {
+      width: 100%;
+      flex-wrap: wrap;
+      justify-content: center;
     }
   }
 
-  .orders-header {
-    display: none; // Hide header on mobile
+  .status-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
   }
 
-  .orders-list {
-    .order-row {
-      display: block;
-      padding: 16px;
-      border: 1px solid #e0e0e0;
-      border-radius: 4px;
-      margin-bottom: 8px;
-      background: white;
-
-      &:hover {
-        background: white;
-      }
-
-      // Mobile card layout
-      > div {
-        margin-bottom: 8px;
-
-        &:last-child {
-          margin-bottom: 0;
-        }
-      }
-
-      .col-order {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding-bottom: 8px;
-        border-bottom: 1px solid #f0f0f0;
-        margin-bottom: 8px;
-
-        .order-time {
-          margin-top: 0;
-        }
-      }
-
-      .col-customer,
-      .col-items,
-      .col-amount {
-        font-size: 13px;
-      }
-
-      .col-status {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-
-      .action-buttons {
-        justify-content: flex-start;
-        margin-top: 8px;
-
-        .btn {
-          font-size: 11px;
-          padding: 5px 10px;
-        }
-      }
-    }
+  .orders-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
   }
 }
 
 @media (max-width: 480px) {
-  .quick-stats {
-    justify-content: space-between;
+  .stats-bar {
+    gap: 6px;
 
-    .stat {
-      flex: 1;
-      min-width: auto;
-    }
-  }
-
-  .action-buttons {
-    .btn {
-      font-size: 10px;
+    .stat-item {
       padding: 4px 8px;
+
+      .stat-value { font-size: 14px; }
+      .stat-label { font-size: 9px; }
     }
   }
-}
 
-// Item Calculation Styling
-.item-calculation {
-  font-weight: 500;
-  color: $text-secondary;
-  font-size: 12px;
-  font-family: 'Courier New', monospace;
-}
+  .card-actions {
+    flex-direction: column;
 
-// Pending Actions Section
-.pending-actions-section {
-  background: rgba($accent-color, 0.1);
-  border: 1px solid $accent-color;
-  border-radius: 6px;
-  padding: 12px;
-  margin-bottom: 16px;
-
-  .pending-alert {
-    text-align: center;
-    font-weight: 600;
-    color: darken($accent-color, 20%);
-    margin-bottom: 12px;
-    font-size: 13px;
-  }
-
-  .pending-buttons {
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-  }
-
-  .pending-btn {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 4px;
-    font-weight: 500;
-    font-size: 13px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    min-width: 100px;
-
-    &.accept-pending-btn {
-      background: $primary-color;
-      color: white;
-
-      &:hover {
-        background: $primary-light;
-      }
-    }
-
-    &.reject-pending-btn {
-      background: $text-secondary;
-      color: white;
-
-      &:hover {
-        background: darken($text-secondary, 10%);
-      }
+    .action-btn {
+      width: 100%;
     }
   }
 }
