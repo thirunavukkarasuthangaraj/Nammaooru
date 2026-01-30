@@ -38,11 +38,11 @@ spring:
     hibernate:
       # Use 'update' for dev, 'validate' for production
       ddl-auto: ${JPA_DDL_AUTO:validate}
-    show-sql: ${JPA_SHOW_SQL:true}
+    show-sql: ${JPA_SHOW_SQL:false}
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: ${HIBERNATE_FORMAT_SQL:true}
+        format_sql: ${HIBERNATE_FORMAT_SQL:false}
         jdbc:
           time_zone: ${HIBERNATE_TIMEZONE:Asia/Kolkata}
     open-in-view: false
@@ -95,10 +95,10 @@ management:
 
 logging:
   level:
-    com.shopmanagement: ${LOG_LEVEL_APP:WARN}
+    com.shopmanagement: ${LOG_LEVEL_APP:INFO}
     org.springframework.security: WARN
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.hibernate.SQL: ${HIBERNATE_SQL_LOG:WARN}
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
     org.hibernate: WARN
     org.springframework: ${LOG_LEVEL_SPRING:INFO}
   pattern:
