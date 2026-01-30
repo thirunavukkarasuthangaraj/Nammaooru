@@ -1194,7 +1194,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
         : englishName;
       // Show MRP with strikethrough if there's discount
       const rateHtml = hasDiscount
-        ? `<span style="text-decoration: line-through; color: #888; font-size: 9px;">${mrp}</span><br>${rate}`
+        ? `<span style="text-decoration: line-through; color: #666; font-size: 11px;">${mrp}</span><br>${rate}`
         : `${rate}`;
       return `
       <tr>
