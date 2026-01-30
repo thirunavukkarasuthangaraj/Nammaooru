@@ -140,13 +140,23 @@
                      (change)="onImageSelected($event, product)">
             </td>
 
-            <!-- Product Name (Editable) -->
+            <!-- Product Name (Editable with Search Link) -->
             <td class="col-product-name">
-              <input type="text"
-                     class="cell-input name-input"
-                     [class.modified]="isCellModified(product, 'customName')"
-                     [value]="product.customName"
-                     (change)="onProductNameChange(product, $any($event.target).value)">
+              <div class="name-cell-wrapper">
+                <input type="text"
+                       class="cell-input name-input"
+                       [class.modified]="isCellModified(product, 'customName')"
+                       [class.invalid]="!product.customName?.trim()"
+                       [value]="product.customName"
+                       (change)="onProductNameChange(product, $any($event.target).value)"
+                       required>
+                <a class="image-search-link"
+                   [href]="getImageSearchUrl(product)"
+                   target="_blank"
+                   matTooltip="Search image for this product">
+                  <mat-icon>image_search</mat-icon>
+                </a>
+              </div>
             </td>
 
             <!-- Category (Editable Dropdown) -->
@@ -162,14 +172,22 @@
               </select>
             </td>
 
-            <!-- Tamil Name (Editable) -->
+            <!-- Tamil Name (Editable with Translate Link) -->
             <td class="col-tamil-name">
-              <input type="text"
-                     class="cell-input tamil-input"
-                     [class.modified]="isCellModified(product, 'nameTamil')"
-                     [value]="product.nameTamil || ''"
-                     (change)="onTamilNameChange(product, $any($event.target).value)"
-                     placeholder="-">
+              <div class="tamil-cell-wrapper">
+                <input type="text"
+                       class="cell-input tamil-input"
+                       [class.modified]="isCellModified(product, 'nameTamil')"
+                       [value]="product.nameTamil || ''"
+                       (change)="onTamilNameChange(product, $any($event.target).value)"
+                       placeholder="-">
+                <a class="translate-link"
+                   [href]="getTranslateUrl(product)"
+                   target="_blank"
+                   matTooltip="Translate to Tamil">
+                  <mat-icon>translate</mat-icon>
+                </a>
+              </div>
             </td>
 
             <!-- SKU (Editable) -->
@@ -269,14 +287,21 @@
               </select>
             </td>
 
-            <!-- Tags (Editable) -->
+            <!-- Tags (Editable with Auto-generate) -->
             <td class="col-tags">
-              <input type="text"
-                     class="cell-input tags-input"
-                     [class.modified]="isCellModified(product, 'tags')"
-                     [value]="product.tags || ''"
-                     (change)="onTagsChange(product, $any($event.target).value)"
-                     placeholder="-">
+              <div class="tags-cell-wrapper">
+                <input type="text"
+                       class="cell-input tags-input"
+                       [class.modified]="isCellModified(product, 'tags')"
+                       [value]="product.tags || ''"
+                       (change)="onTagsChange(product, $any($event.target).value)"
+                       placeholder="-">
+                <button class="auto-tags-btn"
+                        (click)="autoGenerateTags(product)"
+                        matTooltip="Auto-generate tags (English + Tamil phonetic)">
+                  <mat-icon>auto_fix_high</mat-icon>
+                </button>
+              </div>
             </td>
           </tr>
         </tbody>

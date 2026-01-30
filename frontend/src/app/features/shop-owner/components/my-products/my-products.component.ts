@@ -576,6 +576,9 @@ export class MyProductsComponent implements OnInit, OnDestroy {
       return matchesSearch && matchesCategory && matchesStatus;
     });
 
+    // Sort by ID descending (newest products first)
+    this.filteredProducts.sort((a, b) => b.id - a.id);
+
     this.totalProducts = this.filteredProducts.length;
 
     // Reset to first page when filters change

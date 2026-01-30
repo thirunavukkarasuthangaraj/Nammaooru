@@ -487,6 +487,11 @@ export class BulkEditComponent implements OnInit, OnDestroy {
     // Validate all modified products
     const invalidProducts: string[] = [];
     this.modifiedProducts.forEach((product, id) => {
+      // Check for empty product name
+      if (!product.customName?.trim()) {
+        invalidProducts.push(`Row ${id}: Product name is required`);
+        return;
+      }
       if (!this.isValidPrice(product.price)) {
         invalidProducts.push(`${product.customName}: Invalid price`);
       }
@@ -561,13 +566,8 @@ export class BulkEditComponent implements OnInit, OnDestroy {
       this.snackBar.open(`Saved ${successCount} products, ${errorCount} failed`, 'Close', { duration: 5000 });
     }
 
-    // Update local cache and refresh display
+    // Update local cache only - no need to reload from server
     this.updateLocalCache();
-
-    // Force refresh to show updated data
-    if (navigator.onLine) {
-      this.loadProducts(true);
-    }
   }
 
   private saveProductToServer(product: BulkEditProduct): Promise<void> {
@@ -759,6 +759,131 @@ export class BulkEditComponent implements OnInit, OnDestroy {
 
   isUploadingImage(product: BulkEditProduct): boolean {
     return this.uploadingImageFor === product.id;
+  }
+
+  // Get Google Image search URL for product
+  getImageSearchUrl(product: BulkEditProduct): string {
+    const searchQuery = encodeURIComponent(product.customName + ' product');
+    return `https://www.google.com/search?q=${searchQuery}&udm=2`;
+  }
+
+  // Get Google Translate URL (English to Tamil)
+  getTranslateUrl(product: BulkEditProduct): string {
+    const text = encodeURIComponent(product.customName);
+    return `https://translate.google.com/?sl=en&tl=ta&text=${text}&op=translate`;
+  }
+
+  // Tamil to English transliteration map
+  private tamilToEnglish: { [key: string]: string } = {
+    // Vowels
+    'அ': 'a', 'ஆ': 'aa', 'இ': 'i', 'ஈ': 'ee', 'உ': 'u', 'ஊ': 'oo',
+    'எ': 'e', 'ஏ': 'ae', 'ஐ': 'ai', 'ஒ': 'o', 'ஓ': 'oo', 'ஔ': 'au',
+    // Consonants
+    'க': 'ka', 'கா': 'kaa', 'கி': 'ki', 'கீ': 'kee', 'கு': 'ku', 'கூ': 'koo', 'கெ': 'ke', 'கே': 'kae', 'கை': 'kai', 'கொ': 'ko', 'கோ': 'koo', 'கௌ': 'kau', 'க்': 'k',
+    'ங': 'nga', 'ஙா': 'ngaa', 'ஙி': 'ngi', 'ஙீ': 'ngee', 'ஙு': 'ngu', 'ஙூ': 'ngoo', 'ங்': 'ng',
+    'ச': 'sa', 'சா': 'saa', 'சி': 'si', 'சீ': 'see', 'சு': 'su', 'சூ': 'soo', 'செ': 'se', 'சே': 'sae', 'சை': 'sai', 'சொ': 'so', 'சோ': 'soo', 'சௌ': 'sau', 'ச்': 's',
+    'ஞ': 'nya', 'ஞா': 'nyaa', 'ஞி': 'nyi', 'ஞீ': 'nyee', 'ஞு': 'nyu', 'ஞூ': 'nyoo', 'ஞ்': 'ny',
+    'ட': 'da', 'டா': 'daa', 'டி': 'di', 'டீ': 'dee', 'டு': 'du', 'டூ': 'doo', 'டெ': 'de', 'டே': 'dae', 'டை': 'dai', 'டொ': 'do', 'டோ': 'doo', 'டௌ': 'dau', 'ட்': 'd',
+    'ண': 'na', 'ணா': 'naa', 'ணி': 'ni', 'ணீ': 'nee', 'ணு': 'nu', 'ணூ': 'noo', 'ணெ': 'ne', 'ணே': 'nae', 'ணை': 'nai', 'ணொ': 'no', 'ணோ': 'noo', 'ணௌ': 'nau', 'ண்': 'n',
+    'த': 'tha', 'தா': 'thaa', 'தி': 'thi', 'தீ': 'thee', 'து': 'thu', 'தூ': 'thoo', 'தெ': 'the', 'தே': 'thae', 'தை': 'thai', 'தொ': 'tho', 'தோ': 'thoo', 'தௌ': 'thau', 'த்': 'th',
+    'ந': 'na', 'நா': 'naa', 'நி': 'ni', 'நீ': 'nee', 'நு': 'nu', 'நூ': 'noo', 'நெ': 'ne', 'நே': 'nae', 'நை': 'nai', 'நொ': 'no', 'நோ': 'noo', 'நௌ': 'nau', 'ந்': 'n',
+    'ப': 'pa', 'பா': 'paa', 'பி': 'pi', 'பீ': 'pee', 'பு': 'pu', 'பூ': 'poo', 'பெ': 'pe', 'பே': 'pae', 'பை': 'pai', 'பொ': 'po', 'போ': 'poo', 'பௌ': 'pau', 'ப்': 'p',
+    'ம': 'ma', 'மா': 'maa', 'மி': 'mi', 'மீ': 'mee', 'மு': 'mu', 'மூ': 'moo', 'மெ': 'me', 'மே': 'mae', 'மை': 'mai', 'மொ': 'mo', 'மோ': 'moo', 'மௌ': 'mau', 'ம்': 'm',
+    'ய': 'ya', 'யா': 'yaa', 'யி': 'yi', 'யீ': 'yee', 'யு': 'yu', 'யூ': 'yoo', 'யெ': 'ye', 'யே': 'yae', 'யை': 'yai', 'யொ': 'yo', 'யோ': 'yoo', 'யௌ': 'yau', 'ய்': 'y',
+    'ர': 'ra', 'ரா': 'raa', 'ரி': 'ri', 'ரீ': 'ree', 'ரு': 'ru', 'ரூ': 'roo', 'ரெ': 're', 'ரே': 'rae', 'ரை': 'rai', 'ரொ': 'ro', 'ரோ': 'roo', 'ரௌ': 'rau', 'ர்': 'r',
+    'ல': 'la', 'லா': 'laa', 'லி': 'li', 'லீ': 'lee', 'லு': 'lu', 'லூ': 'loo', 'லெ': 'le', 'லே': 'lae', 'லை': 'lai', 'லொ': 'lo', 'லோ': 'loo', 'லௌ': 'lau', 'ல்': 'l',
+    'வ': 'va', 'வா': 'vaa', 'வி': 'vi', 'வீ': 'vee', 'வு': 'vu', 'வூ': 'voo', 'வெ': 've', 'வே': 'vae', 'வை': 'vai', 'வொ': 'vo', 'வோ': 'voo', 'வௌ': 'vau', 'வ்': 'v',
+    'ழ': 'zha', 'ழா': 'zhaa', 'ழி': 'zhi', 'ழீ': 'zhee', 'ழு': 'zhu', 'ழூ': 'zhoo', 'ழெ': 'zhe', 'ழே': 'zhae', 'ழை': 'zhai', 'ழொ': 'zho', 'ழோ': 'zhoo', 'ழௌ': 'zhau', 'ழ்': 'zh',
+    'ள': 'la', 'ளா': 'laa', 'ளி': 'li', 'ளீ': 'lee', 'ளு': 'lu', 'ளூ': 'loo', 'ளெ': 'le', 'ளே': 'lae', 'ளை': 'lai', 'ளொ': 'lo', 'ளோ': 'loo', 'ளௌ': 'lau', 'ள்': 'l',
+    'ற': 'ra', 'றா': 'raa', 'றி': 'ri', 'றீ': 'ree', 'று': 'ru', 'றூ': 'roo', 'றெ': 're', 'றே': 'rae', 'றை': 'rai', 'றொ': 'ro', 'றோ': 'roo', 'றௌ': 'rau', 'ற்': 'r',
+    'ன': 'na', 'னா': 'naa', 'னி': 'ni', 'னீ': 'nee', 'னு': 'nu', 'னூ': 'noo', 'னெ': 'ne', 'னே': 'nae', 'னை': 'nai', 'னொ': 'no', 'னோ': 'noo', 'னௌ': 'nau', 'ன்': 'n',
+    // Grantha consonants
+    'ஜ': 'ja', 'ஜா': 'jaa', 'ஜி': 'ji', 'ஜீ': 'jee', 'ஜு': 'ju', 'ஜூ': 'joo', 'ஜெ': 'je', 'ஜே': 'jae', 'ஜை': 'jai', 'ஜொ': 'jo', 'ஜோ': 'joo', 'ஜௌ': 'jau', 'ஜ்': 'j',
+    'ஷ': 'sha', 'ஷா': 'shaa', 'ஷி': 'shi', 'ஷீ': 'shee', 'ஷு': 'shu', 'ஷூ': 'shoo', 'ஷெ': 'she', 'ஷே': 'shae', 'ஷை': 'shai', 'ஷொ': 'sho', 'ஷோ': 'shoo', 'ஷௌ': 'shau', 'ஷ்': 'sh',
+    'ஸ': 'sa', 'ஸா': 'saa', 'ஸி': 'si', 'ஸீ': 'see', 'ஸு': 'su', 'ஸூ': 'soo', 'ஸெ': 'se', 'ஸே': 'sae', 'ஸை': 'sai', 'ஸொ': 'so', 'ஸோ': 'soo', 'ஸௌ': 'sau', 'ஸ்': 's',
+    'ஹ': 'ha', 'ஹா': 'haa', 'ஹி': 'hi', 'ஹீ': 'hee', 'ஹு': 'hu', 'ஹூ': 'hoo', 'ஹெ': 'he', 'ஹே': 'hae', 'ஹை': 'hai', 'ஹொ': 'ho', 'ஹோ': 'hoo', 'ஹௌ': 'hau', 'ஹ்': 'h',
+    'க்ஷ': 'ksha', 'ஸ்ரீ': 'shri'
+  };
+
+  // Convert Tamil text to English phonetic
+  transliterateTamil(text: string): string {
+    if (!text) return '';
+
+    let result = '';
+    let i = 0;
+
+    while (i < text.length) {
+      // Try 3-char, 2-char, then 1-char matches
+      let matched = false;
+
+      for (let len = 3; len >= 1; len--) {
+        const chunk = text.substring(i, i + len);
+        if (this.tamilToEnglish[chunk]) {
+          result += this.tamilToEnglish[chunk];
+          i += len;
+          matched = true;
+          break;
+        }
+      }
+
+      if (!matched) {
+        // Keep English letters, skip other characters
+        const char = text[i];
+        if (/[a-zA-Z0-9]/.test(char)) {
+          result += char.toLowerCase();
+        } else if (char === ' ') {
+          result += ' ';
+        }
+        i++;
+      }
+    }
+
+    return result.trim();
+  }
+
+  // Auto-generate tags from product name, Tamil phonetic, and category
+  autoGenerateTags(product: BulkEditProduct): void {
+    const tags: Set<string> = new Set();
+
+    // Extract keywords from product name (English letters only)
+    const skipWords = ['and', 'or', 'the', 'a', 'an', 'of', 'for', 'with', 'in', 'to', 'is', 'by', 'pack', 'pcs', 'piece', 'pieces', 'gm', 'gms', 'kg', 'ml', 'ltr', 'lt'];
+    const productWords = product.customName
+      .toLowerCase()
+      .replace(/[^a-z\s]/g, ' ')
+      .split(/\s+/)
+      .filter(word => word.length > 1 && !skipWords.includes(word));
+
+    productWords.forEach(word => tags.add(word));
+
+    // Add Tamil phonetic transliteration
+    if (product.nameTamil) {
+      const phonetic = this.transliterateTamil(product.nameTamil);
+      if (phonetic) {
+        // Add full phonetic name
+        const phoneticClean = phonetic.replace(/\s+/g, '');
+        if (phoneticClean.length > 1) {
+          tags.add(phoneticClean);
+        }
+        // Add individual phonetic words
+        phonetic.split(/\s+/).forEach(word => {
+          if (word.length > 1) tags.add(word);
+        });
+      }
+    }
+
+    // Add category as tag
+    if (product.category) {
+      const categoryLower = product.category.toLowerCase().replace(/[^a-z\s]/g, '');
+      if (categoryLower.length > 1) {
+        tags.add(categoryLower);
+      }
+    }
+
+    // Convert to comma-separated string
+    product.tags = Array.from(tags).join(', ');
+    this.markModified(product);
+
+    this.snackBar.open(`Generated ${tags.size} tags`, 'Close', { duration: 2000 });
   }
 
   // Remove image

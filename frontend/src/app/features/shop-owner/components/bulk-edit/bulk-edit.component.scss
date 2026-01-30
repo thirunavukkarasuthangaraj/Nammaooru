@@ -387,8 +387,74 @@
         font-weight: 600;
       }
 
+      // Product name cell with search link
+      .name-cell-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+
+        .name-input {
+          flex: 1;
+        }
+
+        .image-search-link {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #3b82f6;
+          text-decoration: none;
+          padding: 4px;
+          border-radius: 4px;
+          transition: all 0.2s ease;
+
+          mat-icon {
+            font-size: 18px;
+            width: 18px;
+            height: 18px;
+          }
+
+          &:hover {
+            background: #eff6ff;
+            color: #1d4ed8;
+          }
+        }
+      }
+
       .tamil-input {
         font-size: 13px;
+      }
+
+      // Tamil name cell with translate link
+      .tamil-cell-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+
+        .tamil-input {
+          flex: 1;
+        }
+
+        .translate-link {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #8b5cf6;
+          text-decoration: none;
+          padding: 4px;
+          border-radius: 4px;
+          transition: all 0.2s ease;
+
+          mat-icon {
+            font-size: 18px;
+            width: 18px;
+            height: 18px;
+          }
+
+          &:hover {
+            background: #f5f3ff;
+            color: #6d28d9;
+          }
+        }
       }
 
       .sku-input,
@@ -400,6 +466,41 @@
       .tags-input {
         text-align: left;
         font-size: 12px;
+      }
+
+      // Tags cell with auto-generate button
+      .tags-cell-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+
+        .tags-input {
+          flex: 1;
+        }
+
+        .auto-tags-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: none;
+          border: none;
+          color: #f59e0b;
+          padding: 4px;
+          border-radius: 4px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+
+          mat-icon {
+            font-size: 18px;
+            width: 18px;
+            height: 18px;
+          }
+
+          &:hover {
+            background: #fef3c7;
+            color: #d97706;
+          }
+        }
       }
 
       .category-dropdown {
