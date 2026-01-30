@@ -107,6 +107,10 @@ logging:
     name: ${LOG_FILE_PATH:/var/log/shop-management/app.log}
     max-size: ${LOG_FILE_MAX_SIZE:10MB}
     max-history: ${LOG_FILE_MAX_HISTORY:30}
+  # API request/response logging (disable in production for performance)
+  api:
+    enabled: ${API_LOGGING_ENABLED:false}
+    log-body: ${API_LOGGING_BODY:false}
 
 jwt:
   # IMPORTANT: Set JWT_SECRET environment variable in production
