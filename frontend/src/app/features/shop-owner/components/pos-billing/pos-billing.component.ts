@@ -1141,10 +1141,6 @@ export class PosBillingComponent implements OnInit, OnDestroy {
    * Print receipt
    */
   printReceipt(order: any): void {
-    const upiFromStorage = localStorage.getItem('shop_upi_id');
-    console.log('Print Receipt - shopUpiId:', this.shopUpiId);
-    console.log('Print Receipt - localStorage upi:', upiFromStorage);
-
     const receiptWindow = window.open('', '_blank', 'width=300,height=600');
     if (!receiptWindow) return;
 
@@ -1196,11 +1192,6 @@ export class PosBillingComponent implements OnInit, OnDestroy {
                      'Shop';
     const customerName = this.customerName || 'Walk-in Customer';
     const customerPhone = this.customerPhone || '';
-
-    // Get UPI ID - try from component, then localStorage
-    const upiId = this.shopUpiId || localStorage.getItem('shop_upi_id') || '';
-    // Generate QR code URL directly
-    const upiQrUrl = upiId ? `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(`upi://pay?pa=${upiId}&pn=${encodeURIComponent(shopName)}&am=${this.totalAmount}&cu=INR`)}` : '';
 
     console.log('Receipt - shopName sources:', {
       orderShopName: order.shopName,
@@ -1369,16 +1360,6 @@ export class PosBillingComponent implements OnInit, OnDestroy {
         </div>
 
         <div class="divider"></div>
-
-        ${upiId ? `
-        <div class="center" style="margin: 8px 0;">
-          <div style="font-size: 10px; font-weight: 600; margin-bottom: 4px;">Scan to Pay via UPI</div>
-          <img src="${upiQrUrl}" alt="UPI QR" style="width: 120px; height: 120px; margin: 4px auto; display: block;">
-          <div style="font-size: 9px; color: #333; margin-top: 4px; word-break: break-all;">${upiId}</div>
-          <div style="font-size: 11px; font-weight: 700; margin-top: 2px;">₹${this.totalAmount.toFixed(0)}</div>
-        </div>
-        <div class="divider"></div>
-        ` : ''}
 
         <div class="center footer-text">
           Thank you for your order!<br>

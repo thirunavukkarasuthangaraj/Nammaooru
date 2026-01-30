@@ -1299,7 +1299,14 @@ export class ShopProfileComponent implements OnInit {
   onSave(): void {
     if (this.shopForm.valid && this.shop) {
       this.isLoading = true;
-      
+
+      // Save UPI ID to localStorage immediately (for POS Billing receipt)
+      const upiIdValue = this.shopForm.value.upiId;
+      if (upiIdValue && upiIdValue.trim()) {
+        localStorage.setItem('shop_upi_id', upiIdValue.trim());
+        console.log('UPI ID saved to localStorage:', upiIdValue.trim());
+      }
+
       const updatedShop = {
         ...this.shop,
         name: this.shopForm.value.name,
