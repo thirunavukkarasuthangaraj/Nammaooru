@@ -460,7 +460,11 @@ export class PosBillingComponent implements OnInit, OnDestroy {
 
       if (cachedProducts.length > 0) {
         // Filter out inactive products - only show active/available products in POS
-        this.products = cachedProducts.filter(p => p.isAvailable !== false);
+        // Check both isAvailable flag and status field
+        this.products = cachedProducts.filter(p =>
+          p.isAvailable !== false &&
+          (p as any).status !== 'INACTIVE'
+        );
         this.filteredProducts = this.sortProductsWithCartFirst(this.products);
         console.log(`Loaded ${this.products.length} active products from cache (filtered from ${cachedProducts.length} total)`);
 
@@ -527,7 +531,11 @@ export class PosBillingComponent implements OnInit, OnDestroy {
 
           // Map to CachedProduct format and filter out inactive products
           const allProducts = rawProducts.map((p: any) => this.mapProduct(p));
-          this.products = allProducts.filter(p => p.isAvailable !== false);
+          // Filter out inactive - check both isAvailable and status
+          this.products = allProducts.filter(p =>
+            p.isAvailable !== false &&
+            (p as any).status !== 'INACTIVE'
+          );
           this.filteredProducts = this.sortProductsWithCartFirst(this.products);
           this.isLoading = false;
           console.log(`Loaded ${this.products.length} active products (filtered from ${allProducts.length} total)`);
@@ -631,7 +639,11 @@ export class PosBillingComponent implements OnInit, OnDestroy {
           }
 
           const allProducts = rawProducts.map((p: any) => this.mapProduct(p));
-          const activeProducts = allProducts.filter(p => p.isAvailable !== false);
+          // Filter out inactive - check both isAvailable and status
+          const activeProducts = allProducts.filter(p =>
+            p.isAvailable !== false &&
+            (p as any).status !== 'INACTIVE'
+          );
 
           // Update cache with ALL products (including inactive) for My Products page
           await this.offlineStorage.saveProducts(allProducts, this.shopId);
@@ -666,6 +678,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       originalPrice: p.originalPrice || p.mrp || p.price || 0,  // MRP for discount calculation
       stock: p.stockQuantity || 0,
       trackInventory: p.trackInventory ?? true,
+      isAvailable: p.isAvailable !== false && p.status !== 'INACTIVE',  // Active check
       sku: p.sku || p.masterProduct?.sku || '',
       barcode: p.barcode || p.masterProduct?.barcode || '',
       barcode1: p.barcode1 || '',
