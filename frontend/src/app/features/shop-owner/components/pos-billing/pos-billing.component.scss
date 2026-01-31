@@ -330,6 +330,11 @@ $text-secondary: #7f8c8d;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+
+    // Hidden state - keep in DOM but hide visually
+    &[hidden] {
+      display: none !important;
+    }
   }
 
   // Single Search Bar for Quick Bill

@@ -32,7 +32,7 @@
       </div>
 
       <!-- Quick Bill Tab Content - Only show searched/scanned products -->
-      <div class="tab-content" *ngIf="activeTab === 'quick'">
+      <div class="tab-content" [hidden]="activeTab !== 'quick'">
         <!-- Single Search/Scan Input -->
         <div class="quick-search-bar">
           <mat-icon class="search-icon">search</mat-icon>
@@ -114,7 +114,7 @@
 
         <!-- Search Results - Show when searching -->
         <div class="products-grid quick-bill-grid" *ngIf="searchTerm && !isLoading">
-          <div *ngFor="let product of filteredProducts"
+          <div *ngFor="let product of filteredProducts; trackBy: trackByProductId"
                class="product-card billing-card"
                [class.out-of-stock]="product.trackInventory && product.stock <= 0"
                [class.in-cart]="isInCart(product)">
@@ -178,8 +178,8 @@
         </div>
       </div>
 
-      <!-- Browse Tab Content -->
-      <div class="tab-content" *ngIf="activeTab === 'browse'">
+      <!-- Browse Tab Content - Keep in DOM for instant switching -->
+      <div class="tab-content" [hidden]="activeTab !== 'browse'">
         <!-- Search Section for Browse -->
         <div class="search-section">
           <div class="search-row">
@@ -207,7 +207,7 @@
 
         <!-- Products Grid -->
         <div class="products-grid" *ngIf="!isLoading">
-          <div *ngFor="let product of filteredProducts"
+          <div *ngFor="let product of filteredProducts; trackBy: trackByProductId"
                class="product-card"
                [class.out-of-stock]="product.trackInventory && product.stock <= 0"
                [class.in-cart]="isInCart(product)"

@@ -386,6 +386,13 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * TrackBy function for ngFor to optimize rendering
+   */
+  trackByProductId(index: number, product: CachedProduct): number {
+    return product.id;
+  }
+
+  /**
    * Get full image URL
    */
   getImageUrl(path: string | undefined): string {
