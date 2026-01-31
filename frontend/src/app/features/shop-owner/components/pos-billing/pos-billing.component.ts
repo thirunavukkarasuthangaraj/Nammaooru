@@ -1147,6 +1147,16 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Remove product from cart (by product reference)
+   */
+  removeProductFromCart(product: CachedProduct): void {
+    const cartItem = this.cart.find(item => item.product.id === product.id);
+    if (cartItem) {
+      this.removeFromCart(cartItem);
+    }
+  }
+
+  /**
    * Clear entire cart
    */
   clearCart(): void {

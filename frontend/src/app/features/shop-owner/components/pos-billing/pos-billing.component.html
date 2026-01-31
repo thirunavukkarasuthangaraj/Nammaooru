@@ -65,6 +65,10 @@
           </div>
           <div *ngFor="let product of getCartProducts()"
                class="product-card billing-card in-cart">
+            <!-- Remove from Cart Button -->
+            <button class="remove-from-cart-btn" (click)="removeProductFromCart(product); $event.stopPropagation()" title="Remove from cart">
+              <mat-icon>close</mat-icon>
+            </button>
             <!-- In Cart Badge -->
             <div class="cart-badge">
               <span>{{ getCartQuantity(product) }}</span>

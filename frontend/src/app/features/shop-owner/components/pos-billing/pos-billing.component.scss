@@ -831,6 +831,37 @@ $text-secondary: #7f8c8d;
     }
 
     // Cart quantity badge
+    // Remove from cart button
+    .remove-from-cart-btn {
+      position: absolute;
+      top: -8px;
+      left: -8px;
+      background: $danger;
+      color: white;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 2px solid white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 2;
+      box-shadow: 0 2px 6px rgba($danger, 0.4);
+      transition: all 0.2s ease;
+
+      mat-icon {
+        font-size: 14px;
+        width: 14px;
+        height: 14px;
+      }
+
+      &:hover {
+        background: darken($danger, 10%);
+        transform: scale(1.1);
+      }
+    }
+
     .cart-badge {
       position: absolute;
       top: -8px;
