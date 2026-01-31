@@ -496,19 +496,25 @@ export class PosBillingComponent implements OnInit, OnDestroy {
           : allPendingCreations;
         if (pendingCreations.length > 0) {
           console.log(`Found ${pendingCreations.length} pending offline products for shop ${this.shopId}`);
-          // Filter out creations that are already in the cache (by matching name + barcode)
+          // Filter out creations that are already in the cache (by matching tempProductId, barcode, or name)
           const newCreations = pendingCreations.filter(creation => {
             const creationName = (creation.name || creation.customName || '').toLowerCase();
             const creationBarcode = (creation.barcode1 || '').toLowerCase();
+            const creationTempId = creation.tempProductId;
             return !cachedProducts.some(p => {
-              const nameMatch = p.name.toLowerCase() === creationName;
+              // Match by tempProductId (most reliable for edited offline products)
+              const tempIdMatch = creationTempId && p.id === creationTempId;
+              // Match by barcode (handles renamed products)
               const barcodeMatch = creationBarcode && p.barcode1 && p.barcode1.toLowerCase() === creationBarcode;
-              return nameMatch || barcodeMatch;
+              // Match by name
+              const nameMatch = p.name.toLowerCase() === creationName;
+              return tempIdMatch || barcodeMatch || nameMatch;
             });
           });
           if (newCreations.length > 0) {
             const offlineProducts: CachedProduct[] = newCreations.map(creation => ({
-              id: this.offlineStorage.generateTempProductId(),
+              // Use stored tempProductId if available to maintain consistency
+              id: creation.tempProductId || this.offlineStorage.generateTempProductId(),
               shopId: creation.shopId,
               name: creation.name || creation.customName || 'New Product',
               nameTamil: creation.nameTamil,
@@ -2527,6 +2533,21 @@ export class PosBillingComponent implements OnInit, OnDestroy {
         packedDate: this.labelPackedDate,
         expiryDate: this.labelExpiryDate
       });
+
+      // For offline-created products (negative IDs), also update pending creation
+      if (productId < 0) {
+        await this.offlineStorage.applyEditToProductCreation(productId, {
+          price: this.editPrice,
+          originalPrice: this.editMrp,
+          stockQuantity: this.editStock,
+          sku: this.editSku,
+          barcode1: this.editBarcode1,
+          barcode2: this.editBarcode2,
+          barcode3: this.editBarcode3,
+          customName: this.editName,
+          nameTamil: this.editNameTamil
+        });
+      }
 
       this.swal.success('Saved Offline', 'Changes saved locally. Will sync when online.');
       this.closeQuickEdit();

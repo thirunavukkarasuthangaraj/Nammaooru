@@ -183,13 +183,18 @@ export class MyProductsComponent implements OnInit, OnDestroy {
         if (pendingCreations.length > 0) {
           console.log(`Found ${pendingCreations.length} pending offline products`);
 
-          // Filter out creations that already exist in cache (by barcode or name match)
+          // Filter out creations that already exist in cache (by tempProductId, barcode, or name match)
           const newCreations = pendingCreations.filter(creation => {
             const creationBarcode = creation.barcode1?.toLowerCase();
             const creationName = (creation.name || creation.customName)?.toLowerCase();
+            const creationTempId = creation.tempProductId;
 
             return !cachedProducts.some(p => {
-              // Match by barcode
+              // Match by tempProductId (most reliable for edited offline products)
+              if (creationTempId && p.id === creationTempId) {
+                return true;
+              }
+              // Match by barcode (handles renamed products)
               if (creationBarcode && (
                 p.barcode1?.toLowerCase() === creationBarcode ||
                 p.barcode?.toLowerCase() === creationBarcode
@@ -206,7 +211,8 @@ export class MyProductsComponent implements OnInit, OnDestroy {
 
           if (newCreations.length > 0) {
             const offlineProducts: CachedProduct[] = newCreations.map(creation => ({
-              id: this.offlineStorage.generateTempProductId(),
+              // Use stored tempProductId if available to maintain consistency
+              id: creation.tempProductId || this.offlineStorage.generateTempProductId(),
               shopId: creation.shopId,
               name: creation.name || creation.customName || 'New Product',
               nameTamil: creation.nameTamil,
