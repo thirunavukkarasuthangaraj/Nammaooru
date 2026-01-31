@@ -96,9 +96,16 @@ export class MyProductsComponent implements OnInit, OnDestroy {
   
   // Pagination
   totalProducts = 0;
-  pageSize = 12;
-  pageSizeOptions = [12, 24, 48, 96];
+  pageSize = 200;
+  pageSizeOptions = [50, 100, 200, 500];
   currentPageIndex = 0;
+
+  // Getter for paginated products (only render current page for performance)
+  get paginatedProducts(): ShopProduct[] {
+    const start = this.currentPageIndex * this.pageSize;
+    const end = start + this.pageSize;
+    return this.filteredProducts.slice(start, end);
+  }
   
   // Table columns
   displayedColumns: string[] = ['select', 'image', 'name', 'price', 'stock', 'status', 'actions'];

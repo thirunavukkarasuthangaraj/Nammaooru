@@ -80,7 +80,7 @@
   <!-- Products List -->
   <div class="products-list" *ngIf="!loading">
     <mat-card class="list-container">
-      <table mat-table [dataSource]="filteredProducts" class="products-table">
+      <table mat-table [dataSource]="paginatedProducts" class="products-table">
 
         <!-- Select Checkbox Column -->
         <ng-container matColumnDef="select">
@@ -215,6 +215,16 @@
         <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
         <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="product-row"></tr>
       </table>
+
+      <!-- Paginator -->
+      <mat-paginator
+        [length]="totalProducts"
+        [pageSize]="pageSize"
+        [pageSizeOptions]="pageSizeOptions"
+        [pageIndex]="currentPageIndex"
+        (page)="onPageChange($event)"
+        showFirstLastButtons>
+      </mat-paginator>
     </mat-card>
   </div>
 
