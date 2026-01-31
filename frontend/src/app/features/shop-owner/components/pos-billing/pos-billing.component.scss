@@ -958,6 +958,19 @@ $text-secondary: #7f8c8d;
           font-weight: 600;
           color: $text-primary;
         }
+
+        &.price-above-mrp {
+          border-color: $danger;
+          background: rgba($danger, 0.1);
+
+          .price-label {
+            color: $danger;
+          }
+
+          .price-input {
+            color: $danger;
+          }
+        }
       }
 
       .qty-controls {

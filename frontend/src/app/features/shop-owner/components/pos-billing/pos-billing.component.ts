@@ -1155,6 +1155,25 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Get the MRP of a product in the cart
+   */
+  getCartItemMrp(product: CachedProduct): number {
+    const item = this.cart.find(item => item.product.id === product.id);
+    return item ? item.mrp : (product.mrp || product.price);
+  }
+
+  /**
+   * Check if cart item price exceeds MRP
+   */
+  isPriceAboveMrp(product: CachedProduct): boolean {
+    const item = this.cart.find(item => item.product.id === product.id);
+    if (item) {
+      return item.unitPrice > item.mrp;
+    }
+    return false;
+  }
+
+  /**
    * Update cart quantity directly by product (for cart products display)
    */
   updateCartQuantityByProduct(product: CachedProduct, delta: number): void {
