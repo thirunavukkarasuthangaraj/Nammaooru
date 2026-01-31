@@ -558,12 +558,10 @@ export class MyProductsComponent implements OnInit, OnDestroy {
     const searchLower = this.searchTerm?.toLowerCase().trim() || '';
 
     this.filteredProducts = this.products.filter(product => {
-      // Search matching by name, category, description, SKU
-      const matchesNameOrCategory = !searchLower ||
+      // Search matching by name, SKU only (not category - use dropdown for that)
+      const matchesName = !searchLower ||
         (product.customName || '').toLowerCase().includes(searchLower) ||
         (product.masterProductName || '').toLowerCase().includes(searchLower) ||
-        (product.category || '').toLowerCase().includes(searchLower) ||
-        (product.description || '').toLowerCase().includes(searchLower) ||
         (product.sku || '').toLowerCase().includes(searchLower);
 
       // Search matching by barcode fields
@@ -573,7 +571,7 @@ export class MyProductsComponent implements OnInit, OnDestroy {
         (product.barcode2 && product.barcode2.toLowerCase().includes(searchLower)) ||
         (product.barcode3 && product.barcode3.toLowerCase().includes(searchLower));
 
-      const matchesSearch = matchesNameOrCategory || matchesBarcode;
+      const matchesSearch = matchesName || matchesBarcode;
 
       const matchesCategory = !this.selectedCategory || product.category === this.selectedCategory;
       const matchesStatus = !this.selectedStatus ||
