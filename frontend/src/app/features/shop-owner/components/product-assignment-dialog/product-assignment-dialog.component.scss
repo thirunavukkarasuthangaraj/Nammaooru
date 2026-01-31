@@ -7,32 +7,45 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 16px;
+    padding: 16px 20px;
     border-bottom: 1px solid #e2e8f0;
-    background: #f8fafc;
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
 
     h2 {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       margin: 0;
-      color: #1e293b;
-      font-size: 1rem;
+      color: white;
+      font-size: 1.1rem;
       font-weight: 600;
 
       mat-icon {
-        color: #22c55e;
-        font-size: 20px;
-        width: 20px;
-        height: 20px;
+        color: white;
+        font-size: 22px;
+        width: 22px;
+        height: 22px;
       }
     }
 
     button {
-      color: #64748b;
+      color: white;
+      background: rgba(255, 255, 255, 0.2);
       width: 32px;
       height: 32px;
       line-height: 32px;
+      border-radius: 50%;
+      transition: background 0.2s;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.3);
+      }
+
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
     }
   }
 
