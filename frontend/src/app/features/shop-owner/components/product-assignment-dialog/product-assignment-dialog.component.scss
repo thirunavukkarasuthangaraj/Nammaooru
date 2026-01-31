@@ -144,20 +144,27 @@
           display: none; // Hide hints
         }
         .mat-mdc-text-field-wrapper {
-          padding: 0 10px;
+          padding: 0 12px;
         }
         .mat-mdc-form-field-infix {
-          min-height: 40px;
-          padding: 8px 0;
+          min-height: 44px;
+          padding: 10px 0;
         }
         .mat-mdc-floating-label {
           font-size: 0.8125rem;
         }
         input, textarea {
-          font-size: 0.8125rem;
+          font-size: 0.875rem;
         }
         textarea {
           min-height: 50px;
+        }
+        // Prefix styling
+        .mat-mdc-form-field-icon-prefix,
+        .mat-mdc-form-field-text-prefix {
+          padding-right: 4px;
+          color: #64748b;
+          font-weight: 500;
         }
       }
 
@@ -167,6 +174,14 @@
         font-size: 16px;
         width: 16px;
         height: 16px;
+      }
+
+      // Style for ₹ prefix
+      span[matPrefix] {
+        color: #64748b;
+        font-weight: 500;
+        font-size: 0.875rem;
+        margin-right: 2px;
       }
     }
 
