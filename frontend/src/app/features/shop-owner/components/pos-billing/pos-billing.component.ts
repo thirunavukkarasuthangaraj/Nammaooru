@@ -1280,6 +1280,8 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     this.subtotal = this.cart.reduce((sum, item) => sum + item.total, 0);
     this.totalMrp = this.cart.reduce((sum, item) => sum + (item.mrp * item.quantity), 0);
     this.totalDiscount = this.totalMrp - this.subtotal;
+    // Ensure discount is never negative (when price > MRP)
+    if (this.totalDiscount < 0) this.totalDiscount = 0;
     this.taxAmount = this.subtotal * this.taxRate;
     this.totalAmount = this.subtotal + this.taxAmount;
   }
