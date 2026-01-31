@@ -83,31 +83,21 @@
                 <span class="tag" *ngFor="let tag of product.tags.slice(0, 1)">{{ tag }}</span>
               </div>
             </div>
-            <!-- Editable Price & Quantity Section (for billing only, not saved) -->
+            <!-- Cart Quantity Controls - directly control cart quantity -->
             <div class="billing-controls">
               <div class="price-edit">
                 <span class="price-label">₹</span>
-                <input type="number"
-                       class="price-input"
-                       [value]="getTempPrice(product)"
-                       (change)="setTempPrice(product, $event)"
-                       (click)="$event.stopPropagation()"
-                       min="0"
-                       step="0.01">
+                <span class="price-display">{{ getCartItemPrice(product) }}</span>
               </div>
               <div class="qty-controls">
-                <button class="qty-btn minus" (click)="decrementTempQty(product); $event.stopPropagation()">
+                <button class="qty-btn minus" (click)="updateCartQuantityByProduct(product, -1); $event.stopPropagation()">
                   <mat-icon>remove</mat-icon>
                 </button>
-                <span class="qty-value">{{ getTempQty(product) }}</span>
-                <button class="qty-btn plus" (click)="incrementTempQty(product); $event.stopPropagation()">
+                <span class="qty-value">{{ getCartQuantity(product) }}</span>
+                <button class="qty-btn plus" (click)="updateCartQuantityByProduct(product, 1); $event.stopPropagation()">
                   <mat-icon>add</mat-icon>
                 </button>
               </div>
-              <button class="add-btn" (click)="addToCartWithTempValues(product); $event.stopPropagation()"
-                      [disabled]="getTempQty(product) === 0">
-                <mat-icon>add_shopping_cart</mat-icon>
-              </button>
             </div>
           </div>
         </div>

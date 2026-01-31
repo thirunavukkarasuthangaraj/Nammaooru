@@ -1147,6 +1147,24 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Get the price of a product in the cart
+   */
+  getCartItemPrice(product: CachedProduct): number {
+    const item = this.cart.find(item => item.product.id === product.id);
+    return item ? item.unitPrice : product.price;
+  }
+
+  /**
+   * Update cart quantity directly by product (for cart products display)
+   */
+  updateCartQuantityByProduct(product: CachedProduct, delta: number): void {
+    const item = this.cart.find(item => item.product.id === product.id);
+    if (item) {
+      this.updateQuantity(item, delta);
+    }
+  }
+
+  /**
    * Sort products to show cart items first
    */
   private sortProductsWithCartFirst(products: CachedProduct[]): CachedProduct[] {
