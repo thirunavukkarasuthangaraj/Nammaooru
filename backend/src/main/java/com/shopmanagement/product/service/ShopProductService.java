@@ -136,8 +136,10 @@ public class ShopProductService {
                 category = categoryRepository.findByNameIgnoreCase(request.getCategoryName()).orElse(null);
             }
             if (category == null) {
-                // Find or create a default "General" category
-                category = categoryRepository.findByName("General").orElseGet(() -> {
+                // Find or create a default "General" category - check by slug first to avoid duplicate key
+                category = categoryRepository.findBySlug("general")
+                        .or(() -> categoryRepository.findByName("General"))
+                        .orElseGet(() -> {
                     log.info("Creating default 'General' category for offline product creation");
                     ProductCategory general = ProductCategory.builder()
                             .name("General")
