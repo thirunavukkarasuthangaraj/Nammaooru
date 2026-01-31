@@ -61,6 +61,10 @@
           </div>
           <div *ngFor="let product of getCartProducts()"
                class="product-card billing-card in-cart">
+            <!-- Quick Edit Button -->
+            <button class="quick-edit-btn" (click)="openQuickEdit(product, $event)" title="Edit Price/Stock">
+              <mat-icon>edit</mat-icon>
+            </button>
             <!-- In Cart Badge -->
             <div class="cart-badge">
               <span>{{ getCartQuantity(product) }}</span>
@@ -114,6 +118,10 @@
                class="product-card billing-card"
                [class.out-of-stock]="product.trackInventory && product.stock <= 0"
                [class.in-cart]="isInCart(product)">
+            <!-- Quick Edit Button -->
+            <button class="quick-edit-btn" (click)="openQuickEdit(product, $event)" title="Edit Price/Stock">
+              <mat-icon>edit</mat-icon>
+            </button>
             <!-- In Cart Badge -->
             <div class="cart-badge" *ngIf="getCartQuantity(product) > 0">
               <span>{{ getCartQuantity(product) }}</span>
