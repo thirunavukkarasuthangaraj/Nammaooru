@@ -30,6 +30,7 @@ import { MatStepperModule } from '@angular/material/stepper';
 import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 
+import { SharedModule } from '../../shared/shared.module';
 import { ShopOwnerRoutingModule } from './shop-owner-routing.module';
 import { ShopOwnerDashboardComponent } from './components/shop-owner-dashboard/shop-owner-dashboard.component';
 import { ShopProfileComponent } from './components/shop-profile/shop-profile.component';
@@ -99,6 +100,7 @@ import { BulkEditComponent } from './components/bulk-edit/bulk-edit.component';
     CommonModule,
     ReactiveFormsModule,
     FormsModule,
+    SharedModule,
     ShopOwnerRoutingModule,
     MatCardModule,
     MatButtonModule,

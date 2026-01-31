@@ -14,13 +14,17 @@ import { MatInputModule } from '@angular/material/input';
 // import { LocationPickerComponent } from './components/location-picker/location-picker.component'; // Disabled - Google Maps issues
 import { UnauthorizedComponent } from './components/unauthorized/unauthorized.component';
 import { TimeAgoPipe } from './pipes/time-ago.pipe';
+import { OfflineImagePipe } from '../core/pipes/offline-image.pipe';
+import { OfflineImgDirective } from './directives/offline-img.directive';
 import { PwaInstallBannerComponent } from './components/pwa-install-banner/pwa-install-banner.component';
 
 @NgModule({
   declarations: [
     // LocationPickerComponent, // Disabled - Google Maps issues
     UnauthorizedComponent,
-    TimeAgoPipe
+    TimeAgoPipe,
+    OfflineImagePipe,
+    OfflineImgDirective
   ],
   imports: [
     CommonModule,
@@ -42,6 +46,8 @@ import { PwaInstallBannerComponent } from './components/pwa-install-banner/pwa-i
     // LocationPickerComponent, // Disabled - Google Maps issues
     UnauthorizedComponent,
     TimeAgoPipe,
+    OfflineImagePipe,
+    OfflineImgDirective,
     PwaInstallBannerComponent
   ]
 })

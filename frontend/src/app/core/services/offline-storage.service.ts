@@ -214,7 +214,7 @@ export interface OfflineProductCreation {
 }
 
 const DB_NAME = 'NammaOoruPOS';
-const DB_VERSION = 6;  // Incremented for combos cache
+const DB_VERSION = 7;  // Incremented for image cache
 const PRODUCTS_STORE = 'products';
 const ORDERS_STORE = 'offlineOrders';
 const EDITS_STORE = 'offlineEdits';
@@ -223,6 +223,7 @@ const SYNC_META_STORE = 'syncMeta';
 const ORDERS_CACHE_STORE = 'ordersCache';      // Server orders for viewing
 const DASHBOARD_CACHE_STORE = 'dashboardCache'; // Dashboard statistics
 const COMBOS_CACHE_STORE = 'combosCache';      // Combos for viewing
+const IMAGE_CACHE_STORE = 'imageCache';        // Product images for offline
 
 @Injectable({
   providedIn: 'root'
@@ -337,6 +338,12 @@ export class OfflineStorageService {
         if (!db.objectStoreNames.contains(COMBOS_CACHE_STORE)) {
           const combosCacheStore = db.createObjectStore(COMBOS_CACHE_STORE, { keyPath: 'id' });
           combosCacheStore.createIndex('shopId', 'shopId', { unique: false });
+        }
+
+        // Image cache store (for product images offline)
+        if (!db.objectStoreNames.contains(IMAGE_CACHE_STORE)) {
+          const imageCacheStore = db.createObjectStore(IMAGE_CACHE_STORE, { keyPath: 'url' });
+          imageCacheStore.createIndex('cachedAt', 'cachedAt', { unique: false });
         }
       };
       } catch (e) {
@@ -1728,6 +1735,178 @@ export class OfflineStorageService {
       request.onsuccess = () => {
         const result = request.result;
         resolve(result ? new Date(result.timestamp) : null);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  // ==================== IMAGE CACHE (for offline product images) ====================
+
+  /**
+   * Cache an image blob for offline use
+   * @param url The original image URL (used as key)
+   * @param blob The image blob data
+   */
+  async cacheImage(url: string, blob: Blob): Promise<void> {
+    if (!url || !blob) return;
+
+    const db = await this.getDB();
+    const transaction = db.transaction(IMAGE_CACHE_STORE, 'readwrite');
+    const store = transaction.objectStore(IMAGE_CACHE_STORE);
+
+    const cacheEntry = {
+      url: url,
+      blob: blob,
+      mimeType: blob.type,
+      size: blob.size,
+      cachedAt: new Date().toISOString()
+    };
+
+    return new Promise((resolve, reject) => {
+      const request = store.put(cacheEntry);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Get cached image blob by URL
+   * @param url The original image URL
+   * @returns The cached blob or null if not cached
+   */
+  async getCachedImage(url: string): Promise<Blob | null> {
+    if (!url) return null;
+
+    const db = await this.getDB();
+    const transaction = db.transaction(IMAGE_CACHE_STORE, 'readonly');
+    const store = transaction.objectStore(IMAGE_CACHE_STORE);
+
+    return new Promise((resolve, reject) => {
+      const request = store.get(url);
+      request.onsuccess = () => {
+        const result = request.result;
+        resolve(result ? result.blob : null);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Check if an image is cached
+   * @param url The original image URL
+   */
+  async isImageCached(url: string): Promise<boolean> {
+    if (!url) return false;
+
+    const db = await this.getDB();
+    const transaction = db.transaction(IMAGE_CACHE_STORE, 'readonly');
+    const store = transaction.objectStore(IMAGE_CACHE_STORE);
+
+    return new Promise((resolve, reject) => {
+      const request = store.count(IDBKeyRange.only(url));
+      request.onsuccess = () => resolve(request.result > 0);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Batch cache multiple images
+   * @param imageUrls Array of image URLs to cache
+   * @param onProgress Optional callback for progress updates
+   */
+  async cacheImages(imageUrls: string[], onProgress?: (cached: number, total: number) => void): Promise<number> {
+    const validUrls = imageUrls.filter(url => url && url.trim() !== '');
+    if (validUrls.length === 0) return 0;
+
+    let cached = 0;
+    let failed = 0;
+
+    for (const url of validUrls) {
+      try {
+        // Skip if already cached
+        const isCached = await this.isImageCached(url);
+        if (isCached) {
+          cached++;
+          if (onProgress) onProgress(cached, validUrls.length);
+          continue;
+        }
+
+        // Fetch and cache the image
+        const response = await fetch(url, { mode: 'cors', credentials: 'omit' });
+        if (response.ok) {
+          const blob = await response.blob();
+          await this.cacheImage(url, blob);
+          cached++;
+        } else {
+          failed++;
+        }
+      } catch (error) {
+        console.warn(`Failed to cache image: ${url}`, error);
+        failed++;
+      }
+
+      if (onProgress) onProgress(cached, validUrls.length);
+    }
+
+    console.log(`Image caching complete: ${cached} cached, ${failed} failed out of ${validUrls.length}`);
+    return cached;
+  }
+
+  /**
+   * Get image cache statistics
+   */
+  async getImageCacheStats(): Promise<{ count: number; totalSize: number }> {
+    const db = await this.getDB();
+    const transaction = db.transaction(IMAGE_CACHE_STORE, 'readonly');
+    const store = transaction.objectStore(IMAGE_CACHE_STORE);
+
+    return new Promise((resolve, reject) => {
+      let count = 0;
+      let totalSize = 0;
+      const request = store.openCursor();
+
+      request.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+        if (cursor) {
+          count++;
+          totalSize += cursor.value.size || 0;
+          cursor.continue();
+        } else {
+          resolve({ count, totalSize });
+        }
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Clear old cached images (older than specified days)
+   * @param olderThanDays Number of days to keep images
+   */
+  async clearOldCachedImages(olderThanDays: number = 30): Promise<number> {
+    const db = await this.getDB();
+    const transaction = db.transaction(IMAGE_CACHE_STORE, 'readwrite');
+    const store = transaction.objectStore(IMAGE_CACHE_STORE);
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
+
+    return new Promise((resolve, reject) => {
+      let deleted = 0;
+      const request = store.openCursor();
+
+      request.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+        if (cursor) {
+          const cachedAt = new Date(cursor.value.cachedAt);
+          if (cachedAt < cutoffDate) {
+            store.delete(cursor.primaryKey);
+            deleted++;
+          }
+          cursor.continue();
+        } else {
+          console.log(`Cleared ${deleted} old cached images`);
+          resolve(deleted);
+        }
       };
       request.onerror = () => reject(request.error);
     });

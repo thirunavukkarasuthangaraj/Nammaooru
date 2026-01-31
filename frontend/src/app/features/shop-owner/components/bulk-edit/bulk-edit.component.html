@@ -121,7 +121,7 @@
                    [matMenuTriggerFor]="imageMenu"
                    [class.uploading]="isUploadingImage(product)"
                    matTooltip="Click for options">
-                <img [src]="getProductImageUrl(product)" [alt]="product.customName">
+                <img [appOfflineImg]="product.imageUrl" [fallback]="'assets/images/product-placeholder.svg'" [alt]="product.customName">
                 <div class="image-overlay">
                   <mat-icon *ngIf="!isUploadingImage(product)">more_vert</mat-icon>
                   <mat-spinner *ngIf="isUploadingImage(product)" diameter="20"></mat-spinner>

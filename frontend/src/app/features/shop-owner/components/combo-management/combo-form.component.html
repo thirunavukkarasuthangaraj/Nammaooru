@@ -102,7 +102,7 @@
         <!-- Selected Products -->
         <div class="selected-products" *ngIf="itemsFormArray.length > 0" formArrayName="items">
           <div class="product-item" *ngFor="let item of itemsFormArray.controls; let i = index" [formGroupName]="i">
-            <img *ngIf="item.get('imageUrl')?.value" [src]="item.get('imageUrl')?.value" class="item-thumb" alt="">
+            <img *ngIf="item.get('imageUrl')?.value" [appOfflineImg]="item.get('imageUrl')?.value" [fallback]="'assets/images/product-placeholder.svg'" class="item-thumb" alt="">
             <div class="item-thumb-placeholder" *ngIf="!item.get('imageUrl')?.value">
               <mat-icon>inventory_2</mat-icon>
             </div>

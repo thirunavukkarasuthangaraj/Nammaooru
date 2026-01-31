@@ -75,7 +75,8 @@
             </div>
             <div class="product-image" (click)="addToCart(product)">
               <img *ngIf="product.imageBase64 || product.image"
-                   [src]="product.imageBase64 || getImageUrl(product.image)"
+                   [appOfflineImg]="product.imageBase64 || product.image"
+                   [fallback]="'assets/images/product-placeholder.svg'"
                    [alt]="product.name"
                    (error)="onImageError($event)">
               <div *ngIf="!product.image && !product.imageBase64" class="product-initial">{{ product.name[0] }}</div>
@@ -128,7 +129,8 @@
             </div>
             <div class="product-image" (click)="addToCart(product)">
               <img *ngIf="product.imageBase64 || product.image"
-                   [src]="product.imageBase64 || getImageUrl(product.image)"
+                   [appOfflineImg]="product.imageBase64 || product.image"
+                   [fallback]="'assets/images/product-placeholder.svg'"
                    [alt]="product.name"
                    (error)="onImageError($event)">
               <div *ngIf="!product.image && !product.imageBase64" class="product-initial">{{ product.name[0] }}</div>
@@ -226,7 +228,8 @@
             </button>
             <div class="product-image">
               <img *ngIf="product.imageBase64 || product.image"
-                   [src]="product.imageBase64 || getImageUrl(product.image)"
+                   [appOfflineImg]="product.imageBase64 || product.image"
+                   [fallback]="'assets/images/product-placeholder.svg'"
                    [alt]="product.name"
                    (error)="onImageError($event)">
               <div *ngIf="!product.image && !product.imageBase64" class="product-initial">{{ product.name[0] }}</div>
@@ -418,7 +421,7 @@
       <div class="dialog-header compact-header">
         <div class="header-product-info">
           <div class="header-image" *ngIf="editingProduct.imageBase64 || editingProduct.image">
-            <img [src]="editingProduct.imageBase64 || getImageUrl(editingProduct.image)" [alt]="editingProduct.name">
+            <img [appOfflineImg]="editingProduct.imageBase64 || editingProduct.image" [fallback]="'assets/images/product-placeholder.svg'" [alt]="editingProduct.name">
           </div>
           <div class="header-text">
             <h3>{{ editingProduct.name }}</h3>
@@ -457,7 +460,8 @@
               <!-- Show new preview if selected, otherwise show current image -->
               <img *ngIf="editImagePreview" [src]="editImagePreview" alt="New image preview" class="preview-img">
               <img *ngIf="!editImagePreview && (editingProduct?.imageBase64 || editingProduct?.image)"
-                   [src]="editingProduct?.imageBase64 || getImageUrl(editingProduct?.image)"
+                   [appOfflineImg]="editingProduct?.imageBase64 || editingProduct?.image"
+                   [fallback]="'assets/images/product-placeholder.svg'"
                    alt="Current image" class="preview-img">
               <div *ngIf="!editImagePreview && !editingProduct?.imageBase64 && !editingProduct?.image" class="no-image">
                 <mat-icon>image</mat-icon>

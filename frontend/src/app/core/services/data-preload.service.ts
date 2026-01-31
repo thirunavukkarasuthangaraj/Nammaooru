@@ -4,6 +4,7 @@ import { BehaviorSubject, Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { OfflineStorageService, CachedProduct, CachedOrder, CachedDashboardStats, CachedCombo } from './offline-storage.service';
 import { AuthService } from './auth.service';
+import { getImageUrl } from '../utils/image-url.util';
 
 export interface PreloadStatus {
   isLoading: boolean;
@@ -14,6 +15,8 @@ export interface PreloadStatus {
   ordersLoaded?: number;
   dashboardLoaded?: boolean;
   combosLoaded?: number;
+  imagesLoaded?: number;
+  totalImages?: number;
   error?: string;
 }
 
@@ -80,6 +83,7 @@ export class DataPreloadService {
 
     try {
       await this.preloadProducts();
+      await this.preloadImages();
       await this.preloadOrders();
       await this.preloadDashboard();
       await this.preloadCombos();
@@ -95,7 +99,9 @@ export class DataPreloadService {
         totalProducts: this.statusSubject.value.totalProducts,
         ordersLoaded: this.statusSubject.value.ordersLoaded,
         dashboardLoaded: true,
-        combosLoaded: this.statusSubject.value.combosLoaded
+        combosLoaded: this.statusSubject.value.combosLoaded,
+        imagesLoaded: this.statusSubject.value.imagesLoaded,
+        totalImages: this.statusSubject.value.totalImages
       });
     } catch (error: any) {
       console.error('Preload failed:', error);
@@ -125,6 +131,7 @@ export class DataPreloadService {
 
     try {
       await this.preloadProducts();
+      await this.preloadImages();
       await this.preloadOrders();
       await this.preloadDashboard();
       await this.preloadCombos();
@@ -138,7 +145,9 @@ export class DataPreloadService {
         totalProducts: this.statusSubject.value.totalProducts,
         ordersLoaded: this.statusSubject.value.ordersLoaded,
         dashboardLoaded: true,
-        combosLoaded: this.statusSubject.value.combosLoaded
+        combosLoaded: this.statusSubject.value.combosLoaded,
+        imagesLoaded: this.statusSubject.value.imagesLoaded,
+        totalImages: this.statusSubject.value.totalImages
       });
     } catch (error: any) {
       console.error('Force preload failed:', error);
@@ -246,6 +255,69 @@ export class DataPreloadService {
     // Save to IndexedDB
     await this.offlineStorage.saveProducts(cachedProducts, shopId);
     console.log(`Cached ${cachedProducts.length} products to IndexedDB`);
+  }
+
+  /**
+   * Preload product images from cached products and store in IndexedDB
+   * This enables offline viewing of product images
+   */
+  private async preloadImages(): Promise<void> {
+    console.log('Starting images preload...');
+
+    this.updateStatus({
+      message: 'Caching images for offline use...'
+    });
+
+    try {
+      // Get all cached products
+      const products = await this.offlineStorage.getProducts();
+      if (!products || products.length === 0) {
+        console.log('No products found, skipping image preload');
+        return;
+      }
+
+      // Extract unique image URLs from products
+      const imageUrls: string[] = [];
+      for (const product of products) {
+        if (product.imageUrl) {
+          const fullUrl = getImageUrl(product.imageUrl);
+          if (fullUrl && !imageUrls.includes(fullUrl)) {
+            imageUrls.push(fullUrl);
+          }
+        }
+      }
+
+      console.log(`Found ${imageUrls.length} unique product images to cache`);
+
+      if (imageUrls.length === 0) {
+        this.updateStatus({
+          imagesLoaded: 0,
+          totalImages: 0
+        });
+        return;
+      }
+
+      this.updateStatus({
+        totalImages: imageUrls.length,
+        imagesLoaded: 0
+      });
+
+      // Cache images with progress callback
+      const cached = await this.offlineStorage.cacheImages(imageUrls, (loaded, total) => {
+        this.updateStatus({
+          message: `Caching images (${loaded}/${total})...`,
+          imagesLoaded: loaded
+        });
+      });
+
+      console.log(`Cached ${cached} images to IndexedDB`);
+      this.updateStatus({
+        imagesLoaded: cached
+      });
+    } catch (error) {
+      console.warn('Error preloading images:', error);
+      // Don't fail the entire preload if images fail
+    }
   }
 
   /**
