@@ -57,8 +57,8 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   // POS Mode: 'scanner' = only show searched items, 'browse' = show all products
   posMode: 'scanner' | 'browse' = 'browse';
 
-  // Active Tab: 'quick' = Quick Bill (scan/search + cart only), 'browse' = Browse all products
-  activeTab: 'quick' | 'browse' = 'quick';
+  // Active Tab: 'browse' = Browse all products, 'quick' = Quick Bill (scan/search + cart only)
+  activeTab: 'quick' | 'browse' = 'browse';
 
   // Temporary price/qty for Quick Bill (not saved to database, just for billing)
   private tempPrices: Map<number, number> = new Map();
@@ -557,6 +557,9 @@ export class PosBillingComponent implements OnInit, OnDestroy {
 
         this.isLoading = false;
 
+        // Cache product images to IndexedDB for offline use
+        this.cacheProductImagesToIndexedDB(this.products);
+
         // Only sync from server if cache is stale (older than 5 minutes)
         if (navigator.onLine) {
           const lastSync = localStorage.getItem(this.POS_CACHE_TIMESTAMP_KEY);
@@ -740,6 +743,60 @@ export class PosBillingComponent implements OnInit, OnDestroy {
           console.warn('Background sync failed:', error);
         }
       });
+  }
+
+  /**
+   * Cache product images to IndexedDB in background for offline use
+   * Caches images as blobs, doesn't block UI
+   */
+  private cacheProductImagesToIndexedDB(products: CachedProduct[]): void {
+    if (!navigator.onLine) return;
+
+    // Get unique image URLs from products
+    const imageUrls = products
+      .filter(p => p.image || p.imageUrl)
+      .map(p => getImageUrl(p.image || p.imageUrl || ''))
+      .filter(url => url && url.length > 0);
+
+    if (imageUrls.length === 0) return;
+
+    console.log(`Caching ${imageUrls.length} product images to IndexedDB...`);
+
+    // Cache images in batches of 10 to avoid overwhelming the network
+    const batchSize = 10;
+    let cached = 0;
+
+    const cacheBatch = async (startIndex: number) => {
+      const batch = imageUrls.slice(startIndex, startIndex + batchSize);
+      if (batch.length === 0) {
+        console.log(`Image caching complete: ${cached}/${imageUrls.length} cached`);
+        return;
+      }
+
+      await Promise.all(batch.map(async (url) => {
+        try {
+          const isCached = await this.offlineStorage.isImageCached(url);
+          if (!isCached) {
+            const response = await fetch(url, { mode: 'cors', credentials: 'omit' });
+            if (response.ok) {
+              const blob = await response.blob();
+              await this.offlineStorage.cacheImage(url, blob);
+              cached++;
+            }
+          } else {
+            cached++;
+          }
+        } catch (err) {
+          // Silently ignore failed images
+        }
+      }));
+
+      // Cache next batch after a small delay
+      setTimeout(() => cacheBatch(startIndex + batchSize), 100);
+    };
+
+    // Start caching in background
+    cacheBatch(0);
   }
 
   /**

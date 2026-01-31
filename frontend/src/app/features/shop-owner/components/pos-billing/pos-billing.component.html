@@ -5,13 +5,13 @@
       <!-- Tab Header with controls -->
       <div class="pos-tabs-row">
         <div class="pos-tabs">
-          <button class="tab-btn" [class.active]="activeTab === 'quick'" (click)="activeTab = 'quick'">
-            <mat-icon>bolt</mat-icon>
-            <span>Quick Bill</span>
-          </button>
           <button class="tab-btn" [class.active]="activeTab === 'browse'" (click)="activeTab = 'browse'; onPosModeChange()">
             <mat-icon>grid_view</mat-icon>
             <span>Browse Products</span>
+          </button>
+          <button class="tab-btn" [class.active]="activeTab === 'quick'" (click)="activeTab = 'quick'">
+            <mat-icon>bolt</mat-icon>
+            <span>Quick Bill</span>
           </button>
         </div>
         <!-- Controls: Language, Status, Sync -->
