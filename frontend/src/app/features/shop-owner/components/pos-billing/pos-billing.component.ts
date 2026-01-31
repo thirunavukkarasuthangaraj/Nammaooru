@@ -1360,13 +1360,27 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     this.swal.loading('Creating bill...');
 
     try {
+      // Resolve any negative temp IDs to real server IDs (for offline-created products that have synced)
+      const resolvedItems = await this.resolveCartProductIds();
+
+      // Check if any items still have negative IDs (not yet synced)
+      const unsyncedItems = resolvedItems.filter(item => item.shopProductId < 0);
+      if (unsyncedItems.length > 0 && navigator.onLine) {
+        // Try to sync pending product creations first
+        console.log('Found unsynced products in cart, attempting sync...');
+        await this.syncService.syncPendingProductCreations();
+        // Re-resolve after sync
+        const reResolvedItems = await this.resolveCartProductIds();
+        const stillUnsynced = reResolvedItems.filter(item => item.shopProductId < 0);
+        if (stillUnsynced.length > 0) {
+          console.warn('Some products still have temp IDs after sync:', stillUnsynced);
+        }
+        resolvedItems.length = 0;
+        resolvedItems.push(...reResolvedItems);
+      }
+
       const orderData = {
-        items: this.cart.map(item => ({
-          shopProductId: item.product.id,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          productName: item.product.name
-        })),
+        items: resolvedItems,
         paymentMethod: this.selectedPaymentMethod,
         customerName: this.customerName || undefined,
         customerPhone: this.customerPhone || undefined,
@@ -2622,6 +2636,52 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     if (navigator.onLine) {
       await this.offlineStorage.saveProducts(this.products, this.shopId);
     }
+  }
+
+  /**
+   * Resolve cart product IDs - convert negative temp IDs to real server IDs by looking up in cache
+   */
+  private async resolveCartProductIds(): Promise<Array<{ shopProductId: number; quantity: number; unitPrice: number; productName: string }>> {
+    // Refresh products from cache to get latest IDs after sync
+    const cachedProducts = await this.offlineStorage.getProducts();
+
+    return this.cart.map(item => {
+      let resolvedId = item.product.id;
+
+      // If product has negative temp ID, try to find real ID in cache
+      if (resolvedId < 0) {
+        // First try to find by barcode (most reliable)
+        const barcode = item.product.barcode1 || item.product.barcode || '';
+        if (barcode) {
+          const matchByBarcode = cachedProducts.find(p =>
+            p.id > 0 && (p.barcode1 === barcode || p.barcode === barcode)
+          );
+          if (matchByBarcode) {
+            console.log(`Resolved temp ID ${resolvedId} to ${matchByBarcode.id} via barcode ${barcode}`);
+            resolvedId = matchByBarcode.id;
+          }
+        }
+
+        // If still negative, try by name
+        if (resolvedId < 0) {
+          const productName = item.product.name.toLowerCase();
+          const matchByName = cachedProducts.find(p =>
+            p.id > 0 && p.name.toLowerCase() === productName
+          );
+          if (matchByName) {
+            console.log(`Resolved temp ID ${resolvedId} to ${matchByName.id} via name ${productName}`);
+            resolvedId = matchByName.id;
+          }
+        }
+      }
+
+      return {
+        shopProductId: resolvedId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        productName: item.product.name
+      };
+    });
   }
 
   /**
