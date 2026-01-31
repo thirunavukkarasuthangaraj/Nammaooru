@@ -1165,6 +1165,23 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Update cart item price (for this bill only, not saved to product)
+   */
+  updateCartItemPrice(product: CachedProduct, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const newPrice = parseFloat(input.value) || 0;
+    const item = this.cart.find(item => item.product.id === product.id);
+    if (item && newPrice >= 0) {
+      item.unitPrice = newPrice;
+      item.total = item.unitPrice * item.quantity;
+      // Recalculate discount based on new price
+      item.discount = item.mrp - item.unitPrice;
+      if (item.discount < 0) item.discount = 0;
+      this.calculateTotals();
+    }
+  }
+
+  /**
    * Sort products to show cart items first
    */
   private sortProductsWithCartFirst(products: CachedProduct[]): CachedProduct[] {

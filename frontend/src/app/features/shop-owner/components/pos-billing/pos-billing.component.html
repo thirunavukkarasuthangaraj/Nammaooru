@@ -87,7 +87,13 @@
             <div class="billing-controls">
               <div class="price-edit">
                 <span class="price-label">₹</span>
-                <span class="price-display">{{ getCartItemPrice(product) }}</span>
+                <input type="number"
+                       class="price-input"
+                       [value]="getCartItemPrice(product)"
+                       (change)="updateCartItemPrice(product, $event)"
+                       (click)="$event.stopPropagation()"
+                       min="0"
+                       step="0.01">
               </div>
               <div class="qty-controls">
                 <button class="qty-btn minus" (click)="updateCartQuantityByProduct(product, -1); $event.stopPropagation()">
