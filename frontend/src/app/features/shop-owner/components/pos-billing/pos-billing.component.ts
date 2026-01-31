@@ -117,6 +117,10 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   // Language toggle
   showTamil: boolean = false;
 
+  // Receipt language settings (saved to localStorage)
+  showEnglishOnReceipt: boolean = true;
+  showTamilOnReceipt: boolean = true;
+
   // Quick Edit state
   editingProduct: CachedProduct | null = null;
   editPrice: number = 0;
@@ -188,6 +192,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     this.loadShopInfo();
     this.loadLanguagePreference();
     this.loadLabelConfig();
+    this.loadReceiptLanguageSettings();
     this.initSyncStatus();
     this.initSearch();
     this.initBarcodeScanner();
@@ -285,6 +290,56 @@ export class PosBillingComponent implements OnInit, OnDestroy {
    */
   saveLabelConfig(): void {
     localStorage.setItem('pos_label_config', JSON.stringify(this.labelConfig));
+  }
+
+  /**
+   * Load receipt language settings from localStorage
+   */
+  private loadReceiptLanguageSettings(): void {
+    const saved = localStorage.getItem('pos_receipt_language');
+    if (saved) {
+      try {
+        const settings = JSON.parse(saved);
+        this.showEnglishOnReceipt = settings.english !== false;
+        this.showTamilOnReceipt = settings.tamil !== false;
+      } catch (e) {
+        console.warn('Failed to parse saved receipt language settings:', e);
+      }
+    }
+  }
+
+  /**
+   * Toggle English name on receipt
+   */
+  toggleEnglishOnReceipt(): void {
+    // Don't allow turning off both
+    if (this.showEnglishOnReceipt && !this.showTamilOnReceipt) {
+      return;
+    }
+    this.showEnglishOnReceipt = !this.showEnglishOnReceipt;
+    this.saveReceiptLanguageSettings();
+  }
+
+  /**
+   * Toggle Tamil name on receipt
+   */
+  toggleTamilOnReceipt(): void {
+    // Don't allow turning off both
+    if (this.showTamilOnReceipt && !this.showEnglishOnReceipt) {
+      return;
+    }
+    this.showTamilOnReceipt = !this.showTamilOnReceipt;
+    this.saveReceiptLanguageSettings();
+  }
+
+  /**
+   * Save receipt language settings to localStorage
+   */
+  private saveReceiptLanguageSettings(): void {
+    localStorage.setItem('pos_receipt_language', JSON.stringify({
+      english: this.showEnglishOnReceipt,
+      tamil: this.showTamilOnReceipt
+    }));
     this.showLabelConfigDialog = false;
     this.swal.success('Saved', 'Label settings saved');
   }
@@ -1245,10 +1300,21 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       const rate = item.unitPrice || 0;
       const mrp = item.mrp || rate;
       const hasDiscount = item.discount > 0;
-      // Show Tamil name below English name if available
-      const nameHtml = tamilName
-        ? `${englishName}<br><span style="font-size: 9px; color: #333;">${tamilName}</span>`
-        : englishName;
+      // Build name HTML based on receipt language settings
+      let nameHtml = '';
+      if (this.showEnglishOnReceipt && this.showTamilOnReceipt && tamilName) {
+        // Both languages
+        nameHtml = `${englishName}<br><span style="font-size: 9px; color: #333;">${tamilName}</span>`;
+      } else if (this.showEnglishOnReceipt) {
+        // English only
+        nameHtml = englishName;
+      } else if (this.showTamilOnReceipt && tamilName) {
+        // Tamil only (use Tamil if available, fallback to English)
+        nameHtml = tamilName;
+      } else {
+        // Fallback to English
+        nameHtml = englishName;
+      }
       // Show MRP with strikethrough if there's discount
       const rateHtml = hasDiscount
         ? `<span style="text-decoration: line-through; color: #666; font-size: 11px;">${mrp}</span><br>${rate}`

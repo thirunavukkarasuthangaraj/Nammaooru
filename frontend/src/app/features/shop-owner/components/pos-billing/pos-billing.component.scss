@@ -1485,6 +1485,43 @@ $text-secondary: #7f8c8d;
     }
   }
 
+  // Generate Bill Row with Settings
+  .generate-bill-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 8px 12px 12px;
+
+    .generate-btn {
+      flex: 1;
+      margin: 0;
+      padding: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 8px;
+
+      mat-icon {
+        margin-right: 6px;
+        font-size: 18px;
+      }
+    }
+
+    .receipt-settings-btn {
+      width: 40px;
+      height: 40px;
+      background: #f0f0f0;
+      border-radius: 8px;
+
+      mat-icon {
+        color: $text-secondary;
+      }
+
+      &:hover {
+        background: #e0e0e0;
+      }
+    }
+  }
+
   .generate-btn {
     margin: 8px 12px 12px;
     padding: 12px;
@@ -2171,3 +2208,25 @@ $text-secondary: #7f8c8d;
   }
 }
 @media (max-width: 480px) { .label-config-dialog { max-width: 95%; .config-field-row { flex-direction: column; } } }
+
+// Receipt Settings Menu
+::ng-deep .receipt-settings-menu {
+  .menu-header {
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid #e0e0e0;
+    background: #f5f5f5;
+  }
+
+  .mat-mdc-menu-item {
+    font-size: 14px;
+
+    mat-icon {
+      color: #4caf50;
+    }
+  }
+}

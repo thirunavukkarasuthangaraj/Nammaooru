@@ -363,15 +363,36 @@
           </div>
         </div>
 
-        <!-- Generate Bill Button -->
-        <button mat-raised-button
-                color="primary"
-                class="generate-btn"
-                [disabled]="cart.length === 0"
-                (click)="generateBill()">
-          <mat-icon>receipt_long</mat-icon>
-          Generate Bill - ₹{{ totalAmount | number:'1.0-0' }}
-        </button>
+        <!-- Generate Bill with Settings -->
+        <div class="generate-bill-row">
+          <button mat-raised-button
+                  color="primary"
+                  class="generate-btn"
+                  [disabled]="cart.length === 0"
+                  (click)="generateBill()">
+            <mat-icon>receipt_long</mat-icon>
+            Generate Bill - ₹{{ totalAmount | number:'1.0-0' }}
+          </button>
+          <button mat-icon-button
+                  [matMenuTriggerFor]="receiptSettingsMenu"
+                  class="receipt-settings-btn"
+                  matTooltip="Receipt Settings">
+            <mat-icon>settings</mat-icon>
+          </button>
+        </div>
+
+        <!-- Receipt Settings Menu -->
+        <mat-menu #receiptSettingsMenu="matMenu" class="receipt-settings-menu">
+          <div class="menu-header" (click)="$event.stopPropagation()">Receipt Language</div>
+          <button mat-menu-item (click)="toggleEnglishOnReceipt(); $event.stopPropagation()">
+            <mat-icon>{{ showEnglishOnReceipt ? 'check_box' : 'check_box_outline_blank' }}</mat-icon>
+            <span>English</span>
+          </button>
+          <button mat-menu-item (click)="toggleTamilOnReceipt(); $event.stopPropagation()">
+            <mat-icon>{{ showTamilOnReceipt ? 'check_box' : 'check_box_outline_blank' }}</mat-icon>
+            <span>Tamil (தமிழ்)</span>
+          </button>
+        </mat-menu>
       </div>
     </div>
   </div>

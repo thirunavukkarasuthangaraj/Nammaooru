@@ -889,11 +889,26 @@ export class MasterProductListComponent implements OnInit {
       size: this.paginator ? this.paginator.pageSize : 10
     };
 
+    // Add search query filter
+    if (this.searchQuery && this.searchQuery.trim()) {
+      filters.search = this.searchQuery.trim();
+    }
+
+    // Add category filter (from dropdown or route params)
     if (this.selectedCategoryId) {
       filters.categoryId = this.selectedCategoryId;
+    } else if (this.categoryFilter) {
+      filters.categoryName = this.categoryFilter;
     }
-    if (this.selectedCategoryName) {
-      filters.categoryName = this.selectedCategoryName;
+
+    // Add brand filter
+    if (this.brandFilter) {
+      filters.brand = this.brandFilter;
+    }
+
+    // Add status filter
+    if (this.statusFilter) {
+      filters.status = this.statusFilter;
     }
 
     this.productService.getMasterProducts(filters).subscribe({

@@ -388,8 +388,8 @@ export class MyProductsComponent implements OnInit, OnDestroy {
             };
           });
 
-          // Merge pending offline-created products (not yet synced to server)
-          this.mergeOfflineProducts(serverProducts);
+          // Set products from server immediately (before async merge)
+          this.products = serverProducts;
 
           // Save server products to IndexedDB cache for fast loading next time
           this.saveProductsToCache(serverProducts);
@@ -406,6 +406,9 @@ export class MyProductsComponent implements OnInit, OnDestroy {
           this.currentPageIndex = 0;
           this.loading = false;
           console.log('Synced products from server:', this.products.length, 'items');
+
+          // Merge pending offline-created products (async - will re-apply filters if any found)
+          this.mergeOfflineProducts(serverProducts);
         },
         error: (error) => {
           console.error('Product API error:', error);
@@ -1120,12 +1123,15 @@ export class MyProductsComponent implements OnInit, OnDestroy {
 
         // Prepend offline products to server products
         this.products = [...offlineProducts, ...serverProducts];
-      } else {
-        this.products = serverProducts;
+        // Re-apply filters to include offline products in filtered results
+        this.applyFilters();
+        this.loadCategories();
+        console.log('Merged offline products, total:', this.products.length);
       }
+      // If no pending creations, products are already set to serverProducts
     } catch (error) {
       console.warn('Failed to merge offline products:', error);
-      this.products = serverProducts;
+      // If error, products are already set to serverProducts
     }
   }
 
