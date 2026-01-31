@@ -5,11 +5,7 @@
       <!-- Tab Header with controls -->
       <div class="pos-tabs-row">
         <div class="pos-tabs">
-          <button class="tab-btn" [class.active]="activeTab === 'browse'" (click)="activeTab = 'browse'; onPosModeChange()">
-            <mat-icon>grid_view</mat-icon>
-            <span>Browse Products</span>
-          </button>
-          <button class="tab-btn" [class.active]="activeTab === 'quick'" (click)="activeTab = 'quick'">
+          <button class="tab-btn active">
             <mat-icon>bolt</mat-icon>
             <span>Quick Bill</span>
           </button>
@@ -178,8 +174,8 @@
         </div>
       </div>
 
-      <!-- Browse Tab Content - Keep in DOM for instant switching -->
-      <div class="tab-content" [hidden]="activeTab !== 'browse'">
+      <!-- Browse Tab Content - Hidden for now, using Quick Bill only -->
+      <div class="tab-content" *ngIf="false">
         <!-- Search Section for Browse -->
         <div class="search-section">
           <div class="search-row">

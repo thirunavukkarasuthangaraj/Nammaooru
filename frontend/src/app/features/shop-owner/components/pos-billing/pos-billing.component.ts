@@ -57,8 +57,8 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   // POS Mode: 'scanner' = only show searched items, 'browse' = show all products
   posMode: 'scanner' | 'browse' = 'browse';
 
-  // Active Tab: 'browse' = Browse all products, 'quick' = Quick Bill (scan/search + cart only)
-  activeTab: 'quick' | 'browse' = 'browse';
+  // Active Tab: 'quick' = Quick Bill (scan/search + cart only)
+  activeTab: 'quick' | 'browse' = 'quick';
 
   // Temporary price/qty for Quick Bill (not saved to database, just for billing)
   private tempPrices: Map<number, number> = new Map();
