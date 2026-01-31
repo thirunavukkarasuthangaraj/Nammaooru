@@ -606,11 +606,11 @@
 .professional-header {
   background: var(--surface);
   border-bottom: 1px solid var(--border-light);
-  padding: var(--spacing-md) var(--spacing-xl);
+  padding: 8px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 70px;
+  min-height: 50px;
   box-shadow: 0 1px 3px var(--shadow);
   position: sticky;
   top: 0;
@@ -630,12 +630,12 @@
 .page-header-content {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  gap: 2px;
 }
 
 .page-title {
   font-family: 'Inter', sans-serif;
-  font-size: var(--font-size-2xl);
+  font-size: 18px;
   font-weight: var(--font-weight-bold);
   color: var(--text-primary);
   margin: 0;
@@ -649,7 +649,7 @@
 }
 
 .breadcrumb-item {
-  font-size: var(--font-size-sm);
+  font-size: 12px;
   color: var(--text-secondary);
 }
 

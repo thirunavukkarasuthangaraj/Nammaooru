@@ -12,8 +12,8 @@ $text-secondary: #7f8c8d;
 .pos-billing-container {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 115px); // Account for main layout header
-  max-height: calc(100vh - 115px);
+  height: calc(100vh - 75px); // Account for main layout header (reduced)
+  max-height: calc(100vh - 75px);
   background: $light-bg;
   overflow: hidden;
 }
