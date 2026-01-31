@@ -960,17 +960,25 @@ $text-secondary: #7f8c8d;
         }
 
         &.price-above-mrp {
-          border-color: $danger;
-          background: rgba($danger, 0.1);
+          border: 2px solid $danger !important;
+          background: rgba($danger, 0.15) !important;
+          animation: pulse-warning 1s ease-in-out infinite;
 
           .price-label {
             color: $danger;
+            font-weight: 700;
           }
 
           .price-input {
             color: $danger;
+            font-weight: 700;
           }
         }
+      }
+
+      @keyframes pulse-warning {
+        0%, 100% { background: rgba($danger, 0.15); }
+        50% { background: rgba($danger, 0.25); }
       }
 
       .qty-controls {
