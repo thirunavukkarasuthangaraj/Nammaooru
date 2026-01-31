@@ -1,10 +1,11 @@
-import { Directive, Input, ElementRef, OnInit, OnDestroy, OnChanges, SimpleChanges } from '@angular/core';
-import { OfflineStorageService } from '../../core/services/offline-storage.service';
+import { Directive, Input, ElementRef, OnInit, OnChanges, SimpleChanges, HostListener } from '@angular/core';
 import { getImageUrl } from '../../core/utils/image-url.util';
 
 /**
- * Directive that handles offline image loading
- * When offline, it loads images from IndexedDB cache
+ * Simple directive for offline-friendly images
+ * - Converts image paths to full URLs
+ * - Shows fallback on error (offline or missing image)
+ * - Service Worker handles actual caching (ngsw-config.json)
  *
  * Usage:
  * <img [appOfflineImg]="product.imageUrl" [fallback]="'assets/placeholder.svg'">
@@ -12,94 +13,47 @@ import { getImageUrl } from '../../core/utils/image-url.util';
 @Directive({
   selector: '[appOfflineImg]'
 })
-export class OfflineImgDirective implements OnInit, OnDestroy, OnChanges {
+export class OfflineImgDirective implements OnInit, OnChanges {
   @Input('appOfflineImg') imageUrl: string | null | undefined;
   @Input() fallback: string = 'assets/images/product-placeholder.svg';
 
-  private blobUrl: string | null = null;
-  private isLoading = false;
-  private onlineHandler: () => void;
-  private offlineHandler: () => void;
+  private hasError = false;
 
-  constructor(
-    private el: ElementRef<HTMLImageElement>,
-    private offlineStorage: OfflineStorageService
-  ) {
-    this.onlineHandler = () => this.loadImage();
-    this.offlineHandler = () => this.loadImage();
-  }
+  constructor(private el: ElementRef<HTMLImageElement>) {}
 
   ngOnInit(): void {
-    // Listen for online/offline events
-    window.addEventListener('online', this.onlineHandler);
-    window.addEventListener('offline', this.offlineHandler);
-
-    this.loadImage();
+    this.updateImage();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['imageUrl'] && !changes['imageUrl'].firstChange) {
-      this.cleanupBlobUrl();
-      this.loadImage();
+    if (changes['imageUrl']) {
+      this.hasError = false;
+      this.updateImage();
     }
   }
 
-  ngOnDestroy(): void {
-    window.removeEventListener('online', this.onlineHandler);
-    window.removeEventListener('offline', this.offlineHandler);
-    this.cleanupBlobUrl();
-  }
-
-  private async loadImage(): Promise<void> {
-    if (this.isLoading) return;
-    this.isLoading = true;
-
-    try {
-      if (!this.imageUrl) {
-        this.setSource(this.fallback);
-        return;
-      }
-
-      const fullUrl = getImageUrl(this.imageUrl);
-      if (!fullUrl) {
-        this.setSource(this.fallback);
-        return;
-      }
-
-      // If online, just use the URL directly
-      if (navigator.onLine) {
-        this.setSource(fullUrl);
-        return;
-      }
-
-      // If offline, try to load from cache
-      const blob = await this.offlineStorage.getCachedImage(fullUrl);
-      if (blob) {
-        this.cleanupBlobUrl();
-        this.blobUrl = URL.createObjectURL(blob);
-        this.setSource(this.blobUrl);
-      } else {
-        // No cached image, use fallback
-        this.setSource(this.fallback);
-      }
-    } catch (error) {
-      console.warn('Error loading offline image:', error);
-      this.setSource(this.fallback);
-    } finally {
-      this.isLoading = false;
+  @HostListener('error')
+  onError(): void {
+    if (!this.hasError) {
+      this.hasError = true;
+      this.el.nativeElement.src = this.fallback;
     }
   }
 
-  private setSource(src: string): void {
-    if (this.el.nativeElement) {
-      this.el.nativeElement.src = src;
+  private updateImage(): void {
+    if (!this.imageUrl) {
+      this.el.nativeElement.src = this.fallback;
+      return;
     }
-  }
 
-  private cleanupBlobUrl(): void {
-    if (this.blobUrl) {
-      URL.revokeObjectURL(this.blobUrl);
-      this.blobUrl = null;
+    // If already a data URL or blob URL, use directly
+    if (this.imageUrl.startsWith('data:') || this.imageUrl.startsWith('blob:')) {
+      this.el.nativeElement.src = this.imageUrl;
+      return;
     }
+
+    // Convert to full URL and let Service Worker handle caching
+    const fullUrl = getImageUrl(this.imageUrl);
+    this.el.nativeElement.src = fullUrl || this.fallback;
   }
 }

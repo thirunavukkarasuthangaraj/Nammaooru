@@ -83,7 +83,7 @@ export class DataPreloadService {
 
     try {
       await this.preloadProducts();
-      await this.preloadImages();
+      // Note: Images are cached by Service Worker on-demand (faster than preloading 3000+ images)
       await this.preloadOrders();
       await this.preloadDashboard();
       await this.preloadCombos();
@@ -99,9 +99,7 @@ export class DataPreloadService {
         totalProducts: this.statusSubject.value.totalProducts,
         ordersLoaded: this.statusSubject.value.ordersLoaded,
         dashboardLoaded: true,
-        combosLoaded: this.statusSubject.value.combosLoaded,
-        imagesLoaded: this.statusSubject.value.imagesLoaded,
-        totalImages: this.statusSubject.value.totalImages
+        combosLoaded: this.statusSubject.value.combosLoaded
       });
     } catch (error: any) {
       console.error('Preload failed:', error);
@@ -131,7 +129,7 @@ export class DataPreloadService {
 
     try {
       await this.preloadProducts();
-      await this.preloadImages();
+      // Note: Images are cached by Service Worker on-demand
       await this.preloadOrders();
       await this.preloadDashboard();
       await this.preloadCombos();
@@ -145,9 +143,7 @@ export class DataPreloadService {
         totalProducts: this.statusSubject.value.totalProducts,
         ordersLoaded: this.statusSubject.value.ordersLoaded,
         dashboardLoaded: true,
-        combosLoaded: this.statusSubject.value.combosLoaded,
-        imagesLoaded: this.statusSubject.value.imagesLoaded,
-        totalImages: this.statusSubject.value.totalImages
+        combosLoaded: this.statusSubject.value.combosLoaded
       });
     } catch (error: any) {
       console.error('Force preload failed:', error);
