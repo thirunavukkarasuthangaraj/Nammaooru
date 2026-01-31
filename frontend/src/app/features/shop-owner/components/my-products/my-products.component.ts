@@ -126,16 +126,14 @@ export class MyProductsComponent implements OnInit, OnDestroy {
     this.loadProducts();
     this.loadCategories();
 
-    // Subscribe to search input with debounce for client-side filtering (like mobile app)
+    // Subscribe to search input with minimal debounce for instant client-side filtering
     this.searchSubject$.pipe(
-      debounceTime(300),
+      debounceTime(50), // Reduced from 300ms for instant feel
       distinctUntilChanged(),
       takeUntil(this.destroy$)
     ).subscribe(searchTerm => {
       this.searchTerm = searchTerm;
-      this.searching = true;
-      this.applyFilters(); // Filter locally (like mobile app does)
-      this.searching = false;
+      this.applyFilters(); // Filter locally (instant)
     });
 
     // Then also subscribe to shop context for updates
