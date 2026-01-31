@@ -32,14 +32,12 @@
     <form [formGroup]="assignmentForm" class="assignment-form">
       <div class="form-row">
         <mat-form-field appearance="outline" class="half-width">
-          <mat-label>Selling Price *</mat-label>
-          <span matPrefix>₹</span>
+          <mat-label>Selling Price (₹) *</mat-label>
           <input matInput type="number" formControlName="price" placeholder="0.00">
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="half-width">
-          <mat-label>MRP</mat-label>
-          <span matPrefix>₹</span>
+          <mat-label>MRP (₹)</mat-label>
           <input matInput type="number" formControlName="originalPrice" placeholder="Optional">
         </mat-form-field>
       </div>
@@ -51,8 +49,7 @@
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="half-width">
-          <mat-label>Cost Price</mat-label>
-          <span matPrefix>₹</span>
+          <mat-label>Cost Price (₹)</mat-label>
           <input matInput type="number" formControlName="costPrice" placeholder="Optional">
         </mat-form-field>
       </div>
