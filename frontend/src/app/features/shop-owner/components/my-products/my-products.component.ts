@@ -582,8 +582,16 @@ export class MyProductsComponent implements OnInit, OnDestroy {
       return matchesSearch && matchesCategory && matchesStatus;
     });
 
-    // Sort by ID descending (newest products first)
-    this.filteredProducts.sort((a, b) => b.id - a.id);
+    // Sort: offline products (negative IDs) first, then by ID descending
+    this.filteredProducts.sort((a, b) => {
+      const aIsOffline = a.id < 0;
+      const bIsOffline = b.id < 0;
+      // Offline products come first
+      if (aIsOffline && !bIsOffline) return -1;
+      if (!aIsOffline && bIsOffline) return 1;
+      // Within same category, sort by ID descending (newest first)
+      return b.id - a.id;
+    });
 
     this.totalProducts = this.filteredProducts.length;
 
