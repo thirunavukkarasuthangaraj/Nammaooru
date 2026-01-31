@@ -77,6 +77,10 @@ export class BulkEditComponent implements OnInit, OnDestroy {
   // Version info
   clientVersion = '';
 
+  // Offline support
+  isOffline = false;
+  lastSyncTime: Date | null = null;
+
   constructor(
     private http: HttpClient,
     private snackBar: MatSnackBar,
@@ -86,7 +90,14 @@ export class BulkEditComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.clientVersion = this.versionService.getVersion().replace('v', '');
+
+    // Set up online/offline detection
+    this.isOffline = !navigator.onLine;
+    window.addEventListener('online', this.handleOnline.bind(this));
+    window.addEventListener('offline', this.handleOffline.bind(this));
+
     this.loadProducts();
+    this.loadLastSyncTime();
 
     // Setup search with debounce
     this.searchSubject$.pipe(
@@ -99,9 +110,52 @@ export class BulkEditComponent implements OnInit, OnDestroy {
     });
   }
 
+  private handleOnline = (): void => {
+    console.log('Network online - syncing products');
+    this.isOffline = false;
+    this.snackBar.open('Back online! Syncing changes...', 'Close', { duration: 3000 });
+    this.loadProducts(true);
+  }
+
+  private handleOffline = (): void => {
+    console.log('Network offline - using cached data');
+    this.isOffline = true;
+    this.snackBar.open('You are offline. Changes will be saved locally.', 'Close', { duration: 3000 });
+  }
+
+  private async loadLastSyncTime(): Promise<void> {
+    try {
+      this.lastSyncTime = await this.offlineStorage.getProductsSyncTime(0);
+    } catch (error) {
+      console.warn('Error loading last sync time:', error);
+    }
+  }
+
+  getTimeSinceSync(): string {
+    if (!this.lastSyncTime) return 'Never synced';
+
+    const now = new Date();
+    const diffMs = now.getTime() - this.lastSyncTime.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins === 1) return '1 minute ago';
+    if (diffMins < 60) return `${diffMins} minutes ago`;
+
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours === 1) return '1 hour ago';
+    if (diffHours < 24) return `${diffHours} hours ago`;
+
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays === 1) return '1 day ago';
+    return `${diffDays} days ago`;
+  }
+
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+    window.removeEventListener('online', this.handleOnline.bind(this));
+    window.removeEventListener('offline', this.handleOffline.bind(this));
   }
 
   async loadProducts(forceRefresh: boolean = false): Promise<void> {

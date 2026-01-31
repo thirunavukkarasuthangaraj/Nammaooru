@@ -1,3 +1,36 @@
+// Offline Banner
+.offline-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+  border: 1px solid #ffb74d;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  color: #e65100;
+  font-weight: 500;
+
+  mat-icon {
+    font-size: 24px;
+    width: 24px;
+    height: 24px;
+    color: #e65100;
+  }
+
+  .offline-text {
+    flex: 1;
+  }
+
+  .sync-time {
+    font-size: 13px;
+    color: #f57c00;
+    background: rgba(255, 255, 255, 0.6);
+    padding: 4px 12px;
+    border-radius: 12px;
+  }
+}
+
 .order-management {
   padding: 20px;
   

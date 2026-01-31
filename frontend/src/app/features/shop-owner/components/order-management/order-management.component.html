@@ -1,5 +1,12 @@
 <!-- SCREEN 1: Simple Order List for Daily Operations -->
 <div class="simple-order-management">
+  <!-- Offline Indicator Banner -->
+  <div class="offline-banner" *ngIf="isOffline">
+    <mat-icon>cloud_off</mat-icon>
+    <span class="offline-text">You're offline. Showing cached data.</span>
+    <span class="sync-time" *ngIf="lastSyncTime">Last synced: {{ getTimeSinceSync() }}</span>
+  </div>
+
   <!-- Dashboard Statistics -->
   <div class="stats-dashboard">
     <div class="stat-card total">

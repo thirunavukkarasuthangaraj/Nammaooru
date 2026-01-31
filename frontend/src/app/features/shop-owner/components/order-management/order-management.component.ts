@@ -9,6 +9,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { OrderService } from '../../../../core/services/order.service';
 import { OrderAssignmentService } from '../../../../core/services/order-assignment.service';
 import { DeliveryPartnerService, DeliveryPartner } from '../../../delivery/services/delivery-partner.service';
+import { OfflineStorageService, CachedOrder } from '../../../../core/services/offline-storage.service';
 import Swal from 'sweetalert2';
 
 interface Order {
@@ -87,7 +88,11 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
     totalProfit: 0,
     topProfitableItems: [] as any[]
   };
-  
+
+  // Offline support
+  isOffline = false;
+  lastSyncTime: Date | null = null;
+
   private apiUrl = environment.apiUrl;
 
   // Assignment Modal Properties
@@ -104,11 +109,17 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
     private assignmentService: OrderAssignmentService,
     private partnerService: DeliveryPartnerService,
     private shopContext: ShopContextService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private offlineStorage: OfflineStorageService
   ) {}
 
   ngOnInit(): void {
     console.log('Order Management Component initialized');
+
+    // Set up online/offline detection
+    this.isOffline = !navigator.onLine;
+    window.addEventListener('online', () => this.handleOnline());
+    window.addEventListener('offline', () => this.handleOffline());
 
     // Try to get shop ID from localStorage first
     const storedShopId = localStorage.getItem('current_shop_id');
@@ -123,6 +134,7 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
     if (this.shopId) {
       this.loadAllData();
       this.startAutoRefresh();
+      this.loadLastSyncTime();
     }
 
     // Also try to get shop context in parallel
@@ -134,10 +146,33 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
         this.shopId = shop.id.toString();
         localStorage.setItem('current_shop_id', this.shopId);
         this.loadAllData();
+        this.loadLastSyncTime();
       } else if (!this.shopId) {
         console.error('No shop context available and no shop ID in localStorage');
       }
     });
+  }
+
+  private handleOnline(): void {
+    console.log('Network online - refreshing orders');
+    this.isOffline = false;
+    this.snackBar.open('Back online! Refreshing orders...', 'Close', { duration: 3000 });
+    this.loadAllData();
+  }
+
+  private handleOffline(): void {
+    console.log('Network offline - using cached data');
+    this.isOffline = true;
+    this.snackBar.open('You are offline. Showing cached orders.', 'Close', { duration: 3000 });
+  }
+
+  private async loadLastSyncTime(): Promise<void> {
+    if (!this.shopId) return;
+    try {
+      this.lastSyncTime = await this.offlineStorage.getOrdersCacheSyncTime(parseInt(this.shopId, 10));
+    } catch (error) {
+      console.warn('Error loading last sync time:', error);
+    }
   }
 
   ngOnDestroy(): void {
@@ -155,47 +190,99 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
   loadOrders(): void {
     console.log('=== loadOrders called ===');
     console.log('shopId:', this.shopId);
-    
+    console.log('isOffline:', this.isOffline);
+
     if (!this.shopId) {
       console.log('No shopId available, aborting load');
       return;
     }
-    
+
     this.loading = true;
+
+    // If offline, load from cache
+    if (!navigator.onLine) {
+      this.loadOrdersFromCache();
+      return;
+    }
+
     console.log('Starting to load orders for shop ID:', this.shopId);
-    
+
     // Use OrderService to load orders for this shop
     this.orderService.getOrdersByShop(this.shopId, 0, 100)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (response) => {
+        next: async (response) => {
           console.log('=== API Response received ===');
           console.log('Full API response:', response);
           console.log('Response type:', typeof response);
           console.log('Response keys:', Object.keys(response));
-          
+
           const orders = response.data.content || [];
           console.log('Extracted orders:', orders);
           console.log('Orders count:', orders.length);
-          
+
           this.categorizeOrders(orders);
           this.calculateTodayStats(orders); // Calculate stats after orders are loaded
           this.loading = false;
+          this.isOffline = false;
           console.log('=== Orders successfully loaded ===');
           console.log('Pending:', this.pendingOrders.length);
           console.log('Active:', this.activeOrders.length);
           console.log('Completed:', this.completedOrders.length);
           console.log('Today Stats:', this.todayStats);
+
+          // Cache orders for offline use
+          try {
+            await this.offlineStorage.saveOrdersCache(orders as CachedOrder[], parseInt(this.shopId!, 10));
+            this.lastSyncTime = new Date();
+            console.log('Orders cached successfully');
+          } catch (cacheError) {
+            console.warn('Error caching orders:', cacheError);
+          }
         },
-        error: (error) => {
+        error: async (error) => {
           console.error('=== API Error ===');
           console.error('Error loading orders:', error);
           console.error('Error status:', error.status);
           console.error('Error message:', error.message);
-          this.handleError('Failed to load orders: ' + (error.message || error.status));
-          this.loading = false;
+
+          // Try to load from cache on error
+          await this.loadOrdersFromCache();
         }
       });
+  }
+
+  private async loadOrdersFromCache(): Promise<void> {
+    if (!this.shopId) {
+      this.loading = false;
+      return;
+    }
+
+    console.log('Loading orders from cache...');
+    this.isOffline = true;
+
+    try {
+      const cachedOrders = await this.offlineStorage.getOrdersCache(parseInt(this.shopId, 10));
+      this.lastSyncTime = await this.offlineStorage.getOrdersCacheSyncTime(parseInt(this.shopId, 10));
+
+      if (cachedOrders && cachedOrders.length > 0) {
+        console.log('Loaded', cachedOrders.length, 'orders from cache');
+        this.categorizeOrders(cachedOrders as Order[]);
+        this.calculateTodayStats(cachedOrders as Order[]);
+        this.snackBar.open(`Showing ${cachedOrders.length} cached orders`, 'Close', { duration: 3000 });
+      } else {
+        console.log('No cached orders found');
+        this.pendingOrders = [];
+        this.activeOrders = [];
+        this.completedOrders = [];
+        this.snackBar.open('No cached orders available. Connect to internet to load orders.', 'Close', { duration: 5000 });
+      }
+    } catch (error) {
+      console.error('Error loading orders from cache:', error);
+      this.handleError('Failed to load cached orders');
+    }
+
+    this.loading = false;
   }
 
   private categorizeOrders(orders: Order[]): void {
@@ -704,4 +791,23 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
     this.markAsReady(this.activeOrders.find(o => o.id === orderId)!);
   }
 
+  getTimeSinceSync(): string {
+    if (!this.lastSyncTime) return 'Never synced';
+
+    const now = new Date();
+    const diffMs = now.getTime() - this.lastSyncTime.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins === 1) return '1 minute ago';
+    if (diffMins < 60) return `${diffMins} minutes ago`;
+
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours === 1) return '1 hour ago';
+    if (diffHours < 24) return `${diffHours} hours ago`;
+
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays === 1) return '1 day ago';
+    return `${diffDays} days ago`;
+  }
 }

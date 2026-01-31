@@ -4,6 +4,7 @@ import { AuthService } from '@core/services/auth.service';
 import { ShopService } from '@core/services/shop.service';
 import { SoundService } from '@core/services/sound.service';
 import { OrderService } from '@core/services/order.service';
+import { OfflineStorageService, CachedDashboardStats } from '@core/services/offline-storage.service';
 import { User } from '@core/models/auth.model';
 import { Observable, interval, Subscription } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
@@ -24,15 +25,22 @@ interface DashboardStats {
   selector: 'app-shop-owner-dashboard',
   template: `
     <div class="dashboard-wrapper">
+      <!-- Offline Indicator Banner -->
+      <div class="offline-banner" *ngIf="isOffline">
+        <mat-icon>cloud_off</mat-icon>
+        <span class="offline-text">You're offline. Showing cached data.</span>
+        <span class="sync-time" *ngIf="lastSyncTime">Last synced: {{ getTimeSinceSync() }}</span>
+      </div>
+
       <!-- Welcome Header -->
       <div class="welcome-section">
         <div class="welcome-content">
           <h1 class="greeting">Good {{ getGreeting() }}, {{ (currentUser$ | async)?.username }}!</h1>
           <p class="date-text">{{ getCurrentDate() }}</p>
         </div>
-        <button class="refresh-btn" (click)="refreshDashboard()">
+        <button class="refresh-btn" (click)="refreshDashboard()" [disabled]="isOffline">
           <mat-icon>refresh</mat-icon>
-          Refresh
+          {{ isOffline ? 'Offline' : 'Refresh' }}
         </button>
       </div>
 
@@ -203,6 +211,39 @@ interface DashboardStats {
     </div>
   `,
   styles: [`
+    /* Offline Banner */
+    .offline-banner {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 20px;
+      background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+      border: 1px solid #ffb74d;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      color: #e65100;
+      font-weight: 500;
+    }
+
+    .offline-banner mat-icon {
+      font-size: 24px;
+      width: 24px;
+      height: 24px;
+      color: #e65100;
+    }
+
+    .offline-banner .offline-text {
+      flex: 1;
+    }
+
+    .offline-banner .sync-time {
+      font-size: 13px;
+      color: #f57c00;
+      background: rgba(255, 255, 255, 0.6);
+      padding: 4px 12px;
+      border-radius: 12px;
+    }
+
     /* Modern Dashboard Wrapper */
     .dashboard-wrapper {
       padding: 24px;
@@ -726,6 +767,11 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
   isLoading = true;
   unreadNotificationCount = 0;
 
+  // Offline support
+  isOffline = false;
+  lastSyncTime: Date | null = null;
+  private currentShopId: number | null = null;
+
   stats: DashboardStats = {
     todayOrders: 0,
     totalOrders: 0,
@@ -745,6 +791,7 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
     private shopService: ShopService,
     private soundService: SoundService,
     private orderService: OrderService,
+    private offlineStorage: OfflineStorageService,
     private http: HttpClient,
     private router: Router
   ) {
@@ -773,12 +820,49 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    // Set up online/offline detection
+    this.isOffline = !navigator.onLine;
+    window.addEventListener('online', () => this.handleOnline());
+    window.addEventListener('offline', () => this.handleOffline());
+
     this.loadCachedStats();
     this.loadDashboardData();
     this.startAutoRefresh();
   }
 
-  private loadCachedStats(): void {
+  private handleOnline(): void {
+    console.log('Network online - refreshing dashboard');
+    this.isOffline = false;
+    this.loadDashboardData();
+  }
+
+  private handleOffline(): void {
+    console.log('Network offline - using cached data');
+    this.isOffline = true;
+  }
+
+  getTimeSinceSync(): string {
+    if (!this.lastSyncTime) return 'Never synced';
+
+    const now = new Date();
+    const diffMs = now.getTime() - this.lastSyncTime.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins === 1) return '1 minute ago';
+    if (diffMins < 60) return `${diffMins} minutes ago`;
+
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours === 1) return '1 hour ago';
+    if (diffHours < 24) return `${diffHours} hours ago`;
+
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays === 1) return '1 day ago';
+    return `${diffDays} days ago`;
+  }
+
+  private async loadCachedStats(): Promise<void> {
+    // First try localStorage for immediate display
     const cachedStats = localStorage.getItem('dashboard_stats');
     if (cachedStats) {
       try {
@@ -798,10 +882,43 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
         console.warn('Error parsing cached stats:', e);
       }
     }
+
+    // Then try IndexedDB for more persistent cache
+    const shopId = localStorage.getItem('current_shop_id');
+    if (shopId) {
+      this.currentShopId = parseInt(shopId, 10);
+      try {
+        const indexedDbCache = await this.offlineStorage.getDashboardCache(this.currentShopId);
+        if (indexedDbCache && indexedDbCache.stats) {
+          this.stats = indexedDbCache.stats;
+          this.lastSyncTime = new Date(indexedDbCache.cachedAt);
+          this.isLoading = false;
+        }
+      } catch (e) {
+        console.warn('Error loading IndexedDB cache:', e);
+      }
+    }
   }
 
   private saveCachedStats(): void {
+    // Save to localStorage for immediate access
     localStorage.setItem('dashboard_stats', JSON.stringify(this.stats));
+
+    // Save to IndexedDB for offline persistence
+    if (this.currentShopId) {
+      const cacheData: CachedDashboardStats = {
+        key: `dashboard_stats_${this.currentShopId}`,
+        shopId: this.currentShopId,
+        stats: this.stats,
+        cachedAt: new Date().toISOString()
+      };
+      this.offlineStorage.saveDashboardCache(cacheData)
+        .then(() => {
+          this.lastSyncTime = new Date();
+          console.log('Dashboard stats cached to IndexedDB');
+        })
+        .catch(err => console.warn('Error saving to IndexedDB:', err));
+    }
   }
 
   ngOnDestroy(): void {
@@ -811,6 +928,14 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
   }
 
   loadDashboardData(): void {
+    // If offline, use cached data only
+    if (!navigator.onLine) {
+      console.log('Offline - using cached dashboard data');
+      this.isOffline = true;
+      this.isLoading = false;
+      return;
+    }
+
     this.isLoading = true;
 
     this.http.get<any>(`${environment.apiUrl}/shops/my-shop`, { withCredentials: true })
@@ -819,6 +944,7 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
           if (response.data && response.data.shopId) {
             if (response.data.id) {
               localStorage.setItem('current_shop_id', response.data.id.toString());
+              this.currentShopId = response.data.id;
             }
             localStorage.setItem('current_shop_string_id', response.data.shopId);
             this.fetchDashboardStats(response.data.shopId);
@@ -827,10 +953,12 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
             this.isLoading = false;
           }
         },
-        error: (error) => {
+        error: async (error) => {
           console.error('Error fetching shop:', error);
+          this.isOffline = true;
           const cachedStringId = localStorage.getItem('current_shop_string_id');
           if (cachedStringId) {
+            // Try to fetch stats, will use cached data on failure
             this.fetchDashboardStats(cachedStringId);
           } else {
             this.isLoading = false;
@@ -840,6 +968,14 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
   }
 
   private fetchDashboardStats(shopId: string): void {
+    // If offline, rely on cached data only
+    if (!navigator.onLine) {
+      console.log('Offline - skipping API call for dashboard stats');
+      this.isOffline = true;
+      this.isLoading = false;
+      return;
+    }
+
     this.http.get<any>(`${environment.apiUrl}/shops/${shopId}/dashboard`, { withCredentials: true })
       .subscribe({
         next: (response) => {
@@ -859,6 +995,7 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
             };
 
             this.unreadNotificationCount = this.stats.pendingOrders;
+            this.isOffline = false;
 
             if (this.stats.pendingOrders > this.previousOrderCount && this.previousOrderCount > 0) {
               this.soundService.playNotificationSound();
@@ -870,6 +1007,8 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
           this.isLoading = false;
         },
         error: () => {
+          console.log('API error - showing cached data');
+          this.isOffline = true;
           this.isLoading = false;
         }
       });

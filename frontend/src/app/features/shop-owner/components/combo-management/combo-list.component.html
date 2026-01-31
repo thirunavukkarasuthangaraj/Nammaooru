@@ -1,4 +1,11 @@
 <div class="combo-container">
+  <!-- Offline Indicator Banner -->
+  <div class="offline-banner" *ngIf="isOffline">
+    <mat-icon>cloud_off</mat-icon>
+    <span class="offline-text">You're offline. Showing cached data. Create/Edit disabled.</span>
+    <span class="sync-time" *ngIf="lastSyncTime">Last synced: {{ getTimeSinceSync() }}</span>
+  </div>
+
   <div class="page-header">
     <div class="header-left">
       <h1>
@@ -7,7 +14,7 @@
       </h1>
       <p class="subtitle">Create combo offers to boost sales</p>
     </div>
-    <button mat-raised-button color="primary" (click)="openCreateDialog()">
+    <button mat-raised-button color="primary" (click)="openCreateDialog()" [disabled]="isOffline">
       <mat-icon>add</mat-icon>
       Create Combo
     </button>

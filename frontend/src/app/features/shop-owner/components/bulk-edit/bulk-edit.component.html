@@ -1,4 +1,11 @@
 <div class="bulk-edit-container">
+  <!-- Offline Indicator Banner -->
+  <div class="offline-banner" *ngIf="isOffline">
+    <mat-icon>cloud_off</mat-icon>
+    <span class="offline-text">You're offline. Changes will be saved locally and synced when online.</span>
+    <span class="sync-time" *ngIf="lastSyncTime">Last synced: {{ getTimeSinceSync() }}</span>
+  </div>
+
   <!-- Header Section -->
   <div class="bulk-edit-header">
     <div class="header-left">

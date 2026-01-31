@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { OfflineStorageService, CachedProduct } from './offline-storage.service';
+import { OfflineStorageService, CachedProduct, CachedOrder, CachedDashboardStats, CachedCombo } from './offline-storage.service';
 import { AuthService } from './auth.service';
 
 export interface PreloadStatus {
@@ -11,6 +11,9 @@ export interface PreloadStatus {
   message: string;
   productsLoaded: number;
   totalProducts: number;
+  ordersLoaded?: number;
+  dashboardLoaded?: boolean;
+  combosLoaded?: number;
   error?: string;
 }
 
@@ -77,6 +80,9 @@ export class DataPreloadService {
 
     try {
       await this.preloadProducts();
+      await this.preloadOrders();
+      await this.preloadDashboard();
+      await this.preloadCombos();
 
       // Mark preload complete
       localStorage.setItem(this.PRODUCTS_CACHE_KEY, Date.now().toString());
@@ -86,7 +92,10 @@ export class DataPreloadService {
         progress: 100,
         message: 'Preload complete',
         productsLoaded: this.statusSubject.value.productsLoaded,
-        totalProducts: this.statusSubject.value.totalProducts
+        totalProducts: this.statusSubject.value.totalProducts,
+        ordersLoaded: this.statusSubject.value.ordersLoaded,
+        dashboardLoaded: true,
+        combosLoaded: this.statusSubject.value.combosLoaded
       });
     } catch (error: any) {
       console.error('Preload failed:', error);
@@ -109,13 +118,16 @@ export class DataPreloadService {
     this.updateStatus({
       isLoading: true,
       progress: 0,
-      message: 'Refreshing products...',
+      message: 'Refreshing data...',
       productsLoaded: 0,
       totalProducts: 0
     });
 
     try {
       await this.preloadProducts();
+      await this.preloadOrders();
+      await this.preloadDashboard();
+      await this.preloadCombos();
       localStorage.setItem(this.PRODUCTS_CACHE_KEY, Date.now().toString());
 
       this.updateStatus({
@@ -123,7 +135,10 @@ export class DataPreloadService {
         progress: 100,
         message: 'Refresh complete',
         productsLoaded: this.statusSubject.value.productsLoaded,
-        totalProducts: this.statusSubject.value.totalProducts
+        totalProducts: this.statusSubject.value.totalProducts,
+        ordersLoaded: this.statusSubject.value.ordersLoaded,
+        dashboardLoaded: true,
+        combosLoaded: this.statusSubject.value.combosLoaded
       });
     } catch (error: any) {
       console.error('Force preload failed:', error);
@@ -231,6 +246,158 @@ export class DataPreloadService {
     // Save to IndexedDB
     await this.offlineStorage.saveProducts(cachedProducts, shopId);
     console.log(`Cached ${cachedProducts.length} products to IndexedDB`);
+  }
+
+  /**
+   * Preload orders from API and cache to IndexedDB
+   * Fetches the last 100 orders for offline viewing
+   */
+  private async preloadOrders(): Promise<void> {
+    console.log('Starting orders preload...');
+
+    this.updateStatus({
+      message: 'Loading orders...'
+    });
+
+    try {
+      // Get shop ID
+      const shopId = localStorage.getItem('current_shop_id');
+      if (!shopId) {
+        console.log('No shop ID found, skipping orders preload');
+        return;
+      }
+
+      const response: any = await this.http.get<any>(
+        `${this.apiUrl}/orders/shop/${shopId}?page=0&size=100`
+      ).toPromise();
+
+      let orders: CachedOrder[] = [];
+      if (response?.data?.content) {
+        orders = response.data.content;
+      } else if (Array.isArray(response?.data)) {
+        orders = response.data;
+      } else if (Array.isArray(response)) {
+        orders = response;
+      }
+
+      // Save to IndexedDB
+      await this.offlineStorage.saveOrdersCache(orders, parseInt(shopId, 10));
+      console.log(`Cached ${orders.length} orders to IndexedDB`);
+
+      this.updateStatus({
+        ordersLoaded: orders.length
+      });
+    } catch (error) {
+      console.warn('Error preloading orders:', error);
+      // Don't fail the entire preload if orders fail
+    }
+  }
+
+  /**
+   * Preload dashboard stats from API and cache to IndexedDB
+   */
+  private async preloadDashboard(): Promise<void> {
+    console.log('Starting dashboard preload...');
+
+    this.updateStatus({
+      message: 'Loading dashboard...'
+    });
+
+    try {
+      // Get shop ID
+      const shopId = localStorage.getItem('current_shop_id');
+      const shopStringId = localStorage.getItem('current_shop_string_id');
+
+      if (!shopId && !shopStringId) {
+        console.log('No shop ID found, skipping dashboard preload');
+        return;
+      }
+
+      // Get dashboard stats
+      const response: any = await this.http.get<any>(
+        `${this.apiUrl}/shops/${shopStringId || shopId}/dashboard`,
+        { withCredentials: true }
+      ).toPromise();
+
+      if (response?.statusCode === '0000' && response?.data) {
+        const orderMetrics = response.data.orderMetrics || {};
+        const productMetrics = response.data.productMetrics || {};
+
+        const dashboardCache: CachedDashboardStats = {
+          key: `dashboard_stats_${shopId}`,
+          shopId: parseInt(shopId!, 10),
+          stats: {
+            todayOrders: orderMetrics.todayOrders || 0,
+            totalOrders: orderMetrics.totalOrders || 0,
+            pendingOrders: orderMetrics.pendingOrders || 0,
+            todayRevenue: orderMetrics.todayRevenue || 0,
+            monthlyRevenue: orderMetrics.monthlyRevenue || 0,
+            totalProducts: productMetrics.totalProducts || 0,
+            lowStockProducts: productMetrics.lowStockProducts || 0,
+            outOfStockProducts: productMetrics.outOfStockProducts || 0,
+          },
+          cachedAt: new Date().toISOString()
+        };
+
+        // Save to IndexedDB
+        await this.offlineStorage.saveDashboardCache(dashboardCache);
+        console.log('Cached dashboard stats to IndexedDB');
+
+        // Also save to localStorage for quick access
+        localStorage.setItem('dashboard_stats', JSON.stringify(dashboardCache.stats));
+
+        this.updateStatus({
+          dashboardLoaded: true
+        });
+      }
+    } catch (error) {
+      console.warn('Error preloading dashboard:', error);
+      // Don't fail the entire preload if dashboard fails
+    }
+  }
+
+  /**
+   * Preload combos from API and cache to IndexedDB
+   */
+  private async preloadCombos(): Promise<void> {
+    console.log('Starting combos preload...');
+
+    this.updateStatus({
+      message: 'Loading combos...'
+    });
+
+    try {
+      // Get shop ID
+      const shopId = localStorage.getItem('current_shop_id');
+      if (!shopId) {
+        console.log('No shop ID found, skipping combos preload');
+        return;
+      }
+
+      const response: any = await this.http.get<any>(
+        `${this.apiUrl}/shops/${shopId}/combos`
+      ).toPromise();
+
+      let combos: CachedCombo[] = [];
+      if (response?.data?.content) {
+        combos = response.data.content;
+      } else if (Array.isArray(response?.data)) {
+        combos = response.data;
+      } else if (Array.isArray(response)) {
+        combos = response;
+      }
+
+      // Save to IndexedDB
+      await this.offlineStorage.saveCombosCache(combos, parseInt(shopId, 10));
+      console.log(`Cached ${combos.length} combos to IndexedDB`);
+
+      this.updateStatus({
+        combosLoaded: combos.length
+      });
+    } catch (error) {
+      console.warn('Error preloading combos:', error);
+      // Don't fail the entire preload if combos fail
+    }
   }
 
   private updateStatus(status: Partial<PreloadStatus>): void {

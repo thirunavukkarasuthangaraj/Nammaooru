@@ -97,6 +97,84 @@ export interface OfflineEdit {
   syncError?: string;
 }
 
+// Cached order from server (for viewing order history offline)
+export interface CachedOrder {
+  id: number;
+  orderNumber: string;
+  status: string;
+  customerName: string;
+  customerPhone: string;
+  totalAmount: number;
+  subtotal: number;
+  taxAmount: number;
+  deliveryFee?: number;
+  discountAmount?: number;
+  paymentMethod: string;
+  paymentStatus: string;
+  deliveryAddress?: any;
+  specialInstructions?: string;
+  createdAt: string;
+  updatedAt: string;
+  orderItems: CachedOrderItem[];
+  items?: CachedOrderItem[];  // Alternative property name
+  shopId: number;
+}
+
+export interface CachedOrderItem {
+  id: number;
+  productName: string;
+  name?: string;  // Alternative property name
+  quantity: number;
+  unitPrice: number;
+  price?: number;  // Alternative property name
+  totalPrice: number;
+}
+
+// Cached dashboard statistics (for viewing dashboard offline)
+export interface CachedDashboardStats {
+  key: string;  // 'dashboard_stats_{shopId}'
+  shopId: number;
+  stats: {
+    todayOrders: number;
+    totalOrders: number;
+    pendingOrders: number;
+    todayRevenue: number;
+    monthlyRevenue: number;
+    totalProducts: number;
+    lowStockProducts: number;
+    outOfStockProducts: number;
+  };
+  cachedAt: string;
+}
+
+// Cached combo for offline viewing
+export interface CachedComboItem {
+  id: number;
+  shopProductId: number;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  imageUrl?: string;
+}
+
+export interface CachedCombo {
+  id: number;
+  shopId: number;
+  name: string;
+  nameTamil?: string;
+  description?: string;
+  originalPrice: number;
+  comboPrice: number;
+  discountPercentage: number;
+  startDate: string;
+  endDate: string;
+  active?: boolean;
+  isActive?: boolean;
+  bannerImageUrl?: string;
+  items: CachedComboItem[];
+  itemCount: number;
+}
+
 // Offline product creation (for adding new products when offline)
 export interface OfflineProductCreation {
   offlineProductId: string;  // Temporary ID for offline product
@@ -136,12 +214,15 @@ export interface OfflineProductCreation {
 }
 
 const DB_NAME = 'NammaOoruPOS';
-const DB_VERSION = 3;  // Incremented for offlineProductCreations store
+const DB_VERSION = 6;  // Incremented for combos cache
 const PRODUCTS_STORE = 'products';
 const ORDERS_STORE = 'offlineOrders';
 const EDITS_STORE = 'offlineEdits';
 const PRODUCT_CREATIONS_STORE = 'offlineProductCreations';
 const SYNC_META_STORE = 'syncMeta';
+const ORDERS_CACHE_STORE = 'ordersCache';      // Server orders for viewing
+const DASHBOARD_CACHE_STORE = 'dashboardCache'; // Dashboard statistics
+const COMBOS_CACHE_STORE = 'combosCache';      // Combos for viewing
 
 @Injectable({
   providedIn: 'root'
@@ -183,6 +264,7 @@ export class OfflineStorageService {
 
         request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
+        const oldVersion = event.oldVersion;
 
         // Products store - indexed by id, barcode, sku for fast lookup
         if (!db.objectStoreNames.contains(PRODUCTS_STORE)) {
@@ -190,6 +272,22 @@ export class OfflineStorageService {
           productStore.createIndex('barcode', 'barcode', { unique: false });
           productStore.createIndex('sku', 'sku', { unique: false });
           productStore.createIndex('name', 'name', { unique: false });
+          productStore.createIndex('barcode1', 'barcode1', { unique: false });
+          productStore.createIndex('barcode2', 'barcode2', { unique: false });
+          productStore.createIndex('barcode3', 'barcode3', { unique: false });
+        } else if (oldVersion < 4) {
+          // Add new indexes to existing store
+          const transaction = (event.target as IDBOpenDBRequest).transaction!;
+          const productStore = transaction.objectStore(PRODUCTS_STORE);
+          if (!productStore.indexNames.contains('barcode1')) {
+            productStore.createIndex('barcode1', 'barcode1', { unique: false });
+          }
+          if (!productStore.indexNames.contains('barcode2')) {
+            productStore.createIndex('barcode2', 'barcode2', { unique: false });
+          }
+          if (!productStore.indexNames.contains('barcode3')) {
+            productStore.createIndex('barcode3', 'barcode3', { unique: false });
+          }
         }
 
         // Offline orders store
@@ -219,6 +317,26 @@ export class OfflineStorageService {
         // Sync metadata store
         if (!db.objectStoreNames.contains(SYNC_META_STORE)) {
           db.createObjectStore(SYNC_META_STORE, { keyPath: 'key' });
+        }
+
+        // Orders cache store (for viewing order history offline)
+        if (!db.objectStoreNames.contains(ORDERS_CACHE_STORE)) {
+          const ordersCacheStore = db.createObjectStore(ORDERS_CACHE_STORE, { keyPath: 'id' });
+          ordersCacheStore.createIndex('shopId', 'shopId', { unique: false });
+          ordersCacheStore.createIndex('status', 'status', { unique: false });
+          ordersCacheStore.createIndex('createdAt', 'createdAt', { unique: false });
+          ordersCacheStore.createIndex('orderNumber', 'orderNumber', { unique: false });
+        }
+
+        // Dashboard cache store (for viewing dashboard offline)
+        if (!db.objectStoreNames.contains(DASHBOARD_CACHE_STORE)) {
+          db.createObjectStore(DASHBOARD_CACHE_STORE, { keyPath: 'key' });
+        }
+
+        // Combos cache store (for viewing combos offline)
+        if (!db.objectStoreNames.contains(COMBOS_CACHE_STORE)) {
+          const combosCacheStore = db.createObjectStore(COMBOS_CACHE_STORE, { keyPath: 'id' });
+          combosCacheStore.createIndex('shopId', 'shopId', { unique: false });
         }
       };
       } catch (e) {
@@ -324,18 +442,113 @@ export class OfflineStorageService {
   }
 
   /**
-   * Find product by barcode
+   * Get product count without loading all data
    */
-  async findByBarcode(barcode: string): Promise<CachedProduct | null> {
+  async getProductCount(): Promise<number> {
     const db = await this.getDB();
     const transaction = db.transaction(PRODUCTS_STORE, 'readonly');
     const store = transaction.objectStore(PRODUCTS_STORE);
-    const index = store.index('barcode');
 
     return new Promise((resolve, reject) => {
-      const request = index.get(barcode);
-      request.onsuccess = () => resolve(request.result || null);
+      const request = store.count();
+      request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Get products with pagination using cursor (memory efficient)
+   */
+  async getProductsPage(page: number, pageSize: number): Promise<{ products: CachedProduct[], total: number }> {
+    const db = await this.getDB();
+    const transaction = db.transaction(PRODUCTS_STORE, 'readonly');
+    const store = transaction.objectStore(PRODUCTS_STORE);
+
+    // Get total count first
+    const total = await new Promise<number>((resolve, reject) => {
+      const countRequest = store.count();
+      countRequest.onsuccess = () => resolve(countRequest.result);
+      countRequest.onerror = () => reject(countRequest.error);
+    });
+
+    // Use cursor to skip and limit
+    const skip = page * pageSize;
+    const products: CachedProduct[] = [];
+
+    return new Promise((resolve, reject) => {
+      let skipped = 0;
+      const request = store.openCursor();
+
+      request.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+
+        if (cursor) {
+          if (skipped < skip) {
+            skipped++;
+            cursor.continue();
+          } else if (products.length < pageSize) {
+            products.push(cursor.value);
+            cursor.continue();
+          } else {
+            resolve({ products, total });
+          }
+        } else {
+          resolve({ products, total });
+        }
+      };
+
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Find product by barcode - searches all barcode fields using indexes
+   */
+  async findByBarcode(barcode: string): Promise<CachedProduct | null> {
+    if (!barcode || barcode.trim() === '') return null;
+
+    const db = await this.getDB();
+    const transaction = db.transaction(PRODUCTS_STORE, 'readonly');
+    const store = transaction.objectStore(PRODUCTS_STORE);
+    const trimmedBarcode = barcode.trim();
+
+    // Try each barcode index in parallel for faster lookup
+    const indexNames = ['barcode', 'barcode1', 'barcode2', 'barcode3', 'sku'];
+
+    return new Promise((resolve, reject) => {
+      let found = false;
+      let completed = 0;
+
+      for (const indexName of indexNames) {
+        if (!store.indexNames.contains(indexName)) {
+          completed++;
+          if (completed === indexNames.length && !found) {
+            resolve(null);
+          }
+          continue;
+        }
+
+        const index = store.index(indexName);
+        const request = index.get(trimmedBarcode);
+
+        request.onsuccess = () => {
+          if (!found && request.result) {
+            found = true;
+            resolve(request.result);
+          } else {
+            completed++;
+            if (completed === indexNames.length && !found) {
+              resolve(null);
+            }
+          }
+        };
+        request.onerror = () => {
+          completed++;
+          if (completed === indexNames.length && !found) {
+            resolve(null);
+          }
+        };
+      }
     });
   }
 
@@ -356,21 +569,58 @@ export class OfflineStorageService {
   }
 
   /**
-   * Search products by name (local search)
+   * Search products by name/barcode using cursor (memory efficient)
+   * @param query Search query
+   * @param limit Maximum results to return (default 50)
    */
-  async searchProducts(query: string): Promise<CachedProduct[]> {
-    const products = await this.getProducts();
-    const lowerQuery = query.toLowerCase();
+  async searchProducts(query: string, limit: number = 50): Promise<CachedProduct[]> {
+    if (!query || query.trim() === '') return [];
 
-    return products.filter(p =>
-      p.name.toLowerCase().includes(lowerQuery) ||
-      (p.nameTamil && p.nameTamil.toLowerCase().includes(lowerQuery)) ||
-      (p.sku && p.sku.toLowerCase().includes(lowerQuery)) ||
-      (p.barcode && p.barcode.toLowerCase().includes(lowerQuery)) ||
-      (p.barcode1 && p.barcode1.toLowerCase().includes(lowerQuery)) ||
-      (p.barcode2 && p.barcode2.toLowerCase().includes(lowerQuery)) ||
-      (p.barcode3 && p.barcode3.toLowerCase().includes(lowerQuery))
-    );
+    const lowerQuery = query.toLowerCase().trim();
+
+    // First, try exact barcode match using indexes (fastest)
+    const exactMatch = await this.findByBarcode(query.trim());
+    if (exactMatch) {
+      return [exactMatch];
+    }
+
+    // For partial matches, use cursor-based search with early termination
+    const db = await this.getDB();
+    const transaction = db.transaction(PRODUCTS_STORE, 'readonly');
+    const store = transaction.objectStore(PRODUCTS_STORE);
+
+    return new Promise((resolve, reject) => {
+      const results: CachedProduct[] = [];
+      const request = store.openCursor();
+
+      request.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+
+        if (cursor && results.length < limit) {
+          const p = cursor.value as CachedProduct;
+
+          // Check if product matches search query
+          const matches =
+            p.name.toLowerCase().includes(lowerQuery) ||
+            (p.nameTamil && p.nameTamil.toLowerCase().includes(lowerQuery)) ||
+            (p.sku && p.sku.toLowerCase().includes(lowerQuery)) ||
+            (p.barcode && p.barcode.toLowerCase().includes(lowerQuery)) ||
+            (p.barcode1 && p.barcode1.toLowerCase().includes(lowerQuery)) ||
+            (p.barcode2 && p.barcode2.toLowerCase().includes(lowerQuery)) ||
+            (p.barcode3 && p.barcode3.toLowerCase().includes(lowerQuery));
+
+          if (matches) {
+            results.push(p);
+          }
+
+          cursor.continue();
+        } else {
+          resolve(results);
+        }
+      };
+
+      request.onerror = () => reject(request.error);
+    });
   }
 
   /**
@@ -412,12 +662,31 @@ export class OfflineStorageService {
   }
 
   /**
-   * Get all pending (unsynced) orders
+   * Get all pending (unsynced) orders using cursor
    */
   async getPendingOrders(): Promise<OfflineOrder[]> {
-    // Get all orders and filter - IndexedDB doesnt support boolean keys
-    const allOrders = await this.getAllOfflineOrders();
-    return allOrders.filter(order => order.synced === false);
+    const db = await this.getDB();
+    const transaction = db.transaction(ORDERS_STORE, 'readonly');
+    const store = transaction.objectStore(ORDERS_STORE);
+
+    return new Promise((resolve, reject) => {
+      const results: OfflineOrder[] = [];
+      const request = store.openCursor();
+
+      request.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+        if (cursor) {
+          const order = cursor.value as OfflineOrder;
+          if (order.synced === false) {
+            results.push(order);
+          }
+          cursor.continue();
+        } else {
+          resolve(results);
+        }
+      };
+      request.onerror = () => reject(request.error);
+    });
   }
 
   /**
@@ -504,11 +773,31 @@ export class OfflineStorageService {
   }
 
   /**
-   * Get all pending (unsynced) edits
+   * Get all pending (unsynced) edits using cursor
    */
   async getPendingEdits(): Promise<OfflineEdit[]> {
-    const allEdits = await this.getAllOfflineEdits();
-    return allEdits.filter(edit => edit.synced === false);
+    const db = await this.getDB();
+    const transaction = db.transaction(EDITS_STORE, 'readonly');
+    const store = transaction.objectStore(EDITS_STORE);
+
+    return new Promise((resolve, reject) => {
+      const results: OfflineEdit[] = [];
+      const request = store.openCursor();
+
+      request.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+        if (cursor) {
+          const edit = cursor.value as OfflineEdit;
+          if (edit.synced === false) {
+            results.push(edit);
+          }
+          cursor.continue();
+        } else {
+          resolve(results);
+        }
+      };
+      request.onerror = () => reject(request.error);
+    });
   }
 
   /**
@@ -717,55 +1006,128 @@ export class OfflineStorageService {
 
   /**
    * Check if a barcode already exists in products or pending creations
-   * Checks against: SKU, master barcode, barcode1, barcode2, barcode3
+   * Uses indexes for fast lookup instead of loading all products
    */
   async isBarcodeExists(barcode: string, excludeProductId?: number): Promise<boolean> {
     if (!barcode || barcode.trim() === '') return false;
 
-    const trimmedBarcode = barcode.trim().toLowerCase();
+    const trimmedBarcode = barcode.trim();
 
-    // Check in cached products (including SKU)
-    const products = await this.getProducts();
-    const existsInProducts = products.some(p => {
-      if (excludeProductId && p.id === excludeProductId) return false;
-      return (
-        (p.sku && p.sku.toLowerCase() === trimmedBarcode) ||
-        (p.barcode && p.barcode.toLowerCase() === trimmedBarcode) ||
-        (p.barcode1 && p.barcode1.toLowerCase() === trimmedBarcode) ||
-        (p.barcode2 && p.barcode2.toLowerCase() === trimmedBarcode) ||
-        (p.barcode3 && p.barcode3.toLowerCase() === trimmedBarcode)
-      );
-    });
-
+    // Check in cached products using indexes (fast)
+    const existsInProducts = await this.findProductByBarcodeExcluding(trimmedBarcode, excludeProductId);
     if (existsInProducts) return true;
 
-    // Check in pending offline creations
-    // If excludeProductId is provided, also skip pending creations that match
-    // (the product being edited might be in the pending creations store)
-    const pendingCreations = await this.getPendingProductCreations();
-    const existsInPending = pendingCreations.some(c => {
-      // Skip if this pending creation is for the product being edited
-      // Match by checking if the excluded product's barcodes overlap with this creation's barcodes
-      if (excludeProductId) {
-        const excludedProduct = products.find(p => p.id === excludeProductId);
-        if (excludedProduct) {
-          const excludedBarcodes = [excludedProduct.barcode1, excludedProduct.barcode2, excludedProduct.barcode3]
-            .filter(b => b).map(b => b!.toLowerCase());
-          const creationBarcodes = [c.barcode1, c.barcode2, c.barcode3]
-            .filter(b => b).map(b => b!.toLowerCase());
-          const isMatch = creationBarcodes.some(cb => excludedBarcodes.includes(cb));
-          if (isMatch) return false;
-        }
-      }
-      return (
-        (c.sku && c.sku.toLowerCase() === trimmedBarcode) ||
-        (c.barcode1 && c.barcode1.toLowerCase() === trimmedBarcode) ||
-        (c.barcode2 && c.barcode2.toLowerCase() === trimmedBarcode) ||
-        (c.barcode3 && c.barcode3.toLowerCase() === trimmedBarcode)
-      );
-    });
-
+    // Check in pending offline creations using cursor (smaller dataset)
+    const existsInPending = await this.isBarcodeInPendingCreations(trimmedBarcode, excludeProductId);
     return existsInPending;
+  }
+
+  /**
+   * Find product by barcode using indexes, excluding a specific product ID
+   */
+  private async findProductByBarcodeExcluding(barcode: string, excludeProductId?: number): Promise<boolean> {
+    const db = await this.getDB();
+    const transaction = db.transaction(PRODUCTS_STORE, 'readonly');
+    const store = transaction.objectStore(PRODUCTS_STORE);
+    const lowerBarcode = barcode.toLowerCase();
+
+    const indexNames = ['barcode', 'barcode1', 'barcode2', 'barcode3', 'sku'];
+
+    for (const indexName of indexNames) {
+      if (!store.indexNames.contains(indexName)) continue;
+
+      const found = await new Promise<boolean>((resolve) => {
+        const index = store.index(indexName);
+        const request = index.openCursor(IDBKeyRange.only(barcode));
+
+        request.onsuccess = (event) => {
+          const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+          if (cursor) {
+            const product = cursor.value as CachedProduct;
+            if (!excludeProductId || product.id !== excludeProductId) {
+              resolve(true);
+              return;
+            }
+            cursor.continue();
+          } else {
+            resolve(false);
+          }
+        };
+        request.onerror = () => resolve(false);
+      });
+
+      if (found) return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Check if barcode exists in pending product creations
+   */
+  private async isBarcodeInPendingCreations(barcode: string, excludeProductId?: number): Promise<boolean> {
+    const db = await this.getDB();
+    const transaction = db.transaction([PRODUCT_CREATIONS_STORE, PRODUCTS_STORE], 'readonly');
+    const store = transaction.objectStore(PRODUCT_CREATIONS_STORE);
+    const lowerBarcode = barcode.toLowerCase();
+
+    // Get excluded product's barcodes if needed
+    let excludedBarcodes: string[] = [];
+    if (excludeProductId) {
+      const productStore = transaction.objectStore(PRODUCTS_STORE);
+      const excludedProduct = await new Promise<CachedProduct | null>((resolve) => {
+        const req = productStore.get(excludeProductId);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => resolve(null);
+      });
+      if (excludedProduct) {
+        excludedBarcodes = [excludedProduct.barcode1, excludedProduct.barcode2, excludedProduct.barcode3]
+          .filter(b => b).map(b => b!.toLowerCase());
+      }
+    }
+
+    return new Promise((resolve) => {
+      const request = store.openCursor();
+
+      request.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+        if (cursor) {
+          const c = cursor.value as OfflineProductCreation;
+
+          // Skip synced creations
+          if (c.synced) {
+            cursor.continue();
+            return;
+          }
+
+          // Skip if this creation matches the excluded product
+          if (excludedBarcodes.length > 0) {
+            const creationBarcodes = [c.barcode1, c.barcode2, c.barcode3]
+              .filter(b => b).map(b => b!.toLowerCase());
+            if (creationBarcodes.some(cb => excludedBarcodes.includes(cb))) {
+              cursor.continue();
+              return;
+            }
+          }
+
+          // Check if barcode matches
+          if (
+            (c.sku && c.sku.toLowerCase() === lowerBarcode) ||
+            (c.barcode1 && c.barcode1.toLowerCase() === lowerBarcode) ||
+            (c.barcode2 && c.barcode2.toLowerCase() === lowerBarcode) ||
+            (c.barcode3 && c.barcode3.toLowerCase() === lowerBarcode)
+          ) {
+            resolve(true);
+            return;
+          }
+
+          cursor.continue();
+        } else {
+          resolve(false);
+        }
+      };
+      request.onerror = () => resolve(false);
+    });
   }
 
   /**
@@ -845,11 +1207,31 @@ export class OfflineStorageService {
   }
 
   /**
-   * Get all pending (unsynced) product creations
+   * Get all pending (unsynced) product creations using cursor
    */
   async getPendingProductCreations(): Promise<OfflineProductCreation[]> {
-    const allCreations = await this.getAllOfflineProductCreations();
-    return allCreations.filter(creation => creation.synced === false);
+    const db = await this.getDB();
+    const transaction = db.transaction(PRODUCT_CREATIONS_STORE, 'readonly');
+    const store = transaction.objectStore(PRODUCT_CREATIONS_STORE);
+
+    return new Promise((resolve, reject) => {
+      const results: OfflineProductCreation[] = [];
+      const request = store.openCursor();
+
+      request.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+        if (cursor) {
+          const creation = cursor.value as OfflineProductCreation;
+          if (creation.synced === false) {
+            results.push(creation);
+          }
+          cursor.continue();
+        } else {
+          resolve(results);
+        }
+      };
+      request.onerror = () => reject(request.error);
+    });
   }
 
   /**
@@ -1078,5 +1460,276 @@ export class OfflineStorageService {
         (p.barcode3 && p.barcode3.toLowerCase() === trimmedBarcode)
       )
     );
+  }
+
+  // ==================== ORDERS CACHE (for offline viewing) ====================
+
+  /**
+   * Save orders to cache for offline viewing
+   */
+  async saveOrdersCache(orders: CachedOrder[], shopId: number): Promise<void> {
+    const db = await this.getDB();
+    const transaction = db.transaction([ORDERS_CACHE_STORE, SYNC_META_STORE], 'readwrite');
+    const store = transaction.objectStore(ORDERS_CACHE_STORE);
+    const metaStore = transaction.objectStore(SYNC_META_STORE);
+
+    // Clear old orders for this shop first
+    const index = store.index('shopId');
+    const cursorRequest = index.openCursor(IDBKeyRange.only(shopId));
+
+    await new Promise<void>((resolve, reject) => {
+      cursorRequest.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+        if (cursor) {
+          store.delete(cursor.primaryKey);
+          cursor.continue();
+        } else {
+          resolve();
+        }
+      };
+      cursorRequest.onerror = () => reject(cursorRequest.error);
+    });
+
+    // Add new orders
+    for (const order of orders) {
+      const orderWithShop = { ...order, shopId };
+      store.put(orderWithShop);
+    }
+
+    // Update sync timestamp
+    metaStore.put({
+      key: `orders_cache_sync_${shopId}`,
+      timestamp: new Date().toISOString(),
+      count: orders.length
+    });
+
+    return new Promise((resolve, reject) => {
+      transaction.oncomplete = () => {
+        console.log(`Cached ${orders.length} orders for shop ${shopId}`);
+        resolve();
+      };
+      transaction.onerror = () => reject(transaction.error);
+    });
+  }
+
+  /**
+   * Get cached orders for offline viewing
+   */
+  async getOrdersCache(shopId: number): Promise<CachedOrder[]> {
+    const db = await this.getDB();
+    const transaction = db.transaction(ORDERS_CACHE_STORE, 'readonly');
+    const store = transaction.objectStore(ORDERS_CACHE_STORE);
+    const index = store.index('shopId');
+
+    return new Promise((resolve, reject) => {
+      const request = index.getAll(IDBKeyRange.only(shopId));
+      request.onsuccess = () => {
+        // Sort by createdAt descending (newest first)
+        const orders = (request.result || []).sort((a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        resolve(orders);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Get last sync timestamp for orders cache
+   */
+  async getOrdersCacheSyncTime(shopId: number): Promise<Date | null> {
+    const db = await this.getDB();
+    const transaction = db.transaction(SYNC_META_STORE, 'readonly');
+    const store = transaction.objectStore(SYNC_META_STORE);
+
+    return new Promise((resolve, reject) => {
+      const request = store.get(`orders_cache_sync_${shopId}`);
+      request.onsuccess = () => {
+        const result = request.result;
+        resolve(result ? new Date(result.timestamp) : null);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Update a single cached order status
+   */
+  async updateCachedOrderStatus(orderId: number, status: string): Promise<void> {
+    const db = await this.getDB();
+    const transaction = db.transaction(ORDERS_CACHE_STORE, 'readwrite');
+    const store = transaction.objectStore(ORDERS_CACHE_STORE);
+
+    return new Promise((resolve, reject) => {
+      const getRequest = store.get(orderId);
+      getRequest.onsuccess = () => {
+        const order = getRequest.result;
+        if (order) {
+          order.status = status;
+          order.updatedAt = new Date().toISOString();
+          const putRequest = store.put(order);
+          putRequest.onsuccess = () => {
+            console.log('Cached order status updated:', orderId, status);
+            resolve();
+          };
+          putRequest.onerror = () => reject(putRequest.error);
+        } else {
+          resolve();
+        }
+      };
+      getRequest.onerror = () => reject(getRequest.error);
+    });
+  }
+
+  // ==================== DASHBOARD CACHE (for offline viewing) ====================
+
+  /**
+   * Save dashboard stats to cache for offline viewing
+   */
+  async saveDashboardCache(data: CachedDashboardStats): Promise<void> {
+    const db = await this.getDB();
+    const transaction = db.transaction([DASHBOARD_CACHE_STORE, SYNC_META_STORE], 'readwrite');
+    const store = transaction.objectStore(DASHBOARD_CACHE_STORE);
+    const metaStore = transaction.objectStore(SYNC_META_STORE);
+
+    // Ensure key is set
+    const cacheData = {
+      ...data,
+      key: `dashboard_stats_${data.shopId}`,
+      cachedAt: new Date().toISOString()
+    };
+
+    store.put(cacheData);
+
+    // Update sync timestamp
+    metaStore.put({
+      key: `dashboard_cache_sync_${data.shopId}`,
+      timestamp: new Date().toISOString()
+    });
+
+    return new Promise((resolve, reject) => {
+      transaction.oncomplete = () => {
+        console.log(`Cached dashboard stats for shop ${data.shopId}`);
+        resolve();
+      };
+      transaction.onerror = () => reject(transaction.error);
+    });
+  }
+
+  /**
+   * Get cached dashboard stats for offline viewing
+   */
+  async getDashboardCache(shopId: number): Promise<CachedDashboardStats | null> {
+    const db = await this.getDB();
+    const transaction = db.transaction(DASHBOARD_CACHE_STORE, 'readonly');
+    const store = transaction.objectStore(DASHBOARD_CACHE_STORE);
+
+    return new Promise((resolve, reject) => {
+      const request = store.get(`dashboard_stats_${shopId}`);
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Get last sync timestamp for dashboard cache
+   */
+  async getDashboardCacheSyncTime(shopId: number): Promise<Date | null> {
+    const db = await this.getDB();
+    const transaction = db.transaction(SYNC_META_STORE, 'readonly');
+    const store = transaction.objectStore(SYNC_META_STORE);
+
+    return new Promise((resolve, reject) => {
+      const request = store.get(`dashboard_cache_sync_${shopId}`);
+      request.onsuccess = () => {
+        const result = request.result;
+        resolve(result ? new Date(result.timestamp) : null);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  // ==================== COMBOS CACHE (for offline viewing) ====================
+
+  /**
+   * Save combos to cache for offline viewing
+   */
+  async saveCombosCache(combos: CachedCombo[], shopId: number): Promise<void> {
+    const db = await this.getDB();
+    const transaction = db.transaction([COMBOS_CACHE_STORE, SYNC_META_STORE], 'readwrite');
+    const store = transaction.objectStore(COMBOS_CACHE_STORE);
+    const metaStore = transaction.objectStore(SYNC_META_STORE);
+
+    // Clear old combos for this shop first
+    const index = store.index('shopId');
+    const cursorRequest = index.openCursor(IDBKeyRange.only(shopId));
+
+    await new Promise<void>((resolve, reject) => {
+      cursorRequest.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+        if (cursor) {
+          store.delete(cursor.primaryKey);
+          cursor.continue();
+        } else {
+          resolve();
+        }
+      };
+      cursorRequest.onerror = () => reject(cursorRequest.error);
+    });
+
+    // Add new combos
+    for (const combo of combos) {
+      const comboWithShop = { ...combo, shopId };
+      store.put(comboWithShop);
+    }
+
+    // Update sync timestamp
+    metaStore.put({
+      key: `combos_cache_sync_${shopId}`,
+      timestamp: new Date().toISOString(),
+      count: combos.length
+    });
+
+    return new Promise((resolve, reject) => {
+      transaction.oncomplete = () => {
+        console.log(`Cached ${combos.length} combos for shop ${shopId}`);
+        resolve();
+      };
+      transaction.onerror = () => reject(transaction.error);
+    });
+  }
+
+  /**
+   * Get cached combos for offline viewing
+   */
+  async getCombosCache(shopId: number): Promise<CachedCombo[]> {
+    const db = await this.getDB();
+    const transaction = db.transaction(COMBOS_CACHE_STORE, 'readonly');
+    const store = transaction.objectStore(COMBOS_CACHE_STORE);
+    const index = store.index('shopId');
+
+    return new Promise((resolve, reject) => {
+      const request = index.getAll(IDBKeyRange.only(shopId));
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Get last sync timestamp for combos cache
+   */
+  async getCombosCacheSyncTime(shopId: number): Promise<Date | null> {
+    const db = await this.getDB();
+    const transaction = db.transaction(SYNC_META_STORE, 'readonly');
+    const store = transaction.objectStore(SYNC_META_STORE);
+
+    return new Promise((resolve, reject) => {
+      const request = store.get(`combos_cache_sync_${shopId}`);
+      request.onsuccess = () => {
+        const result = request.result;
+        resolve(result ? new Date(result.timestamp) : null);
+      };
+      request.onerror = () => reject(request.error);
+    });
   }
 }

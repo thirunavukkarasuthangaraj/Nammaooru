@@ -1,9 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
 import { AuthService } from '../../../../core/services/auth.service';
+import { OfflineStorageService, CachedCombo } from '../../../../core/services/offline-storage.service';
 import { ComboFormComponent } from './combo-form.component';
 
 interface ComboItem {
@@ -37,20 +38,68 @@ interface Combo {
   templateUrl: './combo-list.component.html',
   styleUrls: ['./combo-list.component.css']
 })
-export class ComboListComponent implements OnInit {
+export class ComboListComponent implements OnInit, OnDestroy {
   combos: Combo[] = [];
   isLoading = false;
   shopId: number | null = null;
   displayedColumns = ['name', 'items', 'price', 'discount', 'validity', 'status', 'actions'];
 
+  // Offline support
+  isOffline = false;
+  lastSyncTime: Date | null = null;
+
   constructor(
     private http: HttpClient,
     private authService: AuthService,
     private dialog: MatDialog,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private offlineStorage: OfflineStorageService
   ) {}
 
+  ngOnDestroy(): void {
+    window.removeEventListener('online', this.handleOnline.bind(this));
+    window.removeEventListener('offline', this.handleOffline.bind(this));
+  }
+
+  private handleOnline = (): void => {
+    console.log('Network online - refreshing combos');
+    this.isOffline = false;
+    this.snackBar.open('Back online! Refreshing combos...', 'Close', { duration: 3000 });
+    this.loadCombos();
+  }
+
+  private handleOffline = (): void => {
+    console.log('Network offline - using cached combos');
+    this.isOffline = true;
+    this.snackBar.open('You are offline. Showing cached combos.', 'Close', { duration: 3000 });
+  }
+
+  getTimeSinceSync(): string {
+    if (!this.lastSyncTime) return 'Never synced';
+
+    const now = new Date();
+    const diffMs = now.getTime() - this.lastSyncTime.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins === 1) return '1 minute ago';
+    if (diffMins < 60) return `${diffMins} minutes ago`;
+
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours === 1) return '1 hour ago';
+    if (diffHours < 24) return `${diffHours} hours ago`;
+
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays === 1) return '1 day ago';
+    return `${diffDays} days ago`;
+  }
+
   ngOnInit(): void {
+    // Set up online/offline detection
+    this.isOffline = !navigator.onLine;
+    window.addEventListener('online', this.handleOnline.bind(this));
+    window.addEventListener('offline', this.handleOffline.bind(this));
+
     this.loadShopId();
   }
 
@@ -76,17 +125,64 @@ export class ComboListComponent implements OnInit {
     if (!this.shopId) return;
 
     this.isLoading = true;
+
+    // If offline, load from cache
+    if (!navigator.onLine) {
+      this.loadCombosFromCache();
+      return;
+    }
+
     this.http.get<any>(`${environment.apiUrl}/shops/${this.shopId}/combos`).subscribe({
-      next: (response) => {
+      next: async (response) => {
         // API returns paginated response: { data: { content: [...] } }
         this.combos = response.data?.content || response.data || response.content || response || [];
         this.isLoading = false;
+        this.isOffline = false;
+
+        // Cache combos for offline use
+        try {
+          await this.offlineStorage.saveCombosCache(this.combos as CachedCombo[], this.shopId!);
+          this.lastSyncTime = new Date();
+          console.log('Combos cached successfully');
+        } catch (cacheError) {
+          console.warn('Error caching combos:', cacheError);
+        }
       },
-      error: () => {
-        this.isLoading = false;
-        this.showSnackBar('Failed to load combos', 'error');
+      error: async () => {
+        // Try to load from cache on error
+        await this.loadCombosFromCache();
       }
     });
+  }
+
+  private async loadCombosFromCache(): Promise<void> {
+    if (!this.shopId) {
+      this.isLoading = false;
+      return;
+    }
+
+    console.log('Loading combos from cache...');
+    this.isOffline = true;
+
+    try {
+      const cachedCombos = await this.offlineStorage.getCombosCache(this.shopId);
+      this.lastSyncTime = await this.offlineStorage.getCombosCacheSyncTime(this.shopId);
+
+      if (cachedCombos && cachedCombos.length > 0) {
+        console.log('Loaded', cachedCombos.length, 'combos from cache');
+        this.combos = cachedCombos as Combo[];
+        this.showSnackBar(`Showing ${cachedCombos.length} cached combos`, 'success');
+      } else {
+        console.log('No cached combos found');
+        this.combos = [];
+        this.showSnackBar('No cached combos available. Connect to internet to load combos.', 'error');
+      }
+    } catch (error) {
+      console.error('Error loading combos from cache:', error);
+      this.showSnackBar('Failed to load cached combos', 'error');
+    }
+
+    this.isLoading = false;
   }
 
   openCreateDialog(): void {
