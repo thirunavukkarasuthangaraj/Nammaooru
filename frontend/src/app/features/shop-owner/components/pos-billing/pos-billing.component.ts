@@ -1159,7 +1159,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
    */
   getCartItemMrp(product: CachedProduct): number {
     const item = this.cart.find(item => item.product.id === product.id);
-    return item ? item.mrp : (product.mrp || product.price);
+    return item ? item.mrp : (product.originalPrice || product.price);
   }
 
   /**
