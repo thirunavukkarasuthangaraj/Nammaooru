@@ -1,6 +1,6 @@
 <div class="assignment-dialog-container">
   <div class="dialog-header">
-    <h2 mat-dialog-title>
+    <h2>
       <mat-icon>add_business</mat-icon>
       Add to Shop
     </h2>
@@ -9,108 +9,148 @@
     </button>
   </div>
 
-  <mat-dialog-content class="dialog-content">
-    <!-- Product Info -->
-    <div class="product-preview">
+  <div class="dialog-content">
+    <!-- Product Info Card -->
+    <div class="product-card">
       <div class="product-image">
         <img [src]="data.product.primaryImageUrl || '/assets/images/product-placeholder.svg'"
              [alt]="data.product.name"
              onerror="this.src='/assets/images/product-placeholder.svg'">
       </div>
-      <div class="product-info">
-        <h3>{{ data.product.name }}</h3>
-        <div class="product-meta">
-          <span class="meta-item" *ngIf="data.product.category?.name">
-            <mat-icon>category</mat-icon>
-            {{ data.product.category?.name }}
-          </span>
-        </div>
+      <div class="product-details">
+        <h3 class="product-name">{{ data.product.name }}</h3>
+        <span class="category-badge" *ngIf="data.product.category?.name">
+          <mat-icon>category</mat-icon>
+          {{ data.product.category?.name }}
+        </span>
       </div>
     </div>
 
     <!-- Form -->
     <form [formGroup]="assignmentForm" class="assignment-form">
-      <div class="form-row">
-        <mat-form-field appearance="outline" class="half-width">
-          <mat-label>Selling Price (₹) *</mat-label>
-          <input matInput type="number" formControlName="price" placeholder="0.00">
-        </mat-form-field>
 
-        <mat-form-field appearance="outline" class="half-width">
-          <mat-label>MRP (₹)</mat-label>
-          <input matInput type="number" formControlName="originalPrice" placeholder="Optional">
-        </mat-form-field>
-      </div>
-
-      <div class="form-row">
-        <mat-form-field appearance="outline" class="half-width">
-          <mat-label>Stock Qty</mat-label>
-          <input matInput type="number" formControlName="stockQuantity" placeholder="0">
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" class="half-width">
-          <mat-label>Cost Price (₹)</mat-label>
-          <input matInput type="number" formControlName="costPrice" placeholder="Optional">
-        </mat-form-field>
-      </div>
-
-      <div class="form-row">
-        <mat-form-field appearance="outline" class="half-width">
-          <mat-label>SKU *</mat-label>
-          <input matInput formControlName="sku" placeholder="Product SKU">
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" class="half-width">
-          <mat-label>Barcode</mat-label>
-          <input matInput formControlName="barcode1" placeholder="Optional">
-        </mat-form-field>
-      </div>
-
-      <div class="form-row">
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Custom Name</mat-label>
-          <input matInput formControlName="customName" placeholder="Override product name (optional)">
-        </mat-form-field>
-      </div>
-
-      <div class="form-row">
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Tamil Name</mat-label>
-          <input matInput formControlName="nameTamil" placeholder="தமிழ் பெயர் (optional)">
-        </mat-form-field>
-      </div>
-
-      <div class="form-row">
-        <div class="availability-toggle">
-          <mat-slide-toggle formControlName="isAvailable" color="primary">
-            {{ assignmentForm.get('isAvailable')?.value ? 'Available' : 'Hidden' }}
-          </mat-slide-toggle>
+      <!-- Pricing Section -->
+      <div class="form-section">
+        <div class="section-header">
+          <mat-icon>payments</mat-icon>
+          <span>Pricing</span>
+        </div>
+        <div class="section-content">
+          <div class="input-row">
+            <div class="input-group">
+              <label>Selling Price *</label>
+              <div class="input-with-icon">
+                <span class="currency">₹</span>
+                <input type="number" formControlName="price" placeholder="0.00">
+              </div>
+            </div>
+            <div class="input-group">
+              <label>MRP</label>
+              <div class="input-with-icon">
+                <span class="currency">₹</span>
+                <input type="number" formControlName="originalPrice" placeholder="Optional">
+              </div>
+            </div>
+          </div>
+          <div class="input-row">
+            <div class="input-group">
+              <label>Cost Price</label>
+              <div class="input-with-icon">
+                <span class="currency">₹</span>
+                <input type="number" formControlName="costPrice" placeholder="Optional">
+              </div>
+            </div>
+            <div class="input-group">
+              <label>Stock Qty</label>
+              <div class="input-with-icon">
+                <mat-icon class="input-icon">inventory_2</mat-icon>
+                <input type="number" formControlName="stockQuantity" placeholder="0">
+              </div>
+            </div>
+          </div>
+          <!-- Profit Preview -->
+          <div class="profit-row" *ngIf="assignmentForm.get('price')?.value && assignmentForm.get('costPrice')?.value">
+            <div class="profit-badge" [class.positive]="getProfit() > 0" [class.negative]="getProfit() < 0">
+              <mat-icon>{{ getProfit() >= 0 ? 'trending_up' : 'trending_down' }}</mat-icon>
+              <span>Profit: ₹{{ getProfit() | number:'1.0-0' }} ({{ getProfitPercentage() | number:'1.0-0' }}%)</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- Profit Preview -->
-      <div class="profit-preview" *ngIf="assignmentForm.get('price')?.value && assignmentForm.get('costPrice')?.value">
-        <mat-card class="profit-card">
-          <div class="profit-info">
-            <span class="profit-label">Profit:</span>
-            <span class="profit-value" [class.positive]="getProfit() > 0" [class.negative]="getProfit() < 0">
-              ₹{{ getProfit() | number:'1.0-0' }} ({{ getProfitPercentage() | number:'1.0-0' }}%)
-            </span>
+      <!-- Identification Section -->
+      <div class="form-section">
+        <div class="section-header">
+          <mat-icon>qr_code_scanner</mat-icon>
+          <span>Identification</span>
+        </div>
+        <div class="section-content">
+          <div class="input-row">
+            <div class="input-group">
+              <label>SKU *</label>
+              <div class="input-with-icon">
+                <mat-icon class="input-icon">tag</mat-icon>
+                <input type="text" formControlName="sku" placeholder="Product SKU">
+              </div>
+            </div>
+            <div class="input-group">
+              <label>Barcode</label>
+              <div class="input-with-icon">
+                <mat-icon class="input-icon">qr_code</mat-icon>
+                <input type="text" formControlName="barcode1" placeholder="Optional">
+              </div>
+            </div>
           </div>
-        </mat-card>
+        </div>
       </div>
-    </form>
-  </mat-dialog-content>
 
-  <mat-dialog-actions class="dialog-actions">
-    <button mat-stroked-button mat-dialog-close>Cancel</button>
-    <button mat-raised-button
-            color="primary"
+      <!-- Custom Details Section -->
+      <div class="form-section">
+        <div class="section-header">
+          <mat-icon>edit_note</mat-icon>
+          <span>Custom Details</span>
+        </div>
+        <div class="section-content">
+          <div class="input-group full">
+            <label>Custom Name</label>
+            <div class="input-with-icon">
+              <mat-icon class="input-icon">badge</mat-icon>
+              <input type="text" formControlName="customName" placeholder="Override product name (optional)">
+            </div>
+          </div>
+          <div class="input-group full">
+            <label>Tamil Name</label>
+            <div class="input-with-icon">
+              <mat-icon class="input-icon">translate</mat-icon>
+              <input type="text" formControlName="nameTamil" placeholder="தமிழ் பெயர் (optional)">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Availability Toggle -->
+      <div class="availability-section">
+        <div class="toggle-wrapper" [class.available]="assignmentForm.get('isAvailable')?.value">
+          <mat-icon>{{ assignmentForm.get('isAvailable')?.value ? 'visibility' : 'visibility_off' }}</mat-icon>
+          <span>{{ assignmentForm.get('isAvailable')?.value ? 'Available for sale' : 'Hidden from customers' }}</span>
+          <mat-slide-toggle formControlName="isAvailable" color="primary"></mat-slide-toggle>
+        </div>
+      </div>
+
+    </form>
+  </div>
+
+  <div class="dialog-actions">
+    <button class="btn-cancel" mat-dialog-close>
+      <mat-icon>close</mat-icon>
+      Cancel
+    </button>
+    <button class="btn-submit"
             [disabled]="assignmentForm.invalid || isLoading"
             (click)="assignProduct()">
-      <mat-icon *ngIf="!isLoading">add</mat-icon>
+      <mat-icon *ngIf="!isLoading">add_circle</mat-icon>
       <mat-progress-spinner *ngIf="isLoading" diameter="18" mode="indeterminate"></mat-progress-spinner>
       {{ isLoading ? 'Adding...' : 'Add to Shop' }}
     </button>
-  </mat-dialog-actions>
+  </div>
 </div>
