@@ -2614,6 +2614,28 @@ export class PosBillingComponent implements OnInit, OnDestroy {
             updateData.imageBase64 = this.editImagePreview;
           }
           await this.updateLocalProductData(productId, updateData);
+
+          // Also update IndexedDB cache to prevent stale data on background sync
+          await this.offlineStorage.updateLocalProduct(productId, {
+            price: updateData.price,
+            originalPrice: updateData.originalPrice,
+            stock: updateData.stockQuantity,
+            sku: updateData.sku,
+            barcode: updateData.barcode,
+            barcode1: updateData.barcode1,
+            barcode2: updateData.barcode2,
+            barcode3: updateData.barcode3,
+            name: updateData.customName,
+            nameTamil: updateData.nameTamil,
+            imageBase64: updateData.imageBase64,
+            netQty: updateData.netQty,
+            packedDate: updateData.packedDate,
+            expiryDate: updateData.expiryDate
+          }).catch(err => console.warn('Failed to update cache:', err));
+
+          // Update cache timestamp to prevent immediate background sync overwriting
+          localStorage.setItem(this.POS_CACHE_TIMESTAMP_KEY, Date.now().toString());
+
           this.swal.success('Updated', 'Product updated successfully');
           this.closeQuickEdit();
           return;
