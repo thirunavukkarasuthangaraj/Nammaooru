@@ -1,0 +1,472 @@
+// Shared Dialog Styles - Common patterns for all dialogs
+// This file contains reusable dialog styles to prevent component CSS budget issues
+
+// Dialog Overlay
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+}
+
+// Base Dialog Container
+.dialog-base {
+  background: #fff;
+  border-radius: 16px;
+  width: 95%;
+  max-height: 90vh;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: dialogSlideUp 0.3s ease;
+}
+
+// Dialog Header - with gradient background
+.dialog-header-gradient {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  color: #fff;
+
+  h3 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    mat-icon {
+      font-size: 22px;
+      width: 22px;
+      height: 22px;
+    }
+  }
+
+  button.mat-icon-button {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+  }
+
+  // Color variants
+  &.blue { background: linear-gradient(135deg, #3498db, #2980b9); }
+  &.green { background: linear-gradient(135deg, #43a047, #2e7d32); }
+  &.purple { background: linear-gradient(135deg, #667eea, #764ba2); }
+  &.dark { background: linear-gradient(135deg, #2c3e50, #34495e); }
+}
+
+// Dialog Content
+.dialog-content-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  background: #f8fafc;
+}
+
+// Dialog Actions Footer
+.dialog-actions-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  background: #fff;
+  border-top: 1px solid #e5e7eb;
+
+  button {
+    min-width: 100px;
+    padding: 10px 20px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+
+    mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+      margin-right: 6px;
+    }
+  }
+
+  button[mat-stroked-button] {
+    background: #fff;
+    border: 1.5px solid #e2e8f0;
+    color: #64748b;
+  }
+
+  button[mat-raised-button] {
+    border: none;
+    color: #fff;
+
+    &.blue { background: linear-gradient(135deg, #3498db, #2980b9); }
+    &.green { background: linear-gradient(135deg, #43a047, #2e7d32); }
+    &.purple { background: linear-gradient(135deg, #667eea, #764ba2); }
+  }
+}
+
+// Settings Section Card
+.settings-section-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e2e8f0;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e8f4fc;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+
+    &.blue { color: #3498db; }
+    &.green { color: #2e7d32; }
+    &.purple { color: #667eea; }
+  }
+}
+
+// Settings Field
+.settings-field {
+  margin-bottom: 12px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  &.half {
+    flex: 1;
+    min-width: 0;
+  }
+
+  label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748b;
+    margin-bottom: 6px;
+  }
+
+  input,
+  select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 13px;
+    outline: none;
+    background: #fafbfc;
+    box-sizing: border-box;
+
+    &:focus {
+      border-color: #3498db;
+      background: #fff;
+    }
+  }
+
+  select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%2364748b' d='M5 7L0 2h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+  }
+}
+
+.settings-row {
+  display: flex;
+  gap: 12px;
+}
+
+// Toggle Grid
+.toggle-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.toggle-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+
+  span {
+    font-size: 12px;
+    font-weight: 500;
+    color: #475569;
+  }
+}
+
+// Font Size Slider
+.font-size-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.font-size-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f8fafc;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+
+  label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #475569;
+    min-width: 50px;
+    margin: 0;
+  }
+
+  .slider-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    input[type="range"] {
+      flex: 1;
+      height: 6px;
+      border-radius: 3px;
+      background: #e2e8f0;
+      outline: none;
+      -webkit-appearance: none;
+      cursor: pointer;
+
+      &::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #3498db;
+        cursor: pointer;
+        border: 2px solid #fff;
+      }
+
+      &::-moz-range-thumb {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #3498db;
+        cursor: pointer;
+        border: 2px solid #fff;
+      }
+    }
+
+    .font-size-value {
+      font-size: 12px;
+      font-weight: 700;
+      color: #3498db;
+      min-width: 40px;
+      text-align: center;
+      background: #e8f4fc;
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+  }
+}
+
+// Compact Edit Card
+.edit-card {
+  background: white;
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+
+  .card-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #667eea;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eef0f5;
+  }
+
+  .card-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .inline-field {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+
+    label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #64748b;
+      white-space: nowrap;
+    }
+
+    input {
+      width: 70px;
+      padding: 7px 8px;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      text-align: right;
+      outline: none;
+      background: #fafbfc;
+
+      &:focus {
+        border-color: #667eea;
+        background: white;
+      }
+    }
+
+    .input-with-prefix {
+      display: flex;
+      align-items: center;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 6px;
+      background: #fafbfc;
+      max-width: 100px;
+
+      .prefix {
+        padding: 7px 8px;
+        background: #eef0f5;
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 700;
+        border-right: 1.5px solid #e2e8f0;
+      }
+
+      input {
+        width: 55px;
+        border: none;
+        text-align: right;
+        padding: 7px 8px;
+        background: transparent;
+      }
+    }
+  }
+}
+
+// Two Column Grid
+.two-column-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+// Animation
+@keyframes dialogSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Print Label Section
+.print-label-inline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #e8f5e9;
+  border-radius: 8px;
+  padding: 10px 12px;
+  border: 1px solid #c8e6c9;
+
+  .print-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #2e7d32;
+    font-size: 12px;
+    font-weight: 600;
+
+    .label-config-btn {
+      width: 24px;
+      height: 24px;
+      border: none;
+      border-radius: 50%;
+      background: rgba(46, 125, 50, 0.15);
+      color: #2e7d32;
+      cursor: pointer;
+      margin-left: 4px;
+    }
+  }
+
+  .print-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .qty-input {
+      width: 50px;
+      padding: 6px 8px;
+      border: 1.5px solid #a5d6a7;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 700;
+      text-align: center;
+      outline: none;
+      background: white;
+    }
+
+    .print-btn {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 12px;
+      background: #43a047;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+  }
+}

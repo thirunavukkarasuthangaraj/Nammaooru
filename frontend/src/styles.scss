@@ -5,6 +5,9 @@
 // Import Chennai Theme
 @import 'app/shared/themes/chennai-theme.scss';
 
+// Import Shared Dialog Styles
+@import 'app/shared/styles/dialogs';
+
 /* Define Professional Theme */
 @include mat.core();
 
