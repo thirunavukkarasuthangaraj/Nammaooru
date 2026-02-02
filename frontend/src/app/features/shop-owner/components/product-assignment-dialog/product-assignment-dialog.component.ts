@@ -4,6 +4,7 @@ import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
+import { OfflineStorageService } from '@core/services/offline-storage.service';
 
 export interface ProductAssignmentData {
   product: {
@@ -42,7 +43,8 @@ export class ProductAssignmentDialogComponent implements OnInit {
     private dialogRef: MatDialogRef<ProductAssignmentDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: ProductAssignmentData,
     private snackBar: MatSnackBar,
-    private http: HttpClient
+    private http: HttpClient,
+    private offlineStorage: OfflineStorageService
   ) {
     this.assignmentForm = this.fb.group({
       price: [
@@ -118,7 +120,42 @@ export class ProductAssignmentDialogComponent implements OnInit {
 
     this.http.post<any>(`${this.apiUrl}/shop-products/create`, productData)
       .subscribe({
-        next: (response) => {
+        next: async (response) => {
+          // Invalidate POS cache timestamp so fresh data is fetched when POS opens
+          localStorage.removeItem('pos_products_last_sync');
+          localStorage.setItem('pos_products_changed', 'true');
+
+          // Also add to IndexedDB cache for immediate POS search availability
+          try {
+            const shopId = parseInt(localStorage.getItem('current_shop_id') || '0', 10);
+            const formValue = this.assignmentForm.value;
+            const newCachedProduct = {
+              id: response.id,
+              shopId: shopId,
+              name: formValue.customName || this.data.product.name,
+              nameTamil: formValue.nameTamil || this.data.product.nameTamil || '',
+              price: formValue.price,
+              originalPrice: formValue.originalPrice || formValue.price,
+              costPrice: formValue.costPrice || 0,
+              stock: formValue.stockQuantity || 0,
+              trackInventory: true,
+              isAvailable: formValue.isAvailable,
+              sku: formValue.sku || '',
+              barcode: formValue.barcode1 || '',
+              barcode1: formValue.barcode1 || '',
+              barcode2: formValue.barcode2 || '',
+              barcode3: formValue.barcode3 || '',
+              category: this.data.product.category?.name || '',
+              unit: this.data.product.baseUnit || 'piece',
+              imageUrl: this.data.product.primaryImageUrl || '',
+              tags: formValue.tags ? formValue.tags.split(',').map((t: string) => t.trim()) : []
+            };
+            await this.offlineStorage.addProductToCache(newCachedProduct);
+            console.log('Added assigned product to IndexedDB cache for immediate POS search:', newCachedProduct.name);
+          } catch (err) {
+            console.warn('Failed to add product to IndexedDB cache:', err);
+          }
+
           this.snackBar.open(
             `Successfully added "${this.data.product.name}" to your shop`,
             'Close',

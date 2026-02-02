@@ -1007,6 +1007,10 @@ export class AddProductComponent implements OnInit {
           next: async (shopProduct) => {
             this.isLoading = false;
 
+            // Invalidate POS cache so new product appears immediately when POS is opened
+            localStorage.removeItem('pos_products_last_sync');
+            localStorage.setItem('pos_products_changed', 'true');
+
             // Add new product to local cache for immediate display
             try {
               const newCachedProduct = {
@@ -1136,6 +1140,10 @@ export class AddProductComponent implements OnInit {
         tags: offlineProduct.tags ? offlineProduct.tags.split(',').map(t => t.trim()) : []
       };
       await this.offlineStorage.addProductToCache(cachedProduct);
+
+      // Invalidate POS cache so new product appears immediately when POS is opened
+      localStorage.removeItem('pos_products_last_sync');
+      localStorage.setItem('pos_products_changed', 'true');
 
       this.isLoading = false;
       this.snackBar.open('Product saved offline. Will sync when online.', 'Close', { duration: 4000 });

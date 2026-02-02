@@ -255,6 +255,23 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     this.initSearch();
     this.initBarcodeScanner();
     this.loadProducts();
+
+    // Check if products were added while away - force reload from IndexedDB
+    this.checkForProductChanges();
+  }
+
+  /**
+   * Check if products were added/changed while user was on another screen
+   * This handles cases where ngOnInit doesn't re-run (component reuse)
+   */
+  private checkForProductChanges(): void {
+    const productsChanged = localStorage.getItem('pos_products_changed');
+    if (productsChanged === 'true') {
+      console.log('POS: Products were changed, reloading from IndexedDB...');
+      localStorage.removeItem('pos_products_changed');
+      // Force reload from IndexedDB to pick up new products
+      this.loadProducts();
+    }
   }
 
   ngOnDestroy(): void {
