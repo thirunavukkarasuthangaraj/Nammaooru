@@ -1638,7 +1638,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
                      (this.shopName && this.shopName !== 'My Shop' ? this.shopName : null) ||
                      'Shop';
     const shopPhone = bs.shopPhone || '';
-    const customerName = this.customerName || 'Walk-in Customer';
+    const customerName = this.customerName || '';
     const customerPhone = this.customerPhone || '';
 
     // Format date based on billSettings
@@ -1786,7 +1786,6 @@ export class PosBillingComponent implements OnInit, OnDestroy {
           </div>
         ` : ''}
         <div class="center" style="font-size: ${Math.max(footerFontSize, 9)}px; color: #666;">Order Receipt</div>
-        ${isOffline ? '<div class="center"><span class="offline-badge">OFFLINE</span></div>' : ''}
         <div class="divider"></div>
 
         ${bs.showBillNumber ? `
@@ -1801,9 +1800,9 @@ export class PosBillingComponent implements OnInit, OnDestroy {
         ` : ''}
         <div class="divider"></div>
 
-        ${bs.showCustomerDetails ? `
+        ${bs.showCustomerDetails && (customerName || customerPhone) ? `
         <div style="margin-bottom: 4px;">
-          <div class="customer-name">${customerName}</div>
+          ${customerName ? `<div class="customer-name">${customerName}</div>` : ''}
           ${customerPhone ? `<div class="customer-phone">${customerPhone}</div>` : ''}
         </div>
         <div class="divider"></div>
