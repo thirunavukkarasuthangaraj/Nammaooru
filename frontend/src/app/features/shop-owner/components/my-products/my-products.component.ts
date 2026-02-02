@@ -823,13 +823,20 @@ export class MyProductsComponent implements OnInit, OnDestroy {
           // Update the product in our local array
           const index = this.products.findIndex(p => p.id === product.id);
           if (index !== -1) {
-            this.products[index] = { 
-              ...this.products[index], 
+            this.products[index] = {
+              ...this.products[index],
               price: newPrice,
               ...(newCostPrice !== undefined && { costPrice: newCostPrice })
             };
             this.applyFilters();
           }
+
+          // Update the IndexedDB cache to prevent stale data on reload
+          this.offlineStorage.updateLocalProduct(product.id, {
+            price: newPrice,
+            ...(newCostPrice !== undefined && { costPrice: newCostPrice })
+          }).catch(err => console.warn('Failed to update price in cache:', err));
+
           this.snackBar.open('Price updated successfully', 'Close', { duration: 2000 });
         },
         error: (error) => {
@@ -864,6 +871,12 @@ export class MyProductsComponent implements OnInit, OnDestroy {
             };
             this.applyFilters();
           }
+
+          // Update the IndexedDB cache to prevent stale data on reload
+          this.offlineStorage.updateLocalProduct(product.id, {
+            stock: newStock
+          }).catch(err => console.warn('Failed to update stock in cache:', err));
+
           this.snackBar.open('Stock updated successfully', 'Close', { duration: 2000 });
         },
         error: (error) => {
