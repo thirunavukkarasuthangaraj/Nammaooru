@@ -604,7 +604,179 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
   }
 
   printOrder(order: Order): void {
-    this.snackBar.open('Print functionality coming soon', 'Close', { duration: 2000 });
+    const shopName = localStorage.getItem('shop_name') || 'Shop';
+    const items = order.orderItems || order.items || [];
+
+    // Format date
+    const orderDate = new Date(order.createdAt);
+    const formattedDate = orderDate.toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+    const formattedTime = orderDate.toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+
+    // Generate items HTML
+    const itemsHtml = items.map(item => {
+      const name = item.productName || item.name || 'Item';
+      const qty = item.quantity || 1;
+      const price = item.unitPrice || item.price || 0;
+      const total = item.totalPrice || (qty * price);
+      return `
+        <tr>
+          <td style="text-align: left; padding: 4px 0; font-size: 11px;">${name}</td>
+          <td style="text-align: right; font-size: 11px;">${price}</td>
+          <td style="text-align: center; font-size: 11px;">${qty}</td>
+          <td style="text-align: right; font-size: 11px;">${total}</td>
+        </tr>
+      `;
+    }).join('');
+
+    const totalQty = items.reduce((sum, item) => sum + (item.quantity || 1), 0);
+
+    const receiptHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Receipt - ${order.orderNumber}</title>
+        <style>
+          @page { size: 58mm auto; margin: 1mm; }
+          @media print {
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .no-print { display: none !important; }
+          }
+          body {
+            font-family: 'Noto Sans Tamil', Arial, sans-serif;
+            font-size: 12px;
+            width: 180px;
+            max-width: 180px;
+            margin: 0 auto;
+            padding: 8px;
+            line-height: 1.3;
+          }
+          .center { text-align: center; }
+          .divider { border-top: 1px dashed #000; margin: 6px 0; }
+          table { width: 100%; border-collapse: collapse; }
+          .shop-name { font-size: 16px; font-weight: 700; margin-bottom: 3px; }
+          .order-number {
+            background: #1a1a1a;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 4px;
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 600;
+          }
+          .total-row { font-weight: 700; font-size: 14px; }
+          .print-btn {
+            background: #22c55e;
+            color: white;
+            border: none;
+            padding: 12px 32px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px 5px;
+          }
+          .close-btn {
+            background: #666;
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            font-size: 13px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px 5px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="center">
+          <div class="shop-name">${shopName}</div>
+          <div style="font-size: 10px; color: #666;">Order Receipt</div>
+        </div>
+        <div class="divider"></div>
+
+        <div class="center">
+          <div class="order-number">#${order.orderNumber}</div>
+        </div>
+        <div style="font-size: 10px; text-align: center; margin: 4px 0;">
+          ${formattedDate} | ${formattedTime}
+        </div>
+        <div class="divider"></div>
+
+        ${order.customerName || order.customerPhone ? `
+        <div style="margin-bottom: 4px;">
+          ${order.customerName ? `<div style="font-weight: 600;">${order.customerName}</div>` : ''}
+          ${order.customerPhone ? `<div style="font-size: 11px;">${order.customerPhone}</div>` : ''}
+        </div>
+        <div class="divider"></div>
+        ` : ''}
+
+        <table>
+          <thead>
+            <tr style="border-bottom: 1px solid #ddd;">
+              <th style="text-align: left; font-size: 10px; padding-bottom: 4px;">ITEM</th>
+              <th style="text-align: right; font-size: 10px;">RATE</th>
+              <th style="text-align: center; font-size: 10px;">QTY</th>
+              <th style="text-align: right; font-size: 10px;">AMT</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsHtml}
+          </tbody>
+        </table>
+        <div class="divider"></div>
+
+        <div style="display: flex; justify-content: space-between; font-size: 11px;">
+          <span>Items: ${items.length} (Qty: ${totalQty})</span>
+          <span>₹${order.subtotal || order.totalAmount}</span>
+        </div>
+        ${order.discountAmount > 0 ? `
+        <div style="display: flex; justify-content: space-between; font-size: 11px; color: #22c55e;">
+          <span>You Save</span>
+          <span>₹${order.discountAmount}</span>
+        </div>
+        ` : ''}
+        <div class="divider" style="border-top: 1px solid #000;"></div>
+
+        <div style="display: flex; justify-content: space-between;" class="total-row">
+          <span>TOTAL</span>
+          <span>₹${order.totalAmount}</span>
+        </div>
+        <div class="divider"></div>
+
+        <div class="center" style="margin: 4px 0;">
+          <span style="background: #e8f5e9; padding: 3px 10px; border-radius: 4px; font-size: 11px;">
+            💵 ${order.paymentMethod || 'CASH'}
+          </span>
+        </div>
+        <div class="divider"></div>
+
+        <div class="center" style="font-size: 10px; color: #666;">
+          Thank you for your order!<br>
+          Printed: ${new Date().toLocaleString('en-IN')}
+        </div>
+
+        <div class="center no-print" style="margin-top: 15px;">
+          <button class="print-btn" onclick="window.print()">🖨️ PRINT</button>
+          <button class="close-btn" onclick="window.close()">Close</button>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const printWindow = window.open('', '_blank', 'width=300,height=600');
+    if (printWindow) {
+      printWindow.document.write(receiptHtml);
+      printWindow.document.close();
+    }
   }
 
   toggleProfitDetails(): void {
