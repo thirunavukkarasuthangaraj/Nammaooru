@@ -837,6 +837,9 @@ export class MyProductsComponent implements OnInit, OnDestroy {
             ...(newCostPrice !== undefined && { costPrice: newCostPrice })
           }).catch(err => console.warn('Failed to update price in cache:', err));
 
+          // Update cache timestamp to prevent immediate re-fetch from server
+          localStorage.setItem(this.CACHE_TIMESTAMP_KEY, Date.now().toString());
+
           this.snackBar.open('Price updated successfully', 'Close', { duration: 2000 });
         },
         error: (error) => {
@@ -876,6 +879,9 @@ export class MyProductsComponent implements OnInit, OnDestroy {
           this.offlineStorage.updateLocalProduct(product.id, {
             stock: newStock
           }).catch(err => console.warn('Failed to update stock in cache:', err));
+
+          // Update cache timestamp to prevent immediate re-fetch from server
+          localStorage.setItem(this.CACHE_TIMESTAMP_KEY, Date.now().toString());
 
           this.snackBar.open('Stock updated successfully', 'Close', { duration: 2000 });
         },

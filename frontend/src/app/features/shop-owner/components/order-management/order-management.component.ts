@@ -553,7 +553,15 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
   }
   
   formatDate(dateString: string): string {
-    return new Date(dateString).toLocaleString('en-IN');
+    return new Date(dateString).toLocaleString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
   }
 
   getOrderCount(tab: number): number {

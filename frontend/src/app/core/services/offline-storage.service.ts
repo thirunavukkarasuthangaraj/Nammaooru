@@ -355,10 +355,28 @@ export class OfflineStorageService {
   }
 
   /**
-   * Get database instance
+   * Get database instance - reopens if connection is closed
    */
   private async getDB(): Promise<IDBDatabase> {
-    if (this.db) return this.db;
+    // Check if existing connection is still valid
+    if (this.db) {
+      try {
+        // Test if connection is still open by checking objectStoreNames
+        if (this.db.objectStoreNames.length > 0) {
+          return this.db;
+        }
+      } catch (e) {
+        // Connection is closed, need to reopen
+        console.warn('IndexedDB connection closed, reopening...');
+        this.db = null;
+      }
+    }
+
+    // If db is null, reinitialize
+    if (!this.db) {
+      this.dbReady = this.initializeDB();
+    }
+
     return this.dbReady;
   }
 
@@ -872,45 +890,61 @@ export class OfflineStorageService {
 
   /**
    * Update local product in cache (for offline edits)
+   * Includes retry logic for transient connection errors
    */
-  async updateLocalProduct(productId: number, changes: Partial<CachedProduct>): Promise<void> {
-    const db = await this.getDB();
-    const transaction = db.transaction(PRODUCTS_STORE, 'readwrite');
-    const store = transaction.objectStore(PRODUCTS_STORE);
+  async updateLocalProduct(productId: number, changes: Partial<CachedProduct>, retryCount = 0): Promise<void> {
+    try {
+      const db = await this.getDB();
+      const transaction = db.transaction(PRODUCTS_STORE, 'readwrite');
+      const store = transaction.objectStore(PRODUCTS_STORE);
 
-    return new Promise((resolve, reject) => {
-      const getRequest = store.get(productId);
-      getRequest.onsuccess = () => {
-        const product = getRequest.result;
-        if (product) {
-          // Apply changes
-          if (changes.price !== undefined) product.price = changes.price;
-          if (changes.originalPrice !== undefined) product.originalPrice = changes.originalPrice;
-          if (changes.stock !== undefined) product.stock = changes.stock;
-          if (changes.sku !== undefined) product.sku = changes.sku;
-          if (changes.barcode !== undefined) product.barcode = changes.barcode;
-          if (changes.barcode1 !== undefined) product.barcode1 = changes.barcode1;
-          if (changes.barcode2 !== undefined) product.barcode2 = changes.barcode2;
-          if (changes.barcode3 !== undefined) product.barcode3 = changes.barcode3;
-          if (changes.name !== undefined) product.name = changes.name;
-          if (changes.nameTamil !== undefined) product.nameTamil = changes.nameTamil;
-          if (changes.imageBase64 !== undefined) product.imageBase64 = changes.imageBase64;
-          if (changes.netQty !== undefined) product.netQty = changes.netQty;
-          if (changes.packedDate !== undefined) product.packedDate = changes.packedDate;
-          if (changes.expiryDate !== undefined) product.expiryDate = changes.expiryDate;
+      return await new Promise((resolve, reject) => {
+        const getRequest = store.get(productId);
+        getRequest.onsuccess = () => {
+          const product = getRequest.result;
+          if (product) {
+            // Apply changes
+            if (changes.price !== undefined) product.price = changes.price;
+            if (changes.originalPrice !== undefined) product.originalPrice = changes.originalPrice;
+            if (changes.costPrice !== undefined) product.costPrice = changes.costPrice;
+            if (changes.stock !== undefined) product.stock = changes.stock;
+            if (changes.sku !== undefined) product.sku = changes.sku;
+            if (changes.barcode !== undefined) product.barcode = changes.barcode;
+            if (changes.barcode1 !== undefined) product.barcode1 = changes.barcode1;
+            if (changes.barcode2 !== undefined) product.barcode2 = changes.barcode2;
+            if (changes.barcode3 !== undefined) product.barcode3 = changes.barcode3;
+            if (changes.name !== undefined) product.name = changes.name;
+            if (changes.nameTamil !== undefined) product.nameTamil = changes.nameTamil;
+            if (changes.imageBase64 !== undefined) product.imageBase64 = changes.imageBase64;
+            if (changes.netQty !== undefined) product.netQty = changes.netQty;
+            if (changes.packedDate !== undefined) product.packedDate = changes.packedDate;
+            if (changes.expiryDate !== undefined) product.expiryDate = changes.expiryDate;
+            if (changes.isAvailable !== undefined) product.isAvailable = changes.isAvailable;
 
-          const putRequest = store.put(product);
-          putRequest.onsuccess = () => {
-            console.log('Local product updated:', productId);
+            const putRequest = store.put(product);
+            putRequest.onsuccess = () => {
+              console.log('Local product updated:', productId);
+              resolve();
+            };
+            putRequest.onerror = () => reject(putRequest.error);
+          } else {
             resolve();
-          };
-          putRequest.onerror = () => reject(putRequest.error);
-        } else {
-          resolve();
-        }
-      };
-      getRequest.onerror = () => reject(getRequest.error);
-    });
+          }
+        };
+        getRequest.onerror = () => reject(getRequest.error);
+
+        // Handle transaction errors (like connection closing)
+        transaction.onerror = () => reject(transaction.error);
+      });
+    } catch (error: any) {
+      // Retry once on connection closing error
+      if (retryCount < 1 && error?.message?.includes('closing')) {
+        console.warn('IndexedDB connection error, retrying...', error);
+        this.db = null; // Force reconnection
+        return this.updateLocalProduct(productId, changes, retryCount + 1);
+      }
+      throw error;
+    }
   }
 
   /**
