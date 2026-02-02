@@ -31,6 +31,39 @@ interface LabelConfig {
   showBarcodeNumber: boolean;
 }
 
+interface BillSettings {
+  // Shop Header Info
+  shopName: string;
+  shopPhone: string;
+  fssaiNumber: string;
+  fssaiName: string;
+
+  // Bill Format
+  dateFormat: 'DD/MM/YYYY' | 'MM/DD/YYYY' | 'YYYY-MM-DD';
+  billNumberPrefix: string;
+  showBillNumber: boolean;
+
+  // Font Sizes (in pixels)
+  headerFontSize: number;  // default: 16
+  bodyFontSize: number;    // default: 12
+  footerFontSize: number;  // default: 10
+
+  // Show/Hide Elements
+  showShopName: boolean;
+  showShopPhone: boolean;
+  showFssaiInfo: boolean;
+  showDateTime: boolean;
+  showCustomerDetails: boolean;
+  showThankYouMessage: boolean;
+
+  // Receipt Language
+  showEnglish: boolean;
+  showTamil: boolean;
+
+  // Footer
+  thankYouMessage: string;
+}
+
 @Component({
   selector: 'app-pos-billing',
   templateUrl: './pos-billing.component.html',
@@ -121,6 +154,30 @@ export class PosBillingComponent implements OnInit, OnDestroy {
   showEnglishOnReceipt: boolean = true;
   showTamilOnReceipt: boolean = true;
 
+  // Bill Settings Dialog
+  showBillSettingsDialog: boolean = false;
+  billSettings: BillSettings = {
+    shopName: '',
+    shopPhone: '',
+    fssaiNumber: '',
+    fssaiName: '',
+    dateFormat: 'DD/MM/YYYY',
+    billNumberPrefix: '',
+    showBillNumber: true,
+    headerFontSize: 16,
+    bodyFontSize: 12,
+    footerFontSize: 10,
+    showShopName: true,
+    showShopPhone: true,
+    showFssaiInfo: false,
+    showDateTime: true,
+    showCustomerDetails: true,
+    showThankYouMessage: true,
+    showEnglish: true,
+    showTamil: true,
+    thankYouMessage: 'Thank you for your order!'
+  };
+
   // Quick Edit state
   editingProduct: CachedProduct | null = null;
   editPrice: number = 0;
@@ -193,6 +250,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     this.loadLanguagePreference();
     this.loadLabelConfig();
     this.loadReceiptLanguageSettings();
+    this.loadBillSettings();
     this.initSyncStatus();
     this.initSearch();
     this.initBarcodeScanner();
@@ -342,6 +400,67 @@ export class PosBillingComponent implements OnInit, OnDestroy {
     }));
     this.showLabelConfigDialog = false;
     this.swal.success('Saved', 'Label settings saved');
+  }
+
+  /**
+   * Load bill settings from localStorage
+   */
+  private loadBillSettings(): void {
+    const saved = localStorage.getItem('pos_bill_settings');
+    if (saved) {
+      try {
+        const settings = JSON.parse(saved);
+        this.billSettings = { ...this.billSettings, ...settings };
+        // Sync language settings with existing receipt language flags
+        this.showEnglishOnReceipt = this.billSettings.showEnglish;
+        this.showTamilOnReceipt = this.billSettings.showTamil;
+      } catch (e) {
+        console.warn('Failed to parse saved bill settings:', e);
+      }
+    }
+  }
+
+  /**
+   * Open bill settings dialog
+   */
+  openBillSettingsDialog(): void {
+    // Pre-fill shop info from context if not already set
+    if (!this.billSettings.shopName) {
+      this.billSettings.shopName = this.shopName || '';
+    }
+    // Pre-fill from shop context if available
+    const currentShop = this.shopContext.getCurrentShop();
+    if (currentShop) {
+      if (!this.billSettings.shopName) {
+        this.billSettings.shopName = currentShop.name || currentShop.businessName || '';
+      }
+      if (!this.billSettings.shopPhone && (currentShop as any).phone) {
+        this.billSettings.shopPhone = (currentShop as any).phone || '';
+      }
+    }
+    this.showBillSettingsDialog = true;
+  }
+
+  /**
+   * Close bill settings dialog without saving
+   */
+  closeBillSettingsDialog(): void {
+    this.showBillSettingsDialog = false;
+    // Reload settings to discard unsaved changes
+    this.loadBillSettings();
+  }
+
+  /**
+   * Save bill settings to localStorage
+   */
+  saveBillSettings(): void {
+    // Sync language settings
+    this.showEnglishOnReceipt = this.billSettings.showEnglish;
+    this.showTamilOnReceipt = this.billSettings.showTamil;
+
+    localStorage.setItem('pos_bill_settings', JSON.stringify(this.billSettings));
+    this.showBillSettingsDialog = false;
+    this.swal.success('Saved', 'Bill settings saved');
   }
 
   /**
@@ -1441,24 +1560,29 @@ export class PosBillingComponent implements OnInit, OnDestroy {
 
   /**
    * Generate receipt HTML - optimized for 58mm thermal paper
-   * Same layout as Order Management small print
+   * Uses billSettings for customization
    */
   private generateReceiptHtml(order: any): string {
+    const bs = this.billSettings;
+    const bodyFontSize = bs.bodyFontSize || 12;
+    const headerFontSize = bs.headerFontSize || 16;
+    const footerFontSize = bs.footerFontSize || 10;
+
     const items = this.cart.map(item => {
       const englishName = item.product.name || '';
       const tamilName = item.product.nameTamil || '';
       const rate = item.unitPrice || 0;
       const mrp = item.mrp || rate;
       const hasDiscount = item.discount > 0;
-      // Build name HTML based on receipt language settings
+      // Build name HTML based on receipt language settings from billSettings
       let nameHtml = '';
-      if (this.showEnglishOnReceipt && this.showTamilOnReceipt && tamilName) {
+      if (bs.showEnglish && bs.showTamil && tamilName) {
         // Both languages
-        nameHtml = `${englishName}<br><span style="font-size: 9px; color: #333;">${tamilName}</span>`;
-      } else if (this.showEnglishOnReceipt) {
+        nameHtml = `${englishName}<br><span style="font-size: ${Math.max(bodyFontSize - 3, 8)}px; color: #333;">${tamilName}</span>`;
+      } else if (bs.showEnglish) {
         // English only
         nameHtml = englishName;
-      } else if (this.showTamilOnReceipt && tamilName) {
+      } else if (bs.showTamil && tamilName) {
         // Tamil only (use Tamil if available, fallback to English)
         nameHtml = tamilName;
       } else {
@@ -1467,30 +1591,54 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       }
       // Show MRP with strikethrough if there's discount
       const rateHtml = hasDiscount
-        ? `<span style="text-decoration: line-through; color: #666; font-size: 11px;">${mrp}</span><br>${rate}`
+        ? `<span style="text-decoration: line-through; color: #666; font-size: ${Math.max(bodyFontSize - 1, 8)}px;">${mrp}</span><br>${rate}`
         : `${rate}`;
       return `
       <tr>
-        <td style="font-size: 9px; padding: 2px 0; font-weight: 600; word-wrap: break-word; max-width: 60px;">${nameHtml}</td>
-        <td style="font-size: 9px; text-align: right; padding: 2px 0; font-weight: 600; white-space: nowrap;">${rateHtml}</td>
-        <td style="font-size: 9px; text-align: center; padding: 2px 0; font-weight: 700; white-space: nowrap;">${item.quantity}</td>
-        <td style="font-size: 9px; text-align: right; padding: 2px 0; font-weight: 700; white-space: nowrap;">${item.total.toFixed(0)}</td>
+        <td style="font-size: ${bodyFontSize}px; padding: 2px 0; font-weight: 600; word-wrap: break-word; max-width: 60px;">${nameHtml}</td>
+        <td style="font-size: ${bodyFontSize}px; text-align: right; padding: 2px 0; font-weight: 600; white-space: nowrap;">${rateHtml}</td>
+        <td style="font-size: ${bodyFontSize}px; text-align: center; padding: 2px 0; font-weight: 700; white-space: nowrap;">${item.quantity}</td>
+        <td style="font-size: ${bodyFontSize}px; text-align: right; padding: 2px 0; font-weight: 700; white-space: nowrap;">${item.total.toFixed(0)}</td>
       </tr>
     `;
     }).join('');
 
     const isOffline = order.offlineOrderId && !order.id;
-    // Get shop name from order response (API), then localStorage, then component, then fallback
-    // Check for truthy values (not empty strings)
+
+    // Get shop name: billSettings first, then order, then localStorage, then component
     const storedShopName = localStorage.getItem('shop_name');
-    const shopName = (order.shopName && order.shopName.trim()) ||
+    const shopName = (bs.shopName && bs.shopName.trim()) ||
+                     (order.shopName && order.shopName.trim()) ||
                      (storedShopName && storedShopName.trim()) ||
                      (this.shopName && this.shopName !== 'My Shop' ? this.shopName : null) ||
                      'Shop';
+    const shopPhone = bs.shopPhone || '';
     const customerName = this.customerName || 'Walk-in Customer';
     const customerPhone = this.customerPhone || '';
 
+    // Format date based on billSettings
+    const now = new Date();
+    let formattedDate = '';
+    switch (bs.dateFormat) {
+      case 'MM/DD/YYYY':
+        formattedDate = `${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}/${now.getFullYear()}`;
+        break;
+      case 'YYYY-MM-DD':
+        formattedDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        break;
+      case 'DD/MM/YYYY':
+      default:
+        formattedDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+    }
+    const formattedTime = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+    // Bill number with prefix
+    const billNumber = bs.billNumberPrefix
+      ? `${bs.billNumberPrefix}${order.orderNumber || order.offlineOrderId}`
+      : `#${order.orderNumber || order.offlineOrderId}`;
+
     console.log('Receipt - shopName sources:', {
+      billSettings: bs.shopName,
       orderShopName: order.shopName,
       localStorage: storedShopName,
       thisShopName: this.shopName,
@@ -1517,7 +1665,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
           }
           body {
             font-family: 'Noto Sans Tamil', 'Latha', 'Tamil Sangam MN', Arial, sans-serif;
-            font-size: 11px;
+            font-size: ${bodyFontSize}px;
             width: 180px;
             max-width: 180px;
             margin: 0 auto;
@@ -1536,12 +1684,22 @@ export class PosBillingComponent implements OnInit, OnDestroy {
           table { width: 100%; border-collapse: collapse; }
           .shop-name {
             font-family: 'Noto Sans Tamil', 'Latha', 'Tamil Sangam MN', Arial, sans-serif;
-            font-size: 14px;
+            font-size: ${headerFontSize}px;
             font-weight: 700;
             margin-bottom: 3px;
           }
+          .shop-phone {
+            font-size: ${Math.max(headerFontSize - 4, 10)}px;
+            color: #333;
+            margin-bottom: 2px;
+          }
+          .fssai-info {
+            font-size: ${Math.max(footerFontSize, 8)}px;
+            color: #555;
+            margin-bottom: 2px;
+          }
           .order-number {
-            font-size: 12px;
+            font-size: ${Math.max(bodyFontSize, 12)}px;
             font-weight: 700;
             background: #000;
             color: #fff;
@@ -1551,22 +1709,22 @@ export class PosBillingComponent implements OnInit, OnDestroy {
             margin: 4px 0;
           }
           .customer-name {
-            font-size: 12px;
+            font-size: ${bodyFontSize}px;
             font-weight: 700;
           }
           .customer-phone {
-            font-size: 10px;
+            font-size: ${Math.max(bodyFontSize - 2, 10)}px;
             color: #333;
           }
           .item-header th {
-            font-size: 10px;
+            font-size: ${Math.max(bodyFontSize - 2, 10)}px;
             padding: 4px 0;
             border-bottom: 1px solid #000;
             text-transform: uppercase;
             font-weight: 700;
           }
           .payment-badge {
-            font-size: 10px;
+            font-size: ${Math.max(bodyFontSize - 2, 10)}px;
             font-weight: 700;
             padding: 4px 8px;
             background: #f0f0f0;
@@ -1575,7 +1733,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
             margin: 4px 0;
           }
           .footer-text {
-            font-size: 9px;
+            font-size: ${footerFontSize}px;
             color: #666;
             margin-top: 6px;
           }
@@ -1583,7 +1741,7 @@ export class PosBillingComponent implements OnInit, OnDestroy {
             background: #ff9800;
             color: white;
             padding: 2px 6px;
-            font-size: 9px;
+            font-size: ${Math.max(footerFontSize, 9)}px;
             border-radius: 3px;
           }
           .flex-row {
@@ -1594,24 +1752,37 @@ export class PosBillingComponent implements OnInit, OnDestroy {
         </style>
       </head>
       <body>
-        <div class="center shop-name">${shopName}</div>
-        <div class="center" style="font-size: 9px; color: #666;">Order Receipt</div>
+        ${bs.showShopName ? `<div class="center shop-name">${shopName}</div>` : ''}
+        ${bs.showShopPhone && shopPhone ? `<div class="center shop-phone">📞 ${shopPhone}</div>` : ''}
+        ${bs.showFssaiInfo && bs.fssaiNumber ? `
+          <div class="center fssai-info">
+            FSSAI: ${bs.fssaiNumber}
+            ${bs.fssaiName ? `<br>${bs.fssaiName}` : ''}
+          </div>
+        ` : ''}
+        <div class="center" style="font-size: ${Math.max(footerFontSize, 9)}px; color: #666;">Order Receipt</div>
         ${isOffline ? '<div class="center"><span class="offline-badge">OFFLINE</span></div>' : ''}
         <div class="divider"></div>
 
+        ${bs.showBillNumber ? `
         <div class="center">
-          <div class="order-number">#${order.orderNumber || order.offlineOrderId}</div>
+          <div class="order-number">${billNumber}</div>
         </div>
-        <div style="font-size: 9px; text-align: center; margin-bottom: 4px;">
-          ${new Date().toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: 'numeric'})} | ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+        ` : ''}
+        ${bs.showDateTime ? `
+        <div style="font-size: ${Math.max(footerFontSize, 9)}px; text-align: center; margin-bottom: 4px;">
+          ${formattedDate} | ${formattedTime}
         </div>
+        ` : ''}
         <div class="divider"></div>
 
+        ${bs.showCustomerDetails ? `
         <div style="margin-bottom: 4px;">
           <div class="customer-name">${customerName}</div>
           ${customerPhone ? `<div class="customer-phone">${customerPhone}</div>` : ''}
         </div>
         <div class="divider"></div>
+        ` : ''}
 
         <table>
           <thead>
@@ -1628,25 +1799,25 @@ export class PosBillingComponent implements OnInit, OnDestroy {
         </table>
         <div class="divider-solid"></div>
 
-        <div class="flex-row" style="font-size: 10px; padding: 4px 0;">
+        <div class="flex-row" style="font-size: ${bodyFontSize}px; padding: 4px 0;">
           <span style="font-weight: 600;">Items: ${this.cart.length} (Qty: ${this.cart.reduce((sum, item) => sum + item.quantity, 0)})</span>
           <span style="font-weight: 700;">₹${this.totalAmount.toFixed(0)}</span>
         </div>
 
         ${this.totalDiscount > 0 ? `
-        <div class="flex-row" style="font-size: 10px; padding: 2px 0;">
+        <div class="flex-row" style="font-size: ${bodyFontSize}px; padding: 2px 0;">
           <span style="font-weight: 600; color: #888;">MRP Total</span>
           <span style="text-decoration: line-through; color: #888;">₹${this.totalMrp.toFixed(0)}</span>
         </div>
-        <div class="flex-row" style="font-size: 10px; padding: 2px 0; color: #4caf50;">
+        <div class="flex-row" style="font-size: ${bodyFontSize}px; padding: 2px 0; color: #4caf50;">
           <span style="font-weight: 600;">You Save</span>
           <span style="font-weight: 700;">₹${this.totalDiscount.toFixed(0)}</span>
         </div>
         ` : ''}
 
         <div class="flex-row" style="border-top: 1px solid #000; padding-top: 6px; margin-top: 4px;">
-          <span style="font-size: 14px; font-weight: 700;">TOTAL</span>
-          <span style="font-size: 16px; font-weight: 700;">₹${this.totalAmount.toFixed(0)}</span>
+          <span style="font-size: ${headerFontSize}px; font-weight: 700;">TOTAL</span>
+          <span style="font-size: ${headerFontSize + 2}px; font-weight: 700;">₹${this.totalAmount.toFixed(0)}</span>
         </div>
 
         <div class="divider"></div>
@@ -1658,10 +1829,12 @@ export class PosBillingComponent implements OnInit, OnDestroy {
 
         <div class="divider"></div>
 
+        ${bs.showThankYouMessage ? `
         <div class="center footer-text">
-          Thank you for your order!<br>
+          ${bs.thankYouMessage || 'Thank you for your order!'}<br>
           Printed: ${new Date().toLocaleString('en-IN')}
         </div>
+        ` : ''}
 
         <!-- Print Button (hidden during print) -->
         <div class="no-print" style="margin-top: 15px; text-align: center;">

@@ -375,25 +375,12 @@
             Generate Bill - ₹{{ totalAmount | number:'1.0-0' }}
           </button>
           <button mat-icon-button
-                  [matMenuTriggerFor]="receiptSettingsMenu"
+                  (click)="openBillSettingsDialog()"
                   class="receipt-settings-btn"
-                  matTooltip="Receipt Settings">
+                  matTooltip="Bill Settings">
             <mat-icon>settings</mat-icon>
           </button>
         </div>
-
-        <!-- Receipt Settings Menu -->
-        <mat-menu #receiptSettingsMenu="matMenu" class="receipt-settings-menu">
-          <div class="menu-header" (click)="$event.stopPropagation()">Receipt Language</div>
-          <button mat-menu-item (click)="toggleEnglishOnReceipt(); $event.stopPropagation()">
-            <mat-icon>{{ showEnglishOnReceipt ? 'check_box' : 'check_box_outline_blank' }}</mat-icon>
-            <span>English</span>
-          </button>
-          <button mat-menu-item (click)="toggleTamilOnReceipt(); $event.stopPropagation()">
-            <mat-icon>{{ showTamilOnReceipt ? 'check_box' : 'check_box_outline_blank' }}</mat-icon>
-            <span>Tamil (தமிழ்)</span>
-          </button>
-        </mat-menu>
       </div>
     </div>
   </div>
@@ -810,6 +797,176 @@
       <div class="config-actions">
         <button mat-stroked-button (click)="showLabelConfigDialog = false">Cancel</button>
         <button mat-raised-button color="primary" (click)="saveLabelConfig()">
+          <mat-icon>save</mat-icon>
+          Save Settings
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bill Settings Dialog -->
+  <div class="bill-settings-overlay" *ngIf="showBillSettingsDialog" (click)="closeBillSettingsDialog()">
+    <div class="bill-settings-dialog" (click)="$event.stopPropagation()">
+      <div class="bill-settings-header">
+        <h3>
+          <mat-icon>receipt_long</mat-icon>
+          Bill Settings
+        </h3>
+        <button mat-icon-button (click)="closeBillSettingsDialog()">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div class="bill-settings-content">
+        <!-- Shop Header Info Section -->
+        <div class="settings-section">
+          <div class="section-title">
+            <mat-icon>store</mat-icon>
+            Shop Header
+          </div>
+          <div class="settings-field">
+            <label>Shop Name</label>
+            <input type="text" [(ngModel)]="billSettings.shopName" placeholder="Enter shop name">
+          </div>
+          <div class="settings-field">
+            <label>Phone Number</label>
+            <input type="tel" [(ngModel)]="billSettings.shopPhone" placeholder="e.g. 9876543210">
+          </div>
+          <div class="settings-field">
+            <label>FSSAI License Number</label>
+            <input type="text" [(ngModel)]="billSettings.fssaiNumber" placeholder="14 digit FSSAI number">
+          </div>
+          <div class="settings-field">
+            <label>FSSAI License Holder Name</label>
+            <input type="text" [(ngModel)]="billSettings.fssaiName" placeholder="License holder name">
+          </div>
+        </div>
+
+        <!-- Bill Format Section -->
+        <div class="settings-section">
+          <div class="section-title">
+            <mat-icon>format_list_numbered</mat-icon>
+            Bill Format
+          </div>
+          <div class="settings-row">
+            <div class="settings-field half">
+              <label>Date Format</label>
+              <select [(ngModel)]="billSettings.dateFormat">
+                <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+              </select>
+            </div>
+            <div class="settings-field half">
+              <label>Bill Number Prefix</label>
+              <input type="text" [(ngModel)]="billSettings.billNumberPrefix" placeholder="e.g. INV-">
+            </div>
+          </div>
+        </div>
+
+        <!-- Font Sizes Section -->
+        <div class="settings-section">
+          <div class="section-title">
+            <mat-icon>format_size</mat-icon>
+            Font Sizes
+          </div>
+          <div class="font-size-row">
+            <div class="font-size-item">
+              <label>Header</label>
+              <div class="slider-container">
+                <input type="range" [(ngModel)]="billSettings.headerFontSize" min="12" max="24" step="1">
+                <span class="font-size-value">{{ billSettings.headerFontSize }}px</span>
+              </div>
+            </div>
+            <div class="font-size-item">
+              <label>Body</label>
+              <div class="slider-container">
+                <input type="range" [(ngModel)]="billSettings.bodyFontSize" min="8" max="16" step="1">
+                <span class="font-size-value">{{ billSettings.bodyFontSize }}px</span>
+              </div>
+            </div>
+            <div class="font-size-item">
+              <label>Footer</label>
+              <div class="slider-container">
+                <input type="range" [(ngModel)]="billSettings.footerFontSize" min="6" max="14" step="1">
+                <span class="font-size-value">{{ billSettings.footerFontSize }}px</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Show/Hide Elements Section -->
+        <div class="settings-section">
+          <div class="section-title">
+            <mat-icon>visibility</mat-icon>
+            Show/Hide Elements
+          </div>
+          <div class="toggle-grid">
+            <div class="toggle-item">
+              <mat-slide-toggle [(ngModel)]="billSettings.showShopName" color="primary"></mat-slide-toggle>
+              <span>Shop Name</span>
+            </div>
+            <div class="toggle-item">
+              <mat-slide-toggle [(ngModel)]="billSettings.showShopPhone" color="primary"></mat-slide-toggle>
+              <span>Phone Number</span>
+            </div>
+            <div class="toggle-item">
+              <mat-slide-toggle [(ngModel)]="billSettings.showFssaiInfo" color="primary"></mat-slide-toggle>
+              <span>FSSAI Info</span>
+            </div>
+            <div class="toggle-item">
+              <mat-slide-toggle [(ngModel)]="billSettings.showDateTime" color="primary"></mat-slide-toggle>
+              <span>Date/Time</span>
+            </div>
+            <div class="toggle-item">
+              <mat-slide-toggle [(ngModel)]="billSettings.showBillNumber" color="primary"></mat-slide-toggle>
+              <span>Bill Number</span>
+            </div>
+            <div class="toggle-item">
+              <mat-slide-toggle [(ngModel)]="billSettings.showCustomerDetails" color="primary"></mat-slide-toggle>
+              <span>Customer Details</span>
+            </div>
+            <div class="toggle-item">
+              <mat-slide-toggle [(ngModel)]="billSettings.showThankYouMessage" color="primary"></mat-slide-toggle>
+              <span>Thank You Message</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Receipt Language Section -->
+        <div class="settings-section">
+          <div class="section-title">
+            <mat-icon>language</mat-icon>
+            Receipt Language
+          </div>
+          <div class="toggle-grid">
+            <div class="toggle-item">
+              <mat-slide-toggle [(ngModel)]="billSettings.showEnglish" color="primary"></mat-slide-toggle>
+              <span>English</span>
+            </div>
+            <div class="toggle-item">
+              <mat-slide-toggle [(ngModel)]="billSettings.showTamil" color="primary"></mat-slide-toggle>
+              <span>Tamil (தமிழ்)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer Message Section -->
+        <div class="settings-section">
+          <div class="section-title">
+            <mat-icon>message</mat-icon>
+            Footer Message
+          </div>
+          <div class="settings-field">
+            <label>Thank You Message</label>
+            <input type="text" [(ngModel)]="billSettings.thankYouMessage" placeholder="Thank you for shopping with us!">
+          </div>
+        </div>
+      </div>
+
+      <div class="bill-settings-actions">
+        <button mat-stroked-button (click)="closeBillSettingsDialog()">Cancel</button>
+        <button mat-raised-button color="primary" (click)="saveBillSettings()">
           <mat-icon>save</mat-icon>
           Save Settings
         </button>
