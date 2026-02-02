@@ -683,15 +683,23 @@ export class PosBillingComponent implements OnInit, OnDestroy {
         this.isLoading = false;
 
         // Cache product images to IndexedDB for offline use
-        this.cacheProductImagesToIndexedDB(this.products);
+        if (this.products.length > 0) {
+          this.cacheProductImagesToIndexedDB(this.products);
+        }
 
-        // Only sync from server if cache is stale (older than 5 minutes)
+        // Sync from server if: cache is stale OR no active products found
         if (navigator.onLine) {
           const lastSync = localStorage.getItem(this.POS_CACHE_TIMESTAMP_KEY);
           const lastSyncTime = lastSync ? parseInt(lastSync, 10) : 0;
           const cacheAge = Date.now() - lastSyncTime;
+          const hasNoActiveProducts = this.products.length === 0;
 
-          if (cacheAge > this.CACHE_VALIDITY_MS) {
+          if (hasNoActiveProducts) {
+            // No active products - force load from server immediately
+            console.log('POS: No active products in cache, loading from server...');
+            this.loadProductsFromServer();
+            return;
+          } else if (cacheAge > this.CACHE_VALIDITY_MS) {
             console.log(`POS cache is stale (age: ${Math.round(cacheAge / 1000)}s), syncing from server...`);
             this.syncProductsInBackground();
           } else {
