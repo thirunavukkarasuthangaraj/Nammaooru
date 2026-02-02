@@ -99,12 +99,12 @@
             <th class="col-category">CATEGORY</th>
             <th class="col-tamil-name">TAMIL NAME</th>
             <th class="col-sku">SKU</th>
-            <th class="col-barcode">BARCODE 1</th>
-            <th class="col-barcode">BARCODE 2</th>
-            <th class="col-barcode">BARCODE 3</th>
             <th class="col-price">PRICE</th>
             <th class="col-mrp">MRP</th>
             <th class="col-stock">STOCK</th>
+            <th class="col-barcode">BARCODE 1</th>
+            <th class="col-barcode">BARCODE 2</th>
+            <th class="col-barcode">BARCODE 3</th>
             <th class="col-status">STATUS</th>
             <th class="col-tags">TAGS</th>
           </tr>
@@ -209,42 +209,6 @@
                      placeholder="-">
             </td>
 
-            <!-- Barcode 1 (Editable) -->
-            <td class="col-barcode">
-              <input type="text"
-                     class="cell-input barcode-input"
-                     [class.modified]="isCellModified(product, 'barcode1')"
-                     [class.invalid]="hasDuplicateError(product, 'barcode1')"
-                     [title]="getDuplicateErrorMessage(product, 'barcode1')"
-                     [value]="product.barcode1 || ''"
-                     (change)="onBarcode1Change(product, $any($event.target).value)"
-                     placeholder="-">
-            </td>
-
-            <!-- Barcode 2 (Editable) -->
-            <td class="col-barcode">
-              <input type="text"
-                     class="cell-input barcode-input"
-                     [class.modified]="isCellModified(product, 'barcode2')"
-                     [class.invalid]="hasDuplicateError(product, 'barcode2')"
-                     [title]="getDuplicateErrorMessage(product, 'barcode2')"
-                     [value]="product.barcode2 || ''"
-                     (change)="onBarcode2Change(product, $any($event.target).value)"
-                     placeholder="-">
-            </td>
-
-            <!-- Barcode 3 (Editable) -->
-            <td class="col-barcode">
-              <input type="text"
-                     class="cell-input barcode-input"
-                     [class.modified]="isCellModified(product, 'barcode3')"
-                     [class.invalid]="hasDuplicateError(product, 'barcode3')"
-                     [title]="getDuplicateErrorMessage(product, 'barcode3')"
-                     [value]="product.barcode3 || ''"
-                     (change)="onBarcode3Change(product, $any($event.target).value)"
-                     placeholder="-">
-            </td>
-
             <!-- Price (Editable) -->
             <td class="col-price">
               <input type="number"
@@ -279,6 +243,42 @@
                      (change)="onStockChange(product, $any($event.target).value)"
                      min="0"
                      step="1">
+            </td>
+
+            <!-- Barcode 1 (Editable) -->
+            <td class="col-barcode">
+              <input type="text"
+                     class="cell-input barcode-input"
+                     [class.modified]="isCellModified(product, 'barcode1')"
+                     [class.invalid]="hasDuplicateError(product, 'barcode1')"
+                     [title]="getDuplicateErrorMessage(product, 'barcode1')"
+                     [value]="product.barcode1 || ''"
+                     (change)="onBarcode1Change(product, $any($event.target).value)"
+                     placeholder="-">
+            </td>
+
+            <!-- Barcode 2 (Editable) -->
+            <td class="col-barcode">
+              <input type="text"
+                     class="cell-input barcode-input"
+                     [class.modified]="isCellModified(product, 'barcode2')"
+                     [class.invalid]="hasDuplicateError(product, 'barcode2')"
+                     [title]="getDuplicateErrorMessage(product, 'barcode2')"
+                     [value]="product.barcode2 || ''"
+                     (change)="onBarcode2Change(product, $any($event.target).value)"
+                     placeholder="-">
+            </td>
+
+            <!-- Barcode 3 (Editable) -->
+            <td class="col-barcode">
+              <input type="text"
+                     class="cell-input barcode-input"
+                     [class.modified]="isCellModified(product, 'barcode3')"
+                     [class.invalid]="hasDuplicateError(product, 'barcode3')"
+                     [title]="getDuplicateErrorMessage(product, 'barcode3')"
+                     [value]="product.barcode3 || ''"
+                     (change)="onBarcode3Change(product, $any($event.target).value)"
+                     placeholder="-">
             </td>
 
             <!-- Status (Editable Dropdown) -->
