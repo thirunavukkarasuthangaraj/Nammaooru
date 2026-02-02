@@ -992,7 +992,38 @@ export class MyProductsComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: () => {
-          this.loadProducts();
+          // Update local array instead of reloading from server (prevents stale data)
+          const index = this.products.findIndex(p => p.id === productId);
+          if (index !== -1) {
+            this.products[index] = {
+              ...this.products[index],
+              customName: updatedData.customName || this.products[index].customName,
+              price: updatedData.price ?? this.products[index].price,
+              originalPrice: updatedData.originalPrice ?? this.products[index].originalPrice,
+              costPrice: updatedData.costPrice ?? this.products[index].costPrice,
+              stockQuantity: updatedData.stockQuantity ?? this.products[index].stockQuantity,
+              barcode1: updatedData.barcode1 ?? this.products[index].barcode1,
+              barcode2: updatedData.barcode2 ?? this.products[index].barcode2,
+              barcode3: updatedData.barcode3 ?? this.products[index].barcode3
+            };
+            this.applyFilters();
+          }
+
+          // Update IndexedDB cache
+          this.offlineStorage.updateLocalProduct(productId, {
+            name: updatedData.customName,
+            price: updatedData.price,
+            originalPrice: updatedData.originalPrice,
+            costPrice: updatedData.costPrice,
+            stock: updatedData.stockQuantity,
+            barcode1: updatedData.barcode1,
+            barcode2: updatedData.barcode2,
+            barcode3: updatedData.barcode3
+          }).catch(err => console.warn('Failed to update cache:', err));
+
+          // Update cache timestamp to prevent background sync overwriting
+          localStorage.setItem(this.CACHE_TIMESTAMP_KEY, Date.now().toString());
+
           this.snackBar.open('Product updated successfully', 'Close', { duration: 2000 });
         },
         error: (error) => {
@@ -1002,7 +1033,7 @@ export class MyProductsComponent implements OnInit, OnDestroy {
             this.saveEditOffline(productId, updatedData, previousValues);
             this.snackBar.open('Product updated (saved offline, will sync when online)', 'Close', { duration: 3000 });
           } else {
-            this.loadProducts();
+            // Server error - still update locally since we already did optimistic update
             this.snackBar.open('Product updated', 'Close', { duration: 2000 });
           }
         }
