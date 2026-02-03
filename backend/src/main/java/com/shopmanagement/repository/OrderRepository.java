@@ -181,4 +181,50 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     // Find orders by shop and created date range (for daily summary)
     List<Order> findByShopIdAndCreatedAtBetween(Long shopId, LocalDateTime startDate, LocalDateTime endDate);
+
+    // ============ Analytics aggregate queries (across all shops) ============
+
+    // Total revenue across all shops in date range
+    @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.createdAt BETWEEN :startDate AND :endDate AND (o.paymentStatus = 'PAID' OR o.status IN ('DELIVERED', 'COMPLETED'))")
+    BigDecimal getTotalRevenueByDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    // Average order value across all shops in date range
+    @Query("SELECT COALESCE(AVG(o.totalAmount), 0) FROM Order o WHERE o.createdAt BETWEEN :startDate AND :endDate AND (o.paymentStatus = 'PAID' OR o.status IN ('DELIVERED', 'COMPLETED'))")
+    BigDecimal getAvgOrderValueByDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    // Count distinct customers who placed orders in date range
+    @Query("SELECT COUNT(DISTINCT o.customer.id) FROM Order o WHERE o.createdAt BETWEEN :startDate AND :endDate")
+    Long countDistinctCustomersByDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    // Daily revenue across all shops
+    @Query(value = "SELECT DATE_TRUNC('day', o.created_at) as day, COALESCE(SUM(o.total_amount), 0) as revenue FROM orders o WHERE o.created_at BETWEEN :startDate AND :endDate AND (o.payment_status = 'PAID' OR o.status IN ('DELIVERED', 'COMPLETED')) GROUP BY DATE_TRUNC('day', o.created_at) ORDER BY day", nativeQuery = true)
+    List<Object[]> getDailyRevenueAll(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    // Daily order count across all shops
+    @Query(value = "SELECT DATE_TRUNC('day', o.created_at) as day, COUNT(*) as cnt FROM orders o WHERE o.created_at BETWEEN :startDate AND :endDate GROUP BY DATE_TRUNC('day', o.created_at) ORDER BY day", nativeQuery = true)
+    List<Object[]> getDailyOrderCountAll(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    // Monthly revenue across all shops
+    @Query(value = "SELECT DATE_TRUNC('month', o.created_at) as month, COALESCE(SUM(o.total_amount), 0) as revenue FROM orders o WHERE o.created_at BETWEEN :startDate AND :endDate AND (o.payment_status = 'PAID' OR o.status IN ('DELIVERED', 'COMPLETED')) GROUP BY DATE_TRUNC('month', o.created_at) ORDER BY month", nativeQuery = true)
+    List<Object[]> getMonthlyRevenueAll(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    // Monthly order count across all shops
+    @Query(value = "SELECT DATE_TRUNC('month', o.created_at) as month, COUNT(*) as cnt FROM orders o WHERE o.created_at BETWEEN :startDate AND :endDate GROUP BY DATE_TRUNC('month', o.created_at) ORDER BY month", nativeQuery = true)
+    List<Object[]> getMonthlyOrderCountAll(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    // Top shops by revenue in date range
+    @Query("SELECT o.shop.id, COALESCE(SUM(o.totalAmount), 0), COUNT(o), COUNT(DISTINCT o.customer.id) FROM Order o WHERE o.createdAt BETWEEN :startDate AND :endDate AND (o.paymentStatus = 'PAID' OR o.status IN ('DELIVERED', 'COMPLETED')) GROUP BY o.shop.id ORDER BY SUM(o.totalAmount) DESC")
+    List<Object[]> getTopShopsByRevenueInDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    // Shop-specific revenue in date range (for shop dashboard)
+    @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.shop.id = :shopId AND o.createdAt BETWEEN :startDate AND :endDate AND (o.paymentStatus = 'PAID' OR o.status IN ('DELIVERED', 'COMPLETED'))")
+    BigDecimal getShopRevenueInDateRange(@Param("shopId") Long shopId, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    // Shop-specific order count in date range
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.shop.id = :shopId AND o.createdAt BETWEEN :startDate AND :endDate")
+    Long countOrdersByShopInDateRange(@Param("shopId") Long shopId, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    // Shop-specific distinct customers in date range
+    @Query("SELECT COUNT(DISTINCT o.customer.id) FROM Order o WHERE o.shop.id = :shopId AND o.createdAt BETWEEN :startDate AND :endDate")
+    Long countDistinctCustomersByShopInDateRange(@Param("shopId") Long shopId, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 }

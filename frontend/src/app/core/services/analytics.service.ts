@@ -73,8 +73,8 @@ export interface ProductPerformance {
 
 export interface AnalyticsRequest {
   periodType: string;
-  startDate: Date;
-  endDate: Date;
+  startDate: string;
+  endDate: string;
   shopId?: number;
   category?: string;
   metricType?: string;
@@ -88,11 +88,17 @@ export class AnalyticsService {
 
   constructor(private http: HttpClient) {}
 
+  /** Format Date to LocalDateTime string (no timezone) for Java backend */
+  private formatDate(date: Date): string {
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+  }
+
   getDashboardMetrics(startDate: Date, endDate: Date): Observable<DashboardMetrics> {
     const request: AnalyticsRequest = {
       periodType: 'CUSTOM',
-      startDate,
-      endDate
+      startDate: this.formatDate(startDate),
+      endDate: this.formatDate(endDate)
     };
     return this.http.post<ApiResponse<DashboardMetrics>>(`${this.apiUrl}/dashboard`, request)
       .pipe(
@@ -113,8 +119,8 @@ export class AnalyticsService {
   getShopDashboardMetrics(shopId: number, startDate: Date, endDate: Date): Observable<DashboardMetrics> {
     const request: AnalyticsRequest = {
       periodType: 'CUSTOM',
-      startDate,
-      endDate,
+      startDate: this.formatDate(startDate),
+      endDate: this.formatDate(endDate),
       shopId
     };
     return this.http.post<ApiResponse<DashboardMetrics>>(`${this.apiUrl}/dashboard/shop/${shopId}`, request)
@@ -136,8 +142,8 @@ export class AnalyticsService {
   getCustomerAnalytics(startDate: Date, endDate: Date): Observable<any> {
     const request: AnalyticsRequest = {
       periodType: 'CUSTOM',
-      startDate,
-      endDate
+      startDate: this.formatDate(startDate),
+      endDate: this.formatDate(endDate)
     };
     return this.http.post<ApiResponse<any>>(`${this.apiUrl}/customers`, request)
       .pipe(
@@ -158,8 +164,8 @@ export class AnalyticsService {
   generateAnalytics(startDate: Date, endDate: Date, periodType: string): Observable<void> {
     return this.http.post<void>(`${this.apiUrl}/generate`, {}, {
       params: {
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
+        startDate: this.formatDate(startDate),
+        endDate: this.formatDate(endDate),
         periodType
       }
     });
