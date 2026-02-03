@@ -37,6 +37,7 @@ import { DeliveryPartnerDashboardComponent } from './components/delivery-partner
 import { PartnerRegistrationComponent } from './components/partner-registration/partner-registration.component';
 import { AdminPartnersComponent } from './components/admin-partners/admin-partners.component';
 import { OrderTrackingComponent } from './components/order-tracking/order-tracking.component';
+import { AdminTrackingComponent } from './components/admin-tracking/admin-tracking.component';
 import { PartnerOrdersComponent } from './components/partner-orders/partner-orders.component';
 import { DeliveryAnalyticsComponent } from './components/delivery-analytics/delivery-analytics.component';
 import { PartnerStatusDialogComponent } from './components/partner-status-dialog/partner-status-dialog.component';
@@ -64,6 +65,7 @@ import { DeliveryAssignmentService } from './services/delivery-assignment.servic
     PartnerRegistrationComponent,
     AdminPartnersComponent,
     OrderTrackingComponent,
+    AdminTrackingComponent,
     PartnerOrdersComponent,
     DeliveryAnalyticsComponent,
     PartnerStatusDialogComponent,

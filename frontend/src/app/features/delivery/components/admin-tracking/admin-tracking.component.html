@@ -1,0 +1,136 @@
+<div class="admin-tracking-container">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="header-left">
+      <mat-icon class="header-icon">gps_fixed</mat-icon>
+      <div>
+        <h1>Live Tracking Dashboard</h1>
+        <p class="subtitle">Monitor active deliveries in real-time</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="last-refresh">Last updated: {{ formatTime(lastRefresh) }}</span>
+      <button mat-raised-button color="primary" (click)="refreshData()">
+        <mat-icon>refresh</mat-icon>
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="stats-grid">
+    <div class="stat-card total" (click)="filterByStatus('ALL')">
+      <mat-icon>delivery_dining</mat-icon>
+      <div class="stat-value">{{ stats.totalActive }}</div>
+      <div class="stat-label">Active Deliveries</div>
+    </div>
+    <div class="stat-card in-transit" (click)="filterByStatus('IN_TRANSIT')">
+      <mat-icon>local_shipping</mat-icon>
+      <div class="stat-value">{{ stats.inTransit }}</div>
+      <div class="stat-label">In Transit</div>
+    </div>
+    <div class="stat-card picked-up" (click)="filterByStatus('PICKED_UP')">
+      <mat-icon>shopping_cart</mat-icon>
+      <div class="stat-value">{{ stats.pickedUp }}</div>
+      <div class="stat-label">Picked Up</div>
+    </div>
+    <div class="stat-card assigned" (click)="filterByStatus('ASSIGNED')">
+      <mat-icon>assignment</mat-icon>
+      <div class="stat-value">{{ stats.assigned }}</div>
+      <div class="stat-label">Assigned / Accepted</div>
+    </div>
+    <div class="stat-card delivered" (click)="filterByStatus('ALL')">
+      <mat-icon>check_circle</mat-icon>
+      <div class="stat-value">{{ stats.deliveredToday }}</div>
+      <div class="stat-label">Delivered Today</div>
+    </div>
+  </div>
+
+  <!-- Filter Chips -->
+  <div class="filter-bar">
+    <mat-chip-listbox>
+      <mat-chip-option *ngFor="let filter of statusFilters"
+                       [selected]="selectedStatus === filter.value"
+                       (click)="filterByStatus(filter.value)">
+        <mat-icon matChipAvatar>{{ filter.icon }}</mat-icon>
+        {{ filter.label }}
+      </mat-chip-option>
+    </mat-chip-listbox>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-state" *ngIf="isLoading">
+    <mat-spinner diameter="40"></mat-spinner>
+    <p>Loading active deliveries...</p>
+  </div>
+
+  <!-- Active Deliveries List -->
+  <div class="deliveries-list" *ngIf="!isLoading">
+    <!-- Empty State -->
+    <div class="empty-state" *ngIf="filteredAssignments.length === 0">
+      <mat-icon>local_shipping</mat-icon>
+      <h3>No Active Deliveries</h3>
+      <p *ngIf="selectedStatus === 'ALL'">There are no active deliveries at the moment.</p>
+      <p *ngIf="selectedStatus !== 'ALL'">No deliveries with status "{{ formatStatus(selectedStatus) }}".</p>
+      <button mat-stroked-button color="primary" *ngIf="selectedStatus !== 'ALL'" (click)="filterByStatus('ALL')">
+        Show All
+      </button>
+    </div>
+
+    <!-- Delivery Cards -->
+    <div class="delivery-card" *ngFor="let assignment of filteredAssignments" (click)="trackDelivery(assignment)">
+      <div class="card-status-bar" [style.background-color]="getStatusColor(assignment.status)"></div>
+
+      <div class="card-content">
+        <div class="card-top">
+          <div class="status-badge" [style.background-color]="getStatusColor(assignment.status)">
+            <mat-icon>{{ getStatusIcon(assignment.status) }}</mat-icon>
+            <span>{{ formatStatus(assignment.status) }}</span>
+          </div>
+          <span class="time-info">{{ formatTimeAgo(assignment.updatedAt) }}</span>
+        </div>
+
+        <div class="card-body">
+          <div class="info-row">
+            <mat-icon class="row-icon">confirmation_number</mat-icon>
+            <span class="info-label">Order:</span>
+            <span class="info-value">#{{ assignment.orderNumber || assignment.orderId }}</span>
+          </div>
+
+          <div class="info-row" *ngIf="assignment.partnerName">
+            <mat-icon class="row-icon">person</mat-icon>
+            <span class="info-label">Partner:</span>
+            <span class="info-value">{{ assignment.partnerName }}</span>
+          </div>
+
+          <div class="info-row" *ngIf="assignment.customerName">
+            <mat-icon class="row-icon">person_outline</mat-icon>
+            <span class="info-label">Customer:</span>
+            <span class="info-value">{{ assignment.customerName }}</span>
+          </div>
+
+          <div class="info-row" *ngIf="assignment.deliveryAddress">
+            <mat-icon class="row-icon">location_on</mat-icon>
+            <span class="info-label">Address:</span>
+            <span class="info-value address">{{ assignment.deliveryAddress }}</span>
+          </div>
+
+          <div class="info-row" *ngIf="assignment.distanceToDestination">
+            <mat-icon class="row-icon">straighten</mat-icon>
+            <span class="info-label">Distance:</span>
+            <span class="info-value">{{ assignment.distanceToDestination }} km remaining</span>
+          </div>
+        </div>
+
+        <div class="card-actions">
+          <button mat-icon-button color="primary" matTooltip="Track on Map" (click)="trackDelivery(assignment); $event.stopPropagation()">
+            <mat-icon>map</mat-icon>
+          </button>
+          <button mat-icon-button *ngIf="assignment.partnerPhone" matTooltip="Call Partner" (click)="callPartner(assignment, $event)">
+            <mat-icon>phone</mat-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
