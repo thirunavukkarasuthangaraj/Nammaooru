@@ -1809,3 +1809,20 @@ html, body {
     grid-template-columns: 1fr;
   }
 }
+
+/* Product Assignment Dialog - Remove default Material dialog padding */
+.product-assignment-dialog-panel {
+  .mat-mdc-dialog-container {
+    padding: 0 !important;
+
+    .mdc-dialog__surface {
+      border-radius: 16px !important;
+      overflow: hidden;
+    }
+
+    .mdc-dialog__content {
+      padding: 0 !important;
+      max-height: none !important;
+    }
+  }
+}

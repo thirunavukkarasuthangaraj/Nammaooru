@@ -334,10 +334,11 @@ export class BrowseProductsComponent implements OnInit, OnDestroy {
     };
 
     const dialogRef = this.dialog.open(ProductAssignmentDialogComponent, {
-      width: '600px',
-      maxWidth: '90vw',
+      width: '480px',
+      maxWidth: '95vw',
       data: dialogData,
-      disableClose: false
+      disableClose: false,
+      panelClass: 'product-assignment-dialog-panel'
     });
 
     dialogRef.afterClosed().subscribe(result => {
