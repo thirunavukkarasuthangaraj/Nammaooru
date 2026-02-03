@@ -20,12 +20,14 @@ import { MatDividerModule } from '@angular/material/divider';
 import { OrdersRoutingModule } from './orders-routing.module';
 import { OrderListComponent } from './components/order-list/order-list.component';
 import { OrderDetailComponent } from './components/order-detail/order-detail.component';
+import { OrderIssuesComponent } from './components/order-issues/order-issues.component';
 import { OrderStatusDialogComponent } from './components/order-status-dialog/order-status-dialog.component';
 
 @NgModule({
   declarations: [
     OrderListComponent,
     OrderDetailComponent,
+    OrderIssuesComponent,
     OrderStatusDialogComponent
   ],
   imports: [
