@@ -1,73 +1,75 @@
 <div class="my-products-container">
-  <!-- Header Section -->
-  <div class="products-header">
-    <div class="header-left">
-      <h1>My Products</h1>
-      <p>
-        {{ products.length }} products in your shop •
-        <span class="active-count">{{ getActiveCount() }} Active</span> •
-        <span class="inactive-count">{{ getInactiveCount() }} Inactive</span>
-        <span *ngIf="filteredProducts.length !== products.length"> • {{ filteredProducts.length }} showing</span>
-        <span *ngIf="selectedProducts.length > 0" class="selection-count">
-          • <strong>{{ selectedProducts.length }} selected</strong>
-        </span>
-      </p>
-    </div>
-    <div class="header-actions">
-      <!-- Bulk Delete Button - shown when products are selected -->
-      <button mat-raised-button color="warn"
-              *ngIf="selectedProducts.length > 0"
-              (click)="bulkDeleteProducts()"
-              class="bulk-delete-btn">
-        <mat-icon>delete</mat-icon>
-        Delete Selected ({{ selectedProducts.length }})
-      </button>
+  <!-- Sticky Header + Search -->
+  <div class="sticky-header">
+    <!-- Header Section -->
+    <div class="products-header">
+      <div class="header-left">
+        <h1>My Products</h1>
+        <p>
+          {{ products.length }} products in your shop •
+          <span class="active-count">{{ getActiveCount() }} Active</span> •
+          <span class="inactive-count">{{ getInactiveCount() }} Inactive</span>
+          <span *ngIf="filteredProducts.length !== products.length"> • {{ filteredProducts.length }} showing</span>
+          <span *ngIf="selectedProducts.length > 0" class="selection-count">
+            • <strong>{{ selectedProducts.length }} selected</strong>
+          </span>
+        </p>
+      </div>
+      <div class="header-actions">
+        <!-- Bulk Delete Button - shown when products are selected -->
+        <button mat-raised-button color="warn"
+                *ngIf="selectedProducts.length > 0"
+                (click)="bulkDeleteProducts()"
+                class="bulk-delete-btn">
+          <mat-icon>delete</mat-icon>
+          Delete Selected ({{ selectedProducts.length }})
+        </button>
 
-      <button mat-raised-button color="primary" (click)="addNewProduct()">
-        <mat-icon>add</mat-icon>
-        Add Custom Product
-      </button>
+        <button mat-raised-button color="primary" (click)="addNewProduct()">
+          <mat-icon>add</mat-icon>
+          Add Custom Product
+        </button>
 
-    </div>
-  </div>
-
-  <!-- Filters Bar -->
-  <div class="filters-bar">
-    <div class="filters-row-1">
-      <mat-form-field appearance="outline" class="search-field">
-        <mat-label>Search products...</mat-label>
-        <input matInput
-               [value]="searchTerm"
-               (input)="onSearchChange($event)"
-               placeholder="Search all products by name, SKU, or description">
-        <mat-icon matSuffix *ngIf="!searching">search</mat-icon>
-        <mat-spinner matSuffix diameter="20" *ngIf="searching"></mat-spinner>
-      </mat-form-field>
-
-      <div class="filter-controls">
-        <mat-form-field appearance="outline">
-          <mat-label>Category</mat-label>
-          <mat-select [(ngModel)]="selectedCategory" (selectionChange)="onCategoryChange($event.value)">
-            <mat-option value="">All Categories</mat-option>
-            <mat-option *ngFor="let category of categories" [value]="category">
-              {{ category }}
-            </mat-option>
-          </mat-select>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline">
-          <mat-label>Status</mat-label>
-          <mat-select [(ngModel)]="selectedStatus" (selectionChange)="onStatusChange($event.value)">
-            <mat-option value="">All Status</mat-option>
-            <mat-option value="ACTIVE">Active</mat-option>
-            <mat-option value="INACTIVE">Inactive</mat-option>
-            <mat-option value="available">Available</mat-option>
-            <mat-option value="unavailable">Unavailable</mat-option>
-          </mat-select>
-        </mat-form-field>
       </div>
     </div>
 
+    <!-- Filters Bar -->
+    <div class="filters-bar">
+      <div class="filters-row-1">
+        <mat-form-field appearance="outline" class="search-field">
+          <mat-label>Search products...</mat-label>
+          <input matInput
+                 [value]="searchTerm"
+                 (input)="onSearchChange($event)"
+                 placeholder="Search all products by name, SKU, or description">
+          <mat-icon matSuffix *ngIf="!searching">search</mat-icon>
+          <mat-spinner matSuffix diameter="20" *ngIf="searching"></mat-spinner>
+        </mat-form-field>
+
+        <div class="filter-controls">
+          <mat-form-field appearance="outline">
+            <mat-label>Category</mat-label>
+            <mat-select [(ngModel)]="selectedCategory" (selectionChange)="onCategoryChange($event.value)">
+              <mat-option value="">All Categories</mat-option>
+              <mat-option *ngFor="let category of categories" [value]="category">
+                {{ category }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Status</mat-label>
+            <mat-select [(ngModel)]="selectedStatus" (selectionChange)="onStatusChange($event.value)">
+              <mat-option value="">All Status</mat-option>
+              <mat-option value="ACTIVE">Active</mat-option>
+              <mat-option value="INACTIVE">Inactive</mat-option>
+              <mat-option value="available">Available</mat-option>
+              <mat-option value="unavailable">Unavailable</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+      </div>
+    </div>
   </div>
 
         <!-- Loading State -->

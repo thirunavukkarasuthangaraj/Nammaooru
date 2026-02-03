@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, AfterViewInit, ViewChild, ElementRef } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Subject } from 'rxjs';
 import { takeUntil, debounceTime } from 'rxjs/operators';
@@ -69,7 +69,7 @@ interface BillSettings {
   templateUrl: './pos-billing.component.html',
   styleUrls: ['./pos-billing.component.scss']
 })
-export class PosBillingComponent implements OnInit, OnDestroy {
+export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild('searchInput') searchInput!: ElementRef<HTMLInputElement>;
   @ViewChild('barcodeInput') barcodeInput!: ElementRef<HTMLInputElement>;
 
@@ -272,6 +272,15 @@ export class PosBillingComponent implements OnInit, OnDestroy {
       // Force reload from IndexedDB to pick up new products
       this.loadProducts();
     }
+  }
+
+  ngAfterViewInit(): void {
+    // Auto-focus search input for immediate product search/barcode scan
+    setTimeout(() => {
+      if (this.searchInput?.nativeElement) {
+        this.searchInput.nativeElement.focus();
+      }
+    }, 300);
   }
 
   ngOnDestroy(): void {
