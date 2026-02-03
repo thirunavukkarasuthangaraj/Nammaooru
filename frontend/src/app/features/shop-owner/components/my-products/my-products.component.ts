@@ -1024,6 +1024,10 @@ export class MyProductsComponent implements OnInit, OnDestroy {
           // Update cache timestamp to prevent background sync overwriting
           localStorage.setItem(this.CACHE_TIMESTAMP_KEY, Date.now().toString());
 
+          // Clear search filter after successful update
+          this.searchTerm = '';
+          this.applyFilters();
+
           this.snackBar.open('Product updated successfully', 'Close', { duration: 2000 });
         },
         error: (error) => {
@@ -1031,9 +1035,14 @@ export class MyProductsComponent implements OnInit, OnDestroy {
           const isNetworkError = !error?.status || error.status === 0;
           if (isNetworkError) {
             this.saveEditOffline(productId, updatedData, previousValues);
+            // Clear search filter after offline update
+            this.searchTerm = '';
+            this.applyFilters();
             this.snackBar.open('Product updated (saved offline, will sync when online)', 'Close', { duration: 3000 });
           } else {
             // Server error - still update locally since we already did optimistic update
+            this.searchTerm = '';
+            this.applyFilters();
             this.snackBar.open('Product updated', 'Close', { duration: 2000 });
           }
         }
