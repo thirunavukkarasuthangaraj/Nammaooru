@@ -2062,6 +2062,17 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     this.editImageFile = null;
     this.editImagePreview = '';
     this.labelQuantity = 1;
+
+    // Clear search/filter and reset product list after update
+    this.searchTerm = '';
+    this.filteredProducts = this.sortProductsWithCartFirst(this.products);
+
+    // Re-focus search input for next action
+    setTimeout(() => {
+      if (this.searchInput?.nativeElement) {
+        this.searchInput.nativeElement.focus();
+      }
+    }, 100);
   }
 
   /**
