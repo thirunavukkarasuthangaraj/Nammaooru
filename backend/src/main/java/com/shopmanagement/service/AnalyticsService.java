@@ -93,11 +93,14 @@ public class AnalyticsService {
                 .conversionRate(0.0) // No web traffic data available
                 .customerRetentionRate(retentionRate)
                 .monthlyGrowth(monthlyGrowth)
-                .revenueData(revenueData)
-                .orderData(orderData)
-                .topShops(topShops)
-                .revenueByPeriod(revenueByPeriod)
-                .ordersByPeriod(ordersByPeriod)
+                .revenueData(revenueData != null ? revenueData : new ArrayList<>())
+                .orderData(orderData != null ? orderData : new ArrayList<>())
+                .categoryData(new ArrayList<>())
+                .topShops(topShops != null ? topShops : new ArrayList<>())
+                .topProducts(new ArrayList<>())
+                .revenueByPeriod(revenueByPeriod != null ? revenueByPeriod : new HashMap<>())
+                .ordersByPeriod(ordersByPeriod != null ? ordersByPeriod : new HashMap<>())
+                .conversionByPeriod(new HashMap<>())
                 .build();
     }
 
@@ -130,7 +133,19 @@ public class AnalyticsService {
                 .totalRevenue(shopRevenue != null ? shopRevenue : BigDecimal.ZERO)
                 .totalOrders(shopOrders != null ? shopOrders : 0L)
                 .totalCustomers(shopCustomers != null ? shopCustomers : 0L)
+                .totalShops(1L)
+                .averageOrderValue(BigDecimal.ZERO)
+                .conversionRate(0.0)
+                .customerRetentionRate(0.0)
                 .monthlyGrowth(monthlyGrowth)
+                .revenueData(new ArrayList<>())
+                .orderData(new ArrayList<>())
+                .categoryData(new ArrayList<>())
+                .topShops(new ArrayList<>())
+                .topProducts(new ArrayList<>())
+                .revenueByPeriod(new HashMap<>())
+                .ordersByPeriod(new HashMap<>())
+                .conversionByPeriod(new HashMap<>())
                 .build();
     }
 

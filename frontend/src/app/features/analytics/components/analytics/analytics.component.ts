@@ -90,11 +90,15 @@ export class AnalyticsComponent implements OnInit {
   prepareChartData(): void {
     if (!this.dashboardMetrics) return;
 
+    const revenueData = this.dashboardMetrics.revenueData || [];
+    const orderData = this.dashboardMetrics.orderData || [];
+    const categoryData = this.dashboardMetrics.categoryData || [];
+
     // Revenue chart data
     this.revenueChartData = [
       {
         label: 'Revenue',
-        data: this.dashboardMetrics.revenueData.map(item => item.revenue),
+        data: revenueData.map(item => item.revenue),
         backgroundColor: 'rgba(54, 162, 235, 0.2)',
         borderColor: 'rgba(54, 162, 235, 1)',
         borderWidth: 2,
@@ -106,7 +110,7 @@ export class AnalyticsComponent implements OnInit {
     this.ordersChartData = [
       {
         label: 'Orders',
-        data: this.dashboardMetrics.orderData.map(item => item.orderCount),
+        data: orderData.map(item => item.orderCount),
         backgroundColor: 'rgba(75, 192, 192, 0.2)',
         borderColor: 'rgba(75, 192, 192, 1)',
         borderWidth: 2,
@@ -117,7 +121,7 @@ export class AnalyticsComponent implements OnInit {
     // Category chart data (Doughnut)
     this.categoryChartData = [
       {
-        data: this.dashboardMetrics.categoryData.map(item => item.revenue),
+        data: categoryData.map(item => item.revenue),
         backgroundColor: [
           'rgba(255, 99, 132, 0.8)',
           'rgba(54, 162, 235, 0.8)',
