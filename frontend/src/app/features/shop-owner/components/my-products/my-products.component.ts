@@ -750,9 +750,9 @@ export class MyProductsComponent implements OnInit, OnDestroy {
   }
 
   onSearchChange(event: any): void {
-    const value = event.target.value;
-    // Trigger client-side search with debounce
-    this.searchSubject$.next(value);
+    this.searchTerm = event.target.value;
+    // Filter locally - instant, no debounce needed for client-side filtering
+    this.applyFilters();
   }
 
   onCategoryChange(category: string): void {
