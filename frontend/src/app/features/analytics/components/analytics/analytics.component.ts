@@ -142,10 +142,11 @@ export class AnalyticsComponent implements OnInit {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR'
-    }).format(value);
+    }).format(value || 0);
   }
 
   formatPercentage(value: number): string {
+    if (value == null) return '0.0%';
     return value.toFixed(1) + '%';
   }
 

@@ -59,7 +59,14 @@ export class ShopContextService {
   private apiUrl = `${environment.apiUrl}`;
 
   constructor(private http: HttpClient) {
-    this.loadShopForCurrentUser();
+    // Only load shop for shop owners, not for admins/super_admins
+    const userData = localStorage.getItem('shop_management_user');
+    if (userData) {
+      const user = JSON.parse(userData);
+      if (user.role === 'SHOP_OWNER') {
+        this.loadShopForCurrentUser();
+      }
+    }
   }
 
   /**
@@ -113,8 +120,10 @@ export class ShopContextService {
   private getShopByOwner(username: string): Observable<Shop | null> {
     return this.http.get<any>(`${this.apiUrl}/shops`).pipe(
       map(response => {
-        const shops = response.content || response || [];
-        const userShop = shops.find((shop: any) => 
+        // Handle ApiResponse wrapper: response.data.content or response.content or response
+        const data = response?.data || response;
+        const shops = Array.isArray(data) ? data : (data?.content || []);
+        const userShop = shops.find((shop: any) =>
           shop.createdBy === username || shop.ownerEmail === username
         );
         
