@@ -2,6 +2,7 @@ import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ShopService } from '@core/services/shop.service';
 import { Shop } from '@core/models/shop.model';
 import { getImageUrl } from '@core/utils/image-url.util';
@@ -137,6 +138,13 @@ import { ShopContextService } from '../../services/shop-context.service';
                       <mat-error *ngFor="let error of getFieldErrors(field.control)">{{ error }}</mat-error>
                     </mat-form-field>
                     
+                    <mat-form-field *ngSwitchCase="'number'" appearance="outline">
+                      <mat-label>{{ field.label }}</mat-label>
+                      <input matInput type="number" step="0.000001" [formControlName]="field.control" [readonly]="!isEditMode" [placeholder]="field.placeholder">
+                      <mat-icon matPrefix>{{ getFieldIcon(field.control) }}</mat-icon>
+                      <mat-error *ngFor="let error of getFieldErrors(field.control)">{{ error }}</mat-error>
+                    </mat-form-field>
+
                     <mat-form-field *ngSwitchCase="'email'" appearance="outline">
                       <mat-label>{{ field.label }}</mat-label>
                       <input matInput type="email" [formControlName]="field.control" readonly>
@@ -148,6 +156,25 @@ import { ShopContextService } from '../../services/shop-context.service';
                 </div>
               </div>
               
+              <!-- Map Preview -->
+              <div class="map-section" *ngIf="shopForm.value.latitude && shopForm.value.longitude">
+                <h3>Shop Location on Map</h3>
+                <div class="map-container">
+                  <iframe
+                    [src]="getMapUrl()"
+                    width="100%"
+                    height="300"
+                    style="border:0; border-radius: 8px;"
+                    allowfullscreen=""
+                    loading="lazy"
+                    referrerpolicy="no-referrer-when-downgrade">
+                  </iframe>
+                </div>
+                <p class="map-hint">
+                  To get coordinates: Open Google Maps, right-click on your shop location, and copy the coordinates.
+                </p>
+              </div>
+
               <div class="form-actions" *ngIf="isEditMode">
                 <button mat-raised-button color="primary" type="submit" [disabled]="shopForm.invalid || isLoading">
                   <mat-spinner *ngIf="isLoading" diameter="16"></mat-spinner>
@@ -760,6 +787,32 @@ import { ShopContextService } from '../../services/shop-context.service';
       font-size: 0.9rem;
     }
 
+    /* Map Section */
+    .map-section {
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    .map-section h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #111827;
+      margin: 0 0 12px 0;
+    }
+
+    .map-container {
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .map-hint {
+      margin: 8px 0 0 0;
+      font-size: 0.85rem;
+      color: #6b7280;
+    }
+
     /* Mobile Responsive */
     @media (max-width: 768px) {
       .clean-shop-profile {
@@ -886,6 +939,7 @@ export class ShopProfileComponent implements OnInit {
     private shopService: ShopService,
     private snackBar: MatSnackBar,
     private router: Router,
+    private sanitizer: DomSanitizer,
     private shopContext: ShopContextService
   ) {
     this.shopForm = this.fb.group({
@@ -897,7 +951,9 @@ export class ShopProfileComponent implements OnInit {
       address: ['', [Validators.required]],
       city: ['', [Validators.required]],
       pincode: ['', [Validators.required]],
-      upiId: ['']
+      upiId: [''],
+      latitude: [null],
+      longitude: [null]
     });
   }
 
@@ -965,6 +1021,18 @@ export class ShopProfileComponent implements OnInit {
         control: 'upiId',
         type: 'text',
         placeholder: 'e.g., yourname@upi'
+      },
+      {
+        label: 'Latitude',
+        control: 'latitude',
+        type: 'number',
+        placeholder: 'e.g., 12.4962'
+      },
+      {
+        label: 'Longitude',
+        control: 'longitude',
+        type: 'number',
+        placeholder: 'e.g., 78.5722'
       }
     ];
   }
@@ -1122,7 +1190,9 @@ export class ShopProfileComponent implements OnInit {
       address: 'location_on',
       city: 'location_city',
       pincode: 'markunread_mailbox',
-      upiId: 'qr_code'
+      upiId: 'qr_code',
+      latitude: 'my_location',
+      longitude: 'my_location'
     };
     return iconMap[controlName] || 'info';
   }
@@ -1141,6 +1211,13 @@ export class ShopProfileComponent implements OnInit {
     return descriptions[key] || 'Configure this setting';
   }
   
+  getMapUrl(): SafeResourceUrl {
+    const lat = this.shopForm.value.latitude;
+    const lng = this.shopForm.value.longitude;
+    const url = `https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.005},${lat - 0.005},${lng + 0.005},${lat + 0.005}&layer=mapnik&marker=${lat},${lng}`;
+    return this.sanitizer.bypassSecurityTrustResourceUrl(url);
+  }
+
   navigateTo(path: string): void {
     this.router.navigate([path]);
   }
@@ -1209,7 +1286,9 @@ export class ShopProfileComponent implements OnInit {
             address: shop.addressLine1 || shop.address || '',
             city: shop.city || '',
             pincode: shop.postalCode || shop.pincode || '',
-            upiId: shop.upiId || ''
+            upiId: shop.upiId || '',
+            latitude: shop.latitude || null,
+            longitude: shop.longitude || null
           });
           
           // Set email separately since it's disabled
@@ -1317,7 +1396,9 @@ export class ShopProfileComponent implements OnInit {
         addressLine1: this.shopForm.value.address,
         city: this.shopForm.value.city,
         postalCode: this.shopForm.value.pincode,
-        upiId: this.shopForm.value.upiId
+        upiId: this.shopForm.value.upiId,
+        latitude: this.shopForm.value.latitude,
+        longitude: this.shopForm.value.longitude
       };
       
       this.shopService.updateShop(this.shop.id, updatedShop).subscribe({
@@ -1335,7 +1416,9 @@ export class ShopProfileComponent implements OnInit {
             address: response.addressLine1 || '',
             city: response.city || '',
             pincode: response.postalCode || '',
-            upiId: response.upiId || ''
+            upiId: response.upiId || '',
+            latitude: response.latitude || null,
+            longitude: response.longitude || null
           });
 
           // Save UPI ID to localStorage for POS Billing
