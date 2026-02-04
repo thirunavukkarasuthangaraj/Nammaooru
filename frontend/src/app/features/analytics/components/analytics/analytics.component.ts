@@ -44,6 +44,8 @@ export class AnalyticsComponent implements OnInit {
     },
   };
 
+  Math = Math;
+
   constructor(private analyticsService: AnalyticsService) {}
 
   ngOnInit(): void {
@@ -170,6 +172,62 @@ export class AnalyticsComponent implements OnInit {
         });
       }
     });
+  }
+
+  getTotalRevenue(): number {
+    if (!this.dashboardMetrics?.revenueData) return 0;
+    return this.dashboardMetrics.revenueData.reduce((sum, item) => sum + (item.revenue || 0), 0);
+  }
+
+  getTotalOrders(): number {
+    if (!this.dashboardMetrics?.orderData) return 0;
+    return this.dashboardMetrics.orderData.reduce((sum, item) => sum + (item.orderCount || 0), 0);
+  }
+
+  getRevenueBarWidth(revenue: number): number {
+    if (!this.dashboardMetrics?.revenueData?.length) return 0;
+    const maxRevenue = Math.max(...this.dashboardMetrics.revenueData.map(d => d.revenue || 0));
+    if (maxRevenue === 0) return 0;
+    return Math.max((revenue / maxRevenue) * 100, 2);
+  }
+
+  getOrderBarWidth(orderCount: number): number {
+    if (!this.dashboardMetrics?.orderData?.length) return 0;
+    const maxOrders = Math.max(...this.dashboardMetrics.orderData.map(d => d.orderCount || 0));
+    if (maxOrders === 0) return 0;
+    return Math.max((orderCount / maxOrders) * 100, 2);
+  }
+
+  formatPeriodDate(period: string): string {
+    if (!period) return '';
+    // period format is like "29/01" or "2026-01-29"
+    const parts = period.split('/');
+    if (parts.length === 2) {
+      return `${parts[0]}/${parts[1]}`;
+    }
+    return period;
+  }
+
+  formatPeriodDay(period: string): string {
+    if (!period) return '';
+    try {
+      const parts = period.split('/');
+      if (parts.length === 2) {
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const date = new Date(new Date().getFullYear(), month, day);
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        return days[date.getDay()] || '';
+      }
+    } catch {
+      return '';
+    }
+    return '';
+  }
+
+  getCategoryColor(index: number): string {
+    const colors = ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#F44336', '#00BCD4', '#FF5722', '#607D8B'];
+    return colors[index % colors.length];
   }
 
   exportData(): void {

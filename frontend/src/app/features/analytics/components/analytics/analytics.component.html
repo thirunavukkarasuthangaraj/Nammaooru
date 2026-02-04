@@ -97,75 +97,159 @@
       </mat-card>
     </div>
 
-    <!-- Charts Section - Temporarily disabled -->
+    <!-- Charts Section -->
     <div class="charts-grid">
-      <!-- Revenue Chart Placeholder -->
+      <!-- Revenue Trend Chart -->
       <mat-card class="chart-card">
-        <mat-card-header>
-          <mat-card-title>Revenue Trend</mat-card-title>
-          <mat-card-subtitle>Weekly revenue performance</mat-card-subtitle>
-        </mat-card-header>
+        <div class="chart-card-header">
+          <div class="chart-title-section">
+            <div class="chart-icon revenue-icon">
+              <mat-icon>show_chart</mat-icon>
+            </div>
+            <div>
+              <h3>Revenue Trend</h3>
+              <p>Daily revenue performance</p>
+            </div>
+          </div>
+          <div class="chart-summary" *ngIf="dashboardMetrics.revenueData?.length">
+            <span class="summary-total">{{ formatCurrency(getTotalRevenue()) }}</span>
+            <span class="summary-label">Total</span>
+          </div>
+        </div>
         <mat-card-content>
-          <div class="chart-placeholder">
-            <mat-icon>bar_chart</mat-icon>
-            <p>Revenue trend chart will be displayed here</p>
-            <div class="trend-data">
-              <div *ngFor="let item of dashboardMetrics.revenueData" class="trend-item">
-                <span class="period">{{ item.period }}:</span>
-                <span class="value">{{ formatCurrency(item.revenue) }}</span>
-                <span class="growth" [class.positive]="item.growthPercentage > 0" [class.negative]="item.growthPercentage < 0">
-                  ({{ formatPercentage(item.growthPercentage) }})
-                </span>
+          <div class="chart-visual" *ngIf="dashboardMetrics.revenueData?.length; else noRevenueData">
+            <!-- Bar Chart -->
+            <div class="bar-chart">
+              <div class="bar-row" *ngFor="let item of dashboardMetrics.revenueData; let i = index">
+                <div class="bar-label">
+                  <span class="bar-date">{{ formatPeriodDate(item.period) }}</span>
+                  <span class="bar-day">{{ formatPeriodDay(item.period) }}</span>
+                </div>
+                <div class="bar-track">
+                  <div class="bar-fill revenue-fill"
+                       [style.width.%]="getRevenueBarWidth(item.revenue)"
+                       [class.bar-animate]="true">
+                  </div>
+                </div>
+                <div class="bar-value-section">
+                  <span class="bar-amount">{{ formatCurrency(item.revenue) }}</span>
+                  <span class="bar-growth"
+                        [class.growth-up]="item.growthPercentage > 0"
+                        [class.growth-down]="item.growthPercentage < 0"
+                        [class.growth-flat]="item.growthPercentage === 0">
+                    <mat-icon *ngIf="item.growthPercentage > 0">arrow_upward</mat-icon>
+                    <mat-icon *ngIf="item.growthPercentage < 0">arrow_downward</mat-icon>
+                    <mat-icon *ngIf="item.growthPercentage === 0">remove</mat-icon>
+                    {{ formatPercentage(Math.abs(item.growthPercentage)) }}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
+          <ng-template #noRevenueData>
+            <div class="no-chart-data">
+              <mat-icon>show_chart</mat-icon>
+              <p>No revenue data available</p>
+            </div>
+          </ng-template>
         </mat-card-content>
       </mat-card>
 
-      <!-- Orders Chart Placeholder -->
+      <!-- Orders Trend Chart -->
       <mat-card class="chart-card">
-        <mat-card-header>
-          <mat-card-title>Orders Trend</mat-card-title>
-          <mat-card-subtitle>Weekly order count</mat-card-subtitle>
-        </mat-card-header>
+        <div class="chart-card-header">
+          <div class="chart-title-section">
+            <div class="chart-icon orders-icon">
+              <mat-icon>receipt_long</mat-icon>
+            </div>
+            <div>
+              <h3>Orders Trend</h3>
+              <p>Daily order count</p>
+            </div>
+          </div>
+          <div class="chart-summary" *ngIf="dashboardMetrics.orderData?.length">
+            <span class="summary-total">{{ getTotalOrders() }}</span>
+            <span class="summary-label">Total Orders</span>
+          </div>
+        </div>
         <mat-card-content>
-          <div class="chart-placeholder">
-            <mat-icon>trending_up</mat-icon>
-            <p>Orders trend chart will be displayed here</p>
-            <div class="trend-data">
-              <div *ngFor="let item of dashboardMetrics.orderData" class="trend-item">
-                <span class="period">{{ item.period }}:</span>
-                <span class="value">{{ item.orderCount }}</span>
-                <span class="growth" [class.positive]="item.growthPercentage > 0" [class.negative]="item.growthPercentage < 0">
-                  ({{ formatPercentage(item.growthPercentage) }})
-                </span>
+          <div class="chart-visual" *ngIf="dashboardMetrics.orderData?.length; else noOrderData">
+            <!-- Bar Chart -->
+            <div class="bar-chart">
+              <div class="bar-row" *ngFor="let item of dashboardMetrics.orderData; let i = index">
+                <div class="bar-label">
+                  <span class="bar-date">{{ formatPeriodDate(item.period) }}</span>
+                  <span class="bar-day">{{ formatPeriodDay(item.period) }}</span>
+                </div>
+                <div class="bar-track">
+                  <div class="bar-fill orders-fill"
+                       [style.width.%]="getOrderBarWidth(item.orderCount)"
+                       [class.bar-animate]="true">
+                  </div>
+                </div>
+                <div class="bar-value-section">
+                  <span class="bar-count">{{ item.orderCount }} <small>orders</small></span>
+                  <span class="bar-growth"
+                        [class.growth-up]="item.growthPercentage > 0"
+                        [class.growth-down]="item.growthPercentage < 0"
+                        [class.growth-flat]="item.growthPercentage === 0">
+                    <mat-icon *ngIf="item.growthPercentage > 0">arrow_upward</mat-icon>
+                    <mat-icon *ngIf="item.growthPercentage < 0">arrow_downward</mat-icon>
+                    <mat-icon *ngIf="item.growthPercentage === 0">remove</mat-icon>
+                    {{ formatPercentage(Math.abs(item.growthPercentage)) }}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
-        </mat-card-content>
-      </mat-card>
-
-      <!-- Category Distribution Placeholder -->
-      <mat-card class="chart-card">
-        <mat-card-header>
-          <mat-card-title>Revenue by Category</mat-card-title>
-          <mat-card-subtitle>Category-wise distribution</mat-card-subtitle>
-        </mat-card-header>
-        <mat-card-content>
-          <div class="chart-placeholder">
-            <mat-icon>pie_chart</mat-icon>
-            <p>Category distribution chart will be displayed here</p>
-            <div class="category-summary">
-              <div *ngFor="let item of dashboardMetrics.categoryData" class="category-item">
-                <span class="category-name">{{ item.categoryName }}:</span>
-                <span class="category-revenue">{{ formatCurrency(item.revenue) }}</span>
-                <span class="market-share">({{ formatPercentage(item.marketShare) }})</span>
-              </div>
+          <ng-template #noOrderData>
+            <div class="no-chart-data">
+              <mat-icon>receipt_long</mat-icon>
+              <p>No order data available</p>
             </div>
-          </div>
+          </ng-template>
         </mat-card-content>
       </mat-card>
     </div>
+
+    <!-- Category Distribution -->
+    <mat-card class="category-card" *ngIf="dashboardMetrics.categoryData?.length">
+      <div class="chart-card-header">
+        <div class="chart-title-section">
+          <div class="chart-icon category-icon">
+            <mat-icon>donut_large</mat-icon>
+          </div>
+          <div>
+            <h3>Revenue by Category</h3>
+            <p>Category-wise revenue distribution</p>
+          </div>
+        </div>
+      </div>
+      <mat-card-content>
+        <div class="category-grid">
+          <div class="category-item" *ngFor="let item of dashboardMetrics.categoryData; let i = index">
+            <div class="category-color" [style.background]="getCategoryColor(i)"></div>
+            <div class="category-details">
+              <span class="category-name">{{ item.categoryName }}</span>
+              <span class="category-meta">{{ item.orderCount }} orders</span>
+            </div>
+            <div class="category-bar-section">
+              <div class="category-bar-track">
+                <div class="category-bar-fill" [style.width.%]="item.marketShare" [style.background]="getCategoryColor(i)"></div>
+              </div>
+              <span class="category-share">{{ formatPercentage(item.marketShare) }}</span>
+            </div>
+            <div class="category-revenue">{{ formatCurrency(item.revenue) }}</div>
+            <div class="category-growth"
+                 [class.growth-up]="item.growthPercentage > 0"
+                 [class.growth-down]="item.growthPercentage < 0">
+              <mat-icon>{{ item.growthPercentage > 0 ? 'trending_up' : item.growthPercentage < 0 ? 'trending_down' : 'trending_flat' }}</mat-icon>
+              {{ formatPercentage(Math.abs(item.growthPercentage)) }}
+            </div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
 
     <!-- Top Performing Shops -->
     <mat-card class="data-table-card">
