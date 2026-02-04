@@ -1,6 +1,5 @@
 import { Component, OnInit } from '@angular/core';
 import { AnalyticsService, DashboardMetrics } from '../../../../core/services/analytics.service';
-import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-analytics',
@@ -152,28 +151,6 @@ export class AnalyticsComponent implements OnInit {
     return value.toFixed(1) + '%';
   }
 
-  generateReport(): void {
-    Swal.fire({
-      title: 'Generate Analytics Report',
-      text: 'This will generate a comprehensive analytics report for the selected date range.',
-      icon: 'info',
-      showCancelButton: true,
-      confirmButtonText: 'Generate',
-      cancelButtonText: 'Cancel'
-    }).then((result) => {
-      if (result.isConfirmed) {
-        this.analyticsService.generateAnalytics(this.dateRange.start, this.dateRange.end, 'CUSTOM').subscribe({
-          next: () => {
-            Swal.fire('Success!', 'Analytics report generated successfully', 'success');
-          },
-          error: (error) => {
-            Swal.fire('Error!', 'Failed to generate analytics report', 'error');
-          }
-        });
-      }
-    });
-  }
-
   getTotalRevenue(): number {
     if (!this.dashboardMetrics?.revenueData) return 0;
     return this.dashboardMetrics.revenueData.reduce((sum, item) => sum + (item.revenue || 0), 0);
@@ -230,23 +207,4 @@ export class AnalyticsComponent implements OnInit {
     return colors[index % colors.length];
   }
 
-  exportData(): void {
-    if (!this.dashboardMetrics) return;
-    
-    const data = {
-      dateRange: this.dateRange,
-      metrics: this.dashboardMetrics,
-      exportedAt: new Date().toISOString()
-    };
-    
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `analytics-report-${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    window.URL.revokeObjectURL(url);
-    
-    Swal.fire('Success!', 'Analytics data exported successfully', 'success');
-  }
 }
