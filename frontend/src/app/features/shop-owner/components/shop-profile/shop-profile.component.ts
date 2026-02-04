@@ -159,7 +159,7 @@ import * as L from 'leaflet';
               <!-- Interactive Map -->
               <div class="map-section">
                 <h3>Shop Location on Map</h3>
-                <p class="map-hint" *ngIf="isEditMode">Click on the map to set your shop location. The latitude and longitude will update automatically.</p>
+                <p class="map-hint">Click on the map to set your shop location. The latitude and longitude will update automatically.</p>
                 <div id="shopMap" class="map-container" style="height: 350px;"></div>
                 <p class="map-hint" *ngIf="!shopForm.value.latitude">No location set. Edit and click on the map to set your shop location.</p>
               </div>
@@ -1242,9 +1242,12 @@ export class ShopProfileComponent implements OnInit, AfterViewChecked {
       this.marker.bindPopup('Shop Location').openPopup();
     }
 
-    // Click to set location
+    // Click to set location — auto-enables edit mode
     this.map.on('click', (e: L.LeafletMouseEvent) => {
-      if (!this.isEditMode) return;
+      // Auto-enable edit mode when map is clicked
+      if (!this.isEditMode) {
+        this.isEditMode = true;
+      }
 
       const { lat, lng } = e.latlng;
       this.shopForm.patchValue({
