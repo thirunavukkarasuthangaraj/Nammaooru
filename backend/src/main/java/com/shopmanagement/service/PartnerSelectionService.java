@@ -150,7 +150,7 @@ public class PartnerSelectionService {
         }
 
         // 4. Auto-accept bonus (10% weight)
-        Optional<DeliveryPartnerSettings> settings = settingsRepository.findByPartnerId(partner.getId().toString());
+        Optional<DeliveryPartnerSettings> settings = settingsRepository.findByPartnerId(partner.getId());
         if (settings.isPresent() && Boolean.TRUE.equals(settings.get().getAutoAcceptOrders())) {
             score += 10.0; // Bonus for auto-accept enabled
         }
@@ -176,7 +176,7 @@ public class PartnerSelectionService {
      */
     private boolean isPartnerAvailableNow(User partner) {
         Optional<DeliveryPartnerSettings> settings = settingsRepository
-            .findByPartnerId(partner.getId().toString());
+            .findByPartnerId(partner.getId());
 
         if (settings.isEmpty() || !settings.get().getWorkScheduleEnabled()) {
             return true; // No schedule restrictions
@@ -208,7 +208,7 @@ public class PartnerSelectionService {
      */
     private boolean isWithinPartnerRadius(User partner, Order order) {
         Optional<DeliveryPartnerSettings> settings = settingsRepository
-            .findByPartnerId(partner.getId().toString());
+            .findByPartnerId(partner.getId());
 
         if (settings.isEmpty() || settings.get().getMaxDeliveryRadiusKm() == null) {
             return true; // No radius restriction

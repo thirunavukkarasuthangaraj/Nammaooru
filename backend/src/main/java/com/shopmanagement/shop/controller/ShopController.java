@@ -151,23 +151,19 @@ public class ShopController {
 
     @GetMapping("/nearby")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getNearbyShops(
-            @RequestParam BigDecimal lat,
-            @RequestParam BigDecimal lng,
-            @RequestParam(defaultValue = "5.0") double radius) {
-        
-        if (lat == null || lng == null) {
-            return ResponseUtil.badRequest("Latitude and longitude are required");
-        }
-        
+            @RequestParam double lat,
+            @RequestParam double lng,
+            @RequestParam(defaultValue = "10.0") double radius) {
+
         List<ShopResponse> nearbyShops = shopService.getNearbyShops(lat, lng, radius);
-        
+
         Map<String, Object> response = new HashMap<>();
         response.put("shops", nearbyShops);
         response.put("count", nearbyShops.size());
         response.put("radius", radius);
         response.put("latitude", lat);
         response.put("longitude", lng);
-        
+
         return ResponseUtil.success(response, "Nearby shops retrieved successfully");
     }
 

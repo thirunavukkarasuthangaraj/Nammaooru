@@ -24,7 +24,7 @@ public class SettingsManagementService {
     /**
      * Get or create settings for delivery partner
      */
-    public DeliveryPartnerSettings getOrCreateSettings(String partnerId) {
+    public DeliveryPartnerSettings getOrCreateSettings(Long partnerId) {
         return settingsRepository.findByPartnerId(partnerId)
             .orElseGet(() -> createDefaultSettings(partnerId));
     }
@@ -33,10 +33,10 @@ public class SettingsManagementService {
      * Create default settings for new delivery partner
      */
     @Transactional
-    public DeliveryPartnerSettings createDefaultSettings(String partnerId) {
+    public DeliveryPartnerSettings createDefaultSettings(Long partnerId) {
         log.info("Creating default settings for partner: {}", partnerId);
 
-        User partner = userRepository.findById(Long.valueOf(partnerId))
+        User partner = userRepository.findById(partnerId)
             .orElseThrow(() -> new IllegalArgumentException("Delivery partner not found: " + partnerId));
 
         DeliveryPartnerSettings settings = DeliveryPartnerSettings.builder()
@@ -54,7 +54,7 @@ public class SettingsManagementService {
      */
     @Transactional
     public DeliveryPartnerSettings updateNotificationPreferences(
-            String partnerId,
+            Long partnerId,
             boolean pushEnabled,
             boolean emailEnabled,
             boolean smsEnabled,
@@ -77,7 +77,7 @@ public class SettingsManagementService {
      */
     @Transactional
     public DeliveryPartnerSettings updateWorkSchedule(
-            String partnerId,
+            Long partnerId,
             boolean scheduleEnabled,
             LocalTime startTime,
             LocalTime endTime,
@@ -102,7 +102,7 @@ public class SettingsManagementService {
      */
     @Transactional
     public DeliveryPartnerSettings updateAutoAcceptOrders(
-            String partnerId,
+            Long partnerId,
             boolean autoAccept,
             String updatedBy) {
 
@@ -117,7 +117,7 @@ public class SettingsManagementService {
      */
     @Transactional
     public DeliveryPartnerSettings updateLocationSettings(
-            String partnerId,
+            Long partnerId,
             boolean locationSharingEnabled,
             int trackingFrequencySeconds,
             String updatedBy) {
@@ -135,7 +135,7 @@ public class SettingsManagementService {
      */
     @Transactional
     public DeliveryPartnerSettings updateAppPreferences(
-            String partnerId,
+            Long partnerId,
             DeliveryPartnerSettings.Language language,
             DeliveryPartnerSettings.AppTheme theme,
             String updatedBy) {
@@ -151,7 +151,7 @@ public class SettingsManagementService {
      */
     @Transactional
     public DeliveryPartnerSettings updateDeliveryPreferences(
-            String partnerId,
+            Long partnerId,
             Integer maxDeliveryRadiusKm,
             String updatedBy) {
 
@@ -169,7 +169,7 @@ public class SettingsManagementService {
      */
     @Transactional
     public DeliveryPartnerSettings updateEmergencyContact(
-            String partnerId,
+            Long partnerId,
             String contactName,
             String contactPhone,
             String contactRelation,
@@ -191,7 +191,7 @@ public class SettingsManagementService {
      */
     @Transactional
     public DeliveryPartnerSettings updateBankingPreferences(
-            String partnerId,
+            Long partnerId,
             String preferredPaymentMethod,
             boolean autoWithdrawEnabled,
             Integer autoWithdrawThreshold,
@@ -215,7 +215,7 @@ public class SettingsManagementService {
      */
     @Transactional
     public DeliveryPartnerSettings updatePrivacySettings(
-            String partnerId,
+            Long partnerId,
             boolean shareEarningsPublicly,
             boolean sharePerformancePublicly,
             boolean allowCustomerFeedback,
@@ -237,7 +237,7 @@ public class SettingsManagementService {
      */
     @Transactional
     public DeliveryPartnerSettings updateAppBehaviorSettings(
-            String partnerId,
+            Long partnerId,
             boolean showTutorial,
             boolean enableSoundAlerts,
             boolean enableVibrationAlerts,
@@ -330,7 +330,7 @@ public class SettingsManagementService {
      * Mark tutorial as completed for partner
      */
     @Transactional
-    public DeliveryPartnerSettings markTutorialCompleted(String partnerId, String updatedBy) {
+    public DeliveryPartnerSettings markTutorialCompleted(Long partnerId, String updatedBy) {
         log.info("Marking tutorial as completed for partner: {}", partnerId);
 
         DeliveryPartnerSettings settings = getOrCreateSettings(partnerId);
@@ -403,7 +403,7 @@ public class SettingsManagementService {
      * Reset settings to default
      */
     @Transactional
-    public DeliveryPartnerSettings resetToDefault(String partnerId, String updatedBy) {
+    public DeliveryPartnerSettings resetToDefault(Long partnerId, String updatedBy) {
         log.info("Resetting settings to default for partner: {}", partnerId);
 
         DeliveryPartnerSettings settings = getOrCreateSettings(partnerId);

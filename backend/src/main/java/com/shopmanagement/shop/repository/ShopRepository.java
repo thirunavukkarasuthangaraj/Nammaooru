@@ -9,7 +9,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -42,11 +41,14 @@ public interface ShopRepository extends JpaRepository<Shop, Long>, JpaSpecificat
            "LOWER(s.city) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
     Page<Shop> searchShops(@Param("searchTerm") String searchTerm, Pageable pageable);
 
-    @Query("SELECT s FROM Shop s WHERE s.latitude IS NOT NULL AND s.longitude IS NOT NULL AND " +
-           "SQRT(POWER(69.1 * (s.latitude - :lat), 2) + POWER(69.1 * (:lng - s.longitude) * COS(s.latitude / 57.3), 2)) < :radiusInMiles")
-    List<Shop> findShopsWithinRadius(@Param("lat") BigDecimal latitude, 
-                                   @Param("lng") BigDecimal longitude, 
-                                   @Param("radiusInMiles") double radiusInMiles);
+    @Query(value = "SELECT * FROM shops s WHERE s.latitude IS NOT NULL AND s.longitude IS NOT NULL " +
+           "AND s.is_active = true AND s.status = 'APPROVED' " +
+           "AND (6371 * acos(cos(radians(:lat)) * cos(radians(s.latitude)) * cos(radians(s.longitude) - radians(:lng)) + sin(radians(:lat)) * sin(radians(s.latitude)))) < :radiusInKm " +
+           "ORDER BY (6371 * acos(cos(radians(:lat)) * cos(radians(s.latitude)) * cos(radians(s.longitude) - radians(:lng)) + sin(radians(:lat)) * sin(radians(s.latitude)))) ASC",
+           nativeQuery = true)
+    List<Shop> findShopsWithinRadius(@Param("lat") double latitude,
+                                   @Param("lng") double longitude,
+                                   @Param("radiusInKm") double radiusInKm);
 
     @Query("SELECT s FROM Shop s WHERE s.isActive = true AND s.status = 'APPROVED' ORDER BY s.rating DESC")
     List<Shop> findTopRatedShops(Pageable pageable);

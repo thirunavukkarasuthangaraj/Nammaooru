@@ -507,8 +507,8 @@ public class ShopService {
     }
 
     @Transactional(readOnly = true)
-    public List<ShopResponse> getNearbyShops(BigDecimal latitude, BigDecimal longitude, double radiusInMiles) {
-        List<Shop> nearbyShops = shopRepository.findShopsWithinRadius(latitude, longitude, radiusInMiles);
+    public List<ShopResponse> getNearbyShops(double latitude, double longitude, double radiusInKm) {
+        List<Shop> nearbyShops = shopRepository.findShopsWithinRadius(latitude, longitude, radiusInKm);
         return nearbyShops.stream()
                 .map(shopMapper::toResponse)
                 .collect(Collectors.toList());

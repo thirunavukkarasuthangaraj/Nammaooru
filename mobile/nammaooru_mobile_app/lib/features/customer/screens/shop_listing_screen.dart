@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../../services/shop_api_service.dart';
 import '../../../services/voice_search_service.dart';
 import '../../../shared/widgets/loading_widget.dart';
@@ -36,6 +37,7 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
   List<dynamic> _filteredShops = [];
   bool _isLoading = true;
   bool _isListening = false;
+  bool _isLocationBased = false;
   String _sortBy = 'name';
   bool _openNowOnly = false;
   double _maxDistance = 10.0;
@@ -59,21 +61,69 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final response = await _shopApi.getActiveShops(
-        page: 0,
-        size: 20,
-        sortBy: _sortBy,
-        category: widget.category, // Keep category filter
-        // City filter removed
-        // city: 'Chennai',
-      );
+      // Try to get user's location for nearby shops
+      Position? position;
+      try {
+        final permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          final requested = await Geolocator.requestPermission();
+          if (requested == LocationPermission.whileInUse ||
+              requested == LocationPermission.always) {
+            position = await Geolocator.getCurrentPosition(
+              locationSettings: const LocationSettings(
+                accuracy: LocationAccuracy.medium,
+                timeLimit: Duration(seconds: 10),
+              ),
+            );
+          }
+        } else if (permission == LocationPermission.whileInUse ||
+                   permission == LocationPermission.always) {
+          position = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.medium,
+              timeLimit: Duration(seconds: 10),
+            ),
+          );
+        }
+      } catch (e) {
+        // Location unavailable, will fall back to all shops
+        debugPrint('Location unavailable: $e');
+      }
 
-      if (mounted && response['statusCode'] == '0000' && response['data'] != null) {
-        setState(() {
-          _shops = response['data']['content'] ?? [];
-          _filteredShops = List.from(_shops);
-          _applySortAndFilter();
-        });
+      Map<String, dynamic> response;
+      if (position != null) {
+        // Location available: fetch nearby shops
+        response = await _shopApi.getNearbyShops(
+          latitude: position.latitude,
+          longitude: position.longitude,
+          radius: _maxDistance,
+        );
+
+        if (mounted && response['statusCode'] == '0000' && response['data'] != null) {
+          setState(() {
+            _shops = response['data']['shops'] ?? [];
+            _filteredShops = List.from(_shops);
+            _isLocationBased = true;
+            _applySortAndFilter();
+          });
+        }
+      } else {
+        // No location: fall back to all active shops
+        response = await _shopApi.getActiveShops(
+          page: 0,
+          size: 20,
+          sortBy: _sortBy,
+          category: widget.category,
+        );
+
+        if (mounted && response['statusCode'] == '0000' && response['data'] != null) {
+          setState(() {
+            _shops = response['data']['content'] ?? [];
+            _filteredShops = List.from(_shops);
+            _isLocationBased = false;
+            _applySortAndFilter();
+          });
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -200,6 +250,26 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
         children: [
           _buildVillageSearchBar(),
           _buildVillageSortingChips(),
+          if (_isLocationBased && !_isLoading)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: const Color(0xFFE8F5E9),
+              child: Row(
+                children: [
+                  const Icon(Icons.location_on, size: 16, color: Color(0xFF4CAF50)),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Showing shops within ${_maxDistance.toInt()} km',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF2E7D32),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           Expanded(
             child: _isLoading ? const LoadingWidget() : _buildVillageShopsList(),
           ),

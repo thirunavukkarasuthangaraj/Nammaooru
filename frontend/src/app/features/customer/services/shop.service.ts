@@ -165,6 +165,50 @@ export class ShopService {
       );
   }
 
+  getNearbyShops(lat: number, lng: number, radiusKm: number = 10): Observable<Shop[]> {
+    const params = new HttpParams()
+      .set('lat', lat.toString())
+      .set('lng', lng.toString())
+      .set('radius', radiusKm.toString());
+
+    return this.http.get<any>(`${this.apiUrl}/shops/nearby`, { params })
+      .pipe(
+        switchMap(response => {
+          if (response.data && response.data.shops) {
+            const shops = response.data.shops.map((shop: any) => {
+              let logoUrl = '/assets/images/shop-placeholder.jpg';
+              if (shop.images && shop.images.length > 0) {
+                const logoImage = shop.images.find((img: any) =>
+                  img.imageType === 'LOGO' || img.isPrimary === true
+                );
+                if (logoImage && logoImage.imageUrl) {
+                  logoUrl = logoImage.imageUrl;
+                }
+              }
+
+              return {
+                id: shop.id,
+                name: shop.name,
+                description: shop.description || shop.businessName || '',
+                image: logoUrl,
+                isOpen: shop.isActive || true,
+                rating: shop.rating || 4.5,
+                distance: shop.distance || '',
+                deliveryTime: '30-45',
+                deliveryFee: shop.deliveryFee || 40,
+                categories: [shop.businessType || 'General'],
+                address: `${shop.city}, ${shop.state}`,
+                phone: shop.ownerPhone || ''
+              };
+            });
+            return of(shops);
+          }
+          return of([]);
+        }),
+        catchError(() => of([]))
+      );
+  }
+
   getShopById(id: number): Observable<Shop | null> {
     return this.http.get<{data: Shop}>(`${this.apiUrl}/customer/shops/${id}`)
       .pipe(

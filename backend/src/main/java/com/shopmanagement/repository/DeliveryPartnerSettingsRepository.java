@@ -16,7 +16,7 @@ public interface DeliveryPartnerSettingsRepository extends JpaRepository<Deliver
      * Find settings by delivery partner ID
      */
     @Query("SELECT s FROM DeliveryPartnerSettings s WHERE s.deliveryPartner.id = :partnerId")
-    Optional<DeliveryPartnerSettings> findByPartnerId(@Param("partnerId") String partnerId);
+    Optional<DeliveryPartnerSettings> findByPartnerId(@Param("partnerId") Long partnerId);
 
     /**
      * Find partners with auto-accept orders enabled and working now
@@ -156,7 +156,7 @@ public interface DeliveryPartnerSettingsRepository extends JpaRepository<Deliver
     @Query("UPDATE DeliveryPartnerSettings s SET s.autoAcceptOrders = :autoAccept, " +
            "s.updatedBy = :updatedBy WHERE s.deliveryPartner.id = :partnerId")
     void updateAutoAcceptOrders(
-        @Param("partnerId") String partnerId,
+        @Param("partnerId") Long partnerId,
         @Param("autoAccept") Boolean autoAccept,
         @Param("updatedBy") String updatedBy
     );
@@ -174,7 +174,7 @@ public interface DeliveryPartnerSettingsRepository extends JpaRepository<Deliver
            "s.updatedBy = :updatedBy " +
            "WHERE s.deliveryPartner.id = :partnerId")
     void updateNotificationPreferences(
-        @Param("partnerId") String partnerId,
+        @Param("partnerId") Long partnerId,
         @Param("pushEnabled") Boolean pushEnabled,
         @Param("emailEnabled") Boolean emailEnabled,
         @Param("smsEnabled") Boolean smsEnabled,
@@ -191,7 +191,7 @@ public interface DeliveryPartnerSettingsRepository extends JpaRepository<Deliver
            "s.locationTrackingFrequencySeconds = :frequency, s.updatedBy = :updatedBy " +
            "WHERE s.deliveryPartner.id = :partnerId")
     void updateLocationSettings(
-        @Param("partnerId") String partnerId,
+        @Param("partnerId") Long partnerId,
         @Param("enabled") Boolean enabled,
         @Param("frequency") Integer frequency,
         @Param("updatedBy") String updatedBy
@@ -203,7 +203,7 @@ public interface DeliveryPartnerSettingsRepository extends JpaRepository<Deliver
     @Query("UPDATE DeliveryPartnerSettings s SET s.preferredLanguage = :language, " +
            "s.appTheme = :theme, s.updatedBy = :updatedBy WHERE s.deliveryPartner.id = :partnerId")
     void updateAppPreferences(
-        @Param("partnerId") String partnerId,
+        @Param("partnerId") Long partnerId,
         @Param("language") DeliveryPartnerSettings.Language language,
         @Param("theme") DeliveryPartnerSettings.AppTheme theme,
         @Param("updatedBy") String updatedBy
