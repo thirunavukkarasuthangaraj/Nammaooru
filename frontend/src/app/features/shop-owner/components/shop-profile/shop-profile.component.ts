@@ -1,12 +1,12 @@
-import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, AfterViewChecked, ViewChild, ElementRef } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
-import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ShopService } from '@core/services/shop.service';
 import { Shop } from '@core/models/shop.model';
 import { getImageUrl } from '@core/utils/image-url.util';
 import { ShopContextService } from '../../services/shop-context.service';
+import * as L from 'leaflet';
 
 @Component({
   selector: 'app-shop-profile',
@@ -156,23 +156,12 @@ import { ShopContextService } from '../../services/shop-context.service';
                 </div>
               </div>
               
-              <!-- Map Preview -->
-              <div class="map-section" *ngIf="shopForm.value.latitude && shopForm.value.longitude">
+              <!-- Interactive Map -->
+              <div class="map-section">
                 <h3>Shop Location on Map</h3>
-                <div class="map-container">
-                  <iframe
-                    [src]="getMapUrl()"
-                    width="100%"
-                    height="300"
-                    style="border:0; border-radius: 8px;"
-                    allowfullscreen=""
-                    loading="lazy"
-                    referrerpolicy="no-referrer-when-downgrade">
-                  </iframe>
-                </div>
-                <p class="map-hint">
-                  To get coordinates: Open Google Maps, right-click on your shop location, and copy the coordinates.
-                </p>
+                <p class="map-hint" *ngIf="isEditMode">Click on the map to set your shop location. The latitude and longitude will update automatically.</p>
+                <div id="shopMap" class="map-container" style="height: 350px;"></div>
+                <p class="map-hint" *ngIf="!shopForm.value.latitude">No location set. Edit and click on the map to set your shop location.</p>
               </div>
 
               <div class="form-actions" *ngIf="isEditMode">
@@ -899,13 +888,18 @@ import { ShopContextService } from '../../services/shop-context.service';
     }
   `]
 })
-export class ShopProfileComponent implements OnInit {
+export class ShopProfileComponent implements OnInit, AfterViewChecked {
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
 
   shopForm: FormGroup;
   isLoading = false;
   isEditMode = false;
   shop: Shop | null = null;
+
+  // Map
+  private map: L.Map | null = null;
+  private marker: L.Marker | null = null;
+  private mapInitialized = false;
 
   // Image upload
   shopLogoUrl: string | null = null;
@@ -939,7 +933,6 @@ export class ShopProfileComponent implements OnInit {
     private shopService: ShopService,
     private snackBar: MatSnackBar,
     private router: Router,
-    private sanitizer: DomSanitizer,
     private shopContext: ShopContextService
   ) {
     this.shopForm = this.fb.group({
@@ -1211,11 +1204,62 @@ export class ShopProfileComponent implements OnInit {
     return descriptions[key] || 'Configure this setting';
   }
   
-  getMapUrl(): SafeResourceUrl {
-    const lat = this.shopForm.value.latitude;
-    const lng = this.shopForm.value.longitude;
-    const url = `https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.005},${lat - 0.005},${lng + 0.005},${lat + 0.005}&layer=mapnik&marker=${lat},${lng}`;
-    return this.sanitizer.bypassSecurityTrustResourceUrl(url);
+  ngAfterViewChecked(): void {
+    if (this.selectedIndex === 0 && !this.mapInitialized && !this.isLoading) {
+      this.initMap();
+    }
+  }
+
+  private initMap(): void {
+    const mapEl = document.getElementById('shopMap');
+    if (!mapEl || this.mapInitialized) return;
+
+    this.mapInitialized = true;
+
+    // Fix Leaflet default icon path issue
+    const iconDefault = L.icon({
+      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41]
+    });
+
+    const lat = this.shopForm.value.latitude || 12.4962;
+    const lng = this.shopForm.value.longitude || 78.5722;
+
+    this.map = L.map('shopMap').setView([lat, lng], 15);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(this.map);
+
+    // Add marker if coordinates exist
+    if (this.shopForm.value.latitude && this.shopForm.value.longitude) {
+      this.marker = L.marker([lat, lng], { icon: iconDefault }).addTo(this.map);
+      this.marker.bindPopup('Shop Location').openPopup();
+    }
+
+    // Click to set location
+    this.map.on('click', (e: L.LeafletMouseEvent) => {
+      if (!this.isEditMode) return;
+
+      const { lat, lng } = e.latlng;
+      this.shopForm.patchValue({
+        latitude: parseFloat(lat.toFixed(6)),
+        longitude: parseFloat(lng.toFixed(6))
+      });
+
+      // Update marker
+      if (this.marker) {
+        this.marker.setLatLng(e.latlng);
+      } else {
+        this.marker = L.marker(e.latlng, { icon: iconDefault }).addTo(this.map!);
+      }
+      this.marker.bindPopup('Shop Location').openPopup();
+    });
   }
 
   navigateTo(path: string): void {
