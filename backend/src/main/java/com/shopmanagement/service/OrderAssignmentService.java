@@ -73,15 +73,51 @@ public class OrderAssignmentService {
             throw new RuntimeException("Order is already assigned to a delivery partner");
         }
 
-        // Get all ONLINE and ACTIVE partners (regardless of availability - they can handle multiple orders)
-        List<User> availablePartners = userRepository.findByRoleAndIsActiveAndIsAvailableAndIsOnline(
-            User.UserRole.DELIVERY_PARTNER, true, true, true);
+        // Shop's assigned drivers: Mittur shop → ALWAYS Mittur driver (even if already on a delivery)
+        List<User> availablePartners = new java.util.ArrayList<>();
+        Long shopId = order.getShop().getId();
+        boolean hasAssignedDrivers = false;
+
+        if (shopId != null) {
+            // Find shop's assigned drivers who are active and online (ignore isAvailable — assign even if busy)
+            availablePartners = userRepository.findByAssignedShopAndRoleAndIsActiveAndIsOnline(
+                shopId, User.UserRole.DELIVERY_PARTNER, true, true);
+            hasAssignedDrivers = !availablePartners.isEmpty();
+            if (hasAssignedDrivers) {
+                log.info("Found {} assigned drivers for shop {} (order {}). Always using shop's own driver.",
+                    availablePartners.size(), shopId, orderId);
+            }
+        }
+
+        // Only use nearby/all fallback for shops that have NO assigned drivers configured
+        if (!hasAssignedDrivers) {
+            Double shopLat = order.getShop().getLatitude() != null ? order.getShop().getLatitude().doubleValue() : null;
+            Double shopLng = order.getShop().getLongitude() != null ? order.getShop().getLongitude().doubleValue() : null;
+
+            if (shopLat != null && shopLng != null) {
+                double[] radii = {10.0, 15.0, 20.0};
+                for (double radius : radii) {
+                    availablePartners = userRepository.findNearbyAvailableDrivers(shopLat, shopLng, radius);
+                    if (!availablePartners.isEmpty()) {
+                        log.info("Found {} drivers within {}km of shop for order {}", availablePartners.size(), radius, orderId);
+                        break;
+                    }
+                    log.info("No drivers within {}km of shop for order {}, expanding radius...", radius, orderId);
+                }
+            }
+
+            if (availablePartners.isEmpty()) {
+                log.info("No nearby drivers found, falling back to all available drivers for order {}", orderId);
+                availablePartners = userRepository.findByRoleAndIsActiveAndIsAvailableAndIsOnline(
+                    User.UserRole.DELIVERY_PARTNER, true, true, true);
+            }
+        }
 
         if (availablePartners.isEmpty()) {
             throw new RuntimeException("No available delivery partners found");
         }
 
-        log.info("Found {} online delivery partners (allowing multiple orders per partner)", availablePartners.size());
+        log.info("Found {} delivery partners for order {}", availablePartners.size(), orderId);
 
         // Select partner using FAIR DISTRIBUTION (least busy driver gets the order)
         User selectedPartner = selectBestAvailablePartner(availablePartners);
@@ -479,11 +515,44 @@ public class OrderAssignmentService {
         boolean reassigned = false;
         String reassignedDriverName = null;
         try {
-            List<User> availablePartners = userRepository.findByRoleAndIsActiveAndIsAvailableAndIsOnline(
-                User.UserRole.DELIVERY_PARTNER, true, true, true);
+            // Shop's assigned drivers: always use them (even if busy), exclude the rejector
+            Long shopId = order.getShop().getId();
+            List<User> availablePartners = new java.util.ArrayList<>();
+            boolean hasAssignedDrivers = false;
 
-            // Remove the partner who just rejected (in case they were already in list)
-            availablePartners.removeIf(p -> p.getId().equals(partnerId));
+            if (shopId != null) {
+                availablePartners = new java.util.ArrayList<>(userRepository.findByAssignedShopAndRoleAndIsActiveAndIsOnline(
+                    shopId, User.UserRole.DELIVERY_PARTNER, true, true));
+                availablePartners.removeIf(p -> p.getId().equals(partnerId));
+                hasAssignedDrivers = !availablePartners.isEmpty();
+                if (hasAssignedDrivers) {
+                    log.info("Found {} other shop-assigned drivers for reassignment of order {}", availablePartners.size(), order.getOrderNumber());
+                }
+            }
+
+            // Only use nearby/all fallback for shops with NO assigned drivers
+            if (!hasAssignedDrivers) {
+                Double shopLat = order.getShop().getLatitude() != null ? order.getShop().getLatitude().doubleValue() : null;
+                Double shopLng = order.getShop().getLongitude() != null ? order.getShop().getLongitude().doubleValue() : null;
+
+                if (shopLat != null && shopLng != null) {
+                    double[] radii = {10.0, 15.0, 20.0};
+                    for (double radius : radii) {
+                        availablePartners = new java.util.ArrayList<>(userRepository.findNearbyAvailableDrivers(shopLat, shopLng, radius));
+                        availablePartners.removeIf(p -> p.getId().equals(partnerId));
+                        if (!availablePartners.isEmpty()) {
+                            log.info("Found {} drivers within {}km for reassignment of order {}", availablePartners.size(), radius, order.getOrderNumber());
+                            break;
+                        }
+                    }
+                }
+
+                if (availablePartners.isEmpty()) {
+                    availablePartners = new java.util.ArrayList<>(userRepository.findByRoleAndIsActiveAndIsAvailableAndIsOnline(
+                        User.UserRole.DELIVERY_PARTNER, true, true, true));
+                    availablePartners.removeIf(p -> p.getId().equals(partnerId));
+                }
+            }
 
             log.info("📊 Found {} other available drivers after excluding rejector for order {}",
                 availablePartners.size(), order.getOrderNumber());

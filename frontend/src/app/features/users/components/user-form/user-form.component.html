@@ -92,6 +92,19 @@
             </mat-form-field>
           </div>
 
+          <!-- Assigned Shops (only for Delivery Partners) -->
+          <div class="form-row" *ngIf="userForm.get('role')?.value === 'DELIVERY_PARTNER'">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Assigned Shops</mat-label>
+              <mat-select formControlName="assignedShopIds" multiple>
+                <mat-option *ngFor="let shop of shops" [value]="shop.id">
+                  {{ shop.name }} - {{ shop.city || shop.addressLine1 || '' }}
+                </mat-option>
+              </mat-select>
+              <mat-hint>Select shops this driver will serve (e.g., all Mittur shops)</mat-hint>
+            </mat-form-field>
+          </div>
+
           <div class="form-row">
             <mat-form-field appearance="outline" class="half-width">
               <mat-label>Department</mat-label>

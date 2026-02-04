@@ -421,11 +421,40 @@ public class UserService {
                 .statusLabel(user.getStatus().name())
                 .isLocked(user.isLocked())
                 .isAdmin(user.isAdmin())
+                .assignedShopIds(user.getAssignedShopIds())
                 .accountAge(accountAge)
                 .lastLoginFormatted(lastLoginFormatted)
                 .build();
     }
     
+    @Transactional
+    public UserResponse assignDriverToShop(Long userId, Long shopId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+
+        if (user.getRole() != User.UserRole.DELIVERY_PARTNER) {
+            throw new RuntimeException("Only delivery partners can be assigned to shops");
+        }
+
+        user.getAssignedShopIds().add(shopId);
+        user.setUpdatedBy(getCurrentUsername());
+        User updated = userRepository.save(user);
+        log.info("Driver {} assigned to shop {}", userId, shopId);
+        return mapToResponse(updated);
+    }
+
+    @Transactional
+    public UserResponse unassignDriverFromShop(Long userId, Long shopId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+
+        user.getAssignedShopIds().remove(shopId);
+        user.setUpdatedBy(getCurrentUsername());
+        User updated = userRepository.save(user);
+        log.info("Driver {} unassigned from shop {}", userId, shopId);
+        return mapToResponse(updated);
+    }
+
     // Additional methods for delivery partner functionality
     public Optional<User> findByEmail(String email) {
         return userRepository.findByEmail(email);

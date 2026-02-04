@@ -200,6 +200,24 @@ public class UserController {
         return ResponseUtil.list(response);
     }
     
+    @PutMapping("/{userId}/assign-shop/{shopId}")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<UserResponse>> assignDriverToShop(
+            @PathVariable Long userId, @PathVariable Long shopId) {
+        log.info("Assigning driver {} to shop {}", userId, shopId);
+        UserResponse response = userService.assignDriverToShop(userId, shopId);
+        return ResponseUtil.success(response, "Driver assigned to shop successfully");
+    }
+
+    @PutMapping("/{userId}/unassign-shop/{shopId}")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<UserResponse>> unassignDriverFromShop(
+            @PathVariable Long userId, @PathVariable Long shopId) {
+        log.info("Unassigning driver {} from shop {}", userId, shopId);
+        UserResponse response = userService.unassignDriverFromShop(userId, shopId);
+        return ResponseUtil.success(response, "Driver unassigned from shop successfully");
+    }
+
     @GetMapping("/roles")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getUserRoles() {
         Map<String, Object> roles = Map.of(

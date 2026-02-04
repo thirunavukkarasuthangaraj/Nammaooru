@@ -14,6 +14,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -157,6 +158,14 @@ public class User implements UserDetails {
 
     @Column(name = "last_activity")
     private LocalDateTime lastActivity;
+
+    // Shop-specific driver assignment: links a delivery partner to their assigned shops
+    // One driver can serve multiple shops in the same village
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "driver_assigned_shops", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "shop_id")
+    @Builder.Default
+    private Set<Long> assignedShopIds = new HashSet<>();
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

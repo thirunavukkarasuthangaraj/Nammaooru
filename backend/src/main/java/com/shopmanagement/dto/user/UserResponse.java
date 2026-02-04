@@ -45,6 +45,9 @@ public class UserResponse {
     private String createdBy;
     private String updatedBy;
     
+    // Shop-specific driver assignment (driver can serve multiple shops)
+    private Set<Long> assignedShopIds;
+
     // Helper fields
     private String roleLabel;
     private String statusLabel;

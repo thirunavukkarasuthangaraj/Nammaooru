@@ -125,4 +125,18 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query("SELECT u FROM User u WHERE u.role = :role AND u.lastActivity < :cutoffTime")
     List<User> findInactivePartners(@Param("role") User.UserRole role, @Param("cutoffTime") LocalDateTime cutoffTime);
+
+    // Find drivers assigned to a specific shop who are active and online
+    @Query("SELECT u FROM User u JOIN u.assignedShopIds s WHERE s = :shopId AND u.role = :role AND u.isActive = :isActive AND u.isOnline = :isOnline")
+    List<User> findByAssignedShopAndRoleAndIsActiveAndIsOnline(@Param("shopId") Long shopId, @Param("role") User.UserRole role, @Param("isActive") Boolean isActive, @Param("isOnline") Boolean isOnline);
+
+    @Query(value = "SELECT * FROM users u WHERE u.role = 'DELIVERY_PARTNER' " +
+           "AND u.is_active = true AND u.is_available = true AND u.is_online = true " +
+           "AND u.current_latitude IS NOT NULL AND u.current_longitude IS NOT NULL " +
+           "AND (6371 * acos(cos(radians(:lat)) * cos(radians(u.current_latitude)) * cos(radians(u.current_longitude) - radians(:lng)) + sin(radians(:lat)) * sin(radians(u.current_latitude)))) < :radiusKm " +
+           "ORDER BY (6371 * acos(cos(radians(:lat)) * cos(radians(u.current_latitude)) * cos(radians(u.current_longitude) - radians(:lng)) + sin(radians(:lat)) * sin(radians(u.current_latitude)))) ASC",
+           nativeQuery = true)
+    List<User> findNearbyAvailableDrivers(@Param("lat") double latitude,
+                                          @Param("lng") double longitude,
+                                          @Param("radiusKm") double radiusKm);
 }

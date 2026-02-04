@@ -38,6 +38,7 @@ export interface UserResponse {
   statusLabel: string;
   isLocked: boolean;
   isAdmin: boolean;
+  assignedShopIds: number[];
   accountAge: string;
   lastLoginFormatted: string;
 }
@@ -334,6 +335,30 @@ export class UserService {
           throw new Error(ApiResponseHelper.getErrorMessage(response));
         }
         return response.data.items || response.data || [];
+      }),
+      catchError(error => throwError(() => error))
+    );
+  }
+
+  assignDriverToShop(userId: number, shopId: number): Observable<UserResponse> {
+    return this.http.put<ApiResponse<UserResponse>>(`${this.apiUrl}/${userId}/assign-shop/${shopId}`, {}).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
+      catchError(error => throwError(() => error))
+    );
+  }
+
+  unassignDriverFromShop(userId: number): Observable<UserResponse> {
+    return this.http.put<ApiResponse<UserResponse>>(`${this.apiUrl}/${userId}/unassign-shop`, {}).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
       }),
       catchError(error => throwError(() => error))
     );

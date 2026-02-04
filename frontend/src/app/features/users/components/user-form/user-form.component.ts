@@ -4,6 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { UserService, UserRequest } from '../../../../core/services/user.service';
 import { DeliveryPartnerService, DeliveryPartnerDocument } from '../../../delivery/services/delivery-partner.service';
+import { AdminDashboardService } from '../../../admin/services/admin-dashboard.service';
 
 @Component({
   selector: 'app-user-form',
@@ -20,6 +21,9 @@ export class UserFormComponent implements OnInit {
   showDeliveryPartnerDocuments = false;
   savedUserId: number | null = null;
   deliveryPartnerId: number | null = null;
+
+  // Shop assignment for delivery partners
+  shops: any[] = [];
 
   roleOptions = [
     { value: 'SUPER_ADMIN', label: 'Super Admin' },
@@ -56,12 +60,14 @@ export class UserFormComponent implements OnInit {
     private router: Router,
     private userService: UserService,
     private snackBar: MatSnackBar,
-    private deliveryPartnerService: DeliveryPartnerService
+    private deliveryPartnerService: DeliveryPartnerService,
+    private adminDashboardService: AdminDashboardService
   ) {
     this.userForm = this.createForm();
   }
 
   ngOnInit(): void {
+    this.loadShops();
     this.route.params.subscribe(params => {
       if (params['id']) {
         const numericUserId = parseInt(params['id'], 10);
@@ -74,6 +80,17 @@ export class UserFormComponent implements OnInit {
           this.snackBar.open('Invalid user ID', 'Close', { duration: 3000 });
           this.router.navigate(['/users']);
         }
+      }
+    });
+  }
+
+  loadShops(): void {
+    this.adminDashboardService.getAllShops(0, 100).subscribe({
+      next: (shops) => {
+        this.shops = shops;
+      },
+      error: (error) => {
+        console.error('Error loading shops:', error);
       }
     });
   }
@@ -94,7 +111,8 @@ export class UserFormComponent implements OnInit {
       emailVerified: [false],
       mobileVerified: [false],
       twoFactorEnabled: [false],
-      passwordChangeRequired: [false]
+      passwordChangeRequired: [false],
+      assignedShopIds: [[]]
     });
   }
 
@@ -118,7 +136,8 @@ export class UserFormComponent implements OnInit {
           emailVerified: user.emailVerified,
           mobileVerified: user.mobileVerified,
           twoFactorEnabled: user.twoFactorEnabled,
-          passwordChangeRequired: user.passwordChangeRequired
+          passwordChangeRequired: user.passwordChangeRequired,
+          assignedShopIds: user.assignedShopIds || []
         });
 
         // Remove password requirement for edit mode
@@ -171,6 +190,21 @@ export class UserFormComponent implements OnInit {
       operation.subscribe({
         next: (response) => {
           this.loading = false;
+
+          // Assign driver to shops if role is DELIVERY_PARTNER and shops are selected
+          const assignedShopIds: number[] = formData.assignedShopIds || [];
+          if (formData.role === 'DELIVERY_PARTNER' && assignedShopIds.length > 0) {
+            assignedShopIds.forEach((shopId: number) => {
+              this.userService.assignDriverToShop(response.id, shopId).subscribe({
+                next: () => {
+                  console.log('Driver assigned to shop', shopId);
+                },
+                error: (err) => {
+                  console.error('Error assigning driver to shop:', err);
+                }
+              });
+            });
+          }
 
           if (this.isEditMode) {
             this.snackBar.open('User updated successfully', 'Close', { duration: 3000 });
