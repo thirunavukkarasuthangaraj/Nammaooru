@@ -1,4 +1,4 @@
-import { Component, OnInit, AfterViewChecked, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
@@ -888,7 +888,7 @@ import * as L from 'leaflet';
     }
   `]
 })
-export class ShopProfileComponent implements OnInit, AfterViewChecked {
+export class ShopProfileComponent implements OnInit {
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
 
   shopForm: FormGroup;
@@ -1204,12 +1204,6 @@ export class ShopProfileComponent implements OnInit, AfterViewChecked {
     return descriptions[key] || 'Configure this setting';
   }
   
-  ngAfterViewChecked(): void {
-    if (this.selectedIndex === 0 && !this.mapInitialized && !this.isLoading) {
-      this.initMap();
-    }
-  }
-
   private initMap(): void {
     const mapEl = document.getElementById('shopMap');
     if (!mapEl || this.mapInitialized) return;
@@ -1355,10 +1349,13 @@ export class ShopProfileComponent implements OnInit, AfterViewChecked {
 
           // Update statistics data for table
           this.setupStatisticsData();
+
+          // Initialize map after DOM renders
+          setTimeout(() => this.initMap(), 200);
         } else {
           this.handleNoShopFound();
         }
-        
+
         this.isLoading = false;
       },
       error: (error: any) => {
