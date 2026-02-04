@@ -4,7 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { UserService, UserRequest } from '../../../../core/services/user.service';
 import { DeliveryPartnerService, DeliveryPartnerDocument } from '../../../delivery/services/delivery-partner.service';
-import { AdminDashboardService } from '../../../admin/services/admin-dashboard.service';
+import { ShopService } from '../../../../core/services/shop.service';
 
 @Component({
   selector: 'app-user-form',
@@ -61,7 +61,7 @@ export class UserFormComponent implements OnInit {
     private userService: UserService,
     private snackBar: MatSnackBar,
     private deliveryPartnerService: DeliveryPartnerService,
-    private adminDashboardService: AdminDashboardService
+    private shopService: ShopService
   ) {
     this.userForm = this.createForm();
   }
@@ -85,9 +85,9 @@ export class UserFormComponent implements OnInit {
   }
 
   loadShops(): void {
-    this.adminDashboardService.getAllShops(0, 100).subscribe({
-      next: (shops) => {
-        this.shops = shops;
+    this.shopService.getShops({ page: 0, size: 100 }).subscribe({
+      next: (response) => {
+        this.shops = response.content;
       },
       error: (error) => {
         console.error('Error loading shops:', error);
