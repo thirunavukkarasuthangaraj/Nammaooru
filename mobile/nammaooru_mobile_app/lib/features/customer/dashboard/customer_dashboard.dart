@@ -35,6 +35,9 @@ import '../models/combo_model.dart';
 import '../widgets/combo_banner_widget.dart';
 import '../../../shared/providers/cart_provider.dart';
 import '../../../shared/models/product_model.dart';
+import '../services/marketplace_service.dart';
+import '../screens/marketplace_screen.dart';
+import '../screens/create_post_screen.dart';
 
 class CustomerDashboard extends StatefulWidget {
   const CustomerDashboard({super.key});
@@ -57,9 +60,13 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   Timer? _autoSlideTimer;
   int _currentOfferPage = 0;
 
+  List<dynamic> _marketplacePosts = [];
+  bool _isLoadingMarketplace = false;
+
   final _shopApi = ShopApiService();
   final _orderApi = OrderApiService();
   final _promoService = PromoCodeService();
+  final _marketplaceService = MarketplaceService();
 
   @override
   void initState() {
@@ -415,8 +422,32 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       _loadRecentOrders(),
       _loadCombos(),
       _loadPromos(),
+      _loadMarketplacePosts(),
     ]);
     _startAutoSlideOffers();
+  }
+
+  Future<void> _loadMarketplacePosts() async {
+    setState(() {
+      _isLoadingMarketplace = true;
+    });
+    try {
+      final response = await _marketplaceService.getApprovedPosts(page: 0, size: 6);
+      if (mounted) {
+        final data = response['data'];
+        setState(() {
+          _marketplacePosts = data?['content'] ?? [];
+          _isLoadingMarketplace = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading marketplace posts: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingMarketplace = false;
+        });
+      }
+    }
   }
 
   Future<void> _loadPromos() async {
@@ -1033,6 +1064,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                           // Unified Offers Carousel (Promos + Combos)
                           _buildUnifiedOffersCarousel(),
                           const SizedBox(height: 24),
+                        // Buy & Sell - Village Marketplace
+                        _buildMarketplaceSection(),
+                        const SizedBox(height: 24),
                         _buildServiceCategories(),
                         const SizedBox(height: 24),
                         _buildFeaturedShops(),
@@ -1458,6 +1492,232 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMarketplaceSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Buy & Sell',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: VillageTheme.primaryText,
+              ),
+            ),
+            Row(
+              children: [
+                TextButton(
+                  onPressed: () {
+                    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                    if (!authProvider.isAuthenticated) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Please log in to sell items'), backgroundColor: Colors.orange),
+                      );
+                      context.push('/login');
+                      return;
+                    }
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const CreatePostScreen()))
+                        .then((_) => _loadMarketplacePosts());
+                  },
+                  child: const Text(
+                    'Post',
+                    style: TextStyle(color: VillageTheme.warningOrange, fontWeight: FontWeight.w600),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const MarketplaceScreen()));
+                  },
+                  child: const Text(
+                    'See All',
+                    style: TextStyle(color: VillageTheme.primaryGreen, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 210,
+          child: _isLoadingMarketplace
+              ? const Center(child: LoadingWidget())
+              : _marketplacePosts.isEmpty
+                  ? Center(
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => const MarketplaceScreen()));
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey[200]!),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.storefront_outlined, size: 40, color: Colors.grey[400]),
+                              const SizedBox(height: 8),
+                              Text('No items for sale yet', style: TextStyle(color: Colors.grey[500])),
+                              const SizedBox(height: 4),
+                              const Text('Tap to browse or sell', style: TextStyle(color: VillageTheme.primaryGreen, fontSize: 13)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _marketplacePosts.length,
+                      itemBuilder: (context, index) {
+                        return _buildMarketplaceCard(_marketplacePosts[index]);
+                      },
+                    ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMarketplaceCard(Map<String, dynamic> post) {
+    final isSold = post['status'] == 'SOLD';
+    final imageUrl = post['imageUrl'];
+    final price = post['price'];
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(context, MaterialPageRoute(builder: (context) => const MarketplaceScreen()));
+      },
+      child: Container(
+        width: 160,
+        margin: const EdgeInsets.only(right: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Image
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                  child: imageUrl != null
+                      ? CachedNetworkImage(
+                          imageUrl: ImageUrlHelper.getFullImageUrl(imageUrl),
+                          height: 110,
+                          width: 160,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            height: 110,
+                            color: Colors.grey[200],
+                            child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            height: 110,
+                            color: Colors.grey[200],
+                            child: const Icon(Icons.broken_image, color: Colors.grey),
+                          ),
+                        )
+                      : Container(
+                          height: 110,
+                          width: 160,
+                          color: Colors.grey[200],
+                          child: const Icon(Icons.image_outlined, size: 40, color: Colors.grey),
+                        ),
+                ),
+                // Details
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        post['title'] ?? '',
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      if (price != null)
+                        Text(
+                          '\u20B9${double.tryParse(price.toString())?.toStringAsFixed(0) ?? price}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: VillageTheme.primaryGreen,
+                          ),
+                        ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '${post['sellerName']?.split(' ').first ?? ''}${post['location'] != null ? ' - ${post['location']}' : ''}',
+                              style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (post['sellerPhone'] != null && !isSold)
+                            GestureDetector(
+                              onTap: () async {
+                                final uri = Uri.parse('tel:${post['sellerPhone']}');
+                                if (await canLaunchUrl(uri)) {
+                                  await launchUrl(uri);
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Icon(Icons.call, size: 16, color: Colors.green),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            // SOLD badge
+            if (isSold)
+              Positioned(
+                top: 6,
+                left: 6,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'SOLD',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10),
+                  ),
+                ),
+              ),
           ],
         ),
       ),

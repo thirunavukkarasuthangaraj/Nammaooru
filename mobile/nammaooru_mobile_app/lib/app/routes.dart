@@ -16,6 +16,8 @@ import '../features/customer/screens/address_management_screen.dart';
 import '../features/customer/screens/notifications_screen.dart';
 import '../features/customer/cart/cart_screen.dart';
 import '../features/customer/screens/orders_screen.dart';
+import '../features/customer/screens/marketplace_screen.dart';
+import '../features/customer/screens/create_post_screen.dart';
 // import '../features/delivery_fee_test/delivery_fee_test_screen.dart'; // Temporarily disabled
 
 class AppRouter {
@@ -111,6 +113,14 @@ class AppRouter {
           GoRoute(
             path: '/customer/addresses',
             builder: (context, state) => const AddressManagementScreen(),
+          ),
+          GoRoute(
+            path: '/customer/marketplace',
+            builder: (context, state) => const MarketplaceScreen(),
+          ),
+          GoRoute(
+            path: '/customer/marketplace/create',
+            builder: (context, state) => const CreatePostScreen(),
           ),
         ],
       ),

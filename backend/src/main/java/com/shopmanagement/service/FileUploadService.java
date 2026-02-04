@@ -52,6 +52,39 @@ public class FileUploadService {
         return fileUrl;
     }
 
+    /**
+     * Upload an audio/voice file (mp3, wav, m4a, aac, ogg, webm)
+     */
+    public String uploadVoiceFile(MultipartFile file, String category) throws IOException {
+        if (file.isEmpty()) {
+            throw new IllegalArgumentException("File cannot be empty");
+        }
+        if (file.getSize() > maxFileSize) {
+            throw new IllegalArgumentException("File size exceeds maximum limit");
+        }
+        String fileName = file.getOriginalFilename();
+        if (fileName == null || fileName.trim().isEmpty()) {
+            throw new IllegalArgumentException("File name cannot be empty");
+        }
+        String extension = getFileExtension(fileName).toLowerCase();
+        List<String> allowedAudioExts = Arrays.asList("mp3", "wav", "m4a", "aac", "ogg", "webm", "mp4");
+        if (!allowedAudioExts.contains(extension)) {
+            throw new IllegalArgumentException("Audio file type not allowed. Allowed types: " + String.join(",", allowedAudioExts));
+        }
+
+        String generatedName = UUID.randomUUID().toString() + "." + extension;
+        String categoryPath = category != null ? category + "/" : "";
+        Path uploadDir = Paths.get(uploadPath, categoryPath);
+        Files.createDirectories(uploadDir);
+
+        Path filePath = uploadDir.resolve(generatedName);
+        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+        String fileUrl = "/uploads/" + categoryPath + generatedName;
+        log.info("Voice file uploaded successfully: {}", fileUrl);
+        return fileUrl;
+    }
+
     public String uploadShopImage(MultipartFile file, String shopId) throws IOException {
         return uploadFile(file, "shops/" + shopId);
     }

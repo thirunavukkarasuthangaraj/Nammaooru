@@ -36,6 +36,7 @@ import { PromoCodeStatsComponent } from './components/promo-code-management/prom
 import { MarketingMessagesComponent } from './components/marketing-messages/marketing-messages.component';
 import { PushNotificationSenderComponent } from './components/push-notification-sender/push-notification-sender.component';
 import { MenuPermissionsComponent } from './components/menu-permissions/menu-permissions.component';
+import { MarketplaceManagementComponent } from './components/marketplace-management/marketplace-management.component';
 
 @NgModule({
   declarations: [
@@ -48,7 +49,8 @@ import { MenuPermissionsComponent } from './components/menu-permissions/menu-per
     PromoCodeStatsComponent,
     MarketingMessagesComponent,
     PushNotificationSenderComponent,
-    MenuPermissionsComponent
+    MenuPermissionsComponent,
+    MarketplaceManagementComponent
   ],
   imports: [
     CommonModule,
@@ -118,6 +120,10 @@ import { MenuPermissionsComponent } from './components/menu-permissions/menu-per
       {
         path: 'menu-permissions',
         component: MenuPermissionsComponent
+      },
+      {
+        path: 'marketplace',
+        component: MarketplaceManagementComponent
       },
       {
         path: 'shops',

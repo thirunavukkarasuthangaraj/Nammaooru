@@ -1,0 +1,160 @@
+<div class="marketplace-management">
+  <div class="header">
+    <h2>Marketplace Management</h2>
+    <p class="subtitle">Review and manage customer buy & sell posts</p>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button mat-flat-button
+            [color]="activeTab === 'pending' ? 'primary' : undefined"
+            (click)="switchTab('pending')">
+      Pending Approval
+    </button>
+    <button mat-flat-button
+            [color]="activeTab === 'all' ? 'primary' : undefined"
+            (click)="switchTab('all')">
+      All Posts
+    </button>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="loading" class="loading-container">
+    <mat-spinner diameter="40"></mat-spinner>
+    <p>Loading posts...</p>
+  </div>
+
+  <!-- Empty state -->
+  <div *ngIf="!loading && posts.length === 0" class="empty-state">
+    <mat-icon class="empty-icon">storefront</mat-icon>
+    <h3>No posts found</h3>
+    <p *ngIf="activeTab === 'pending'">No posts are waiting for approval.</p>
+    <p *ngIf="activeTab === 'all'">No marketplace posts yet.</p>
+  </div>
+
+  <!-- Posts table -->
+  <div *ngIf="!loading && posts.length > 0" class="posts-container">
+    <table mat-table [dataSource]="posts" class="posts-table">
+
+      <!-- Image Column -->
+      <ng-container matColumnDef="image">
+        <th mat-header-cell *matHeaderCellDef>Image</th>
+        <td mat-cell *matCellDef="let post">
+          <div class="post-image">
+            <img *ngIf="post.imageUrl"
+                 [src]="getImageUrl(post.imageUrl)"
+                 alt="Product"
+                 loading="lazy">
+            <mat-icon *ngIf="!post.imageUrl" class="no-image">image</mat-icon>
+          </div>
+        </td>
+      </ng-container>
+
+      <!-- Title Column -->
+      <ng-container matColumnDef="title">
+        <th mat-header-cell *matHeaderCellDef>Title</th>
+        <td mat-cell *matCellDef="let post">
+          <div class="post-title">{{ post.title }}</div>
+          <div class="post-description" *ngIf="post.description">{{ post.description }}</div>
+        </td>
+      </ng-container>
+
+      <!-- Price Column -->
+      <ng-container matColumnDef="price">
+        <th mat-header-cell *matHeaderCellDef>Price</th>
+        <td mat-cell *matCellDef="let post">
+          <span class="price">{{ formatPrice(post.price) }}</span>
+        </td>
+      </ng-container>
+
+      <!-- Seller Column -->
+      <ng-container matColumnDef="seller">
+        <th mat-header-cell *matHeaderCellDef>Seller</th>
+        <td mat-cell *matCellDef="let post">
+          <div class="seller-info">
+            <span class="seller-name">{{ post.sellerName }}</span>
+            <span class="seller-phone">{{ post.sellerPhone }}</span>
+            <span class="seller-location" *ngIf="post.location">{{ post.location }}</span>
+          </div>
+        </td>
+      </ng-container>
+
+      <!-- Category Column -->
+      <ng-container matColumnDef="category">
+        <th mat-header-cell *matHeaderCellDef>Category</th>
+        <td mat-cell *matCellDef="let post">
+          <span class="category-chip" *ngIf="post.category">{{ post.category }}</span>
+        </td>
+      </ng-container>
+
+      <!-- Voice Column -->
+      <ng-container matColumnDef="voice">
+        <th mat-header-cell *matHeaderCellDef>Voice</th>
+        <td mat-cell *matCellDef="let post">
+          <audio *ngIf="post.voiceUrl" controls preload="none" class="voice-player">
+            <source [src]="getVoiceUrl(post.voiceUrl)">
+          </audio>
+          <span *ngIf="!post.voiceUrl" class="no-voice">-</span>
+        </td>
+      </ng-container>
+
+      <!-- Status Column -->
+      <ng-container matColumnDef="status">
+        <th mat-header-cell *matHeaderCellDef>Status</th>
+        <td mat-cell *matCellDef="let post">
+          <span class="status-badge" [ngClass]="'status-' + post.status?.toLowerCase()">
+            {{ getStatusLabel(post.status) }}
+          </span>
+        </td>
+      </ng-container>
+
+      <!-- Date Column -->
+      <ng-container matColumnDef="date">
+        <th mat-header-cell *matHeaderCellDef>Date</th>
+        <td mat-cell *matCellDef="let post">
+          <span class="date">{{ formatDate(post.createdAt) }}</span>
+        </td>
+      </ng-container>
+
+      <!-- Actions Column -->
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef>Actions</th>
+        <td mat-cell *matCellDef="let post">
+          <div class="action-buttons">
+            <button mat-icon-button color="primary"
+                    *ngIf="post.status === 'PENDING_APPROVAL'"
+                    (click)="approvePost(post)"
+                    matTooltip="Approve">
+              <mat-icon>check_circle</mat-icon>
+            </button>
+            <button mat-icon-button color="warn"
+                    *ngIf="post.status === 'PENDING_APPROVAL'"
+                    (click)="rejectPost(post)"
+                    matTooltip="Reject">
+              <mat-icon>cancel</mat-icon>
+            </button>
+            <button mat-icon-button color="warn"
+                    (click)="deletePost(post)"
+                    matTooltip="Delete">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </div>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="['image', 'title', 'price', 'seller', 'category', 'voice', 'status', 'date', 'actions']"></tr>
+      <tr mat-row *matRowDef="let row; columns: ['image', 'title', 'price', 'seller', 'category', 'voice', 'status', 'date', 'actions']"></tr>
+    </table>
+
+    <!-- Pagination -->
+    <div class="pagination" *ngIf="totalPages > 1">
+      <button mat-button [disabled]="currentPage === 0" (click)="onPageChange(currentPage - 1)">
+        <mat-icon>chevron_left</mat-icon> Previous
+      </button>
+      <span class="page-info">Page {{ currentPage + 1 }} of {{ totalPages }} ({{ totalItems }} posts)</span>
+      <button mat-button [disabled]="currentPage >= totalPages - 1" (click)="onPageChange(currentPage + 1)">
+        Next <mat-icon>chevron_right</mat-icon>
+      </button>
+    </div>
+  </div>
+</div>

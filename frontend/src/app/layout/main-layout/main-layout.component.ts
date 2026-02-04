@@ -129,6 +129,12 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       ]
     },
     {
+      category: 'Marketplace',
+      items: [
+        { title: 'Buy & Sell Posts', icon: 'storefront', route: '/admin/marketplace', badge: null }
+      ]
+    },
+    {
       category: 'Marketing & Promotions',
       items: [
         { title: 'Promo Codes', icon: 'local_offer', route: '/admin/promo-codes', badge: null },
@@ -186,6 +192,12 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
         { title: 'Delivery Partners', icon: 'delivery_dining', route: '/delivery/admin/partners', badge: '5' },
         { title: 'Order Assignments', icon: 'assignment', route: '/delivery/admin/assignments', badge: null },
         { title: 'Live Tracking', icon: 'gps_fixed', route: '/delivery/admin/tracking', badge: null }
+      ]
+    },
+    {
+      category: 'Marketplace',
+      items: [
+        { title: 'Buy & Sell Posts', icon: 'storefront', route: '/admin/marketplace', badge: null }
       ]
     },
     {

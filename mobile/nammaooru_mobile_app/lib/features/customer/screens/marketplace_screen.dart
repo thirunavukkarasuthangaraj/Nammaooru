@@ -1,0 +1,460 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:provider/provider.dart';
+import '../../../core/auth/auth_provider.dart';
+import '../../../core/theme/village_theme.dart';
+import '../../../core/utils/image_url_helper.dart';
+import '../../../shared/widgets/loading_widget.dart';
+import '../services/marketplace_service.dart';
+import 'create_post_screen.dart';
+
+class MarketplaceScreen extends StatefulWidget {
+  const MarketplaceScreen({super.key});
+
+  @override
+  State<MarketplaceScreen> createState() => _MarketplaceScreenState();
+}
+
+class _MarketplaceScreenState extends State<MarketplaceScreen> {
+  final MarketplaceService _marketplaceService = MarketplaceService();
+  List<dynamic> _posts = [];
+  bool _isLoading = true;
+  String? _selectedCategory;
+  int _currentPage = 0;
+  bool _hasMore = true;
+  final ScrollController _scrollController = ScrollController();
+
+  final List<String> _categories = [
+    'All',
+    'Electronics',
+    'Furniture',
+    'Vehicles',
+    'Agriculture',
+    'Clothing',
+    'Food',
+    'Other',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPosts();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      if (!_isLoading && _hasMore) {
+        _loadMorePosts();
+      }
+    }
+  }
+
+  Future<void> _loadPosts() async {
+    setState(() {
+      _isLoading = true;
+      _currentPage = 0;
+    });
+
+    try {
+      final response = await _marketplaceService.getApprovedPosts(
+        page: 0,
+        size: 20,
+        category: _selectedCategory,
+      );
+
+      if (mounted) {
+        final data = response['data'];
+        setState(() {
+          _posts = data?['content'] ?? [];
+          _hasMore = data?['hasNext'] ?? false;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadMorePosts() async {
+    _currentPage++;
+    try {
+      final response = await _marketplaceService.getApprovedPosts(
+        page: _currentPage,
+        size: 20,
+        category: _selectedCategory,
+      );
+
+      if (mounted) {
+        final data = response['data'];
+        setState(() {
+          _posts.addAll(data?['content'] ?? []);
+          _hasMore = data?['hasNext'] ?? false;
+        });
+      }
+    } catch (e) {
+      _currentPage--;
+    }
+  }
+
+  void _onCategorySelected(String category) {
+    setState(() {
+      _selectedCategory = category == 'All' ? null : category;
+    });
+    _loadPosts();
+  }
+
+  Future<void> _callSeller(String phone) async {
+    final uri = Uri.parse('tel:$phone');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.grey[50],
+      appBar: AppBar(
+        title: const Text(
+          'Buy & Sell',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: VillageTheme.primaryGreen,
+        foregroundColor: Colors.white,
+        elevation: 0,
+      ),
+      body: Column(
+        children: [
+          // Category filter chips
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: SizedBox(
+              height: 40,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                itemCount: _categories.length,
+                itemBuilder: (context, index) {
+                  final cat = _categories[index];
+                  final isSelected = (_selectedCategory == null && cat == 'All') ||
+                      _selectedCategory == cat;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: FilterChip(
+                      label: Text(cat),
+                      selected: isSelected,
+                      onSelected: (_) => _onCategorySelected(cat),
+                      selectedColor: VillageTheme.primaryGreen.withOpacity(0.2),
+                      checkmarkColor: VillageTheme.primaryGreen,
+                      labelStyle: TextStyle(
+                        color: isSelected ? VillageTheme.primaryGreen : Colors.grey[700],
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          // Posts list
+          Expanded(
+            child: _isLoading
+                ? const Center(child: LoadingWidget())
+                : _posts.isEmpty
+                    ? _buildEmptyState()
+                    : RefreshIndicator(
+                        onRefresh: _loadPosts,
+                        child: ListView.builder(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.all(12),
+                          itemCount: _posts.length + (_hasMore ? 1 : 0),
+                          itemBuilder: (context, index) {
+                            if (index == _posts.length) {
+                              return const Padding(
+                                padding: EdgeInsets.all(16),
+                                child: Center(child: CircularProgressIndicator()),
+                              );
+                            }
+                            return _buildPostCard(_posts[index]);
+                          },
+                        ),
+                      ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _navigateToCreatePost(),
+        backgroundColor: VillageTheme.primaryGreen,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add),
+        label: const Text('Sell Something'),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.storefront_outlined, size: 80, color: Colors.grey[400]),
+          const SizedBox(height: 16),
+          Text(
+            'No items for sale yet',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[600],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Be the first to post something!',
+            style: TextStyle(color: Colors.grey[500]),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: () => _navigateToCreatePost(),
+            icon: const Icon(Icons.add),
+            label: const Text('Sell Something'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: VillageTheme.primaryGreen,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPostCard(Map<String, dynamic> post) {
+    final isSold = post['status'] == 'SOLD';
+    final imageUrl = post['imageUrl'];
+    final voiceUrl = post['voiceUrl'];
+    final price = post['price'];
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Stack(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Image
+              if (imageUrl != null)
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                  child: Stack(
+                    children: [
+                      CachedNetworkImage(
+                        imageUrl: ImageUrlHelper.getFullImageUrl(imageUrl),
+                        height: 200,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(
+                          height: 200,
+                          color: Colors.grey[200],
+                          child: const Center(child: CircularProgressIndicator()),
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          height: 200,
+                          color: Colors.grey[200],
+                          child: const Icon(Icons.broken_image, size: 50, color: Colors.grey),
+                        ),
+                      ),
+                      if (voiceUrl != null)
+                        Positioned(
+                          bottom: 8,
+                          right: 8,
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Icon(Icons.volume_up, color: Colors.white, size: 20),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              // Details
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            post['title'] ?? '',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: VillageTheme.primaryText,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (price != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: VillageTheme.primaryGreen.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              _formatPrice(price),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: VillageTheme.primaryGreen,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    if (post['description'] != null && post['description'].toString().isNotEmpty) ...[
+                      Text(
+                        post['description'],
+                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 6),
+                    ],
+                    Row(
+                      children: [
+                        Icon(Icons.person, size: 14, color: Colors.grey[500]),
+                        const SizedBox(width: 4),
+                        Text(
+                          post['sellerName'] ?? 'Seller',
+                          style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                        ),
+                        if (post['location'] != null) ...[
+                          const SizedBox(width: 12),
+                          Icon(Icons.location_on, size: 14, color: Colors.grey[500]),
+                          const SizedBox(width: 2),
+                          Flexible(
+                            child: Text(
+                              post['location'],
+                              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    if (post['category'] != null) ...[
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          post['category'],
+                          style: const TextStyle(fontSize: 11, color: Colors.blue),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 10),
+                    // Call button
+                    if (!isSold)
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () => _callSeller(post['sellerPhone'] ?? ''),
+                          icon: const Icon(Icons.call, size: 18),
+                          label: Text('Call ${post['sellerName']?.split(' ').first ?? 'Seller'}'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          // SOLD OUT badge
+          if (isSold)
+            Positioned(
+              top: 12,
+              left: 12,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  'SOLD OUT',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _formatPrice(dynamic price) {
+    if (price == null) return '';
+    final numPrice = double.tryParse(price.toString()) ?? 0;
+    if (numPrice >= 100000) {
+      return '\u20B9${(numPrice / 100000).toStringAsFixed(1)}L';
+    } else if (numPrice >= 1000) {
+      return '\u20B9${(numPrice / 1000).toStringAsFixed(numPrice % 1000 == 0 ? 0 : 1)}K';
+    }
+    return '\u20B9${numPrice.toStringAsFixed(0)}';
+  }
+
+  void _navigateToCreatePost() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (!authProvider.isAuthenticated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please log in to sell items'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      context.push('/login');
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const CreatePostScreen()),
+    ).then((_) => _loadPosts());
+  }
+}
