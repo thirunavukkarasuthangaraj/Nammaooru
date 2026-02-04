@@ -4,6 +4,7 @@ import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
+import { Router } from '@angular/router';
 import { NotificationService } from '@core/services/notification.service';
 import { AuthService } from '@core/services/auth.service';
 import { OrderService, OrderResponse } from '@core/services/order.service';
@@ -90,7 +91,7 @@ interface ShopNotification {
             </div>
             <div class="order-status" *ngIf="notification.orderData">
               <span class="status-badge" [class]="'status-' + getOrderStatus(notification)">
-                {{ getOrderStatus(notification) }}
+                {{ getStatusLabel(getOrderStatus(notification)) }}
               </span>
             </div>
           </div>
@@ -315,9 +316,51 @@ interface ShopNotification {
       color: #383d41;
     }
 
-    .status-badge.status-READY {
+    .status-badge.status-READY,
+    .status-badge.status-READY_FOR_PICKUP {
       background: #d4edda;
       color: #155724;
+    }
+
+    .status-badge.status-OUT_FOR_DELIVERY {
+      background: #e0f2fe;
+      color: #0369a1;
+    }
+
+    .status-badge.status-DELIVERED {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .status-badge.status-SELF_PICKUP_COLLECTED {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .status-badge.status-CANCELLED {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .status-badge.status-REJECTED {
+      background: #fce7f3;
+      color: #9d174d;
+    }
+
+    .status-badge.status-RETURNED,
+    .status-badge.status-RETURNED_TO_SHOP {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .status-badge.status-RETURNING_TO_SHOP {
+      background: #fff7ed;
+      color: #c2410c;
+    }
+
+    .status-badge.status-REFUNDED {
+      background: #ede9fe;
+      color: #6d28d9;
     }
 
     .status-badge.status-UNKNOWN {
@@ -438,6 +481,7 @@ export class NotificationsComponent implements OnInit, OnDestroy {
   constructor(
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
+    private router: Router,
     private notificationService: NotificationService,
     private authService: AuthService,
     private orderService: OrderService,
@@ -590,9 +634,27 @@ export class NotificationsComponent implements OnInit, OnDestroy {
                 type = 'info';
                 priority = 'medium';
                 break;
+              case 'SELF_PICKUP_COLLECTED':
+                title = '🛍️ Self Pickup Collected';
+                message = `Order ${order.orderNumber} has been collected by customer - ₹${order.totalAmount}`;
+                type = 'success';
+                priority = 'low';
+                break;
+              case 'RETURNING_TO_SHOP':
+                title = '🔄 Order Returning to Shop';
+                message = `Order ${order.orderNumber} is being returned to shop`;
+                type = 'warning';
+                priority = 'high';
+                break;
+              case 'RETURNED_TO_SHOP':
+                title = '📥 Order Returned to Shop';
+                message = `Order ${order.orderNumber} has been returned to shop`;
+                type = 'warning';
+                priority = 'medium';
+                break;
               default:
                 title = 'Order Update';
-                message = `Order ${order.orderNumber} status: ${order.status}`;
+                message = `Order ${order.orderNumber} status: ${this.formatStatus(order.status)}`;
                 type = 'info';
                 priority = 'low';
             }
@@ -708,7 +770,10 @@ export class NotificationsComponent implements OnInit, OnDestroy {
     if (notification.status === 'unread') {
       notification.status = 'read';
       notification.readAt = new Date();
-      this.snackBar.open('Notification marked as read', 'Close', { duration: 2000 });
+    }
+    // Navigate to orders management page
+    if (notification.relatedEntity?.type === 'order') {
+      this.router.navigate(['/shop-owner/orders-management']);
     }
   }
 
@@ -746,15 +811,16 @@ export class NotificationsComponent implements OnInit, OnDestroy {
       // Handle order acceptance
       this.acceptOrder(notification);
     } else if (notification.actionUrl) {
-      this.snackBar.open(`Navigating to ${notification.actionUrl}`, 'Close', { duration: 2000 });
-      // Here you would typically navigate using Router
-      // this.router.navigate([notification.actionUrl]);
+      this.router.navigate([notification.actionUrl]);
     } else {
       this.snackBar.open('Action completed', 'Close', { duration: 2000 });
     }
-    
-    // Mark as read when action is taken
-    this.markAsRead(notification);
+
+    // Mark as read without navigating (action buttons handle their own flow)
+    if (notification.status === 'unread') {
+      notification.status = 'read';
+      notification.readAt = new Date();
+    }
   }
 
   acceptOrder(notification: ShopNotification): void {
@@ -851,12 +917,51 @@ export class NotificationsComponent implements OnInit, OnDestroy {
     } else if (notification.message.includes('status: PREPARING')) {
       return 'PREPARING';
     } else if (notification.message.includes('status: READY_FOR_PICKUP')) {
-      return 'READY';
+      return 'READY_FOR_PICKUP';
     } else if (notification.message.includes('status: PENDING')) {
       return 'PENDING';
+    } else if (notification.message.includes('status: SELF_PICKUP_COLLECTED')) {
+      return 'SELF_PICKUP_COLLECTED';
+    } else if (notification.message.includes('status: DELIVERED')) {
+      return 'DELIVERED';
+    } else if (notification.message.includes('status: CANCELLED')) {
+      return 'CANCELLED';
+    } else if (notification.message.includes('status: REJECTED')) {
+      return 'REJECTED';
+    } else if (notification.message.includes('status: RETURNING_TO_SHOP')) {
+      return 'RETURNING_TO_SHOP';
+    } else if (notification.message.includes('status: RETURNED_TO_SHOP')) {
+      return 'RETURNED_TO_SHOP';
     }
 
     return 'UNKNOWN';
+  }
+
+  formatStatus(status: string): string {
+    if (!status) return '';
+    return status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).toLowerCase()
+      .replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  getStatusLabel(status: string): string {
+    const statusLabels: { [key: string]: string } = {
+      'PENDING': 'Pending',
+      'CONFIRMED': 'Confirmed',
+      'ACCEPTED': 'Accepted',
+      'PREPARING': 'Preparing',
+      'READY_FOR_PICKUP': 'Ready',
+      'OUT_FOR_DELIVERY': 'Out for Delivery',
+      'DELIVERED': 'Delivered',
+      'CANCELLED': 'Cancelled',
+      'REJECTED': 'Rejected',
+      'RETURNED': 'Returned',
+      'REFUNDED': 'Refunded',
+      'SELF_PICKUP_COLLECTED': 'Collected',
+      'RETURNING_TO_SHOP': 'Returning',
+      'RETURNED_TO_SHOP': 'Returned to Shop',
+      'UNKNOWN': 'Unknown'
+    };
+    return statusLabels[status] || this.formatStatus(status);
   }
 
   // Format date/time with relative time for recent, full date for older
