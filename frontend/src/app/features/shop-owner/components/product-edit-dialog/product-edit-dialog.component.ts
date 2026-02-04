@@ -65,7 +65,24 @@ export class ProductEditDialogComponent implements OnInit {
   }
 
   private loadCategories(): void {
-    // Load active categories from API
+    // Load cached categories immediately so dropdown is never empty
+    const cached = this.getCachedCategoryNames();
+    if (cached.length > 0) {
+      this.categories = cached;
+      if (this.data.category && !this.categories.includes(this.data.category)) {
+        this.categories.push(this.data.category);
+      }
+      this.categories.sort();
+    } else if (this.data.category) {
+      this.categories = [this.data.category];
+    }
+
+    // If offline, skip API call - already have cached/fallback categories
+    if (!navigator.onLine) {
+      return;
+    }
+
+    // If online, fetch fresh categories from API
     this.http.get<any>(`${this.apiUrl}/products/categories`, {
       params: { page: '0', size: '1000', sortBy: 'name', sortDirection: 'ASC', isActive: 'true' }
     }).subscribe({
@@ -87,12 +104,38 @@ export class ProductEditDialogComponent implements OnInit {
           cats.push(this.data.category);
         }
         this.categories = cats.sort();
+
+        // Cache for offline use
+        try {
+          localStorage.setItem('cached_product_category_names', JSON.stringify(cats));
+        } catch (e) {}
       },
       error: () => {
-        // Fallback: just use the product's current category
-        this.categories = this.data.category ? [this.data.category] : [];
+        // Already have cached/fallback categories loaded, no action needed
       }
     });
+  }
+
+  private getCachedCategoryNames(): string[] {
+    try {
+      // Try the category names cache first
+      const cached = localStorage.getItem('cached_product_category_names');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+      // Fallback: try the structured categories cache (from add-product)
+      const structuredCache = localStorage.getItem('cached_product_categories');
+      if (structuredCache) {
+        const parsed = JSON.parse(structuredCache);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((c: any) => c.name).filter((n: string) => !!n);
+        }
+      }
+    } catch (e) {}
+    return [];
   }
 
   initForm(): void {

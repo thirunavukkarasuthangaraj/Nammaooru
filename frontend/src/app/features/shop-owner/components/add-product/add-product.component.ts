@@ -653,10 +653,10 @@ export class AddProductComponent implements OnInit {
 
   private loadInitialData(): void {
     this.isLoading = true;
-    
+
     // Get the correct shop ID for the logged in user
     const shopId = this.getShopId();
-    
+
     // For shop owners, use a default shop context instead of API call
     const defaultShop: Shop = {
       id: shopId,
@@ -695,21 +695,92 @@ export class AddProductComponent implements OnInit {
       images: [],
       documents: []
     };
-    
+
+    this.currentShop = defaultShop;
+
+    // Load cached categories immediately so dropdown is never empty
+    const cachedCategories = this.getCachedCategories();
+    if (cachedCategories.length > 0) {
+      this.productCategories = cachedCategories;
+    } else {
+      this.productCategories = this.getDefaultCategories();
+    }
+
+    // If offline, use cached/default categories immediately
+    if (!navigator.onLine) {
+      this.isLoading = false;
+      return;
+    }
+
+    // If online, fetch fresh categories from API (dropdown already has cached data)
     this.categoryService.getCategoryTree().subscribe({
       next: (categories) => {
-        this.currentShop = defaultShop;
-        this.productCategories = this.flattenCategories(categories);
+        const flattened = this.flattenCategories(categories);
+        if (flattened.length > 0) {
+          this.productCategories = flattened;
+          this.cacheCategories(flattened);
+        }
         this.isLoading = false;
       },
       error: (error) => {
         console.error('Error loading categories:', error);
-        // Fallback to default categories if API fails
-        this.currentShop = defaultShop;
-        this.productCategories = this.getDefaultCategories();
+        // Already have cached/default categories loaded, just stop loading
         this.isLoading = false;
       }
     });
+  }
+
+  private cacheCategories(categories: ProductCategory[]): void {
+    try {
+      const toCache = categories.map(c => ({ id: c.id, name: c.name, slug: c.slug }));
+      localStorage.setItem('cached_product_categories', JSON.stringify(toCache));
+      // Also cache names list for edit dialog
+      const names = categories.map(c => c.name).filter(n => !!n);
+      localStorage.setItem('cached_product_category_names', JSON.stringify(names));
+    } catch (e) {
+      console.warn('Failed to cache categories:', e);
+    }
+  }
+
+  private getCachedCategories(): ProductCategory[] {
+    try {
+      const cached = localStorage.getItem('cached_product_categories');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((c: any, index: number) => ({
+            id: c.id,
+            name: c.name,
+            description: `${c.name} category`,
+            slug: c.slug || c.name.toLowerCase().replace(/\s+/g, '-'),
+            parentId: undefined,
+            parentName: undefined,
+            fullPath: c.name,
+            isActive: true,
+            sortOrder: index,
+            iconUrl: undefined,
+            createdBy: 'system',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            level: 0,
+            subcategories: [],
+            hasSubcategories: false,
+            isRootCategory: true,
+            productCount: 0,
+            subcategoryCount: 0
+          }));
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to read cached categories:', e);
+    }
+    return [];
+  }
+
+  private getCategoryNameById(categoryId: number | string): string {
+    if (!categoryId) return '';
+    const cat = this.productCategories.find(c => c.id === categoryId || c.id === Number(categoryId));
+    return cat ? cat.name : String(categoryId);
   }
 
   private loadProductForEdit(productId: number): void {
@@ -1105,7 +1176,8 @@ export class AddProductComponent implements OnInit {
         barcode2: formData.barcode2?.trim() || '',
         barcode3: formData.barcode3?.trim() || '',
         sku: formData.sku?.trim() || '',
-        categoryName: formData.category || '',
+        categoryName: this.getCategoryNameById(formData.category) || '',
+        categoryId: formData.category || undefined,
         unit: formData.unit || 'piece',
         tags: formData.tags?.trim() || '',
         isFeatured: formData.isFeatured || false,
