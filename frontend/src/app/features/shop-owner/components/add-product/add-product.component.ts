@@ -742,39 +742,8 @@ export class AddProductComponent implements OnInit {
 
     this.currentShop = defaultShop;
 
-    // Load cached categories immediately so dropdown is never empty
-    const cachedCategories = this.getCachedCategories();
-    if (cachedCategories.length > 0) {
-      this.productCategories = cachedCategories;
-    } else {
-      this.productCategories = this.getDefaultCategories();
-    }
-
-    // Also load categories from cached products
+    // Load categories from IndexedDB products (works offline, always consistent)
     this.loadCategoriesFromProducts();
-
-    // If offline, use cached/default categories immediately
-    if (!navigator.onLine) {
-      this.isLoading = false;
-      return;
-    }
-
-    // If online, fetch fresh categories from API (dropdown already has cached data)
-    this.categoryService.getCategoryTree().subscribe({
-      next: (categories) => {
-        const flattened = this.flattenCategories(categories);
-        if (flattened.length > 0) {
-          this.productCategories = flattened;
-          this.cacheCategories(flattened);
-        }
-        this.isLoading = false;
-      },
-      error: (error) => {
-        console.error('Error loading categories:', error);
-        // Already have cached/default categories loaded, just stop loading
-        this.isLoading = false;
-      }
-    });
   }
 
   private cacheCategories(categories: ProductCategory[]): void {
@@ -831,11 +800,13 @@ export class AddProductComponent implements OnInit {
   }
 
   /**
-   * Load categories from cached products to ensure all used categories are available
+   * Load categories from IndexedDB cached products (works offline)
+   * This is the single source of truth for categories
    */
   private async loadCategoriesFromProducts(): Promise<void> {
     try {
       const cachedProducts = await this.offlineStorage.getProducts();
+
       if (cachedProducts && cachedProducts.length > 0) {
         // Extract unique category names from products
         const categoryNames = new Set<string>();
@@ -845,42 +816,48 @@ export class AddProductComponent implements OnInit {
           }
         });
 
-        // Add any categories that don't exist yet
-        const existingNames = new Set(this.productCategories.map(c => c.name.toLowerCase()));
-        let nextId = this.productCategories.length + 100; // Start from high ID to avoid conflicts
+        // Build categories array from product categories
+        this.productCategories = [];
+        let nextId = 1;
 
         categoryNames.forEach(name => {
-          if (!existingNames.has(name.toLowerCase())) {
-            this.productCategories.push({
-              id: nextId++,
-              name: name,
-              description: `${name} category`,
-              slug: name.toLowerCase().replace(/\s+/g, '-'),
-              parentId: undefined,
-              parentName: undefined,
-              fullPath: name,
-              isActive: true,
-              sortOrder: this.productCategories.length,
-              iconUrl: undefined,
-              createdBy: 'system',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              subcategories: [],
-              hasSubcategories: false,
-              isRootCategory: true,
-              productCount: 0,
-              subcategoryCount: 0
-            } as ProductCategory);
-          }
+          this.productCategories.push({
+            id: nextId++,
+            name: name,
+            description: `${name} category`,
+            slug: name.toLowerCase().replace(/\s+/g, '-'),
+            parentId: undefined,
+            parentName: undefined,
+            fullPath: name,
+            isActive: true,
+            sortOrder: this.productCategories.length,
+            iconUrl: undefined,
+            createdBy: 'system',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            subcategories: [],
+            hasSubcategories: false,
+            isRootCategory: true,
+            productCount: 0,
+            subcategoryCount: 0
+          } as ProductCategory);
         });
 
         // Sort alphabetically
         this.productCategories.sort((a, b) => a.name.localeCompare(b.name));
-        console.log('Loaded categories from products:', categoryNames.size, 'unique categories');
+        console.log('Loaded', this.productCategories.length, 'categories from IndexedDB products');
+      } else {
+        // No products in cache, use default categories
+        this.productCategories = this.getDefaultCategories();
+        console.log('No cached products, using default categories');
       }
     } catch (error) {
-      console.warn('Failed to load categories from products:', error);
+      console.warn('Failed to load categories from IndexedDB:', error);
+      // Fallback to default categories
+      this.productCategories = this.getDefaultCategories();
     }
+
+    this.isLoading = false;
   }
 
   private loadProductForEdit(productId: number): void {
