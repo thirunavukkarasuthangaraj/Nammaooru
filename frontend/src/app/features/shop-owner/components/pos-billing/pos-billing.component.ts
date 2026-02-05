@@ -84,6 +84,10 @@ interface BillSettings {
 
   // Separator Style
   separatorStyle: 'solid' | 'dashed' | 'dotted' | 'none';
+
+  // UPI Payment
+  upiId: string;
+  showUpiQrCode: boolean;
 }
 
 @Component({
@@ -222,7 +226,10 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     thankYouMessage: 'Thank you for your order!',
     footerNote: '',
     // Separator
-    separatorStyle: 'dashed'
+    separatorStyle: 'dashed',
+    // UPI Payment
+    upiId: '',
+    showUpiQrCode: false
   };
 
   // Quick Edit state
@@ -1958,12 +1965,25 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
           <span style="font-size: ${headerFontSize + 2}px; font-weight: 700;">₹${this.totalAmount.toFixed(0)}</span>
         </div>
 
+        ${bs.showPaymentMethod ? `
         <div class="divider"></div>
         <div class="center">
           <span class="payment-badge">
             ${this.selectedPaymentMethod === 'CASH_ON_DELIVERY' ? '💵 CASH' : this.selectedPaymentMethod === 'UPI' ? '📱 UPI' : '💳 CARD'}
           </span>
         </div>
+        ` : ''}
+
+        ${bs.showUpiQrCode && bs.upiId ? `
+        <div class="divider"></div>
+        <div class="center" style="padding: 8px 0;">
+          <div style="font-size: ${footerFontSize}px; margin-bottom: 4px; font-weight: 600;">Scan to Pay</div>
+          <img src="${this.getUpiQrCodeUrl(bs.paperWidth === '58mm' ? 100 : 140, this.totalAmount)}"
+               alt="UPI QR Code"
+               style="width: ${bs.paperWidth === '58mm' ? '100px' : '140px'}; height: ${bs.paperWidth === '58mm' ? '100px' : '140px'}; margin: 4px 0;">
+          <div style="font-size: ${Math.max(footerFontSize - 1, 7)}px; color: #666;">${bs.upiId}</div>
+        </div>
+        ` : ''}
 
         <div class="divider"></div>
 
@@ -2013,9 +2033,12 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   /**
    * Generate UPI QR Code URL using QR Server API
    */
-  getUpiQrCodeUrl(size: number = 150): string {
-    if (!this.shopUpiId) return '';
-    const upiUrl = `upi://pay?pa=${this.shopUpiId}&pn=${encodeURIComponent(this.shopName)}&am=${this.totalAmount}&cu=INR`;
+  getUpiQrCodeUrl(size: number = 150, amount?: number): string {
+    const upiId = this.billSettings.upiId || this.shopUpiId;
+    if (!upiId) return '';
+    const shopName = this.billSettings.shopName || this.shopName;
+    const finalAmount = amount ?? this.totalAmount;
+    const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(shopName)}&am=${finalAmount}&cu=INR`;
     return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(upiUrl)}`;
   }
 

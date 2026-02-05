@@ -1051,6 +1051,24 @@
           </div>
         </div>
 
+        <!-- UPI Payment Section -->
+        <div class="settings-section">
+          <div class="section-title">
+            <mat-icon>qr_code_2</mat-icon>
+            UPI Payment
+          </div>
+          <div class="settings-field">
+            <label>UPI ID</label>
+            <input type="text" [(ngModel)]="billSettings.upiId" placeholder="e.g. shopname@ybl or 9876543210@paytm">
+          </div>
+          <div class="toggle-grid">
+            <div class="toggle-item">
+              <mat-slide-toggle [(ngModel)]="billSettings.showUpiQrCode" color="primary"></mat-slide-toggle>
+              <span>Show UPI QR Code on Receipt</span>
+            </div>
+          </div>
+        </div>
+
         <!-- Footer Message Section -->
         <div class="settings-section">
           <div class="section-title">
