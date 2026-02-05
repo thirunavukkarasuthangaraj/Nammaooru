@@ -1645,7 +1645,8 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
    * Print receipt
    */
   printReceipt(order: any): void {
-    const receiptWindow = window.open('', '_blank', 'width=300,height=600');
+    const paperConfig = this.getPaperConfig(this.billSettings.paperWidth || '80mm');
+    const receiptWindow = window.open('', '_blank', `width=${paperConfig.windowWidth},height=600`);
     if (!receiptWindow) return;
 
     const receiptHtml = this.generateReceiptHtml(order);
@@ -1658,7 +1659,41 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   /**
-   * Generate receipt HTML - optimized for 58mm thermal paper
+   * Get paper configuration based on paper width setting
+   */
+  private getPaperConfig(paperWidth: string): { pageSize: string; bodyWidth: string; maxWidth: string; windowWidth: number } {
+    switch (paperWidth) {
+      case '58mm':
+        return { pageSize: '58mm auto', bodyWidth: '180px', maxWidth: '180px', windowWidth: 300 };
+      case '80mm':
+        return { pageSize: '80mm auto', bodyWidth: '260px', maxWidth: '260px', windowWidth: 350 };
+      case 'A4':
+        return { pageSize: 'A4', bodyWidth: '100%', maxWidth: '600px', windowWidth: 700 };
+      default:
+        return { pageSize: '80mm auto', bodyWidth: '260px', maxWidth: '260px', windowWidth: 350 };
+    }
+  }
+
+  /**
+   * Get separator style CSS based on setting
+   */
+  private getSeparatorStyle(style: string): string {
+    switch (style) {
+      case 'solid':
+        return 'border-top: 1px solid #000; margin: 6px 0;';
+      case 'dashed':
+        return 'border-top: 1px dashed #000; margin: 6px 0;';
+      case 'dotted':
+        return 'border-top: 1px dotted #000; margin: 6px 0;';
+      case 'none':
+        return 'margin: 6px 0;';
+      default:
+        return 'border-top: 1px dashed #000; margin: 6px 0;';
+    }
+  }
+
+  /**
+   * Generate receipt HTML - supports 58mm, 80mm thermal paper and A4
    * Uses billSettings for customization
    */
   private generateReceiptHtml(order: any): string {
@@ -1666,6 +1701,9 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     const bodyFontSize = bs.bodyFontSize || 12;
     const headerFontSize = bs.headerFontSize || 16;
     const footerFontSize = bs.footerFontSize || 10;
+
+    // Paper width configuration
+    const paperConfig = this.getPaperConfig(bs.paperWidth || '80mm');
 
     const items = this.cart.map(item => {
       const englishName = item.product.name || '';
@@ -1744,6 +1782,9 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       resolved: shopName
     });
 
+    // Get separator style
+    const separatorStyle = this.getSeparatorStyle(bs.separatorStyle || 'dashed');
+
     return `
       <!DOCTYPE html>
       <html>
@@ -1752,7 +1793,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
         <title>Receipt - ${order.orderNumber || order.offlineOrderId}</title>
         <style>
           @page {
-            size: 58mm auto;
+            size: ${paperConfig.pageSize};
             margin: 1mm;
           }
           @media print {
@@ -1765,16 +1806,15 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
           body {
             font-family: 'Noto Sans Tamil', 'Latha', 'Tamil Sangam MN', Arial, sans-serif;
             font-size: ${bodyFontSize}px;
-            width: 180px;
-            max-width: 180px;
+            width: ${paperConfig.bodyWidth};
+            max-width: ${paperConfig.maxWidth};
             margin: 0 auto;
             padding: 8px;
             line-height: 1.3;
           }
           .center { text-align: center; }
           .divider {
-            border-top: 1px dashed #000;
-            margin: 6px 0;
+            ${separatorStyle}
           }
           .divider-solid {
             border-top: 1px solid #000;
