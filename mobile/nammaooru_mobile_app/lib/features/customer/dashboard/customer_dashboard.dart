@@ -37,6 +37,7 @@ import '../../../shared/providers/cart_provider.dart';
 import '../../../shared/models/product_model.dart';
 import '../services/marketplace_service.dart';
 import '../screens/marketplace_screen.dart';
+import '../screens/real_estate_screen.dart';
 import '../screens/create_post_screen.dart';
 
 class CustomerDashboard extends StatefulWidget {
@@ -1373,53 +1374,154 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   Widget _buildServiceCategories() {
     return Consumer<LanguageProvider>(
       builder: (context, languageProvider, child) {
-        final categories = [
-          {
-            'name': languageProvider.getText('Ooru Market', 'ஊர் சந்தை'),
-            'nameEn': 'Ooru Market',
-            'imageUrl': 'assets/images/buy_sell.png',
-            'isMarketplace': true,
-          },
-          {
-            'name': languageProvider.getText('Grocery', 'மளிகை'),
-            'nameEn': 'Grocery',
-            'imageUrl': 'assets/images/gorceries.webp',
-          },
-          {
-            'name': languageProvider.getText('Food', 'உணவு'),
-            'nameEn': 'Food',
-            'imageUrl': 'assets/images/Food.jpeg',
-          },
-        ];
-
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            GridView.builder(
+            // 2x2 Grid: Grocery, Food, Marketplace, Real Estate
+            GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 1.1,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-              ),
-              itemCount: categories.length,
-              itemBuilder: (context, index) {
-                final category = categories[index];
-                if (category['isMarketplace'] == true) {
-                  return _buildBuySellCard(category['name'] as String);
-                }
-                return _buildCategoryCard(
-                  category['name'] as String,
-                  category['nameEn'] as String,
-                  category['imageUrl'] as String,
-                );
-              },
+              crossAxisCount: 2,
+              childAspectRatio: 1.15,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              children: [
+                // 1. Grocery
+                _buildModernCategoryTile(
+                  icon: Icons.shopping_basket_rounded,
+                  title: languageProvider.getText('Grocery', 'மளிகை'),
+                  subtitle: languageProvider.getText('Daily essentials', 'தினசரி பொருட்கள்'),
+                  color: const Color(0xFF4CAF50),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ShopListingScreen(
+                        category: 'grocery',
+                        categoryTitle: 'Grocery',
+                      ),
+                    ),
+                  ),
+                ),
+                // 2. Food
+                _buildModernCategoryTile(
+                  icon: Icons.restaurant_rounded,
+                  title: languageProvider.getText('Food', 'உணவு'),
+                  subtitle: languageProvider.getText('Restaurants & more', 'உணவகங்கள்'),
+                  color: const Color(0xFFFF5722),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ShopListingScreen(
+                        category: 'food',
+                        categoryTitle: 'Food',
+                      ),
+                    ),
+                  ),
+                ),
+                // 3. Marketplace - Buy & Sell locally
+                _buildModernCategoryTile(
+                  icon: Icons.storefront_rounded,
+                  title: languageProvider.getText('Marketplace', 'சந்தை'),
+                  subtitle: languageProvider.getText('Buy & Sell locally', 'வாங்கு & விற்கு'),
+                  color: const Color(0xFF2196F3),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const MarketplaceScreen()),
+                  ),
+                ),
+                // 4. Real Estate - Properties
+                _buildModernCategoryTile(
+                  icon: Icons.home_work_rounded,
+                  title: languageProvider.getText('Real Estate', 'ரியல் எஸ்டேட்'),
+                  subtitle: languageProvider.getText('Buy & Rent', 'வாங்கு & வாடகை'),
+                  color: const Color(0xFF9C27B0),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const RealEstateScreen()),
+                  ),
+                ),
+              ],
             ),
           ],
         );
       },
+    );
+  }
+
+  Widget _buildModernCategoryTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(0.15),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            // Background accent
+            Positioned(
+              right: -20,
+              bottom: -20,
+              child: Icon(
+                icon,
+                size: 80,
+                color: color.withOpacity(0.08),
+              ),
+            ),
+            // Content
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Icon container
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(icon, color: color, size: 26),
+                  ),
+                  const Spacer(),
+                  // Title
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[800],
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  // Subtitle
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

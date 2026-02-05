@@ -82,6 +82,11 @@ public class SecurityConfig {
                                 "/api/delivery/partners/*/documents/**",
                                 "/api/delivery/partners/documents/*/view",
                                 "/api/delivery-fees/**",
+                                "/api/marketplace",  // Public: View approved marketplace posts
+                                "/api/marketplace/*",  // Public: View single marketplace post by ID
+                                "/api/real-estate",  // Public: View approved real estate posts
+                                "/api/real-estate/featured",  // Public: View featured properties
+                                "/api/real-estate/*",  // Public: View single property by ID
                                 "/api/delivery/confirmation/**",  // Allow OTP verification
                                 "/api/customer/shops/**",
                                 "/api/mobile/delivery-partner/track/**",  // Allow public order tracking for customers
