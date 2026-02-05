@@ -2139,15 +2139,17 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   /**
-   * Generate UPI QR Code URL using QR Server API
+   * Generate UPI QR Code URL using Google Charts API (more reliable)
    */
   getUpiQrCodeUrl(size: number = 150, amount?: number): string {
     const upiId = this.billSettings.upiId || this.shopUpiId;
     if (!upiId) return '';
-    const shopName = this.billSettings.shopName || this.shopName;
+    const shopName = (this.billSettings.shopName || this.shopName || 'Shop').replace(/[^a-zA-Z0-9 ]/g, '');
     const finalAmount = amount ?? this.totalAmount;
-    const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(shopName)}&am=${finalAmount}&cu=INR`;
-    return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(upiUrl)}`;
+    // Simple UPI URL format
+    const upiUrl = `upi://pay?pa=${upiId}&pn=${shopName}&am=${finalAmount}&cu=INR`;
+    // Use Google Charts API for QR code generation (more reliable)
+    return `https://chart.googleapis.com/chart?cht=qr&chs=${size}x${size}&chl=${encodeURIComponent(upiUrl)}&choe=UTF-8`;
   }
 
   /**
