@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -178,7 +178,8 @@ import { switchMap, catchError, map } from 'rxjs/operators';
               <div class="form-row">
                 <mat-form-field appearance="outline" class="half-width">
                   <mat-label>SKU</mat-label>
-                  <input matInput formControlName="sku" placeholder="Enter SKU">
+                  <input matInput formControlName="sku" placeholder="Enter SKU"
+                         (keydown.enter)="onBarcodeEnter($event, 'barcode1')">
                 </mat-form-field>
 
                 <mat-form-field appearance="outline" class="half-width">
@@ -215,19 +216,25 @@ import { switchMap, catchError, map } from 'rxjs/operators';
               <div class="form-row">
                 <mat-form-field appearance="outline" class="third-width">
                   <mat-label>Barcode 1</mat-label>
-                  <input matInput formControlName="barcode1" placeholder="Primary barcode (optional)">
+                  <input matInput formControlName="barcode1" placeholder="Primary barcode (optional)"
+                         #barcode1Input
+                         (keydown.enter)="onBarcodeEnter($event, 'barcode2')">
                   <mat-icon matPrefix>qr_code</mat-icon>
                 </mat-form-field>
 
                 <mat-form-field appearance="outline" class="third-width">
                   <mat-label>Barcode 2</mat-label>
-                  <input matInput formControlName="barcode2" placeholder="Secondary barcode (optional)">
+                  <input matInput formControlName="barcode2" placeholder="Secondary barcode (optional)"
+                         #barcode2Input
+                         (keydown.enter)="onBarcodeEnter($event, 'barcode3')">
                   <mat-icon matPrefix>qr_code</mat-icon>
                 </mat-form-field>
 
                 <mat-form-field appearance="outline" class="third-width">
                   <mat-label>Barcode 3</mat-label>
-                  <input matInput formControlName="barcode3" placeholder="Tertiary barcode (optional)">
+                  <input matInput formControlName="barcode3" placeholder="Tertiary barcode (optional)"
+                         #barcode3Input
+                         (keydown.enter)="onBarcodeEnter($event, 'done')">
                   <mat-icon matPrefix>qr_code</mat-icon>
                 </mat-form-field>
               </div>
@@ -561,6 +568,11 @@ import { switchMap, catchError, map } from 'rxjs/operators';
   `]
 })
 export class AddProductComponent implements OnInit {
+  // ViewChild references for barcode fields
+  @ViewChild('barcode1Input') barcode1Input!: ElementRef<HTMLInputElement>;
+  @ViewChild('barcode2Input') barcode2Input!: ElementRef<HTMLInputElement>;
+  @ViewChild('barcode3Input') barcode3Input!: ElementRef<HTMLInputElement>;
+
   productForm: FormGroup;
   isLoading = false;
   imagePreview: string | null = null;
@@ -1037,6 +1049,32 @@ export class AddProductComponent implements OnInit {
     const checkDigit = (10 - (sum % 10)) % 10;
 
     return barcode + checkDigit;
+  }
+
+  /**
+   * Handle Enter key on barcode/SKU fields - move to next field instead of submitting form
+   */
+  onBarcodeEnter(event: Event, nextField: string): void {
+    event.preventDefault(); // Prevent form submission
+
+    // Small delay to let scanner finish inputting
+    setTimeout(() => {
+      switch (nextField) {
+        case 'barcode1':
+          this.barcode1Input?.nativeElement?.focus();
+          break;
+        case 'barcode2':
+          this.barcode2Input?.nativeElement?.focus();
+          break;
+        case 'barcode3':
+          this.barcode3Input?.nativeElement?.focus();
+          break;
+        case 'done':
+          // On last barcode field, just blur (don't submit)
+          (event.target as HTMLElement)?.blur();
+          break;
+      }
+    }, 50);
   }
 
   onImageSelected(event: any): void {
