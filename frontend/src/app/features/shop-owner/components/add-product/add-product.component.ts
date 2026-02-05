@@ -204,7 +204,13 @@ import { switchMap, catchError, map } from 'rxjs/operators';
 
             <!-- Barcodes Section -->
             <div class="form-section">
-              <h3 class="section-title">Product Barcodes</h3>
+              <div class="section-header-row">
+                <h3 class="section-title">Product Barcodes</h3>
+                <button mat-stroked-button type="button" class="generate-barcode-btn" (click)="generateBarcodes()">
+                  <mat-icon>autorenew</mat-icon>
+                  Generate Barcodes
+                </button>
+              </div>
 
               <div class="form-row">
                 <mat-form-field appearance="outline" class="third-width">
@@ -375,6 +381,32 @@ import { switchMap, catchError, map } from 'rxjs/operators';
       margin: 0 0 8px 0;
       padding-bottom: 8px;
       border-bottom: 2px solid #e5e7eb;
+    }
+
+    .section-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .section-header-row .section-title {
+      margin: 0;
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+
+    .generate-barcode-btn {
+      color: #4caf50;
+      border-color: #4caf50;
+    }
+
+    .generate-barcode-btn:hover {
+      background-color: rgba(76, 175, 80, 0.1);
+    }
+
+    .generate-barcode-btn mat-icon {
+      margin-right: 4px;
     }
 
     .form-row {
@@ -706,6 +738,9 @@ export class AddProductComponent implements OnInit {
       this.productCategories = this.getDefaultCategories();
     }
 
+    // Also load categories from cached products
+    this.loadCategoriesFromProducts();
+
     // If offline, use cached/default categories immediately
     if (!navigator.onLine) {
       this.isLoading = false;
@@ -781,6 +816,59 @@ export class AddProductComponent implements OnInit {
     if (!categoryId) return '';
     const cat = this.productCategories.find(c => c.id === categoryId || c.id === Number(categoryId));
     return cat ? cat.name : String(categoryId);
+  }
+
+  /**
+   * Load categories from cached products to ensure all used categories are available
+   */
+  private async loadCategoriesFromProducts(): Promise<void> {
+    try {
+      const cachedProducts = await this.offlineStorage.getProducts();
+      if (cachedProducts && cachedProducts.length > 0) {
+        // Extract unique category names from products
+        const categoryNames = new Set<string>();
+        cachedProducts.forEach(product => {
+          if (product.category && typeof product.category === 'string' && product.category.trim()) {
+            categoryNames.add(product.category.trim());
+          }
+        });
+
+        // Add any categories that don't exist yet
+        const existingNames = new Set(this.productCategories.map(c => c.name.toLowerCase()));
+        let nextId = this.productCategories.length + 100; // Start from high ID to avoid conflicts
+
+        categoryNames.forEach(name => {
+          if (!existingNames.has(name.toLowerCase())) {
+            this.productCategories.push({
+              id: nextId++,
+              name: name,
+              description: `${name} category`,
+              slug: name.toLowerCase().replace(/\s+/g, '-'),
+              parentId: undefined,
+              parentName: undefined,
+              fullPath: name,
+              isActive: true,
+              sortOrder: this.productCategories.length,
+              iconUrl: undefined,
+              createdBy: 'system',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              subcategories: [],
+              hasSubcategories: false,
+              isRootCategory: true,
+              productCount: 0,
+              subcategoryCount: 0
+            } as ProductCategory);
+          }
+        });
+
+        // Sort alphabetically
+        this.productCategories.sort((a, b) => a.name.localeCompare(b.name));
+        console.log('Loaded categories from products:', categoryNames.size, 'unique categories');
+      }
+    } catch (error) {
+      console.warn('Failed to load categories from products:', error);
+    }
   }
 
   private loadProductForEdit(productId: number): void {
@@ -913,6 +1001,42 @@ export class AddProductComponent implements OnInit {
     const prefix = name.substring(0, 3).toUpperCase();
     const timestamp = Date.now().toString().slice(-6);
     return `${prefix}${timestamp}`;
+  }
+
+  /**
+   * Generate random barcodes for all three barcode fields
+   * Format: 13-digit EAN-13 style barcode
+   */
+  generateBarcodes(): void {
+    const barcode1 = this.generateRandomBarcode();
+    const barcode2 = this.generateRandomBarcode();
+    const barcode3 = this.generateRandomBarcode();
+
+    this.productForm.patchValue({
+      barcode1,
+      barcode2,
+      barcode3
+    });
+
+    this.snackBar.open('Barcodes generated!', 'Close', { duration: 2000 });
+  }
+
+  private generateRandomBarcode(): string {
+    // Generate 12 random digits
+    let barcode = '';
+    for (let i = 0; i < 12; i++) {
+      barcode += Math.floor(Math.random() * 10).toString();
+    }
+
+    // Calculate check digit (EAN-13 algorithm)
+    let sum = 0;
+    for (let i = 0; i < 12; i++) {
+      const digit = parseInt(barcode[i], 10);
+      sum += i % 2 === 0 ? digit : digit * 3;
+    }
+    const checkDigit = (10 - (sum % 10)) % 10;
+
+    return barcode + checkDigit;
   }
 
   onImageSelected(event: any): void {

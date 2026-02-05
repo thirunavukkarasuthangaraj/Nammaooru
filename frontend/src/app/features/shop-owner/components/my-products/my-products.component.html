@@ -73,7 +73,7 @@
   </div>
 
   <!-- Scrollable Content Area -->
-  <div class="scrollable-content">
+  <div class="scrollable-content" (scroll)="onContentScroll($event)">
         <!-- Loading State -->
         <div class="loading-container" *ngIf="loading">
           <mat-spinner diameter="40"></mat-spinner>
@@ -221,8 +221,8 @@
         <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="product-row"></tr>
       </table>
 
-      <!-- Paginator -->
-      <mat-paginator
+      <!-- Paginator - only shown when searching -->
+      <mat-paginator *ngIf="isSearching"
         [length]="totalProducts"
         [pageSize]="pageSize"
         [pageSizeOptions]="pageSizeOptions"
@@ -230,6 +230,21 @@
         (page)="onPageChange($event)"
         showFirstLastButtons>
       </mat-paginator>
+
+      <!-- Infinite scroll loading indicator -->
+      <div class="load-more-container" *ngIf="!isSearching">
+        <div class="load-more-spinner" *ngIf="loadingMore">
+          <mat-spinner diameter="30"></mat-spinner>
+          <span>Loading more products...</span>
+        </div>
+        <div class="load-more-info" *ngIf="!loadingMore && hasMoreProducts">
+          <span>Showing {{ paginatedProducts.length }} of {{ filteredProducts.length }} products</span>
+          <span class="scroll-hint">Scroll down to load more</span>
+        </div>
+        <div class="load-more-complete" *ngIf="!loadingMore && !hasMoreProducts && filteredProducts.length > 0">
+          <span>Showing all {{ filteredProducts.length }} products</span>
+        </div>
+      </div>
     </mat-card>
   </div>
 

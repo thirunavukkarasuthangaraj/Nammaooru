@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, OnDestroy } from '@angular/core';
+import { Component, OnInit, ViewChild, OnDestroy, ElementRef, AfterViewInit } from '@angular/core';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
@@ -73,6 +73,7 @@ export class MyProductsComponent implements OnInit, OnDestroy {
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
+  @ViewChild('scrollableContent') scrollableContent!: ElementRef;
 
   // Product data
   products: ShopProduct[] = [];
@@ -96,15 +97,36 @@ export class MyProductsComponent implements OnInit, OnDestroy {
   
   // Pagination
   totalProducts = 0;
-  pageSize = 200;
-  pageSizeOptions = [50, 100, 200, 500];
+  pageSize = 20;
+  pageSizeOptions = [20, 50, 100, 200];
   currentPageIndex = 0;
 
-  // Getter for paginated products (only render current page for performance)
+  // Infinite scroll
+  displayLimit = 20;
+  loadingMore = false;
+  private readonly LOAD_INCREMENT = 20;
+
+  // Check if user is searching (to show/hide paginator)
+  get isSearching(): boolean {
+    return !!(this.searchTerm && this.searchTerm.trim().length > 0);
+  }
+
+  // Getter for displayed products (infinite scroll or paginated based on search)
   get paginatedProducts(): ShopProduct[] {
-    const start = this.currentPageIndex * this.pageSize;
-    const end = start + this.pageSize;
-    return this.filteredProducts.slice(start, end);
+    if (this.isSearching) {
+      // When searching, use traditional pagination
+      const start = this.currentPageIndex * this.pageSize;
+      const end = start + this.pageSize;
+      return this.filteredProducts.slice(start, end);
+    } else {
+      // When not searching, use infinite scroll (show up to displayLimit)
+      return this.filteredProducts.slice(0, this.displayLimit);
+    }
+  }
+
+  // Check if there are more products to load
+  get hasMoreProducts(): boolean {
+    return !this.isSearching && this.displayLimit < this.filteredProducts.length;
   }
   
   // Table columns
@@ -124,8 +146,40 @@ export class MyProductsComponent implements OnInit, OnDestroy {
     private http: HttpClient,
     private shopContext: ShopContextService,
     private shopOwnerProductService: ShopOwnerProductService,
-    private offlineStorage: OfflineStorageService
+    private offlineStorage: OfflineStorageService,
+    private elementRef: ElementRef
   ) {}
+
+  // Scroll event handler for infinite scroll (called from template)
+  onContentScroll(event: Event): void {
+    if (this.isSearching || this.loading || this.loadingMore || !this.hasMoreProducts) {
+      return;
+    }
+
+    const element = event.target as HTMLElement;
+    const scrollPosition = element.scrollTop + element.clientHeight;
+    const scrollHeight = element.scrollHeight;
+    const threshold = 200; // Load more when within 200px of bottom
+
+    if (scrollPosition >= scrollHeight - threshold) {
+      this.loadMoreProducts();
+    }
+  }
+
+  // Load more products for infinite scroll
+  loadMoreProducts(): void {
+    if (this.loadingMore || !this.hasMoreProducts) {
+      return;
+    }
+
+    this.loadingMore = true;
+
+    // Simulate a slight delay for smoother UX
+    setTimeout(() => {
+      this.displayLimit += this.LOAD_INCREMENT;
+      this.loadingMore = false;
+    }, 100);
+  }
 
   ngOnInit(): void {
     // Always load products immediately - /my-products uses JWT token to identify user's shop
@@ -603,6 +657,9 @@ export class MyProductsComponent implements OnInit, OnDestroy {
 
     // Reset to first page when filters change
     this.currentPageIndex = 0;
+
+    // Reset infinite scroll display limit when filters change
+    this.displayLimit = this.LOAD_INCREMENT;
 
     // Clean up selection - remove products that are no longer in filtered results
     this.selectedProducts = this.selectedProducts.filter(selected =>
@@ -1291,8 +1348,23 @@ export class MyProductsComponent implements OnInit, OnDestroy {
     const productNames = this.selectedProducts.slice(0, 3).map(p => p.customName).join(', ');
     const displayNames = count > 3 ? `${productNames} and ${count - 3} more` : productNames;
 
-    if (!confirm(`Are you sure you want to delete ${count} product(s)?\n\n${displayNames}\n\nThis action cannot be undone.`)) {
+    // Confirmation 1: Initial warning
+    if (!confirm(`WARNING: You are about to delete ${count} product(s).\n\n${displayNames}\n\nDo you want to proceed?`)) {
       return;
+    }
+
+    // Confirmation 2: Second confirmation with stronger warning
+    if (!confirm(`FINAL WARNING: This will permanently delete ${count} product(s) from your shop.\n\nThis action CANNOT be undone.\n\nAre you absolutely sure?`)) {
+      return;
+    }
+
+    // Confirmation 3: For large deletions (50+), require typing DELETE
+    if (count >= 50) {
+      const typed = prompt(`You are deleting ${count} products. Type "DELETE" to confirm:`);
+      if (typed !== 'DELETE') {
+        this.snackBar.open('Deletion cancelled. You must type DELETE to confirm.', 'Close', { duration: 3000 });
+        return;
+      }
     }
 
     if (this.usingFallbackData) {
