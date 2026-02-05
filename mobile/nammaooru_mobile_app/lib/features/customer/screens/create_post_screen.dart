@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/services/location_service.dart';
-import '../../../core/auth/auth_provider.dart';
-import 'package:provider/provider.dart';
+import '../../../core/storage/local_storage.dart';
 import '../services/marketplace_service.dart';
 
 class CreatePostScreen extends StatefulWidget {
@@ -54,11 +53,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   }
 
   void _prefillData() {
-    // Pre-fill phone from user profile
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final user = authProvider.user;
-    if (user != null) {
-      _phoneController.text = user['mobileNumber'] ?? '';
+    // Pre-fill phone from locally stored user data
+    final phone = LocalStorage.getString('phoneNumber');
+    if (phone != null && phone.isNotEmpty) {
+      _phoneController.text = phone;
     }
 
     // Pre-fill location

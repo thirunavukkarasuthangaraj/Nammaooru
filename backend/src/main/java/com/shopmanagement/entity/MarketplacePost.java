@@ -55,6 +55,10 @@ public class MarketplacePost {
     @Column(length = 200)
     private String location;
 
+    @Column(name = "report_count")
+    @Builder.Default
+    private Integer reportCount = 0;
+
     @Enumerated(EnumType.STRING)
     @Column(length = 30)
     @Builder.Default
@@ -72,6 +76,7 @@ public class MarketplacePost {
         PENDING_APPROVAL,
         APPROVED,
         REJECTED,
-        SOLD
+        SOLD,
+        FLAGGED
     }
 }

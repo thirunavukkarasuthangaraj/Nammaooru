@@ -123,13 +123,123 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     }
   }
 
+  void _showReportDialog(Map<String, dynamic> post) {
+    final reasons = [
+      'Fake / Counterfeit Product',
+      'Stolen Product',
+      'Scam / Fraud',
+      'Inappropriate Content',
+      'Wrong Information',
+      'Other',
+    ];
+    String? selectedReason;
+    final detailsController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              Icon(Icons.flag, color: Colors.orange[700], size: 24),
+              const SizedBox(width: 8),
+              const Text('Report Post', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Why are you reporting "${post['title']}"?',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                ),
+                const SizedBox(height: 12),
+                ...reasons.map((reason) => RadioListTile<String>(
+                  title: Text(reason, style: const TextStyle(fontSize: 14)),
+                  value: reason,
+                  groupValue: selectedReason,
+                  activeColor: VillageTheme.primaryGreen,
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  onChanged: (value) {
+                    setDialogState(() {
+                      selectedReason = value;
+                    });
+                  },
+                )),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: detailsController,
+                  maxLines: 2,
+                  decoration: InputDecoration(
+                    hintText: 'Additional details (optional)',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    contentPadding: const EdgeInsets.all(10),
+                    hintStyle: TextStyle(fontSize: 13, color: Colors.grey[400]),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: selectedReason == null
+                  ? null
+                  : () async {
+                      Navigator.pop(context);
+                      await _submitReport(post, selectedReason!, detailsController.text);
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange[700],
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.grey[300],
+              ),
+              child: const Text('Report'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submitReport(Map<String, dynamic> post, String reason, String details) async {
+    final postId = post['id'];
+    if (postId == null) return;
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (!authProvider.isAuthenticated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in to report posts'), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+
+    final result = await _marketplaceService.reportPost(postId, reason, details: details);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ?? (result['success'] == true ? 'Post reported' : 'Failed to report')),
+          backgroundColor: result['success'] == true ? VillageTheme.primaryGreen : Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: const Text(
-          'Buy & Sell',
+          'Ooru Market',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         backgroundColor: VillageTheme.primaryGreen,
@@ -381,22 +491,31 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       ),
                     ],
                     const SizedBox(height: 10),
-                    // Call button
+                    // Call & Report buttons
                     if (!isSold)
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: () => _callSeller(post['sellerPhone'] ?? ''),
-                          icon: const Icon(Icons.call, size: 18),
-                          label: Text('Call ${post['sellerName']?.split(' ').first ?? 'Seller'}'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () => _callSeller(post['sellerPhone'] ?? ''),
+                              icon: const Icon(Icons.call, size: 18),
+                              label: Text('Call ${post['sellerName']?.split(' ').first ?? 'Seller'}'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
                             ),
                           ),
-                        ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            onPressed: () => _showReportDialog(post),
+                            icon: Icon(Icons.flag_outlined, color: Colors.grey[500]),
+                            tooltip: 'Report this post',
+                          ),
+                        ],
                       ),
                   ],
                 ),

@@ -946,7 +946,10 @@ export class ShopProfileComponent implements OnInit {
       pincode: ['', [Validators.required]],
       upiId: [''],
       latitude: [null],
-      longitude: [null]
+      longitude: [null],
+      deliveryRadius: [5, [Validators.required, Validators.min(1), Validators.max(50)]],
+      minOrderAmount: [0],
+      freeDeliveryAbove: [0]
     });
   }
 
@@ -1026,6 +1029,24 @@ export class ShopProfileComponent implements OnInit {
         control: 'longitude',
         type: 'number',
         placeholder: 'e.g., 78.5722'
+      },
+      {
+        label: 'Delivery Radius (km)',
+        control: 'deliveryRadius',
+        type: 'number',
+        placeholder: 'e.g., 10'
+      },
+      {
+        label: 'Minimum Order Amount (₹)',
+        control: 'minOrderAmount',
+        type: 'number',
+        placeholder: 'e.g., 100'
+      },
+      {
+        label: 'Free Delivery Above (₹)',
+        control: 'freeDeliveryAbove',
+        type: 'number',
+        placeholder: 'e.g., 500'
       }
     ];
   }
@@ -1185,7 +1206,10 @@ export class ShopProfileComponent implements OnInit {
       pincode: 'markunread_mailbox',
       upiId: 'qr_code',
       latitude: 'my_location',
-      longitude: 'my_location'
+      longitude: 'my_location',
+      deliveryRadius: 'delivery_dining',
+      minOrderAmount: 'shopping_cart',
+      freeDeliveryAbove: 'local_shipping'
     };
     return iconMap[controlName] || 'info';
   }
@@ -1329,7 +1353,10 @@ export class ShopProfileComponent implements OnInit {
             pincode: shop.postalCode || shop.pincode || '',
             upiId: shop.upiId || '',
             latitude: shop.latitude || null,
-            longitude: shop.longitude || null
+            longitude: shop.longitude || null,
+            deliveryRadius: shop.deliveryRadius || 5,
+            minOrderAmount: shop.minOrderAmount || 0,
+            freeDeliveryAbove: shop.freeDeliveryAbove || 0
           });
           
           // Set email separately since it's disabled
@@ -1442,7 +1469,10 @@ export class ShopProfileComponent implements OnInit {
         postalCode: this.shopForm.value.pincode,
         upiId: this.shopForm.value.upiId,
         latitude: this.shopForm.value.latitude,
-        longitude: this.shopForm.value.longitude
+        longitude: this.shopForm.value.longitude,
+        deliveryRadius: this.shopForm.value.deliveryRadius,
+        minOrderAmount: this.shopForm.value.minOrderAmount,
+        freeDeliveryAbove: this.shopForm.value.freeDeliveryAbove
       };
       
       this.shopService.updateShop(this.shop.id, updatedShop).subscribe({
@@ -1462,7 +1492,10 @@ export class ShopProfileComponent implements OnInit {
             pincode: response.postalCode || '',
             upiId: response.upiId || '',
             latitude: response.latitude || null,
-            longitude: response.longitude || null
+            longitude: response.longitude || null,
+            deliveryRadius: response.deliveryRadius || 5,
+            minOrderAmount: response.minOrderAmount || 0,
+            freeDeliveryAbove: response.freeDeliveryAbove || 0
           });
 
           // Save UPI ID to localStorage for POS Billing

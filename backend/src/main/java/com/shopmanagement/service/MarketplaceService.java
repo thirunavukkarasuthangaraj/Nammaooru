@@ -2,8 +2,10 @@ package com.shopmanagement.service;
 
 import com.shopmanagement.entity.MarketplacePost;
 import com.shopmanagement.entity.MarketplacePost.PostStatus;
+import com.shopmanagement.entity.MarketplaceReport;
 import com.shopmanagement.entity.User;
 import com.shopmanagement.repository.MarketplacePostRepository;
+import com.shopmanagement.repository.MarketplaceReportRepository;
 import com.shopmanagement.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +25,7 @@ import java.util.List;
 public class MarketplaceService {
 
     private final MarketplacePostRepository marketplacePostRepository;
+    private final MarketplaceReportRepository marketplaceReportRepository;
     private final UserRepository userRepository;
     private final FileUploadService fileUploadService;
 
@@ -148,5 +151,41 @@ public class MarketplaceService {
     public MarketplacePost getPostById(Long id) {
         return marketplacePostRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
+    }
+
+    @Transactional
+    public void reportPost(Long postId, String reason, String details, String username) {
+        MarketplacePost post = marketplacePostRepository.findById(postId)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+
+        User reporter = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Check if already reported by this user
+        if (marketplaceReportRepository.existsByPostIdAndReporterUserId(postId, reporter.getId())) {
+            throw new RuntimeException("You have already reported this post");
+        }
+
+        MarketplaceReport report = MarketplaceReport.builder()
+                .postId(postId)
+                .reporterUserId(reporter.getId())
+                .reason(reason)
+                .details(details)
+                .build();
+
+        marketplaceReportRepository.save(report);
+
+        // Increment report count
+        int newCount = (post.getReportCount() != null ? post.getReportCount() : 0) + 1;
+        post.setReportCount(newCount);
+
+        // Auto-flag if 3+ reports
+        if (newCount >= 3 && post.getStatus() == PostStatus.APPROVED) {
+            post.setStatus(PostStatus.FLAGGED);
+            log.warn("Marketplace post auto-flagged due to {} reports: id={}, title={}", newCount, postId, post.getTitle());
+        }
+
+        marketplacePostRepository.save(post);
+        log.info("Marketplace post reported: id={}, reason={}, reportCount={}", postId, reason, newCount);
     }
 }

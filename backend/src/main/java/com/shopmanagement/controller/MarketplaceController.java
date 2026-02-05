@@ -177,6 +177,23 @@ public class MarketplaceController {
         }
     }
 
+    @PostMapping("/{id}/report")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<Void>> reportPost(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body) {
+        try {
+            String username = getCurrentUsername();
+            String reason = body.getOrDefault("reason", "Other");
+            String details = body.get("details");
+            marketplaceService.reportPost(id, reason, details, username);
+            return ResponseUtil.success(null, "Post reported successfully. We will review it.");
+        } catch (Exception e) {
+            log.error("Error reporting post", e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
     private String getCurrentUsername() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         return authentication.getName();

@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/storage/secure_storage.dart';
 
 class MarketplaceService {
   final ApiService _apiService = ApiService();
@@ -86,20 +87,40 @@ class MarketplaceService {
         formMap['location'] = location;
       }
       if (imagePath != null && imagePath.isNotEmpty) {
-        formMap['image'] = await MultipartFile.fromFile(imagePath, filename: 'image.jpg');
+        // Get proper filename with extension from the actual file path
+        final imageFileName = imagePath.split('/').last;
+        formMap['image'] = await MultipartFile.fromFile(
+          imagePath,
+          filename: imageFileName.isNotEmpty ? imageFileName : 'image.jpg',
+        );
       }
       if (voicePath != null && voicePath.isNotEmpty) {
-        formMap['voice'] = await MultipartFile.fromFile(voicePath, filename: 'voice.m4a');
+        final voiceFileName = voicePath.split('/').last;
+        formMap['voice'] = await MultipartFile.fromFile(
+          voicePath,
+          filename: voiceFileName.isNotEmpty ? voiceFileName : 'voice.m4a',
+        );
       }
 
       final formData = FormData.fromMap(formMap);
 
-      final response = await ApiClient.post(
+      // Use Dio directly for multipart upload - don't set Content-Type manually
+      // Dio will auto-generate the correct multipart/form-data with boundary
+      final dio = ApiClient.dio;
+
+      // Add auth token
+      final token = await _getAuthToken();
+      final headers = <String, dynamic>{
+        'Accept': 'application/json',
+      };
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      final response = await dio.post(
         '/marketplace',
         data: formData,
-        options: Options(
-          contentType: 'multipart/form-data',
-        ),
+        options: Options(headers: headers),
       );
 
       return {
@@ -109,9 +130,12 @@ class MarketplaceService {
       };
     } on DioException catch (e) {
       Logger.e('Failed to create marketplace post', 'MARKETPLACE', e);
+      final errorMessage = e.response?.data?['message'] ??
+                          e.response?.data?['error'] ??
+                          'Failed to create post. Please try again.';
       return {
         'success': false,
-        'message': e.response?.data?['message'] ?? 'Failed to create post',
+        'message': errorMessage,
       };
     } catch (e) {
       Logger.e('Failed to create marketplace post', 'MARKETPLACE', e);
@@ -119,6 +143,15 @@ class MarketplaceService {
         'success': false,
         'message': 'An unexpected error occurred: $e',
       };
+    }
+  }
+
+  Future<String?> _getAuthToken() async {
+    try {
+      return await SecureStorage.getAuthToken();
+    } catch (e) {
+      Logger.e('Failed to get auth token', 'MARKETPLACE', e);
+      return null;
     }
   }
 
@@ -172,6 +205,38 @@ class MarketplaceService {
       };
     } catch (e) {
       Logger.e('Failed to delete post', 'MARKETPLACE', e);
+      return {
+        'success': false,
+        'message': 'An unexpected error occurred: $e',
+      };
+    }
+  }
+
+  /// Report a post as fake/stolen/inappropriate
+  Future<Map<String, dynamic>> reportPost(int postId, String reason, {String? details}) async {
+    try {
+      Logger.api('Reporting marketplace post: $postId, reason: $reason');
+
+      final response = await ApiClient.post(
+        '/marketplace/$postId/report',
+        data: {
+          'reason': reason,
+          if (details != null && details.isNotEmpty) 'details': details,
+        },
+      );
+
+      return {
+        'success': true,
+        'message': response.data?['message'] ?? 'Post reported successfully',
+      };
+    } on DioException catch (e) {
+      Logger.e('Failed to report post', 'MARKETPLACE', e);
+      return {
+        'success': false,
+        'message': e.response?.data?['message'] ?? 'Failed to report post',
+      };
+    } catch (e) {
+      Logger.e('Failed to report post', 'MARKETPLACE', e);
       return {
         'success': false,
         'message': 'An unexpected error occurred: $e',

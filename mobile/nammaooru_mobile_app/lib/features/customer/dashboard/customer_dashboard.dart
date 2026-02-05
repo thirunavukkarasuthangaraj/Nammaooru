@@ -1061,12 +1061,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const SizedBox(height: 16),
-                          // Unified Offers Carousel (Promos + Combos)
+                          // Special Offers Carousel (top)
                           _buildUnifiedOffersCarousel(),
                           const SizedBox(height: 24),
-                        // Buy & Sell - Village Marketplace
-                        _buildMarketplaceSection(),
-                        const SizedBox(height: 24),
                         _buildServiceCategories(),
                         const SizedBox(height: 24),
                         _buildFeaturedShops(),
@@ -1378,9 +1375,10 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       builder: (context, languageProvider, child) {
         final categories = [
           {
-            'name': languageProvider.getText('Farmer Products', 'விவசாய பொருட்கள்'),
-            'nameEn': 'Farmer Products',
-            'imageUrl': 'assets/images/formar.png',
+            'name': languageProvider.getText('Ooru Market', 'ஊர் சந்தை'),
+            'nameEn': 'Ooru Market',
+            'imageUrl': 'assets/images/buy_sell.png',
+            'isMarketplace': true,
           },
           {
             'name': languageProvider.getText('Grocery', 'மளிகை'),
@@ -1391,11 +1389,6 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             'name': languageProvider.getText('Food', 'உணவு'),
             'nameEn': 'Food',
             'imageUrl': 'assets/images/Food.jpeg',
-          },
-          {
-            'name': languageProvider.getText('Medicine', 'மருந்து'),
-            'nameEn': 'Medicine',
-            'imageUrl': 'assets/images/Medicines.png',
           },
         ];
 
@@ -1414,6 +1407,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               itemCount: categories.length,
               itemBuilder: (context, index) {
                 final category = categories[index];
+                if (category['isMarketplace'] == true) {
+                  return _buildBuySellCard(category['name'] as String);
+                }
                 return _buildCategoryCard(
                   category['name'] as String,
                   category['nameEn'] as String,
@@ -1427,24 +1423,77 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     );
   }
 
-  Widget _buildCategoryCard(String name, String nameEn, String imageUrl) {
+  Widget _buildBuySellCard(String name) {
     return GestureDetector(
-      onTap: () async {
-        // Special handling for Farmer Products - redirect to WhatsApp channel
-        if (nameEn == 'Farmer Products') {
-          await _openWhatsAppChannel(context);
-        } else {
-          // Regular category - navigate to shop listing
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ShopListingScreen(
-                category: nameEn.toLowerCase(),
-                categoryTitle: nameEn,
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const MarketplaceScreen()),
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              VillageTheme.primaryGreen,
+              VillageTheme.primaryGreen.withOpacity(0.8),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: VillageTheme.primaryGreen.withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.storefront, size: 48, color: Colors.white),
+            const SizedBox(height: 8),
+            Text(
+              name,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.25),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Text(
+                'Post & Browse',
+                style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w500),
               ),
             ),
-          );
-        }
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryCard(String name, String nameEn, String imageUrl) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ShopListingScreen(
+              category: nameEn.toLowerCase(),
+              categoryTitle: nameEn,
+            ),
+          ),
+        );
       },
       child: Container(
         decoration: BoxDecoration(
