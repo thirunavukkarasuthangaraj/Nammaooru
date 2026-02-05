@@ -9,6 +9,7 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { SwalService } from '../../../../core/services/swal.service';
 import { ShopContextService } from '../../services/shop-context.service';
 import { getImageUrl } from '../../../../core/utils/image-url.util';
+import * as QRCode from 'qrcode';
 
 interface CartItem {
   product: CachedProduct;
@@ -1671,14 +1672,18 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   /**
-   * Print receipt
+   * Print receipt (async for QR code generation)
    */
-  printReceipt(order: any): void {
+  async printReceipt(order: any): Promise<void> {
     const paperConfig = this.getPaperConfig(this.billSettings.paperWidth || '80mm');
     const receiptWindow = window.open('', '_blank', `width=${paperConfig.windowWidth},height=600`);
     if (!receiptWindow) return;
 
-    const receiptHtml = this.generateReceiptHtml(order);
+    // Show loading message while generating QR
+    receiptWindow.document.write('<html><body style="display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;"><p>Generating receipt...</p></body></html>');
+
+    const receiptHtml = await this.generateReceiptHtml(order);
+    receiptWindow.document.open();
     receiptWindow.document.write(receiptHtml);
     receiptWindow.document.close();
 
@@ -1723,9 +1728,9 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
 
   /**
    * Generate receipt HTML - supports 58mm, 80mm thermal paper and A4
-   * Uses billSettings for customization
+   * Uses billSettings for customization (async for QR code generation)
    */
-  private generateReceiptHtml(order: any): string {
+  private async generateReceiptHtml(order: any): Promise<string> {
     const bs = this.billSettings;
     const bodyFontSize = bs.bodyFontSize || 12;
     const headerFontSize = bs.headerFontSize || 16;
@@ -1733,6 +1738,13 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
 
     // Paper width configuration
     const paperConfig = this.getPaperConfig(bs.paperWidth || '80mm');
+
+    // Generate QR code (works offline)
+    let qrCodeDataUrl = '';
+    if (bs.showUpiQrCode && bs.upiId) {
+      const qrSize = bs.paperWidth === '58mm' ? 100 : 140;
+      qrCodeDataUrl = await this.generateUpiQrCode(qrSize, this.totalAmount);
+    }
 
     const items = this.cart.map(item => {
       const englishName = item.product.name || '';
@@ -1999,11 +2011,11 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
         </div>
         ` : ''}
 
-        ${bs.showUpiQrCode && bs.upiId ? `
+        ${bs.showUpiQrCode && bs.upiId && qrCodeDataUrl ? `
         <div class="divider"></div>
         <div class="center" style="padding: 8px 0;">
           <div style="font-size: ${footerFontSize}px; margin-bottom: 4px; font-weight: 600;">Scan to Pay</div>
-          <img src="${this.getUpiQrCodeUrl(bs.paperWidth === '58mm' ? 100 : 140, this.totalAmount)}"
+          <img src="${qrCodeDataUrl}"
                alt="UPI QR Code"
                style="width: ${bs.paperWidth === '58mm' ? '100px' : '140px'}; height: ${bs.paperWidth === '58mm' ? '100px' : '140px'}; margin: 4px 0;">
           <div style="font-size: ${Math.max(footerFontSize - 1, 7)}px; color: #666;">${bs.upiId}</div>
@@ -2139,16 +2151,40 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   /**
-   * Generate UPI QR Code URL using Google Charts API (more reliable)
+   * Generate UPI QR Code as base64 data URL (works offline)
+   */
+  async generateUpiQrCode(size: number = 150, amount?: number): Promise<string> {
+    const upiId = this.billSettings.upiId || this.shopUpiId;
+    if (!upiId) return '';
+
+    const shopName = (this.billSettings.shopName || this.shopName || 'Shop').replace(/[^a-zA-Z0-9 ]/g, '');
+    const finalAmount = amount ?? this.totalAmount;
+    // UPI deep link format
+    const upiUrl = `upi://pay?pa=${upiId}&pn=${shopName}&am=${finalAmount}&cu=INR`;
+
+    try {
+      // Generate QR code as data URL (base64) - works offline
+      const qrDataUrl = await QRCode.toDataURL(upiUrl, {
+        width: size,
+        margin: 1,
+        color: { dark: '#000000', light: '#ffffff' }
+      });
+      return qrDataUrl;
+    } catch (error) {
+      console.error('Error generating QR code:', error);
+      return '';
+    }
+  }
+
+  /**
+   * Fallback: Get UPI QR Code URL using external API (online only)
    */
   getUpiQrCodeUrl(size: number = 150, amount?: number): string {
     const upiId = this.billSettings.upiId || this.shopUpiId;
     if (!upiId) return '';
     const shopName = (this.billSettings.shopName || this.shopName || 'Shop').replace(/[^a-zA-Z0-9 ]/g, '');
     const finalAmount = amount ?? this.totalAmount;
-    // Simple UPI URL format
     const upiUrl = `upi://pay?pa=${upiId}&pn=${shopName}&am=${finalAmount}&cu=INR`;
-    // Use Google Charts API for QR code generation (more reliable)
     return `https://chart.googleapis.com/chart?cht=qr&chs=${size}x${size}&chl=${encodeURIComponent(upiUrl)}&choe=UTF-8`;
   }
 
