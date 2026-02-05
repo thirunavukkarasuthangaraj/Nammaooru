@@ -1213,7 +1213,7 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
           <div class="order-number">#${order.orderNumber}</div>
         </div>
         <div style="font-size: 9px; text-align: center; margin-bottom: 4px;">
-          ${new Date(order.createdAt).toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: 'numeric'})} | ${new Date(order.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+          ${new Date(order.createdAt).toLocaleDateString('en-IN', {timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric'})} | ${new Date(order.createdAt).toLocaleTimeString('en-IN', {timeZone: 'Asia/Kolkata', hour: '2-digit', minute:'2-digit', hour12: true})}
         </div>
         <div class="divider"></div>
 
@@ -1258,7 +1258,7 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
 
         <div class="center footer-text">
           Thank you for your order!<br>
-          Printed: ${new Date().toLocaleString('en-IN')}
+          Printed: ${new Date().toLocaleString('en-IN', {timeZone: 'Asia/Kolkata'})}
         </div>
       </body>
       </html>
@@ -1303,7 +1303,7 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
         </div>
 
         <div class="order-info">
-          <p><strong>Date:</strong> ${new Date(order.createdAt).toLocaleString()}</p>
+          <p><strong>Date:</strong> ${new Date(order.createdAt).toLocaleString('en-IN', {timeZone: 'Asia/Kolkata'})}</p>
           <p><strong>Status:</strong> ${this.getStatusLabel(order.status)}</p>
           <p><strong>Payment Method:</strong> ${order.paymentMethod === 'CASH_ON_DELIVERY' ? 'Cash on Delivery' : 'Paid Online'}</p>
         </div>
@@ -1338,7 +1338,7 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
 
         <div class="footer">
           <p>Thank you for your order!</p>
-          <p>Printed on: ${new Date().toLocaleString()}</p>
+          <p>Printed on: ${new Date().toLocaleString('en-IN', {timeZone: 'Asia/Kolkata'})}</p>
         </div>
       </body>
       </html>
@@ -1632,7 +1632,7 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
               <div class="info-grid">
                 <div class="info-item">
                   <div class="info-label">Order Date</div>
-                  <div class="info-value">${new Date(order.createdAt).toLocaleString()}</div>
+                  <div class="info-value">${new Date(order.createdAt).toLocaleString('en-IN', {timeZone: 'Asia/Kolkata'})}</div>
                 </div>
                 <div class="info-item">
                   <div class="info-label">Payment Method</div>
@@ -1892,17 +1892,19 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     }
   }
 
-  // Format date/time in Indian format (d/M/yy, h:mm AM/PM)
+  // Format date/time in Indian format (d/M, h:mm AM/PM) using IST timezone
   formatOrderTime(dateString: string): string {
     if (!dateString) return '';
     const d = new Date(dateString);
-    const day = d.getDate();
-    const month = d.getMonth() + 1;
-    let hours = d.getHours();
-    const minutes = d.getMinutes().toString().padStart(2, '0');
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12 || 12;
-    return `${day}/${month}, ${hours}:${minutes} ${ampm}`;
+    // Use IST timezone (Asia/Kolkata) for display
+    return d.toLocaleString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      day: 'numeric',
+      month: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    }).replace(',', ',');
   }
 
   // Remove item from existing order
