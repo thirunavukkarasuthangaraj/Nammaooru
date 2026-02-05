@@ -9,6 +9,7 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { SwalService } from '../../../../core/services/swal.service';
 import { ShopContextService } from '../../services/shop-context.service';
 import { getImageUrl } from '../../../../core/utils/image-url.util';
+// @ts-ignore - qrcode library doesn't have proper type definitions
 import * as QRCode from 'qrcode';
 
 interface CartItem {
