@@ -1435,20 +1435,42 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     this.swal.confirm('Clear Cart', 'Remove all items from cart?', 'Yes, Clear', 'Cancel')
       .then(result => {
         if (result.isConfirmed) {
-          this.cart = [];
-          this.calculateTotals();
-          this.customerName = '';
-          this.customerPhone = '';
-          this.orderNotes = '';
-          // In Quick Bill mode, keep products list empty
-          // In Browse mode, show all products
-          if (this.activeTab !== 'quick') {
-            this.filteredProducts = this.sortProductsWithCartFirst(this.products);
-          } else {
-            this.filteredProducts = [];
-          }
+          this.resetCart();
         }
       });
+  }
+
+  /**
+   * Start a new bill - clears cart and resets customer info
+   */
+  startNewBill(): void {
+    if (this.cart.length === 0) return;
+
+    this.swal.confirm('Start New Bill', 'Clear current cart and start a new bill?', 'Yes, New Bill', 'Cancel')
+      .then(result => {
+        if (result.isConfirmed) {
+          this.resetCart();
+          this.swal.toast('Ready for new bill', 'success');
+        }
+      });
+  }
+
+  /**
+   * Reset cart and customer info (internal method)
+   */
+  private resetCart(): void {
+    this.cart = [];
+    this.calculateTotals();
+    this.customerName = '';
+    this.customerPhone = '';
+    this.orderNotes = '';
+    // In Quick Bill mode, keep products list empty
+    // In Browse mode, show all products
+    if (this.activeTab !== 'quick') {
+      this.filteredProducts = this.sortProductsWithCartFirst(this.products);
+    } else {
+      this.filteredProducts = [];
+    }
   }
 
   /**
@@ -1562,12 +1584,8 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
         // Update local stock immediately (no need to reload all products)
         await this.updateLocalStockAfterBill();
 
-        // Clear cart
-        this.cart = [];
-        this.calculateTotals();
-        this.customerName = '';
-        this.customerPhone = '';
-        this.orderNotes = '';
+        // Don't clear cart - allow adding more products and reprinting
+        // User can click "New Bill" when they want to start fresh
       }
     } catch (error) {
       this.swal.close();
