@@ -76,50 +76,137 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     }
   }
 
-  Future<void> _pickImages() async {
+  Future<void> _showImageSourceDialog() async {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Add Product Image',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFF4CAF50),
+                  child: Icon(Icons.camera_alt, color: Colors.white),
+                ),
+                title: const Text('Take Photo'),
+                subtitle: const Text('Capture image using camera'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _captureImage();
+                },
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFF2196F3),
+                  child: Icon(Icons.photo_library, color: Colors.white),
+                ),
+                title: const Text('Choose from Gallery'),
+                subtitle: const Text('Select from device gallery'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImagesFromGallery();
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _captureImage() async {
     try {
-      // Try multi-image picker first (works on Android 11+ and web)
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 85,
+        maxWidth: 1200,
+        maxHeight: 1200,
+      );
+
+      if (image != null) {
+        _addImageToList([image]);
+      }
+    } catch (e) {
+      print('Error capturing image: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error capturing image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickImagesFromGallery() async {
+    try {
       List<XFile> images = [];
 
       try {
-        images = await _picker.pickMultiImage();
+        images = await _picker.pickMultiImage(
+          imageQuality: 85,
+          maxWidth: 1200,
+          maxHeight: 1200,
+        );
       } catch (e) {
         print('Multi-image picker not supported, falling back to single image: $e');
-        // Fallback to single image picker for older Android versions
-        final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+        final XFile? image = await _picker.pickImage(
+          source: ImageSource.gallery,
+          imageQuality: 85,
+          maxWidth: 1200,
+          maxHeight: 1200,
+        );
         if (image != null) {
           images = [image];
         }
       }
 
       if (images.isNotEmpty) {
-        setState(() {
-          _selectedImages.addAll(images);
-          if (_selectedImages.length > 5) {
-            _selectedImages = _selectedImages.sublist(0, 5);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Maximum 5 images allowed')),
-            );
-          }
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${images.length} image(s) selected'),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 1),
-          ),
-        );
+        _addImageToList(images);
       }
     } catch (e) {
       print('Error picking images: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error picking images: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error picking images: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
+  }
+
+  void _addImageToList(List<XFile> images) {
+    setState(() {
+      _selectedImages.addAll(images);
+      if (_selectedImages.length > 5) {
+        _selectedImages = _selectedImages.sublist(0, 5);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Maximum 5 images allowed')),
+        );
+      }
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${images.length} image(s) added'),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 1),
+      ),
+    );
   }
 
   Future<void> _uploadImages(int masterProductId) async {
@@ -390,7 +477,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                         TextButton.icon(
-                          onPressed: _pickImages,
+                          onPressed: _showImageSourceDialog,
                           icon: const Icon(Icons.add_photo_alternate),
                           label: const Text('Add Images'),
                         ),
@@ -403,23 +490,26 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                     ),
                     const SizedBox(height: 16),
                     if (_selectedImages.isEmpty)
-                      Container(
-                        height: 120,
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.image, size: 48, color: Colors.grey.shade400),
-                              const SizedBox(height: 8),
-                              const Text(
-                                'No images selected',
-                                style: TextStyle(color: Colors.grey),
-                              ),
-                            ],
+                      GestureDetector(
+                        onTap: _showImageSourceDialog,
+                        child: Container(
+                          height: 120,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.add_a_photo, size: 48, color: Colors.grey.shade400),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  'Tap to add images',
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       )
