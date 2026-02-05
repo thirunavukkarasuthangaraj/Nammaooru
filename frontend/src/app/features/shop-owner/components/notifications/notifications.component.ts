@@ -660,7 +660,7 @@ export class NotificationsComponent implements OnInit, OnDestroy {
             }
 
             // Determine if notification is unread (orders from last 24 hours)
-            const orderDate = new Date(order.createdAt);
+            const orderDate = this.parseUTCDate(order.createdAt);
             const yesterday = new Date();
             yesterday.setDate(yesterday.getDate() - 1);
             const isRecent = orderDate > yesterday;
@@ -672,7 +672,7 @@ export class NotificationsComponent implements OnInit, OnDestroy {
               type: type,
               priority: priority,
               status: (order.status === 'PENDING' || isRecent) ? 'unread' : 'read',
-              createdAt: new Date(order.createdAt),
+              createdAt: this.parseUTCDate(order.createdAt),
               actionRequired: actionRequired,
               actionUrl: `/orders/${order.id}`,
               relatedEntity: { type: 'order', id: order.id, name: order.orderNumber },
@@ -962,6 +962,23 @@ export class NotificationsComponent implements OnInit, OnDestroy {
       'UNKNOWN': 'Unknown'
     };
     return statusLabels[status] || this.formatStatus(status);
+  }
+
+  // Parse date string as UTC if no timezone specified
+  parseUTCDate(dateString: string): Date {
+    if (!dateString) return new Date();
+
+    // Check if dateString has timezone info
+    const hasTimezone = dateString.endsWith('Z') ||
+                        /[+-]\d{2}:\d{2}$/.test(dateString) ||
+                        /[+-]\d{4}$/.test(dateString);
+
+    if (hasTimezone) {
+      return new Date(dateString);
+    } else {
+      // Append 'Z' to treat as UTC
+      return new Date(dateString + 'Z');
+    }
   }
 
   // Format date/time with relative time for recent, full date for older

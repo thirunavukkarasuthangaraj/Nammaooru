@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, NgZone } from '@angular/core';
+import { Component, OnInit, OnDestroy, NgZone, ViewChild, ElementRef, HostListener } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -22,6 +22,13 @@ import { takeUntil, distinctUntilChanged } from 'rxjs/operators';
   styleUrls: ['./orders-management.component.scss']
 })
 export class OrdersManagementComponent implements OnInit, OnDestroy {
+
+  @ViewChild('tableContainer') tableContainer!: ElementRef;
+
+  // Infinite scroll
+  displayedCount = 20;
+  isLoadingMore = false;
+  scrollThreshold = 100; // pixels from bottom
 
   // Order data
   orders: ShopOwnerOrder[] = [];
@@ -47,10 +54,16 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
   endDate: Date | null = null;
   fromDate: string = '';
   toDate: string = '';
+  statusFilter = 'ALL'; // New filter dropdown
 
   // Pagination
   totalOrders = 0;
   pageSize = 10;
+  currentPage = 1;
+
+  // Modal state
+  showDetailsModal = false;
+  selectedOrder: ShopOwnerOrder | null = null;
 
   // Statistics
   todayRevenue = 0;
@@ -449,42 +462,64 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
   }
 
   applyFilter(): void {
-    const realtimeStatuses = ['PENDING', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'PICKED_UP', 'OUT_FOR_DELIVERY', 'RETURNING_TO_SHOP', 'RETURNED_TO_SHOP'];
-    const historyStatuses = ['DELIVERED', 'CANCELLED', 'SELF_PICKUP_COLLECTED'];
-
     this.filteredOrders = this.orders.filter(order => {
+      // Search filter
       const matchesSearch = !this.searchTerm ||
         order.orderNumber.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
         order.customerName.toLowerCase().includes(this.searchTerm.toLowerCase());
 
-      // Handle special status filters
+      // Status filter (new dropdown)
       let matchesStatus = true;
-      if (this.selectedStatus === 'REALTIME_ALL') {
-        matchesStatus = realtimeStatuses.includes(order.status);
-      } else if (this.selectedStatus === 'HISTORY_ALL') {
-        matchesStatus = historyStatuses.includes(order.status);
-      } else if (this.selectedStatus === 'RETURNS') {
-        matchesStatus = order.status === 'RETURNING_TO_SHOP' || order.status === 'RETURNED_TO_SHOP';
-      } else if (this.selectedStatus === 'SELF_PICKUP_ACTIVE') {
-        const activeStatuses = ['PENDING', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP'];
-        matchesStatus = order.deliveryType === 'SELF_PICKUP' && activeStatuses.includes(order.status);
-      } else if (this.selectedStatus === 'SELF_PICKUP') {
-        matchesStatus = order.deliveryType === 'SELF_PICKUP' && historyStatuses.includes(order.status);
-      } else if (this.selectedStatus === 'WALK_IN') {
-        matchesStatus = (order as any).orderType === 'WALK_IN' && historyStatuses.includes(order.status);
-      } else if (this.selectedStatus === 'ONLINE') {
-        matchesStatus = (order as any).orderType !== 'WALK_IN' && historyStatuses.includes(order.status);
-      } else if (this.selectedStatus === 'DELIVERED') {
-        matchesStatus = order.status === 'DELIVERED' || order.status === 'SELF_PICKUP_COLLECTED';
-      } else if (this.selectedStatus) {
-        matchesStatus = order.status === this.selectedStatus;
+      if (this.statusFilter !== 'ALL') {
+        if (this.statusFilter === 'WALK_IN') {
+          matchesStatus = (order as any).orderType === 'WALK_IN';
+        } else if (this.statusFilter === 'ONLINE') {
+          matchesStatus = (order as any).orderType !== 'WALK_IN';
+        } else {
+          matchesStatus = order.status === this.statusFilter;
+        }
       }
 
-      // Only apply date filter for history tab, not for real-time orders
-      const matchesDateRange = this.mainTab === 'history' ? this.matchesDateRange(order) : true;
+      // Date filter
+      const matchesDate = this.matchesDateFilter(order);
 
-      return matchesSearch && matchesStatus && matchesDateRange;
+      return matchesSearch && matchesStatus && matchesDate;
     });
+
+    // Reset infinite scroll when filter changes
+    this.displayedCount = 20;
+    this.currentPage = 1;
+  }
+
+  matchesDateFilter(order: ShopOwnerOrder): boolean {
+    if (!this.fromDate && !this.toDate) {
+      return true;
+    }
+
+    const orderDate = new Date(order.createdAt);
+    const orderDateOnly = new Date(orderDate.getFullYear(), orderDate.getMonth(), orderDate.getDate());
+
+    if (this.fromDate) {
+      const from = new Date(this.fromDate);
+      const fromDateOnly = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+      if (orderDateOnly < fromDateOnly) {
+        return false;
+      }
+    }
+
+    if (this.toDate) {
+      const to = new Date(this.toDate);
+      const toDateOnly = new Date(to.getFullYear(), to.getMonth(), to.getDate());
+      if (orderDateOnly > toDateOnly) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  onFilterChange(): void {
+    this.applyFilter();
   }
 
   matchesDateRange(order: ShopOwnerOrder): boolean {
@@ -1895,16 +1930,30 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
   // Format date/time in Indian format (d/M, h:mm AM/PM) using IST timezone
   formatOrderTime(dateString: string): string {
     if (!dateString) return '';
-    const d = new Date(dateString);
+
+    // Check if dateString has timezone info (ends with Z or has +/- offset after time)
+    // Pattern: look for Z at end or +/-HH:MM after the time portion
+    const hasTimezone = dateString.endsWith('Z') ||
+                        /[+-]\d{2}:\d{2}$/.test(dateString) ||
+                        /[+-]\d{4}$/.test(dateString);
+
+    let d: Date;
+    if (hasTimezone) {
+      d = new Date(dateString);
+    } else {
+      // Append 'Z' to treat as UTC if no timezone specified
+      d = new Date(dateString + 'Z');
+    }
+
     // Use IST timezone (Asia/Kolkata) for display
     return d.toLocaleString('en-IN', {
       timeZone: 'Asia/Kolkata',
-      day: 'numeric',
-      month: 'numeric',
+      day: '2-digit',
+      month: '2-digit',
       hour: 'numeric',
       minute: '2-digit',
       hour12: true
-    }).replace(',', ',');
+    });
   }
 
   // Remove item from existing order
@@ -2077,5 +2126,182 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
         this.swal.error('Error', 'Failed to load products');
       }
     });
+  }
+
+  // ===== NEW TABLE UI METHODS =====
+
+  // Get paged orders for table display
+  getPagedOrders(): ShopOwnerOrder[] {
+    // Infinite scroll - return orders up to displayedCount
+    return this.filteredOrders.slice(0, this.displayedCount);
+  }
+
+  // Infinite scroll handler
+  onTableScroll(event: any): void {
+    const element = event.target;
+    const atBottom = element.scrollHeight - element.scrollTop <= element.clientHeight + this.scrollThreshold;
+
+    if (atBottom && !this.isLoadingMore && this.displayedCount < this.filteredOrders.length) {
+      this.loadMoreOrders();
+    }
+  }
+
+  loadMoreOrders(): void {
+    this.isLoadingMore = true;
+    // Simulate loading delay for smooth UX
+    setTimeout(() => {
+      this.displayedCount = Math.min(this.displayedCount + 10, this.filteredOrders.length);
+      this.isLoadingMore = false;
+    }, 300);
+  }
+
+  getDisplayedOrdersCount(): number {
+    return Math.min(this.displayedCount, this.filteredOrders.length);
+  }
+
+  onDateFilterChange(): void {
+    this.displayedCount = 20; // Reset infinite scroll
+    this.applyFilter();
+  }
+
+  // Pagination helpers
+  getTotalPages(): number {
+    return Math.ceil(this.filteredOrders.length / this.pageSize);
+  }
+
+  getPaginationStart(): number {
+    return Math.min((this.currentPage - 1) * this.pageSize + 1, this.filteredOrders.length);
+  }
+
+  getPaginationEnd(): number {
+    return Math.min(this.currentPage * this.pageSize, this.filteredOrders.length);
+  }
+
+  goToPage(page: number | string): void {
+    if (typeof page === 'number') {
+      this.currentPage = Math.max(1, Math.min(page, this.getTotalPages()));
+    }
+  }
+
+  getPageNumbers(): (number | string)[] {
+    const total = this.getTotalPages();
+    const current = this.currentPage;
+    const pages: (number | string)[] = [];
+
+    if (total <= 7) {
+      for (let i = 1; i <= total; i++) {
+        pages.push(i);
+      }
+    } else {
+      pages.push(1);
+      if (current > 3) {
+        pages.push('...');
+      }
+      for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) {
+        pages.push(i);
+      }
+      if (current < total - 2) {
+        pages.push('...');
+      }
+      pages.push(total);
+    }
+
+    return pages;
+  }
+
+  // Modal methods
+  showOrderDetailsModal(order: ShopOwnerOrder): void {
+    this.selectedOrder = order;
+    this.showDetailsModal = true;
+  }
+
+  closeDetailsModal(): void {
+    this.showDetailsModal = false;
+    this.selectedOrder = null;
+  }
+
+  // Status badge class for new design
+  getStatusBadgeClass(status: string): string {
+    switch (status) {
+      case 'PENDING': return 'badge-pending';
+      case 'CONFIRMED': return 'badge-confirmed';
+      case 'PREPARING': return 'badge-preparing';
+      case 'READY_FOR_PICKUP': return 'badge-ready';
+      case 'OUT_FOR_DELIVERY': return 'badge-out-for-delivery';
+      case 'DELIVERED': return 'badge-delivered';
+      case 'SELF_PICKUP_COLLECTED': return 'badge-completed';
+      case 'CANCELLED': return 'badge-cancelled';
+      case 'RETURNING_TO_SHOP': return 'badge-returning';
+      case 'RETURNED_TO_SHOP': return 'badge-returned';
+      default: return '';
+    }
+  }
+
+  // Delivery type helpers
+  getDeliveryTypeClass(order: ShopOwnerOrder): string {
+    if ((order as any).orderType === 'WALK_IN') return 'type-walkin';
+    if (order.deliveryType === 'SELF_PICKUP') return 'type-pickup';
+    return 'type-delivery';
+  }
+
+  getDeliveryTypeIcon(order: ShopOwnerOrder): string {
+    if ((order as any).orderType === 'WALK_IN') return 'store';
+    if (order.deliveryType === 'SELF_PICKUP') return 'shopping_bag';
+    return 'local_shipping';
+  }
+
+  getDeliveryTypeLabel(order: ShopOwnerOrder): string {
+    if ((order as any).orderType === 'WALK_IN') return 'Walk-in';
+    if (order.deliveryType === 'SELF_PICKUP') return 'Self Pickup';
+    return 'Delivery';
+  }
+
+  // Customer initials for avatar
+  getCustomerInitials(name: string): string {
+    if (!name) return 'U';
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  }
+
+  // Active deliveries count for stats
+  getActiveDeliveriesCount(): number {
+    return this.orders.filter(o =>
+      ['CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY'].includes(o.status)
+    ).length;
+  }
+
+  // Export orders to CSV
+  exportOrders(): void {
+    if (this.filteredOrders.length === 0) {
+      this.swal.warning('No Data', 'No orders to export');
+      return;
+    }
+
+    const headers = ['Order ID', 'Customer', 'Phone', 'Type', 'Status', 'Total', 'Date'];
+    const rows = this.filteredOrders.map(order => [
+      order.orderNumber,
+      order.customerName,
+      order.customerPhone || '',
+      this.getDeliveryTypeLabel(order),
+      this.getStatusLabel(order.status),
+      order.totalAmount.toString(),
+      new Date(order.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `orders_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+
+    this.swal.toast('Orders exported successfully', 'success');
   }
 }

@@ -1,433 +1,383 @@
 <div class="orders-page">
-  <!-- Main Tabs with Actions (Combined Header) -->
-  <div class="main-header">
-    <div class="main-tabs">
-      <button class="main-tab"
-              [class.active]="mainTab === 'realtime'"
-              (click)="switchMainTab('realtime')">
-        <mat-icon>notifications_active</mat-icon>
-        <span>Real-time Orders</span>
-        <span class="main-tab-badge" *ngIf="getRealtimeOrdersCount() > 0">{{ getRealtimeOrdersCount() }}</span>
-      </button>
-      <button class="main-tab"
-              [class.active]="mainTab === 'history'"
-              (click)="switchMainTab('history')">
-        <mat-icon>history</mat-icon>
-        <span>Order History</span>
-      </button>
+  <!-- Stats Cards Row -->
+  <div class="stats-cards-row">
+    <div class="stat-card stat-total">
+      <div class="stat-icon">
+        <mat-icon>shopping_cart</mat-icon>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value">{{ orders.length | number }}</div>
+        <div class="stat-label">Total Orders</div>
+      </div>
     </div>
-    <div class="header-actions">
-      <button mat-stroked-button color="accent" (click)="sendDailySummary()" [disabled]="isSendingSummary">
-        <mat-icon>email</mat-icon>
-        {{ isSendingSummary ? 'Sending...' : 'Daily Summary' }}
+    <div class="stat-card stat-revenue">
+      <div class="stat-icon">
+        <mat-icon>account_balance_wallet</mat-icon>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value">{{ todayRevenue | currency:'INR':'symbol':'1.0-0' }}</div>
+        <div class="stat-label">Revenue</div>
+      </div>
+    </div>
+    <div class="stat-card stat-active">
+      <div class="stat-icon">
+        <mat-icon>local_shipping</mat-icon>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value">{{ getActiveDeliveriesCount() }}</div>
+        <div class="stat-label">Active Deliveries</div>
+      </div>
+    </div>
+    <div class="stat-card stat-delivered">
+      <div class="stat-icon">
+        <mat-icon>check_circle</mat-icon>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value">{{ completedOrders.length }}</div>
+        <div class="stat-label">Delivered</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table Header -->
+  <div class="table-header">
+    <div class="table-title">
+      <h2>Order Management</h2>
+      <p>Manage and track all store transactions</p>
+    </div>
+    <div class="table-actions">
+      <div class="filter-dropdown">
+        <select [(ngModel)]="statusFilter" (change)="onFilterChange()" class="filter-select">
+          <option value="ALL">All Orders</option>
+          <option value="PENDING">Pending</option>
+          <option value="CONFIRMED">Confirmed</option>
+          <option value="PREPARING">Preparing</option>
+          <option value="READY_FOR_PICKUP">Ready for Pickup</option>
+          <option value="OUT_FOR_DELIVERY">Out for Delivery</option>
+          <option value="DELIVERED">Delivered</option>
+          <option value="CANCELLED">Cancelled</option>
+          <option value="WALK_IN">Walk-in Only</option>
+          <option value="ONLINE">Online Only</option>
+        </select>
+        <mat-icon class="filter-icon">filter_list</mat-icon>
+      </div>
+      <div class="date-filters">
+        <input type="date"
+               [(ngModel)]="fromDate"
+               (change)="onDateFilterChange()"
+               class="date-input"
+               title="From Date">
+        <span class="date-separator">to</span>
+        <input type="date"
+               [(ngModel)]="toDate"
+               (change)="onDateFilterChange()"
+               class="date-input"
+               title="To Date">
+        <button class="clear-date-btn" (click)="clearDateFilter()" *ngIf="fromDate || toDate" title="Clear dates">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+      <input
+        type="text"
+        placeholder="Search orders..."
+        [(ngModel)]="searchTerm"
+        (input)="applyFilter()"
+        class="search-input">
+      <button class="export-btn" (click)="exportOrders()">
+        <mat-icon>file_download</mat-icon>
+        Export
       </button>
-      <button mat-raised-button color="primary" (click)="loadDashboardData()">
+      <button class="refresh-btn" (click)="loadDashboardData()">
         <mat-icon>refresh</mat-icon>
         Refresh
       </button>
     </div>
   </div>
 
-  <!-- Compact Stats Bar -->
-  <div class="stats-bar">
-    <div class="stat-item">
-      <span class="stat-value">{{ mainTab === 'realtime' ? getRealtimeOrdersCount() : getHistoryOrdersCount() }}</span>
-      <span class="stat-label">Total</span>
-    </div>
-    <div class="stat-item" *ngIf="mainTab === 'realtime'">
-      <span class="stat-value pending">{{ pendingOrders.length }}</span>
-      <span class="stat-label">Pending</span>
-    </div>
-    <div class="stat-item" *ngIf="mainTab === 'realtime'">
-      <span class="stat-value">{{ getOrdersByStatus('CONFIRMED').length + getOrdersByStatus('PREPARING').length }}</span>
-      <span class="stat-label">In Progress</span>
-    </div>
-    <div class="stat-item" *ngIf="mainTab === 'realtime'">
-      <span class="stat-value">{{ getOrdersByStatus('READY_FOR_PICKUP').length }}</span>
-      <span class="stat-label">Ready</span>
-    </div>
-    <div class="stat-item" *ngIf="mainTab === 'history'">
-      <span class="stat-value success">{{ completedOrders.length }}</span>
-      <span class="stat-label">Delivered</span>
-    </div>
-    <div class="stat-item" *ngIf="mainTab === 'history'">
-      <span class="stat-value danger">{{ getOrdersByStatus('CANCELLED').length }}</span>
-      <span class="stat-label">Cancelled</span>
-    </div>
-    <div class="stat-item">
-      <span class="stat-value revenue">₹{{ todayRevenue | number:'1.0-0' }}</span>
-      <span class="stat-label">Revenue</span>
-    </div>
+  <!-- Orders Table -->
+  <div class="orders-table-container" (scroll)="onTableScroll($event)" #tableContainer>
+    <table class="orders-table">
+      <thead>
+        <tr>
+          <th class="col-order-id">ORDER ID</th>
+          <th class="col-customer">CUSTOMER</th>
+          <th class="col-type">TYPE</th>
+          <th class="col-status">STATUS</th>
+          <th class="col-total">TOTAL</th>
+          <th class="col-action">ACTION</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let order of getPagedOrders()"
+            class="order-row"
+            [class.pending-row]="order.status === 'PENDING'">
+          <!-- Loading Overlay -->
+          <td colspan="6" *ngIf="isProcessingOrder(order.id)" class="processing-cell">
+            <div class="processing-indicator">
+              <mat-icon class="spin">sync</mat-icon>
+              <span>Processing...</span>
+            </div>
+          </td>
+
+          <ng-container *ngIf="!isProcessingOrder(order.id)">
+            <!-- Order ID -->
+            <td class="col-order-id">
+              <span class="order-number" (click)="showOrderDetailsModal(order)">#{{ order.orderNumber }}</span>
+              <div class="order-time">{{ formatOrderTime(order.createdAt) }}</div>
+            </td>
+
+            <!-- Customer -->
+            <td class="col-customer">
+              <div class="customer-info">
+                <div class="customer-avatar">{{ getCustomerInitials(order.customerName) }}</div>
+                <div class="customer-details">
+                  <div class="customer-name">{{ order.customerName }}</div>
+                  <div class="customer-phone" *ngIf="order.customerPhone">{{ order.customerPhone }}</div>
+                </div>
+              </div>
+            </td>
+
+            <!-- Type -->
+            <td class="col-type">
+              <div class="delivery-type" [ngClass]="getDeliveryTypeClass(order)">
+                <mat-icon>{{ getDeliveryTypeIcon(order) }}</mat-icon>
+                <span>{{ getDeliveryTypeLabel(order) }}</span>
+              </div>
+            </td>
+
+            <!-- Status -->
+            <td class="col-status">
+              <span class="status-badge" [ngClass]="getStatusBadgeClass(order.status)">
+                {{ getStatusLabel(order.status) }}
+              </span>
+            </td>
+
+            <!-- Total -->
+            <td class="col-total">
+              <span class="total-amount">{{ order.totalAmount | currency:'INR':'symbol':'1.0-0' }}</span>
+            </td>
+
+            <!-- Actions -->
+            <td class="col-action">
+              <div class="action-buttons">
+                <!-- Pending Actions -->
+                <ng-container *ngIf="order.status === 'PENDING'">
+                  <button class="btn-accept" (click)="acceptOrder(order)" title="Accept Order">
+                    <mat-icon>check</mat-icon>
+                  </button>
+                  <button class="btn-reject" (click)="rejectOrder(order)" title="Reject Order">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </ng-container>
+
+                <!-- Confirmed Actions -->
+                <button *ngIf="order.status === 'CONFIRMED'"
+                        class="btn-action btn-prepare"
+                        (click)="startPreparing(order.id)"
+                        title="Start Preparing">
+                  <mat-icon>restaurant</mat-icon>
+                </button>
+
+                <!-- Preparing Actions -->
+                <button *ngIf="order.status === 'PREPARING'"
+                        class="btn-action btn-ready"
+                        (click)="markReady(order.id)"
+                        title="Mark Ready">
+                  <mat-icon>done</mat-icon>
+                </button>
+
+                <!-- Ready for Pickup Actions -->
+                <ng-container *ngIf="order.status === 'READY_FOR_PICKUP'">
+                  <button *ngIf="order.deliveryType === 'SELF_PICKUP'"
+                          class="btn-action btn-handover"
+                          (click)="handoverSelfPickup(order.id)"
+                          title="Handover">
+                    <mat-icon>handshake</mat-icon>
+                  </button>
+                  <button *ngIf="order.deliveryType === 'HOME_DELIVERY' && order.assignedToDeliveryPartner"
+                          class="btn-action btn-verify"
+                          (click)="verifyPickupOTP(order.id)"
+                          title="Verify OTP">
+                    <mat-icon>pin</mat-icon>
+                  </button>
+                  <button *ngIf="order.deliveryType === 'HOME_DELIVERY' && !order.assignedToDeliveryPartner && !isSearchingDriver(order.id)"
+                          class="btn-action btn-find-driver"
+                          (click)="retryDriverSearch(order.id)"
+                          title="Find Driver">
+                    <mat-icon>person_search</mat-icon>
+                  </button>
+                  <mat-icon *ngIf="isSearchingDriver(order.id)" class="spin searching-icon">sync</mat-icon>
+                </ng-container>
+
+                <!-- Return Actions -->
+                <button *ngIf="order.status === 'RETURNED_TO_SHOP'"
+                        class="btn-action btn-collect"
+                        (click)="confirmReturnReceipt(order.id)"
+                        title="Collect Products">
+                  <mat-icon>inventory</mat-icon>
+                </button>
+
+                <!-- Print Button -->
+                <button class="btn-action btn-print" (click)="printOrderSmall(order.id)" title="Print Receipt">
+                  <mat-icon>print</mat-icon>
+                </button>
+
+                <!-- View Details -->
+                <button class="btn-details" (click)="showOrderDetailsModal(order)" title="View Details">
+                  Details
+                </button>
+              </div>
+            </td>
+          </ng-container>
+        </tr>
+
+        <!-- Empty State -->
+        <tr *ngIf="getPagedOrders().length === 0">
+          <td colspan="6" class="empty-state">
+            <div class="empty-content">
+              <mat-icon>inbox</mat-icon>
+              <div class="empty-title">No orders found</div>
+              <div class="empty-subtitle" *ngIf="searchTerm || statusFilter !== 'ALL'">Try adjusting your search or filter</div>
+              <div class="empty-subtitle" *ngIf="!searchTerm && statusFilter === 'ALL'">Orders will appear here when customers place them</div>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 
-  <!-- Filters -->
-  <div class="filters">
-    <input type="text"
-           placeholder="Search orders..."
-           [(ngModel)]="searchTerm"
-           (input)="applyFilter()"
-           class="search-input">
-
-    <div class="date-filters" *ngIf="mainTab === 'history'">
-      <input type="date"
-             placeholder="From Date"
-             [(ngModel)]="fromDate"
-             [max]="getMaxFromDate()"
-             (change)="onFromDateChange()"
-             class="date-input">
-      <span class="date-separator">to</span>
-      <input type="date"
-             placeholder="To Date"
-             [(ngModel)]="toDate"
-             [min]="getMinToDate()"
-             (change)="onToDateChange()"
-             class="date-input">
-      <button class="filter-btn" (click)="clearDateFilter()">Clear</button>
-    </div>
+  <!-- Infinite Scroll Info -->
+  <div class="scroll-info" *ngIf="filteredOrders.length > 0">
+    <span>Showing {{ getDisplayedOrdersCount() }} of {{ filteredOrders.length }} orders</span>
+    <span *ngIf="isLoadingMore" class="loading-more">
+      <mat-icon class="spin">sync</mat-icon> Loading more...
+    </span>
   </div>
 
-  <!-- Real-time Orders Sub-tabs -->
-  <div class="status-tabs" *ngIf="mainTab === 'realtime'">
-    <button class="tab-btn"
-            [class.active]="selectedStatus === 'REALTIME_ALL'"
-            (click)="selectStatusTab('REALTIME_ALL')">
-      All Active ({{ getRealtimeOrdersCount() }})
-    </button>
-    <button class="tab-btn tab-pending"
-            [class.active]="selectedStatus === 'PENDING'"
-            (click)="selectStatusTab('PENDING')">
-      🔔 Pending ({{ pendingOrders.length }})
-    </button>
-    <button class="tab-btn tab-confirmed"
-            [class.active]="selectedStatus === 'CONFIRMED'"
-            (click)="selectStatusTab('CONFIRMED')">
-      Confirmed ({{ getOrdersByStatus('CONFIRMED').length }})
-    </button>
-    <button class="tab-btn tab-preparing"
-            [class.active]="selectedStatus === 'PREPARING'"
-            (click)="selectStatusTab('PREPARING')">
-      Preparing ({{ getOrdersByStatus('PREPARING').length }})
-    </button>
-    <button class="tab-btn tab-ready"
-            [class.active]="selectedStatus === 'READY_FOR_PICKUP'"
-            (click)="selectStatusTab('READY_FOR_PICKUP')">
-      Ready ({{ getOrdersByStatus('READY_FOR_PICKUP').length }})
-    </button>
-    <button class="tab-btn tab-self-pickup"
-            [class.active]="selectedStatus === 'SELF_PICKUP_ACTIVE'"
-            (click)="selectStatusTab('SELF_PICKUP_ACTIVE')">
-      Self Pickup ({{ getActiveSelfPickupOrders().length }})
-    </button>
-    <button class="tab-btn tab-returns"
-            [class.active]="selectedStatus === 'RETURNS'"
-            (click)="selectStatusTab('RETURNS')">
-      Returns ({{ getReturnOrders().length }})
-    </button>
-  </div>
-
-  <!-- Order History Sub-tabs -->
-  <div class="status-tabs" *ngIf="mainTab === 'history'">
-    <button class="tab-btn"
-            [class.active]="selectedStatus === 'HISTORY_ALL'"
-            (click)="selectStatusTab('HISTORY_ALL')">
-      All History ({{ getHistoryOrdersCount() }})
-    </button>
-    <button class="tab-btn tab-walkin"
-            [class.active]="selectedStatus === 'WALK_IN'"
-            (click)="selectStatusTab('WALK_IN')">
-      Walk-in ({{ getWalkInOrders().length }})
-    </button>
-    <button class="tab-btn tab-online"
-            [class.active]="selectedStatus === 'ONLINE'"
-            (click)="selectStatusTab('ONLINE')">
-      Online ({{ getOnlineOrders().length }})
-    </button>
-    <button class="tab-btn tab-self-pickup"
-            [class.active]="selectedStatus === 'SELF_PICKUP'"
-            (click)="selectStatusTab('SELF_PICKUP')">
-      Self Pickup ({{ getSelfPickupOrders().length }})
-    </button>
-    <button class="tab-btn tab-delivered"
-            [class.active]="selectedStatus === 'DELIVERED'"
-            (click)="selectStatusTab('DELIVERED')">
-      Delivered ({{ completedOrders.length }})
-    </button>
-    <button class="tab-btn tab-cancelled"
-            [class.active]="selectedStatus === 'CANCELLED'"
-            (click)="selectStatusTab('CANCELLED')">
-      Cancelled ({{ getOrdersByStatus('CANCELLED').length }})
-    </button>
-  </div>
-
-  <!-- Orders Cards Grid -->
-  <div class="orders-grid">
-    <div *ngFor="let order of filteredOrders" class="order-card" [ngClass]="'status-' + order.status.toLowerCase()">
-
-      <!-- Loading Overlay -->
-      <div *ngIf="isProcessingOrder(order.id)" class="order-loading-overlay">
-        <div class="loading-spinner">
-          <i class="fas fa-spinner fa-spin"></i>
-          <span>Processing...</span>
+  <!-- Order Details Modal -->
+  <div class="modal-overlay" *ngIf="showDetailsModal" (click)="closeDetailsModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title">
+          <h3>Order #{{ selectedOrder?.orderNumber }}</h3>
+          <span class="status-badge" [ngClass]="getStatusBadgeClass(selectedOrder?.status || '')">
+            {{ getStatusLabel(selectedOrder?.status || '') }}
+          </span>
         </div>
+        <button class="modal-close" (click)="closeDetailsModal()">
+          <mat-icon>close</mat-icon>
+        </button>
       </div>
 
-      <!-- Card Header -->
-      <div class="card-header">
-        <div class="order-info">
-          <div class="order-number">{{ order.orderNumber }}</div>
-          <div class="order-time">{{ formatOrderTime(order.createdAt) }}</div>
-        </div>
-        <div class="header-actions">
-          <!-- <button class="header-btn print-header-btn" (click)="printOrder(order.id)" title="Print Large (A4)">
-            Print
-          </button> -->
-          <button class="header-btn small-print-btn" (click)="printOrderSmall(order.id)" title="Print Small (Receipt/Thermal)">
-            Print
-          </button>
-          <!-- <button class="header-btn details-header-btn" (click)="viewOrderDetails(order)" title="View Details">
-            View
-          </button> -->
-          <!-- Delivery Type Badge -->
-          <div *ngIf="order.deliveryType" class="delivery-type-badge"
-               [ngClass]="order.deliveryType === 'SELF_PICKUP' ? 'self-pickup-badge' : 'home-delivery-badge'">
-            {{ order.deliveryType === 'SELF_PICKUP' ? 'PICKUP' : 'DELIVERY' }}
+      <div class="modal-body" *ngIf="selectedOrder">
+        <!-- Order Info -->
+        <div class="detail-section">
+          <h4>Order Information</h4>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <span class="detail-label">Order Date</span>
+              <span class="detail-value">{{ selectedOrder.createdAt | date:'medium' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Payment Method</span>
+              <span class="detail-value">{{ selectedOrder.paymentMethod === 'CASH_ON_DELIVERY' ? 'Cash on Delivery' : 'Online Payment' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Delivery Type</span>
+              <span class="detail-value">{{ getDeliveryTypeLabel(selectedOrder) }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Payment Status</span>
+              <span class="detail-value">{{ selectedOrder.paymentStatus }}</span>
+            </div>
           </div>
-          <div class="status-badge" [ngClass]="getStatusClass(order.status)">
-            {{ getStatusLabel(order.status) }}
+        </div>
+
+        <!-- Customer Info -->
+        <div class="detail-section">
+          <h4>Customer Information</h4>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <span class="detail-label">Name</span>
+              <span class="detail-value">{{ selectedOrder.customerName }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Phone</span>
+              <span class="detail-value">{{ selectedOrder.customerPhone || 'Not provided' }}</span>
+            </div>
+            <div class="detail-item full-width" *ngIf="selectedOrder.customerAddress || selectedOrder.deliveryAddress">
+              <span class="detail-label">Address</span>
+              <span class="detail-value">{{ selectedOrder.customerAddress || selectedOrder.deliveryAddress }}</span>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- Customer Section -->
-      <div class="customer-section">
-        <div class="customer-avatar">
-          <div class="avatar-circle">{{ (order.customerName || 'U')[0].toUpperCase() }}</div>
-        </div>
-        <div class="customer-details">
-          <div class="customer-name">{{ order.customerName }}</div>
-          <div class="customer-phone" *ngIf="order.customerPhone">Tel: {{ order.customerPhone }}</div>
-        </div>
-      </div>
-
-      <!-- Pending Order Actions (Prominent) -->
-      <div *ngIf="order.status === 'PENDING'" class="pending-actions-section">
-        <div class="pending-alert">
-          New order requires your attention
-        </div>
-        <div class="pending-buttons">
-          <button class="pending-btn accept-pending-btn" (click)="acceptOrder(order)">
-            Accept Order
-          </button>
-          <button class="pending-btn reject-pending-btn" (click)="rejectOrder(order)">
-            Reject Order
-          </button>
-        </div>
-      </div>
-
-      <!-- Items Section -->
-      <div class="items-section">
-        <div class="items-header">
-          <span class="items-label">Order Items ({{ order.items.length || 0 }})</span>
-        </div>
-        <div class="items-grid">
-          <div *ngFor="let item of order.items" class="item-card">
-            <div class="item-image-container">
-              <div class="image-wrapper">
+        <!-- Order Items -->
+        <div class="detail-section">
+          <h4>Order Items ({{ selectedOrder.items?.length || 0 }})</h4>
+          <div class="items-list">
+            <div class="item-row" *ngFor="let item of selectedOrder.items">
+              <div class="item-image">
                 <img *ngIf="item.image || item.productImageUrl"
-                     [src]="getImageUrl((item.image || item.productImageUrl) || '')"
+                     [src]="getImageUrl(item.image || item.productImageUrl || '')"
                      [alt]="item.name || item.productName"
-                     class="item-image"
                      (error)="onImageError($event)">
-                <div *ngIf="!item.image && !item.productImageUrl" class="item-icon" style="color: #6c757d; font-size: 20px; font-weight: bold;">
+                <div *ngIf="!item.image && !item.productImageUrl" class="item-placeholder">
                   {{ (item.name || item.productName || 'P')[0].toUpperCase() }}
                 </div>
               </div>
-            </div>
-            <div class="item-info">
-              <div class="item-name">
-                {{ item.name || item.productName }}
-                <span *ngIf="item.addedByShopOwner" class="added-by-shop-badge" title="Added by shop owner">+Added</span>
-              </div>
               <div class="item-details">
-                <span class="item-quantity-badge">{{ item.quantity }}</span>
-                <span class="item-calculation">
-                  {{ item.quantity }} × ₹{{ item.price || item.unitPrice }} = ₹{{ (item.quantity * (item.price || item.unitPrice)) | number:'1.0-0' }}
-                </span>
+                <div class="item-name">{{ item.name || item.productName }}</div>
+                <div class="item-calc">{{ item.quantity }} x {{ item.price || item.unitPrice | currency:'INR':'symbol':'1.0-0' }}</div>
               </div>
+              <div class="item-total">{{ (item.quantity * (item.price || item.unitPrice)) | currency:'INR':'symbol':'1.0-0' }}</div>
             </div>
-            <!-- Remove Item Button (only for editable orders with more than 1 item) -->
-            <button *ngIf="['PENDING', 'CONFIRMED', 'PREPARING'].includes(order.status) && order.items.length > 1"
-                    class="remove-item-btn"
-                    (click)="removeItemFromOrder(order, item)"
-                    title="Remove this item">
-              ×
-            </button>
+          </div>
+          <div class="order-total">
+            <span>Total</span>
+            <span>{{ selectedOrder.totalAmount | currency:'INR':'symbol':'1.0-0' }}</span>
           </div>
         </div>
       </div>
 
-      <!-- Total Section -->
-      <div class="total-section">
-        <!-- Promo Code Info (if applied) -->
-        <div class="promo-info" *ngIf="order.couponCode" style="background: #e3f2fd; padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 2px solid #2196f3;">
-          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
-            <i class="fas fa-tag" style="color: #2196f3; font-size: 16px;"></i>
-            <strong style="color: #1976d2; font-size: 14px;">Platform Promo: {{ order.couponCode }}</strong>
-          </div>
-          <div style="display: flex; justify-content: space-between; font-size: 13px; color: #555; margin-bottom: 6px;">
-            <span>Order Amount:</span>
-            <span style="font-weight: 500;">₹{{ (order.totalAmount + (order.discountAmount || 0)) | number:'1.0-0' }}</span>
-          </div>
-          <div style="background: #fff3e0; padding: 8px; border-radius: 6px; margin-bottom: 8px; border: 1px solid #ffb74d;">
-            <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 4px;">
-              <i class="fas fa-info-circle" style="color: #f57c00; font-size: 12px;"></i>
-              <span style="font-size: 12px; color: #e65100; font-weight: 600;">Platform Discount:</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span style="font-size: 13px; color: #f57c00;">Discount Amount:</span>
-              <span style="font-size: 14px; color: #f57c00; font-weight: bold;">- ₹{{ order.discountAmount | number:'1.0-0' }}</span>
-            </div>
-          </div>
-          <div style="border-top: 2px solid #2196f3; padding-top: 8px; margin-top: 8px;">
-            <div style="background: #e8f5e9; padding: 10px; border-radius: 6px;">
-              <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                <span style="font-weight: bold; color: #2e7d32; font-size: 13px;">💰 Collect from Customer:</span>
-                <span style="font-weight: bold; color: #2e7d32; font-size: 16px;">₹{{ order.totalAmount | number:'1.0-0' }}</span>
-              </div>
-              <div style="font-size: 11px; color: #555; font-style: italic;">
-                ✓ You receive full ₹{{ (order.totalAmount + (order.discountAmount || 0)) | number:'1.0-0' }} (Platform covers ₹{{ order.discountAmount | number:'1.0-0' }})
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Regular Total (no promo) -->
-        <div class="total-amount" *ngIf="!order.couponCode">
-          <div class="total-label">Order Total</div>
-          <div class="total-price">₹{{ order.totalAmount | number:'1.0-0' }}</div>
-        </div>
-
-        <div class="payment-info">
-          <span class="payment-text">{{ order.paymentMethod === 'CASH_ON_DELIVERY' ? 'Cash on Delivery' : 'Online Payment' }}</span>
-        </div>
-      </div>
-
-      <!-- Action Buttons -->
-      <div class="card-actions">
-        <!-- Pending Actions -->
-        <ng-container *ngIf="order.status === 'PENDING'">
-          <button class="action-btn accept-btn" (click)="acceptOrder(order)">
-            Accept Order
-          </button>
-          <button class="action-btn reject-btn" (click)="rejectOrder(order)">
-            Reject
-          </button>
-          <button class="action-btn update-btn" (click)="openUpdateOrderModal(order)">
-            + Add Item
-          </button>
-        </ng-container>
-
-        <!-- Confirmed Actions -->
-        <ng-container *ngIf="order.status === 'CONFIRMED'">
-          <button class="action-btn prepare-btn" (click)="startPreparing(order.id)">
-            Start Preparing
-          </button>
-          <button class="action-btn update-btn" (click)="openUpdateOrderModal(order)">
-            + Add Item
-          </button>
-          <button class="action-btn cancel-btn" (click)="cancelOrder(order)">
-            Cancel Order
-          </button>
-        </ng-container>
-
-        <!-- Preparing Actions -->
-        <ng-container *ngIf="order.status === 'PREPARING'">
-          <button class="action-btn ready-btn" (click)="markReady(order.id)">
-            Mark Ready
-          </button>
-          <button class="action-btn update-btn" (click)="openUpdateOrderModal(order)">
-            + Add Item
-          </button>
-          <button class="action-btn cancel-btn" (click)="cancelOrder(order)">
-            Cancel Order
-          </button>
-        </ng-container>
-
-        <!-- Ready Actions -->
-        <ng-container *ngIf="order.status === 'READY_FOR_PICKUP'">
-          <button class="action-btn print-btn" (click)="printOrder(order.id)">
-            Print Order
-          </button>
-
-          <!-- SELF_PICKUP: Show Handover button -->
-          <button *ngIf="order.deliveryType === 'SELF_PICKUP'"
-                  class="action-btn success-btn"
-                  (click)="handoverSelfPickup(order.id)">
-            Handover to Customer
-          </button>
-
-          <!-- HOME_DELIVERY: Show loading when searching for driver -->
-          <button *ngIf="order.deliveryType === 'HOME_DELIVERY' && isSearchingDriver(order.id)"
-                  class="action-btn searching-btn"
-                  disabled>
-            <i class="fas fa-spinner fa-spin"></i> Searching Driver...
-          </button>
-
-          <!-- HOME_DELIVERY: Show Verify OTP button if assigned to partner -->
-          <button *ngIf="order.deliveryType === 'HOME_DELIVERY' && !isSearchingDriver(order.id) && order.assignedToDeliveryPartner"
-                  class="action-btn warning-btn"
-                  (click)="verifyPickupOTP(order.id)">
-            Verify Pickup OTP
-          </button>
-
-          <!-- HOME_DELIVERY: Show Find Driver button if not yet assigned -->
-          <button *ngIf="order.deliveryType === 'HOME_DELIVERY' && !isSearchingDriver(order.id) && !order.assignedToDeliveryPartner"
-                  class="action-btn find-driver-btn"
-                  (click)="retryDriverSearch(order.id)">
-            Find Driver
-          </button>
-        </ng-container>
-
-        <!-- RETURNING_TO_SHOP: Driver returning products -->
-        <ng-container *ngIf="order.status === 'RETURNING_TO_SHOP'">
-          <div class="return-status-card returning">
-            <div class="return-icon">🚴</div>
-            <div class="return-text">
-              <strong>Driver Returning</strong>
-              <span>Products are being returned to your shop</span>
-            </div>
-          </div>
-        </ng-container>
-
-        <!-- RETURNED_TO_SHOP: Collect products from driver -->
-        <ng-container *ngIf="order.status === 'RETURNED_TO_SHOP'">
-          <div class="return-status-card returned">
-            <div class="return-icon">📦</div>
-            <div class="return-text">
-              <strong>Products Returned</strong>
-              <span>Verify and collect products from driver</span>
-            </div>
-          </div>
-          <button class="action-btn collect-btn" (click)="confirmReturnReceipt(order.id)">
-            Verify & Collect Products
-          </button>
-        </ng-container>
-
-        <!-- Details Button (Always Available) -->
-        <button class="action-btn details-btn" (click)="viewOrderDetails(order)">
-          View Details
+      <div class="modal-footer" *ngIf="selectedOrder">
+        <button class="btn-modal btn-print-modal" (click)="printOrderSmall(selectedOrder.id)">
+          <mat-icon>print</mat-icon>
+          Print Receipt
         </button>
 
+        <ng-container *ngIf="selectedOrder.status === 'PENDING'">
+          <button class="btn-modal btn-accept-modal" (click)="acceptOrder(selectedOrder); closeDetailsModal()">
+            <mat-icon>check</mat-icon>
+            Accept Order
+          </button>
+          <button class="btn-modal btn-reject-modal" (click)="rejectOrder(selectedOrder); closeDetailsModal()">
+            <mat-icon>close</mat-icon>
+            Reject Order
+          </button>
+        </ng-container>
+
+        <button *ngIf="selectedOrder.status === 'CONFIRMED'"
+                class="btn-modal btn-action-modal"
+                (click)="startPreparing(selectedOrder.id); closeDetailsModal()">
+          <mat-icon>restaurant</mat-icon>
+          Start Preparing
+        </button>
+
+        <button *ngIf="selectedOrder.status === 'PREPARING'"
+                class="btn-modal btn-action-modal"
+                (click)="markReady(selectedOrder.id); closeDetailsModal()">
+          <mat-icon>done_all</mat-icon>
+          Mark Ready
+        </button>
+
+        <button *ngIf="['CONFIRMED', 'PREPARING'].includes(selectedOrder.status)"
+                class="btn-modal btn-cancel-modal"
+                (click)="cancelOrder(selectedOrder); closeDetailsModal()">
+          <mat-icon>cancel</mat-icon>
+          Cancel Order
+        </button>
       </div>
-
-    </div>
-
-    <!-- Empty State -->
-    <div *ngIf="filteredOrders.length === 0" class="empty-state">
-      <div class="empty-icon" style="color: #6c757d; font-weight: 300; font-family: Arial;">[ ]</div>
-      <div class="empty-title">No orders found</div>
-      <div class="empty-subtitle" *ngIf="searchTerm">Try adjusting your search terms</div>
-      <div class="empty-subtitle" *ngIf="!searchTerm">No orders in this status</div>
     </div>
   </div>
 
