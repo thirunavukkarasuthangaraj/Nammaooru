@@ -539,24 +539,27 @@ public class ShopProductService {
         // Create specification to filter master products
         Specification<MasterProduct> spec = Specification.where(null);
         
-        // Filter out products already assigned to this shop
+        // Filter out products already assigned to this shop (use NOT EXISTS for reliability)
         spec = spec.and((root, query, cb) -> {
             var subquery = query.subquery(Long.class);
             var subRoot = subquery.from(ShopProduct.class);
-            subquery.select(subRoot.get("masterProduct").get("id"))
-                   .where(cb.equal(subRoot.get("shop"), shop));
-            return cb.not(cb.in(root.get("id")).value(subquery));
+            subquery.select(cb.literal(1L))
+                   .where(cb.and(
+                       cb.equal(subRoot.get("shop"), shop),
+                       cb.equal(subRoot.get("masterProduct").get("id"), root.get("id"))
+                   ));
+            return cb.not(cb.exists(subquery));
         });
         
-        // Apply search filter
+        // Apply search filter (use coalesce to handle null values)
         if (search != null && !search.isEmpty()) {
             String searchPattern = "%" + search.toLowerCase() + "%";
             spec = spec.and((root, query, cb) -> cb.or(
-                cb.like(cb.lower(root.get("name")), searchPattern),
-                cb.like(cb.lower(root.get("description")), searchPattern),
-                cb.like(cb.lower(root.get("sku")), searchPattern),
-                cb.like(cb.lower(root.get("barcode")), searchPattern),
-                cb.like(cb.lower(root.get("brand")), searchPattern)
+                cb.like(cb.lower(cb.coalesce(root.get("name"), "")), searchPattern),
+                cb.like(cb.lower(cb.coalesce(root.get("description"), "")), searchPattern),
+                cb.like(cb.lower(cb.coalesce(root.get("sku"), "")), searchPattern),
+                cb.like(cb.lower(cb.coalesce(root.get("barcode"), "")), searchPattern),
+                cb.like(cb.lower(cb.coalesce(root.get("brand"), "")), searchPattern)
             ));
         }
         
