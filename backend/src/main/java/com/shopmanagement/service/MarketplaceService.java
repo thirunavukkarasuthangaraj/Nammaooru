@@ -2,10 +2,8 @@ package com.shopmanagement.service;
 
 import com.shopmanagement.entity.MarketplacePost;
 import com.shopmanagement.entity.MarketplacePost.PostStatus;
-import com.shopmanagement.entity.MarketplaceReport;
 import com.shopmanagement.entity.User;
 import com.shopmanagement.repository.MarketplacePostRepository;
-import com.shopmanagement.repository.MarketplaceReportRepository;
 import com.shopmanagement.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,7 +23,6 @@ import java.util.List;
 public class MarketplaceService {
 
     private final MarketplacePostRepository marketplacePostRepository;
-    private final MarketplaceReportRepository marketplaceReportRepository;
     private final UserRepository userRepository;
     private final FileUploadService fileUploadService;
 
@@ -153,29 +150,13 @@ public class MarketplaceService {
                 .orElseThrow(() -> new RuntimeException("Post not found"));
     }
 
+    // Report feature will be added later
     @Transactional
     public void reportPost(Long postId, String reason, String details, String username) {
         MarketplacePost post = marketplacePostRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
 
-        User reporter = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        // Check if already reported by this user
-        if (marketplaceReportRepository.existsByPostIdAndReporterUserId(postId, reporter.getId())) {
-            throw new RuntimeException("You have already reported this post");
-        }
-
-        MarketplaceReport report = MarketplaceReport.builder()
-                .postId(postId)
-                .reporterUserId(reporter.getId())
-                .reason(reason)
-                .details(details)
-                .build();
-
-        marketplaceReportRepository.save(report);
-
-        // Increment report count
+        // Simple report - just increment count (full report tracking will be added later)
         int newCount = (post.getReportCount() != null ? post.getReportCount() : 0) + 1;
         post.setReportCount(newCount);
 
