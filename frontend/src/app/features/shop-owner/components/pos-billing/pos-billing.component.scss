@@ -179,3 +179,25 @@ $primary: #2c3e50; $accent: #3498db; $success: #27ae60; $warning: #f39c12; $dang
   .bill-settings-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; background: #fff; border-top: 1px solid #e5e7eb; button { min-width: 100px; padding: 10px 20px; font-size: 13px; font-weight: 600; border-radius: 8px; cursor: pointer; mat-icon { font-size: 16px; width: 16px; height: 16px; margin-right: 6px; } } button[mat-stroked-button] { background: #fff; border: 1.5px solid #e2e8f0; color: #64748b; } button[mat-raised-button] { background: linear-gradient(135deg, #3498db, #2980b9); color: #fff; border: none; } }
 }
 @media (max-width: 480px) { .bill-settings-dialog { max-width: 98%; .bill-settings-content { padding: 12px; } .settings-row { flex-direction: column; } .settings-field.half { margin-bottom: 12px; } .toggle-grid { grid-template-columns: 1fr; } } }
+
+// Custom Fields styles
+.section-hint { font-size: 11px; color: #64748b; margin: 0 0 12px 0; }
+.custom-fields-list {
+  .custom-field-row { display: flex; align-items: center; gap: 8px; padding: 8px; background: #f8fafc; border-radius: 8px; margin-bottom: 8px; border: 1px solid #e2e8f0;
+    .field-toggle { flex-shrink: 0; }
+    .field-label-input, .field-value-input { flex: 1; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 12px; outline: none; &:focus { border-color: #3498db; } }
+    .field-label-input { max-width: 120px; }
+    .field-position-select { padding: 8px 6px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 11px; background: #fff; cursor: pointer; outline: none; &:focus { border-color: #3498db; } }
+  }
+}
+
+// Section Order styles
+.section-order-list {
+  .section-order-item { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #f8fafc; border-radius: 8px; margin-bottom: 6px; border: 1px solid #e2e8f0;
+    .drag-handle { color: #94a3b8; font-size: 18px; cursor: grab; }
+    .section-label { flex: 1; font-size: 13px; font-weight: 500; color: #475569; }
+    .order-buttons { display: flex; gap: 2px;
+      .order-btn { width: 28px; height: 28px; mat-icon { font-size: 16px; } &:disabled { opacity: 0.3; } }
+    }
+  }
+}

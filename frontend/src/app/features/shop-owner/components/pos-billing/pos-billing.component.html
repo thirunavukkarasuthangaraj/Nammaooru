@@ -1069,6 +1069,50 @@
           </div>
         </div>
 
+        <!-- Custom Fields Section -->
+        <div class="settings-section">
+          <div class="section-title">
+            <mat-icon>add_circle</mat-icon>
+            Custom Fields
+          </div>
+          <p class="section-hint">Add your own custom labels to the receipt (e.g., License No, Reg. No, etc.)</p>
+
+          <div class="custom-fields-list">
+            <div class="custom-field-row" *ngFor="let field of billSettings.customFields; let i = index">
+              <mat-slide-toggle [(ngModel)]="field.enabled" color="primary" class="field-toggle"></mat-slide-toggle>
+              <input type="text" [(ngModel)]="field.label" placeholder="Label (e.g., License No)" class="field-label-input">
+              <input type="text" [(ngModel)]="field.value" placeholder="Value (e.g., LIC-12345)" class="field-value-input">
+              <select [(ngModel)]="field.position" class="field-position-select">
+                <option value="header">Header</option>
+                <option value="footer">Footer</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section Order -->
+        <div class="settings-section">
+          <div class="section-title">
+            <mat-icon>reorder</mat-icon>
+            Receipt Section Order
+          </div>
+          <p class="section-hint">Drag to reorder sections on the receipt</p>
+          <div class="section-order-list">
+            <div class="section-order-item" *ngFor="let section of billSettings.sectionOrder; let i = index">
+              <mat-icon class="drag-handle">drag_indicator</mat-icon>
+              <span class="section-label">{{ getSectionLabel(section) }}</span>
+              <div class="order-buttons">
+                <button mat-icon-button (click)="moveSectionUp(i)" [disabled]="i === 0" class="order-btn">
+                  <mat-icon>arrow_upward</mat-icon>
+                </button>
+                <button mat-icon-button (click)="moveSectionDown(i)" [disabled]="i === billSettings.sectionOrder.length - 1" class="order-btn">
+                  <mat-icon>arrow_downward</mat-icon>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Footer Message Section -->
         <div class="settings-section">
           <div class="section-title">

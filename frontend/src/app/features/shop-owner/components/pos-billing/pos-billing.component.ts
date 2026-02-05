@@ -31,6 +31,13 @@ interface LabelConfig {
   showBarcodeNumber: boolean;
 }
 
+interface CustomField {
+  label: string;
+  value: string;
+  enabled: boolean;
+  position: 'header' | 'footer';  // Where to show in receipt
+}
+
 interface BillSettings {
   // Shop Header Info
   shopName: string;
@@ -88,6 +95,12 @@ interface BillSettings {
   // UPI Payment
   upiId: string;
   showUpiQrCode: boolean;
+
+  // Custom Fields (user can add their own fields)
+  customFields: CustomField[];
+
+  // Section Order (for reordering receipt sections)
+  sectionOrder: string[];
 }
 
 @Component({
@@ -229,7 +242,16 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     separatorStyle: 'dashed',
     // UPI Payment
     upiId: '',
-    showUpiQrCode: false
+    showUpiQrCode: false,
+    // Custom Fields
+    customFields: [
+      { label: '', value: '', enabled: false, position: 'header' },
+      { label: '', value: '', enabled: false, position: 'header' },
+      { label: '', value: '', enabled: false, position: 'footer' },
+      { label: '', value: '', enabled: false, position: 'footer' }
+    ],
+    // Section Order
+    sectionOrder: ['header', 'billInfo', 'items', 'summary', 'payment', 'qrCode', 'footer']
   };
 
   // Quick Edit state
@@ -1899,13 +1921,16 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       </head>
       <body>
         ${bs.showShopName ? `<div class="center shop-name">${shopName}</div>` : ''}
+        ${bs.showShopAddress && bs.shopAddress ? `<div class="center" style="font-size: ${Math.max(footerFontSize, 9)}px; color: #555;">${bs.shopAddress}</div>` : ''}
         ${bs.showShopPhone && shopPhone ? `<div class="center shop-phone">📞 ${shopPhone}</div>` : ''}
+        ${bs.showGstNumber && bs.gstNumber ? `<div class="center" style="font-size: ${Math.max(footerFontSize, 9)}px;">GST: ${bs.gstNumber}</div>` : ''}
         ${bs.showFssaiInfo && bs.fssaiNumber ? `
           <div class="center fssai-info">
             FSSAI: ${bs.fssaiNumber}
             ${bs.fssaiName ? `<br>${bs.fssaiName}` : ''}
           </div>
         ` : ''}
+        ${this.getCustomFieldsHtml('header', Math.max(footerFontSize, 9))}
         <div class="center" style="font-size: ${Math.max(footerFontSize, 9)}px; color: #666;">Order Receipt</div>
         <div class="divider"></div>
 
@@ -1987,6 +2012,14 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
 
         <div class="divider"></div>
 
+        ${this.getCustomFieldsHtml('footer', footerFontSize)}
+
+        ${bs.footerNote ? `
+        <div class="center" style="font-size: ${footerFontSize}px; color: #888; margin: 4px 0;">
+          ${bs.footerNote}
+        </div>
+        ` : ''}
+
         ${bs.showThankYouMessage ? `
         <div class="center footer-text">
           ${bs.thankYouMessage || 'Thank you for your order!'}<br>
@@ -2028,6 +2061,81 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   getPaymentLabel(method: string): string {
     const found = this.paymentMethods.find(m => m.value === method);
     return found ? found.label : method;
+  }
+
+  /**
+   * Get human-readable section label
+   */
+  getSectionLabel(section: string): string {
+    const labels: { [key: string]: string } = {
+      'header': 'Shop Header',
+      'billInfo': 'Bill Info (Date, Number)',
+      'items': 'Item List',
+      'summary': 'Summary (Total, Savings)',
+      'payment': 'Payment Method',
+      'qrCode': 'UPI QR Code',
+      'footer': 'Footer & Thank You'
+    };
+    return labels[section] || section;
+  }
+
+  /**
+   * Move section up in order
+   */
+  moveSectionUp(index: number): void {
+    if (index > 0) {
+      const temp = this.billSettings.sectionOrder[index];
+      this.billSettings.sectionOrder[index] = this.billSettings.sectionOrder[index - 1];
+      this.billSettings.sectionOrder[index - 1] = temp;
+    }
+  }
+
+  /**
+   * Move section down in order
+   */
+  moveSectionDown(index: number): void {
+    if (index < this.billSettings.sectionOrder.length - 1) {
+      const temp = this.billSettings.sectionOrder[index];
+      this.billSettings.sectionOrder[index] = this.billSettings.sectionOrder[index + 1];
+      this.billSettings.sectionOrder[index + 1] = temp;
+    }
+  }
+
+  /**
+   * Add new custom field
+   */
+  addCustomField(): void {
+    if (this.billSettings.customFields.length < 6) {
+      this.billSettings.customFields.push({
+        label: '',
+        value: '',
+        enabled: false,
+        position: 'footer'
+      });
+    }
+  }
+
+  /**
+   * Remove custom field
+   */
+  removeCustomField(index: number): void {
+    this.billSettings.customFields.splice(index, 1);
+  }
+
+  /**
+   * Get enabled custom fields by position
+   */
+  private getCustomFieldsHtml(position: 'header' | 'footer', fontSize: number): string {
+    const fields = this.billSettings.customFields
+      .filter(f => f.enabled && f.label && f.value && f.position === position);
+
+    if (fields.length === 0) return '';
+
+    return fields.map(f => `
+      <div style="font-size: ${fontSize}px; text-align: center; margin: 2px 0;">
+        <span style="color: #666;">${f.label}:</span> <span style="font-weight: 500;">${f.value}</span>
+      </div>
+    `).join('');
   }
 
   /**
