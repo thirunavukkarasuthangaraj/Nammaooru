@@ -35,6 +35,8 @@ interface BillSettings {
   // Shop Header Info
   shopName: string;
   shopPhone: string;
+  shopAddress: string;
+  gstNumber: string;
   fssaiNumber: string;
   fssaiName: string;
 
@@ -42,19 +44,35 @@ interface BillSettings {
   dateFormat: 'DD/MM/YYYY' | 'MM/DD/YYYY' | 'YYYY-MM-DD';
   billNumberPrefix: string;
   showBillNumber: boolean;
+  paperWidth: '58mm' | '80mm' | 'A4';
 
   // Font Sizes (in pixels)
   headerFontSize: number;  // default: 16
   bodyFontSize: number;    // default: 12
   footerFontSize: number;  // default: 10
 
-  // Show/Hide Elements
+  // Show/Hide Elements - Header
   showShopName: boolean;
   showShopPhone: boolean;
+  showShopAddress: boolean;
+  showGstNumber: boolean;
   showFssaiInfo: boolean;
   showDateTime: boolean;
   showCustomerDetails: boolean;
   showThankYouMessage: boolean;
+
+  // Show/Hide Elements - Item Details
+  showItemSku: boolean;
+  showItemBarcode: boolean;
+  showItemMrp: boolean;
+  showItemDiscount: boolean;
+  showItemTax: boolean;
+
+  // Show/Hide Elements - Summary
+  showSubtotal: boolean;
+  showTotalSavings: boolean;
+  showTaxBreakdown: boolean;
+  showPaymentMethod: boolean;
 
   // Receipt Language
   showEnglish: boolean;
@@ -62,6 +80,10 @@ interface BillSettings {
 
   // Footer
   thankYouMessage: string;
+  footerNote: string;
+
+  // Separator Style
+  separatorStyle: 'solid' | 'dashed' | 'dotted' | 'none';
 }
 
 @Component({
@@ -157,25 +179,50 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   // Bill Settings Dialog
   showBillSettingsDialog: boolean = false;
   billSettings: BillSettings = {
+    // Shop Header Info
     shopName: '',
     shopPhone: '',
+    shopAddress: '',
+    gstNumber: '',
     fssaiNumber: '',
     fssaiName: '',
+    // Bill Format
     dateFormat: 'DD/MM/YYYY',
     billNumberPrefix: '',
     showBillNumber: true,
+    paperWidth: '80mm',
+    // Font Sizes
     headerFontSize: 16,
     bodyFontSize: 12,
     footerFontSize: 10,
+    // Show/Hide - Header
     showShopName: true,
     showShopPhone: true,
+    showShopAddress: false,
+    showGstNumber: false,
     showFssaiInfo: false,
     showDateTime: true,
     showCustomerDetails: true,
     showThankYouMessage: true,
+    // Show/Hide - Item Details
+    showItemSku: false,
+    showItemBarcode: false,
+    showItemMrp: true,
+    showItemDiscount: true,
+    showItemTax: false,
+    // Show/Hide - Summary
+    showSubtotal: true,
+    showTotalSavings: true,
+    showTaxBreakdown: false,
+    showPaymentMethod: true,
+    // Language
     showEnglish: true,
     showTamil: true,
-    thankYouMessage: 'Thank you for your order!'
+    // Footer
+    thankYouMessage: 'Thank you for your order!',
+    footerNote: '',
+    // Separator
+    separatorStyle: 'dashed'
   };
 
   // Quick Edit state

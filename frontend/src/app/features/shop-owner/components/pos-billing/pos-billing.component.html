@@ -838,8 +838,16 @@
             <input type="text" [(ngModel)]="billSettings.shopName" placeholder="Enter shop name">
           </div>
           <div class="settings-field">
+            <label>Shop Address</label>
+            <input type="text" [(ngModel)]="billSettings.shopAddress" placeholder="Enter shop address">
+          </div>
+          <div class="settings-field">
             <label>Phone Number</label>
             <input type="tel" [(ngModel)]="billSettings.shopPhone" placeholder="e.g. 9876543210">
+          </div>
+          <div class="settings-field">
+            <label>GST Number</label>
+            <input type="text" [(ngModel)]="billSettings.gstNumber" placeholder="e.g. 33XXXXX1234X1ZX">
           </div>
           <div class="settings-field">
             <label>FSSAI License Number</label>
@@ -869,6 +877,25 @@
             <div class="settings-field half">
               <label>Bill Number Prefix</label>
               <input type="text" [(ngModel)]="billSettings.billNumberPrefix" placeholder="e.g. INV-">
+            </div>
+          </div>
+          <div class="settings-row">
+            <div class="settings-field half">
+              <label>Paper Width</label>
+              <select [(ngModel)]="billSettings.paperWidth">
+                <option value="58mm">58mm (Thermal)</option>
+                <option value="80mm">80mm (Thermal)</option>
+                <option value="A4">A4 (Full Page)</option>
+              </select>
+            </div>
+            <div class="settings-field half">
+              <label>Separator Style</label>
+              <select [(ngModel)]="billSettings.separatorStyle">
+                <option value="solid">Solid Line ───</option>
+                <option value="dashed">Dashed Line - - -</option>
+                <option value="dotted">Dotted Line ···</option>
+                <option value="none">No Separator</option>
+              </select>
             </div>
           </div>
         </div>
@@ -904,11 +931,11 @@
           </div>
         </div>
 
-        <!-- Show/Hide Elements Section -->
+        <!-- Show/Hide Header Elements Section -->
         <div class="settings-section">
           <div class="section-title">
             <mat-icon>visibility</mat-icon>
-            Show/Hide Elements
+            Header Elements
           </div>
           <div class="toggle-grid">
             <div class="toggle-item">
@@ -916,8 +943,16 @@
               <span>Shop Name</span>
             </div>
             <div class="toggle-item">
+              <mat-slide-toggle [(ngModel)]="billSettings.showShopAddress" color="primary"></mat-slide-toggle>
+              <span>Shop Address</span>
+            </div>
+            <div class="toggle-item">
               <mat-slide-toggle [(ngModel)]="billSettings.showShopPhone" color="primary"></mat-slide-toggle>
               <span>Phone Number</span>
+            </div>
+            <div class="toggle-item">
+              <mat-slide-toggle [(ngModel)]="billSettings.showGstNumber" color="primary"></mat-slide-toggle>
+              <span>GST Number</span>
             </div>
             <div class="toggle-item">
               <mat-slide-toggle [(ngModel)]="billSettings.showFssaiInfo" color="primary"></mat-slide-toggle>
@@ -934,6 +969,62 @@
             <div class="toggle-item">
               <mat-slide-toggle [(ngModel)]="billSettings.showCustomerDetails" color="primary"></mat-slide-toggle>
               <span>Customer Details</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Item Details Section -->
+        <div class="settings-section">
+          <div class="section-title">
+            <mat-icon>inventory_2</mat-icon>
+            Item Details
+          </div>
+          <div class="toggle-grid">
+            <div class="toggle-item">
+              <mat-slide-toggle [(ngModel)]="billSettings.showItemSku" color="primary"></mat-slide-toggle>
+              <span>SKU/Code</span>
+            </div>
+            <div class="toggle-item">
+              <mat-slide-toggle [(ngModel)]="billSettings.showItemBarcode" color="primary"></mat-slide-toggle>
+              <span>Barcode</span>
+            </div>
+            <div class="toggle-item">
+              <mat-slide-toggle [(ngModel)]="billSettings.showItemMrp" color="primary"></mat-slide-toggle>
+              <span>MRP Price</span>
+            </div>
+            <div class="toggle-item">
+              <mat-slide-toggle [(ngModel)]="billSettings.showItemDiscount" color="primary"></mat-slide-toggle>
+              <span>Item Discount</span>
+            </div>
+            <div class="toggle-item">
+              <mat-slide-toggle [(ngModel)]="billSettings.showItemTax" color="primary"></mat-slide-toggle>
+              <span>Item Tax</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Summary Section -->
+        <div class="settings-section">
+          <div class="section-title">
+            <mat-icon>summarize</mat-icon>
+            Summary & Footer
+          </div>
+          <div class="toggle-grid">
+            <div class="toggle-item">
+              <mat-slide-toggle [(ngModel)]="billSettings.showSubtotal" color="primary"></mat-slide-toggle>
+              <span>Subtotal</span>
+            </div>
+            <div class="toggle-item">
+              <mat-slide-toggle [(ngModel)]="billSettings.showTotalSavings" color="primary"></mat-slide-toggle>
+              <span>Total Savings</span>
+            </div>
+            <div class="toggle-item">
+              <mat-slide-toggle [(ngModel)]="billSettings.showTaxBreakdown" color="primary"></mat-slide-toggle>
+              <span>Tax Breakdown</span>
+            </div>
+            <div class="toggle-item">
+              <mat-slide-toggle [(ngModel)]="billSettings.showPaymentMethod" color="primary"></mat-slide-toggle>
+              <span>Payment Method</span>
             </div>
             <div class="toggle-item">
               <mat-slide-toggle [(ngModel)]="billSettings.showThankYouMessage" color="primary"></mat-slide-toggle>
@@ -969,6 +1060,10 @@
           <div class="settings-field">
             <label>Thank You Message</label>
             <input type="text" [(ngModel)]="billSettings.thankYouMessage" placeholder="Thank you for shopping with us!">
+          </div>
+          <div class="settings-field">
+            <label>Additional Footer Note</label>
+            <input type="text" [(ngModel)]="billSettings.footerNote" placeholder="e.g. No exchange after 7 days">
           </div>
         </div>
       </div>
