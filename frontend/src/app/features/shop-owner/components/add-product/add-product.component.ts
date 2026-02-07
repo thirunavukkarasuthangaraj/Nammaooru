@@ -742,8 +742,8 @@ export class AddProductComponent implements OnInit {
 
     this.currentShop = defaultShop;
 
-    // Load categories from IndexedDB products (works offline, always consistent)
-    this.loadCategoriesFromProducts();
+    // Load categories from API (with offline fallback)
+    this.loadCategories();
   }
 
   private cacheCategories(categories: ProductCategory[]): void {
@@ -800,64 +800,46 @@ export class AddProductComponent implements OnInit {
   }
 
   /**
-   * Load categories from IndexedDB cached products (works offline)
-   * This is the single source of truth for categories
+   * Load categories from API, with offline fallback to cached data
    */
-  private async loadCategoriesFromProducts(): Promise<void> {
-    try {
-      const cachedProducts = await this.offlineStorage.getProducts();
-
-      if (cachedProducts && cachedProducts.length > 0) {
-        // Extract unique category names from products
-        const categoryNames = new Set<string>();
-        cachedProducts.forEach(product => {
-          if (product.category && typeof product.category === 'string' && product.category.trim()) {
-            categoryNames.add(product.category.trim());
-          }
-        });
-
-        // Build categories array from product categories
-        this.productCategories = [];
-        let nextId = 1;
-
-        categoryNames.forEach(name => {
-          this.productCategories.push({
-            id: nextId++,
-            name: name,
-            description: `${name} category`,
-            slug: name.toLowerCase().replace(/\s+/g, '-'),
-            parentId: undefined,
-            parentName: undefined,
-            fullPath: name,
-            isActive: true,
-            sortOrder: this.productCategories.length,
-            iconUrl: undefined,
-            createdBy: 'system',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            subcategories: [],
-            hasSubcategories: false,
-            isRootCategory: true,
-            productCount: 0,
-            subcategoryCount: 0
-          } as ProductCategory);
-        });
-
-        // Sort alphabetically
-        this.productCategories.sort((a, b) => a.name.localeCompare(b.name));
-        console.log('Loaded', this.productCategories.length, 'categories from IndexedDB products');
-      } else {
-        // No products in cache, use default categories
-        this.productCategories = this.getDefaultCategories();
-        console.log('No cached products, using default categories');
-      }
-    } catch (error) {
-      console.warn('Failed to load categories from IndexedDB:', error);
-      // Fallback to default categories
-      this.productCategories = this.getDefaultCategories();
+  private loadCategories(): void {
+    if (!navigator.onLine) {
+      this.loadCategoriesFallback();
+      return;
     }
 
-    this.isLoading = false;
+    this.categoryService.getCategories(undefined, true, undefined, 0, 200).subscribe({
+      next: (page) => {
+        if (page && page.content && page.content.length > 0) {
+          this.productCategories = page.content;
+          this.cacheCategories(this.productCategories);
+          console.log('Loaded', this.productCategories.length, 'categories from API');
+        } else {
+          this.loadCategoriesFallback();
+        }
+        this.isLoading = false;
+      },
+      error: (err) => {
+        console.warn('Failed to load categories from API:', err);
+        this.loadCategoriesFallback();
+        this.isLoading = false;
+      }
+    });
+  }
+
+  private loadCategoriesFallback(): void {
+    try {
+      const cached = localStorage.getItem('cached_product_categories');
+      if (cached) {
+        this.productCategories = JSON.parse(cached);
+        console.log('Loaded', this.productCategories.length, 'categories from cache');
+        return;
+      }
+    } catch (e) {
+      console.warn('Failed to load cached categories:', e);
+    }
+    this.productCategories = this.getDefaultCategories();
+    console.log('Using default categories');
   }
 
   private loadProductForEdit(productId: number): void {
