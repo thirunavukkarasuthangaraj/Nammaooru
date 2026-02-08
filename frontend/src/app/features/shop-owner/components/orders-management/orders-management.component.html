@@ -352,7 +352,7 @@
                 </div>
               </div>
             </div>
-            <div class="add-item-empty" *ngIf="addItemSearchTerm.length >= 2 && addItemSearchResults.length === 0 && !isSearchingProducts">
+            <div class="add-item-empty" *ngIf="addItemSearchTerm.length >= 1 && addItemSearchResults.length === 0 && productsLoaded && !isSearchingProducts">
               No products found
             </div>
             <div class="add-item-loading" *ngIf="isSearchingProducts">

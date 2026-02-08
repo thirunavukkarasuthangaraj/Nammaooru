@@ -69,9 +69,11 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
   showAddItemSearch = false;
   addItemSearchTerm = '';
   addItemSearchResults: ShopProduct[] = [];
+  allShopProducts: ShopProduct[] = [];
   addItemQty = 1;
   isAddingItem = false;
   isSearchingProducts = false;
+  productsLoaded = false;
 
   // Statistics
   todayRevenue = 0;
@@ -2234,6 +2236,9 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
 
   toggleAddItemSearch(): void {
     this.showAddItemSearch = !this.showAddItemSearch;
+    if (this.showAddItemSearch && !this.productsLoaded) {
+      this.loadAllProducts();
+    }
     if (!this.showAddItemSearch) {
       this.addItemSearchTerm = '';
       this.addItemSearchResults = [];
@@ -2241,19 +2246,36 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     }
   }
 
-  searchProductsForOrder(): void {
-    if (!this.addItemSearchTerm || this.addItemSearchTerm.trim().length < 2 || !this.shopId) return;
+  private loadAllProducts(): void {
+    if (!this.shopId) return;
     this.isSearchingProducts = true;
-    this.productService.searchProducts(this.shopId, this.addItemSearchTerm.trim()).subscribe({
+    this.productService.getShopProducts(this.shopId, 0, 1000).subscribe({
       next: (products) => {
-        this.addItemSearchResults = products.filter(p => p.status === 'ACTIVE');
+        this.allShopProducts = products.filter(p => p.status === 'ACTIVE');
+        this.productsLoaded = true;
         this.isSearchingProducts = false;
+        if (this.addItemSearchTerm) {
+          this.searchProductsForOrder();
+        }
       },
       error: () => {
-        this.addItemSearchResults = [];
+        this.allShopProducts = [];
         this.isSearchingProducts = false;
       }
     });
+  }
+
+  searchProductsForOrder(): void {
+    const term = this.addItemSearchTerm?.trim().toLowerCase();
+    if (!term || term.length < 1) {
+      this.addItemSearchResults = [];
+      return;
+    }
+    this.addItemSearchResults = this.allShopProducts.filter(p =>
+      p.name.toLowerCase().includes(term) ||
+      (p.sku && p.sku.toLowerCase().includes(term)) ||
+      (p.barcode && p.barcode.toLowerCase().includes(term))
+    ).slice(0, 20);
   }
 
   addItemToExistingOrder(product: ShopProduct): void {
