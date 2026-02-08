@@ -5,6 +5,8 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTabChangeEvent } from '@angular/material/tabs';
 import { ShopOwnerOrderService, ShopOwnerOrder } from '../../services/shop-owner-order.service';
 import { ShopOwnerProductService, ShopProduct } from '../../services/shop-owner-product.service';
+import { OfflineStorageService, CachedProduct } from '../../../../core/services/offline-storage.service';
+import { PosSyncService } from '../../../../core/services/pos-sync.service';
 import { AssignmentService } from '../../services/assignment.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { SwalService } from '../../../../core/services/swal.service';
@@ -68,8 +70,8 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
   // Add item to order state
   showAddItemSearch = false;
   addItemSearchTerm = '';
-  addItemSearchResults: ShopProduct[] = [];
-  allShopProducts: ShopProduct[] = [];
+  addItemSearchResults: CachedProduct[] = [];
+  allCachedProducts: CachedProduct[] = [];
   addItemQty = 1;
   isAddingItem = false;
   isSearchingProducts = false;
@@ -113,7 +115,9 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     private router: Router,
     private http: HttpClient,
     private webSocketService: WebSocketService,
-    private ngZone: NgZone
+    private ngZone: NgZone,
+    private offlineStorage: OfflineStorageService,
+    private posSyncService: PosSyncService
   ) {}
 
   ngOnInit(): void {
@@ -2246,23 +2250,25 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     }
   }
 
-  private loadAllProducts(): void {
-    if (!this.shopId) return;
+  private async loadAllProducts(): Promise<void> {
     this.isSearchingProducts = true;
-    this.productService.getShopProducts(this.shopId, 0, 1000).subscribe({
-      next: (products) => {
-        this.allShopProducts = products.filter(p => p.status === 'ACTIVE');
-        this.productsLoaded = true;
-        this.isSearchingProducts = false;
-        if (this.addItemSearchTerm) {
-          this.searchProductsForOrder();
-        }
-      },
-      error: () => {
-        this.allShopProducts = [];
-        this.isSearchingProducts = false;
+    try {
+      // Load from offline cache (same as POS billing)
+      this.allCachedProducts = await this.offlineStorage.getProducts();
+      if (this.allCachedProducts.length === 0 && this.shopId) {
+        // If no cached products, trigger a sync first
+        await this.posSyncService.refreshProductCache(this.shopId);
+        this.allCachedProducts = await this.offlineStorage.getProducts();
       }
-    });
+      this.productsLoaded = true;
+      this.isSearchingProducts = false;
+      if (this.addItemSearchTerm) {
+        this.searchProductsForOrder();
+      }
+    } catch {
+      this.allCachedProducts = [];
+      this.isSearchingProducts = false;
+    }
   }
 
   searchProductsForOrder(): void {
@@ -2271,15 +2277,17 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
       this.addItemSearchResults = [];
       return;
     }
-    this.addItemSearchResults = this.allShopProducts.filter(p =>
+    this.addItemSearchResults = this.allCachedProducts.filter(p =>
       (p.name && p.name.toLowerCase().includes(term)) ||
       (p.sku && p.sku.toLowerCase().includes(term)) ||
       (p.barcode && p.barcode.toLowerCase().includes(term)) ||
-      (p.description && p.description.toLowerCase().includes(term))
+      (p.barcode1 && p.barcode1.toLowerCase().includes(term)) ||
+      (p.barcode2 && p.barcode2.toLowerCase().includes(term)) ||
+      (p.nameTamil && p.nameTamil.toLowerCase().includes(term))
     ).slice(0, 20);
   }
 
-  addItemToExistingOrder(product: ShopProduct): void {
+  addItemToExistingOrder(product: CachedProduct): void {
     if (!this.selectedOrder || this.isAddingItem) return;
     const qty = this.addItemQty || 1;
     this.isAddingItem = true;
