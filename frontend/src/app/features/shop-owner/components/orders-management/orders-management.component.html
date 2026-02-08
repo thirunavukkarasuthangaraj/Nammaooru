@@ -316,7 +316,7 @@
         <div class="detail-section">
           <div class="items-header-row">
             <h4>Order Items ({{ selectedOrder.items?.length || 0 }})</h4>
-            <button class="btn-add-item" (click)="toggleAddItemSearch()" *ngIf="['PENDING', 'CONFIRMED', 'PREPARING'].includes(selectedOrder.status)">
+            <button class="btn-add-item" (click)="toggleAddItemSearch()" *ngIf="!['CANCELLED', 'RETURNING_TO_SHOP', 'RETURNED_TO_SHOP'].includes(selectedOrder.status)">
               <mat-icon>{{ showAddItemSearch ? 'close' : 'add' }}</mat-icon>
               {{ showAddItemSearch ? 'Cancel' : 'Add Item' }}
             </button>
