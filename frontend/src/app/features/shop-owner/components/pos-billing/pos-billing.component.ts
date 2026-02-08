@@ -1420,6 +1420,49 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     }
   }
 
+  setCartQuantityByProduct(product: CachedProduct, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const newQty = parseInt(input.value, 10);
+    const item = this.cart.find(item => item.product.id === product.id);
+    if (item && newQty > 0) {
+      if (item.product.trackInventory && newQty > item.product.stock) {
+        this.swal.warning('Stock Limit', `Only ${item.product.stock} available`);
+        input.value = String(item.quantity);
+        return;
+      }
+      item.quantity = newQty;
+      item.total = item.quantity * item.unitPrice;
+      this.calculateTotals();
+    } else if (item && newQty <= 0) {
+      this.removeFromCart(item);
+    }
+  }
+
+  setCartItemQuantity(item: CartItem, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const newQty = parseInt(input.value, 10);
+    if (newQty > 0) {
+      if (item.product.trackInventory && newQty > item.product.stock) {
+        this.swal.warning('Stock Limit', `Only ${item.product.stock} available`);
+        input.value = String(item.quantity);
+        return;
+      }
+      item.quantity = newQty;
+      item.total = item.quantity * item.unitPrice;
+      this.calculateTotals();
+    } else if (newQty <= 0) {
+      this.removeFromCart(item);
+    }
+  }
+
+  setTempQty(product: CachedProduct, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const newQty = parseInt(input.value, 10);
+    if (!isNaN(newQty) && newQty >= 0) {
+      this.tempQtys.set(product.id, newQty);
+    }
+  }
+
   /**
    * Update cart item price (for this bill only, not saved to product)
    */
@@ -1689,6 +1732,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     receiptWindow.document.close();
 
     setTimeout(() => {
+      receiptWindow.onafterprint = () => receiptWindow.close();
       receiptWindow.print();
     }, 500);
   }
@@ -2042,7 +2086,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
 
         <!-- Print Button (hidden during print) -->
         <div class="no-print" style="margin-top: 15px; text-align: center;">
-          <button onclick="window.print()" style="
+          <button onclick="window.onafterprint=function(){window.close()};window.print()" style="
             background: #4CAF50;
             color: white;
             border: none;
@@ -2504,6 +2548,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     printWindow.document.close();
 
     setTimeout(() => {
+      printWindow.onafterprint = () => printWindow.close();
       printWindow.print();
     }, 300);
   }

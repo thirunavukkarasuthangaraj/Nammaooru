@@ -105,7 +105,13 @@
                 <button class="qty-btn minus" (click)="updateCartQuantityByProduct(product, -1); $event.stopPropagation()">
                   <mat-icon>remove</mat-icon>
                 </button>
-                <span class="qty-value">{{ getCartQuantity(product) }}</span>
+                <input type="number"
+                       class="qty-value qty-input"
+                       [value]="getCartQuantity(product)"
+                       (change)="setCartQuantityByProduct(product, $event)"
+                       (click)="$event.stopPropagation()"
+                       min="1"
+                       step="1">
                 <button class="qty-btn plus" (click)="updateCartQuantityByProduct(product, 1); $event.stopPropagation()">
                   <mat-icon>add</mat-icon>
                 </button>
@@ -158,7 +164,13 @@
                 <button class="qty-btn minus" (click)="decrementTempQty(product); $event.stopPropagation()">
                   <mat-icon>remove</mat-icon>
                 </button>
-                <span class="qty-value">{{ getTempQty(product) }}</span>
+                <input type="number"
+                       class="qty-value qty-input"
+                       [value]="getTempQty(product)"
+                       (change)="setTempQty(product, $event)"
+                       (click)="$event.stopPropagation()"
+                       min="0"
+                       step="1">
                 <button class="qty-btn plus" (click)="incrementTempQty(product); $event.stopPropagation()">
                   <mat-icon>add</mat-icon>
                 </button>
@@ -294,7 +306,12 @@
               <button mat-mini-fab color="basic" (click)="updateQuantity(item, -1)">
                 <mat-icon>remove</mat-icon>
               </button>
-              <span class="qty">{{ item.quantity }}</span>
+              <input type="number"
+                     class="qty qty-input"
+                     [value]="item.quantity"
+                     (change)="setCartItemQuantity(item, $event)"
+                     min="1"
+                     step="1">
               <button mat-mini-fab color="basic" (click)="updateQuantity(item, 1)">
                 <mat-icon>add</mat-icon>
               </button>

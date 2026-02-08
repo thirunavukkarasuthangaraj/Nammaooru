@@ -4,7 +4,7 @@ import { HttpClient } from '@angular/common/http';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTabChangeEvent } from '@angular/material/tabs';
 import { ShopOwnerOrderService, ShopOwnerOrder } from '../../services/shop-owner-order.service';
-import { ShopOwnerProductService } from '../../services/shop-owner-product.service';
+import { ShopOwnerProductService, ShopProduct } from '../../services/shop-owner-product.service';
 import { AssignmentService } from '../../services/assignment.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { SwalService } from '../../../../core/services/swal.service';
@@ -64,6 +64,14 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
   // Modal state
   showDetailsModal = false;
   selectedOrder: ShopOwnerOrder | null = null;
+
+  // Add item to order state
+  showAddItemSearch = false;
+  addItemSearchTerm = '';
+  addItemSearchResults: ShopProduct[] = [];
+  addItemQty = 1;
+  isAddingItem = false;
+  isSearchingProducts = false;
 
   // Statistics
   todayRevenue = 0;
@@ -2218,6 +2226,59 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
   closeDetailsModal(): void {
     this.showDetailsModal = false;
     this.selectedOrder = null;
+    this.showAddItemSearch = false;
+    this.addItemSearchTerm = '';
+    this.addItemSearchResults = [];
+    this.addItemQty = 1;
+  }
+
+  toggleAddItemSearch(): void {
+    this.showAddItemSearch = !this.showAddItemSearch;
+    if (!this.showAddItemSearch) {
+      this.addItemSearchTerm = '';
+      this.addItemSearchResults = [];
+      this.addItemQty = 1;
+    }
+  }
+
+  searchProductsForOrder(): void {
+    if (!this.addItemSearchTerm || this.addItemSearchTerm.trim().length < 2 || !this.shopId) return;
+    this.isSearchingProducts = true;
+    this.productService.searchProducts(this.shopId, this.addItemSearchTerm.trim()).subscribe({
+      next: (products) => {
+        this.addItemSearchResults = products.filter(p => p.status === 'ACTIVE');
+        this.isSearchingProducts = false;
+      },
+      error: () => {
+        this.addItemSearchResults = [];
+        this.isSearchingProducts = false;
+      }
+    });
+  }
+
+  addItemToExistingOrder(product: ShopProduct): void {
+    if (!this.selectedOrder || this.isAddingItem) return;
+    const qty = this.addItemQty || 1;
+    this.isAddingItem = true;
+    this.orderService.addItemToOrder(this.selectedOrder.id, product.id, qty).subscribe({
+      next: (updatedOrder) => {
+        // Update the selected order with new data
+        this.selectedOrder = updatedOrder;
+        // Update the order in the main list too
+        const idx = this.orders.findIndex(o => o.id === updatedOrder.id);
+        if (idx !== -1) {
+          this.orders[idx] = updatedOrder;
+          this.applyFilter();
+        }
+        this.isAddingItem = false;
+        this.addItemQty = 1;
+        this.swal.toast(`${product.name} added to order`, 'success');
+      },
+      error: (err) => {
+        this.isAddingItem = false;
+        this.swal.error('Error', err?.error?.message || 'Failed to add item to order');
+      }
+    });
   }
 
   // Status badge class for new design

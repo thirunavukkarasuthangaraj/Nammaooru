@@ -314,7 +314,52 @@
 
         <!-- Order Items -->
         <div class="detail-section">
-          <h4>Order Items ({{ selectedOrder.items?.length || 0 }})</h4>
+          <div class="items-header-row">
+            <h4>Order Items ({{ selectedOrder.items?.length || 0 }})</h4>
+            <button class="btn-add-item" (click)="toggleAddItemSearch()" *ngIf="['PENDING', 'CONFIRMED', 'PREPARING'].includes(selectedOrder.status)">
+              <mat-icon>{{ showAddItemSearch ? 'close' : 'add' }}</mat-icon>
+              {{ showAddItemSearch ? 'Cancel' : 'Add Item' }}
+            </button>
+          </div>
+
+          <!-- Add Item Search -->
+          <div class="add-item-section" *ngIf="showAddItemSearch">
+            <div class="add-item-search">
+              <mat-icon class="search-icon">search</mat-icon>
+              <input type="text"
+                     [(ngModel)]="addItemSearchTerm"
+                     (input)="searchProductsForOrder()"
+                     placeholder="Search product by name..."
+                     class="add-item-input"
+                     autofocus>
+            </div>
+            <div class="add-item-results" *ngIf="addItemSearchResults.length > 0">
+              <div class="add-item-result" *ngFor="let product of addItemSearchResults">
+                <div class="result-info">
+                  <span class="result-name">{{ product.name }}</span>
+                  <span class="result-price">{{ product.price | currency:'INR':'symbol':'1.0-0' }}</span>
+                </div>
+                <div class="result-actions">
+                  <input type="number"
+                         class="result-qty-input"
+                         [(ngModel)]="addItemQty"
+                         min="1"
+                         step="1"
+                         (click)="$event.stopPropagation()">
+                  <button class="btn-add-result" (click)="addItemToExistingOrder(product)" [disabled]="isAddingItem">
+                    <mat-icon>add_shopping_cart</mat-icon>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="add-item-empty" *ngIf="addItemSearchTerm.length >= 2 && addItemSearchResults.length === 0 && !isSearchingProducts">
+              No products found
+            </div>
+            <div class="add-item-loading" *ngIf="isSearchingProducts">
+              Searching...
+            </div>
+          </div>
+
           <div class="items-list">
             <div class="item-row" *ngFor="let item of selectedOrder.items">
               <div class="item-image">
@@ -327,7 +372,10 @@
                 </div>
               </div>
               <div class="item-details">
-                <div class="item-name">{{ item.name || item.productName }}</div>
+                <div class="item-name">
+                  {{ item.name || item.productName }}
+                  <span class="added-badge" *ngIf="item.addedByShopOwner">Added</span>
+                </div>
                 <div class="item-calc">{{ item.quantity }} x {{ item.price || item.unitPrice | currency:'INR':'symbol':'1.0-0' }}</div>
               </div>
               <div class="item-total">{{ (item.quantity * (item.price || item.unitPrice)) | currency:'INR':'symbol':'1.0-0' }}</div>
