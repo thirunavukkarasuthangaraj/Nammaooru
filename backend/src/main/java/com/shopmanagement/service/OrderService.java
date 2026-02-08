@@ -2039,16 +2039,17 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
 
-        // 2. Check order status - only allow modification for editable statuses
-        List<Order.OrderStatus> editableStatuses = List.of(
-                Order.OrderStatus.PENDING,
-                Order.OrderStatus.CONFIRMED,
-                Order.OrderStatus.PREPARING
+        // 2. Check order status - block only for cancelled/returned orders
+        List<Order.OrderStatus> blockedStatuses = List.of(
+                Order.OrderStatus.CANCELLED,
+                Order.OrderStatus.REFUNDED,
+                Order.OrderStatus.RETURNING_TO_SHOP,
+                Order.OrderStatus.RETURNED_TO_SHOP
         );
 
-        if (!editableStatuses.contains(order.getStatus())) {
+        if (blockedStatuses.contains(order.getStatus())) {
             throw new RuntimeException(String.format(
-                    "Cannot add items to order in %s status. Order must be in PENDING, CONFIRMED, or PREPARING status.",
+                    "Cannot add items to order in %s status.",
                     order.getStatus()));
         }
 
