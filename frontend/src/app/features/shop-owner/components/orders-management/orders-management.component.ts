@@ -2272,9 +2272,10 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
       return;
     }
     this.addItemSearchResults = this.allShopProducts.filter(p =>
-      p.name.toLowerCase().includes(term) ||
+      (p.name && p.name.toLowerCase().includes(term)) ||
       (p.sku && p.sku.toLowerCase().includes(term)) ||
-      (p.barcode && p.barcode.toLowerCase().includes(term))
+      (p.barcode && p.barcode.toLowerCase().includes(term)) ||
+      (p.description && p.description.toLowerCase().includes(term))
     ).slice(0, 20);
   }
 
