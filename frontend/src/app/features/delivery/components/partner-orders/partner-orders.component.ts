@@ -1,21 +1,43 @@
-import { Component, OnInit } from '@angular/core';
-import { MatTableDataSource } from '@angular/material/table';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { Subject, takeUntil, interval } from 'rxjs';
 import { OrderAssignmentService } from '../../services/order-assignment.service';
 import { AuthService } from '../../../../core/services/auth.service';
 
-interface PartnerOrderAssignment {
+interface OrderItem {
+  id: number;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  productImageUrl?: string;
+}
+
+interface ActiveOrder {
   id: string;
-  orderId: number;
+  assignmentId: string;
   orderNumber: string;
-  customerName: string;
-  shopName: string;
-  deliveryAddress: string;
   status: string;
   assignmentStatus: string;
+  orderStatus: string;
+  customerName: string;
+  customerPhone: string;
+  shopName: string;
+  shopAddress: string;
+  shopLatitude: number;
+  shopLongitude: number;
+  deliveryAddress: string;
+  customerLatitude: number;
+  customerLongitude: number;
   totalAmount: number;
   deliveryFee: number;
-  pickupOtp?: string;
+  paymentMethod: string;
+  paymentStatus: string;
+  pickupOtp: string;
+  deliveryType: string;
+  createdAt: string;
+  items: OrderItem[];
+  orderItems: OrderItem[];
 }
 
 @Component({
@@ -23,20 +45,12 @@ interface PartnerOrderAssignment {
   templateUrl: './partner-orders.component.html',
   styleUrls: ['./partner-orders.component.scss']
 })
-export class PartnerOrdersComponent implements OnInit {
-  displayedColumns: string[] = ['orderNumber', 'customerName', 'shopName', 'deliveryAddress', 'status', 'amount', 'actions'];
-  dataSource = new MatTableDataSource<PartnerOrderAssignment>([]);
+export class PartnerOrdersComponent implements OnInit, OnDestroy {
+  orders: ActiveOrder[] = [];
   isLoading = true;
   partnerId: number | null = null;
-
-  statusColors: { [key: string]: string } = {
-    'assigned': 'primary',
-    'accepted': 'accent',
-    'picked_up': 'accent',
-    'in_transit': 'warn',
-    'delivered': 'success',
-    'cancelled': 'error'
-  };
+  processingOrderId: string | null = null;
+  private destroy$ = new Subject<void>();
 
   constructor(
     private orderAssignmentService: OrderAssignmentService,
@@ -48,60 +62,161 @@ export class PartnerOrdersComponent implements OnInit {
     const user = this.authService.getCurrentUser();
     if (user) {
       this.partnerId = user.id;
-      this.loadPartnerOrders();
+      this.loadOrders();
+
+      // Auto-refresh every 30 seconds
+      interval(30000)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe(() => this.loadOrders());
     } else {
       this.isLoading = false;
-      this.snackBar.open('Could not identify logged-in user', 'Close', { duration: 3000 });
     }
   }
 
-  loadPartnerOrders(): void {
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  loadOrders(): void {
     if (!this.partnerId) return;
-    this.isLoading = true;
 
     this.orderAssignmentService.getActiveOrdersForPartner(this.partnerId).subscribe({
       next: (response) => {
         if (response.success && response.orders) {
-          this.dataSource.data = response.orders.map((o: any) => ({
-            id: o.id,
-            orderId: o.id,
-            orderNumber: o.orderNumber || '-',
-            customerName: o.customerName || '-',
-            shopName: o.shopName || '-',
-            deliveryAddress: o.deliveryAddress || '-',
-            status: o.status || o.assignmentStatus || '-',
-            assignmentStatus: o.assignmentStatus || o.status || '-',
-            totalAmount: o.totalAmount || 0,
-            deliveryFee: o.deliveryFee || 0,
-            pickupOtp: o.pickupOtp
+          this.orders = response.orders.map((o: any) => ({
+            ...o,
+            items: o.items || o.orderItems || []
           }));
         } else {
-          this.dataSource.data = [];
+          this.orders = [];
         }
         this.isLoading = false;
       },
       error: (error) => {
-        console.error('Error loading partner orders:', error);
-        this.snackBar.open('Failed to load orders', 'Close', { duration: 3000 });
-        this.dataSource.data = [];
+        console.error('Error loading orders:', error);
         this.isLoading = false;
       }
     });
   }
 
-  getStatusColor(status: string): string {
-    return this.statusColors[status?.toLowerCase()] || 'primary';
+  getStatusLabel(status: string): string {
+    const labels: { [key: string]: string } = {
+      'accepted': 'Accepted - Go to Shop',
+      'picked_up': 'Picked Up - Deliver Now',
+      'in_transit': 'On the Way',
+      'delivered': 'Delivered',
+      'cancelled': 'Cancelled - Return Items',
+      'returning_to_shop': 'Returning to Shop',
+      'returned_to_shop': 'Returned'
+    };
+    return labels[status?.toLowerCase()] || status;
   }
 
-  viewOrderDetails(orderId: number): void {
-    console.log('View order details:', orderId);
+  getStatusClass(status: string): string {
+    const classes: { [key: string]: string } = {
+      'accepted': 'status-accepted',
+      'picked_up': 'status-pickedup',
+      'in_transit': 'status-transit',
+      'delivered': 'status-delivered',
+      'cancelled': 'status-cancelled',
+      'returning_to_shop': 'status-returning',
+      'returned_to_shop': 'status-returned'
+    };
+    return classes[status?.toLowerCase()] || 'status-default';
   }
 
-  startDelivery(orderId: number): void {
-    this.snackBar.open('Starting delivery...', 'Close', { duration: 2000 });
+  getStatusIcon(status: string): string {
+    const icons: { [key: string]: string } = {
+      'accepted': 'store',
+      'picked_up': 'local_shipping',
+      'in_transit': 'delivery_dining',
+      'delivered': 'check_circle',
+      'cancelled': 'cancel',
+      'returning_to_shop': 'undo',
+      'returned_to_shop': 'assignment_return'
+    };
+    return icons[status?.toLowerCase()] || 'assignment';
   }
 
-  completeDelivery(orderId: number): void {
-    this.snackBar.open('Completing delivery...', 'Close', { duration: 2000 });
+  // Navigation actions
+  navigateToShop(order: ActiveOrder): void {
+    if (order.shopLatitude && order.shopLongitude) {
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${order.shopLatitude},${order.shopLongitude}`, '_blank');
+    } else if (order.shopAddress) {
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(order.shopAddress)}`, '_blank');
+    }
+  }
+
+  navigateToCustomer(order: ActiveOrder): void {
+    if (order.customerLatitude && order.customerLongitude) {
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${order.customerLatitude},${order.customerLongitude}`, '_blank');
+    } else if (order.deliveryAddress) {
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(order.deliveryAddress)}`, '_blank');
+    }
+  }
+
+  callCustomer(phone: string): void {
+    window.open(`tel:${phone}`, '_self');
+  }
+
+  // Status progression actions
+  markPickedUp(order: ActiveOrder): void {
+    if (!this.partnerId) return;
+    this.processingOrderId = order.id;
+
+    this.orderAssignmentService.markPickedUp(Number(order.id), this.partnerId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          if (response.success) {
+            this.snackBar.open('Marked as picked up!', 'OK', { duration: 3000 });
+            this.loadOrders();
+          } else {
+            this.snackBar.open(response.message || 'Failed', 'Close', { duration: 3000 });
+          }
+          this.processingOrderId = null;
+        },
+        error: (error) => {
+          console.error('Error:', error);
+          this.snackBar.open('Failed to update status', 'Close', { duration: 3000 });
+          this.processingOrderId = null;
+        }
+      });
+  }
+
+  markDelivered(order: ActiveOrder): void {
+    if (!this.partnerId) return;
+    this.processingOrderId = order.id;
+
+    this.orderAssignmentService.markDelivered(Number(order.id), this.partnerId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          if (response.success) {
+            this.snackBar.open('Delivery completed!', 'OK', { duration: 3000 });
+            this.loadOrders();
+          } else {
+            this.snackBar.open(response.message || 'Failed', 'Close', { duration: 3000 });
+          }
+          this.processingOrderId = null;
+        },
+        error: (error) => {
+          console.error('Error:', error);
+          this.snackBar.open('Failed to update status', 'Close', { duration: 3000 });
+          this.processingOrderId = null;
+        }
+      });
+  }
+
+  getPaymentLabel(method: string): string {
+    const labels: { [key: string]: string } = {
+      'COD': 'Cash on Delivery',
+      'CASH_ON_DELIVERY': 'Cash on Delivery',
+      'ONLINE': 'Paid Online',
+      'UPI': 'Paid via UPI',
+      'CARD': 'Paid via Card'
+    };
+    return labels[method] || method;
   }
 }

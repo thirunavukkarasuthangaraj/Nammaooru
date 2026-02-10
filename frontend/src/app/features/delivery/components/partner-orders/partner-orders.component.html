@@ -1,84 +1,166 @@
 <div class="partner-orders-container">
-  <mat-card class="orders-card">
-    <mat-card-header>
-      <mat-card-title>My Orders</mat-card-title>
-      <mat-card-subtitle>Manage your assigned deliveries</mat-card-subtitle>
-    </mat-card-header>
+  <!-- Header -->
+  <div class="page-header">
+    <h1>My Orders</h1>
+    <p class="subtitle">{{ orders.length }} active order{{ orders.length !== 1 ? 's' : '' }}</p>
+  </div>
 
-    <mat-card-content>
-      <div *ngIf="isLoading" class="loading-container">
-        <mat-spinner></mat-spinner>
-        <p>Loading orders...</p>
+  <!-- Loading -->
+  <div *ngIf="isLoading" class="loading-container">
+    <mat-spinner diameter="40"></mat-spinner>
+    <p>Loading your orders...</p>
+  </div>
+
+  <!-- Empty State -->
+  <div *ngIf="!isLoading && orders.length === 0" class="empty-state">
+    <mat-icon>assignment</mat-icon>
+    <h3>No Active Orders</h3>
+    <p>Check "Available Orders" for new deliveries</p>
+  </div>
+
+  <!-- Order Cards -->
+  <div *ngIf="!isLoading" class="orders-list">
+    <div *ngFor="let order of orders" class="order-card" [ngClass]="getStatusClass(order.status)">
+
+      <!-- Status Banner -->
+      <div class="status-banner" [ngClass]="getStatusClass(order.status)">
+        <mat-icon>{{ getStatusIcon(order.status) }}</mat-icon>
+        <span class="status-text">{{ getStatusLabel(order.status) }}</span>
+        <span class="order-number">{{ order.orderNumber }}</span>
       </div>
 
-      <div *ngIf="!isLoading">
-        <mat-table [dataSource]="dataSource" class="orders-table">
-          <ng-container matColumnDef="orderNumber">
-            <mat-header-cell *matHeaderCellDef>Order #</mat-header-cell>
-            <mat-cell *matCellDef="let order">{{order.orderNumber}}</mat-cell>
-          </ng-container>
-
-          <ng-container matColumnDef="customerName">
-            <mat-header-cell *matHeaderCellDef>Customer</mat-header-cell>
-            <mat-cell *matCellDef="let order">{{order.customerName}}</mat-cell>
-          </ng-container>
-
-          <ng-container matColumnDef="shopName">
-            <mat-header-cell *matHeaderCellDef>Shop</mat-header-cell>
-            <mat-cell *matCellDef="let order">{{order.shopName}}</mat-cell>
-          </ng-container>
-
-          <ng-container matColumnDef="deliveryAddress">
-            <mat-header-cell *matHeaderCellDef>Delivery Address</mat-header-cell>
-            <mat-cell *matCellDef="let order">{{order.deliveryAddress}}</mat-cell>
-          </ng-container>
-
-          <ng-container matColumnDef="status">
-            <mat-header-cell *matHeaderCellDef>Status</mat-header-cell>
-            <mat-cell *matCellDef="let order">
-              <mat-chip [color]="getStatusColor(order.status)" selected>
-                {{order.status | titlecase}}
-              </mat-chip>
-            </mat-cell>
-          </ng-container>
-
-          <ng-container matColumnDef="amount">
-            <mat-header-cell *matHeaderCellDef>Amount</mat-header-cell>
-            <mat-cell *matCellDef="let order">&#8377;{{order.totalAmount}}</mat-cell>
-          </ng-container>
-
-          <ng-container matColumnDef="actions">
-            <mat-header-cell *matHeaderCellDef>Actions</mat-header-cell>
-            <mat-cell *matCellDef="let order">
-              <button mat-icon-button [matMenuTriggerFor]="actionMenu">
-                <mat-icon>more_vert</mat-icon>
-              </button>
-              <mat-menu #actionMenu="matMenu">
-                <button mat-menu-item (click)="viewOrderDetails(order.orderId)">
-                  <mat-icon>visibility</mat-icon>
-                  <span>View Details</span>
-                </button>
-                <button mat-menu-item *ngIf="order.status === 'accepted'" (click)="startDelivery(order.orderId)">
-                  <mat-icon>local_shipping</mat-icon>
-                  <span>Mark Picked Up</span>
-                </button>
-                <button mat-menu-item *ngIf="order.status === 'picked_up' || order.status === 'in_transit'" (click)="completeDelivery(order.orderId)">
-                  <mat-icon>check_circle</mat-icon>
-                  <span>Mark Delivered</span>
-                </button>
-              </mat-menu>
-            </mat-cell>
-          </ng-container>
-
-          <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
-          <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
-        </mat-table>
-
-        <div *ngIf="dataSource.data.length === 0" class="no-orders">
-          <mat-icon>assignment</mat-icon>
-          <p>No active orders at the moment</p>
+      <!-- Shop Section (for accepted status - driver needs to go to shop) -->
+      <div class="info-section shop-section" *ngIf="order.status === 'accepted'">
+        <div class="section-header">
+          <mat-icon>store</mat-icon>
+          <span>Pickup from</span>
+        </div>
+        <div class="section-body">
+          <strong>{{ order.shopName }}</strong>
+          <p class="address">{{ order.shopAddress }}</p>
+          <button mat-raised-button color="primary" class="nav-btn" (click)="navigateToShop(order)">
+            <mat-icon>navigation</mat-icon>
+            Navigate to Shop
+          </button>
         </div>
       </div>
-    </mat-card-content>
-  </mat-card>
+
+      <!-- Pickup OTP (show when accepted - driver needs this to pick up) -->
+      <div class="otp-section" *ngIf="order.status === 'accepted' && order.pickupOtp">
+        <div class="otp-label">Pickup OTP</div>
+        <div class="otp-code">{{ order.pickupOtp }}</div>
+        <div class="otp-hint">Show this to shop owner</div>
+      </div>
+
+      <!-- Customer Section (show for picked_up / in_transit - driver going to customer) -->
+      <div class="info-section customer-section" *ngIf="order.status === 'picked_up' || order.status === 'in_transit'">
+        <div class="section-header">
+          <mat-icon>person_pin</mat-icon>
+          <span>Deliver to</span>
+        </div>
+        <div class="section-body">
+          <strong>{{ order.customerName }}</strong>
+          <p class="address">{{ order.deliveryAddress }}</p>
+          <div class="action-row">
+            <button mat-raised-button color="primary" class="nav-btn" (click)="navigateToCustomer(order)">
+              <mat-icon>navigation</mat-icon>
+              Navigate
+            </button>
+            <button mat-stroked-button class="call-btn" (click)="callCustomer(order.customerPhone)">
+              <mat-icon>phone</mat-icon>
+              Call
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Customer Info (show for accepted too, but without navigate) -->
+      <div class="info-section" *ngIf="order.status === 'accepted'">
+        <div class="section-header">
+          <mat-icon>person</mat-icon>
+          <span>Customer</span>
+        </div>
+        <div class="section-body">
+          <strong>{{ order.customerName }}</strong>
+          <p class="address">{{ order.deliveryAddress }}</p>
+          <button mat-stroked-button class="call-btn" (click)="callCustomer(order.customerPhone)" style="margin-top: 8px;">
+            <mat-icon>phone</mat-icon>
+            Call Customer
+          </button>
+        </div>
+      </div>
+
+      <!-- Product Items -->
+      <div class="items-section">
+        <div class="section-header">
+          <mat-icon>inventory_2</mat-icon>
+          <span>Items ({{ order.items?.length || 0 }})</span>
+        </div>
+        <div class="items-list">
+          <div *ngFor="let item of order.items" class="item-row">
+            <div class="item-img" *ngIf="item.productImageUrl">
+              <img [src]="item.productImageUrl" [alt]="item.productName" onerror="this.style.display='none'">
+            </div>
+            <div class="item-details">
+              <span class="item-name">{{ item.productName }}</span>
+              <span class="item-qty">x{{ item.quantity }}</span>
+            </div>
+            <div class="item-price">&#8377;{{ item.totalPrice }}</div>
+          </div>
+          <div *ngIf="!order.items || order.items.length === 0" class="no-items">
+            <span>No item details available</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Order Summary -->
+      <div class="summary-section">
+        <div class="summary-row">
+          <span>Order Total</span>
+          <strong>&#8377;{{ order.totalAmount }}</strong>
+        </div>
+        <div class="summary-row">
+          <span>Delivery Fee</span>
+          <span>&#8377;{{ order.deliveryFee }}</span>
+        </div>
+        <div class="summary-row payment">
+          <mat-icon>payment</mat-icon>
+          <span>{{ getPaymentLabel(order.paymentMethod) }}</span>
+          <mat-chip class="payment-status" [ngClass]="order.paymentStatus === 'PAID' ? 'paid' : 'pending'">
+            {{ order.paymentStatus }}
+          </mat-chip>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="actions-section">
+        <!-- ACCEPTED → Mark Picked Up -->
+        <button *ngIf="order.status === 'accepted'"
+                mat-raised-button color="primary" class="action-btn"
+                [disabled]="processingOrderId === order.id"
+                (click)="markPickedUp(order)">
+          <mat-icon>shopping_bag</mat-icon>
+          {{ processingOrderId === order.id ? 'Processing...' : 'Mark Picked Up' }}
+        </button>
+
+        <!-- PICKED_UP → Mark Delivered -->
+        <button *ngIf="order.status === 'picked_up' || order.status === 'in_transit'"
+                mat-raised-button color="accent" class="action-btn"
+                [disabled]="processingOrderId === order.id"
+                (click)="markDelivered(order)">
+          <mat-icon>check_circle</mat-icon>
+          {{ processingOrderId === order.id ? 'Processing...' : 'Mark Delivered' }}
+        </button>
+
+        <!-- CANCELLED → Return to Shop -->
+        <button *ngIf="order.status === 'cancelled'"
+                mat-raised-button color="warn" class="action-btn"
+                (click)="navigateToShop(order)">
+          <mat-icon>undo</mat-icon>
+          Return to Shop
+        </button>
+      </div>
+
+    </div>
+  </div>
 </div>
