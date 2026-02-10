@@ -1,0 +1,204 @@
+{
+  "configVersion": 1,
+  "timestamp": 1770692776215,
+  "index": "/index.html",
+  "assetGroups": [
+    {
+      "name": "app",
+      "installMode": "prefetch",
+      "updateMode": "prefetch",
+      "cacheQueryOptions": {
+        "ignoreVary": true
+      },
+      "urls": [
+        "/136.f1362ea6b8269aae.js",
+        "/14.1e876166fa4718a9.js",
+        "/141.338b2e21645008e6.js",
+        "/142.035c20a4f8b2c275.js",
+        "/191.b6bff968737e25e6.js",
+        "/259.306185faf3a21ee4.js",
+        "/321.6891e9ca2a570aac.js",
+        "/326.a54133472a0c440e.js",
+        "/334.f0c8e94398b4d192.js",
+        "/367.134497f00e4ba62f.js",
+        "/370.819b4eeea7c65a11.js",
+        "/448.7295b85dbb2568fe.js",
+        "/671.4d22777e7c500ffb.js",
+        "/725.22468bc2dd19c52f.js",
+        "/728.32fd93ab8d87039f.js",
+        "/747.510c02996528a050.js",
+        "/84.b3813abec7490757.js",
+        "/865.124ccdc9336f72ab.js",
+        "/904.01fed39d81e14114.js",
+        "/951.5db541d4b44909b0.js",
+        "/994.c71ec592c57065d9.js",
+        "/common.05f31765c428e4ae.js",
+        "/favicon.ico",
+        "/firebase-messaging-sw.js",
+        "/index.html",
+        "/main.6367ca8761c07c70.js",
+        "/manifest.json",
+        "/polyfills.ba534983b7a7caac.js",
+        "/runtime.47017fd208501377.js",
+        "/styles.de4963587ada0f2d.css"
+      ],
+      "patterns": []
+    },
+    {
+      "name": "assets",
+      "installMode": "lazy",
+      "updateMode": "prefetch",
+      "cacheQueryOptions": {
+        "ignoreVary": true
+      },
+      "urls": [
+        "/assets/fonts/fontawesome/all.min.css",
+        "/assets/fonts/fontawesome/webfonts/fa-brands-400.ttf",
+        "/assets/fonts/fontawesome/webfonts/fa-brands-400.woff2",
+        "/assets/fonts/fontawesome/webfonts/fa-regular-400.ttf",
+        "/assets/fonts/fontawesome/webfonts/fa-regular-400.woff2",
+        "/assets/fonts/fontawesome/webfonts/fa-solid-900.ttf",
+        "/assets/fonts/fontawesome/webfonts/fa-solid-900.woff2",
+        "/assets/fonts/inter/Inter-Bold.woff2",
+        "/assets/fonts/inter/Inter-Medium.woff2",
+        "/assets/fonts/inter/Inter-Regular.woff2",
+        "/assets/fonts/inter/Inter-SemiBold.woff2",
+        "/assets/fonts/inter/inter.css",
+        "/assets/fonts/material-icons/MaterialIcons-Regular.woff2",
+        "/assets/fonts/material-icons/MaterialIconsOutlined-Regular.woff2",
+        "/assets/fonts/material-icons/material-icons.css",
+        "/assets/fonts/noto-sans-tamil/NotoSansTamil-Regular.ttf",
+        "/assets/fonts/noto-sans-tamil/noto-sans-tamil.css",
+        "/assets/fonts/roboto/Roboto-Bold.woff2",
+        "/assets/fonts/roboto/Roboto-Medium.woff2",
+        "/assets/fonts/roboto/Roboto-Regular.woff2",
+        "/assets/fonts/roboto/roboto.css",
+        "/assets/icons/notification.png",
+        "/assets/images/background.png",
+        "/assets/images/product-placeholder.svg",
+        "/assets/images/shop-placeholder.svg",
+        "/assets/sounds/README.md",
+        "/assets/sounds/new-order.mp3",
+        "/assets/sounds/urgent-alert.mp3",
+        "/layers-2x.9859cd1231006a4a.png",
+        "/layers.ef6db8722c2c3f9a.png",
+        "/marker-icon.d577052aa271e13f.png"
+      ],
+      "patterns": []
+    }
+  ],
+  "dataGroups": [
+    {
+      "name": "api-products",
+      "patterns": [
+        "\\/api\\/shop-products\\/.*",
+        "\\/api\\/products\\/.*",
+        "\\/api\\/master-products\\/.*"
+      ],
+      "strategy": "freshness",
+      "maxSize": 500,
+      "maxAge": 86400000,
+      "timeoutMs": 10000,
+      "cacheQueryOptions": {
+        "ignoreVary": true
+      },
+      "version": 1
+    },
+    {
+      "name": "images",
+      "patterns": [
+        "\\/uploads\\/.*"
+      ],
+      "strategy": "performance",
+      "maxSize": 5000,
+      "maxAge": 2592000000,
+      "timeoutMs": 5000,
+      "cacheQueryOptions": {
+        "ignoreVary": true
+      },
+      "version": 1
+    }
+  ],
+  "hashTable": {
+    "/136.f1362ea6b8269aae.js": "8bb77c53add463027ce95b366ae1c18a34035e3c",
+    "/14.1e876166fa4718a9.js": "ab4b916434aaec256f9257af229b9e11befd09f3",
+    "/141.338b2e21645008e6.js": "fe39ddb307a997ed251b0af055d5349bd6dae4fc",
+    "/142.035c20a4f8b2c275.js": "4245c0b2c14f3a8e46f0fbbda8ffae4519b7a4c8",
+    "/191.b6bff968737e25e6.js": "66d55955d7732ba5d802ea26cb3b38a49ed1488f",
+    "/259.306185faf3a21ee4.js": "98500621178881ae32e781d84799ad652ed51d82",
+    "/321.6891e9ca2a570aac.js": "f4466f96d3139eea7aa04f60f0686ae4c5c4e3d5",
+    "/326.a54133472a0c440e.js": "dde283fbdeea53eda956928bba027f0b7aec3b4f",
+    "/334.f0c8e94398b4d192.js": "b022f09eff57196f4646868531c01341b19fda02",
+    "/367.134497f00e4ba62f.js": "4363a509c75d5ea65a6e404b6f38bbae673dd3b5",
+    "/370.819b4eeea7c65a11.js": "0d60280d7ce4916e78848705214573a9d245f06d",
+    "/448.7295b85dbb2568fe.js": "4193e608716804f186ee81bc3a4da93b89add4c5",
+    "/671.4d22777e7c500ffb.js": "ca8d6d40e42dc7ce83bdf1f2fba568464ce89c16",
+    "/725.22468bc2dd19c52f.js": "7ea4b8f098bbb48042c24883f7ee332475032fe6",
+    "/728.32fd93ab8d87039f.js": "f30c3dd344a63aa4109c858f088c37683341175e",
+    "/747.510c02996528a050.js": "5fd730292eff915a67792b4d3b692e247f5431f1",
+    "/84.b3813abec7490757.js": "d93d38d02cfdd0a86151eff5f1b3f6e03c408afb",
+    "/865.124ccdc9336f72ab.js": "47fc8ea972cc0edc2d3df63cb17c411303fe607d",
+    "/904.01fed39d81e14114.js": "feb86b0d2e6adaeae295fe7043d4a65aa4b7b31e",
+    "/951.5db541d4b44909b0.js": "94e0476b376e397cf2acd720d6595886f5277efd",
+    "/994.c71ec592c57065d9.js": "fca808be00d9a09c4439cc459d074cb22a042d6a",
+    "/assets/fonts/fontawesome/all.min.css": "b6e555166eb1381392e00adcde9bf8863f16ff01",
+    "/assets/fonts/fontawesome/webfonts/fa-brands-400.ttf": "acaf5320927fc169b0089f8f25afb9cfbad353b4",
+    "/assets/fonts/fontawesome/webfonts/fa-brands-400.woff2": "4022f95e001d734ca8f082b8e7627abd205609ec",
+    "/assets/fonts/fontawesome/webfonts/fa-regular-400.ttf": "784b4d493ab9a7996b07e4f9f71674b2f2e43e22",
+    "/assets/fonts/fontawesome/webfonts/fa-regular-400.woff2": "2ed706340547d19c10a409ee02fb08f3d52ff670",
+    "/assets/fonts/fontawesome/webfonts/fa-solid-900.ttf": "54217d79e7b35011798d712a96d1c4ea08a0ca70",
+    "/assets/fonts/fontawesome/webfonts/fa-solid-900.woff2": "1aae708e3b94ee981b452a918d28ed037fbb5e18",
+    "/assets/fonts/inter/Inter-Bold.woff2": "5cbf10e9f8be7dac2a365bfb21fe6ddf4641e569",
+    "/assets/fonts/inter/Inter-Medium.woff2": "d502bb1b3f812f62ce68e2b93cf6d2a5b9bc7120",
+    "/assets/fonts/inter/Inter-Regular.woff2": "b7a0b6fbebc40eb29b76cf135c4b7be50b981b4b",
+    "/assets/fonts/inter/Inter-SemiBold.woff2": "9cc2b10d4186b63c8d90be346069b2011451897c",
+    "/assets/fonts/inter/inter.css": "d87781b7387cc0bd2d03d5064f04a3e51ec04b63",
+    "/assets/fonts/material-icons/MaterialIcons-Regular.woff2": "0bc0c675480d94ec7e8609dda6227f88c5d08d2c",
+    "/assets/fonts/material-icons/MaterialIconsOutlined-Regular.woff2": "2f9e28ab559782402f27332633c843c40209d95a",
+    "/assets/fonts/material-icons/material-icons.css": "f9f63f50248def5a8a212258f85efa790c647633",
+    "/assets/fonts/noto-sans-tamil/NotoSansTamil-Regular.ttf": "f7d6fbcbb15b911b44a6458267397349a3bff2cc",
+    "/assets/fonts/noto-sans-tamil/noto-sans-tamil.css": "faaf3f3a370dd00f0c5aeca77662cfb2c847fd5f",
+    "/assets/fonts/roboto/Roboto-Bold.woff2": "acdef5603c2387b0e5bffd744b679a24a8bc1968",
+    "/assets/fonts/roboto/Roboto-Medium.woff2": "23cef6993ddb2b2979e8e7647fc3763694e2ba7d",
+    "/assets/fonts/roboto/Roboto-Regular.woff2": "7ca9c5967f3bb8bffeab24b639b49c1e7d03fa52",
+    "/assets/fonts/roboto/roboto.css": "6fcae956f922e7196cf9fddb51225a18250a2050",
+    "/assets/icons/notification.png": "93914bc45629eda60dcc051f053eae3da40e906a",
+    "/assets/images/background.png": "149d65b81d7554f43bb6bcb4e5870209ffb671ca",
+    "/assets/images/product-placeholder.svg": "c218cc4a99f63625eb78a60d34fae619e7d48684",
+    "/assets/images/shop-placeholder.svg": "3ee02d6bf1254d44b2f6fd513af5f7237959ed84",
+    "/assets/sounds/README.md": "44967ac71bd5433e74b6b77716c7963a427aea97",
+    "/assets/sounds/new-order.mp3": "989f3215e5461032e91f60fc5d91f8dd33280386",
+    "/assets/sounds/urgent-alert.mp3": "5486e5d8b4826cb5368d2f918f8a86909cd4e820",
+    "/common.05f31765c428e4ae.js": "6e730cfc48d7c78d6c33ea06967b9cad623dd64b",
+    "/favicon.ico": "5a5bf5a4de85941302a28f4542904282eb0486a0",
+    "/firebase-messaging-sw.js": "a77ea498d8641042ce86bb23d3dcac36cb463eeb",
+    "/index.html": "8c30f8952883f490e41a4e09e7ec9e11b3f749f0",
+    "/layers-2x.9859cd1231006a4a.png": "152a162333e46d24f9d89f566312fc0c64011dee",
+    "/layers.ef6db8722c2c3f9a.png": "c9e7528e491a39232ba24a2706c6c739d6fb0f06",
+    "/main.6367ca8761c07c70.js": "9fbfacda0f8478ef4328d07134ac51d565ee264e",
+    "/manifest.json": "cbbc6ad7bfcdca8a46811ad3bf67e08b676954f3",
+    "/marker-icon.d577052aa271e13f.png": "60a90bcbb2b42b7ddb4556db94eb7c1084b0e5da",
+    "/polyfills.ba534983b7a7caac.js": "3b15fcee9e32da0da11c36e76a27666ef89f8c72",
+    "/runtime.47017fd208501377.js": "541fb3771a47fb107aa32b27b8949e9b0f4aaaf8",
+    "/styles.de4963587ada0f2d.css": "609220c8e195d6d0ac5d9007d38e7555ab83a065"
+  },
+  "navigationUrls": [
+    {
+      "positive": true,
+      "regex": "^\\/.*$"
+    },
+    {
+      "positive": false,
+      "regex": "^\\/(?:.+\\/)?[^/]*\\.[^/]*$"
+    },
+    {
+      "positive": false,
+      "regex": "^\\/(?:.+\\/)?[^/]*__[^/]*$"
+    },
+    {
+      "positive": false,
+      "regex": "^\\/(?:.+\\/)?[^/]*__[^/]*\\/.*$"
+    }
+  ],
+  "navigationRequestStrategy": "performance"
+}
