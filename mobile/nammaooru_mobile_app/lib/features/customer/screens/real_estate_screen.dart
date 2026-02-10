@@ -212,11 +212,10 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
           _buildSavedTab(),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: () => _showPostPropertySheet(),
         backgroundColor: VillageTheme.primaryGreen,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Post Property', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        child: const Icon(Icons.add, color: Colors.white, size: 28),
       ),
     );
   }

@@ -899,6 +899,7 @@ export class ShopProfileComponent implements OnInit {
   // Map
   private map: L.Map | null = null;
   private marker: L.Marker | null = null;
+  private radiusCircle: L.Circle | null = null;
   private mapInitialized = false;
 
   // Image upload
@@ -1254,11 +1255,19 @@ export class ShopProfileComponent implements OnInit {
       attribution: '&copy; OpenStreetMap'
     }).addTo(this.map);
 
-    // Add marker if coordinates exist
+    // Add marker and radius circle if coordinates exist
     if (this.shopForm.value.latitude && this.shopForm.value.longitude) {
       this.marker = L.marker([lat, lng], { icon: iconDefault }).addTo(this.map);
       this.marker.bindPopup('Shop Location').openPopup();
+      this.updateRadiusCircle([lat, lng]);
     }
+
+    // Update circle when delivery radius changes
+    this.shopForm.get('deliveryRadius')?.valueChanges.subscribe(() => {
+      if (this.marker) {
+        this.updateRadiusCircle(this.marker.getLatLng());
+      }
+    });
 
     // Click to set location — auto-enables edit mode
     this.map.on('click', (e: L.LeafletMouseEvent) => {
@@ -1280,7 +1289,31 @@ export class ShopProfileComponent implements OnInit {
         this.marker = L.marker(e.latlng, { icon: iconDefault }).addTo(this.map!);
       }
       this.marker.bindPopup('Shop Location').openPopup();
+      this.updateRadiusCircle(e.latlng);
     });
+  }
+
+  private updateRadiusCircle(latlng: L.LatLngExpression): void {
+    if (!this.map) return;
+    const radiusKm = this.shopForm.value.deliveryRadius || 5;
+    const radiusMeters = radiusKm * 1000;
+
+    if (this.radiusCircle) {
+      this.radiusCircle.setLatLng(latlng as L.LatLng);
+      this.radiusCircle.setRadius(radiusMeters);
+    } else {
+      this.radiusCircle = L.circle(latlng, {
+        radius: radiusMeters,
+        color: '#4CAF50',
+        fillColor: '#4CAF50',
+        fillOpacity: 0.1,
+        weight: 2,
+        dashArray: '5, 10'
+      }).addTo(this.map);
+    }
+
+    // Fit map to show the full radius circle
+    this.map.fitBounds(this.radiusCircle.getBounds(), { padding: [20, 20] });
   }
 
   navigateTo(path: string): void {

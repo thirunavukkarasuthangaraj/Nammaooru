@@ -99,9 +99,20 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
           radius: _maxDistance,
         );
 
-        if (mounted && response['statusCode'] == '0000' && response['data'] != null) {
+        if (mounted && (response['success'] == true || response['statusCode'] == '0000') && response['data'] != null) {
+          var shops = response['data']['shops'] ?? [];
+
+          // Client-side category filter (nearby API doesn't support category)
+          if (widget.category != null && widget.category!.isNotEmpty) {
+            final cat = widget.category!.toLowerCase();
+            shops = shops.where((shop) {
+              final shopType = (shop['businessType'] ?? '').toString().toLowerCase();
+              return shopType == cat || shopType.contains(cat);
+            }).toList();
+          }
+
           setState(() {
-            _shops = response['data']['shops'] ?? [];
+            _shops = shops;
             _filteredShops = List.from(_shops);
             _isLocationBased = true;
             _applySortAndFilter();
@@ -116,7 +127,7 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
           category: widget.category,
         );
 
-        if (mounted && response['statusCode'] == '0000' && response['data'] != null) {
+        if (mounted && (response['success'] == true || response['statusCode'] == '0000') && response['data'] != null) {
           setState(() {
             _shops = response['data']['content'] ?? [];
             _filteredShops = List.from(_shops);
