@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatDialog } from '@angular/material/dialog';
 import { HttpClient } from '@angular/common/http';
 import { Subject } from 'rxjs';
 import { takeUntil, debounceTime, distinctUntilChanged } from 'rxjs/operators';
@@ -7,6 +8,7 @@ import { environment } from '../../../../../environments/environment';
 import { OfflineStorageService, CachedProduct } from '../../../../core/services/offline-storage.service';
 import { VersionService } from '../../../../core/services/version.service';
 import { getImageUrl as getImageUrlUtil } from '../../../../core/utils/image-url.util';
+import { CategoryCreateDialogComponent, CategoryCreateDialogResult, syncOfflineCategories } from '../category-create-dialog/category-create-dialog.component';
 
 interface BulkEditProduct {
   id: number;
@@ -85,7 +87,8 @@ export class BulkEditComponent implements OnInit, OnDestroy {
     private http: HttpClient,
     private snackBar: MatSnackBar,
     private offlineStorage: OfflineStorageService,
-    private versionService: VersionService
+    private versionService: VersionService,
+    private dialog: MatDialog
   ) {}
 
   ngOnInit(): void {
@@ -111,10 +114,13 @@ export class BulkEditComponent implements OnInit, OnDestroy {
   }
 
   private handleOnline = (): void => {
-    console.log('Network online - syncing products');
+    console.log('Network online - syncing categories first, then products');
     this.isOffline = false;
     this.snackBar.open('Back online! Syncing changes...', 'Close', { duration: 3000 });
-    this.loadProducts(true);
+    // Sync offline categories first, then load products
+    syncOfflineCategories(this.http, this.apiUrl).then(() => {
+      this.loadProducts(true);
+    });
   }
 
   private handleOffline = (): void => {
@@ -431,45 +437,28 @@ export class BulkEditComponent implements OnInit, OnDestroy {
     if (value === '__NEW__') {
       // Reset dropdown to previous value
       selectElement.value = product.category || '';
-      const newCategoryName = prompt('Enter new category name:');
-      if (newCategoryName && newCategoryName.trim()) {
-        const trimmed = newCategoryName.trim().toUpperCase();
-        if (this.categories.includes(trimmed)) {
-          this.snackBar.open('Category already exists', 'Close', { duration: 2000 });
-          product.category = trimmed;
-          selectElement.value = trimmed;
-          this.markModified(product);
-          return;
-        }
-        // Call API to create category
-        this.http.post<any>(`${this.apiUrl}/products/categories`, { name: trimmed }).subscribe({
-          next: (response) => {
-            const catName = response?.data?.name || response?.name || trimmed;
-            if (!this.categories.includes(catName)) {
-              this.categories.push(catName);
-              this.categories.sort();
-            }
-            product.category = catName;
-            this.markModified(product);
-            // Update cache
-            try {
-              localStorage.setItem('cached_product_category_names', JSON.stringify(this.categories));
-            } catch (e) {}
-            this.snackBar.open(`Category "${catName}" created!`, 'Close', { duration: 2000 });
-          },
-          error: (err) => {
-            console.error('Failed to create category:', err);
-            // Still add locally
-            if (!this.categories.includes(trimmed)) {
-              this.categories.push(trimmed);
-              this.categories.sort();
-            }
-            product.category = trimmed;
-            this.markModified(product);
-            this.snackBar.open(`Category "${trimmed}" added locally`, 'Close', { duration: 2000 });
+
+      const dialogRef = this.dialog.open(CategoryCreateDialogComponent, {
+        width: '420px',
+        maxWidth: '95vw',
+        data: { existingCategories: this.categories },
+        disableClose: false
+      });
+
+      dialogRef.afterClosed().subscribe((result: CategoryCreateDialogResult) => {
+        if (result?.name) {
+          if (!this.categories.includes(result.name)) {
+            this.categories.push(result.name);
+            this.categories.sort();
           }
-        });
-      }
+          product.category = result.name;
+          this.markModified(product);
+          // Update cache
+          try {
+            localStorage.setItem('cached_product_category_names', JSON.stringify(this.categories));
+          } catch (e) {}
+        }
+      });
     } else {
       this.onCategoryFieldChange(product, value);
     }

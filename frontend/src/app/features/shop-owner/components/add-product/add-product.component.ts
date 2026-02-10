@@ -11,9 +11,11 @@ import { OfflineStorageService, OfflineProductCreation } from '@core/services/of
 import { MasterProductRequest, ShopProductRequest, ProductCategory, ProductStatus, ShopProductStatus } from '@core/models/product.model';
 import { Shop, BusinessType, ShopStatus } from '@core/models/shop.model';
 import { HttpClient } from '@angular/common/http';
+import { MatDialog } from '@angular/material/dialog';
 import { forkJoin, of } from 'rxjs';
 import { switchMap, catchError, map } from 'rxjs/operators';
 import { environment as envConfig } from '../../../../../environments/environment';
+import { CategoryCreateDialogComponent, CategoryCreateDialogResult, syncOfflineCategories } from '../category-create-dialog/category-create-dialog.component';
 
 @Component({
   selector: 'app-add-product',
@@ -611,7 +613,8 @@ export class AddProductComponent implements OnInit {
     private categoryService: ProductCategoryService,
     private authService: AuthService,
     private offlineStorage: OfflineStorageService,
-    private httpClient: HttpClient
+    private httpClient: HttpClient,
+    private categoryDialog: MatDialog
   ) {
     this.productForm = this.fb.group({
       name: ['', Validators.required],
@@ -852,48 +855,39 @@ export class AddProductComponent implements OnInit {
     if (value === '__NEW__') {
       // Reset selection to previous value
       this.productForm.patchValue({ category: '' });
-      const newCategoryName = prompt('Enter new category name:');
-      if (newCategoryName && newCategoryName.trim()) {
-        const trimmed = newCategoryName.trim().toUpperCase();
-        // Check if already exists
-        const existing = this.productCategories.find(c => c.name.toUpperCase() === trimmed);
-        if (existing) {
-          this.snackBar.open('Category already exists', 'Close', { duration: 2000 });
-          this.productForm.patchValue({ category: existing.id });
-          return;
+
+      const existingNames = this.productCategories.map(c => c.name);
+      const dialogRef = this.categoryDialog.open(CategoryCreateDialogComponent, {
+        width: '420px',
+        maxWidth: '95vw',
+        data: { existingCategories: existingNames },
+        disableClose: false
+      });
+
+      dialogRef.afterClosed().subscribe((result: CategoryCreateDialogResult) => {
+        if (result?.name) {
+          const categoryObj: ProductCategory = {
+            id: result.id || -(Date.now()),  // Negative temp ID for offline
+            name: result.name,
+            description: '',
+            slug: result.slug || result.name.toLowerCase().replace(/\s+/g, '-'),
+            fullPath: result.name,
+            isActive: true,
+            createdBy: 'system',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            subcategories: [],
+            hasSubcategories: false,
+            isRootCategory: true,
+            productCount: 0,
+            subcategoryCount: 0
+          };
+          this.productCategories.push(categoryObj);
+          this.productCategories.sort((a, b) => a.name.localeCompare(b.name));
+          this.productForm.patchValue({ category: categoryObj.id });
+          this.cacheCategories(this.productCategories);
         }
-        // Call API to create category
-        this.httpClient.post<any>(`${envConfig.apiUrl}/products/categories`, { name: trimmed }).subscribe({
-          next: (response) => {
-            const newCat = response?.data || response;
-            const categoryObj: ProductCategory = {
-              id: newCat.id,
-              name: newCat.name || trimmed,
-              description: newCat.description || '',
-              slug: newCat.slug || trimmed.toLowerCase().replace(/\s+/g, '-'),
-              fullPath: newCat.name || trimmed,
-              isActive: true,
-              createdBy: 'system',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              subcategories: [],
-              hasSubcategories: false,
-              isRootCategory: true,
-              productCount: 0,
-              subcategoryCount: 0
-            };
-            this.productCategories.push(categoryObj);
-            this.productCategories.sort((a, b) => a.name.localeCompare(b.name));
-            this.productForm.patchValue({ category: categoryObj.id });
-            this.cacheCategories(this.productCategories);
-            this.snackBar.open(`Category "${categoryObj.name}" created!`, 'Close', { duration: 2000 });
-          },
-          error: (err) => {
-            console.error('Failed to create category:', err);
-            this.snackBar.open('Failed to create category. Please try again.', 'Close', { duration: 3000 });
-          }
-        });
-      }
+      });
     }
   }
 
@@ -1174,6 +1168,9 @@ export class AddProductComponent implements OnInit {
     }
 
     this.isLoading = true;
+
+    // Sync any offline-created categories before creating the product
+    await syncOfflineCategories(this.httpClient, envConfig.apiUrl);
 
     // Create master product request
     const masterProductRequest: MasterProductRequest = {

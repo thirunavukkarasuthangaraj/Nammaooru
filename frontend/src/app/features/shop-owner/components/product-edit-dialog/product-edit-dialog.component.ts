@@ -1,10 +1,11 @@
 import { Component, Inject, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogRef, MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
 import { OfflineStorageService } from '../../../../core/services/offline-storage.service';
+import { CategoryCreateDialogComponent, CategoryCreateDialogResult } from '../category-create-dialog/category-create-dialog.component';
 
 export interface ProductEditData {
   id: number;
@@ -52,6 +53,7 @@ export class ProductEditDialogComponent implements OnInit {
     private snackBar: MatSnackBar,
     private http: HttpClient,
     private offlineStorage: OfflineStorageService,
+    private dialog: MatDialog,
     public dialogRef: MatDialogRef<ProductEditDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: ProductEditData
   ) {}
@@ -228,42 +230,29 @@ export class ProductEditDialogComponent implements OnInit {
   onCategoryChange(value: string): void {
     if (value === '__NEW__') {
       // Reset selection to previous value
-      this.editForm.patchValue({ category: this.editForm.get('category')?.value || '' });
-      const newCategoryName = prompt('Enter new category name:');
-      if (newCategoryName && newCategoryName.trim()) {
-        const trimmed = newCategoryName.trim().toUpperCase();
-        if (this.categories.includes(trimmed)) {
-          this.snackBar.open('Category already exists', 'Close', { duration: 2000 });
-          this.editForm.patchValue({ category: trimmed });
-          return;
-        }
-        // Call API to create category
-        this.http.post<any>(`${this.apiUrl}/products/categories`, { name: trimmed }).subscribe({
-          next: (response) => {
-            const catName = response?.data?.name || response?.name || trimmed;
-            if (!this.categories.includes(catName)) {
-              this.categories.push(catName);
-              this.categories.sort();
-            }
-            this.editForm.patchValue({ category: catName });
-            // Update cache
-            try {
-              localStorage.setItem('cached_product_category_names', JSON.stringify(this.categories));
-            } catch (e) {}
-            this.snackBar.open(`Category "${catName}" created!`, 'Close', { duration: 2000 });
-          },
-          error: (err) => {
-            console.error('Failed to create category:', err);
-            // Still add locally even if API fails
-            if (!this.categories.includes(trimmed)) {
-              this.categories.push(trimmed);
-              this.categories.sort();
-            }
-            this.editForm.patchValue({ category: trimmed });
-            this.snackBar.open(`Category "${trimmed}" added locally`, 'Close', { duration: 2000 });
+      const prevValue = this.data.category || '';
+      this.editForm.patchValue({ category: prevValue });
+
+      const dialogRef = this.dialog.open(CategoryCreateDialogComponent, {
+        width: '420px',
+        maxWidth: '95vw',
+        data: { existingCategories: this.categories },
+        disableClose: false
+      });
+
+      dialogRef.afterClosed().subscribe((result: CategoryCreateDialogResult) => {
+        if (result?.name) {
+          if (!this.categories.includes(result.name)) {
+            this.categories.push(result.name);
+            this.categories.sort();
           }
-        });
-      }
+          this.editForm.patchValue({ category: result.name });
+          // Update cache
+          try {
+            localStorage.setItem('cached_product_category_names', JSON.stringify(this.categories));
+          } catch (e) {}
+        }
+      });
     }
   }
 

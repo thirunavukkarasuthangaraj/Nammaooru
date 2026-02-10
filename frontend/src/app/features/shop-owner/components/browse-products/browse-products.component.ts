@@ -8,6 +8,7 @@ import { environment } from '../../../../../environments/environment';
 import { ShopContextService } from '../../services/shop-context.service';
 import { ShopOwnerProductService } from '../../services/shop-owner-product.service';
 import { ProductAssignmentDialogComponent, ProductAssignmentData } from '../product-assignment-dialog/product-assignment-dialog.component';
+import { CategoryCreateDialogComponent, CategoryCreateDialogResult } from '../category-create-dialog/category-create-dialog.component';
 import { getImageUrl as getImageUrlUtil } from '../../../../core/utils/image-url.util';
 
 interface MasterProduct {
@@ -204,41 +205,27 @@ export class BrowseProductsComponent implements OnInit, OnDestroy {
     if (value === '__NEW__') {
       // Reset selection
       this.selectedCategory = '';
-      const newCategoryName = prompt('Enter new category name:');
-      if (newCategoryName && newCategoryName.trim()) {
-        const trimmed = newCategoryName.trim().toUpperCase();
-        if (this.categories.includes(trimmed)) {
-          this.snackBar.open('Category already exists', 'Close', { duration: 2000 });
-          this.selectedCategory = trimmed;
-          this.onCategoryChange();
-          return;
-        }
-        // Call API to create category
-        this.http.post<any>(`${this.apiUrl}/products/categories`, { name: trimmed }).subscribe({
-          next: (response) => {
-            const catName = response?.data?.name || response?.name || trimmed;
-            if (!this.categories.includes(catName)) {
-              this.categories.push(catName);
-              this.categories.sort();
-            }
-            this.selectedCategory = catName;
-            // Update cache
-            try {
-              localStorage.setItem('cached_product_category_names', JSON.stringify(this.categories));
-            } catch (e) {}
-            this.snackBar.open(`Category "${catName}" created!`, 'Close', { duration: 2000 });
-          },
-          error: (err) => {
-            console.error('Failed to create category:', err);
-            if (!this.categories.includes(trimmed)) {
-              this.categories.push(trimmed);
-              this.categories.sort();
-            }
-            this.selectedCategory = trimmed;
-            this.snackBar.open(`Category "${trimmed}" added locally`, 'Close', { duration: 2000 });
+
+      const dialogRef = this.dialog.open(CategoryCreateDialogComponent, {
+        width: '420px',
+        maxWidth: '95vw',
+        data: { existingCategories: this.categories },
+        disableClose: false
+      });
+
+      dialogRef.afterClosed().subscribe((result: CategoryCreateDialogResult) => {
+        if (result?.name) {
+          if (!this.categories.includes(result.name)) {
+            this.categories.push(result.name);
+            this.categories.sort();
           }
-        });
-      }
+          this.selectedCategory = result.name;
+          // Update cache
+          try {
+            localStorage.setItem('cached_product_category_names', JSON.stringify(this.categories));
+          } catch (e) {}
+        }
+      });
     } else {
       this.selectedCategory = value;
       this.onCategoryChange();
