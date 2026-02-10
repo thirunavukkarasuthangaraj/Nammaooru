@@ -161,7 +161,7 @@ export class OrderTrackingComponent implements OnInit, OnDestroy, AfterViewInit 
             this.loadTrackingData();
             
             // Set delivery location
-            if (this.assignment.deliveryLatitude && this.assignment.deliveryLongitude) {
+            if (this.assignment?.deliveryLatitude && this.assignment?.deliveryLongitude) {
               this.deliveryLocation = {
                 lat: this.assignment.deliveryLatitude,
                 lng: this.assignment.deliveryLongitude
@@ -169,9 +169,9 @@ export class OrderTrackingComponent implements OnInit, OnDestroy, AfterViewInit 
               this.mapCenter = this.deliveryLocation;
               this.addDeliveryLocationMarker();
             }
-            
+
             // Start live tracking for delivery partner
-            if (this.assignment.partnerId && this.isDeliveryInProgress()) {
+            if (this.assignment?.partnerId && this.isDeliveryInProgress()) {
               this.startLiveTracking();
             }
           } else {

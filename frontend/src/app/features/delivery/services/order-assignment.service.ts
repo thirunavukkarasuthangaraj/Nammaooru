@@ -75,7 +75,7 @@ export interface OrderAssignmentRequest {
   providedIn: 'root'
 })
 export class OrderAssignmentService {
-  private readonly apiUrl = `${environment.apiUrl}/delivery/assignments`;
+  private readonly apiUrl = `${environment.apiUrl}/assignments`;
 
   constructor(private http: HttpClient) {}
 
@@ -84,54 +84,8 @@ export class OrderAssignmentService {
     return this.http.post<ApiResponse<OrderAssignment>>(this.apiUrl, request);
   }
 
-  getAssignmentById(id: number): Observable<ApiResponse<OrderAssignment>> {
-    // Mock data for testing
-    const mockAssignment: OrderAssignment = {
-      id: id,
-      orderId: 12345,
-      orderNumber: 'ORD-2025-001',
-      partnerId: 1,
-      partnerName: 'Raj Kumar',
-      partnerPhone: '+91 9876543210',
-      assignedAt: new Date(),
-      assignmentType: 'AUTO',
-      status: 'IN_TRANSIT',
-      acceptedAt: new Date(Date.now() - 1800000), // 30 minutes ago
-      pickupTime: new Date(Date.now() - 1200000), // 20 minutes ago
-      deliveryLatitude: 12.9716,
-      deliveryLongitude: 77.5946,
-      deliveryFee: 45.00,
-      partnerCommission: 25.00,
-      currentLatitude: 12.9700,
-      currentLongitude: 77.5930,
-      lastLocationUpdate: new Date(Date.now() - 120000), // 2 minutes ago
-      distanceToDestination: 2.5,
-      estimatedArrivalTime: new Date(Date.now() + 900000), // 15 minutes from now
-      totalTimeMinutes: 45,
-      deliveryTimeMinutes: 25,
-      isDelayed: false,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      shopName: 'Raj Electronics',
-      customerName: 'Priya Sharma',
-      customerPhone: '+91 9123456789',
-      deliveryAddress: '123, MG Road, Bangalore, Karnataka 560001',
-      distance: 5.2,
-      estimatedTime: 15,
-      timeRemaining: 15
-    };
-
-    return new Observable(observer => {
-      setTimeout(() => {
-        observer.next({
-          statusCode: 'SUCCESS',
-          message: 'Assignment retrieved successfully',
-          data: mockAssignment,
-          timestamp: new Date().toISOString()
-        });
-        observer.complete();
-      }, 500); // Simulate network delay
-    });
+  getAssignmentById(id: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/${id}`);
   }
 
   getAssignmentsByOrder(orderId: number): Observable<ApiResponse<OrderAssignment[]>> {
@@ -154,38 +108,34 @@ export class OrderAssignmentService {
     return this.http.get<ApiResponse<OrderAssignment[]>>(`${this.apiUrl}/status/${status}`);
   }
 
-  // Partner Actions
-  acceptAssignment(assignmentId: number, partnerId: number): Observable<ApiResponse<OrderAssignment>> {
-    return this.http.put<ApiResponse<OrderAssignment>>(`${this.apiUrl}/${assignmentId}/accept`, { partnerId });
+  // Partner Actions - POST with query params to match backend @RequestParam
+  acceptAssignment(assignmentId: number, partnerId: number): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/${assignmentId}/accept?partnerId=${partnerId}`, {});
   }
 
-  rejectAssignment(assignmentId: number, partnerId: number, reason: string): Observable<ApiResponse<OrderAssignment>> {
-    return this.http.put<ApiResponse<OrderAssignment>>(`${this.apiUrl}/${assignmentId}/reject`, { 
-      partnerId, 
-      reason 
-    });
+  rejectAssignment(assignmentId: number, partnerId: number, reason: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/${assignmentId}/reject?partnerId=${partnerId}&reason=${encodeURIComponent(reason)}`, {});
   }
 
-  markPickedUp(assignmentId: number, partnerId: number): Observable<ApiResponse<OrderAssignment>> {
-    return this.http.put<ApiResponse<OrderAssignment>>(`${this.apiUrl}/${assignmentId}/pickup`, { partnerId });
+  markPickedUp(assignmentId: number, partnerId: number): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/${assignmentId}/pickup?partnerId=${partnerId}`, {});
   }
 
-  startDelivery(assignmentId: number, partnerId: number): Observable<ApiResponse<OrderAssignment>> {
-    return this.http.put<ApiResponse<OrderAssignment>>(`${this.apiUrl}/${assignmentId}/start-delivery`, { partnerId });
+  markDelivered(assignmentId: number, partnerId: number, notes?: string): Observable<any> {
+    let url = `${this.apiUrl}/${assignmentId}/deliver?partnerId=${partnerId}`;
+    if (notes) {
+      url += `&deliveryNotes=${encodeURIComponent(notes)}`;
+    }
+    return this.http.post<any>(url, {});
   }
 
-  completeDelivery(assignmentId: number, partnerId: number, notes?: string): Observable<ApiResponse<OrderAssignment>> {
-    return this.http.put<ApiResponse<OrderAssignment>>(`${this.apiUrl}/${assignmentId}/complete`, { 
-      partnerId, 
-      notes 
-    });
+  // Aliases for backward compatibility
+  startDelivery(assignmentId: number, partnerId: number): Observable<any> {
+    return this.markPickedUp(assignmentId, partnerId);
   }
 
-  markFailed(assignmentId: number, partnerId: number, reason: string): Observable<ApiResponse<OrderAssignment>> {
-    return this.http.put<ApiResponse<OrderAssignment>>(`${this.apiUrl}/${assignmentId}/fail`, { 
-      partnerId, 
-      reason 
-    });
+  completeDelivery(assignmentId: number, partnerId: number, notes?: string): Observable<any> {
+    return this.markDelivered(assignmentId, partnerId, notes);
   }
 
   // Admin Actions
