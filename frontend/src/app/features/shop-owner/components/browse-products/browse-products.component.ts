@@ -200,6 +200,51 @@ export class BrowseProductsComponent implements OnInit, OnDestroy {
     this.loadMasterProducts();
   }
 
+  onCategorySelectChange(value: string): void {
+    if (value === '__NEW__') {
+      // Reset selection
+      this.selectedCategory = '';
+      const newCategoryName = prompt('Enter new category name:');
+      if (newCategoryName && newCategoryName.trim()) {
+        const trimmed = newCategoryName.trim().toUpperCase();
+        if (this.categories.includes(trimmed)) {
+          this.snackBar.open('Category already exists', 'Close', { duration: 2000 });
+          this.selectedCategory = trimmed;
+          this.onCategoryChange();
+          return;
+        }
+        // Call API to create category
+        this.http.post<any>(`${this.apiUrl}/products/categories`, { name: trimmed }).subscribe({
+          next: (response) => {
+            const catName = response?.data?.name || response?.name || trimmed;
+            if (!this.categories.includes(catName)) {
+              this.categories.push(catName);
+              this.categories.sort();
+            }
+            this.selectedCategory = catName;
+            // Update cache
+            try {
+              localStorage.setItem('cached_product_category_names', JSON.stringify(this.categories));
+            } catch (e) {}
+            this.snackBar.open(`Category "${catName}" created!`, 'Close', { duration: 2000 });
+          },
+          error: (err) => {
+            console.error('Failed to create category:', err);
+            if (!this.categories.includes(trimmed)) {
+              this.categories.push(trimmed);
+              this.categories.sort();
+            }
+            this.selectedCategory = trimmed;
+            this.snackBar.open(`Category "${trimmed}" added locally`, 'Close', { duration: 2000 });
+          }
+        });
+      }
+    } else {
+      this.selectedCategory = value;
+      this.onCategoryChange();
+    }
+  }
+
   onPageChange(event: any): void {
     this.currentPage = event.pageIndex;
     this.pageSize = event.pageSize;
