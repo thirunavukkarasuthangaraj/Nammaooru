@@ -214,6 +214,11 @@ export class OrderAssignmentService {
     return this.http.get<any>(`${environment.apiUrl}/mobile/delivery-partner/orders/${partnerId}/active`);
   }
 
+  // Get delivery history for a delivery partner (DELIVERED, CANCELLED, etc.)
+  getDeliveryHistory(partnerId: number): Observable<any> {
+    return this.http.get<any>(`${environment.apiUrl}/mobile/delivery-partner/orders/${partnerId}/history`);
+  }
+
   updateOrderStatus(orderId: number, status: string): Observable<ApiResponse<OrderAssignment>> {
     return this.http.put<ApiResponse<OrderAssignment>>(`${this.apiUrl}/order/${orderId}/status`, { status });
   }

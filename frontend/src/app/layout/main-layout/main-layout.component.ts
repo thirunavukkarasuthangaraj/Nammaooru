@@ -7,6 +7,7 @@ import { OrderService } from '../../core/services/order.service';
 import { SoundService } from '../../core/services/sound.service';
 import { MenuPermissionService, MENU_PERMISSION_ROUTES } from '../../core/services/menu-permission.service';
 import { ShopContextService } from '../../features/shop-owner/services/shop-context.service';
+import { OrderAssignmentService } from '../../features/delivery/services/order-assignment.service';
 import { User, UserRole } from '../../core/models/auth.model';
 import { getImageUrl } from '../../core/utils/image-url.util';
 import { Observable, Subject, debounceTime, distinctUntilChanged, filter, interval } from 'rxjs';
@@ -89,7 +90,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       items: [
         { title: 'All Shops', icon: 'store', route: '/shops', badge: null },
         { title: 'Shop Master', icon: 'store', route: '/shops/master', badge: null },
-        { title: 'Shop Approvals', icon: 'check_circle', route: '/shops/approvals', badge: '3' }
+        { title: 'Shop Approvals', icon: 'check_circle', route: '/shops/approvals', badge: null }
       ]
     },
     {
@@ -104,14 +105,14 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     {
       category: 'Order Management',
       items: [
-        { title: 'All Orders', icon: 'receipt_long', route: '/orders', badge: '45' },
-        { title: 'Order Issues', icon: 'report_problem', route: '/orders/issues', badge: '3' }
+        { title: 'All Orders', icon: 'receipt_long', route: '/orders', badge: null },
+        { title: 'Order Issues', icon: 'report_problem', route: '/orders/issues', badge: null }
       ]
     },
     {
       category: 'Delivery Management',
       items: [
-        { title: 'Delivery Partners', icon: 'delivery_dining', route: '/delivery/admin/partners', badge: '5' },
+        { title: 'Delivery Partners', icon: 'delivery_dining', route: '/delivery/admin/partners', badge: null },
         { title: 'Order Assignments', icon: 'assignment', route: '/delivery/admin/assignments', badge: null },
         { title: 'Live Tracking', icon: 'gps_fixed', route: '/delivery/admin/tracking', badge: null },
         { title: 'Delivery Zones', icon: 'map', route: '/delivery/zones', badge: null },
@@ -149,7 +150,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
         { title: 'App Configuration', icon: 'tune', route: '/admin/config', badge: null },
         { title: 'Menu Permissions', icon: 'menu_open', route: '/admin/menu-permissions', badge: null },
         { title: 'Delivery Fee Management', icon: 'local_shipping', route: '/admin/delivery-fees', badge: null },
-        { title: 'Notifications', icon: 'notifications', route: '/notifications', badge: '8' },
+        { title: 'Notifications', icon: 'notifications', route: '/notifications', badge: null },
         { title: 'Audit Logs', icon: 'history', route: '/admin/audit', badge: null },
         { title: 'Backup & Restore', icon: 'backup', route: '/admin/backup', badge: null }
       ]
@@ -161,14 +162,14 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     {
       category: 'Order Management',
       items: [
-        { title: 'All Orders', icon: 'receipt_long', route: '/orders', badge: '12' }
+        { title: 'All Orders', icon: 'receipt_long', route: '/orders', badge: null }
       ]
     },
     {
       category: 'Thiru Software',
       items: [
         { title: 'Shop Master', icon: 'store', route: '/shops/master', badge: null },
-        { title: 'Shop Approvals', icon: 'check_circle', route: '/shops/approvals', badge: '3' }
+        { title: 'Shop Approvals', icon: 'check_circle', route: '/shops/approvals', badge: null }
       ]
     },
     {
@@ -189,7 +190,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     {
       category: 'Delivery Management',
       items: [
-        { title: 'Delivery Partners', icon: 'delivery_dining', route: '/delivery/admin/partners', badge: '5' },
+        { title: 'Delivery Partners', icon: 'delivery_dining', route: '/delivery/admin/partners', badge: null },
         { title: 'Order Assignments', icon: 'assignment', route: '/delivery/admin/assignments', badge: null },
         { title: 'Live Tracking', icon: 'gps_fixed', route: '/delivery/admin/tracking', badge: null }
       ]
@@ -212,7 +213,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       category: 'System',
       items: [
         { title: 'Settings', icon: 'settings', route: '/settings', badge: null },
-        { title: 'Notifications', icon: 'notifications', route: '/notifications', badge: '8' }
+        { title: 'Notifications', icon: 'notifications', route: '/notifications', badge: null }
       ]
     }
   ];
@@ -222,33 +223,33 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     {
       category: 'Order Management',
       items: [
-        { title: 'Active Orders', icon: 'receipt_long', route: '/orders', badge: '12' },
-        { title: 'Order Processing', icon: 'assignment_turned_in', route: '/manager/orders/processing', badge: '5' },
-        { title: 'Issue Resolution', icon: 'support', route: '/manager/orders/issues', badge: '3' }
+        { title: 'Active Orders', icon: 'receipt_long', route: '/orders', badge: null },
+        { title: 'Order Processing', icon: 'assignment_turned_in', route: '/manager/orders/processing', badge: null },
+        { title: 'Issue Resolution', icon: 'support', route: '/manager/orders/issues', badge: null }
       ]
     },
     {
       category: 'Shop Operations',
       items: [
         { title: 'Shop Performance', icon: 'trending_up', route: '/manager/shops/performance', badge: null },
-        { title: 'Shop Issues', icon: 'report_problem', route: '/manager/shops/issues', badge: '2' },
+        { title: 'Shop Issues', icon: 'report_problem', route: '/manager/shops/issues', badge: null },
         { title: 'Shop Reviews', icon: 'rate_review', route: '/manager/shops/reviews', badge: null }
       ]
     },
     {
       category: 'Delivery Operations',
       items: [
-        { title: 'Delivery Partners', icon: 'delivery_dining', route: '/delivery/admin/partners', badge: '5' },
+        { title: 'Delivery Partners', icon: 'delivery_dining', route: '/delivery/admin/partners', badge: null },
         { title: 'Live Tracking', icon: 'gps_fixed', route: '/delivery/admin/tracking', badge: null },
-        { title: 'Delivery Issues', icon: 'local_shipping', route: '/manager/delivery/issues', badge: '1' }
+        { title: 'Delivery Issues', icon: 'local_shipping', route: '/manager/delivery/issues', badge: null }
       ]
     },
     {
       category: 'Customer Service',
       items: [
-        { title: 'Customer Support', icon: 'support_agent', route: '/manager/support', badge: '8' },
-        { title: 'Complaints', icon: 'feedback', route: '/manager/complaints', badge: '4' },
-        { title: 'Refunds', icon: 'money_off', route: '/manager/refunds', badge: '2' }
+        { title: 'Customer Support', icon: 'support_agent', route: '/manager/support', badge: null },
+        { title: 'Complaints', icon: 'feedback', route: '/manager/complaints', badge: null },
+        { title: 'Refunds', icon: 'money_off', route: '/manager/refunds', badge: null }
       ]
     },
     {
@@ -314,13 +315,13 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     {
       category: 'Main',
       items: [
-        { title: 'My Orders', icon: 'local_shipping', route: '/delivery/partner/orders', badge: '3' }
+        { title: 'My Orders', icon: 'local_shipping', route: '/delivery/partner/orders', badge: null as string | null }
       ]
     },
     {
       category: 'Delivery',
       items: [
-        { title: 'Available Orders', icon: 'assignment', route: '/delivery/partner/available', badge: '12' },
+        { title: 'Available Orders', icon: 'assignment', route: '/delivery/partner/available', badge: null as string | null },
         { title: 'My Deliveries', icon: 'delivery_dining', route: '/delivery/partner/deliveries', badge: null },
         { title: 'Earnings', icon: 'payments', route: '/delivery/partner/earnings', badge: null },
         { title: 'Performance', icon: 'trending_up', route: '/delivery/partner/performance', badge: null }
@@ -448,7 +449,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     private orderService: OrderService,
     private soundService: SoundService,
     private menuPermissionService: MenuPermissionService,
-    private shopContext: ShopContextService
+    private shopContext: ShopContextService,
+    private orderAssignmentService: OrderAssignmentService
   ) {
     this.currentUser$ = this.authService.currentUser$;
   }
@@ -461,6 +463,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     this.loadNotifications();
     this.loadMenuPermissions();
     this.loadShopInfo();
+    this.loadDeliveryPartnerBadges();
 
     // Subscribe to menu permissions changes
     this.menuPermissionService.menuPermissions$
@@ -499,6 +502,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
         this.loadNotifications();
+        this.loadDeliveryPartnerBadges();
       });
   }
 
@@ -602,6 +606,43 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
         (notifItem as any).badge = this.unreadNotificationCount > 0 ? String(this.unreadNotificationCount) : null;
       }
     }
+  }
+
+  private loadDeliveryPartnerBadges(): void {
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser || !this.authService.isAuthenticated()) return;
+    if (currentUser.role !== 'DELIVERY_PARTNER' && (currentUser.role as any) !== UserRole.DELIVERY_PARTNER) return;
+
+    const partnerId = currentUser.id;
+
+    // Load active orders count (My Orders badge)
+    this.orderAssignmentService.getActiveOrdersForPartner(partnerId)
+      .pipe(takeUntil(this.destroy$), catchError(() => of({ success: false, orders: [] })))
+      .subscribe((response: any) => {
+        const count = response?.orders?.length || 0;
+        const mainCategory = this.deliveryPartnerMenuItems.find(c => c.category === 'Main');
+        if (mainCategory) {
+          const myOrdersItem = mainCategory.items.find(i => i.title === 'My Orders');
+          if (myOrdersItem) {
+            myOrdersItem.badge = count > 0 ? String(count) : null;
+          }
+        }
+      });
+
+    // Load available orders count (Available Orders badge)
+    this.orderAssignmentService.getAvailableOrdersForPartner(partnerId)
+      .pipe(takeUntil(this.destroy$), catchError(() => of({ success: false, orders: [] })))
+      .subscribe((response: any) => {
+        const orders = response?.orders || response?.data || [];
+        const count = Array.isArray(orders) ? orders.length : 0;
+        const deliveryCategory = this.deliveryPartnerMenuItems.find(c => c.category === 'Delivery');
+        if (deliveryCategory) {
+          const availableItem = deliveryCategory.items.find(i => i.title === 'Available Orders');
+          if (availableItem) {
+            availableItem.badge = count > 0 ? String(count) : null;
+          }
+        }
+      });
   }
 
   private isRecentOrder(order: any): boolean {

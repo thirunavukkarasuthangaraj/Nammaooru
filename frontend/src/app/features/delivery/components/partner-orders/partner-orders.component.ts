@@ -1,4 +1,5 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Subject, takeUntil, interval } from 'rxjs';
 import { OrderAssignmentService } from '../../services/order-assignment.service';
@@ -50,24 +51,34 @@ export class PartnerOrdersComponent implements OnInit, OnDestroy {
   isLoading = true;
   partnerId: number | null = null;
   processingOrderId: string | null = null;
+  selectedOrderId: string | null = null;
+  isHistoryMode = false;
+  pageTitle = 'My Orders';
   private destroy$ = new Subject<void>();
 
   constructor(
     private orderAssignmentService: OrderAssignmentService,
     private authService: AuthService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
+    // Detect if we're on the deliveries (history) route
+    this.isHistoryMode = this.router.url.includes('/deliveries');
+    this.pageTitle = this.isHistoryMode ? 'My Deliveries' : 'My Orders';
+
     const user = this.authService.getCurrentUser();
     if (user) {
       this.partnerId = user.id;
       this.loadOrders();
 
-      // Auto-refresh every 30 seconds
-      interval(30000)
-        .pipe(takeUntil(this.destroy$))
-        .subscribe(() => this.loadOrders());
+      // Auto-refresh every 30 seconds (only for active orders)
+      if (!this.isHistoryMode) {
+        interval(30000)
+          .pipe(takeUntil(this.destroy$))
+          .subscribe(() => this.loadOrders());
+      }
     } else {
       this.isLoading = false;
     }
@@ -81,7 +92,11 @@ export class PartnerOrdersComponent implements OnInit, OnDestroy {
   loadOrders(): void {
     if (!this.partnerId) return;
 
-    this.orderAssignmentService.getActiveOrdersForPartner(this.partnerId).subscribe({
+    const apiCall = this.isHistoryMode
+      ? this.orderAssignmentService.getDeliveryHistory(this.partnerId)
+      : this.orderAssignmentService.getActiveOrdersForPartner(this.partnerId);
+
+    apiCall.subscribe({
       next: (response) => {
         if (response.success && response.orders) {
           this.orders = response.orders.map((o: any) => ({
@@ -207,6 +222,14 @@ export class PartnerOrdersComponent implements OnInit, OnDestroy {
           this.processingOrderId = null;
         }
       });
+  }
+
+  selectOrder(orderId: string): void {
+    this.selectedOrderId = this.selectedOrderId === orderId ? null : orderId;
+  }
+
+  isSelected(orderId: string): boolean {
+    return this.selectedOrderId === orderId;
   }
 
   getPaymentLabel(method: string): string {
