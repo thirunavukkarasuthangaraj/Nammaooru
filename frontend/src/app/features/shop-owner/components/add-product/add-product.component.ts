@@ -10,8 +10,10 @@ import { AuthService } from '@core/services/auth.service';
 import { OfflineStorageService, OfflineProductCreation } from '@core/services/offline-storage.service';
 import { MasterProductRequest, ShopProductRequest, ProductCategory, ProductStatus, ShopProductStatus } from '@core/models/product.model';
 import { Shop, BusinessType, ShopStatus } from '@core/models/shop.model';
+import { HttpClient } from '@angular/common/http';
 import { forkJoin, of } from 'rxjs';
 import { switchMap, catchError, map } from 'rxjs/operators';
+import { environment as envConfig } from '../../../../../environments/environment';
 
 @Component({
   selector: 'app-add-product',
@@ -58,9 +60,12 @@ import { switchMap, catchError, map } from 'rxjs/operators';
               <div class="form-row">
                 <mat-form-field appearance="outline" class="half-width">
                   <mat-label>Category</mat-label>
-                  <mat-select formControlName="category">
+                  <mat-select formControlName="category" (selectionChange)="onCategorySelectChange($event.value)">
                     <mat-option *ngFor="let category of productCategories" [value]="category.id">
                       {{ category.name }}
+                    </mat-option>
+                    <mat-option [value]="'__NEW__'" class="add-new-category-option">
+                      <mat-icon>add</mat-icon> + Add New Category
                     </mat-option>
                   </mat-select>
                   <mat-error *ngIf="productForm.get('category')?.hasError('required')">
@@ -605,7 +610,8 @@ export class AddProductComponent implements OnInit {
     private shopService: ShopService,
     private categoryService: ProductCategoryService,
     private authService: AuthService,
-    private offlineStorage: OfflineStorageService
+    private offlineStorage: OfflineStorageService,
+    private httpClient: HttpClient
   ) {
     this.productForm = this.fb.group({
       name: ['', Validators.required],
@@ -840,6 +846,55 @@ export class AddProductComponent implements OnInit {
     }
     this.productCategories = this.getDefaultCategories();
     console.log('Using default categories');
+  }
+
+  onCategorySelectChange(value: any): void {
+    if (value === '__NEW__') {
+      // Reset selection to previous value
+      this.productForm.patchValue({ category: '' });
+      const newCategoryName = prompt('Enter new category name:');
+      if (newCategoryName && newCategoryName.trim()) {
+        const trimmed = newCategoryName.trim().toUpperCase();
+        // Check if already exists
+        const existing = this.productCategories.find(c => c.name.toUpperCase() === trimmed);
+        if (existing) {
+          this.snackBar.open('Category already exists', 'Close', { duration: 2000 });
+          this.productForm.patchValue({ category: existing.id });
+          return;
+        }
+        // Call API to create category
+        this.httpClient.post<any>(`${envConfig.apiUrl}/products/categories`, { name: trimmed }).subscribe({
+          next: (response) => {
+            const newCat = response?.data || response;
+            const categoryObj: ProductCategory = {
+              id: newCat.id,
+              name: newCat.name || trimmed,
+              description: newCat.description || '',
+              slug: newCat.slug || trimmed.toLowerCase().replace(/\s+/g, '-'),
+              fullPath: newCat.name || trimmed,
+              isActive: true,
+              createdBy: 'system',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              subcategories: [],
+              hasSubcategories: false,
+              isRootCategory: true,
+              productCount: 0,
+              subcategoryCount: 0
+            };
+            this.productCategories.push(categoryObj);
+            this.productCategories.sort((a, b) => a.name.localeCompare(b.name));
+            this.productForm.patchValue({ category: categoryObj.id });
+            this.cacheCategories(this.productCategories);
+            this.snackBar.open(`Category "${categoryObj.name}" created!`, 'Close', { duration: 2000 });
+          },
+          error: (err) => {
+            console.error('Failed to create category:', err);
+            this.snackBar.open('Failed to create category. Please try again.', 'Close', { duration: 3000 });
+          }
+        });
+      }
+    }
   }
 
   private loadProductForEdit(productId: number): void {

@@ -171,11 +171,12 @@
               <select class="cell-input category-dropdown"
                       [class.modified]="isCellModified(product, 'category')"
                       [value]="product.category || ''"
-                      (change)="onCategoryFieldChange(product, $any($event.target).value)">
+                      (change)="onCategoryDropdownChange(product, $any($event.target))">
                 <option value="">-</option>
                 <option *ngFor="let cat of categories" [value]="cat" [selected]="product.category === cat">
                   {{ cat }}
                 </option>
+                <option value="__NEW__" style="color: #4caf50; font-weight: bold;">+ Add New Category</option>
               </select>
             </td>
 
