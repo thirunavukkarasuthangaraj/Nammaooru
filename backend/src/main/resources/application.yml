@@ -95,12 +95,14 @@ management:
 
 logging:
   level:
-    com.shopmanagement: ${LOG_LEVEL_APP:INFO}
-    org.springframework.security: WARN
-    org.hibernate.SQL: ${HIBERNATE_SQL_LOG:WARN}
-    org.hibernate.type.descriptor.sql.BasicBinder: WARN
-    org.hibernate: WARN
-    org.springframework: ${LOG_LEVEL_SPRING:INFO}
+    root: ${LOG_LEVEL_ROOT:ERROR}
+    com.shopmanagement: ${LOG_LEVEL_APP:ERROR}
+    org.springframework.security: ERROR
+    org.hibernate.SQL: ${HIBERNATE_SQL_LOG:ERROR}
+    org.hibernate.type.descriptor.sql.BasicBinder: ERROR
+    org.hibernate: ERROR
+    org.springframework: ${LOG_LEVEL_SPRING:ERROR}
+    org.springframework.boot: ${LOG_LEVEL_SPRING_BOOT:WARN}
   pattern:
     console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
   file:
