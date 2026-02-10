@@ -13,6 +13,11 @@ import { DeliveryAnalyticsComponent } from './components/delivery-analytics/deli
 import { SimpleDocumentViewerComponent } from './components/simple-document-viewer/simple-document-viewer.component';
 import { OrderAssignmentsComponent } from './components/order-assignments/order-assignments.component';
 import { PartnerPaymentsComponent } from './components/partner-payments/partner-payments.component';
+import { AvailableOrdersComponent } from './components/available-orders/available-orders.component';
+import { EarningsOverviewComponent } from './components/earnings-overview/earnings-overview.component';
+import { DeliveryPartnerDocumentsComponent } from './components/delivery-partner-documents/delivery-partner-documents.component';
+import { PartnerPlaceholderComponent } from './components/partner-placeholder/partner-placeholder.component';
+import { UserRole } from '../../core/models/auth.model';
 
 const routes: Routes = [
   {
@@ -30,8 +35,8 @@ const routes: Routes = [
     path: 'partner/dashboard',
     component: DeliveryPartnerDashboardComponent,
     canActivate: [AuthGuard, RoleGuard],
-    data: { 
-      expectedRoles: ['SUPER_ADMIN', 'DELIVERY_PARTNER'],
+    data: {
+      roles: [UserRole.SUPER_ADMIN, UserRole.DELIVERY_PARTNER],
       title: 'Delivery Partner Dashboard'
     }
   },
@@ -39,17 +44,98 @@ const routes: Routes = [
     path: 'partner/orders',
     component: PartnerOrdersComponent,
     canActivate: [AuthGuard, RoleGuard],
-    data: { 
-      expectedRoles: ['SUPER_ADMIN', 'DELIVERY_PARTNER'],
+    data: {
+      roles: [UserRole.SUPER_ADMIN, UserRole.DELIVERY_PARTNER],
       title: 'My Orders'
+    }
+  },
+  {
+    path: 'partner/available',
+    component: AvailableOrdersComponent,
+    canActivate: [AuthGuard, RoleGuard],
+    data: {
+      roles: [UserRole.SUPER_ADMIN, UserRole.DELIVERY_PARTNER],
+      title: 'Available Orders'
+    }
+  },
+  {
+    path: 'partner/deliveries',
+    component: PartnerOrdersComponent,
+    canActivate: [AuthGuard, RoleGuard],
+    data: {
+      roles: [UserRole.SUPER_ADMIN, UserRole.DELIVERY_PARTNER],
+      title: 'My Deliveries'
+    }
+  },
+  {
+    path: 'partner/earnings',
+    component: EarningsOverviewComponent,
+    canActivate: [AuthGuard, RoleGuard],
+    data: {
+      roles: [UserRole.SUPER_ADMIN, UserRole.DELIVERY_PARTNER],
+      title: 'Earnings'
+    }
+  },
+  {
+    path: 'partner/performance',
+    component: PartnerPlaceholderComponent,
+    canActivate: [AuthGuard, RoleGuard],
+    data: {
+      roles: [UserRole.SUPER_ADMIN, UserRole.DELIVERY_PARTNER],
+      title: 'Performance'
+    }
+  },
+  {
+    path: 'partner/profile',
+    component: PartnerPlaceholderComponent,
+    canActivate: [AuthGuard, RoleGuard],
+    data: {
+      roles: [UserRole.SUPER_ADMIN, UserRole.DELIVERY_PARTNER],
+      title: 'Profile'
+    }
+  },
+  {
+    path: 'partner/documents',
+    component: DeliveryPartnerDocumentsComponent,
+    canActivate: [AuthGuard, RoleGuard],
+    data: {
+      roles: [UserRole.SUPER_ADMIN, UserRole.DELIVERY_PARTNER],
+      title: 'Documents'
+    }
+  },
+  {
+    path: 'partner/vehicle',
+    component: PartnerPlaceholderComponent,
+    canActivate: [AuthGuard, RoleGuard],
+    data: {
+      roles: [UserRole.SUPER_ADMIN, UserRole.DELIVERY_PARTNER],
+      title: 'Vehicle Info'
+    }
+  },
+  {
+    path: 'partner/help',
+    component: PartnerPlaceholderComponent,
+    canActivate: [AuthGuard, RoleGuard],
+    data: {
+      roles: [UserRole.SUPER_ADMIN, UserRole.DELIVERY_PARTNER],
+      title: 'Help Center'
+    }
+  },
+  {
+    path: 'partner/emergency',
+    component: PartnerPlaceholderComponent,
+    canActivate: [AuthGuard, RoleGuard],
+    data: {
+      roles: [UserRole.SUPER_ADMIN, UserRole.DELIVERY_PARTNER],
+      title: 'Emergency'
     }
   },
   {
     path: 'admin/partners',
     component: AdminPartnersComponent,
     canActivate: [AuthGuard, RoleGuard],
-    data: { 
-      expectedRoles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER'],
+    data: {
+      roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN],
       title: 'Manage Partners'
     }
   },
@@ -63,7 +149,7 @@ const routes: Routes = [
     component: DeliveryAnalyticsComponent,
     canActivate: [AuthGuard, RoleGuard],
     data: {
-      expectedRoles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER'],
+      roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN],
       title: 'Delivery Analytics'
     }
   },
@@ -78,16 +164,16 @@ const routes: Routes = [
     component: OrderAssignmentsComponent,
     canActivate: [AuthGuard, RoleGuard],
     data: {
-      expectedRoles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER'],
+      roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN],
       title: 'Order Assignments'
     }
   },
   {
     path: 'admin/tracking',
-    component: AdminTrackingComponent, // Live tracking dashboard for admins
+    component: AdminTrackingComponent,
     canActivate: [AuthGuard, RoleGuard],
     data: {
-      expectedRoles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER'],
+      roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN],
       title: 'Live Tracking Dashboard'
     }
   },
@@ -96,7 +182,7 @@ const routes: Routes = [
     component: PartnerPaymentsComponent,
     canActivate: [AuthGuard, RoleGuard],
     data: {
-      expectedRoles: ['SUPER_ADMIN', 'ADMIN'],
+      roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN],
       title: 'Partner Payments'
     }
   },
