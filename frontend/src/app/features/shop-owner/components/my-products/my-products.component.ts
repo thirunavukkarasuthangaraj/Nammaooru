@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, OnDestroy, ElementRef, AfterViewInit } from '@angular/core';
+import { Component, OnInit, ViewChild, OnDestroy, ElementRef, AfterViewInit, AfterViewChecked } from '@angular/core';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
@@ -66,7 +66,7 @@ interface ShopProduct {
   templateUrl: './my-products.component.html',
   styleUrls: ['./my-products.component.scss']
 })
-export class MyProductsComponent implements OnInit, OnDestroy {
+export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
   private destroy$ = new Subject<void>();
   private searchSubject$ = new Subject<string>();
   private apiUrl = environment.apiUrl;
@@ -74,6 +74,7 @@ export class MyProductsComponent implements OnInit, OnDestroy {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
   @ViewChild('scrollableContent') scrollableContent!: ElementRef;
+  @ViewChild('searchInput') searchInput!: ElementRef<HTMLInputElement>;
 
   // Product data
   products: ShopProduct[] = [];
@@ -179,6 +180,13 @@ export class MyProductsComponent implements OnInit, OnDestroy {
       this.displayLimit += this.LOAD_INCREMENT;
       this.loadingMore = false;
     }, 100);
+  }
+
+  ngAfterViewInit(): void {
+    // Auto-focus search box when page loads (e.g., after creating a product)
+    setTimeout(() => {
+      this.searchInput?.nativeElement?.focus();
+    }, 300);
   }
 
   ngOnInit(): void {

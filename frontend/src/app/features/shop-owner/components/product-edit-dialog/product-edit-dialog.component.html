@@ -142,7 +142,7 @@
             {{ cat }}
           </mat-option>
           <mat-option value="__NEW__" class="add-new-category-option">
-            <mat-icon>add</mat-icon> + Add New Category
+            <mat-icon>add</mat-icon> Add New Category
           </mat-option>
         </mat-select>
         <mat-icon matPrefix>category</mat-icon>
@@ -177,25 +177,49 @@
 
     <!-- Barcodes Section -->
     <div class="form-row">
-      <mat-form-field appearance="outline">
-        <mat-label>Barcode 1</mat-label>
-        <input matInput formControlName="barcode1" placeholder="Primary barcode">
-        <mat-icon matPrefix>qr_code</mat-icon>
-      </mat-form-field>
+      <div class="barcode-field-group">
+        <mat-form-field appearance="outline">
+          <mat-label>Barcode 1</mat-label>
+          <input matInput formControlName="barcode1" placeholder="Primary barcode">
+          <mat-icon matPrefix>qr_code</mat-icon>
+        </mat-form-field>
+        <button mat-mini-fab color="accent" type="button"
+                class="generate-single-btn"
+                (click)="generateSingleBarcode('barcode1')"
+                matTooltip="Generate Barcode 1">
+          <mat-icon>autorenew</mat-icon>
+        </button>
+      </div>
 
-      <mat-form-field appearance="outline">
-        <mat-label>Barcode 2</mat-label>
-        <input matInput formControlName="barcode2" placeholder="Secondary barcode">
-        <mat-icon matPrefix>qr_code</mat-icon>
-      </mat-form-field>
+      <div class="barcode-field-group">
+        <mat-form-field appearance="outline">
+          <mat-label>Barcode 2</mat-label>
+          <input matInput formControlName="barcode2" placeholder="Secondary barcode">
+          <mat-icon matPrefix>qr_code</mat-icon>
+        </mat-form-field>
+        <button mat-mini-fab color="accent" type="button"
+                class="generate-single-btn"
+                (click)="generateSingleBarcode('barcode2')"
+                matTooltip="Generate Barcode 2">
+          <mat-icon>autorenew</mat-icon>
+        </button>
+      </div>
     </div>
 
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Barcode 3</mat-label>
-      <input matInput formControlName="barcode3" placeholder="Tertiary barcode (optional)">
-      <mat-icon matPrefix>qr_code</mat-icon>
-      <mat-hint>Additional barcode for different packaging or supplier codes</mat-hint>
-    </mat-form-field>
+    <div class="barcode-field-group full-width">
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Barcode 3</mat-label>
+        <input matInput formControlName="barcode3" placeholder="Tertiary barcode (optional)">
+        <mat-icon matPrefix>qr_code</mat-icon>
+        <mat-hint>Additional barcode for different packaging or supplier codes</mat-hint>
+      </mat-form-field>
+      <button mat-mini-fab color="accent" type="button"
+              class="generate-single-btn"
+              (click)="generateSingleBarcode('barcode3')"
+              matTooltip="Generate Barcode 3">
+        <mat-icon>autorenew</mat-icon>
+      </button>
+    </div>
   </form>
 </mat-dialog-content>
 

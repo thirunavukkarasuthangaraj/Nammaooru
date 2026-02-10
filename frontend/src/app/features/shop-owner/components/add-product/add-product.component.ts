@@ -67,7 +67,7 @@ import { CategoryCreateDialogComponent, CategoryCreateDialogResult, syncOfflineC
                       {{ category.name }}
                     </mat-option>
                     <mat-option [value]="'__NEW__'" class="add-new-category-option">
-                      <mat-icon>add</mat-icon> + Add New Category
+                      <mat-icon>add</mat-icon> Add New Category
                     </mat-option>
                   </mat-select>
                   <mat-error *ngIf="productForm.get('category')?.hasError('required')">
@@ -212,38 +212,50 @@ import { CategoryCreateDialogComponent, CategoryCreateDialogResult, syncOfflineC
 
             <!-- Barcodes Section -->
             <div class="form-section">
-              <div class="section-header-row">
-                <h3 class="section-title">Product Barcodes</h3>
-                <button mat-stroked-button type="button" class="generate-barcode-btn" (click)="generateBarcodes()">
-                  <mat-icon>autorenew</mat-icon>
-                  Generate Barcodes
-                </button>
-              </div>
+              <h3 class="section-title">Product Barcodes</h3>
 
               <div class="form-row">
-                <mat-form-field appearance="outline" class="third-width">
-                  <mat-label>Barcode 1</mat-label>
-                  <input matInput formControlName="barcode1" placeholder="Primary barcode (optional)"
-                         #barcode1Input
-                         (keydown.enter)="onBarcodeEnter($event, 'barcode2')">
-                  <mat-icon matPrefix>qr_code</mat-icon>
-                </mat-form-field>
+                <div class="barcode-field-group third-width">
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Barcode 1</mat-label>
+                    <input matInput formControlName="barcode1" placeholder="Primary barcode (optional)"
+                           #barcode1Input
+                           (keydown.enter)="onBarcodeEnter($event, 'barcode2')">
+                    <mat-icon matPrefix>qr_code</mat-icon>
+                  </mat-form-field>
+                  <button mat-mini-fab type="button" class="generate-single-btn" color="primary"
+                          (click)="generateSingleBarcode('barcode1')" matTooltip="Generate Barcode 1">
+                    <mat-icon>autorenew</mat-icon>
+                  </button>
+                </div>
 
-                <mat-form-field appearance="outline" class="third-width">
-                  <mat-label>Barcode 2</mat-label>
-                  <input matInput formControlName="barcode2" placeholder="Secondary barcode (optional)"
-                         #barcode2Input
-                         (keydown.enter)="onBarcodeEnter($event, 'barcode3')">
-                  <mat-icon matPrefix>qr_code</mat-icon>
-                </mat-form-field>
+                <div class="barcode-field-group third-width">
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Barcode 2</mat-label>
+                    <input matInput formControlName="barcode2" placeholder="Secondary barcode (optional)"
+                           #barcode2Input
+                           (keydown.enter)="onBarcodeEnter($event, 'barcode3')">
+                    <mat-icon matPrefix>qr_code</mat-icon>
+                  </mat-form-field>
+                  <button mat-mini-fab type="button" class="generate-single-btn" color="primary"
+                          (click)="generateSingleBarcode('barcode2')" matTooltip="Generate Barcode 2">
+                    <mat-icon>autorenew</mat-icon>
+                  </button>
+                </div>
 
-                <mat-form-field appearance="outline" class="third-width">
-                  <mat-label>Barcode 3</mat-label>
-                  <input matInput formControlName="barcode3" placeholder="Tertiary barcode (optional)"
-                         #barcode3Input
-                         (keydown.enter)="onBarcodeEnter($event, 'done')">
-                  <mat-icon matPrefix>qr_code</mat-icon>
-                </mat-form-field>
+                <div class="barcode-field-group third-width">
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Barcode 3</mat-label>
+                    <input matInput formControlName="barcode3" placeholder="Tertiary barcode (optional)"
+                           #barcode3Input
+                           (keydown.enter)="onBarcodeEnter($event, 'done')">
+                    <mat-icon matPrefix>qr_code</mat-icon>
+                  </mat-form-field>
+                  <button mat-mini-fab type="button" class="generate-single-btn" color="primary"
+                          (click)="generateSingleBarcode('barcode3')" matTooltip="Generate Barcode 3">
+                    <mat-icon>autorenew</mat-icon>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -397,30 +409,28 @@ import { CategoryCreateDialogComponent, CategoryCreateDialogResult, syncOfflineC
       border-bottom: 2px solid #e5e7eb;
     }
 
-    .section-header-row {
+    .barcode-field-group {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 16px;
+      align-items: flex-start;
+      gap: 6px;
     }
 
-    .section-header-row .section-title {
-      margin: 0;
-      padding-bottom: 0;
-      border-bottom: none;
+    .barcode-field-group mat-form-field {
+      flex: 1;
     }
 
-    .generate-barcode-btn {
-      color: #4caf50;
-      border-color: #4caf50;
+    .generate-single-btn {
+      margin-top: 4px;
+      width: 32px !important;
+      height: 32px !important;
+      min-width: 32px !important;
+      min-height: 32px !important;
     }
 
-    .generate-barcode-btn:hover {
-      background-color: rgba(76, 175, 80, 0.1);
-    }
-
-    .generate-barcode-btn mat-icon {
-      margin-right: 4px;
+    .generate-single-btn mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
     }
 
     .form-row {
@@ -1021,6 +1031,29 @@ export class AddProductComponent implements OnInit {
     const prefix = name.substring(0, 3).toUpperCase();
     const timestamp = Date.now().toString().slice(-6);
     return `${prefix}${timestamp}`;
+  }
+
+  /**
+   * Generate a random barcode for a single field
+   */
+  async generateSingleBarcode(field: 'barcode1' | 'barcode2' | 'barcode3'): Promise<void> {
+    let barcode = '';
+    let attempts = 0;
+    const maxAttempts = 10;
+
+    while (attempts < maxAttempts) {
+      barcode = this.generateRandomBarcode();
+      const exists = await this.offlineStorage.isBarcodeExists(barcode);
+      if (!exists) break;
+      attempts++;
+    }
+
+    if (attempts >= maxAttempts) {
+      this.snackBar.open('Could not generate unique barcode. Please try again.', 'Close', { duration: 3000 });
+      return;
+    }
+
+    this.productForm.patchValue({ [field]: barcode });
   }
 
   /**

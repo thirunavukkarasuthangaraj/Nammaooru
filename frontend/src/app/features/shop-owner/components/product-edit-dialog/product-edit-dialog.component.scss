@@ -53,6 +53,31 @@
     }
   }
 
+  .barcode-field-group {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    flex: 1;
+
+    mat-form-field {
+      flex: 1;
+    }
+
+    .generate-single-btn {
+      width: 32px;
+      height: 32px;
+      min-height: 32px;
+      margin-top: 8px;
+
+      .mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+        line-height: 18px;
+      }
+    }
+  }
+
   .availability-toggle {
     flex: 1;
     display: flex;

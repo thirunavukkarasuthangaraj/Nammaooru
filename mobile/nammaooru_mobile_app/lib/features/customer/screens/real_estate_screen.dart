@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../../core/theme/village_theme.dart';
+import '../../../core/config/api_config.dart';
+import '../../../core/utils/image_url_helper.dart';
+import '../../../core/config/env_config.dart';
 import '../services/real_estate_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -157,6 +160,23 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
       default:
         return type;
     }
+  }
+
+  String _getFullImageUrl(String? path) {
+    if (path == null || path.trim().isEmpty) return '';
+    return ImageUrlHelper.getFullImageUrl(path.trim());
+  }
+
+  List<String> _getImageUrls(Map<String, dynamic> listing) {
+    final images = listing['images'];
+    if (images == null) return [];
+    if (images is List) {
+      return images.where((img) => img != null && img.toString().trim().isNotEmpty)
+          .map<String>((img) => _getFullImageUrl(img.toString().trim()))
+          .where((url) => url.isNotEmpty)
+          .toList();
+    }
+    return [];
   }
 
   List<Map<String, dynamic>> get _filteredListings {
@@ -683,82 +703,8 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image placeholder
-            Container(
-              height: 180,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-              ),
-              child: Stack(
-                children: [
-                  Center(
-                    child: Icon(
-                      listing['type'] == 'Land' ? Icons.landscape : Icons.home,
-                      size: 64,
-                      color: Colors.grey[500],
-                    ),
-                  ),
-                  // Type badge
-                  Positioned(
-                    top: 12,
-                    left: 12,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: isForSale ? Colors.green : Colors.blue,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        listing['listingType'],
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                  // Property type badge
-                  Positioned(
-                    top: 12,
-                    right: 12,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        listing['type'],
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ),
-                  // Save button
-                  Positioned(
-                    bottom: 12,
-                    right: 12,
-                    child: CircleAvatar(
-                      backgroundColor: Colors.white,
-                      radius: 18,
-                      child: IconButton(
-                        icon: const Icon(Icons.favorite_border, size: 18),
-                        color: Colors.grey[600],
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Saved to favorites')),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            // Property image carousel
+            _buildImageCarousel(listing, isForSale),
             // Details
             Padding(
               padding: const EdgeInsets.all(16),
@@ -844,6 +790,108 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
     );
   }
 
+  Widget _buildImageCarousel(Map<String, dynamic> listing, bool isForSale) {
+    final imageUrls = _getImageUrls(listing);
+    return Container(
+      height: 180,
+      decoration: BoxDecoration(
+        color: Colors.grey[300],
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      child: Stack(
+        children: [
+          // Image carousel or placeholder
+          if (imageUrls.isNotEmpty)
+            _ImageCarouselWidget(
+              imageUrls: imageUrls,
+              height: 180,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              fallbackIcon: listing['type'] == 'Land' ? Icons.landscape : Icons.home,
+            )
+          else
+            Center(
+              child: Icon(
+                listing['type'] == 'Land' ? Icons.landscape : Icons.home,
+                size: 64,
+                color: Colors.grey[500],
+              ),
+            ),
+          // Type badge
+          Positioned(
+            top: 12,
+            left: 12,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: isForSale ? Colors.green : Colors.blue,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                listing['listingType'] ?? '',
+                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+          // Property type badge
+          Positioned(
+            top: 12,
+            right: 12,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                listing['type'] ?? '',
+                style: const TextStyle(color: Colors.white, fontSize: 12),
+              ),
+            ),
+          ),
+          // Photo count badge
+          if (imageUrls.length > 1)
+            Positioned(
+              bottom: 12,
+              left: 12,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.photo_library, color: Colors.white, size: 14),
+                    const SizedBox(width: 4),
+                    Text('${imageUrls.length}', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+            ),
+          // Save button
+          Positioned(
+            bottom: 12,
+            right: 12,
+            child: CircleAvatar(
+              backgroundColor: Colors.white,
+              radius: 18,
+              child: IconButton(
+                icon: const Icon(Icons.favorite_border, size: 18),
+                color: Colors.grey[600],
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Saved to favorites')),
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildInfoChip(IconData icon, String text) {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -894,10 +942,213 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
   }
 }
 
-class _PropertyDetailsSheet extends StatelessWidget {
+class _PropertyDetailsSheet extends StatefulWidget {
   final Map<String, dynamic> listing;
 
   const _PropertyDetailsSheet({required this.listing});
+
+  @override
+  State<_PropertyDetailsSheet> createState() => _PropertyDetailsSheetState();
+}
+
+class _PropertyDetailsSheetState extends State<_PropertyDetailsSheet> {
+  int _currentImageIndex = 0;
+  late final PageController _pageController;
+
+  Map<String, dynamic> get listing => widget.listing;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  List<String> _getImageUrlsFromListing() {
+    final images = listing['images'];
+    final imageUrls = <String>[];
+    if (images is List) {
+      for (final img in images) {
+        if (img != null && img.toString().trim().isNotEmpty) {
+          final url = ImageUrlHelper.getFullImageUrl(img.toString().trim());
+          if (url.isNotEmpty && url.startsWith('http')) {
+            imageUrls.add(url);
+          }
+        }
+      }
+    }
+    return imageUrls;
+  }
+
+  Widget _buildDetailGallery(BuildContext context) {
+    final imageUrls = _getImageUrlsFromListing();
+    if (imageUrls.isEmpty) {
+      return Container(
+        height: 220,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.grey[300],
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Center(
+          child: Icon(
+            listing['type'] == 'Land' ? Icons.landscape : Icons.home,
+            size: 80,
+            color: Colors.grey[500],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        // Main image with PageView
+        GestureDetector(
+          onTap: () => _openFullScreenGallery(context, imageUrls, _currentImageIndex),
+          child: SizedBox(
+            height: 220,
+            child: Stack(
+              children: [
+                PageView.builder(
+                  controller: _pageController,
+                  itemCount: imageUrls.length,
+                  onPageChanged: (index) => setState(() => _currentImageIndex = index),
+                  itemBuilder: (context, index) {
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Image.network(
+                        imageUrls[index],
+                        width: double.infinity,
+                        height: 220,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          height: 220,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Center(child: Icon(Icons.broken_image, size: 60, color: Colors.grey[500])),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                // Image counter
+                if (imageUrls.length > 1)
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${_currentImageIndex + 1}/${imageUrls.length}',
+                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                // Tap to expand hint
+                Positioned(
+                  bottom: 10,
+                  right: 10,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.fullscreen, color: Colors.white, size: 16),
+                        SizedBox(width: 4),
+                        Text('View', style: TextStyle(color: Colors.white, fontSize: 11)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        // Page indicators
+        if (imageUrls.length > 1) ...[
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(imageUrls.length, (index) {
+              return Container(
+                width: _currentImageIndex == index ? 20 : 8,
+                height: 8,
+                margin: const EdgeInsets.symmetric(horizontal: 2),
+                decoration: BoxDecoration(
+                  color: _currentImageIndex == index ? VillageTheme.primaryGreen : Colors.grey[350],
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              );
+            }),
+          ),
+        ],
+        // Thumbnail strip
+        if (imageUrls.length > 1) ...[
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 60,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: imageUrls.length,
+              itemBuilder: (context, index) {
+                return GestureDetector(
+                  onTap: () {
+                    _pageController.animateToPage(index, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+                  },
+                  child: Container(
+                    width: 60,
+                    height: 60,
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: _currentImageIndex == index ? VillageTheme.primaryGreen : Colors.grey[300]!,
+                        width: _currentImageIndex == index ? 2 : 1,
+                      ),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(7),
+                      child: Image.network(
+                        imageUrls[index],
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          color: Colors.grey[300],
+                          child: Icon(Icons.broken_image, size: 20, color: Colors.grey[500]),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  void _openFullScreenGallery(BuildContext context, List<String> imageUrls, int initialIndex) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => _FullScreenGallery(imageUrls: imageUrls, initialIndex: initialIndex),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -925,22 +1176,8 @@ class _PropertyDetailsSheet extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Image placeholder
-                  Container(
-                    height: 200,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Center(
-                      child: Icon(
-                        listing['type'] == 'Land' ? Icons.landscape : Icons.home,
-                        size: 80,
-                        color: Colors.grey[500],
-                      ),
-                    ),
-                  ),
+                  // Property images gallery
+                  _buildDetailGallery(context),
                   const SizedBox(height: 20),
                   // Title and price
                   Row(
@@ -1510,5 +1747,231 @@ class _PostPropertySheetState extends State<_PostPropertySheet> {
         );
       }
     }
+  }
+}
+
+// Reusable image carousel for property cards
+class _ImageCarouselWidget extends StatefulWidget {
+  final List<String> imageUrls;
+  final double height;
+  final BorderRadius borderRadius;
+  final IconData fallbackIcon;
+
+  const _ImageCarouselWidget({
+    required this.imageUrls,
+    required this.height,
+    required this.borderRadius,
+    required this.fallbackIcon,
+  });
+
+  @override
+  State<_ImageCarouselWidget> createState() => _ImageCarouselWidgetState();
+}
+
+class _ImageCarouselWidgetState extends State<_ImageCarouselWidget> {
+  int _currentIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.imageUrls.isEmpty) {
+      return Center(child: Icon(widget.fallbackIcon, size: 64, color: Colors.grey[500]));
+    }
+
+    if (widget.imageUrls.length == 1) {
+      return GestureDetector(
+        onTap: () => _openFullScreen(0),
+        child: ClipRRect(
+          borderRadius: widget.borderRadius,
+          child: Image.network(
+            widget.imageUrls.first,
+            height: widget.height,
+            width: double.infinity,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => Center(
+              child: Icon(widget.fallbackIcon, size: 64, color: Colors.grey[500]),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: () => _openFullScreen(_currentIndex),
+      child: Stack(
+        children: [
+          SizedBox(
+            height: widget.height,
+            child: PageView.builder(
+              itemCount: widget.imageUrls.length,
+              onPageChanged: (index) => setState(() => _currentIndex = index),
+              itemBuilder: (context, index) {
+                return ClipRRect(
+                  borderRadius: widget.borderRadius,
+                  child: Image.network(
+                    widget.imageUrls[index],
+                    height: widget.height,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Center(
+                      child: Icon(widget.fallbackIcon, size: 64, color: Colors.grey[500]),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          // Page indicator dots
+          Positioned(
+            bottom: 8,
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(widget.imageUrls.length, (index) {
+                return Container(
+                  width: _currentIndex == index ? 16 : 6,
+                  height: 6,
+                  margin: const EdgeInsets.symmetric(horizontal: 2),
+                  decoration: BoxDecoration(
+                    color: _currentIndex == index ? Colors.white : Colors.white54,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                );
+              }),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openFullScreen(int index) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => _FullScreenGallery(imageUrls: widget.imageUrls, initialIndex: index),
+      ),
+    );
+  }
+}
+
+// Full-screen image gallery viewer
+class _FullScreenGallery extends StatefulWidget {
+  final List<String> imageUrls;
+  final int initialIndex;
+
+  const _FullScreenGallery({required this.imageUrls, required this.initialIndex});
+
+  @override
+  State<_FullScreenGallery> createState() => _FullScreenGalleryState();
+}
+
+class _FullScreenGalleryState extends State<_FullScreenGallery> {
+  late int _currentIndex;
+  late PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: Text(
+          '${_currentIndex + 1} / ${widget.imageUrls.length}',
+          style: const TextStyle(fontSize: 16),
+        ),
+        centerTitle: true,
+      ),
+      body: Stack(
+        children: [
+          // Main image
+          PageView.builder(
+            controller: _pageController,
+            itemCount: widget.imageUrls.length,
+            onPageChanged: (index) => setState(() => _currentIndex = index),
+            itemBuilder: (context, index) {
+              return InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: Center(
+                  child: Image.network(
+                    widget.imageUrls[index],
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) => Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.broken_image, size: 80, color: Colors.grey[600]),
+                        const SizedBox(height: 16),
+                        Text('Failed to load image', style: TextStyle(color: Colors.grey[500])),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+          // Thumbnail strip at bottom
+          if (widget.imageUrls.length > 1)
+            Positioned(
+              bottom: 20,
+              left: 0,
+              right: 0,
+              child: SizedBox(
+                height: 56,
+                child: Center(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    scrollDirection: Axis.horizontal,
+                    itemCount: widget.imageUrls.length,
+                    itemBuilder: (context, index) {
+                      return GestureDetector(
+                        onTap: () {
+                          _pageController.animateToPage(index, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+                        },
+                        child: Container(
+                          width: 52,
+                          height: 52,
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: _currentIndex == index ? Colors.white : Colors.transparent,
+                              width: 2,
+                            ),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: Image.network(
+                              widget.imageUrls[index],
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Container(
+                                color: Colors.grey[800],
+                                child: Icon(Icons.broken_image, size: 20, color: Colors.grey[600]),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }

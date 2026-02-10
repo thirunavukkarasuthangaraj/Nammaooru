@@ -40,6 +40,12 @@ export class RealEstateManagementComponent implements OnInit {
   totalItems = 0;
   pageSize = 20;
 
+  // Gallery lightbox
+  galleryOpen = false;
+  galleryImages: string[] = [];
+  galleryIndex = 0;
+  galleryTitle = '';
+
   constructor(
     private realEstateService: RealEstateAdminService,
     private snackBar: MatSnackBar
@@ -121,6 +127,38 @@ export class RealEstateManagementComponent implements OnInit {
     if (!imageUrls) return '';
     const first = imageUrls.split(',')[0]?.trim();
     return getImageUrl(first || null);
+  }
+
+  getAllImageUrls(imageUrls: string | null): string[] {
+    if (!imageUrls) return [];
+    return imageUrls.split(',').map(url => getImageUrl(url.trim())).filter(url => !!url);
+  }
+
+  getImageCount(imageUrls: string | null): number {
+    if (!imageUrls) return 0;
+    return imageUrls.split(',').filter(url => url.trim()).length;
+  }
+
+  openGallery(post: RealEstatePost): void {
+    this.galleryImages = this.getAllImageUrls(post.imageUrls);
+    if (this.galleryImages.length === 0) return;
+    this.galleryIndex = 0;
+    this.galleryTitle = post.title;
+    this.galleryOpen = true;
+  }
+
+  closeGallery(): void {
+    this.galleryOpen = false;
+    this.galleryImages = [];
+    this.galleryIndex = 0;
+  }
+
+  prevImage(): void {
+    this.galleryIndex = this.galleryIndex > 0 ? this.galleryIndex - 1 : this.galleryImages.length - 1;
+  }
+
+  nextImage(): void {
+    this.galleryIndex = this.galleryIndex < this.galleryImages.length - 1 ? this.galleryIndex + 1 : 0;
   }
 
   getPropertyTypeLabel(type: string): string {

@@ -398,6 +398,39 @@ export class ProductEditDialogComponent implements OnInit {
     this.imagePreview = null;
   }
 
+  async generateSingleBarcode(field: 'barcode1' | 'barcode2' | 'barcode3'): Promise<void> {
+    let barcode = '';
+    let attempts = 0;
+    const maxAttempts = 10;
+
+    while (attempts < maxAttempts) {
+      barcode = this.generateRandomBarcode();
+      const exists = await this.offlineStorage.isBarcodeExists(barcode, this.data.id);
+      if (!exists) break;
+      attempts++;
+    }
+
+    if (attempts >= maxAttempts) {
+      this.snackBar.open('Could not generate unique barcode. Please try again.', 'Close', { duration: 3000 });
+      return;
+    }
+
+    this.editForm.patchValue({ [field]: barcode });
+  }
+
+  private generateRandomBarcode(): string {
+    const prefix = '200';
+    const random = Math.floor(Math.random() * 1000000000).toString().padStart(9, '0');
+    const base = prefix + random;
+    // Calculate EAN-13 check digit
+    let sum = 0;
+    for (let i = 0; i < 12; i++) {
+      sum += parseInt(base[i]) * (i % 2 === 0 ? 1 : 3);
+    }
+    const checkDigit = (10 - (sum % 10)) % 10;
+    return base + checkDigit;
+  }
+
   getProductImageUrl(): string {
     if (this.currentImageUrl) {
       if (this.currentImageUrl.startsWith('http://') || this.currentImageUrl.startsWith('https://')) {

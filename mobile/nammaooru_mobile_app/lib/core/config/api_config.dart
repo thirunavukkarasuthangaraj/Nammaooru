@@ -12,7 +12,7 @@ class ApiConfig {
 
   // Environment detection
   static bool get isWeb => identical(0, 0.0);
-  static bool get isProduction => false; // Set to false for local testing
+  static bool get isProduction => true; // Set to true for prod testing
 
   // Get appropriate base URL based on environment
   static String get apiUrl {

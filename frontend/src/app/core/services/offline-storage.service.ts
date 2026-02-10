@@ -1085,7 +1085,7 @@ export class OfflineStorageService {
           const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
           if (cursor) {
             const product = cursor.value as CachedProduct;
-            if (!excludeProductId || product.id !== excludeProductId) {
+            if (!excludeProductId || Number(product.id) !== Number(excludeProductId)) {
               resolve(true);
               return;
             }
@@ -1494,7 +1494,7 @@ export class OfflineStorageService {
     const trimmedBarcode = barcode.trim().toLowerCase();
     const products = await this.getProducts();
     return products.some(p =>
-      p.id !== excludeProductId && (
+      Number(p.id) !== Number(excludeProductId) && (
         (p.barcode && p.barcode.toLowerCase() === trimmedBarcode) ||
         (p.barcode1 && p.barcode1.toLowerCase() === trimmedBarcode) ||
         (p.barcode2 && p.barcode2.toLowerCase() === trimmedBarcode) ||
