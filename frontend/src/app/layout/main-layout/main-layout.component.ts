@@ -132,7 +132,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     {
       category: 'Marketplace',
       items: [
-        { title: 'Buy & Sell Posts', icon: 'storefront', route: '/admin/marketplace', badge: null }
+        { title: 'Buy & Sell Posts', icon: 'storefront', route: '/admin/marketplace', badge: null },
+        { title: 'Real Estate', icon: 'home_work', route: '/admin/real-estate', badge: null }
       ]
     },
     {
@@ -198,7 +199,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     {
       category: 'Marketplace',
       items: [
-        { title: 'Buy & Sell Posts', icon: 'storefront', route: '/admin/marketplace', badge: null }
+        { title: 'Buy & Sell Posts', icon: 'storefront', route: '/admin/marketplace', badge: null },
+        { title: 'Real Estate', icon: 'home_work', route: '/admin/real-estate', badge: null }
       ]
     },
     {

@@ -28,7 +28,7 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _fetchListings();
     _scrollController.addListener(_onScroll);
   }
@@ -179,6 +179,7 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
           unselectedLabelColor: Colors.white70,
           tabs: const [
             Tab(icon: Icon(Icons.grid_view), text: 'Browse'),
+            Tab(icon: Icon(Icons.history), text: 'My Posts'),
             Tab(icon: Icon(Icons.favorite_border), text: 'Saved'),
           ],
         ),
@@ -187,6 +188,7 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
         controller: _tabController,
         children: [
           _buildBrowseTab(),
+          _buildMyPostsTab(),
           _buildSavedTab(),
         ],
       ),
@@ -262,6 +264,336 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
         ),
       ],
     );
+  }
+
+  // My Posts state
+  List<Map<String, dynamic>> _myPosts = [];
+  bool _myPostsLoading = false;
+  String? _myPostsError;
+  bool _myPostsLoaded = false;
+
+  Future<void> _fetchMyPosts() async {
+    setState(() {
+      _myPostsLoading = true;
+      _myPostsError = null;
+    });
+
+    try {
+      final response = await _realEstateService.getMyPosts();
+
+      if (response['success'] == true || response['data'] != null) {
+        final data = response['data'];
+        List content;
+        if (data is List) {
+          content = data;
+        } else if (data is Map && data['content'] is List) {
+          content = data['content'] as List;
+        } else {
+          content = [];
+        }
+        final posts = content.map<Map<String, dynamic>>((item) {
+          final mapped = _mapApiToLocal(item as Map<String, dynamic>);
+          mapped['status'] = item['status'] ?? 'PENDING_APPROVAL';
+          return mapped;
+        }).toList();
+
+        setState(() {
+          _myPosts = posts;
+          _myPostsLoading = false;
+          _myPostsLoaded = true;
+        });
+      } else {
+        throw Exception(response['message'] ?? 'Failed to fetch my posts');
+      }
+    } catch (e) {
+      setState(() {
+        _myPostsLoading = false;
+        _myPostsError = e.toString();
+        _myPostsLoaded = true;
+      });
+    }
+  }
+
+  String _getStatusLabel(String status) {
+    switch (status) {
+      case 'PENDING_APPROVAL': return 'Pending Approval';
+      case 'APPROVED': return 'Approved';
+      case 'REJECTED': return 'Rejected';
+      case 'SOLD': return 'Sold';
+      case 'RENTED': return 'Rented';
+      case 'FLAGGED': return 'Flagged';
+      default: return status;
+    }
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'PENDING_APPROVAL': return Colors.orange;
+      case 'APPROVED': return Colors.green;
+      case 'REJECTED': return Colors.red;
+      case 'SOLD': return Colors.purple;
+      case 'RENTED': return Colors.teal;
+      case 'FLAGGED': return Colors.red[800]!;
+      default: return Colors.grey;
+    }
+  }
+
+  Widget _buildMyPostsTab() {
+    if (!_myPostsLoaded) {
+      _fetchMyPosts();
+    }
+
+    if (_myPostsLoading && _myPosts.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_myPostsError != null && _myPosts.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
+            const SizedBox(height: 16),
+            Text('Failed to load your posts', style: TextStyle(fontSize: 18, color: Colors.grey[600])),
+            const SizedBox(height: 8),
+            Text(_myPostsError ?? '', style: TextStyle(fontSize: 14, color: Colors.grey[500]), textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () {
+                _myPostsLoaded = false;
+                _fetchMyPosts();
+              },
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+              style: ElevatedButton.styleFrom(backgroundColor: VillageTheme.primaryGreen, foregroundColor: Colors.white),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_myPosts.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.home_work_outlined, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text('No posts yet', style: TextStyle(fontSize: 18, color: Colors.grey[600])),
+            const SizedBox(height: 8),
+            Text('Your property listings will appear here', style: TextStyle(fontSize: 14, color: Colors.grey[500])),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        _myPostsLoaded = false;
+        await _fetchMyPosts();
+      },
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _myPosts.length,
+        itemBuilder: (context, index) {
+          final post = _myPosts[index];
+          final status = post['status'] ?? 'PENDING_APPROVAL';
+          return Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: InkWell(
+              onTap: () => _showPropertyDetails(post),
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            post['title'] ?? '',
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _getStatusColor(status).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            _getStatusLabel(status),
+                            style: TextStyle(
+                              color: _getStatusColor(status),
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(Icons.category, size: 14, color: Colors.grey[600]),
+                        const SizedBox(width: 4),
+                        Text(post['type'] ?? '', style: TextStyle(fontSize: 13, color: Colors.grey[700])),
+                        const SizedBox(width: 16),
+                        Icon(Icons.location_on, size: 14, color: Colors.grey[600]),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            post['location'] ?? '',
+                            style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '₹${_formatPrice(post['price'] ?? 0)}',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: VillageTheme.primaryGreen),
+                        ),
+                        Text(
+                          _formatDate(post['postedDate'] ?? DateTime.now()),
+                          style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    // Action buttons: Mark Sold/Rented, Delete
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        if (status == 'APPROVED') ...[
+                          _buildActionChip('Mark Sold', Icons.sell, Colors.purple, () => _markAsSold(post)),
+                          const SizedBox(width: 8),
+                          _buildActionChip('Mark Rented', Icons.home, Colors.teal, () => _markAsRented(post)),
+                          const SizedBox(width: 8),
+                        ],
+                        _buildActionChip('Delete', Icons.delete, Colors.red, () => _deleteMyPost(post)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildActionChip(String label, IconData icon, Color color, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 4),
+            Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _markAsSold(Map<String, dynamic> post) async {
+    final postId = post['id'];
+    if (postId == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Mark as Sold'),
+        content: Text('Mark "${post['title']}" as sold?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Mark Sold')),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      final result = await _realEstateService.markAsSold(postId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result['message'] ?? 'Updated'), backgroundColor: result['success'] == true ? Colors.green : Colors.red),
+        );
+        if (result['success'] == true) { _myPostsLoaded = false; _fetchMyPosts(); }
+      }
+    }
+  }
+
+  Future<void> _markAsRented(Map<String, dynamic> post) async {
+    final postId = post['id'];
+    if (postId == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Mark as Rented'),
+        content: Text('Mark "${post['title']}" as rented?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Mark Rented')),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      final result = await _realEstateService.markAsRented(postId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result['message'] ?? 'Updated'), backgroundColor: result['success'] == true ? Colors.green : Colors.red),
+        );
+        if (result['success'] == true) { _myPostsLoaded = false; _fetchMyPosts(); }
+      }
+    }
+  }
+
+  Future<void> _deleteMyPost(Map<String, dynamic> post) async {
+    final postId = post['id'];
+    if (postId == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Post'),
+        content: Text('Delete "${post['title']}" permanently?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      final result = await _realEstateService.deletePost(postId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result['message'] ?? 'Deleted'), backgroundColor: result['success'] == true ? Colors.green : Colors.red),
+        );
+        if (result['success'] == true) { _myPostsLoaded = false; _fetchMyPosts(); }
+      }
+    }
   }
 
   Widget _buildSavedTab() {

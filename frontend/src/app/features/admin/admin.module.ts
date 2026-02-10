@@ -37,6 +37,7 @@ import { MarketingMessagesComponent } from './components/marketing-messages/mark
 import { PushNotificationSenderComponent } from './components/push-notification-sender/push-notification-sender.component';
 import { MenuPermissionsComponent } from './components/menu-permissions/menu-permissions.component';
 import { MarketplaceManagementComponent } from './components/marketplace-management/marketplace-management.component';
+import { RealEstateManagementComponent } from './components/real-estate-management/real-estate-management.component';
 
 @NgModule({
   declarations: [
@@ -50,7 +51,8 @@ import { MarketplaceManagementComponent } from './components/marketplace-managem
     MarketingMessagesComponent,
     PushNotificationSenderComponent,
     MenuPermissionsComponent,
-    MarketplaceManagementComponent
+    MarketplaceManagementComponent,
+    RealEstateManagementComponent
   ],
   imports: [
     CommonModule,
@@ -124,6 +126,10 @@ import { MarketplaceManagementComponent } from './components/marketplace-managem
       {
         path: 'marketplace',
         component: MarketplaceManagementComponent
+      },
+      {
+        path: 'real-estate',
+        component: RealEstateManagementComponent
       },
       {
         path: 'shops',
