@@ -932,13 +932,29 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
     );
   }
 
-  void _showPostPropertySheet() {
-    showModalBottomSheet(
+  void _showPostPropertySheet() async {
+    final result = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => const _PostPropertySheet(),
     );
+
+    if (result != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result),
+          backgroundColor: Colors.green,
+        ),
+      );
+      // Refresh listings and my posts
+      _currentPage = 0;
+      _listings.clear();
+      _hasMore = true;
+      _fetchListings();
+      _myPostsLoaded = false;
+      _fetchMyPosts();
+    }
   }
 }
 
@@ -1722,20 +1738,18 @@ class _PostPropertySheetState extends State<_PostPropertySheet> {
         setState(() => _isSubmitting = false);
 
         if (result['success'] == true) {
-          Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['message'] ?? 'Property submitted for approval!'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          if (mounted) {
+            Navigator.pop(context, result['message'] ?? 'Property submitted for approval!');
+          }
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['message'] ?? 'Failed to post property'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(result['message'] ?? 'Failed to post property'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
         }
       } catch (e) {
         setState(() => _isSubmitting = false);

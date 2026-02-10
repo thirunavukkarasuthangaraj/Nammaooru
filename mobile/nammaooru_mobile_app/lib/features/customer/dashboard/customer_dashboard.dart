@@ -49,6 +49,8 @@ class CustomerDashboard extends StatefulWidget {
 
 class _CustomerDashboardState extends State<CustomerDashboard> {
   String _selectedLocation = 'Getting your location...';
+  double? _userLatitude;
+  double? _userLongitude;
   bool _isLoadingShops = false;
   bool _isLoadingOrders = false;
   bool _isLocationPickerOpen = false;
@@ -74,9 +76,14 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     super.initState();
     print('🔵 CustomerDashboard initState called');
     _checkVersionOnStartup();
-    _loadDashboardData();
-    _getCurrentLocationOnStartup();
+    _initLocationThenLoadData();
     // App version checking is handled globally in app.dart, no need for duplicate check here
+  }
+
+  Future<void> _initLocationThenLoadData() async {
+    // Get location first, then load dashboard data (so shops can be filtered by location)
+    await _getCurrentLocationOnStartup();
+    _loadDashboardData();
   }
 
   @override
@@ -88,11 +95,13 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
 
   Future<void> _getCurrentLocationOnStartup() async {
     try {
+      bool hasDisplayName = false;
+
       // Check if user is authenticated before loading saved addresses
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
       if (authProvider.isAuthenticated) {
-        // Try to load default saved address for logged-in users
+        // Try to load default saved address for display name only
         try {
           final savedAddresses = await AddressService.instance.getSavedAddresses();
           final defaultAddress = savedAddresses.where((addr) => addr.isDefault).firstOrNull;
@@ -101,36 +110,40 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             setState(() {
               _selectedLocation = '${defaultAddress.addressLine1}, ${defaultAddress.city}';
             });
-            return;
+            hasDisplayName = true;
           }
         } catch (e) {
           print('Error loading saved addresses: $e');
-          // Continue to get current location
         }
       }
 
-      // For guest users or if no saved address, try to get current location
+      // Always get GPS position for location-based shop filtering
       final position = await LocationService.instance.getCurrentPosition();
       if (position != null && position.latitude != null && position.longitude != null) {
-        final address = await LocationService.instance.getAddressFromCoordinates(
-          position.latitude!,
-          position.longitude!,
-        );
+        _userLatitude = position.latitude;
+        _userLongitude = position.longitude;
 
-        if (address != null && mounted) {
-          setState(() {
-            // Include village/subLocality if available
-            final village = address['subLocality'] ?? '';
-            final city = address['locality'] ?? '';
+        // Only update display location if we don't have a saved address
+        if (!hasDisplayName) {
+          final address = await LocationService.instance.getAddressFromCoordinates(
+            position.latitude!,
+            position.longitude!,
+          );
 
-            if (village.isNotEmpty && city.isNotEmpty) {
-              _selectedLocation = '$village, $city';
-            } else if (city.isNotEmpty) {
-              _selectedLocation = '$city, ${address['administrativeArea'] ?? ''}';
-            } else {
-              _selectedLocation = 'Tirupattur, Tamil Nadu'; // Fallback
-            }
-          });
+          if (address != null && mounted) {
+            setState(() {
+              final village = address['subLocality'] ?? '';
+              final city = address['locality'] ?? '';
+
+              if (village.isNotEmpty && city.isNotEmpty) {
+                _selectedLocation = '$village, $city';
+              } else if (city.isNotEmpty) {
+                _selectedLocation = '$city, ${address['administrativeArea'] ?? ''}';
+              } else {
+                _selectedLocation = 'Tirupattur, Tamil Nadu';
+              }
+            });
+          }
         }
       }
     } catch (e) {
@@ -938,15 +951,64 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
 
   Future<void> _loadFeaturedShops() async {
     setState(() => _isLoadingShops = true);
-    
+
     try {
-      final response = await _shopApi.getActiveShops(page: 0, size: 10);
-      if (mounted && response['success'] == true && response['data'] != null) {
-        setState(() {
-          _featuredShops = response['data']['content'] ?? [];
-        });
+      // Always try to get location for radius-based filtering
+      double? lat = _userLatitude;
+      double? lng = _userLongitude;
+
+      // If location not yet available, try to get it now
+      if (lat == null || lng == null) {
+        try {
+          final position = await LocationService.instance.getCurrentPosition();
+          if (position != null && position.latitude != null && position.longitude != null) {
+            lat = position.latitude;
+            lng = position.longitude;
+            _userLatitude = lat;
+            _userLongitude = lng;
+          }
+        } catch (e) {
+          print('Location fetch failed in _loadFeaturedShops: $e');
+        }
+      }
+
+      print('🏪 Loading shops - lat: $lat, lng: $lng');
+
+      if (lat != null && lng != null) {
+        // Use location-based nearby shops
+        final response = await _shopApi.getNearbyShops(
+          latitude: lat,
+          longitude: lng,
+          radius: 10.0,
+        );
+        print('🏪 Nearby shops response: success=${response['success']}, statusCode=${response['statusCode']}');
+        if (mounted && response['success'] == true && response['data'] != null) {
+          final shops = response['data']['shops'] ?? [];
+          print('🏪 Found ${shops.length} nearby shops within 10km');
+          setState(() {
+            _featuredShops = shops;
+          });
+        } else {
+          print('🏪 Nearby shops API failed, response: $response');
+          // Don't fall back to all shops - show empty if no nearby shops
+          if (mounted) {
+            setState(() {
+              _featuredShops = [];
+            });
+          }
+        }
+      } else {
+        print('🏪 No location available, loading all active shops');
+        // Fallback: no location available, show all active shops
+        final response = await _shopApi.getActiveShops(page: 0, size: 10);
+        if (mounted && response['success'] == true && response['data'] != null) {
+          setState(() {
+            _featuredShops = response['data']['content'] ?? [];
+          });
+        }
       }
     } catch (e) {
+      print('🏪 Error loading shops: $e');
       if (mounted) {
         Helpers.showSnackBar(context, 'Failed to load shops', isError: true);
       }

@@ -17,7 +17,7 @@ class MarketplaceScreen extends StatefulWidget {
   State<MarketplaceScreen> createState() => _MarketplaceScreenState();
 }
 
-class _MarketplaceScreenState extends State<MarketplaceScreen> {
+class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTickerProviderStateMixin {
   final MarketplaceService _marketplaceService = MarketplaceService();
   List<dynamic> _posts = [];
   bool _isLoading = true;
@@ -25,6 +25,12 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
   int _currentPage = 0;
   bool _hasMore = true;
   final ScrollController _scrollController = ScrollController();
+
+  // My Posts tab
+  late TabController _tabController;
+  List<dynamic> _myPosts = [];
+  bool _isLoadingMyPosts = false;
+  bool _myPostsLoaded = false;
 
   final List<String> _categories = [
     'All',
@@ -40,12 +46,19 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.index == 1 && !_myPostsLoaded) {
+        _loadMyPosts();
+      }
+    });
     _loadPosts();
     _scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
+    _tabController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -106,6 +119,24 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
       }
     } catch (e) {
       _currentPage--;
+    }
+  }
+
+  Future<void> _loadMyPosts() async {
+    setState(() => _isLoadingMyPosts = true);
+    try {
+      final response = await _marketplaceService.getMyPosts();
+      if (mounted) {
+        setState(() {
+          _myPosts = response['data'] ?? [];
+          _myPostsLoaded = true;
+          _isLoadingMyPosts = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingMyPosts = false);
+      }
     }
   }
 
@@ -245,73 +276,90 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
         backgroundColor: VillageTheme.primaryGreen,
         foregroundColor: Colors.white,
         elevation: 0,
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: Colors.white,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          tabs: [
+            const Tab(text: 'All Posts'),
+            Tab(text: 'My Posts${_myPosts.isNotEmpty ? ' (${_myPosts.length})' : ''}'),
+          ],
+        ),
       ),
-      body: Column(
+      body: TabBarView(
+        controller: _tabController,
         children: [
-          // Category filter chips
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: SizedBox(
-              height: 40,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                itemCount: _categories.length,
-                itemBuilder: (context, index) {
-                  final cat = _categories[index];
-                  final isSelected = (_selectedCategory == null && cat == 'All') ||
-                      _selectedCategory == cat;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: FilterChip(
-                      label: Text(cat),
-                      selected: isSelected,
-                      onSelected: (_) => _onCategorySelected(cat),
-                      selectedColor: VillageTheme.primaryGreen.withOpacity(0.2),
-                      checkmarkColor: VillageTheme.primaryGreen,
-                      labelStyle: TextStyle(
-                        color: isSelected ? VillageTheme.primaryGreen : Colors.grey[700],
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-          // Posts list
-          Expanded(
-            child: _isLoading
-                ? const Center(child: LoadingWidget())
-                : _posts.isEmpty
-                    ? _buildEmptyState()
-                    : RefreshIndicator(
-                        onRefresh: _loadPosts,
-                        child: ListView.builder(
-                          controller: _scrollController,
-                          padding: const EdgeInsets.all(12),
-                          itemCount: _posts.length + (_hasMore ? 1 : 0),
-                          itemBuilder: (context, index) {
-                            if (index == _posts.length) {
-                              return const Padding(
-                                padding: EdgeInsets.all(16),
-                                child: Center(child: CircularProgressIndicator()),
-                              );
-                            }
-                            return _buildPostCard(_posts[index]);
-                          },
+          // Tab 1: All Approved Posts
+          Column(
+            children: [
+              // Category filter chips
+              Container(
+                color: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: SizedBox(
+                  height: 40,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    itemCount: _categories.length,
+                    itemBuilder: (context, index) {
+                      final cat = _categories[index];
+                      final isSelected = (_selectedCategory == null && cat == 'All') ||
+                          _selectedCategory == cat;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: FilterChip(
+                          label: Text(cat),
+                          selected: isSelected,
+                          onSelected: (_) => _onCategorySelected(cat),
+                          selectedColor: VillageTheme.primaryGreen.withOpacity(0.2),
+                          checkmarkColor: VillageTheme.primaryGreen,
+                          labelStyle: TextStyle(
+                            color: isSelected ? VillageTheme.primaryGreen : Colors.grey[700],
+                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                          ),
                         ),
-                      ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              // Posts list
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: LoadingWidget())
+                    : _posts.isEmpty
+                        ? _buildEmptyState()
+                        : RefreshIndicator(
+                            onRefresh: _loadPosts,
+                            child: ListView.builder(
+                              controller: _scrollController,
+                              padding: const EdgeInsets.all(12),
+                              itemCount: _posts.length + (_hasMore ? 1 : 0),
+                              itemBuilder: (context, index) {
+                                if (index == _posts.length) {
+                                  return const Padding(
+                                    padding: EdgeInsets.all(16),
+                                    child: Center(child: CircularProgressIndicator()),
+                                  );
+                                }
+                                return _buildPostCard(_posts[index]);
+                              },
+                            ),
+                          ),
+              ),
+            ],
           ),
+          // Tab 2: My Posts
+          _buildMyPostsTab(),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: () => _navigateToCreatePost(),
         backgroundColor: VillageTheme.primaryGreen,
         foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: const Text('Sell Something'),
+        child: const Icon(Icons.add, size: 28),
       ),
     );
   }
@@ -559,6 +607,218 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     return '\u20B9${numPrice.toStringAsFixed(0)}';
   }
 
+  Widget _buildMyPostsTab() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (!authProvider.isAuthenticated) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.lock_outline, size: 60, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text('Please log in to see your posts', style: TextStyle(color: Colors.grey[600], fontSize: 16)),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => context.push('/login'),
+              style: ElevatedButton.styleFrom(backgroundColor: VillageTheme.primaryGreen, foregroundColor: Colors.white),
+              child: const Text('Log In'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_isLoadingMyPosts) {
+      return const Center(child: LoadingWidget());
+    }
+
+    if (_myPosts.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.post_add, size: 60, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text('You haven\'t posted anything yet', style: TextStyle(color: Colors.grey[600], fontSize: 16)),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () => _navigateToCreatePost(),
+              icon: const Icon(Icons.add),
+              label: const Text('Sell Something'),
+              style: ElevatedButton.styleFrom(backgroundColor: VillageTheme.primaryGreen, foregroundColor: Colors.white),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        _myPostsLoaded = false;
+        await _loadMyPosts();
+      },
+      child: ListView.builder(
+        padding: const EdgeInsets.all(12),
+        itemCount: _myPosts.length,
+        itemBuilder: (context, index) {
+          final post = _myPosts[index];
+          return _buildMyPostCard(post);
+        },
+      ),
+    );
+  }
+
+  Widget _buildMyPostCard(Map<String, dynamic> post) {
+    final status = post['status'] ?? 'PENDING_APPROVAL';
+    final imageUrl = post['imageUrl'];
+    final price = post['price'];
+
+    Color statusColor;
+    String statusText;
+    IconData statusIcon;
+
+    switch (status) {
+      case 'APPROVED':
+        statusColor = Colors.green;
+        statusText = 'Approved';
+        statusIcon = Icons.check_circle;
+        break;
+      case 'SOLD':
+        statusColor = Colors.blue;
+        statusText = 'Sold';
+        statusIcon = Icons.sell;
+        break;
+      case 'REJECTED':
+        statusColor = Colors.red;
+        statusText = 'Rejected';
+        statusIcon = Icons.cancel;
+        break;
+      default:
+        statusColor = Colors.orange;
+        statusText = 'Pending Approval';
+        statusIcon = Icons.hourglass_empty;
+    }
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Status banner
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.1),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+            ),
+            child: Row(
+              children: [
+                Icon(statusIcon, size: 16, color: statusColor),
+                const SizedBox(width: 6),
+                Text(statusText, style: TextStyle(color: statusColor, fontWeight: FontWeight.w600, fontSize: 13)),
+              ],
+            ),
+          ),
+          // Image
+          if (imageUrl != null)
+            CachedNetworkImage(
+              imageUrl: ImageUrlHelper.getFullImageUrl(imageUrl),
+              height: 180,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              placeholder: (context, url) => Container(
+                height: 180, color: Colors.grey[200],
+                child: const Center(child: CircularProgressIndicator()),
+              ),
+              errorWidget: (context, url, error) => Container(
+                height: 180, color: Colors.grey[200],
+                child: const Icon(Icons.broken_image, size: 50, color: Colors.grey),
+              ),
+            ),
+          // Details
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        post['title'] ?? '',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        maxLines: 2, overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (price != null)
+                      Text(_formatPrice(price), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: VillageTheme.primaryGreen)),
+                  ],
+                ),
+                if (post['description'] != null && post['description'].toString().isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(post['description'], style: TextStyle(fontSize: 13, color: Colors.grey[600]), maxLines: 2, overflow: TextOverflow.ellipsis),
+                ],
+                if (status == 'APPROVED') ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () async {
+                            final result = await _marketplaceService.markAsSold(post['id']);
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(result['message'] ?? ''), backgroundColor: result['success'] == true ? Colors.green : Colors.red),
+                              );
+                              if (result['success'] == true) { _myPostsLoaded = false; _loadMyPosts(); _loadPosts(); }
+                            }
+                          },
+                          icon: const Icon(Icons.sell, size: 16),
+                          label: const Text('Mark Sold'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Delete Post?'),
+                              content: const Text('This action cannot be undone.'),
+                              actions: [
+                                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                                TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
+                              ],
+                            ),
+                          );
+                          if (confirm == true) {
+                            final result = await _marketplaceService.deletePost(post['id']);
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(result['message'] ?? ''), backgroundColor: result['success'] == true ? Colors.green : Colors.red),
+                              );
+                              if (result['success'] == true) { _myPostsLoaded = false; _loadMyPosts(); }
+                            }
+                          }
+                        },
+                        icon: const Icon(Icons.delete_outline, color: Colors.red),
+                        tooltip: 'Delete',
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _navigateToCreatePost() {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     if (!authProvider.isAuthenticated) {
@@ -574,6 +834,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const CreatePostScreen()),
-    ).then((_) => _loadPosts());
+    ).then((_) {
+      _loadPosts();
+      _myPostsLoaded = false;
+      _loadMyPosts();
+    });
   }
 }
