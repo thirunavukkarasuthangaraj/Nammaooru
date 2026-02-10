@@ -13,9 +13,9 @@
 
       <div *ngIf="!isLoading">
         <mat-table [dataSource]="dataSource" class="orders-table">
-          <ng-container matColumnDef="orderId">
-            <mat-header-cell *matHeaderCellDef>Order ID</mat-header-cell>
-            <mat-cell *matCellDef="let order">#{{order.orderId}}</mat-cell>
+          <ng-container matColumnDef="orderNumber">
+            <mat-header-cell *matHeaderCellDef>Order #</mat-header-cell>
+            <mat-cell *matCellDef="let order">{{order.orderNumber}}</mat-cell>
           </ng-container>
 
           <ng-container matColumnDef="customerName">
@@ -23,13 +23,13 @@
             <mat-cell *matCellDef="let order">{{order.customerName}}</mat-cell>
           </ng-container>
 
-          <ng-container matColumnDef="pickupAddress">
-            <mat-header-cell *matHeaderCellDef>Pickup</mat-header-cell>
-            <mat-cell *matCellDef="let order">{{order.pickupAddress}}</mat-cell>
+          <ng-container matColumnDef="shopName">
+            <mat-header-cell *matHeaderCellDef>Shop</mat-header-cell>
+            <mat-cell *matCellDef="let order">{{order.shopName}}</mat-cell>
           </ng-container>
 
           <ng-container matColumnDef="deliveryAddress">
-            <mat-header-cell *matHeaderCellDef>Delivery</mat-header-cell>
+            <mat-header-cell *matHeaderCellDef>Delivery Address</mat-header-cell>
             <mat-cell *matCellDef="let order">{{order.deliveryAddress}}</mat-cell>
           </ng-container>
 
@@ -44,7 +44,7 @@
 
           <ng-container matColumnDef="amount">
             <mat-header-cell *matHeaderCellDef>Amount</mat-header-cell>
-            <mat-cell *matCellDef="let order">₹{{order.amount}}</mat-cell>
+            <mat-cell *matCellDef="let order">&#8377;{{order.totalAmount}}</mat-cell>
           </ng-container>
 
           <ng-container matColumnDef="actions">
@@ -58,11 +58,11 @@
                   <mat-icon>visibility</mat-icon>
                   <span>View Details</span>
                 </button>
-                <button mat-menu-item *ngIf="order.status === 'ASSIGNED'" (click)="startDelivery(order.orderId)">
+                <button mat-menu-item *ngIf="order.status === 'accepted'" (click)="startDelivery(order.orderId)">
                   <mat-icon>local_shipping</mat-icon>
-                  <span>Start Delivery</span>
+                  <span>Mark Picked Up</span>
                 </button>
-                <button mat-menu-item *ngIf="order.status === 'PICKED_UP' || order.status === 'IN_TRANSIT'" (click)="completeDelivery(order.orderId)">
+                <button mat-menu-item *ngIf="order.status === 'picked_up' || order.status === 'in_transit'" (click)="completeDelivery(order.orderId)">
                   <mat-icon>check_circle</mat-icon>
                   <span>Mark Delivered</span>
                 </button>
@@ -76,7 +76,7 @@
 
         <div *ngIf="dataSource.data.length === 0" class="no-orders">
           <mat-icon>assignment</mat-icon>
-          <p>No orders assigned yet</p>
+          <p>No active orders at the moment</p>
         </div>
       </div>
     </mat-card-content>

@@ -13,9 +13,9 @@
 
       <div *ngIf="!isLoading">
         <mat-table [dataSource]="dataSource" class="orders-table">
-          <ng-container matColumnDef="orderId">
-            <mat-header-cell *matHeaderCellDef>Order ID</mat-header-cell>
-            <mat-cell *matCellDef="let order">#{{order.orderId}}</mat-cell>
+          <ng-container matColumnDef="orderNumber">
+            <mat-header-cell *matHeaderCellDef>Order #</mat-header-cell>
+            <mat-cell *matCellDef="let order">{{order.orderNumber}}</mat-cell>
           </ng-container>
 
           <ng-container matColumnDef="customerName">
@@ -23,31 +23,29 @@
             <mat-cell *matCellDef="let order">{{order.customerName}}</mat-cell>
           </ng-container>
 
-          <ng-container matColumnDef="pickupAddress">
-            <mat-header-cell *matHeaderCellDef>Pickup</mat-header-cell>
-            <mat-cell *matCellDef="let order">{{order.pickupAddress}}</mat-cell>
+          <ng-container matColumnDef="shopName">
+            <mat-header-cell *matHeaderCellDef>Shop</mat-header-cell>
+            <mat-cell *matCellDef="let order">{{order.shopName}}</mat-cell>
           </ng-container>
 
           <ng-container matColumnDef="deliveryAddress">
-            <mat-header-cell *matHeaderCellDef>Delivery</mat-header-cell>
+            <mat-header-cell *matHeaderCellDef>Delivery To</mat-header-cell>
             <mat-cell *matCellDef="let order">{{order.deliveryAddress}}</mat-cell>
           </ng-container>
 
-          <ng-container matColumnDef="distance">
-            <mat-header-cell *matHeaderCellDef>Distance</mat-header-cell>
-            <mat-cell *matCellDef="let order">{{order.distance}} km</mat-cell>
-          </ng-container>
-
-          <ng-container matColumnDef="estimatedEarning">
+          <ng-container matColumnDef="deliveryFee">
             <mat-header-cell *matHeaderCellDef>Earning</mat-header-cell>
-            <mat-cell *matCellDef="let order">₹{{order.estimatedEarning}}</mat-cell>
+            <mat-cell *matCellDef="let order">&#8377;{{order.deliveryFee}}</mat-cell>
           </ng-container>
 
           <ng-container matColumnDef="actions">
             <mat-header-cell *matHeaderCellDef>Actions</mat-header-cell>
             <mat-cell *matCellDef="let order">
-              <button mat-raised-button color="primary" (click)="acceptOrder(order.orderId)">
+              <button mat-raised-button color="primary" (click)="acceptOrder(order.id)" style="margin-right: 8px;">
                 Accept
+              </button>
+              <button mat-stroked-button color="warn" (click)="rejectOrder(order.id)">
+                Reject
               </button>
             </mat-cell>
           </ng-container>

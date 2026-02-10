@@ -193,19 +193,9 @@ export class OrderAssignmentService {
     return this.http.post<ApiResponse<string>>(`${this.apiUrl}/process-expired`, {});
   }
 
-  // Mock method for available orders (to be replaced with actual API)
-  getAvailableOrders(): Observable<ApiResponse<OrderAssignment[]>> {
-    // This should be replaced with actual API call to get available orders
-    // For now, returning empty array
-    return new Observable(observer => {
-      observer.next({
-        statusCode: 'SUCCESS',
-        message: 'Available orders retrieved',
-        data: [],
-        timestamp: new Date().toISOString()
-      });
-      observer.complete();
-    });
+  // Get available orders (ASSIGNED status) for a delivery partner
+  getAvailableOrdersForPartner(partnerId: number): Observable<any> {
+    return this.http.get<any>(`${environment.apiUrl}/mobile/delivery-partner/orders/${partnerId}/available`);
   }
 
   // Utility Methods
@@ -269,13 +259,9 @@ export class OrderAssignmentService {
     return assignment.status === 'IN_TRANSIT';
   }
 
-  // Additional methods for partner orders component
-  getPartnerOrders(): Observable<OrderAssignment[]> {
-    // Mock implementation - replace with actual API call
-    return new Observable(observer => {
-      observer.next([]);
-      observer.complete();
-    });
+  // Get active orders for a delivery partner (ACCEPTED, PICKED_UP, IN_TRANSIT, etc.)
+  getActiveOrdersForPartner(partnerId: number): Observable<any> {
+    return this.http.get<any>(`${environment.apiUrl}/mobile/delivery-partner/orders/${partnerId}/active`);
   }
 
   updateOrderStatus(orderId: number, status: string): Observable<ApiResponse<OrderAssignment>> {

@@ -92,13 +92,11 @@
     </div>
 
     <div class="filter-group">
-      <span class="filter-label">Verification Filter</span>
+      <span class="filter-label">Online Filter</span>
       <mat-form-field appearance="outline" class="filter-select">
-        <mat-select [(ngModel)]="verificationFilter" (selectionChange)="onVerificationFilterChange()">
-          <mat-option value="All Verification">All Verification</mat-option>
-          <mat-option value="VERIFIED">Verified</mat-option>
-          <mat-option value="PENDING">Pending</mat-option>
-          <mat-option value="REJECTED">Rejected</mat-option>
+        <mat-select [(ngModel)]="statusFilter" (selectionChange)="onStatusFilterChange()">
+          <mat-option value="All Status">All</mat-option>
+          <mat-option value="ONLINE">Online Only</mat-option>
         </mat-select>
       </mat-form-field>
     </div>
@@ -123,7 +121,7 @@
       <ng-container matColumnDef="partnerId">
         <th mat-header-cell *matHeaderCellDef mat-sort-header>Partner ID</th>
         <td mat-cell *matCellDef="let partner">
-          <span class="partner-id">{{ partner.partnerId }}</span>
+          <span class="partner-id">DP{{ partner.partnerId }}</span>
         </td>
       </ng-container>
 
@@ -146,17 +144,6 @@
         </td>
       </ng-container>
 
-      <!-- Vehicle Column -->
-      <ng-container matColumnDef="vehicle">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header>Vehicle</th>
-        <td mat-cell *matCellDef="let partner">
-          <div class="vehicle-cell">
-            <mat-icon class="vehicle-icon">{{ getVehicleIcon(partner.vehicle) }}</mat-icon>
-            <span>{{ partner.vehicle }}</span>
-          </div>
-        </td>
-      </ng-container>
-
       <!-- Status Column -->
       <ng-container matColumnDef="status">
         <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
@@ -164,19 +151,6 @@
           <span class="status-badge" [ngClass]="getStatusClass(partner.status)">
             {{ partner.status }}
           </span>
-        </td>
-      </ng-container>
-
-      <!-- Verification Column -->
-      <ng-container matColumnDef="verification">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header>Verification</th>
-        <td mat-cell *matCellDef="let partner">
-          <div class="verification-cell">
-            <mat-icon [ngClass]="getVerificationClass(partner.verification)">
-              {{ partner.verification === 'VERIFIED' ? 'verified' : partner.verification === 'PENDING' ? 'pending' : 'cancel' }}
-            </mat-icon>
-            <span>{{ partner.verification }}</span>
-          </div>
         </td>
       </ng-container>
 
@@ -195,7 +169,7 @@
       <ng-container matColumnDef="deliveries">
         <th mat-header-cell *matHeaderCellDef mat-sort-header>Deliveries</th>
         <td mat-cell *matCellDef="let partner">
-          <span class="deliveries-count">{{ partner.deliveries }}</span>
+          <span class="deliveries-count">{{ partner.totalDeliveries }}</span>
         </td>
       </ng-container>
 
@@ -277,6 +251,6 @@
 
   <!-- Table Info -->
   <div class="table-info">
-    <span>{{ dataSource.data.length > 0 ? '0 of 0' : '0 of 0' }}</span>
+    <span>{{ dataSource.data.length }} partners</span>
   </div>
 </div>

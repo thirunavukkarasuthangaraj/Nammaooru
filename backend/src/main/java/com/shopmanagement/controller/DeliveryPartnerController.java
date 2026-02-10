@@ -1480,7 +1480,21 @@ public class DeliveryPartnerController {
                     partnerInfo.put("rideStatus", partner.getRideStatus() != null ? partner.getRideStatus().name() : "OFFLINE");
                     partnerInfo.put("lastActivity", partner.getLastActivity());
                     partnerInfo.put("lastLogin", partner.getLastLogin());
-                    // FCM token not stored in User entity
+
+                    // Include rating, delivery count, and earnings
+                    try {
+                        Double rating = orderAssignmentRepository.getAverageRatingByPartnerId(partner.getId());
+                        Long deliveryCount = orderAssignmentRepository.countCompletedAssignmentsByPartnerId(partner.getId());
+                        Double earnings = orderAssignmentRepository.getTotalEarningsByPartnerId(partner.getId());
+                        partnerInfo.put("rating", rating != null ? rating : 0.0);
+                        partnerInfo.put("totalDeliveries", deliveryCount != null ? deliveryCount : 0);
+                        partnerInfo.put("totalEarnings", earnings != null ? earnings : 0.0);
+                    } catch (Exception e) {
+                        partnerInfo.put("rating", 0.0);
+                        partnerInfo.put("totalDeliveries", 0);
+                        partnerInfo.put("totalEarnings", 0.0);
+                    }
+
                     return partnerInfo;
                 })
                 .collect(Collectors.toList());

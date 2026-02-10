@@ -4,12 +4,14 @@ import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { HttpClient } from '@angular/common/http';
 import { Subject, takeUntil } from 'rxjs';
 import { DeliveryPartnerService, DeliveryPartner } from '../../services/delivery-partner.service';
 import { ApiResponseHelper } from '../../../../core/models/api-response.model';
 import { WebSocketService } from '../../../../core/services/websocket.service';
 import { PartnerDetailsDialogComponent } from '../partner-details-dialog/partner-details-dialog.component';
 import { DocumentVerificationDialogComponent } from '../document-verification-dialog/document-verification-dialog.component';
+import { environment } from '../../../../../environments/environment';
 
 @Component({
   selector: 'app-admin-partners',
@@ -63,6 +65,7 @@ export class AdminPartnersComponent implements OnInit, OnDestroy {
   constructor(
     private partnerService: DeliveryPartnerService,
     private webSocketService: WebSocketService,
+    private http: HttpClient,
     private dialog: MatDialog,
     private snackBar: MatSnackBar
   ) {
@@ -83,83 +86,56 @@ export class AdminPartnersComponent implements OnInit, OnDestroy {
 
   private loadPartners(): void {
     this.isLoading = true;
-    
-    // Mock data for delivery partners
-    const mockPartners: DeliveryPartner[] = [
-      {
-        id: 1,
-        partnerId: 'DP001',
-        fullName: 'John Smith',
-        phoneNumber: '+91 9876543210',
-        email: 'john.smith@delivery.com',
-        vehicleType: 'BIKE',
-        vehicleNumber: 'KA-01-AB-1234',
-        status: 'ACTIVE',
-        verificationStatus: 'VERIFIED',
-        rating: 4.5,
-        totalDeliveries: 156,
-        isOnline: true,
-        isAvailable: true,
-        currentLocation: { lat: 12.9716, lng: 77.5946 },
-        serviceAreas: ['Koramangala', 'BTM Layout', 'HSR Layout'],
-        createdAt: new Date('2024-01-15'),
-        updatedAt: new Date()
-      },
-      {
-        id: 2,
-        partnerId: 'DP002',
-        fullName: 'Sarah Wilson',
-        phoneNumber: '+91 9876543211',
-        email: 'sarah.wilson@delivery.com',
-        vehicleType: 'SCOOTER',
-        vehicleNumber: 'KA-05-CD-5678',
-        status: 'ACTIVE',
-        verificationStatus: 'VERIFIED',
-        rating: 4.8,
-        totalDeliveries: 289,
-        isOnline: true,
-        isAvailable: false,
-        currentLocation: { lat: 12.9816, lng: 77.6046 },
-        serviceAreas: ['Indiranagar', 'Domlur', 'Old Airport Road'],
-        createdAt: new Date('2024-02-20'),
-        updatedAt: new Date()
-      },
-      {
-        id: 3,
-        partnerId: 'DP003',
-        fullName: 'Mike Johnson',
-        phoneNumber: '+91 9876543212',
-        email: 'mike.johnson@delivery.com',
-        vehicleType: 'CAR',
-        vehicleNumber: 'KA-03-EF-9012',
-        status: 'PENDING',
-        verificationStatus: 'PENDING',
-        rating: 0,
-        totalDeliveries: 0,
-        isOnline: false,
-        isAvailable: false,
-        currentLocation: null,
-        serviceAreas: ['Whitefield', 'Marathahalli'],
-        createdAt: new Date('2024-03-10'),
-        updatedAt: new Date()
-      }
-    ] as any[];
-    
-    this.dataSource.data = mockPartners;
-    this.dataSource.paginator = this.paginator;
-    this.dataSource.sort = this.sort;
-    this.updateOnlineStatus();
-    this.isLoading = false;
-    
-    // Update statistics with mock data
-    this.stats = {
-      total: 3,
-      active: 2,
-      pending: 1,
-      suspended: 0,
-      online: 2,
-      verified: 2
-    };
+
+    this.http.get<any>(`${environment.apiUrl}/mobile/delivery-partner/admin/partners`)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          if (response.success && response.partners) {
+            const partners: DeliveryPartner[] = response.partners.map((p: any) => ({
+              id: p.partnerId,
+              partnerId: 'DP' + p.partnerId,
+              fullName: p.name || 'Unknown',
+              phoneNumber: p.phone || '-',
+              email: p.email || '-',
+              vehicleType: 'BIKE',
+              vehicleNumber: '-',
+              status: p.isActive ? 'ACTIVE' : 'PENDING',
+              verificationStatus: p.isActive ? 'VERIFIED' : 'PENDING',
+              rating: p.rating || 0,
+              totalDeliveries: p.totalDeliveries || 0,
+              totalEarnings: p.totalEarnings || 0,
+              isOnline: p.isOnline || false,
+              isAvailable: p.isAvailable || false,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            } as any));
+
+            this.dataSource.data = partners;
+            this.dataSource.paginator = this.paginator;
+            this.dataSource.sort = this.sort;
+
+            // Update statistics from API
+            if (response.statistics) {
+              this.stats = {
+                total: response.statistics.total || partners.length,
+                active: response.statistics.active || 0,
+                pending: partners.length - (response.statistics.active || 0),
+                suspended: 0,
+                online: response.statistics.online || 0,
+                verified: response.statistics.active || 0
+              };
+            }
+          }
+          this.isLoading = false;
+        },
+        error: (error) => {
+          console.error('Error loading partners:', error);
+          this.snackBar.open('Failed to load delivery partners', 'Close', { duration: 3000 });
+          this.dataSource.data = [];
+          this.isLoading = false;
+        }
+      });
   }
 
   private loadStatistics(): void {

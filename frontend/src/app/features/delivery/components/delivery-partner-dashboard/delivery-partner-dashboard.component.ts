@@ -109,16 +109,18 @@ export class DeliveryPartnerDashboardComponent implements OnInit, OnDestroy {
   }
 
   private loadAvailableOrders(): void {
-    // Load available orders for assignment
-    this.assignmentService.getAvailableOrders()
+    const user = this.authService.getCurrentUser();
+    if (!user) return;
+
+    this.assignmentService.getAvailableOrdersForPartner(user.id)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (response) => {
-          if (ApiResponseHelper.isSuccess(response) && response.data) {
-            this.availableOrders = response.data;
+        next: (response: any) => {
+          if (response.success && response.orders) {
+            this.availableOrders = response.orders;
           }
         },
-        error: (error) => {
+        error: (error: any) => {
           console.error('Error loading available orders:', error);
         }
       });
