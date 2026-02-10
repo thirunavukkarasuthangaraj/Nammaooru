@@ -1,4 +1,6 @@
 import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
+import { AuthService } from '../../../../core/services/auth.service';
 import { AnalyticsService, DashboardMetrics } from '../../../../core/services/analytics.service';
 import * as Highcharts from 'highcharts';
 
@@ -36,10 +38,28 @@ export class DashboardComponent implements OnInit {
     { value: '365', label: 'Last year' }
   ];
 
-  constructor(private analyticsService: AnalyticsService) {}
+  constructor(
+    private analyticsService: AnalyticsService,
+    private authService: AuthService,
+    private router: Router
+  ) {}
 
   ngOnInit(): void {
-    // Initialize dashboard metrics
+    // Redirect non-admin users to their proper dashboards
+    const user = this.authService.getCurrentUser();
+    if (user) {
+      const role = user.role?.toString().toUpperCase();
+      if (role === 'DELIVERY_PARTNER') {
+        this.router.navigate(['/delivery/partner/orders']);
+        return;
+      }
+      if (role === 'SHOP_OWNER') {
+        this.router.navigate(['/shop-owner']);
+        return;
+      }
+    }
+
+    // Initialize dashboard metrics (admin/super-admin only)
     this.loadDashboardMetrics();
   }
 

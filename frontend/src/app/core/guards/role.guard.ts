@@ -47,6 +47,10 @@ export class RoleGuard implements CanActivate {
         case UserRole.SHOP_OWNER:
           this.router.navigate(['/shop-owner']);
           break;
+        case UserRole.DELIVERY_PARTNER:
+        case 'DELIVERY_PARTNER' as any:
+          this.router.navigate(['/delivery/partner/orders']);
+          break;
         default:
           this.router.navigate(['/dashboard']);
           break;
