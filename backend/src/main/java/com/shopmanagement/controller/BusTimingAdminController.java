@@ -26,7 +26,9 @@ public class BusTimingAdminController {
             List<BusTiming> timings = busTimingService.getAllBusTimings();
 
             Map<String, Object> response = new HashMap<>();
+            response.put("statusCode", "0000");
             response.put("success", true);
+            response.put("message", "Bus timings fetched successfully");
             response.put("data", timings);
             response.put("total", timings.size());
 
@@ -35,6 +37,7 @@ public class BusTimingAdminController {
             log.error("Error fetching all bus timings: {}", e.getMessage());
 
             Map<String, Object> response = new HashMap<>();
+            response.put("statusCode", "9999");
             response.put("success", false);
             response.put("message", e.getMessage());
 
@@ -49,6 +52,7 @@ public class BusTimingAdminController {
             BusTiming created = busTimingService.createBusTiming(busTiming);
 
             Map<String, Object> response = new HashMap<>();
+            response.put("statusCode", "0000");
             response.put("success", true);
             response.put("message", "Bus timing created successfully");
             response.put("data", created);
@@ -58,6 +62,7 @@ public class BusTimingAdminController {
             log.error("Error creating bus timing: {}", e.getMessage());
 
             Map<String, Object> response = new HashMap<>();
+            response.put("statusCode", "9999");
             response.put("success", false);
             response.put("message", e.getMessage());
 
@@ -72,6 +77,7 @@ public class BusTimingAdminController {
             BusTiming updated = busTimingService.updateBusTiming(id, busTiming);
 
             Map<String, Object> response = new HashMap<>();
+            response.put("statusCode", "0000");
             response.put("success", true);
             response.put("message", "Bus timing updated successfully");
             response.put("data", updated);
@@ -81,6 +87,7 @@ public class BusTimingAdminController {
             log.error("Error updating bus timing {}: {}", id, e.getMessage());
 
             Map<String, Object> response = new HashMap<>();
+            response.put("statusCode", "9999");
             response.put("success", false);
             response.put("message", e.getMessage());
 
@@ -95,6 +102,7 @@ public class BusTimingAdminController {
             busTimingService.deleteBusTiming(id);
 
             Map<String, Object> response = new HashMap<>();
+            response.put("statusCode", "0000");
             response.put("success", true);
             response.put("message", "Bus timing deleted successfully");
 
@@ -103,6 +111,7 @@ public class BusTimingAdminController {
             log.error("Error deleting bus timing {}: {}", id, e.getMessage());
 
             Map<String, Object> response = new HashMap<>();
+            response.put("statusCode", "9999");
             response.put("success", false);
             response.put("message", e.getMessage());
 

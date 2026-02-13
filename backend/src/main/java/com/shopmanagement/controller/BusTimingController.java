@@ -36,7 +36,9 @@ public class BusTimingController {
             }
 
             Map<String, Object> response = new HashMap<>();
+            response.put("statusCode", "0000");
             response.put("success", true);
+            response.put("message", "Bus timings fetched successfully");
             response.put("data", timings);
             response.put("total", timings.size());
 
@@ -45,7 +47,7 @@ public class BusTimingController {
             log.error("Error fetching bus timings: {}", e.getMessage());
 
             Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
+            response.put("statusCode", "9999");
             response.put("message", e.getMessage());
 
             return ResponseEntity.badRequest().body(response);
@@ -59,7 +61,9 @@ public class BusTimingController {
             BusTiming timing = busTimingService.getBusTimingById(id);
 
             Map<String, Object> response = new HashMap<>();
+            response.put("statusCode", "0000");
             response.put("success", true);
+            response.put("message", "Bus timing fetched successfully");
             response.put("data", timing);
 
             return ResponseEntity.ok(response);
@@ -67,7 +71,7 @@ public class BusTimingController {
             log.error("Error fetching bus timing {}: {}", id, e.getMessage());
 
             Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
+            response.put("statusCode", "9999");
             response.put("message", e.getMessage());
 
             return ResponseEntity.badRequest().body(response);
