@@ -2,6 +2,11 @@ import { Component, OnInit } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { BusTimingService, BusTiming } from '../../../../core/services/bus-timing.service';
 
+interface BusStop {
+  name: string;
+  time: string;
+}
+
 @Component({
   selector: 'app-bus-timing-management',
   templateUrl: './bus-timing-management.component.html',
@@ -17,10 +22,12 @@ export class BusTimingManagementComponent implements OnInit {
   locationOptions: string[] = [];
 
   newTiming: BusTiming = this.getEmptyTiming();
+  newStops: BusStop[] = [];
   editingTiming: BusTiming | null = null;
+  editingStops: BusStop[] = [];
   isAddingTiming = false;
 
-  displayedColumns = ['busNumber', 'route', 'departureTime', 'arrivalTime', 'busType', 'operatingDays', 'fare', 'locationArea', 'status', 'actions'];
+  displayedColumns = ['busNumber', 'route', 'stops', 'busType', 'operatingDays', 'fare', 'locationArea', 'status', 'actions'];
 
   busTypeOptions = [
     { value: 'GOVERNMENT', label: 'Government' },
@@ -60,6 +67,115 @@ export class BusTimingManagementComponent implements OnInit {
       isActive: true
     };
   }
+
+  // --- Stops management ---
+
+  addStop(stops: BusStop[]): void {
+    stops.push({ name: '', time: '' });
+  }
+
+  removeStop(stops: BusStop[], index: number): void {
+    stops.splice(index, 1);
+  }
+
+  autoCalculateTimes(stops: BusStop[], departureTime: string, arrivalTime: string): void {
+    if (!departureTime || !arrivalTime || stops.length === 0) {
+      this.snackBar.open('Enter departure time, arrival time, and at least one stop', 'Close', { duration: 3000 });
+      return;
+    }
+
+    const depMinutes = this.timeToMinutes(departureTime);
+    const arrMinutes = this.timeToMinutes(arrivalTime);
+
+    if (depMinutes === null || arrMinutes === null) {
+      this.snackBar.open('Invalid time format. Use HH:MM AM/PM (e.g., 06:30 AM)', 'Close', { duration: 3000 });
+      return;
+    }
+
+    const totalMinutes = arrMinutes > depMinutes ? arrMinutes - depMinutes : (arrMinutes + 1440) - depMinutes;
+    const interval = totalMinutes / (stops.length + 1);
+
+    for (let i = 0; i < stops.length; i++) {
+      const stopMinutes = depMinutes + Math.round(interval * (i + 1));
+      stops[i].time = this.minutesToTime(stopMinutes % 1440);
+    }
+  }
+
+  timeToMinutes(timeStr: string): number | null {
+    if (!timeStr) return null;
+    const clean = timeStr.trim().toUpperCase();
+
+    // Try HH:MM AM/PM format
+    const match12 = clean.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/);
+    if (match12) {
+      let hours = parseInt(match12[1], 10);
+      const minutes = parseInt(match12[2], 10);
+      const period = match12[3];
+      if (period === 'PM' && hours !== 12) hours += 12;
+      if (period === 'AM' && hours === 12) hours = 0;
+      return hours * 60 + minutes;
+    }
+
+    // Try HH:MMAM/PM (no space)
+    const matchNoSpace = clean.match(/^(\d{1,2}):(\d{2})(AM|PM)$/);
+    if (matchNoSpace) {
+      let hours = parseInt(matchNoSpace[1], 10);
+      const minutes = parseInt(matchNoSpace[2], 10);
+      const period = matchNoSpace[3];
+      if (period === 'PM' && hours !== 12) hours += 12;
+      if (period === 'AM' && hours === 12) hours = 0;
+      return hours * 60 + minutes;
+    }
+
+    // Try 24-hour HH:MM
+    const match24 = clean.match(/^(\d{1,2}):(\d{2})$/);
+    if (match24) {
+      return parseInt(match24[1], 10) * 60 + parseInt(match24[2], 10);
+    }
+
+    return null;
+  }
+
+  minutesToTime(totalMinutes: number): string {
+    let hours = Math.floor(totalMinutes / 60) % 24;
+    const minutes = totalMinutes % 60;
+    const period = hours >= 12 ? 'PM' : 'AM';
+    if (hours === 0) hours = 12;
+    else if (hours > 12) hours -= 12;
+    return `${hours}:${minutes.toString().padStart(2, '0')} ${period}`;
+  }
+
+  stopsToJson(stops: BusStop[]): string {
+    const validStops = stops.filter(s => s.name.trim());
+    if (validStops.length === 0) return '';
+    return JSON.stringify(validStops);
+  }
+
+  jsonToStops(json: string): BusStop[] {
+    if (!json) return [];
+    try {
+      const parsed = JSON.parse(json);
+      if (Array.isArray(parsed)) {
+        return parsed.map((s: any) => ({ name: s.name || '', time: s.time || '' }));
+      }
+    } catch {
+      // Legacy comma-separated format
+      if (json.includes(',') || json.trim().length > 0) {
+        return json.split(',').map(s => ({ name: s.trim(), time: '' }));
+      }
+    }
+    return [];
+  }
+
+  getStopsDisplay(viaStops: string): BusStop[] {
+    return this.jsonToStops(viaStops);
+  }
+
+  getStopsCount(viaStops: string): number {
+    return this.getStopsDisplay(viaStops).length;
+  }
+
+  // --- CRUD ---
 
   loadTimings(): void {
     this.isLoading = true;
@@ -125,15 +241,20 @@ export class BusTimingManagementComponent implements OnInit {
   startAdding(): void {
     this.isAddingTiming = true;
     this.newTiming = this.getEmptyTiming();
+    this.newStops = [];
   }
 
   cancelAdding(): void {
     this.isAddingTiming = false;
     this.newTiming = this.getEmptyTiming();
+    this.newStops = [];
   }
 
   addTiming(): void {
     if (!this.validateTiming(this.newTiming)) return;
+
+    // Serialize stops to JSON
+    this.newTiming.viaStops = this.stopsToJson(this.newStops);
 
     this.busTimingService.createBusTiming(this.newTiming).subscribe({
       next: (response) => {
@@ -154,14 +275,18 @@ export class BusTimingManagementComponent implements OnInit {
 
   startEditing(timing: BusTiming): void {
     this.editingTiming = { ...timing };
+    this.editingStops = this.jsonToStops(timing.viaStops);
   }
 
   cancelEditing(): void {
     this.editingTiming = null;
+    this.editingStops = [];
   }
 
   updateTiming(timing: BusTiming): void {
     if (!timing.id || !this.validateTiming(timing)) return;
+
+    timing.viaStops = this.stopsToJson(this.editingStops);
 
     this.busTimingService.updateBusTiming(timing.id, timing).subscribe({
       next: (response) => {
@@ -169,6 +294,7 @@ export class BusTimingManagementComponent implements OnInit {
           this.snackBar.open('Bus timing updated successfully', 'Close', { duration: 3000 });
           this.loadTimings();
           this.editingTiming = null;
+          this.editingStops = [];
         } else {
           this.snackBar.open(response.message || 'Failed to update bus timing', 'Close', { duration: 3000 });
         }

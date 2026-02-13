@@ -1,6 +1,6 @@
 <div class="bus-timing-management">
   <div class="page-header">
-    <h1>Bus Timing Management</h1>
+    <h1>Bus Timing Master</h1>
     <button mat-raised-button color="primary" (click)="startAdding()" [disabled]="isAddingTiming">
       <mat-icon>add</mat-icon>
       Add Bus Timing
@@ -34,37 +34,12 @@
     <div class="form-grid">
       <mat-form-field appearance="outline">
         <mat-label>Bus Number *</mat-label>
-        <input matInput [(ngModel)]="newTiming.busNumber" placeholder="e.g., TVR-001">
+        <input matInput [(ngModel)]="newTiming.busNumber" placeholder="e.g., TN-14">
       </mat-form-field>
 
       <mat-form-field appearance="outline">
         <mat-label>Bus Name</mat-label>
-        <input matInput [(ngModel)]="newTiming.busName" placeholder="e.g., Thirupattur - Chennai">
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label>Route From *</mat-label>
-        <input matInput [(ngModel)]="newTiming.routeFrom" placeholder="Starting point">
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label>Route To *</mat-label>
-        <input matInput [(ngModel)]="newTiming.routeTo" placeholder="Destination">
-      </mat-form-field>
-
-      <mat-form-field appearance="outline" class="full-width">
-        <mat-label>Via Stops</mat-label>
-        <input matInput [(ngModel)]="newTiming.viaStops" placeholder="e.g., Natrampalli, Vaniyambadi, Ambur">
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label>Departure Time *</mat-label>
-        <input matInput [(ngModel)]="newTiming.departureTime" placeholder="e.g., 06:30 AM">
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label>Arrival Time</mat-label>
-        <input matInput [(ngModel)]="newTiming.arrivalTime" placeholder="e.g., 10:30 AM">
+        <input matInput [(ngModel)]="newTiming.busName" placeholder="e.g., Thirupattur - Alangayam">
       </mat-form-field>
 
       <mat-form-field appearance="outline">
@@ -82,7 +57,7 @@
       </mat-form-field>
 
       <mat-form-field appearance="outline">
-        <mat-label>Fare (₹)</mat-label>
+        <mat-label>Fare (&#8377;)</mat-label>
         <input matInput type="number" [(ngModel)]="newTiming.fare" min="0">
       </mat-form-field>
 
@@ -91,6 +66,73 @@
         <input matInput [(ngModel)]="newTiming.locationArea" placeholder="e.g., Thirupattur">
       </mat-form-field>
     </div>
+
+    <!-- Route with Stops -->
+    <div class="route-section">
+      <h4>Route & Stops</h4>
+
+      <!-- Start Point -->
+      <div class="route-point start-point">
+        <div class="point-indicator start"></div>
+        <div class="point-fields">
+          <mat-form-field appearance="outline" class="stop-name-field">
+            <mat-label>Start Point *</mat-label>
+            <input matInput [(ngModel)]="newTiming.routeFrom" placeholder="e.g., Tirupattur">
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="stop-time-field">
+            <mat-label>Departure Time *</mat-label>
+            <input matInput [(ngModel)]="newTiming.departureTime" placeholder="e.g., 1:30 PM">
+          </mat-form-field>
+        </div>
+      </div>
+
+      <!-- Intermediate Stops -->
+      <div *ngFor="let stop of newStops; let i = index" class="route-point stop-point">
+        <div class="point-indicator stop"></div>
+        <div class="point-fields">
+          <mat-form-field appearance="outline" class="stop-name-field">
+            <mat-label>Stop {{ i + 1 }}</mat-label>
+            <input matInput [(ngModel)]="stop.name" placeholder="Stop name">
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="stop-time-field">
+            <mat-label>Time</mat-label>
+            <input matInput [(ngModel)]="stop.time" placeholder="e.g., 1:45 PM">
+          </mat-form-field>
+          <button mat-icon-button color="warn" (click)="removeStop(newStops, i)" matTooltip="Remove stop">
+            <mat-icon>remove_circle</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <!-- End Point -->
+      <div class="route-point end-point">
+        <div class="point-indicator end"></div>
+        <div class="point-fields">
+          <mat-form-field appearance="outline" class="stop-name-field">
+            <mat-label>End Point *</mat-label>
+            <input matInput [(ngModel)]="newTiming.routeTo" placeholder="e.g., Alangayam">
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="stop-time-field">
+            <mat-label>Arrival Time</mat-label>
+            <input matInput [(ngModel)]="newTiming.arrivalTime" placeholder="e.g., 2:30 PM">
+          </mat-form-field>
+        </div>
+      </div>
+
+      <!-- Stop Actions -->
+      <div class="stop-actions">
+        <button mat-stroked-button color="primary" (click)="addStop(newStops)">
+          <mat-icon>add_circle</mat-icon> Add Stop
+        </button>
+        <button mat-stroked-button color="accent"
+                (click)="autoCalculateTimes(newStops, newTiming.departureTime, newTiming.arrivalTime)"
+                [disabled]="newStops.length === 0">
+          <mat-icon>calculate</mat-icon> Auto Calculate Times
+        </button>
+      </div>
+    </div>
+
+    <mat-divider></mat-divider>
 
     <div class="form-actions">
       <button mat-raised-button color="primary" (click)="addTiming()">
@@ -118,14 +160,8 @@
       <ng-container matColumnDef="busNumber">
         <th mat-header-cell *matHeaderCellDef>Bus No.</th>
         <td mat-cell *matCellDef="let t">
-          <span *ngIf="editingTiming?.id !== t.id" class="bus-number">{{ t.busNumber }}</span>
-          <mat-form-field *ngIf="editingTiming?.id === t.id" class="edit-field-sm">
-            <input matInput [(ngModel)]="editingTiming!.busNumber">
-          </mat-form-field>
-          <div *ngIf="editingTiming?.id !== t.id && t.busName" class="bus-name-sub">{{ t.busName }}</div>
-          <mat-form-field *ngIf="editingTiming?.id === t.id" class="edit-field-sm">
-            <input matInput [(ngModel)]="editingTiming!.busName" placeholder="Bus name">
-          </mat-form-field>
+          <span class="bus-number">{{ t.busNumber }}</span>
+          <div *ngIf="t.busName" class="bus-name-sub">{{ t.busName }}</div>
         </td>
       </ng-container>
 
@@ -133,43 +169,28 @@
       <ng-container matColumnDef="route">
         <th mat-header-cell *matHeaderCellDef>Route</th>
         <td mat-cell *matCellDef="let t">
-          <div *ngIf="editingTiming?.id !== t.id">
-            <span class="route-text">{{ t.routeFrom }} → {{ t.routeTo }}</span>
-            <div *ngIf="t.viaStops" class="via-stops">via {{ t.viaStops }}</div>
-          </div>
-          <div *ngIf="editingTiming?.id === t.id" class="edit-route">
-            <mat-form-field class="edit-field-sm">
-              <input matInput [(ngModel)]="editingTiming!.routeFrom" placeholder="From">
-            </mat-form-field>
-            <mat-form-field class="edit-field-sm">
-              <input matInput [(ngModel)]="editingTiming!.routeTo" placeholder="To">
-            </mat-form-field>
-            <mat-form-field class="edit-field-md">
-              <input matInput [(ngModel)]="editingTiming!.viaStops" placeholder="Via stops">
-            </mat-form-field>
+          <div class="route-display">
+            <span class="dep-badge">{{ t.departureTime }}</span>
+            <strong>{{ t.routeFrom }}</strong>
+            <mat-icon class="arrow-icon">arrow_forward</mat-icon>
+            <strong>{{ t.routeTo }}</strong>
+            <span class="arr-badge" *ngIf="t.arrivalTime">{{ t.arrivalTime }}</span>
           </div>
         </td>
       </ng-container>
 
-      <!-- Departure Time -->
-      <ng-container matColumnDef="departureTime">
-        <th mat-header-cell *matHeaderCellDef>Departure</th>
+      <!-- Stops -->
+      <ng-container matColumnDef="stops">
+        <th mat-header-cell *matHeaderCellDef>Stops</th>
         <td mat-cell *matCellDef="let t">
-          <span *ngIf="editingTiming?.id !== t.id" class="time-text">{{ t.departureTime }}</span>
-          <mat-form-field *ngIf="editingTiming?.id === t.id" class="edit-field-sm">
-            <input matInput [(ngModel)]="editingTiming!.departureTime">
-          </mat-form-field>
-        </td>
-      </ng-container>
-
-      <!-- Arrival Time -->
-      <ng-container matColumnDef="arrivalTime">
-        <th mat-header-cell *matHeaderCellDef>Arrival</th>
-        <td mat-cell *matCellDef="let t">
-          <span *ngIf="editingTiming?.id !== t.id" class="time-text">{{ t.arrivalTime || '-' }}</span>
-          <mat-form-field *ngIf="editingTiming?.id === t.id" class="edit-field-sm">
-            <input matInput [(ngModel)]="editingTiming!.arrivalTime">
-          </mat-form-field>
+          <div *ngIf="getStopsCount(t.viaStops) > 0" class="stops-mini">
+            <div *ngFor="let stop of getStopsDisplay(t.viaStops)" class="stop-mini-item">
+              <span class="stop-dot"></span>
+              <span class="stop-name-mini">{{ stop.name }}</span>
+              <span class="stop-time-mini" *ngIf="stop.time">{{ stop.time }}</span>
+            </div>
+          </div>
+          <span *ngIf="getStopsCount(t.viaStops) === 0" class="no-stops">Direct</span>
         </td>
       </ng-container>
 
@@ -177,15 +198,9 @@
       <ng-container matColumnDef="busType">
         <th mat-header-cell *matHeaderCellDef>Type</th>
         <td mat-cell *matCellDef="let t">
-          <mat-chip *ngIf="editingTiming?.id !== t.id"
-                    [class]="'bus-type-' + t.busType?.toLowerCase()">
+          <mat-chip [class]="'bus-type-' + t.busType?.toLowerCase()">
             {{ getBusTypeLabel(t.busType) }}
           </mat-chip>
-          <mat-form-field *ngIf="editingTiming?.id === t.id" class="edit-field-sm">
-            <mat-select [(ngModel)]="editingTiming!.busType">
-              <mat-option *ngFor="let opt of busTypeOptions" [value]="opt.value">{{ opt.label }}</mat-option>
-            </mat-select>
-          </mat-form-field>
         </td>
       </ng-container>
 
@@ -193,12 +208,7 @@
       <ng-container matColumnDef="operatingDays">
         <th mat-header-cell *matHeaderCellDef>Days</th>
         <td mat-cell *matCellDef="let t">
-          <span *ngIf="editingTiming?.id !== t.id">{{ getOperatingDaysLabel(t.operatingDays) }}</span>
-          <mat-form-field *ngIf="editingTiming?.id === t.id" class="edit-field-sm">
-            <mat-select [(ngModel)]="editingTiming!.operatingDays">
-              <mat-option *ngFor="let opt of operatingDaysOptions" [value]="opt.value">{{ opt.label }}</mat-option>
-            </mat-select>
-          </mat-form-field>
+          {{ getOperatingDaysLabel(t.operatingDays) }}
         </td>
       </ng-container>
 
@@ -206,35 +216,23 @@
       <ng-container matColumnDef="fare">
         <th mat-header-cell *matHeaderCellDef>Fare</th>
         <td mat-cell *matCellDef="let t">
-          <span *ngIf="editingTiming?.id !== t.id" class="fare-amount">{{ t.fare ? '₹' + t.fare : '-' }}</span>
-          <mat-form-field *ngIf="editingTiming?.id === t.id" class="edit-field-sm">
-            <input matInput type="number" [(ngModel)]="editingTiming!.fare" min="0">
-          </mat-form-field>
+          <span class="fare-amount">{{ t.fare ? '₹' + t.fare : '-' }}</span>
         </td>
       </ng-container>
 
       <!-- Location Area -->
       <ng-container matColumnDef="locationArea">
         <th mat-header-cell *matHeaderCellDef>Location</th>
-        <td mat-cell *matCellDef="let t">
-          <span *ngIf="editingTiming?.id !== t.id">{{ t.locationArea }}</span>
-          <mat-form-field *ngIf="editingTiming?.id === t.id" class="edit-field-sm">
-            <input matInput [(ngModel)]="editingTiming!.locationArea">
-          </mat-form-field>
-        </td>
+        <td mat-cell *matCellDef="let t">{{ t.locationArea }}</td>
       </ng-container>
 
       <!-- Status -->
       <ng-container matColumnDef="status">
         <th mat-header-cell *matHeaderCellDef>Status</th>
         <td mat-cell *matCellDef="let t">
-          <span *ngIf="editingTiming?.id !== t.id"
-                [class]="t.isActive ? 'status-active' : 'status-inactive'">
+          <span [class]="t.isActive ? 'status-active' : 'status-inactive'">
             {{ t.isActive ? 'Active' : 'Inactive' }}
           </span>
-          <mat-slide-toggle *ngIf="editingTiming?.id === t.id"
-                           [(ngModel)]="editingTiming!.isActive">
-          </mat-slide-toggle>
         </td>
       </ng-container>
 
@@ -242,20 +240,12 @@
       <ng-container matColumnDef="actions">
         <th mat-header-cell *matHeaderCellDef>Actions</th>
         <td mat-cell *matCellDef="let t">
-          <div *ngIf="editingTiming?.id !== t.id" class="action-buttons">
+          <div class="action-buttons">
             <button mat-icon-button color="primary" (click)="startEditing(t)" matTooltip="Edit">
               <mat-icon>edit</mat-icon>
             </button>
             <button mat-icon-button color="warn" (click)="deleteTiming(t.id!)" matTooltip="Delete">
               <mat-icon>delete</mat-icon>
-            </button>
-          </div>
-          <div *ngIf="editingTiming?.id === t.id" class="edit-actions">
-            <button mat-icon-button color="primary" (click)="updateTiming(editingTiming!)" matTooltip="Save">
-              <mat-icon>save</mat-icon>
-            </button>
-            <button mat-icon-button (click)="cancelEditing()" matTooltip="Cancel">
-              <mat-icon>cancel</mat-icon>
             </button>
           </div>
         </td>
@@ -274,6 +264,120 @@
       <button mat-raised-button color="primary" (click)="startAdding()" *ngIf="!searchTerm && !filterLocation">
         Add Bus Timing
       </button>
+    </div>
+  </div>
+
+  <!-- Edit Dialog (shown below table when editing) -->
+  <div *ngIf="editingTiming" class="edit-form">
+    <h3>Edit Bus Timing: {{ editingTiming.busNumber }}</h3>
+    <div class="form-grid">
+      <mat-form-field appearance="outline">
+        <mat-label>Bus Number *</mat-label>
+        <input matInput [(ngModel)]="editingTiming.busNumber">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Bus Name</mat-label>
+        <input matInput [(ngModel)]="editingTiming.busName">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Bus Type</mat-label>
+        <mat-select [(ngModel)]="editingTiming.busType">
+          <mat-option *ngFor="let opt of busTypeOptions" [value]="opt.value">{{ opt.label }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Operating Days</mat-label>
+        <mat-select [(ngModel)]="editingTiming.operatingDays">
+          <mat-option *ngFor="let opt of operatingDaysOptions" [value]="opt.value">{{ opt.label }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Fare (&#8377;)</mat-label>
+        <input matInput type="number" [(ngModel)]="editingTiming.fare" min="0">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Location Area *</mat-label>
+        <input matInput [(ngModel)]="editingTiming.locationArea">
+      </mat-form-field>
+
+      <div class="active-toggle">
+        <mat-slide-toggle [(ngModel)]="editingTiming.isActive">Active</mat-slide-toggle>
+      </div>
+    </div>
+
+    <!-- Route with Stops (Edit) -->
+    <div class="route-section">
+      <h4>Route & Stops</h4>
+
+      <div class="route-point start-point">
+        <div class="point-indicator start"></div>
+        <div class="point-fields">
+          <mat-form-field appearance="outline" class="stop-name-field">
+            <mat-label>Start Point *</mat-label>
+            <input matInput [(ngModel)]="editingTiming.routeFrom">
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="stop-time-field">
+            <mat-label>Departure Time *</mat-label>
+            <input matInput [(ngModel)]="editingTiming.departureTime">
+          </mat-form-field>
+        </div>
+      </div>
+
+      <div *ngFor="let stop of editingStops; let i = index" class="route-point stop-point">
+        <div class="point-indicator stop"></div>
+        <div class="point-fields">
+          <mat-form-field appearance="outline" class="stop-name-field">
+            <mat-label>Stop {{ i + 1 }}</mat-label>
+            <input matInput [(ngModel)]="stop.name">
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="stop-time-field">
+            <mat-label>Time</mat-label>
+            <input matInput [(ngModel)]="stop.time">
+          </mat-form-field>
+          <button mat-icon-button color="warn" (click)="removeStop(editingStops, i)">
+            <mat-icon>remove_circle</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <div class="route-point end-point">
+        <div class="point-indicator end"></div>
+        <div class="point-fields">
+          <mat-form-field appearance="outline" class="stop-name-field">
+            <mat-label>End Point *</mat-label>
+            <input matInput [(ngModel)]="editingTiming.routeTo">
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="stop-time-field">
+            <mat-label>Arrival Time</mat-label>
+            <input matInput [(ngModel)]="editingTiming.arrivalTime">
+          </mat-form-field>
+        </div>
+      </div>
+
+      <div class="stop-actions">
+        <button mat-stroked-button color="primary" (click)="addStop(editingStops)">
+          <mat-icon>add_circle</mat-icon> Add Stop
+        </button>
+        <button mat-stroked-button color="accent"
+                (click)="autoCalculateTimes(editingStops, editingTiming.departureTime, editingTiming.arrivalTime)"
+                [disabled]="editingStops.length === 0">
+          <mat-icon>calculate</mat-icon> Auto Calculate Times
+        </button>
+      </div>
+    </div>
+
+    <mat-divider></mat-divider>
+
+    <div class="form-actions">
+      <button mat-raised-button color="primary" (click)="updateTiming(editingTiming)">
+        <mat-icon>save</mat-icon> Update
+      </button>
+      <button mat-button (click)="cancelEditing()">Cancel</button>
     </div>
   </div>
 </div>
