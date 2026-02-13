@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -21,6 +22,8 @@ class MarketplaceScreen extends StatefulWidget {
   @override
   State<MarketplaceScreen> createState() => _MarketplaceScreenState();
 }
+
+final _nameBlurFilter = ImageFilter.blur(sigmaX: 5, sigmaY: 5);
 
 class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTickerProviderStateMixin {
   final MarketplaceService _marketplaceService = MarketplaceService();
@@ -722,28 +725,43 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                       ),
                       const SizedBox(height: 6),
                     ],
-                    Row(
-                      children: [
-                        Icon(Icons.person, size: 14, color: Colors.grey[500]),
-                        const SizedBox(width: 4),
-                        Text(
-                          post['sellerName'] ?? 'Seller',
-                          style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-                        ),
-                        if (post['location'] != null) ...[
-                          const SizedBox(width: 12),
-                          Icon(Icons.location_on, size: 14, color: Colors.grey[500]),
-                          const SizedBox(width: 2),
-                          Flexible(
-                            child: Text(
-                              post['location'],
+                    Builder(builder: (context) {
+                      final isLoggedIn = Provider.of<AuthProvider>(context, listen: false).isAuthenticated;
+                      final sellerName = post['sellerName'] ?? 'Seller';
+                      return Row(
+                        children: [
+                          Icon(Icons.person, size: 14, color: Colors.grey[500]),
+                          const SizedBox(width: 4),
+                          if (isLoggedIn)
+                            Text(
+                              sellerName,
                               style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-                              overflow: TextOverflow.ellipsis,
+                            )
+                          else
+                            ClipRect(
+                              child: ImageFiltered(
+                                imageFilter: _nameBlurFilter,
+                                child: Text(
+                                  sellerName,
+                                  style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                                ),
+                              ),
                             ),
-                          ),
+                          if (post['location'] != null) ...[
+                            const SizedBox(width: 12),
+                            Icon(Icons.location_on, size: 14, color: Colors.grey[500]),
+                            const SizedBox(width: 2),
+                            Flexible(
+                              child: Text(
+                                post['location'],
+                                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ],
-                      ],
-                    ),
+                      );
+                    }),
                     if (post['category'] != null) ...[
                       const SizedBox(height: 4),
                       Container(
@@ -761,13 +779,17 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                     const SizedBox(height: 10),
                     // Call & Report buttons
                     if (!isSold)
-                      Row(
+                      Builder(builder: (context) {
+                        final isLoggedIn = Provider.of<AuthProvider>(context, listen: false).isAuthenticated;
+                        return Row(
                         children: [
                           Expanded(
                             child: ElevatedButton.icon(
                               onPressed: () => _callOrLogin(post),
-                              icon: const Icon(Icons.call, size: 18),
-                              label: Text('Call ${post['sellerName']?.split(' ').first ?? 'Seller'}'),
+                              icon: Icon(isLoggedIn ? Icons.call : Icons.login, size: 18),
+                              label: Text(isLoggedIn
+                                  ? 'Call ${post['sellerName']?.split(' ').first ?? 'Seller'}'
+                                  : 'Login to Contact'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.green,
                                 foregroundColor: Colors.white,
@@ -784,7 +806,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                             tooltip: 'Report this post',
                           ),
                         ],
-                      ),
+                      );
+                      }),
                   ],
                 ),
               ),
@@ -983,13 +1006,30 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                     ],
                   ),
                   const SizedBox(height: 12),
-                  Row(
+                  Builder(builder: (context) {
+                    final isLoggedIn = Provider.of<AuthProvider>(context, listen: false).isAuthenticated;
+                    return Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Posted by ${listing['postedBy']}', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                      if (isLoggedIn)
+                        Text('Posted by ${listing['postedBy']}', style: TextStyle(fontSize: 12, color: Colors.grey[600]))
+                      else
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('Posted by ', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                            ClipRect(
+                              child: ImageFiltered(
+                                imageFilter: _nameBlurFilter,
+                                child: Text(listing['postedBy'] ?? '', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                              ),
+                            ),
+                          ],
+                        ),
                       Text(_reFormatDate(listing['postedDate']), style: TextStyle(fontSize: 12, color: Colors.grey[500])),
                     ],
-                  ),
+                  );
+                  }),
                 ],
               ),
             ),
@@ -1613,17 +1653,41 @@ class _PropertyDetailsSheetState extends State<_PropertyDetailsSheet> {
                   _buildDetailRow(Icons.square_foot, 'Area', listing['area']),
                   _buildDetailRow(Icons.location_on, 'Location', listing['location']),
                   _buildDetailRow(Icons.category, 'Type', listing['type']),
-                  _buildDetailRow(Icons.person, 'Posted by', listing['postedBy']),
+                  Builder(builder: (ctx) {
+                    final isLoggedIn = Provider.of<AuthProvider>(ctx, listen: false).isAuthenticated;
+                    if (isLoggedIn) {
+                      return _buildDetailRow(Icons.person, 'Posted by', listing['postedBy']);
+                    }
+                    return Row(
+                      children: [
+                        Icon(Icons.person, size: 20, color: Colors.grey[600]),
+                        const SizedBox(width: 12),
+                        const Text('Posted by  ', style: TextStyle(fontSize: 15, color: Colors.black87)),
+                        ClipRect(
+                          child: ImageFiltered(
+                            imageFilter: _nameBlurFilter,
+                            child: Text(listing['postedBy'] ?? '', style: const TextStyle(fontSize: 15, color: Colors.black87)),
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
                   const SizedBox(height: 20),
                   const Text('Description', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   Text(listing['description'], style: TextStyle(fontSize: 15, color: Colors.grey[700], height: 1.5)),
                   const SizedBox(height: 30),
-                  Row(
+                  Builder(builder: (ctx) {
+                    final isLoggedIn = Provider.of<AuthProvider>(ctx, listen: false).isAuthenticated;
+                    return Row(
                     children: [
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () async {
+                            if (!isLoggedIn) {
+                              context.go('/login');
+                              return;
+                            }
                             final phone = listing['phone']?.toString() ?? '';
                             if (phone.isNotEmpty) {
                               final uri = Uri.parse('tel:$phone');
@@ -1632,8 +1696,8 @@ class _PropertyDetailsSheetState extends State<_PropertyDetailsSheet> {
                               }
                             }
                           },
-                          icon: const Icon(Icons.call),
-                          label: const Text('Call'),
+                          icon: Icon(isLoggedIn ? Icons.call : Icons.login),
+                          label: Text(isLoggedIn ? 'Call' : 'Login to Contact'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: VillageTheme.primaryGreen,
                             foregroundColor: Colors.white,
@@ -1646,6 +1710,10 @@ class _PropertyDetailsSheetState extends State<_PropertyDetailsSheet> {
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () async {
+                            if (!isLoggedIn) {
+                              context.go('/login');
+                              return;
+                            }
                             final phone = listing['phone']?.toString() ?? '';
                             if (phone.isNotEmpty) {
                               final cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
@@ -1657,8 +1725,8 @@ class _PropertyDetailsSheetState extends State<_PropertyDetailsSheet> {
                               }
                             }
                           },
-                          icon: const Icon(Icons.chat),
-                          label: const Text('WhatsApp'),
+                          icon: Icon(isLoggedIn ? Icons.chat : Icons.login),
+                          label: Text(isLoggedIn ? 'WhatsApp' : 'Login'),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: VillageTheme.primaryGreen,
                             padding: const EdgeInsets.symmetric(vertical: 14),
@@ -1668,7 +1736,8 @@ class _PropertyDetailsSheetState extends State<_PropertyDetailsSheet> {
                         ),
                       ),
                     ],
-                  ),
+                  );
+                  }),
                 ],
               ),
             ),
