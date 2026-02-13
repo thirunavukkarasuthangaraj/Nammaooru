@@ -1,7 +1,9 @@
 package com.shopmanagement.service;
 
+import com.shopmanagement.dto.notification.NotificationRequest;
 import com.shopmanagement.entity.MarketplacePost;
 import com.shopmanagement.entity.MarketplacePost.PostStatus;
+import com.shopmanagement.entity.Notification;
 import com.shopmanagement.entity.User;
 import com.shopmanagement.repository.MarketplacePostRepository;
 import com.shopmanagement.repository.UserRepository;
@@ -15,7 +17,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +29,7 @@ public class MarketplaceService {
     private final MarketplacePostRepository marketplacePostRepository;
     private final UserRepository userRepository;
     private final FileUploadService fileUploadService;
+    private final NotificationService notificationService;
 
     @Transactional
     public MarketplacePost createPost(String title, String description, BigDecimal price,
@@ -60,6 +65,10 @@ public class MarketplaceService {
 
         MarketplacePost saved = marketplacePostRepository.save(post);
         log.info("Marketplace post created: id={}, title={}, seller={}", saved.getId(), title, username);
+
+        // Notify admins about new post pending approval
+        notifyAdminsNewPost(saved);
+
         return saved;
     }
 
@@ -97,8 +106,13 @@ public class MarketplaceService {
         MarketplacePost post = marketplacePostRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
         post.setStatus(PostStatus.APPROVED);
+        MarketplacePost saved = marketplacePostRepository.save(post);
         log.info("Marketplace post approved: id={}", id);
-        return marketplacePostRepository.save(post);
+
+        // Notify seller that their post is approved
+        notifySellerPostStatus(saved, "Your post '" + saved.getTitle() + "' has been approved and is now visible to others.");
+
+        return saved;
     }
 
     @Transactional
@@ -106,8 +120,13 @@ public class MarketplaceService {
         MarketplacePost post = marketplacePostRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
         post.setStatus(PostStatus.REJECTED);
+        MarketplacePost saved = marketplacePostRepository.save(post);
         log.info("Marketplace post rejected: id={}", id);
-        return marketplacePostRepository.save(post);
+
+        // Notify seller that their post is rejected
+        notifySellerPostStatus(saved, "Your post '" + saved.getTitle() + "' has been rejected by admin.");
+
+        return saved;
     }
 
     @Transactional
@@ -164,9 +183,104 @@ public class MarketplaceService {
         if (newCount >= 3 && post.getStatus() == PostStatus.APPROVED) {
             post.setStatus(PostStatus.FLAGGED);
             log.warn("Marketplace post auto-flagged due to {} reports: id={}, title={}", newCount, postId, post.getTitle());
+
+            // Notify admins about flagged post
+            notifyAdminsFlaggedPost(post, newCount);
         }
 
         marketplacePostRepository.save(post);
         log.info("Marketplace post reported: id={}, reason={}, reportCount={}", postId, reason, newCount);
+    }
+
+    // ---- Notification helpers ----
+
+    private List<Long> getAdminUserIds() {
+        List<Long> adminIds = new ArrayList<>();
+        userRepository.findByRole(User.UserRole.ADMIN)
+                .forEach(u -> adminIds.add(u.getId()));
+        userRepository.findByRole(User.UserRole.SUPER_ADMIN)
+                .forEach(u -> adminIds.add(u.getId()));
+        return adminIds;
+    }
+
+    private void notifyAdminsNewPost(MarketplacePost post) {
+        try {
+            List<Long> adminIds = getAdminUserIds();
+            if (adminIds.isEmpty()) return;
+
+            NotificationRequest request = NotificationRequest.builder()
+                    .title("New Marketplace Post")
+                    .message("'" + post.getTitle() + "' by " + post.getSellerName() + " is pending approval.")
+                    .type(Notification.NotificationType.ANNOUNCEMENT)
+                    .priority(Notification.NotificationPriority.HIGH)
+                    .recipientIds(adminIds)
+                    .recipientType(Notification.RecipientType.ADMIN)
+                    .referenceId(post.getId())
+                    .referenceType("MARKETPLACE_POST")
+                    .actionUrl("/admin/marketplace")
+                    .actionText("Review Post")
+                    .icon("shopping-bag")
+                    .category("MARKETPLACE")
+                    .sendPush(true)
+                    .build();
+
+            notificationService.createNotification(request);
+            log.info("Admin notification sent for new marketplace post: id={}", post.getId());
+        } catch (Exception e) {
+            log.error("Failed to send admin notification for marketplace post: {}", post.getId(), e);
+        }
+    }
+
+    private void notifySellerPostStatus(MarketplacePost post, String message) {
+        try {
+            NotificationRequest request = NotificationRequest.builder()
+                    .title("Marketplace Post Update")
+                    .message(message)
+                    .type(Notification.NotificationType.INFO)
+                    .priority(Notification.NotificationPriority.MEDIUM)
+                    .recipientId(post.getSellerUserId())
+                    .recipientType(Notification.RecipientType.USER)
+                    .referenceId(post.getId())
+                    .referenceType("MARKETPLACE_POST")
+                    .actionUrl("/marketplace/my-posts")
+                    .actionText("View Post")
+                    .icon("shopping-bag")
+                    .category("MARKETPLACE")
+                    .sendPush(true)
+                    .build();
+
+            notificationService.createNotification(request);
+            log.info("Seller notification sent for marketplace post: id={}, seller={}", post.getId(), post.getSellerUserId());
+        } catch (Exception e) {
+            log.error("Failed to send seller notification for marketplace post: {}", post.getId(), e);
+        }
+    }
+
+    private void notifyAdminsFlaggedPost(MarketplacePost post, int reportCount) {
+        try {
+            List<Long> adminIds = getAdminUserIds();
+            if (adminIds.isEmpty()) return;
+
+            NotificationRequest request = NotificationRequest.builder()
+                    .title("Marketplace Post Flagged")
+                    .message("'" + post.getTitle() + "' has been auto-flagged with " + reportCount + " reports. Please review.")
+                    .type(Notification.NotificationType.WARNING)
+                    .priority(Notification.NotificationPriority.URGENT)
+                    .recipientIds(adminIds)
+                    .recipientType(Notification.RecipientType.ADMIN)
+                    .referenceId(post.getId())
+                    .referenceType("MARKETPLACE_POST")
+                    .actionUrl("/admin/marketplace")
+                    .actionText("Review Post")
+                    .icon("alert-triangle")
+                    .category("MARKETPLACE")
+                    .sendPush(true)
+                    .build();
+
+            notificationService.createNotification(request);
+            log.info("Admin notification sent for flagged marketplace post: id={}, reports={}", post.getId(), reportCount);
+        } catch (Exception e) {
+            log.error("Failed to send admin notification for flagged post: {}", post.getId(), e);
+        }
     }
 }

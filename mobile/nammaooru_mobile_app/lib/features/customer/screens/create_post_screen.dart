@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/services/location_service.dart';
 import '../../../core/storage/local_storage.dart';
+import '../../../core/localization/language_provider.dart';
 import '../services/marketplace_service.dart';
 
 class CreatePostScreen extends StatefulWidget {
@@ -34,8 +36,20 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     'Agriculture',
     'Clothing',
     'Food',
+    'Finance',
     'Other',
   ];
+
+  static const Map<String, String> _categoryTamil = {
+    'Electronics': 'எலக்ட்ரானிக்ஸ்',
+    'Furniture': 'மரச்சாமான்',
+    'Vehicles': 'வாகனங்கள்',
+    'Agriculture': 'விவசாயம்',
+    'Clothing': 'ஆடைகள்',
+    'Food': 'உணவு',
+    'Finance': 'நிதி',
+    'Other': 'மற்றவை',
+  };
 
   @override
   void initState() {
@@ -114,6 +128,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   }
 
   void _showImageSourceDialog() {
+    final langProvider = Provider.of<LanguageProvider>(context, listen: false);
     showModalBottomSheet(
       context: context,
       builder: (context) => SafeArea(
@@ -121,7 +136,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           children: [
             ListTile(
               leading: const Icon(Icons.camera_alt),
-              title: const Text('Take Photo'),
+              title: Text(langProvider.getText('Take Photo', 'புகைப்படம் எடுக்க')),
               onTap: () {
                 Navigator.pop(context);
                 _pickImage(ImageSource.camera);
@@ -129,7 +144,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.photo_library),
-              title: const Text('Choose from Gallery'),
+              title: Text(langProvider.getText('Choose from Gallery', 'கேலரியிலிருந்து தேர்வு செய்க')),
               onTap: () {
                 Navigator.pop(context);
                 _pickImage(ImageSource.gallery);
@@ -192,6 +207,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   }
 
   void _showSuccessDialog() {
+    final langProvider = Provider.of<LanguageProvider>(context, listen: false);
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -202,13 +218,16 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           children: [
             const Icon(Icons.check_circle, color: VillageTheme.primaryGreen, size: 64),
             const SizedBox(height: 16),
-            const Text(
-              'Post Submitted!',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            Text(
+              langProvider.getText('Post Submitted!', 'பதிவு சமர்ப்பிக்கப்பட்டது!'),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
-              'Your post is submitted for approval. It will be visible to others once admin approves it.',
+              langProvider.getText(
+                'Your post is submitted for approval. It will be visible to others once admin approves it.',
+                'உங்கள் பதிவு ஒப்புதலுக்கு சமர்ப்பிக்கப்பட்டது. நிர்வாகி ஒப்புதல் அளித்தவுடன் மற்றவர்களுக்கு தெரியும்.',
+              ),
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey[600]),
             ),
@@ -228,12 +247,14 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final langProvider = Provider.of<LanguageProvider>(context);
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text(
-          'Sell Something',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Text(
+          langProvider.getText('Sell Something', 'பொருள் விற்க'),
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         backgroundColor: VillageTheme.primaryGreen,
         foregroundColor: Colors.white,
@@ -247,19 +268,23 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Image picker
-              _buildImagePicker(),
+              _buildImagePicker(langProvider),
               const SizedBox(height: 20),
 
               // Title
-              _buildLabel('Title *'),
+              _buildLabel(langProvider.getText('Title *', 'தலைப்பு *')),
               const SizedBox(height: 6),
               TextFormField(
                 controller: _titleController,
                 maxLength: 200,
-                decoration: _inputDecoration('e.g., Tractor for Sale'),
+                keyboardType: TextInputType.text,
+                textInputAction: TextInputAction.next,
+                decoration: _inputDecoration(
+                  langProvider.getText('e.g., Tractor for Sale', 'எ.கா., டிராக்டர் விற்பனைக்கு'),
+                ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Title is required';
+                    return langProvider.getText('Title is required', 'தலைப்பு தேவை');
                   }
                   return null;
                 },
@@ -267,18 +292,21 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               const SizedBox(height: 12),
 
               // Description
-              _buildLabel('Description'),
+              _buildLabel(langProvider.getText('Description', 'விவரம்')),
               const SizedBox(height: 6),
               TextFormField(
                 controller: _descriptionController,
                 maxLength: 1000,
                 maxLines: 3,
-                decoration: _inputDecoration('Describe your item...'),
+                keyboardType: TextInputType.multiline,
+                decoration: _inputDecoration(
+                  langProvider.getText('Describe your item...', 'உங்கள் பொருளை விவரிக்கவும்...'),
+                ),
               ),
               const SizedBox(height: 12),
 
               // Price
-              _buildLabel('Price (optional)'),
+              _buildLabel(langProvider.getText('Price (optional)', 'விலை (விரும்பினால்)')),
               const SizedBox(height: 6),
               TextFormField(
                 controller: _priceController,
@@ -290,13 +318,18 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               const SizedBox(height: 12),
 
               // Category
-              _buildLabel('Category'),
+              _buildLabel(langProvider.getText('Category', 'வகை')),
               const SizedBox(height: 6),
               DropdownButtonFormField<String>(
                 value: _selectedCategory,
-                decoration: _inputDecoration('Select category'),
+                decoration: _inputDecoration(
+                  langProvider.getText('Select category', 'வகையைத் தேர்ந்தெடுக்கவும்'),
+                ),
                 items: _categories.map((cat) {
-                  return DropdownMenuItem(value: cat, child: Text(cat));
+                  return DropdownMenuItem(
+                    value: cat,
+                    child: Text(langProvider.getText(cat, _categoryTamil[cat] ?? cat)),
+                  );
                 }).toList(),
                 onChanged: (value) {
                   setState(() {
@@ -307,25 +340,27 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               const SizedBox(height: 12),
 
               // Phone
-              _buildLabel('Phone Number *'),
+              _buildLabel(langProvider.getText('Phone Number *', 'தொலைபேசி எண் *')),
               const SizedBox(height: 6),
               TextFormField(
                 controller: _phoneController,
                 keyboardType: TextInputType.phone,
-                decoration: _inputDecoration('Your phone number'),
+                decoration: _inputDecoration(
+                  langProvider.getText('Your phone number', 'உங்கள் தொலைபேசி எண்'),
+                ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Phone number is required';
+                    return langProvider.getText('Phone number is required', 'தொலைபேசி எண் தேவை');
                   }
                   if (value.trim().length < 10) {
-                    return 'Enter a valid phone number';
+                    return langProvider.getText('Enter a valid phone number', 'சரியான தொலைபேசி எண்ணை உள்ளிடவும்');
                   }
                   return null;
                 },
               ),
               const SizedBox(height: 12),
 
-              // Location
+              // Location (English only)
               _buildLabel('Location'),
               const SizedBox(height: 6),
               TextFormField(
@@ -362,9 +397,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                             strokeWidth: 2,
                           ),
                         )
-                      : const Text(
-                          'Submit for Approval',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      : Text(
+                          langProvider.getText('Submit for Approval', 'ஒப்புதலுக்கு சமர்ப்பிக்கவும்'),
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                 ),
               ),
@@ -408,7 +443,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     );
   }
 
-  Widget _buildImagePicker() {
+  Widget _buildImagePicker(LanguageProvider langProvider) {
     return GestureDetector(
       onTap: _showImageSourceDialog,
       child: Container(
@@ -461,12 +496,12 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   Icon(Icons.camera_alt_outlined, size: 48, color: Colors.grey[400]),
                   const SizedBox(height: 8),
                   Text(
-                    'Tap to add product photo',
+                    langProvider.getText('Tap to add product photo', 'பொருள் புகைப்படம் சேர்க்க தட்டவும்'),
                     style: TextStyle(color: Colors.grey[500], fontSize: 14),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Camera or Gallery',
+                    langProvider.getText('Camera or Gallery', 'கேமரா அல்லது கேலரி'),
                     style: TextStyle(color: Colors.grey[400], fontSize: 12),
                   ),
                 ],

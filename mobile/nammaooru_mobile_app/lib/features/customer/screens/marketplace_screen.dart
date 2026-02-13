@@ -60,6 +60,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
     'Agriculture',
     'Clothing',
     'Food',
+    'Finance',
     'Other',
   ];
 
@@ -178,6 +179,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
       'Agriculture': 'விவசாயம்',
       'Clothing': 'ஆடைகள்',
       'Food': 'உணவு',
+      'Finance': 'நிதி',
       'Other': 'பிற',
     };
     return lang.getText(cat, tamilMap[cat] ?? cat);
