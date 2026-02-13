@@ -1,0 +1,260 @@
+.bus-timing-management {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #e0e0e0;
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    button {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+  }
+
+  .filters-section {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+
+    .search-field {
+      flex: 1;
+      min-width: 250px;
+    }
+
+    .filter-field {
+      min-width: 200px;
+    }
+  }
+
+  .add-form {
+    background: white;
+    padding: 24px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 24px;
+
+    h3 {
+      margin: 0 0 20px 0;
+      color: #333;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+
+      mat-form-field {
+        width: 100%;
+      }
+
+      .full-width {
+        grid-column: 1 / -1;
+      }
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+
+      button {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+    }
+  }
+
+  .loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px;
+
+    p {
+      margin-top: 16px;
+      color: #666;
+    }
+  }
+
+  .timings-table {
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+    .table-info {
+      padding: 12px 16px;
+      background: #f5f5f5;
+      font-size: 13px;
+      color: #666;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    table {
+      width: 100%;
+
+      th {
+        background-color: #f5f5f5;
+        font-weight: 600;
+        color: #333;
+        font-size: 13px;
+      }
+
+      td {
+        padding: 12px 16px;
+        vertical-align: top;
+      }
+
+      .bus-number {
+        font-weight: 600;
+        color: #1565c0;
+      }
+
+      .bus-name-sub {
+        font-size: 12px;
+        color: #666;
+        margin-top: 2px;
+      }
+
+      .route-text {
+        font-weight: 500;
+      }
+
+      .via-stops {
+        font-size: 12px;
+        color: #888;
+        margin-top: 2px;
+      }
+
+      .time-text {
+        font-weight: 500;
+        color: #2e7d32;
+      }
+
+      .fare-amount {
+        font-weight: 600;
+        color: #e65100;
+      }
+
+      .bus-type-government {
+        background-color: #e3f2fd !important;
+        color: #1565c0 !important;
+      }
+
+      .bus-type-private {
+        background-color: #fff3e0 !important;
+        color: #e65100 !important;
+      }
+
+      .status-active {
+        color: #2e7d32;
+        font-weight: 500;
+      }
+
+      .status-inactive {
+        color: #d32f2f;
+        font-weight: 500;
+      }
+
+      .edit-field-sm {
+        width: 120px;
+      }
+
+      .edit-field-md {
+        width: 200px;
+      }
+
+      .edit-route {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .action-buttons, .edit-actions {
+        display: flex;
+        gap: 4px;
+      }
+    }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px;
+      text-align: center;
+
+      mat-icon {
+        font-size: 48px;
+        width: 48px;
+        height: 48px;
+        color: #ccc;
+        margin-bottom: 16px;
+      }
+
+      h3 {
+        margin: 0 0 8px 0;
+        color: #666;
+      }
+
+      p {
+        margin: 0 0 24px 0;
+        color: #999;
+      }
+    }
+  }
+
+  @media (max-width: 768px) {
+    padding: 16px;
+
+    .page-header {
+      flex-direction: column;
+      gap: 16px;
+      align-items: stretch;
+
+      h1 {
+        font-size: 24px;
+      }
+    }
+
+    .filters-section {
+      flex-direction: column;
+
+      .search-field, .filter-field {
+        width: 100%;
+        min-width: unset;
+      }
+    }
+
+    .add-form .form-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .timings-table table {
+      font-size: 13px;
+
+      td {
+        padding: 8px;
+      }
+    }
+  }
+}

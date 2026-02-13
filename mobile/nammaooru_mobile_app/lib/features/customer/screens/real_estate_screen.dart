@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
@@ -940,12 +941,6 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
     );
 
     if (result != null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result),
-          backgroundColor: Colors.green,
-        ),
-      );
       // Refresh listings and my posts
       _currentPage = 0;
       _listings.clear();
@@ -953,6 +948,8 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
       _fetchListings();
       _myPostsLoaded = false;
       _fetchMyPosts();
+      // Switch to My Posts tab
+      _tabController.animateTo(1);
     }
   }
 }
@@ -1738,7 +1735,7 @@ class _PostPropertySheetState extends State<_PostPropertySheet> {
 
         if (result['success'] == true) {
           if (mounted) {
-            Navigator.pop(context, result['message'] ?? 'Property submitted for approval!');
+            _showPropertySuccessDialog();
           }
         } else {
           if (mounted) {
@@ -1760,6 +1757,41 @@ class _PostPropertySheetState extends State<_PostPropertySheet> {
         );
       }
     }
+  }
+
+  void _showPropertySuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.check_circle, color: VillageTheme.primaryGreen, size: 64),
+            const SizedBox(height: 16),
+            const Text(
+              'Property Submitted!',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Your property is submitted for approval. It will be visible to others once admin approves it.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    // Auto-close after 3 seconds and go back
+    Timer(const Duration(seconds: 3), () {
+      if (mounted) {
+        Navigator.pop(context); // Close dialog
+        Navigator.pop(context, 'success'); // Close bottom sheet (triggers refresh)
+      }
+    });
   }
 }
 

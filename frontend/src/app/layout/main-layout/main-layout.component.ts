@@ -137,6 +137,12 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       ]
     },
     {
+      category: 'Bus Timing',
+      items: [
+        { title: 'Bus Timing Master', icon: 'directions_bus', route: '/admin/bus-timing', badge: null }
+      ]
+    },
+    {
       category: 'Marketing & Promotions',
       items: [
         { title: 'Promo Codes', icon: 'local_offer', route: '/admin/promo-codes', badge: null },
@@ -201,6 +207,12 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       items: [
         { title: 'Buy & Sell Posts', icon: 'storefront', route: '/admin/marketplace', badge: null },
         { title: 'Real Estate', icon: 'home_work', route: '/admin/real-estate', badge: null }
+      ]
+    },
+    {
+      category: 'Bus Timing',
+      items: [
+        { title: 'Bus Timing Master', icon: 'directions_bus', route: '/admin/bus-timing', badge: null }
       ]
     },
     {

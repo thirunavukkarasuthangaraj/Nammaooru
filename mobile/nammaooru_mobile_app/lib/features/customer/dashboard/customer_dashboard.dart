@@ -37,7 +37,7 @@ import '../../../shared/providers/cart_provider.dart';
 import '../../../shared/models/product_model.dart';
 import '../services/marketplace_service.dart';
 import '../screens/marketplace_screen.dart';
-import '../screens/real_estate_screen.dart';
+import '../screens/bus_timing_screen.dart';
 import '../screens/create_post_screen.dart';
 
 class CustomerDashboard extends StatefulWidget {
@@ -1439,7 +1439,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 2x2 Grid: Grocery, Food, Marketplace, Real Estate
+            // 2x2 Grid: Grocery, Food, Marketplace, Bus Timing
             GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -1480,26 +1480,26 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                     ),
                   ),
                 ),
-                // 3. Marketplace - Buy & Sell locally
+                // 3. Marketplace (includes Buy & Sell + Real Estate)
                 _buildModernCategoryTile(
                   icon: Icons.storefront_rounded,
                   title: languageProvider.getText('Marketplace', 'சந்தை'),
-                  subtitle: languageProvider.getText('Buy & Sell locally', 'வாங்கு & விற்கு'),
+                  subtitle: languageProvider.getText('Buy, Sell & Rent', 'வாங்கு & விற்கு'),
                   color: const Color(0xFF2196F3),
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => const MarketplaceScreen()),
                   ),
                 ),
-                // 4. Real Estate - Properties
+                // 4. Bus Timing
                 _buildModernCategoryTile(
-                  icon: Icons.home_work_rounded,
-                  title: languageProvider.getText('Real Estate', 'ரியல் எஸ்டேட்'),
-                  subtitle: languageProvider.getText('Buy & Rent', 'வாங்கு & வாடகை'),
+                  icon: Icons.directions_bus_rounded,
+                  title: languageProvider.getText('Bus Timing', 'பேருந்து நேரம்'),
+                  subtitle: languageProvider.getText('Schedules & routes', 'அட்டவணை'),
                   color: const Color(0xFF9C27B0),
                   onTap: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const RealEstateScreen()),
+                    MaterialPageRoute(builder: (context) => const BusTimingScreen()),
                   ),
                 ),
               ],

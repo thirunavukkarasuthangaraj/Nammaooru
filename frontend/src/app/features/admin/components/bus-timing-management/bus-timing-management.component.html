@@ -1,0 +1,279 @@
+<div class="bus-timing-management">
+  <div class="page-header">
+    <h1>Bus Timing Management</h1>
+    <button mat-raised-button color="primary" (click)="startAdding()" [disabled]="isAddingTiming">
+      <mat-icon>add</mat-icon>
+      Add Bus Timing
+    </button>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-section">
+    <mat-form-field appearance="outline" class="search-field">
+      <mat-label>Search</mat-label>
+      <input matInput [(ngModel)]="searchTerm" (input)="onSearchChange()" placeholder="Search bus number, name, route...">
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>Filter by Location</mat-label>
+      <mat-select [(ngModel)]="filterLocation" (selectionChange)="onLocationFilterChange()">
+        <mat-option value="">All Locations</mat-option>
+        <mat-option *ngFor="let loc of locationOptions" [value]="loc">{{ loc }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <button mat-button *ngIf="searchTerm || filterLocation" (click)="clearFilters()">
+      <mat-icon>clear</mat-icon> Clear
+    </button>
+  </div>
+
+  <!-- Add New Form -->
+  <div *ngIf="isAddingTiming" class="add-form">
+    <h3>Add New Bus Timing</h3>
+    <div class="form-grid">
+      <mat-form-field appearance="outline">
+        <mat-label>Bus Number *</mat-label>
+        <input matInput [(ngModel)]="newTiming.busNumber" placeholder="e.g., TVR-001">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Bus Name</mat-label>
+        <input matInput [(ngModel)]="newTiming.busName" placeholder="e.g., Thirupattur - Chennai">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Route From *</mat-label>
+        <input matInput [(ngModel)]="newTiming.routeFrom" placeholder="Starting point">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Route To *</mat-label>
+        <input matInput [(ngModel)]="newTiming.routeTo" placeholder="Destination">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Via Stops</mat-label>
+        <input matInput [(ngModel)]="newTiming.viaStops" placeholder="e.g., Natrampalli, Vaniyambadi, Ambur">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Departure Time *</mat-label>
+        <input matInput [(ngModel)]="newTiming.departureTime" placeholder="e.g., 06:30 AM">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Arrival Time</mat-label>
+        <input matInput [(ngModel)]="newTiming.arrivalTime" placeholder="e.g., 10:30 AM">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Bus Type</mat-label>
+        <mat-select [(ngModel)]="newTiming.busType">
+          <mat-option *ngFor="let opt of busTypeOptions" [value]="opt.value">{{ opt.label }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Operating Days</mat-label>
+        <mat-select [(ngModel)]="newTiming.operatingDays">
+          <mat-option *ngFor="let opt of operatingDaysOptions" [value]="opt.value">{{ opt.label }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Fare (₹)</mat-label>
+        <input matInput type="number" [(ngModel)]="newTiming.fare" min="0">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Location Area *</mat-label>
+        <input matInput [(ngModel)]="newTiming.locationArea" placeholder="e.g., Thirupattur">
+      </mat-form-field>
+    </div>
+
+    <div class="form-actions">
+      <button mat-raised-button color="primary" (click)="addTiming()">
+        <mat-icon>save</mat-icon> Save
+      </button>
+      <button mat-button (click)="cancelAdding()">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="isLoading" class="loading">
+    <mat-spinner diameter="40"></mat-spinner>
+    <p>Loading bus timings...</p>
+  </div>
+
+  <!-- Table -->
+  <div *ngIf="!isLoading" class="timings-table">
+    <div class="table-info">
+      <span>Showing {{ filteredTimings.length }} of {{ timings.length }} bus timings</span>
+    </div>
+
+    <table mat-table [dataSource]="filteredTimings" class="mat-elevation-z2">
+
+      <!-- Bus Number -->
+      <ng-container matColumnDef="busNumber">
+        <th mat-header-cell *matHeaderCellDef>Bus No.</th>
+        <td mat-cell *matCellDef="let t">
+          <span *ngIf="editingTiming?.id !== t.id" class="bus-number">{{ t.busNumber }}</span>
+          <mat-form-field *ngIf="editingTiming?.id === t.id" class="edit-field-sm">
+            <input matInput [(ngModel)]="editingTiming!.busNumber">
+          </mat-form-field>
+          <div *ngIf="editingTiming?.id !== t.id && t.busName" class="bus-name-sub">{{ t.busName }}</div>
+          <mat-form-field *ngIf="editingTiming?.id === t.id" class="edit-field-sm">
+            <input matInput [(ngModel)]="editingTiming!.busName" placeholder="Bus name">
+          </mat-form-field>
+        </td>
+      </ng-container>
+
+      <!-- Route -->
+      <ng-container matColumnDef="route">
+        <th mat-header-cell *matHeaderCellDef>Route</th>
+        <td mat-cell *matCellDef="let t">
+          <div *ngIf="editingTiming?.id !== t.id">
+            <span class="route-text">{{ t.routeFrom }} → {{ t.routeTo }}</span>
+            <div *ngIf="t.viaStops" class="via-stops">via {{ t.viaStops }}</div>
+          </div>
+          <div *ngIf="editingTiming?.id === t.id" class="edit-route">
+            <mat-form-field class="edit-field-sm">
+              <input matInput [(ngModel)]="editingTiming!.routeFrom" placeholder="From">
+            </mat-form-field>
+            <mat-form-field class="edit-field-sm">
+              <input matInput [(ngModel)]="editingTiming!.routeTo" placeholder="To">
+            </mat-form-field>
+            <mat-form-field class="edit-field-md">
+              <input matInput [(ngModel)]="editingTiming!.viaStops" placeholder="Via stops">
+            </mat-form-field>
+          </div>
+        </td>
+      </ng-container>
+
+      <!-- Departure Time -->
+      <ng-container matColumnDef="departureTime">
+        <th mat-header-cell *matHeaderCellDef>Departure</th>
+        <td mat-cell *matCellDef="let t">
+          <span *ngIf="editingTiming?.id !== t.id" class="time-text">{{ t.departureTime }}</span>
+          <mat-form-field *ngIf="editingTiming?.id === t.id" class="edit-field-sm">
+            <input matInput [(ngModel)]="editingTiming!.departureTime">
+          </mat-form-field>
+        </td>
+      </ng-container>
+
+      <!-- Arrival Time -->
+      <ng-container matColumnDef="arrivalTime">
+        <th mat-header-cell *matHeaderCellDef>Arrival</th>
+        <td mat-cell *matCellDef="let t">
+          <span *ngIf="editingTiming?.id !== t.id" class="time-text">{{ t.arrivalTime || '-' }}</span>
+          <mat-form-field *ngIf="editingTiming?.id === t.id" class="edit-field-sm">
+            <input matInput [(ngModel)]="editingTiming!.arrivalTime">
+          </mat-form-field>
+        </td>
+      </ng-container>
+
+      <!-- Bus Type -->
+      <ng-container matColumnDef="busType">
+        <th mat-header-cell *matHeaderCellDef>Type</th>
+        <td mat-cell *matCellDef="let t">
+          <mat-chip *ngIf="editingTiming?.id !== t.id"
+                    [class]="'bus-type-' + t.busType?.toLowerCase()">
+            {{ getBusTypeLabel(t.busType) }}
+          </mat-chip>
+          <mat-form-field *ngIf="editingTiming?.id === t.id" class="edit-field-sm">
+            <mat-select [(ngModel)]="editingTiming!.busType">
+              <mat-option *ngFor="let opt of busTypeOptions" [value]="opt.value">{{ opt.label }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </td>
+      </ng-container>
+
+      <!-- Operating Days -->
+      <ng-container matColumnDef="operatingDays">
+        <th mat-header-cell *matHeaderCellDef>Days</th>
+        <td mat-cell *matCellDef="let t">
+          <span *ngIf="editingTiming?.id !== t.id">{{ getOperatingDaysLabel(t.operatingDays) }}</span>
+          <mat-form-field *ngIf="editingTiming?.id === t.id" class="edit-field-sm">
+            <mat-select [(ngModel)]="editingTiming!.operatingDays">
+              <mat-option *ngFor="let opt of operatingDaysOptions" [value]="opt.value">{{ opt.label }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </td>
+      </ng-container>
+
+      <!-- Fare -->
+      <ng-container matColumnDef="fare">
+        <th mat-header-cell *matHeaderCellDef>Fare</th>
+        <td mat-cell *matCellDef="let t">
+          <span *ngIf="editingTiming?.id !== t.id" class="fare-amount">{{ t.fare ? '₹' + t.fare : '-' }}</span>
+          <mat-form-field *ngIf="editingTiming?.id === t.id" class="edit-field-sm">
+            <input matInput type="number" [(ngModel)]="editingTiming!.fare" min="0">
+          </mat-form-field>
+        </td>
+      </ng-container>
+
+      <!-- Location Area -->
+      <ng-container matColumnDef="locationArea">
+        <th mat-header-cell *matHeaderCellDef>Location</th>
+        <td mat-cell *matCellDef="let t">
+          <span *ngIf="editingTiming?.id !== t.id">{{ t.locationArea }}</span>
+          <mat-form-field *ngIf="editingTiming?.id === t.id" class="edit-field-sm">
+            <input matInput [(ngModel)]="editingTiming!.locationArea">
+          </mat-form-field>
+        </td>
+      </ng-container>
+
+      <!-- Status -->
+      <ng-container matColumnDef="status">
+        <th mat-header-cell *matHeaderCellDef>Status</th>
+        <td mat-cell *matCellDef="let t">
+          <span *ngIf="editingTiming?.id !== t.id"
+                [class]="t.isActive ? 'status-active' : 'status-inactive'">
+            {{ t.isActive ? 'Active' : 'Inactive' }}
+          </span>
+          <mat-slide-toggle *ngIf="editingTiming?.id === t.id"
+                           [(ngModel)]="editingTiming!.isActive">
+          </mat-slide-toggle>
+        </td>
+      </ng-container>
+
+      <!-- Actions -->
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef>Actions</th>
+        <td mat-cell *matCellDef="let t">
+          <div *ngIf="editingTiming?.id !== t.id" class="action-buttons">
+            <button mat-icon-button color="primary" (click)="startEditing(t)" matTooltip="Edit">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button color="warn" (click)="deleteTiming(t.id!)" matTooltip="Delete">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </div>
+          <div *ngIf="editingTiming?.id === t.id" class="edit-actions">
+            <button mat-icon-button color="primary" (click)="updateTiming(editingTiming!)" matTooltip="Save">
+              <mat-icon>save</mat-icon>
+            </button>
+            <button mat-icon-button (click)="cancelEditing()" matTooltip="Cancel">
+              <mat-icon>cancel</mat-icon>
+            </button>
+          </div>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    </table>
+
+    <!-- Empty State -->
+    <div *ngIf="filteredTimings.length === 0" class="empty-state">
+      <mat-icon>directions_bus</mat-icon>
+      <h3>No bus timings found</h3>
+      <p *ngIf="searchTerm || filterLocation">Try adjusting your search or filter</p>
+      <p *ngIf="!searchTerm && !filterLocation">Add your first bus timing to get started</p>
+      <button mat-raised-button color="primary" (click)="startAdding()" *ngIf="!searchTerm && !filterLocation">
+        Add Bus Timing
+      </button>
+    </div>
+  </div>
+</div>

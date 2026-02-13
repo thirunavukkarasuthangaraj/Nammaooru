@@ -38,6 +38,7 @@ import { PushNotificationSenderComponent } from './components/push-notification-
 import { MenuPermissionsComponent } from './components/menu-permissions/menu-permissions.component';
 import { MarketplaceManagementComponent } from './components/marketplace-management/marketplace-management.component';
 import { RealEstateManagementComponent } from './components/real-estate-management/real-estate-management.component';
+import { BusTimingManagementComponent } from './components/bus-timing-management/bus-timing-management.component';
 
 @NgModule({
   declarations: [
@@ -52,7 +53,8 @@ import { RealEstateManagementComponent } from './components/real-estate-manageme
     PushNotificationSenderComponent,
     MenuPermissionsComponent,
     MarketplaceManagementComponent,
-    RealEstateManagementComponent
+    RealEstateManagementComponent,
+    BusTimingManagementComponent
   ],
   imports: [
     CommonModule,
@@ -130,6 +132,10 @@ import { RealEstateManagementComponent } from './components/real-estate-manageme
       {
         path: 'real-estate',
         component: RealEstateManagementComponent
+      },
+      {
+        path: 'bus-timing',
+        component: BusTimingManagementComponent
       },
       {
         path: 'shops',

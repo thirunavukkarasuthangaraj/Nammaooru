@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -194,7 +195,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -213,24 +214,16 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             ),
           ],
         ),
-        actions: [
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context); // Close dialog
-                Navigator.pop(context); // Go back
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: VillageTheme.primaryGreen,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('OK'),
-            ),
-          ),
-        ],
       ),
     );
+
+    // Auto-close after 3 seconds and go back
+    Timer(const Duration(seconds: 3), () {
+      if (mounted) {
+        Navigator.pop(context); // Close dialog
+        Navigator.pop(context); // Go back to marketplace (triggers refresh)
+      }
+    });
   }
 
   @override

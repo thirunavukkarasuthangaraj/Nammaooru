@@ -82,6 +82,8 @@ public class SecurityConfig {
                                 "/api/delivery/partners/*/documents/**",
                                 "/api/delivery/partners/documents/*/view",
                                 "/api/delivery-fees/**",
+                                "/api/bus-timings",  // Public: View active bus timings
+                                "/api/bus-timings/*",  // Public: View single bus timing by ID
                                 "/api/marketplace",  // Public: View approved marketplace posts
                                 "/api/marketplace/*",  // Public: View single marketplace post by ID
                                 "/api/real-estate",  // Public: View approved real estate posts
