@@ -21,6 +21,13 @@ interface ReportedPost {
   updatedAt: string;
 }
 
+interface StatusOption {
+  value: string;
+  label: string;
+  icon: string;
+  color: string;
+}
+
 @Component({
   selector: 'app-reported-posts',
   templateUrl: './reported-posts.component.html',
@@ -33,6 +40,15 @@ export class ReportedPostsComponent implements OnInit {
   totalPages = 0;
   totalItems = 0;
   pageSize = 20;
+
+  statusOptions: StatusOption[] = [
+    { value: 'APPROVED', label: 'Approve', icon: 'check_circle', color: '#4caf50' },
+    { value: 'REJECTED', label: 'Reject', icon: 'cancel', color: '#f44336' },
+    { value: 'HOLD', label: 'Hold', icon: 'pause_circle', color: '#ff9800' },
+    { value: 'HIDDEN', label: 'Hide', icon: 'visibility_off', color: '#9e9e9e' },
+    { value: 'CORRECTION_REQUIRED', label: 'Correction Required', icon: 'edit_note', color: '#2196f3' },
+    { value: 'REMOVED', label: 'Remove', icon: 'delete_forever', color: '#b71c1c' }
+  ];
 
   constructor(
     private marketplaceService: MarketplaceAdminService,
@@ -61,59 +77,39 @@ export class ReportedPostsComponent implements OnInit {
     });
   }
 
-  approvePost(post: ReportedPost): void {
-    this.marketplaceService.approvePost(post.id).subscribe({
+  onStatusChange(post: ReportedPost, newStatus: string): void {
+    if (newStatus === 'REMOVED') {
+      if (!confirm(`Remove "${post.title}" permanently? This will delete the post.`)) {
+        return;
+      }
+      this.marketplaceService.deletePost(post.id).subscribe({
+        next: () => {
+          this.snackBar.open(`"${post.title}" removed`, 'OK', { duration: 3000 });
+          this.loadReportedPosts();
+        },
+        error: () => {
+          this.snackBar.open('Failed to remove post', 'Close', { duration: 3000 });
+        }
+      });
+      return;
+    }
+
+    const option = this.statusOptions.find(o => o.value === newStatus);
+    const label = option?.label || newStatus;
+
+    this.marketplaceService.changePostStatus(post.id, newStatus).subscribe({
       next: () => {
-        this.snackBar.open(`"${post.title}" approved`, 'OK', { duration: 3000 });
+        this.snackBar.open(`"${post.title}" → ${label}`, 'OK', { duration: 3000 });
         this.loadReportedPosts();
       },
       error: () => {
-        this.snackBar.open('Failed to approve post', 'Close', { duration: 3000 });
+        this.snackBar.open(`Failed to change status to ${label}`, 'Close', { duration: 3000 });
       }
     });
   }
 
-  rejectPost(post: ReportedPost): void {
-    if (confirm(`Reject "${post.title}"?`)) {
-      this.marketplaceService.rejectPost(post.id).subscribe({
-        next: () => {
-          this.snackBar.open(`"${post.title}" rejected`, 'OK', { duration: 3000 });
-          this.loadReportedPosts();
-        },
-        error: () => {
-          this.snackBar.open('Failed to reject post', 'Close', { duration: 3000 });
-        }
-      });
-    }
-  }
-
-  deletePost(post: ReportedPost): void {
-    if (confirm(`Delete "${post.title}" permanently?`)) {
-      this.marketplaceService.deletePost(post.id).subscribe({
-        next: () => {
-          this.snackBar.open('Post deleted', 'OK', { duration: 3000 });
-          this.loadReportedPosts();
-        },
-        error: () => {
-          this.snackBar.open('Failed to delete post', 'Close', { duration: 3000 });
-        }
-      });
-    }
-  }
-
   getImageUrl(path: string | null): string {
     return getImageUrl(path);
-  }
-
-  getStatusColor(status: string): string {
-    switch (status) {
-      case 'FLAGGED': return 'warn';
-      case 'PENDING_APPROVAL': return 'warn';
-      case 'APPROVED': return 'primary';
-      case 'REJECTED': return 'accent';
-      case 'SOLD': return '';
-      default: return '';
-    }
   }
 
   getStatusLabel(status: string): string {
@@ -123,8 +119,16 @@ export class ReportedPostsComponent implements OnInit {
       case 'APPROVED': return 'Approved';
       case 'REJECTED': return 'Rejected';
       case 'SOLD': return 'Sold';
+      case 'HOLD': return 'On Hold';
+      case 'HIDDEN': return 'Hidden';
+      case 'CORRECTION_REQUIRED': return 'Correction Required';
+      case 'REMOVED': return 'Removed';
       default: return status;
     }
+  }
+
+  getAvailableStatuses(post: ReportedPost): StatusOption[] {
+    return this.statusOptions.filter(o => o.value !== post.status);
   }
 
   formatPrice(price: number | null): string {

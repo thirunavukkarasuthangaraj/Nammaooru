@@ -108,29 +108,22 @@
         </td>
       </ng-container>
 
-      <!-- Actions Column -->
+      <!-- Action Column - Status Dropdown -->
       <ng-container matColumnDef="actions">
-        <th mat-header-cell *matHeaderCellDef>Actions</th>
+        <th mat-header-cell *matHeaderCellDef>Action</th>
         <td mat-cell *matCellDef="let post">
-          <div class="action-buttons">
-            <button mat-icon-button color="primary"
-                    *ngIf="post.status !== 'APPROVED'"
-                    (click)="approvePost(post)"
-                    matTooltip="Approve">
-              <mat-icon>check_circle</mat-icon>
+          <button mat-stroked-button [matMenuTriggerFor]="statusMenu" class="action-dropdown">
+            Change Status
+            <mat-icon>arrow_drop_down</mat-icon>
+          </button>
+          <mat-menu #statusMenu="matMenu">
+            <button mat-menu-item
+                    *ngFor="let option of getAvailableStatuses(post)"
+                    (click)="onStatusChange(post, option.value)">
+              <mat-icon [style.color]="option.color">{{ option.icon }}</mat-icon>
+              <span>{{ option.label }}</span>
             </button>
-            <button mat-icon-button color="warn"
-                    *ngIf="post.status !== 'REJECTED'"
-                    (click)="rejectPost(post)"
-                    matTooltip="Reject">
-              <mat-icon>cancel</mat-icon>
-            </button>
-            <button mat-icon-button color="warn"
-                    (click)="deletePost(post)"
-                    matTooltip="Delete permanently">
-              <mat-icon>delete</mat-icon>
-            </button>
-          </div>
+          </mat-menu>
         </td>
       </ng-container>
 

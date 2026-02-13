@@ -208,6 +208,26 @@
         background: #f3e5f5;
         color: #6a1b9a;
       }
+
+      &.status-hold {
+        background: #fff3e0;
+        color: #e65100;
+      }
+
+      &.status-hidden {
+        background: #eceff1;
+        color: #546e7a;
+      }
+
+      &.status-correction_required {
+        background: #e3f2fd;
+        color: #1565c0;
+      }
+
+      &.status-removed {
+        background: #fce4ec;
+        color: #b71c1c;
+      }
     }
 
     .date {
@@ -216,9 +236,9 @@
       white-space: nowrap;
     }
 
-    .action-buttons {
-      display: flex;
-      gap: 2px;
+    .action-dropdown {
+      font-size: 13px;
+      white-space: nowrap;
     }
   }
 

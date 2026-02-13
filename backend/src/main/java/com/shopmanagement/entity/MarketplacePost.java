@@ -77,6 +77,10 @@ public class MarketplacePost {
         APPROVED,
         REJECTED,
         SOLD,
-        FLAGGED
+        FLAGGED,
+        HOLD,
+        HIDDEN,
+        CORRECTION_REQUIRED,
+        REMOVED
     }
 }

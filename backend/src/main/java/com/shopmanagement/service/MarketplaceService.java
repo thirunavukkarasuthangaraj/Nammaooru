@@ -135,6 +135,51 @@ public class MarketplaceService {
     }
 
     @Transactional
+    public MarketplacePost changePostStatus(Long id, String statusStr) {
+        MarketplacePost post = marketplacePostRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+
+        PostStatus newStatus;
+        try {
+            newStatus = PostStatus.valueOf(statusStr.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Invalid status: " + statusStr);
+        }
+
+        PostStatus oldStatus = post.getStatus();
+        post.setStatus(newStatus);
+        MarketplacePost saved = marketplacePostRepository.save(post);
+        log.info("Marketplace post status changed: id={}, {} -> {}", id, oldStatus, newStatus);
+
+        // Notify seller about status change
+        String message = getStatusChangeMessage(saved, newStatus);
+        if (message != null) {
+            notifySellerPostStatus(saved, message);
+        }
+
+        return saved;
+    }
+
+    private String getStatusChangeMessage(MarketplacePost post, PostStatus status) {
+        switch (status) {
+            case APPROVED:
+                return "Your post '" + post.getTitle() + "' has been approved and is now visible to others.";
+            case REJECTED:
+                return "Your post '" + post.getTitle() + "' has been rejected by admin.";
+            case HOLD:
+                return "Your post '" + post.getTitle() + "' has been put on hold by admin.";
+            case HIDDEN:
+                return "Your post '" + post.getTitle() + "' has been hidden by admin.";
+            case CORRECTION_REQUIRED:
+                return "Your post '" + post.getTitle() + "' needs correction. Please update and resubmit.";
+            case REMOVED:
+                return "Your post '" + post.getTitle() + "' has been removed by admin.";
+            default:
+                return null;
+        }
+    }
+
+    @Transactional
     public MarketplacePost markAsSold(Long id, String username) {
         MarketplacePost post = marketplacePostRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));

@@ -163,6 +163,24 @@ public class MarketplaceController {
         }
     }
 
+    @PutMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<MarketplacePost>> changePostStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body) {
+        try {
+            String status = body.get("status");
+            if (status == null || status.isEmpty()) {
+                return ResponseUtil.error("Status is required");
+            }
+            MarketplacePost post = marketplaceService.changePostStatus(id, status);
+            return ResponseUtil.success(post, "Post status updated to " + status);
+        } catch (Exception e) {
+            log.error("Error changing post status", e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
     @PutMapping("/{id}/sold")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<MarketplacePost>> markAsSold(@PathVariable Long id) {

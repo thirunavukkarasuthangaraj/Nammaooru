@@ -25,6 +25,13 @@ interface MarketplacePost {
   templateUrl: './marketplace-management.component.html',
   styleUrls: ['./marketplace-management.component.scss']
 })
+interface StatusOption {
+  value: string;
+  label: string;
+  icon: string;
+  color: string;
+}
+
 export class MarketplaceManagementComponent implements OnInit {
   posts: MarketplacePost[] = [];
   loading = true;
@@ -33,6 +40,15 @@ export class MarketplaceManagementComponent implements OnInit {
   totalPages = 0;
   totalItems = 0;
   pageSize = 20;
+
+  statusOptions: StatusOption[] = [
+    { value: 'APPROVED', label: 'Approve', icon: 'check_circle', color: '#4caf50' },
+    { value: 'REJECTED', label: 'Reject', icon: 'cancel', color: '#f44336' },
+    { value: 'HOLD', label: 'Hold', icon: 'pause_circle', color: '#ff9800' },
+    { value: 'HIDDEN', label: 'Hide', icon: 'visibility_off', color: '#9e9e9e' },
+    { value: 'CORRECTION_REQUIRED', label: 'Correction Required', icon: 'edit_note', color: '#2196f3' },
+    { value: 'REMOVED', label: 'Remove', icon: 'delete_forever', color: '#b71c1c' }
+  ];
 
   constructor(
     private marketplaceService: MarketplaceAdminService,
@@ -120,12 +136,42 @@ export class MarketplaceManagementComponent implements OnInit {
     return getImageUrl(path);
   }
 
+  onStatusChange(post: MarketplacePost, newStatus: string): void {
+    if (newStatus === 'REMOVED') {
+      if (!confirm(`Remove "${post.title}" permanently?`)) return;
+      this.marketplaceService.deletePost(post.id).subscribe({
+        next: () => {
+          this.snackBar.open(`"${post.title}" removed`, 'OK', { duration: 3000 });
+          this.loadPosts();
+        },
+        error: () => this.snackBar.open('Failed to remove post', 'Close', { duration: 3000 })
+      });
+      return;
+    }
+    const label = this.statusOptions.find(o => o.value === newStatus)?.label || newStatus;
+    this.marketplaceService.changePostStatus(post.id, newStatus).subscribe({
+      next: () => {
+        this.snackBar.open(`"${post.title}" → ${label}`, 'OK', { duration: 3000 });
+        this.loadPosts();
+      },
+      error: () => this.snackBar.open(`Failed to change status`, 'Close', { duration: 3000 })
+    });
+  }
+
+  getAvailableStatuses(post: MarketplacePost): StatusOption[] {
+    return this.statusOptions.filter(o => o.value !== post.status);
+  }
+
   getStatusColor(status: string): string {
     switch (status) {
       case 'PENDING_APPROVAL': return 'warn';
       case 'APPROVED': return 'primary';
       case 'REJECTED': return 'accent';
       case 'SOLD': return '';
+      case 'HOLD': return 'warn';
+      case 'HIDDEN': return '';
+      case 'CORRECTION_REQUIRED': return 'primary';
+      case 'FLAGGED': return 'warn';
       default: return '';
     }
   }
@@ -136,6 +182,11 @@ export class MarketplaceManagementComponent implements OnInit {
       case 'APPROVED': return 'Approved';
       case 'REJECTED': return 'Rejected';
       case 'SOLD': return 'Sold';
+      case 'HOLD': return 'On Hold';
+      case 'HIDDEN': return 'Hidden';
+      case 'CORRECTION_REQUIRED': return 'Correction Required';
+      case 'FLAGGED': return 'Flagged';
+      case 'REMOVED': return 'Removed';
       default: return status;
     }
   }

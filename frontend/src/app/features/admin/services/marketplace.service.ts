@@ -40,4 +40,8 @@ export class MarketplaceAdminService {
   deletePost(id: number): Observable<any> {
     return this.http.delete(`${this.apiUrl}/${id}`);
   }
+
+  changePostStatus(id: number, status: string): Observable<any> {
+    return this.http.put(`${this.apiUrl}/${id}/status`, { status });
+  }
 }
