@@ -903,25 +903,42 @@ public class CustomerService {
     public Map<String, Object> getAvailableShops(int page, int size, String city, String category,
                                                   Double latitude, Double longitude, Double radiusKm) {
         try {
-            log.info("Getting available shops - page: {}, size: {}, city: {}, category: {}", page, size, city, category);
-
-            Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-            Page<Shop> shops;
+            log.info("Getting available shops - page: {}, size: {}, city: {}, category: {}, lat: {}, lng: {}, radius: {}",
+                    page, size, city, category, latitude, longitude, radiusKm);
 
             if (latitude != null && longitude != null) {
-                // Location-based search - for now use basic search, implement distance calculation later
-                shops = shopRepository.findAll(pageable);
-            } else if (city != null) {
-                shops = shopRepository.findAll(pageable); // Simplified for now
-            } else {
-                shops = shopRepository.findAll(pageable);
+                // Location-based search using Haversine distance
+                double radius = radiusKm != null ? radiusKm : 10.0;
+                List<Shop> nearbyShops = shopRepository.findShopsWithinRadius(latitude, longitude, radius);
+                log.info("Found {} nearby shops within {} km", nearbyShops.size(), radius);
+
+                // Manual pagination on the list
+                int start = page * size;
+                int end = Math.min(start + size, nearbyShops.size());
+                List<Shop> pageContent = start < nearbyShops.size() ? nearbyShops.subList(start, end) : List.of();
+                int totalPages = (int) Math.ceil((double) nearbyShops.size() / size);
+
+                return Map.of(
+                    "success", true,
+                    "content", pageContent,
+                    "page", page,
+                    "size", size,
+                    "totalElements", nearbyShops.size(),
+                    "totalPages", totalPages,
+                    "hasNext", (page + 1) < totalPages,
+                    "hasPrevious", page > 0
+                );
             }
+
+            // Fallback: return all active/approved shops
+            Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+            Page<Shop> shops = shopRepository.findByIsActiveTrue(pageable);
 
             log.info("Found {} shops", shops.getTotalElements());
 
             return Map.of(
                 "success", true,
-                "shops", shops.getContent(),
+                "content", shops.getContent(),
                 "page", page,
                 "size", size,
                 "totalElements", shops.getTotalElements(),

@@ -9,7 +9,11 @@
       "Bash(npm start)",
       "Bash(npm install:*)",
       "Bash(ng build:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(git push)",
+      "Bash(npx ng build:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

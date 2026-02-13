@@ -267,9 +267,22 @@ public class SettingService {
         createDefaultSettingIfNotExists("order.auto.approve", "false", 
                 "Auto Approve Orders", "ORDER", Setting.SettingType.BOOLEAN, Setting.SettingScope.GLOBAL);
         
-        createDefaultSettingIfNotExists("shop.approval.required", "true", 
+        createDefaultSettingIfNotExists("shop.approval.required", "true",
                 "Shop Approval Required", "SHOP", Setting.SettingType.BOOLEAN, Setting.SettingScope.GLOBAL);
-        
+
+        // Marketplace settings
+        createDefaultSettingIfNotExists("marketplace.post.duration_days", "30",
+                "How many days a post stays visible (0 = no expiry)", "MARKETPLACE", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("marketplace.post.auto_approve", "false",
+                "Auto-approve new marketplace posts (skip pending approval)", "MARKETPLACE", Setting.SettingType.BOOLEAN, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("marketplace.post.visible_statuses", "[\"APPROVED\"]",
+                "Which post statuses are visible to the public", "MARKETPLACE", Setting.SettingType.JSON, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("marketplace.post.report_threshold", "3",
+                "Number of reports needed before auto-flagging a post", "MARKETPLACE", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
+
         log.info("Default settings initialization completed");
     }
     

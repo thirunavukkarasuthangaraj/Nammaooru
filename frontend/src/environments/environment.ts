@@ -1,14 +1,14 @@
 import packageInfo from '../../package.json';
 
 export const environment = {
-  production: false,
-  apiUrl: 'http://localhost:8080/api',
-  imageBaseUrl: 'http://localhost:8080', // For serving static images
-  appUrl: 'http://localhost:4200',
+  production: true,
+  apiUrl: 'https://api.nammaoorudelivary.in/api',
+  imageBaseUrl: '', // Images served from same origin via nginx proxy (enables service worker caching)
+  appUrl: 'https://nammaoorudelivary.in',
   googleMapsApiKey: 'AIzaSyAr_uGbaOnhebjRyz7ohU6N-hWZJVV_R3U',
-  websocketUrl: 'ws://localhost:8080/ws',
+  websocketUrl: 'wss://api.nammaoorudelivary.in/ws',
   version: packageInfo.version,
-  buildDate: new Date().toISOString(), 
+  buildDate: new Date().toISOString(), // Dynamic build date
   timezone: 'Asia/Kolkata', // Indian Standard Time
   defaultMapCenter: {
     lat: 12.9716, // Bangalore coordinates

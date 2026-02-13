@@ -1,0 +1,85 @@
+<div class="config-container">
+  <div class="config-header">
+    <h2>Marketplace Post Settings</h2>
+    <p class="subtitle">Configure marketplace post behavior</p>
+  </div>
+
+  <div *ngIf="loading" class="loading-container">
+    <mat-spinner diameter="40"></mat-spinner>
+    <p>Loading settings...</p>
+  </div>
+
+  <div *ngIf="!loading" class="config-form">
+    <!-- Post Duration -->
+    <mat-card class="setting-card">
+      <mat-card-content>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-label">Post Visibility Duration</div>
+            <div class="setting-desc">How long posts remain visible in the marketplace</div>
+          </div>
+          <mat-form-field appearance="outline" class="setting-control">
+            <mat-select [(value)]="durationDays">
+              <mat-option *ngFor="let opt of durationOptions" [value]="opt.value">
+                {{ opt.label }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Auto Approve -->
+    <mat-card class="setting-card">
+      <mat-card-content>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-label">Auto Approve Posts</div>
+            <div class="setting-desc">New posts will be approved automatically without admin review</div>
+          </div>
+          <mat-slide-toggle [(ngModel)]="autoApprove" color="primary"></mat-slide-toggle>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Visible Statuses -->
+    <mat-card class="setting-card">
+      <mat-card-content>
+        <div class="setting-label" style="margin-bottom: 8px;">Visible Statuses</div>
+        <div class="setting-desc" style="margin-bottom: 16px;">Select which post statuses are visible to the public</div>
+        <div class="status-checkboxes">
+          <mat-checkbox *ngFor="let status of allStatuses"
+            [checked]="isStatusChecked(status)"
+            (change)="toggleStatus(status)"
+            color="primary">
+            {{ statusLabels[status] }}
+          </mat-checkbox>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Report Threshold -->
+    <mat-card class="setting-card">
+      <mat-card-content>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-label">Report Threshold</div>
+            <div class="setting-desc">Number of reports needed before a post is auto-flagged</div>
+          </div>
+          <mat-form-field appearance="outline" class="setting-control threshold-input">
+            <input matInput type="number" [(ngModel)]="reportThreshold" min="1" max="50">
+          </mat-form-field>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Save Button -->
+    <div class="actions">
+      <button mat-raised-button color="primary" (click)="saveSettings()" [disabled]="saving">
+        <mat-icon *ngIf="!saving">save</mat-icon>
+        <mat-spinner *ngIf="saving" diameter="20" class="btn-spinner"></mat-spinner>
+        {{ saving ? 'Saving...' : 'Save Settings' }}
+      </button>
+    </div>
+  </div>
+</div>

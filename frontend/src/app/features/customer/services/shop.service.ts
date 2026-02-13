@@ -42,19 +42,25 @@ export class ShopService {
 
   constructor(private http: HttpClient) {}
 
-  getShops(searchTerm: string = '', category: string = ''): Observable<Shop[]> {
+  getShops(searchTerm: string = '', category: string = '', lat?: number, lng?: number, radiusKm: number = 10): Observable<Shop[]> {
     let params = new HttpParams();
     if (searchTerm) params = params.set('search', searchTerm);
     if (category) params = params.set('category', category);
-    
+    if (lat != null && lng != null) {
+      params = params.set('latitude', lat.toString());
+      params = params.set('longitude', lng.toString());
+      params = params.set('radiusKm', radiusKm.toString());
+    }
+
     // Get only active and approved shops
     return this.http.get<any>(`${this.apiUrl}/customer/shops`, { params })
       .pipe(
         switchMap(response => {
-          // Handle paginated response
-          if (response.data && response.data.content) {
+          // Handle paginated response - support both 'content' and 'shops' keys
+          const shopList = response.data?.content || response.data?.shops;
+          if (shopList) {
             // Transform backend shop data to frontend format
-            const shops = response.data.content.map((shop: any) => {
+            const shops = shopList.map((shop: any) => {
               // Find logo from images array (imageType === 'LOGO' or isPrimary === true)
               let logoUrl = '/assets/images/shop-placeholder.jpg';
               if (shop.images && shop.images.length > 0) {
@@ -174,8 +180,9 @@ export class ShopService {
     return this.http.get<any>(`${this.apiUrl}/shops/nearby`, { params })
       .pipe(
         switchMap(response => {
-          if (response.data && response.data.shops) {
-            const shops = response.data.shops.map((shop: any) => {
+          const shopList = response.data?.shops || response.data?.content || response.data;
+          if (shopList && Array.isArray(shopList)) {
+            const shops = shopList.map((shop: any) => {
               let logoUrl = '/assets/images/shop-placeholder.jpg';
               if (shop.images && shop.images.length > 0) {
                 const logoImage = shop.images.find((img: any) =>

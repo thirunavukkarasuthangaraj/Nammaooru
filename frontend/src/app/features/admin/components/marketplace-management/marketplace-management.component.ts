@@ -20,11 +20,6 @@ interface MarketplacePost {
   updatedAt: string;
 }
 
-@Component({
-  selector: 'app-marketplace-management',
-  templateUrl: './marketplace-management.component.html',
-  styleUrls: ['./marketplace-management.component.scss']
-})
 interface StatusOption {
   value: string;
   label: string;
@@ -32,6 +27,11 @@ interface StatusOption {
   color: string;
 }
 
+@Component({
+  selector: 'app-marketplace-management',
+  templateUrl: './marketplace-management.component.html',
+  styleUrls: ['./marketplace-management.component.scss']
+})
 export class MarketplaceManagementComponent implements OnInit {
   posts: MarketplacePost[] = [];
   loading = true;

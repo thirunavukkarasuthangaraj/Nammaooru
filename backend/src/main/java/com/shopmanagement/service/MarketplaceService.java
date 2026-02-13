@@ -15,8 +15,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -30,6 +34,8 @@ public class MarketplaceService {
     private final UserRepository userRepository;
     private final FileUploadService fileUploadService;
     private final NotificationService notificationService;
+    private final SettingService settingService;
+    private final ObjectMapper objectMapper;
 
     @Transactional
     public MarketplacePost createPost(String title, String description, BigDecimal price,
@@ -49,6 +55,9 @@ public class MarketplaceService {
             voiceUrl = fileUploadService.uploadVoiceFile(voice, "marketplace/voice");
         }
 
+        boolean autoApprove = Boolean.parseBoolean(
+                settingService.getSettingValue("marketplace.post.auto_approve", "false"));
+
         MarketplacePost post = MarketplacePost.builder()
                 .title(title)
                 .description(description)
@@ -60,25 +69,41 @@ public class MarketplaceService {
                 .sellerPhone(phone)
                 .category(category)
                 .location(location)
-                .status(PostStatus.PENDING_APPROVAL)
+                .status(autoApprove ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)
                 .build();
 
         MarketplacePost saved = marketplacePostRepository.save(post);
-        log.info("Marketplace post created: id={}, title={}, seller={}", saved.getId(), title, username);
+        log.info("Marketplace post created: id={}, title={}, seller={}, autoApproved={}", saved.getId(), title, username, autoApprove);
 
-        // Notify admins about new post pending approval
-        notifyAdminsNewPost(saved);
+        if (autoApprove) {
+            notifySellerPostStatus(saved, "Your post '" + saved.getTitle() + "' has been auto-approved and is now visible to others.");
+        } else {
+            // Notify admins about new post pending approval
+            notifyAdminsNewPost(saved);
+        }
 
         return saved;
     }
 
     @Transactional(readOnly = true)
     public Page<MarketplacePost> getApprovedPosts(Pageable pageable) {
-        return marketplacePostRepository.findByStatusOrderByCreatedAtDesc(PostStatus.APPROVED, pageable);
+        List<PostStatus> visibleStatuses = getVisibleStatuses();
+        LocalDateTime cutoffDate = getCutoffDate();
+
+        if (cutoffDate != null) {
+            return marketplacePostRepository.findByStatusInAndCreatedAtAfterOrderByCreatedAtDesc(visibleStatuses, cutoffDate, pageable);
+        }
+        return marketplacePostRepository.findByStatusInOrderByCreatedAtDesc(visibleStatuses, pageable);
     }
 
     @Transactional(readOnly = true)
     public Page<MarketplacePost> getApprovedPostsByCategory(String category, Pageable pageable) {
+        List<PostStatus> visibleStatuses = getVisibleStatuses();
+        LocalDateTime cutoffDate = getCutoffDate();
+
+        if (cutoffDate != null) {
+            return marketplacePostRepository.findByStatusInAndCategoryAndCreatedAtAfterOrderByCreatedAtDesc(visibleStatuses, category, cutoffDate, pageable);
+        }
         return marketplacePostRepository.findByStatusAndCategoryOrderByCreatedAtDesc(
                 PostStatus.APPROVED, category, pageable);
     }
@@ -229,8 +254,10 @@ public class MarketplaceService {
         int newCount = (post.getReportCount() != null ? post.getReportCount() : 0) + 1;
         post.setReportCount(newCount);
 
-        // Auto-flag if 3+ reports
-        if (newCount >= 3 && post.getStatus() == PostStatus.APPROVED) {
+        // Auto-flag if reports reach configurable threshold
+        int reportThreshold = Integer.parseInt(
+                settingService.getSettingValue("marketplace.post.report_threshold", "3"));
+        if (newCount >= reportThreshold && post.getStatus() == PostStatus.APPROVED) {
             post.setStatus(PostStatus.FLAGGED);
             log.warn("Marketplace post auto-flagged due to {} reports: id={}, title={}", newCount, postId, post.getTitle());
 
@@ -304,6 +331,28 @@ public class MarketplaceService {
         } catch (Exception e) {
             log.error("Failed to send seller notification for marketplace post: {}", post.getId(), e);
         }
+    }
+
+    private List<PostStatus> getVisibleStatuses() {
+        String json = settingService.getSettingValue("marketplace.post.visible_statuses", "[\"APPROVED\"]");
+        try {
+            List<String> statusStrings = objectMapper.readValue(json, new TypeReference<List<String>>() {});
+            return statusStrings.stream()
+                    .map(s -> PostStatus.valueOf(s.toUpperCase()))
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.warn("Failed to parse visible_statuses setting, defaulting to APPROVED: {}", e.getMessage());
+            return List.of(PostStatus.APPROVED);
+        }
+    }
+
+    private LocalDateTime getCutoffDate() {
+        int durationDays = Integer.parseInt(
+                settingService.getSettingValue("marketplace.post.duration_days", "30"));
+        if (durationDays <= 0) {
+            return null; // no expiry
+        }
+        return LocalDateTime.now().minusDays(durationDays);
     }
 
     private void notifyAdminsFlaggedPost(MarketplacePost post, int reportCount) {

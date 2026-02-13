@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
@@ -23,4 +24,8 @@ public interface MarketplacePostRepository extends JpaRepository<MarketplacePost
     Page<MarketplacePost> findByReportCountGreaterThanOrderByReportCountDesc(int minReportCount, Pageable pageable);
 
     Page<MarketplacePost> findByStatusOrReportCountGreaterThanOrderByReportCountDesc(PostStatus status, int minReportCount, Pageable pageable);
+
+    Page<MarketplacePost> findByStatusInAndCreatedAtAfterOrderByCreatedAtDesc(List<PostStatus> statuses, LocalDateTime after, Pageable pageable);
+
+    Page<MarketplacePost> findByStatusInAndCategoryAndCreatedAtAfterOrderByCreatedAtDesc(List<PostStatus> statuses, String category, LocalDateTime after, Pageable pageable);
 }

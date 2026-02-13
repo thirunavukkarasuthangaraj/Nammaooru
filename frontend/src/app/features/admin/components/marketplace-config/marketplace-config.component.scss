@@ -1,0 +1,119 @@
+.config-container {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+.config-header {
+  margin-bottom: 24px;
+
+  h2 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 500;
+  }
+
+  .subtitle {
+    margin: 4px 0 0;
+    color: #666;
+    font-size: 14px;
+  }
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 0;
+  color: #666;
+
+  p {
+    margin-top: 16px;
+  }
+}
+
+.setting-card {
+  margin-bottom: 16px;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.setting-info {
+  flex: 1;
+}
+
+.setting-label {
+  font-size: 15px;
+  font-weight: 500;
+  color: #333;
+}
+
+.setting-desc {
+  font-size: 13px;
+  color: #888;
+  margin-top: 2px;
+}
+
+.setting-control {
+  width: 200px;
+  flex-shrink: 0;
+
+  ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+    display: none;
+  }
+}
+
+.threshold-input {
+  width: 100px;
+}
+
+.status-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+
+  mat-checkbox {
+    font-size: 14px;
+  }
+}
+
+.actions {
+  margin-top: 24px;
+  display: flex;
+  justify-content: flex-end;
+
+  button {
+    min-width: 160px;
+    height: 44px;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+}
+
+.btn-spinner {
+  display: inline-block;
+}
+
+@media (max-width: 600px) {
+  .setting-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .setting-control {
+    width: 100%;
+  }
+
+  .threshold-input {
+    width: 100%;
+  }
+}
