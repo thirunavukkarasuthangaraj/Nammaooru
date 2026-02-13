@@ -15,11 +15,12 @@ class _BusTimingScreenState extends State<BusTimingScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   List<dynamic> _busTimings = [];
-  List<dynamic> _filteredTimings = [];
+  List<_RouteGroup> _routeGroups = [];
   bool _isLoading = true;
   String? _errorMessage;
   String _selectedLocation = '';
   List<String> _locationOptions = [];
+  String? _expandedKey; // "routeIndex-timingIndex"
 
   @override
   void initState() {
@@ -44,7 +45,6 @@ class _BusTimingScreenState extends State<BusTimingScreen> {
 
       if (response['success'] == true) {
         final data = response['data'] as List<dynamic>? ?? [];
-        // Extract unique locations
         final locations = <String>{};
         for (final t in data) {
           if (t['locationArea'] != null && t['locationArea'].toString().isNotEmpty) {
@@ -54,10 +54,10 @@ class _BusTimingScreenState extends State<BusTimingScreen> {
 
         setState(() {
           _busTimings = data;
-          _filteredTimings = data;
           _locationOptions = locations.toList()..sort();
           _isLoading = false;
         });
+        _applyFilters();
       } else {
         setState(() {
           _errorMessage = response['message'] ?? 'Failed to load bus timings';
@@ -72,29 +72,72 @@ class _BusTimingScreenState extends State<BusTimingScreen> {
     }
   }
 
+  int _parseTimeForSort(String time) {
+    if (time.isEmpty) return 0;
+    try {
+      final t = time.toUpperCase().trim();
+      final isPM = t.contains('PM');
+      final cleaned = t.replaceAll(RegExp(r'[APM\s]'), '');
+      final parts = cleaned.split(':');
+      var hour = int.parse(parts[0]);
+      final min = parts.length > 1 ? int.parse(parts[1]) : 0;
+      if (isPM && hour != 12) hour += 12;
+      if (!isPM && hour == 12) hour = 0;
+      return hour * 60 + min;
+    } catch (_) {
+      return 0;
+    }
+  }
+
   void _applyFilters() {
     final search = _searchController.text.toLowerCase().trim();
+
+    final filtered = _busTimings.where((t) {
+      if (_selectedLocation.isNotEmpty && t['locationArea'] != _selectedLocation) {
+        return false;
+      }
+      if (search.isNotEmpty) {
+        final busNumber = (t['busNumber'] ?? '').toString().toLowerCase();
+        final busName = (t['busName'] ?? '').toString().toLowerCase();
+        final routeFrom = (t['routeFrom'] ?? '').toString().toLowerCase();
+        final routeTo = (t['routeTo'] ?? '').toString().toLowerCase();
+        final viaStops = (t['viaStops'] ?? '').toString().toLowerCase();
+        return busNumber.contains(search) ||
+            busName.contains(search) ||
+            routeFrom.contains(search) ||
+            routeTo.contains(search) ||
+            viaStops.contains(search);
+      }
+      return true;
+    }).toList();
+
+    // Group by route (from → to)
+    final Map<String, List<dynamic>> groupMap = {};
+    for (final t in filtered) {
+      final from = (t['routeFrom'] ?? '').toString().trim();
+      final to = (t['routeTo'] ?? '').toString().trim();
+      final key = '$from → $to';
+      groupMap.putIfAbsent(key, () => []);
+      groupMap[key]!.add(t);
+    }
+
+    // Sort timings within each group by departure time
+    final groups = <_RouteGroup>[];
+    for (final entry in groupMap.entries) {
+      entry.value.sort((a, b) {
+        final timeA = _parseTimeForSort(a['departureTime'] ?? '');
+        final timeB = _parseTimeForSort(b['departureTime'] ?? '');
+        return timeA.compareTo(timeB);
+      });
+      groups.add(_RouteGroup(route: entry.key, timings: entry.value));
+    }
+
+    // Sort groups alphabetically by route
+    groups.sort((a, b) => a.route.compareTo(b.route));
+
     setState(() {
-      _filteredTimings = _busTimings.where((t) {
-        // Location filter
-        if (_selectedLocation.isNotEmpty && t['locationArea'] != _selectedLocation) {
-          return false;
-        }
-        // Search filter
-        if (search.isNotEmpty) {
-          final busNumber = (t['busNumber'] ?? '').toString().toLowerCase();
-          final busName = (t['busName'] ?? '').toString().toLowerCase();
-          final routeFrom = (t['routeFrom'] ?? '').toString().toLowerCase();
-          final routeTo = (t['routeTo'] ?? '').toString().toLowerCase();
-          final viaStops = (t['viaStops'] ?? '').toString().toLowerCase();
-          return busNumber.contains(search) ||
-              busName.contains(search) ||
-              routeFrom.contains(search) ||
-              routeTo.contains(search) ||
-              viaStops.contains(search);
-        }
-        return true;
-      }).toList();
+      _routeGroups = groups;
+      _expandedKey = null;
     });
   }
 
@@ -224,7 +267,7 @@ class _BusTimingScreenState extends State<BusTimingScreen> {
       );
     }
 
-    if (_filteredTimings.isEmpty) {
+    if (_routeGroups.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -245,10 +288,227 @@ class _BusTimingScreenState extends State<BusTimingScreen> {
     return RefreshIndicator(
       onRefresh: _loadBusTimings,
       child: ListView.builder(
-        padding: const EdgeInsets.all(12),
-        itemCount: _filteredTimings.length,
-        itemBuilder: (context, index) => _buildBusCard(_filteredTimings[index]),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        itemCount: _routeGroups.length,
+        itemBuilder: (context, groupIndex) {
+          return _buildRouteGroupCard(_routeGroups[groupIndex], groupIndex);
+        },
       ),
+    );
+  }
+
+  Widget _buildRouteGroupCard(_RouteGroup group, int groupIndex) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Route header
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.blue[700]!, Colors.blue[500]!],
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.directions_bus, color: Colors.white, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    group.route,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${group.timings.length} bus${group.timings.length > 1 ? 'es' : ''}',
+                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Time list
+          ...List.generate(group.timings.length, (timingIndex) {
+            final timing = group.timings[timingIndex];
+            final key = '$groupIndex-$timingIndex';
+            final isExpanded = _expandedKey == key;
+            final isLast = timingIndex == group.timings.length - 1;
+            return _buildTimingRow(timing, key, isExpanded, isLast);
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimingRow(dynamic timing, String key, bool isExpanded, bool isLast) {
+    final busType = timing['busType'] ?? 'GOVERNMENT';
+    final isGovt = busType == 'GOVERNMENT';
+    final fare = timing['fare'];
+    final depTime = timing['departureTime'] ?? '';
+    final arrTime = timing['arrivalTime'] ?? '';
+    final stops = _parseStops(timing['viaStops']?.toString());
+
+    return Column(
+      children: [
+        // Compact row
+        InkWell(
+          onTap: () {
+            setState(() {
+              _expandedKey = isExpanded ? null : key;
+            });
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Row(
+              children: [
+                // Time column
+                SizedBox(
+                  width: 58,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        depTime,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Colors.green[800],
+                        ),
+                      ),
+                      Text(
+                        arrTime,
+                        style: TextStyle(fontSize: 11, color: Colors.red[600]),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  width: 1, height: 32,
+                  margin: const EdgeInsets.symmetric(horizontal: 10),
+                  color: Colors.grey[200],
+                ),
+                // Bus info
+                Expanded(
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: isGovt ? Colors.blue[50] : Colors.orange[50],
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: isGovt ? Colors.blue[200]! : Colors.orange[200]!),
+                        ),
+                        child: Text(
+                          timing['busNumber'] ?? '',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: isGovt ? Colors.blue[800] : Colors.orange[800],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: isGovt ? Colors.blue[700] : Colors.orange[700],
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                        child: Text(
+                          isGovt ? 'Govt' : 'Pvt',
+                          style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      if (stops.isNotEmpty) ...[
+                        const SizedBox(width: 6),
+                        Text(
+                          '${stops.length} stops',
+                          style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                // Fare + chevron
+                if (fare != null)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: Text(
+                      '₹${fare is double ? fare.toStringAsFixed(0) : fare}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: Colors.green[700],
+                      ),
+                    ),
+                  ),
+                Icon(
+                  isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                  size: 20,
+                  color: Colors.grey[400],
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // Expanded: full route timeline
+        if (isExpanded)
+          Container(
+            color: Colors.grey[50],
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (timing['busName'] != null && timing['busName'].toString().isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(
+                      timing['busName'],
+                      style: TextStyle(fontSize: 13, color: Colors.grey[600], fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                _buildRouteTimeline(timing, stops),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.calendar_today, size: 13, color: Colors.grey[500]),
+                    const SizedBox(width: 4),
+                    Text(
+                      _getOperatingDaysLabel(timing['operatingDays'] ?? 'DAILY'),
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                    const SizedBox(width: 16),
+                    Icon(Icons.location_on, size: 13, color: Colors.grey[500]),
+                    const SizedBox(width: 4),
+                    Text(
+                      timing['locationArea'] ?? '',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+        if (!isLast && !isExpanded) Divider(height: 1, color: Colors.grey[200]),
+      ],
     );
   }
 
@@ -263,7 +523,6 @@ class _BusTimingScreenState extends State<BusTimingScreen> {
         }).where((s) => s['name']!.isNotEmpty).toList();
       }
     } catch (_) {
-      // Legacy comma-separated format
       if (viaStops.contains(',') || viaStops.trim().isNotEmpty) {
         return viaStops.split(',').map((s) => {
           'name': s.trim(),
@@ -274,140 +533,39 @@ class _BusTimingScreenState extends State<BusTimingScreen> {
     return [];
   }
 
-  Widget _buildBusCard(dynamic timing) {
-    final busType = timing['busType'] ?? 'GOVERNMENT';
-    final isGovt = busType == 'GOVERNMENT';
-    final fare = timing['fare'];
-    final stops = _parseStops(timing['viaStops']?.toString());
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header: Bus number + type badge
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: isGovt ? Colors.blue[50] : Colors.orange[50],
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: isGovt ? Colors.blue[200]! : Colors.orange[200]!),
-                  ),
-                  child: Text(
-                    timing['busNumber'] ?? '',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: isGovt ? Colors.blue[800] : Colors.orange[800],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: isGovt ? Colors.blue[700] : Colors.orange[700],
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    isGovt ? 'Govt' : 'Private',
-                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
-                  ),
-                ),
-                const Spacer(),
-                if (fare != null)
-                  Text(
-                    '₹${fare is double ? fare.toStringAsFixed(0) : fare}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Colors.green[700],
-                    ),
-                  ),
-              ],
-            ),
-
-            if (timing['busName'] != null && timing['busName'].toString().isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Text(
-                timing['busName'],
-                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-              ),
-            ],
-
-            const SizedBox(height: 12),
-
-            // Route Timeline
-            _buildRouteTimeline(timing, stops),
-
-            const SizedBox(height: 10),
-
-            // Footer: Operating days + Location
-            Row(
-              children: [
-                Icon(Icons.calendar_today, size: 14, color: Colors.grey[500]),
-                const SizedBox(width: 4),
-                Text(
-                  _getOperatingDaysLabel(timing['operatingDays'] ?? 'DAILY'),
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                ),
-                const SizedBox(width: 16),
-                Icon(Icons.location_on, size: 14, color: Colors.grey[500]),
-                const SizedBox(width: 4),
-                Text(
-                  timing['locationArea'] ?? '',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildRouteTimeline(dynamic timing, List<Map<String, String>> stops) {
     return Column(
       children: [
-        // Start point
         _buildTimelineRow(
           color: Colors.green[600]!,
           dotSize: 10,
           name: timing['routeFrom'] ?? '',
           time: timing['departureTime'] ?? '',
-          timeBg: Color(0xFFE8F5E9),
-          timeColor: Color(0xFF2E7D32),
+          timeBg: const Color(0xFFE8F5E9),
+          timeColor: const Color(0xFF2E7D32),
           isFirst: true,
           isLast: stops.isEmpty,
           isBold: true,
         ),
-        // Intermediate stops
         for (int i = 0; i < stops.length; i++)
           _buildTimelineRow(
             color: Colors.orange[600]!,
             dotSize: 7,
             name: stops[i]['name'] ?? '',
             time: stops[i]['time'] ?? '',
-            timeBg: Color(0xFFFFF3E0),
-            timeColor: Color(0xFFE65100),
+            timeBg: const Color(0xFFFFF3E0),
+            timeColor: const Color(0xFFE65100),
             isFirst: false,
-            isLast: i == stops.length - 1 ? false : false,
+            isLast: false,
             isBold: false,
           ),
-        // End point
         _buildTimelineRow(
           color: Colors.red[600]!,
           dotSize: 10,
           name: timing['routeTo'] ?? '',
           time: timing['arrivalTime'] ?? '',
-          timeBg: Color(0xFFFFEBEE),
-          timeColor: Color(0xFFC62828),
+          timeBg: const Color(0xFFFFEBEE),
+          timeColor: const Color(0xFFC62828),
           isFirst: false,
           isLast: true,
           isBold: true,
@@ -431,26 +589,19 @@ class _BusTimingScreenState extends State<BusTimingScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Timeline line + dot
           SizedBox(
             width: 24,
             child: Column(
               children: [
-                // Line above dot
                 if (!isFirst)
                   Expanded(child: Container(width: 2, color: Colors.grey[300]))
                 else
                   const Expanded(child: SizedBox()),
-                // Dot
                 Container(
                   width: dotSize,
                   height: dotSize,
-                  decoration: BoxDecoration(
-                    color: color,
-                    shape: BoxShape.circle,
-                  ),
+                  decoration: BoxDecoration(color: color, shape: BoxShape.circle),
                 ),
-                // Line below dot
                 if (!isLast)
                   Expanded(child: Container(width: 2, color: Colors.grey[300]))
                 else
@@ -459,7 +610,6 @@ class _BusTimingScreenState extends State<BusTimingScreen> {
             ),
           ),
           const SizedBox(width: 8),
-          // Stop name
           Expanded(
             child: Padding(
               padding: EdgeInsets.symmetric(vertical: isBold ? 6 : 4),
@@ -467,13 +617,12 @@ class _BusTimingScreenState extends State<BusTimingScreen> {
                 name,
                 style: TextStyle(
                   fontWeight: isBold ? FontWeight.w600 : FontWeight.normal,
-                  fontSize: isBold ? 15 : 13,
+                  fontSize: isBold ? 14 : 13,
                   color: isBold ? Colors.black87 : Colors.grey[700],
                 ),
               ),
             ),
           ),
-          // Time badge
           if (time.isNotEmpty)
             Container(
               margin: EdgeInsets.symmetric(vertical: isBold ? 4 : 2),
@@ -486,7 +635,7 @@ class _BusTimingScreenState extends State<BusTimingScreen> {
                 time,
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: isBold ? 13 : 11,
+                  fontSize: isBold ? 12 : 11,
                   color: timeColor,
                 ),
               ),
@@ -508,4 +657,11 @@ class _BusTimingScreenState extends State<BusTimingScreen> {
         return days;
     }
   }
+}
+
+class _RouteGroup {
+  final String route;
+  final List<dynamic> timings;
+
+  _RouteGroup({required this.route, required this.timings});
 }

@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../../core/auth/auth_provider.dart';
+import '../../../core/localization/language_provider.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../shared/widgets/loading_widget.dart';
@@ -162,6 +163,21 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
         setState(() => _isLoadingMyPosts = false);
       }
     }
+  }
+
+  String _getCategoryTamil(String cat, BuildContext context) {
+    final lang = Provider.of<LanguageProvider>(context, listen: false);
+    const tamilMap = {
+      'All': 'அனைத்தும்',
+      'Electronics': 'மின்னணுவியல்',
+      'Furniture': 'மரச்சாமான்',
+      'Vehicles': 'வாகனங்கள்',
+      'Agriculture': 'விவசாயம்',
+      'Clothing': 'ஆடைகள்',
+      'Food': 'உணவு',
+      'Other': 'பிற',
+    };
+    return lang.getText(cat, tamilMap[cat] ?? cat);
   }
 
   void _onCategorySelected(String category) {
@@ -452,12 +468,13 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
 
   @override
   Widget build(BuildContext context) {
+    final langProvider = Provider.of<LanguageProvider>(context);
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text(
-          'Ooru Market',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Text(
+          langProvider.getText('Ooru Market', 'ஊரு மார்க்கெட்'),
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         backgroundColor: VillageTheme.primaryGreen,
         foregroundColor: Colors.white,
@@ -470,9 +487,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
           labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
           unselectedLabelStyle: const TextStyle(fontSize: 13),
           tabs: [
-            const Tab(text: 'Buy & Sell'),
-            const Tab(text: 'Real Estate'),
-            Tab(text: 'My Posts${_myPosts.isNotEmpty ? ' (${_myPosts.length})' : ''}'),
+            Tab(text: langProvider.getText('Buy & Sell', 'வாங்க & விற்க')),
+            Tab(text: langProvider.getText('Real Estate', 'ரியல் எஸ்டேட்')),
+            Tab(text: '${langProvider.getText('My Posts', 'என் பதிவுகள்')}${_myPosts.isNotEmpty ? ' (${_myPosts.length})' : ''}'),
           ],
         ),
       ),
@@ -524,7 +541,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: FilterChip(
-                    label: Text(cat),
+                    label: Text(_getCategoryTamil(cat, context)),
                     selected: isSelected,
                     onSelected: (_) => _onCategorySelected(cat),
                     selectedColor: VillageTheme.primaryGreen.withOpacity(0.2),
