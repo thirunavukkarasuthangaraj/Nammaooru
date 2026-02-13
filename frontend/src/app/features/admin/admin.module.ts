@@ -39,6 +39,7 @@ import { MenuPermissionsComponent } from './components/menu-permissions/menu-per
 import { MarketplaceManagementComponent } from './components/marketplace-management/marketplace-management.component';
 import { RealEstateManagementComponent } from './components/real-estate-management/real-estate-management.component';
 import { BusTimingManagementComponent } from './components/bus-timing-management/bus-timing-management.component';
+import { ReportedPostsComponent } from './components/reported-posts/reported-posts.component';
 
 @NgModule({
   declarations: [
@@ -54,7 +55,8 @@ import { BusTimingManagementComponent } from './components/bus-timing-management
     MenuPermissionsComponent,
     MarketplaceManagementComponent,
     RealEstateManagementComponent,
-    BusTimingManagementComponent
+    BusTimingManagementComponent,
+    ReportedPostsComponent
   ],
   imports: [
     CommonModule,
@@ -136,6 +138,10 @@ import { BusTimingManagementComponent } from './components/bus-timing-management
       {
         path: 'bus-timing',
         component: BusTimingManagementComponent
+      },
+      {
+        path: 'reported-posts',
+        component: ReportedPostsComponent
       },
       {
         path: 'shops',

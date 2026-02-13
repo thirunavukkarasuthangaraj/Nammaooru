@@ -23,6 +23,12 @@ export class MarketplaceAdminService {
     });
   }
 
+  getReportedPosts(page: number = 0, size: number = 20): Observable<any> {
+    return this.http.get(`${this.apiUrl}/admin/reported`, {
+      params: { page: page.toString(), size: size.toString() }
+    });
+  }
+
   approvePost(id: number): Observable<any> {
     return this.http.put(`${this.apiUrl}/${id}/approve`, {});
   }

@@ -173,7 +173,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
     final lang = Provider.of<LanguageProvider>(context, listen: false);
     const tamilMap = {
       'All': 'அனைத்தும்',
-      'Electronics': 'மின்னணுவியல்',
+      'Electronics': 'எலக்ட்ரானிக்ஸ்',
       'Furniture': 'மரச்சாமான்',
       'Vehicles': 'வாகனங்கள்',
       'Agriculture': 'விவசாயம்',
@@ -183,6 +183,18 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
       'Other': 'பிற',
     };
     return lang.getText(cat, tamilMap[cat] ?? cat);
+  }
+
+  String _getReFilterTamil(String filter) {
+    const tamilMap = {
+      'All': 'அனைத்தும்',
+      'For Sale': 'விற்பனைக்கு',
+      'For Rent': 'வாடகைக்கு',
+      'Land': 'நிலம்',
+      'House': 'வீடு',
+      'Apartment': 'அடுக்குமாடி',
+    };
+    return tamilMap[filter] ?? filter;
   }
 
   void _onCategorySelected(String category) {
@@ -788,10 +800,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                           Expanded(
                             child: ElevatedButton.icon(
                               onPressed: () => _callOrLogin(post),
-                              icon: Icon(isLoggedIn ? Icons.call : Icons.login, size: 18),
+                              icon: const Icon(Icons.call, size: 18),
                               label: Text(isLoggedIn
                                   ? 'Call ${post['sellerName']?.split(' ').first ?? 'Seller'}'
-                                  : 'Login to Contact'),
+                                  : 'Call'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.green,
                                 foregroundColor: Colors.white,
@@ -867,10 +879,11 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
             child: Row(
               children: _reFilters.map((filter) {
                 final isSelected = _reSelectedFilter == filter;
+                final lang = Provider.of<LanguageProvider>(context, listen: false);
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: FilterChip(
-                    label: Text(filter),
+                    label: Text(lang.getText(filter, _getReFilterTamil(filter))),
                     selected: isSelected,
                     onSelected: (selected) {
                       setState(() => _reSelectedFilter = filter);

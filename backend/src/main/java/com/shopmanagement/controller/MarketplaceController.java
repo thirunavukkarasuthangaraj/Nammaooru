@@ -109,6 +109,21 @@ public class MarketplaceController {
         }
     }
 
+    @GetMapping("/admin/reported")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getReportedPosts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            Pageable pageable = PageRequest.of(page, size);
+            Page<MarketplacePost> posts = marketplaceService.getReportedPosts(pageable);
+            return ResponseUtil.paginated(posts);
+        } catch (Exception e) {
+            log.error("Error fetching reported posts", e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
     @GetMapping("/admin/all")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getAllPostsForAdmin(

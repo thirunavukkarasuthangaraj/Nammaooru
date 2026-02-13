@@ -96,6 +96,11 @@ public class MarketplaceService {
     }
 
     @Transactional(readOnly = true)
+    public Page<MarketplacePost> getReportedPosts(Pageable pageable) {
+        return marketplacePostRepository.findByReportCountGreaterThanOrderByReportCountDesc(0, pageable);
+    }
+
+    @Transactional(readOnly = true)
     public Page<MarketplacePost> getAllPostsForAdmin(Pageable pageable) {
         List<PostStatus> statuses = List.of(PostStatus.PENDING_APPROVAL, PostStatus.APPROVED, PostStatus.REJECTED, PostStatus.SOLD);
         return marketplacePostRepository.findByStatusInOrderByCreatedAtDesc(statuses, pageable);
