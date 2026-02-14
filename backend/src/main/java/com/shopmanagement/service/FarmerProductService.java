@@ -10,6 +10,7 @@ import com.shopmanagement.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -242,6 +243,23 @@ public class FarmerProductService {
     public FarmerProduct getPostById(Long id) {
         return farmerProductRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
+    }
+
+    @Transactional(readOnly = true)
+    public Page<FarmerProduct> getFeaturedPosts(int page, int size) {
+        List<PostStatus> visibleStatuses = getVisibleStatuses();
+        Pageable pageable = PageRequest.of(page, size);
+        return farmerProductRepository.findByFeaturedTrueAndStatusInOrderByCreatedAtDesc(visibleStatuses, pageable);
+    }
+
+    @Transactional
+    public FarmerProduct toggleFeatured(Long postId) {
+        FarmerProduct post = farmerProductRepository.findById(postId)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+        post.setFeatured(!Boolean.TRUE.equals(post.getFeatured()));
+        FarmerProduct saved = farmerProductRepository.save(post);
+        log.info("Farmer product featured toggled: id={}, featured={}", postId, saved.getFeatured());
+        return saved;
     }
 
     @Transactional

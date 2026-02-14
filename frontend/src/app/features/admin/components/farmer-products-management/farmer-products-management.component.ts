@@ -16,6 +16,7 @@ interface FarmerProduct {
   category: string;
   location: string;
   status: string;
+  featured: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -173,6 +174,24 @@ export class FarmerProductsManagementComponent implements OnInit {
 
   nextImage(): void {
     this.galleryIndex = this.galleryIndex < this.galleryImages.length - 1 ? this.galleryIndex + 1 : 0;
+  }
+
+  toggleFeatured(post: FarmerProduct): void {
+    this.farmerProductsService.toggleFeatured(post.id).subscribe({
+      next: (response) => {
+        const updated = response.data;
+        const isFeatured = updated?.featured;
+        post.featured = isFeatured;
+        this.snackBar.open(
+          isFeatured ? `"${post.title}" marked as featured` : `"${post.title}" removed from featured`,
+          'OK',
+          { duration: 3000 }
+        );
+      },
+      error: () => {
+        this.snackBar.open('Failed to toggle featured', 'Close', { duration: 3000 });
+      }
+    });
   }
 
   onStatusChange(post: FarmerProduct, newStatus: string): void {

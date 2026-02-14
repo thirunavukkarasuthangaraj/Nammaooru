@@ -475,6 +475,17 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> with Single
 
   List<Map<String, dynamic>> _buildCarouselPosts() {
     if (_selectedCategory != null) return []; // No carousel when filtering
+    // Show featured posts (must also have images to display properly)
+    final featured = _posts
+        .where((post) {
+          final imageUrls = _parseImageUrls(post);
+          return post['featured'] == true && imageUrls.isNotEmpty;
+        })
+        .take(8)
+        .cast<Map<String, dynamic>>()
+        .toList();
+    if (featured.isNotEmpty) return featured;
+    // Fallback: show first 8 posts with images if no featured posts yet
     return _posts
         .where((post) {
           final imageUrls = _parseImageUrls(post);

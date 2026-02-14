@@ -225,6 +225,19 @@
       white-space: nowrap;
     }
 
+    .featured-toggle {
+      color: #bdbdbd;
+      transition: color 0.2s;
+
+      &:hover {
+        color: #ffa000;
+      }
+
+      &.is-featured {
+        color: #ffa000;
+      }
+    }
+
     .action-dropdown {
       font-size: 13px;
       white-space: nowrap;

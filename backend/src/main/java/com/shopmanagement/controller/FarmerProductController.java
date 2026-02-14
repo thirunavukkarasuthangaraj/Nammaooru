@@ -70,6 +70,19 @@ public class FarmerProductController {
         }
     }
 
+    @GetMapping("/featured")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getFeaturedPosts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        try {
+            Page<FarmerProduct> posts = farmerProductService.getFeaturedPosts(page, size);
+            return ResponseUtil.paginated(posts);
+        } catch (Exception e) {
+            log.error("Error fetching featured farmer products", e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<FarmerProduct>> getPostById(@PathVariable Long id) {
         try {
@@ -177,6 +190,19 @@ public class FarmerProductController {
             return ResponseUtil.success(post, "Farmer product status updated to " + status);
         } catch (Exception e) {
             log.error("Error changing farmer product status", e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
+    @PutMapping("/{id}/featured")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<FarmerProduct>> toggleFeatured(@PathVariable Long id) {
+        try {
+            FarmerProduct post = farmerProductService.toggleFeatured(id);
+            String msg = Boolean.TRUE.equals(post.getFeatured()) ? "Post marked as featured" : "Post removed from featured";
+            return ResponseUtil.success(post, msg);
+        } catch (Exception e) {
+            log.error("Error toggling featured status for farmer product", e);
             return ResponseUtil.error(e.getMessage());
         }
     }

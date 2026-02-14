@@ -26,4 +26,6 @@ public interface FarmerProductRepository extends JpaRepository<FarmerProduct, Lo
     Page<FarmerProduct> findByStatusInAndCreatedAtAfterOrderByCreatedAtDesc(List<PostStatus> statuses, LocalDateTime after, Pageable pageable);
 
     Page<FarmerProduct> findByStatusInAndCategoryAndCreatedAtAfterOrderByCreatedAtDesc(List<PostStatus> statuses, String category, LocalDateTime after, Pageable pageable);
+
+    Page<FarmerProduct> findByFeaturedTrueAndStatusInOrderByCreatedAtDesc(List<PostStatus> statuses, Pageable pageable);
 }

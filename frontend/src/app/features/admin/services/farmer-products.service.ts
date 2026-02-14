@@ -44,4 +44,8 @@ export class FarmerProductsAdminService {
   changePostStatus(id: number, status: string): Observable<any> {
     return this.http.put(`${this.apiUrl}/${id}/status`, { status });
   }
+
+  toggleFeatured(id: number): Observable<any> {
+    return this.http.put(`${this.apiUrl}/${id}/featured`, {});
+  }
 }

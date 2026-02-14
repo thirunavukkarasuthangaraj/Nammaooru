@@ -56,6 +56,10 @@ public class FarmerProduct {
     @Column(length = 200)
     private String location;
 
+    @Column(name = "featured")
+    @Builder.Default
+    private Boolean featured = false;
+
     @Column(name = "report_count")
     @Builder.Default
     private Integer reportCount = 0;
