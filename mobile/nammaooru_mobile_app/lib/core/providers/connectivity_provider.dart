@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../services/connectivity_service.dart';
 
-class ConnectivityProvider extends ChangeNotifier {
+class ConnectivityProvider extends ChangeNotifier with WidgetsBindingObserver {
   final ConnectivityService _connectivityService = ConnectivityService();
 
   ConnectionQuality _connectionQuality = ConnectionQuality.excellent;
@@ -29,6 +29,7 @@ class ConnectivityProvider extends ChangeNotifier {
   Timer? _autoDismissTimer;
 
   ConnectivityProvider() {
+    WidgetsBinding.instance.addObserver(this);
     _initialize();
   }
 
@@ -55,6 +56,26 @@ class ConnectivityProvider extends ChangeNotifier {
     notifyListeners();
 
     debugPrint('✅ ConnectivityProvider initialized');
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (kIsWeb) return;
+
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      // App going to background - stop periodic checks to avoid false "offline"
+      _connectivityService.stopMonitoring();
+      debugPrint('📡 App paused - stopped connectivity monitoring');
+    } else if (state == AppLifecycleState.resumed) {
+      // App coming back - dismiss any stale alert and recheck fresh
+      _showAlert = false;
+      _connectionQuality = ConnectionQuality.excellent;
+      notifyListeners();
+
+      // Re-initialize monitoring and force a fresh check
+      _connectivityService.initialize();
+      debugPrint('📡 App resumed - restarted connectivity monitoring');
+    }
   }
 
   void _updateConnectionQuality(ConnectionQuality quality) {
@@ -165,6 +186,7 @@ class ConnectivityProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _autoDismissTimer?.cancel();
     _connectivityService.dispose();
     super.dispose();

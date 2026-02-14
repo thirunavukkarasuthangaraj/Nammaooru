@@ -152,8 +152,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           const SizedBox(height: 16),
                           _buildPhoneField(),
                           const SizedBox(height: 16),
-                          _buildGenderField(),
-                          const SizedBox(height: 16),
+                          // Gender field hidden for now - uncomment to re-enable:
+                          // _buildGenderField(),
+                          // const SizedBox(height: 16),
                           _buildPasswordField(),
                           const SizedBox(height: 16),
                           _buildTermsAndConditions(),

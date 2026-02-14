@@ -78,6 +78,10 @@ class ConnectivityService {
     _qualityCheckTimer?.cancel();
     _connectivitySubscription?.cancel();
     _isMonitoring = false;
+    // Reset debounce so stale readings don't carry over on resume
+    _consecutivePoorReadings = 0;
+    _lastMeasuredQuality = null;
+    _currentQuality = ConnectionQuality.excellent;
     debugPrint('🛑 Connectivity monitoring stopped');
   }
 

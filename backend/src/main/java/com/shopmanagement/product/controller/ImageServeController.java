@@ -55,6 +55,36 @@ public class ImageServeController {
         }
     }
     
+    @GetMapping("/farmer-products/{filename:.+}")
+    public ResponseEntity<Resource> serveFarmerProductImage(
+            @PathVariable String filename) {
+        try {
+            Path filePath = Paths.get(uploadDir, "farmer-products", filename).normalize();
+            Resource resource = new UrlResource(filePath.toUri());
+
+            if (resource.exists() && resource.isReadable()) {
+                String contentType = Files.probeContentType(filePath);
+                if (contentType == null) {
+                    contentType = "application/octet-stream";
+                }
+
+                return ResponseEntity.ok()
+                        .contentType(MediaType.parseMediaType(contentType))
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
+                        .body(resource);
+            } else {
+                System.out.println("Farmer product image not found: " + filePath.toString());
+                return ResponseEntity.notFound().build();
+            }
+        } catch (MalformedURLException e) {
+            System.err.println("Error constructing file URL: " + e.getMessage());
+            return ResponseEntity.badRequest().build();
+        } catch (IOException e) {
+            System.err.println("Error reading file: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
     @GetMapping("/documents/**")
     public ResponseEntity<Resource> serveDocument() {
         // Similar implementation for documents if needed

@@ -21,7 +21,7 @@ class ImageUrlHelper {
       final uri = Uri.tryParse(imageUrl);
       if (uri != null &&
           !uri.path.startsWith('/uploads/') &&
-          (uri.path.startsWith('/shops/') || uri.path.startsWith('/products/'))) {
+          (uri.path.startsWith('/shops/') || uri.path.startsWith('/products/') || uri.path.startsWith('/farmer-products/'))) {
         return '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}/uploads${uri.path}';
       }
 

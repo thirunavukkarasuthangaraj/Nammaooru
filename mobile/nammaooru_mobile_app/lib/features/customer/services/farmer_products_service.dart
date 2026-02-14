@@ -90,22 +90,26 @@ class FarmerProductsService {
         formMap['unit'] = unit;
       }
 
-      final formData = FormData.fromMap(formMap);
-
+      // Add images to formMap BEFORE creating FormData (same pattern as marketplace)
       if (imagePaths != null && imagePaths.isNotEmpty) {
+        final List<MultipartFile> imageFiles = [];
         for (final imagePath in imagePaths) {
           if (imagePath.isNotEmpty) {
             final imageFileName = imagePath.split('/').last;
-            formData.files.add(MapEntry(
-              'images',
-              await MultipartFile.fromFile(
-                imagePath,
-                filename: imageFileName.isNotEmpty ? imageFileName : 'image.jpg',
-              ),
+            imageFiles.add(await MultipartFile.fromFile(
+              imagePath,
+              filename: imageFileName.isNotEmpty ? imageFileName : 'image.jpg',
             ));
           }
         }
+        if (imageFiles.length == 1) {
+          formMap['images'] = imageFiles.first;
+        } else if (imageFiles.isNotEmpty) {
+          formMap['images'] = imageFiles;
+        }
       }
+
+      final formData = FormData.fromMap(formMap);
 
       final dio = ApiClient.dio;
 
