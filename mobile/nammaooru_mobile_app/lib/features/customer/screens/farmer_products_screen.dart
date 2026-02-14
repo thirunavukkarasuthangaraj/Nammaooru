@@ -474,6 +474,15 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> with Single
     );
   }
 
+  void _showPostDetails(Map<String, dynamic> post) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _FarmerPostDetailsSheet(post: post),
+    );
+  }
+
   Widget _buildPostCard(Map<String, dynamic> post) {
     final isSold = post['status'] == 'SOLD';
     final imageUrl = post['imageUrl'];
@@ -484,6 +493,9 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> with Single
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+      onTap: () => _showPostDetails(post),
       child: Stack(
         children: [
           Column(
@@ -669,6 +681,7 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> with Single
               ),
             ),
         ],
+      ),
       ),
     );
   }
@@ -891,6 +904,344 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> with Single
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ─── Farmer Post Details Bottom Sheet ───
+
+class _FarmerPostDetailsSheet extends StatefulWidget {
+  final Map<String, dynamic> post;
+
+  const _FarmerPostDetailsSheet({required this.post});
+
+  @override
+  State<_FarmerPostDetailsSheet> createState() => _FarmerPostDetailsSheetState();
+}
+
+class _FarmerPostDetailsSheetState extends State<_FarmerPostDetailsSheet> {
+  static const Color _farmerGreen = Color(0xFF2E7D32);
+
+  Map<String, dynamic> get post => widget.post;
+
+  String _getImageUrl() {
+    final imageUrl = post['imageUrl'];
+    if (imageUrl != null && imageUrl.toString().isNotEmpty) {
+      return ImageUrlHelper.getFullImageUrl(imageUrl.toString());
+    }
+    return '';
+  }
+
+  String _formatPrice(dynamic price) {
+    if (price == null) return '';
+    final numPrice = double.tryParse(price.toString()) ?? 0;
+    if (numPrice >= 100000) {
+      return '\u20B9${(numPrice / 100000).toStringAsFixed(1)}L';
+    } else if (numPrice >= 1000) {
+      return '\u20B9${(numPrice / 1000).toStringAsFixed(numPrice % 1000 == 0 ? 0 : 1)}K';
+    }
+    return '\u20B9${numPrice.toStringAsFixed(0)}';
+  }
+
+  String _formatDate(dynamic dateStr) {
+    if (dateStr == null) return '';
+    final date = DateTime.tryParse(dateStr.toString());
+    if (date == null) return '';
+    final now = DateTime.now();
+    final diff = now.difference(date);
+    if (diff.inDays == 0) return 'Today';
+    if (diff.inDays == 1) return 'Yesterday';
+    if (diff.inDays < 7) return '${diff.inDays} days ago';
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
+  void _openFullScreenImage(BuildContext context, String imageUrl) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => _FarmerFullScreenImage(imageUrl: imageUrl),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final imageUrl = _getImageUrl();
+    final isSold = post['status'] == 'SOLD';
+    final price = post['price'];
+    final unit = post['unit'];
+
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.85,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        children: [
+          // Handle
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Image
+                  if (imageUrl.isNotEmpty)
+                    GestureDetector(
+                      onTap: () => _openFullScreenImage(context, imageUrl),
+                      child: Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: Image.network(
+                              imageUrl,
+                              width: double.infinity,
+                              height: 250,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Container(
+                                height: 250,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[300],
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Center(child: Icon(Icons.broken_image, size: 60, color: Colors.grey[500])),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 10,
+                            right: 10,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.black54,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.fullscreen, color: Colors.white, size: 16),
+                                  SizedBox(width: 4),
+                                  Text('View', style: TextStyle(color: Colors.white, fontSize: 11)),
+                                ],
+                              ),
+                            ),
+                          ),
+                          if (isSold)
+                            Positioned(
+                              top: 10,
+                              left: 10,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text('SOLD OUT', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                              ),
+                            ),
+                        ],
+                      ),
+                    )
+                  else
+                    Container(
+                      height: 180,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Center(child: Icon(Icons.eco, size: 80, color: Colors.grey[400])),
+                    ),
+                  const SizedBox(height: 20),
+                  // Title and price
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          post['title'] ?? '',
+                          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      if (price != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: _farmerGreen.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '${_formatPrice(price)}${unit != null ? '/$unit' : ''}',
+                            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: _farmerGreen),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // Detail rows
+                  if (post['category'] != null)
+                    _buildDetailRow(Icons.category, 'Category', post['category']),
+                  if (post['sellerName'] != null)
+                    Builder(builder: (context) {
+                      final isLoggedIn = Provider.of<AuthProvider>(context, listen: false).isAuthenticated;
+                      final sellerName = post['sellerName'] ?? 'Farmer';
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Row(
+                          children: [
+                            Icon(Icons.person, size: 20, color: Colors.grey[600]),
+                            const SizedBox(width: 12),
+                            Text('Seller: ', style: TextStyle(fontSize: 15, color: Colors.grey[600])),
+                            Expanded(
+                              child: isLoggedIn
+                                  ? Text(sellerName, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600))
+                                  : ClipRect(
+                                      child: ImageFiltered(
+                                        imageFilter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                                        child: Text(sellerName, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                                      ),
+                                    ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  if (post['location'] != null && post['location'].toString().isNotEmpty)
+                    _buildDetailRow(Icons.location_on, 'Location', post['location']),
+                  if (post['createdAt'] != null)
+                    _buildDetailRow(Icons.access_time, 'Posted', _formatDate(post['createdAt'])),
+                  // Description
+                  if (post['description'] != null && post['description'].toString().isNotEmpty) ...[
+                    const SizedBox(height: 20),
+                    const Text('Description', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Text(
+                      post['description'],
+                      style: TextStyle(fontSize: 15, color: Colors.grey[700], height: 1.5),
+                    ),
+                  ],
+                  const SizedBox(height: 30),
+                  // Contact buttons
+                  if (!isSold)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () async {
+                              final phone = post['sellerPhone']?.toString() ?? '';
+                              if (phone.isNotEmpty) {
+                                final uri = Uri.parse('tel:$phone');
+                                if (await canLaunchUrl(uri)) {
+                                  await launchUrl(uri);
+                                }
+                              }
+                            },
+                            icon: const Icon(Icons.call),
+                            label: const Text('Call'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _farmerGreen,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              final phone = post['sellerPhone']?.toString() ?? '';
+                              if (phone.isNotEmpty) {
+                                final cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
+                                final whatsappPhone = cleanPhone.startsWith('91') ? cleanPhone : '91$cleanPhone';
+                                final message = Uri.encodeComponent('Hi, I am interested in: ${post['title']}');
+                                final uri = Uri.parse('https://wa.me/$whatsappPhone?text=$message');
+                                if (await canLaunchUrl(uri)) {
+                                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                }
+                              }
+                            },
+                            icon: const Icon(Icons.chat),
+                            label: const Text('WhatsApp'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: _farmerGreen,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              side: const BorderSide(color: _farmerGreen),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: Colors.grey[600]),
+          const SizedBox(width: 12),
+          Text('$label: ', style: TextStyle(fontSize: 15, color: Colors.grey[600])),
+          Expanded(child: Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600))),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Farmer Full Screen Image Viewer ───
+
+class _FarmerFullScreenImage extends StatelessWidget {
+  final String imageUrl;
+
+  const _FarmerFullScreenImage({required this.imageUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: const Text('Image', style: TextStyle(fontSize: 16)),
+        centerTitle: true,
+      ),
+      body: InteractiveViewer(
+        minScale: 0.5,
+        maxScale: 4.0,
+        child: Center(
+          child: Image.network(
+            imageUrl,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) => Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.broken_image, size: 80, color: Colors.grey[600]),
+                const SizedBox(height: 16),
+                Text('Failed to load image', style: TextStyle(color: Colors.grey[500])),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
