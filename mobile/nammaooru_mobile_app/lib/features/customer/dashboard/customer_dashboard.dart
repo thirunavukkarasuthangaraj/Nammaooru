@@ -1495,8 +1495,8 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                 // 4. Farmer Products
                 _buildModernCategoryTile(
                   icon: Icons.eco_rounded,
-                  title: languageProvider.getText('Farmer Products', 'விவசாய பொருட்கள்'),
-                  subtitle: languageProvider.getText('Fresh from farms', 'பண்ணையிலிருந்து'),
+                  title: languageProvider.getText('Farm Products', 'விவசாயம்'),
+                  subtitle: languageProvider.getText('Shop & Farmer posts', 'கடை & விவசாயி'),
                   color: const Color(0xFF2E7D32),
                   onTap: () => Navigator.push(
                     context,

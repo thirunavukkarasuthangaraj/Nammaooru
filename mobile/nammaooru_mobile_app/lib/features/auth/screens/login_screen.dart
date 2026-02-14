@@ -131,17 +131,17 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            const SizedBox(height: 40),
+                            const SizedBox(height: 20),
                             _buildHeader(),
-                            const SizedBox(height: 32),
+                            const SizedBox(height: 20),
                             _buildEmailField(),
-                            const SizedBox(height: 16),
-                            _buildPasswordField(),
                             const SizedBox(height: 12),
+                            _buildPasswordField(),
+                            const SizedBox(height: 8),
                             _buildRememberMeAndForgotPassword(),
-                            const SizedBox(height: 24),
-                            _buildLoginButton(),
                             const SizedBox(height: 16),
+                            _buildLoginButton(),
+                            const SizedBox(height: 12),
                             _buildSignUpLink(),
                           ],
                         ),
@@ -158,11 +158,73 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildHeader() {
+    final languageProvider = Provider.of<LanguageProvider>(context);
     return Column(
       children: [
+        // Language toggle at top-right
+        Align(
+          alignment: Alignment.centerRight,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'En',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: languageProvider.showTamil ? FontWeight.w400 : FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                GestureDetector(
+                  onTap: () => languageProvider.toggleLanguage(),
+                  child: Container(
+                    width: 36,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: AnimatedAlign(
+                      alignment: languageProvider.showTamil
+                          ? Alignment.centerRight
+                          : Alignment.centerLeft,
+                      duration: const Duration(milliseconds: 200),
+                      child: Container(
+                        width: 16,
+                        height: 16,
+                        margin: const EdgeInsets.symmetric(horizontal: 2),
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'த',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: languageProvider.showTamil ? FontWeight.bold : FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
         Container(
-          width: 80,
-          height: 80,
+          width: 64,
+          height: 64,
           decoration: BoxDecoration(
             color: VillageTheme.primaryGreen,
             borderRadius: BorderRadius.circular(20),
@@ -176,31 +238,31 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           child: const Icon(
             Icons.home,
-            size: 40,
+            size: 32,
             color: Colors.white,
           ),
         ),
-        const SizedBox(height: 24),
-        const Text(
-          'Welcome!',
-          style: TextStyle(
-            fontSize: 28,
+        const SizedBox(height: 16),
+        Text(
+          languageProvider.getText('Welcome!', 'வரவேற்கிறோம்!'),
+          style: const TextStyle(
+            fontSize: 24,
             fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
         ),
         const SizedBox(height: 8),
-        const Text(
-          'Join Namma Ooru Delivery',
-          style: TextStyle(
+        Text(
+          languageProvider.getText('Join Namma Ooru Delivery', 'நம்ம ஊரு டெலிவரி'),
+          style: const TextStyle(
             fontSize: 16,
             color: Colors.white,
           ),
         ),
         const SizedBox(height: 4),
-        const Text(
-          'Serving Thirupattur zone',
-          style: TextStyle(
+        Text(
+          languageProvider.getText('Serving Thirupattur zone', 'திருப்பத்தூர் பகுதிக்கு சேவை'),
+          style: const TextStyle(
             fontSize: 14,
             color: Colors.white,
           ),
@@ -362,10 +424,12 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildLoginButton() {
+    final langProvider = Provider.of<LanguageProvider>(context, listen: false);
     return Container(
       width: double.infinity,
+      height: 44,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         gradient: const LinearGradient(
           colors: [VillageTheme.primaryGreen, Color(0xFF45A049)],
         ),
@@ -375,24 +439,24 @@ class _LoginScreenState extends State<LoginScreen> {
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: const EdgeInsets.symmetric(vertical: 10),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
           ),
         ),
         child: _isLoggingIn
             ? const SizedBox(
-                width: 20,
-                height: 20,
+                width: 18,
+                height: 18,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
                   valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
               )
-            : const Text(
-                'Sign In',
-                style: TextStyle(
-                  fontSize: 16,
+            : Text(
+                langProvider.getText('Sign In', 'உள்நுழை'),
+                style: const TextStyle(
+                  fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: Colors.white,
                 ),
@@ -402,19 +466,20 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildSignUpLink() {
+    final langProvider = Provider.of<LanguageProvider>(context, listen: false);
     return Column(
       children: [
-        const Text(
-          'New to NammaOoru?',
-          style: TextStyle(
-            fontSize: 14,
+        Text(
+          langProvider.getText('New to NammaOoru?', 'NammaOoru-வில் புதியவரா?'),
+          style: const TextStyle(
+            fontSize: 13,
             color: Colors.white70,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         SizedBox(
           width: double.infinity,
-          height: 50,
+          height: 40,
           child: ElevatedButton(
             onPressed: () {
               context.go('/register');
@@ -424,13 +489,13 @@ class _LoginScreenState extends State<LoginScreen> {
               foregroundColor: Colors.white,
               elevation: 0,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
               ),
             ),
-            child: const Text(
-              'Sign Up',
-              style: TextStyle(
-                fontSize: 16,
+            child: Text(
+              langProvider.getText('Sign Up', 'பதிவு செய்'),
+              style: const TextStyle(
+                fontSize: 14,
                 fontWeight: FontWeight.bold,
               ),
             ),

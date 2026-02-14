@@ -41,12 +41,70 @@ public class AuthService {
         String normalizedEmail = request.getEmail() != null ? request.getEmail().toLowerCase().trim() : null;
         String normalizedUsername = request.getUsername() != null ? request.getUsername().toLowerCase().trim() : null;
 
-        // Username is not unique anymore, can be duplicate
-        if (normalizedEmail != null && userRepository.existsByEmail(normalizedEmail)) {
-            throw new RuntimeException("Email already exists");
+        // Check if user already exists by email or mobile
+        User existingUser = null;
+
+        if (normalizedEmail != null) {
+            existingUser = userRepository.findByEmail(normalizedEmail).orElse(null);
         }
-        if (request.getMobileNumber() != null && userRepository.existsByMobileNumber(request.getMobileNumber())) {
-            throw new RuntimeException("Mobile number already exists");
+        if (existingUser == null && request.getMobileNumber() != null) {
+            existingUser = userRepository.findByMobileNumber(request.getMobileNumber()).orElse(null);
+        }
+
+        if (existingUser != null) {
+            // If the existing user never verified OTP (not active), allow re-registration
+            boolean isUnverified = !Boolean.TRUE.equals(existingUser.getMobileVerified())
+                                   && !Boolean.TRUE.equals(existingUser.getEmailVerified());
+            Boolean isActive = existingUser.getIsActive();
+
+            if (isUnverified || !Boolean.TRUE.equals(isActive)) {
+                // Update existing unverified user's details and resend OTP
+                String fullName = request.getFirstName() != null ? request.getFirstName().trim() : "";
+                existingUser.setUsername(normalizedUsername);
+                existingUser.setEmail(normalizedEmail);
+                existingUser.setPassword(passwordEncoder.encode(request.getPassword()));
+                existingUser.setFirstName(fullName);
+                existingUser.setLastName(fullName);
+                existingUser.setGender(request.getGender());
+                existingUser.setMobileNumber(request.getMobileNumber());
+                existingUser.setMobileVerified(false);
+                existingUser.setEmailVerified(false);
+
+                userRepository.save(existingUser);
+
+                // Resend OTP
+                try {
+                    if (existingUser.getMobileNumber() != null && !existingUser.getMobileNumber().isEmpty()) {
+                        com.shopmanagement.dto.mobile.MobileOtpRequest otpRequest =
+                            com.shopmanagement.dto.mobile.MobileOtpRequest.builder()
+                                .mobileNumber(existingUser.getMobileNumber())
+                                .purpose("REGISTRATION")
+                                .deviceType("WEB")
+                                .deviceId("web-" + existingUser.getId())
+                                .build();
+                        mobileOtpService.generateAndSendOtp(otpRequest);
+                    }
+                } catch (Exception e) {
+                    System.err.println("Failed to send OTP SMS on re-registration: " + e.getMessage());
+                }
+
+                var jwtToken = jwtService.generateToken(existingUser);
+                return AuthResponse.builder()
+                        .accessToken(jwtToken)
+                        .tokenType("Bearer")
+                        .userId(existingUser.getId())
+                        .username(existingUser.getUsername())
+                        .email(existingUser.getEmail())
+                        .role(existingUser.getRole().name())
+                        .profileImageUrl(existingUser.getProfileImageUrl())
+                        .build();
+            } else {
+                // User is verified/active - don't allow duplicate registration
+                if (normalizedEmail != null && normalizedEmail.equals(existingUser.getEmail())) {
+                    throw new RuntimeException("Email already exists");
+                }
+                throw new RuntimeException("Mobile number already exists");
+            }
         }
 
         // Only allow USER role for registration (customers)
@@ -67,7 +125,7 @@ public class AuthService {
                 .emailVerified(false)
                 .mobileVerified(false)
                 .build();
-        
+
         userRepository.save(user);
 
         // Send OTP SMS after successful registration using mobile OTP service
