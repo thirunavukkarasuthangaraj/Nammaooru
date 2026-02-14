@@ -283,6 +283,19 @@ public class SettingService {
         createDefaultSettingIfNotExists("marketplace.post.report_threshold", "3",
                 "Number of reports needed before auto-flagging a post", "MARKETPLACE", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
 
+        // Farmer Products settings
+        createDefaultSettingIfNotExists("farmer_products.post.duration_days", "30",
+                "How many days a farmer product post stays visible (0 = no expiry)", "FARMER_PRODUCTS", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("farmer_products.post.auto_approve", "false",
+                "Auto-approve new farmer product posts (skip pending approval)", "FARMER_PRODUCTS", Setting.SettingType.BOOLEAN, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("farmer_products.post.visible_statuses", "[\"APPROVED\"]",
+                "Which farmer product post statuses are visible to the public", "FARMER_PRODUCTS", Setting.SettingType.JSON, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("farmer_products.post.report_threshold", "3",
+                "Number of reports needed before auto-flagging a farmer product post", "FARMER_PRODUCTS", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
+
         log.info("Default settings initialization completed");
     }
     
