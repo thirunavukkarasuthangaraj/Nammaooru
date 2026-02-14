@@ -27,7 +27,8 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
 
   String _selectedCategory = 'Vegetables';
   String _selectedUnit = 'kg';
-  File? _selectedImage;
+  final List<File> _selectedImages = [];
+  static const int _maxImages = 5;
   bool _isSubmitting = false;
 
   final List<String> _categories = [
@@ -117,19 +118,22 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
     }
   }
 
-  Future<void> _pickImage(ImageSource source) async {
+  Future<void> _pickImageFromCamera() async {
+    if (_selectedImages.length >= _maxImages) {
+      _showMaxImagesMessage();
+      return;
+    }
     try {
       final picker = ImagePicker();
       final pickedFile = await picker.pickImage(
-        source: source,
+        source: ImageSource.camera,
         maxWidth: 1024,
         maxHeight: 1024,
-        imageQuality: 85,
+        imageQuality: 70,
       );
-
-      if (pickedFile != null) {
+      if (pickedFile != null && mounted) {
         setState(() {
-          _selectedImage = File(pickedFile.path);
+          _selectedImages.add(File(pickedFile.path));
         });
       }
     } catch (e) {
@@ -139,6 +143,50 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
         );
       }
     }
+  }
+
+  Future<void> _pickImagesFromGallery() async {
+    if (_selectedImages.length >= _maxImages) {
+      _showMaxImagesMessage();
+      return;
+    }
+    try {
+      final picker = ImagePicker();
+      final remaining = _maxImages - _selectedImages.length;
+      final pickedFiles = await picker.pickMultiImage(
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 70,
+      );
+      if (pickedFiles.isNotEmpty && mounted) {
+        setState(() {
+          final toAdd = pickedFiles.take(remaining).map((f) => File(f.path)).toList();
+          _selectedImages.addAll(toAdd);
+        });
+        if (pickedFiles.length > remaining) {
+          _showMaxImagesMessage();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error picking images: $e')),
+        );
+      }
+    }
+  }
+
+  void _showMaxImagesMessage() {
+    final langProvider = Provider.of<LanguageProvider>(context, listen: false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(langProvider.getText(
+          'Maximum $_maxImages images allowed',
+          'அதிகபட்சம் $_maxImages புகைப்படங்கள் அனுமதிக்கப்படும்',
+        )),
+        backgroundColor: Colors.orange,
+      ),
+    );
   }
 
   void _showImageSourceDialog() {
@@ -153,7 +201,7 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
               title: Text(langProvider.getText('Take Photo', 'புகைப்படம் எடுக்க')),
               onTap: () {
                 Navigator.pop(context);
-                _pickImage(ImageSource.camera);
+                _pickImageFromCamera();
               },
             ),
             ListTile(
@@ -161,7 +209,7 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
               title: Text(langProvider.getText('Choose from Gallery', 'கேலரியிலிருந்து தேர்வு செய்க')),
               onTap: () {
                 Navigator.pop(context);
-                _pickImage(ImageSource.gallery);
+                _pickImagesFromGallery();
               },
             ),
           ],
@@ -188,7 +236,9 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
         category: _selectedCategory,
         location: _locationController.text.trim(),
         unit: _selectedUnit,
-        imagePath: _selectedImage?.path,
+        imagePaths: _selectedImages.isNotEmpty
+            ? _selectedImages.map((f) => f.path).toList()
+            : null,
       );
 
       if (mounted) {
@@ -484,69 +534,116 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
   }
 
   Widget _buildImagePicker(LanguageProvider langProvider) {
-    return GestureDetector(
-      onTap: _showImageSourceDialog,
-      child: Container(
-        height: 200,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: Colors.grey[300]!,
-            style: BorderStyle.solid,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            _buildLabel(langProvider.getText('Product Photos', 'பொருள் புகைப்படங்கள்')),
+            const SizedBox(width: 8),
+            Text(
+              '${_selectedImages.length}/$_maxImages',
+              style: TextStyle(
+                fontSize: 13,
+                color: _selectedImages.length >= _maxImages ? Colors.orange : Colors.grey[500],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 120,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: [
+              // Existing images
+              ..._selectedImages.asMap().entries.map((entry) {
+                final index = entry.key;
+                final image = entry.value;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 10),
+                  child: Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.file(
+                          image,
+                          width: 120,
+                          height: 120,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      // Remove button
+                      Positioned(
+                        top: 4,
+                        right: 4,
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedImages.removeAt(index);
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(3),
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.close, color: Colors.white, size: 16),
+                          ),
+                        ),
+                      ),
+                      // Index badge
+                      if (_selectedImages.length > 1)
+                        Positioned(
+                          bottom: 4,
+                          left: 4,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '${index + 1}',
+                              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              }),
+              // Add button
+              if (_selectedImages.length < _maxImages)
+                GestureDetector(
+                  onTap: _showImageSourceDialog,
+                  child: Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey[300]!, style: BorderStyle.solid),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.add_a_photo_outlined, size: 32, color: Colors.grey[400]),
+                        const SizedBox(height: 6),
+                        Text(
+                          langProvider.getText('Add Photo', 'புகைப்படம்'),
+                          style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
-        child: _selectedImage != null
-            ? Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.file(
-                      _selectedImage!,
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      height: 200,
-                    ),
-                  ),
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedImage = null;
-                        });
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.close, color: Colors.white, size: 18),
-                      ),
-                    ),
-                  ),
-                ],
-              )
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.camera_alt_outlined, size: 48, color: Colors.grey[400]),
-                  const SizedBox(height: 8),
-                  Text(
-                    langProvider.getText('Tap to add product photo', 'பொருள் புகைப்படம் சேர்க்க தட்டவும்'),
-                    style: TextStyle(color: Colors.grey[500], fontSize: 14),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    langProvider.getText('Camera or Gallery', 'கேமரா அல்லது கேலரி'),
-                    style: TextStyle(color: Colors.grey[400], fontSize: 12),
-                  ),
-                ],
-              ),
-      ),
+      ],
     );
   }
 }

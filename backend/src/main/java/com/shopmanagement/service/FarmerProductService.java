@@ -40,15 +40,24 @@ public class FarmerProductService {
     @Transactional
     public FarmerProduct createPost(String title, String description, BigDecimal price,
                                      String phone, String category, String location,
-                                     String unit, MultipartFile image,
+                                     String unit, List<MultipartFile> images,
                                      String username) throws IOException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        String imageUrl = null;
-        if (image != null && !image.isEmpty()) {
-            imageUrl = fileUploadService.uploadFile(image, "farmer-products");
+        // Upload images (up to 5)
+        List<String> imageUrlList = new ArrayList<>();
+        if (images != null && !images.isEmpty()) {
+            int count = 0;
+            for (MultipartFile image : images) {
+                if (image != null && !image.isEmpty() && count < 5) {
+                    String imageUrl = fileUploadService.uploadFile(image, "farmer-products");
+                    imageUrlList.add(imageUrl);
+                    count++;
+                }
+            }
         }
+        String imageUrls = imageUrlList.isEmpty() ? null : String.join(",", imageUrlList);
 
         boolean autoApprove = Boolean.parseBoolean(
                 settingService.getSettingValue("farmer_products.post.auto_approve", "false"));
@@ -58,7 +67,7 @@ public class FarmerProductService {
                 .description(description)
                 .price(price)
                 .unit(unit)
-                .imageUrl(imageUrl)
+                .imageUrls(imageUrls)
                 .sellerUserId(user.getId())
                 .sellerName(user.getFullName())
                 .sellerPhone(phone)

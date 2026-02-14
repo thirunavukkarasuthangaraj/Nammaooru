@@ -38,11 +38,11 @@ public class FarmerProductController {
             @RequestParam(value = "category", required = false) String category,
             @RequestParam(value = "location", required = false) String location,
             @RequestParam(value = "unit", required = false) String unit,
-            @RequestParam(value = "image", required = false) MultipartFile image) {
+            @RequestParam(value = "images", required = false) List<MultipartFile> images) {
         try {
             String username = getCurrentUsername();
             FarmerProduct post = farmerProductService.createPost(
-                    title, description, price, phone, category, location, unit, image, username);
+                    title, description, price, phone, category, location, unit, images, username);
             return ResponseUtil.created(post, "Farmer product submitted for approval");
         } catch (Exception e) {
             log.error("Error creating farmer product post", e);

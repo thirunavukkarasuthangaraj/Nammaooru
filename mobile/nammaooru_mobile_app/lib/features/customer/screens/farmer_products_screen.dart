@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -11,6 +12,7 @@ import '../../../core/utils/image_url_helper.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../services/farmer_products_service.dart';
 import 'create_farmer_post_screen.dart';
+import 'farmer_post_detail_screen.dart';
 
 class FarmerProductsScreen extends StatefulWidget {
   const FarmerProductsScreen({super.key});
@@ -147,6 +149,19 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> with Single
         setState(() => _isLoadingMyPosts = false);
       }
     }
+  }
+
+  List<String> _parseImageUrls(Map<String, dynamic> post) {
+    final imageUrls = post['imageUrls'];
+    if (imageUrls != null && imageUrls.toString().isNotEmpty) {
+      return imageUrls
+          .toString()
+          .split(',')
+          .map((url) => ImageUrlHelper.getFullImageUrl(url.trim()))
+          .where((url) => url.isNotEmpty)
+          .toList();
+    }
+    return [];
   }
 
   String _getCategoryTamil(String cat, BuildContext context) {
@@ -328,6 +343,13 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> with Single
     });
   }
 
+  void _navigateToPostDetail(Map<String, dynamic> post) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => FarmerPostDetailScreen(post: post)),
+    );
+  }
+
   // ─── Build ───
 
   @override
@@ -419,22 +441,48 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> with Single
                       onRefresh: _loadPosts,
                       child: ListView.builder(
                         controller: _scrollController,
-                        padding: const EdgeInsets.all(12),
-                        itemCount: _posts.length + (_hasMore ? 1 : 0),
+                        padding: const EdgeInsets.all(0),
+                        itemCount: _posts.length + (_hasMore ? 1 : 0) + (_buildCarouselPosts().isNotEmpty ? 1 : 0),
                         itemBuilder: (context, index) {
-                          if (index == _posts.length) {
+                          // Featured carousel at top
+                          final carouselPosts = _buildCarouselPosts();
+                          if (carouselPosts.isNotEmpty && index == 0) {
+                            return _FeaturedFarmerCarousel(
+                              posts: carouselPosts,
+                              onPostTap: _navigateToPostDetail,
+                              parseImageUrls: _parseImageUrls,
+                              formatPrice: _formatPrice,
+                            );
+                          }
+                          final postIndex = carouselPosts.isNotEmpty ? index - 1 : index;
+                          if (postIndex == _posts.length) {
                             return const Padding(
                               padding: EdgeInsets.all(16),
                               child: Center(child: CircularProgressIndicator()),
                             );
                           }
-                          return _buildPostCard(_posts[index]);
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: _buildPostCard(_posts[postIndex]),
+                          );
                         },
                       ),
                     ),
         ),
       ],
     );
+  }
+
+  List<Map<String, dynamic>> _buildCarouselPosts() {
+    if (_selectedCategory != null) return []; // No carousel when filtering
+    return _posts
+        .where((post) {
+          final imageUrls = _parseImageUrls(post);
+          return imageUrls.isNotEmpty;
+        })
+        .take(8)
+        .cast<Map<String, dynamic>>()
+        .toList();
   }
 
   Widget _buildEmptyState() {
@@ -474,18 +522,10 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> with Single
     );
   }
 
-  void _showPostDetails(Map<String, dynamic> post) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _FarmerPostDetailsSheet(post: post),
-    );
-  }
-
   Widget _buildPostCard(Map<String, dynamic> post) {
     final isSold = post['status'] == 'SOLD';
-    final imageUrl = post['imageUrl'];
+    final imageUrls = _parseImageUrls(post);
+    final firstImage = imageUrls.isNotEmpty ? imageUrls.first : null;
     final price = post['price'];
     final unit = post['unit'];
 
@@ -495,32 +535,60 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> with Single
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-      onTap: () => _showPostDetails(post),
+      onTap: () => _navigateToPostDetail(post),
       child: Stack(
         children: [
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Image
-              if (imageUrl != null)
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                  child: CachedNetworkImage(
-                    imageUrl: ImageUrlHelper.getFullImageUrl(imageUrl),
-                    height: 200,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      height: 200,
-                      color: Colors.grey[200],
-                      child: const Center(child: CircularProgressIndicator()),
+              if (firstImage != null)
+                Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                      child: CachedNetworkImage(
+                        imageUrl: firstImage,
+                        height: 200,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(
+                          height: 200,
+                          color: Colors.grey[200],
+                          child: const Center(child: CircularProgressIndicator()),
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          height: 200,
+                          color: Colors.grey[200],
+                          child: const Icon(Icons.broken_image, size: 50, color: Colors.grey),
+                        ),
+                      ),
                     ),
-                    errorWidget: (context, url, error) => Container(
-                      height: 200,
-                      color: Colors.grey[200],
-                      child: const Icon(Icons.broken_image, size: 50, color: Colors.grey),
-                    ),
-                  ),
+                    // Photo count badge
+                    if (imageUrls.length > 1)
+                      Positioned(
+                        top: 10,
+                        right: 10,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.photo_library, color: Colors.white, size: 14),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${imageUrls.length}',
+                                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               // Details
               Padding(
@@ -755,7 +823,8 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> with Single
 
   Widget _buildMyPostCard(Map<String, dynamic> post) {
     final status = post['status'] ?? 'PENDING_APPROVAL';
-    final imageUrl = post['imageUrl'];
+    final imageUrls = _parseImageUrls(post);
+    final firstImage = imageUrls.isNotEmpty ? imageUrls.first : null;
     final price = post['price'];
     final unit = post['unit'];
 
@@ -809,20 +878,47 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> with Single
             ),
           ),
           // Image
-          if (imageUrl != null)
-            CachedNetworkImage(
-              imageUrl: ImageUrlHelper.getFullImageUrl(imageUrl),
-              height: 180,
-              width: double.infinity,
-              fit: BoxFit.cover,
-              placeholder: (context, url) => Container(
-                height: 180, color: Colors.grey[200],
-                child: const Center(child: CircularProgressIndicator()),
-              ),
-              errorWidget: (context, url, error) => Container(
-                height: 180, color: Colors.grey[200],
-                child: const Icon(Icons.broken_image, size: 50, color: Colors.grey),
-              ),
+          if (firstImage != null)
+            Stack(
+              children: [
+                CachedNetworkImage(
+                  imageUrl: firstImage,
+                  height: 180,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Container(
+                    height: 180, color: Colors.grey[200],
+                    child: const Center(child: CircularProgressIndicator()),
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                    height: 180, color: Colors.grey[200],
+                    child: const Icon(Icons.broken_image, size: 50, color: Colors.grey),
+                  ),
+                ),
+                if (imageUrls.length > 1)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.photo_library, color: Colors.white, size: 14),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${imageUrls.length}',
+                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
             ),
           // Details
           Padding(
@@ -909,340 +1005,229 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> with Single
   }
 }
 
-// ─── Farmer Post Details Bottom Sheet ───
+// ─── Featured Farmer Products Carousel ───
 
-class _FarmerPostDetailsSheet extends StatefulWidget {
-  final Map<String, dynamic> post;
+class _FeaturedFarmerCarousel extends StatefulWidget {
+  final List<Map<String, dynamic>> posts;
+  final Function(Map<String, dynamic>) onPostTap;
+  final List<String> Function(Map<String, dynamic>) parseImageUrls;
+  final String Function(dynamic) formatPrice;
 
-  const _FarmerPostDetailsSheet({required this.post});
+  const _FeaturedFarmerCarousel({
+    required this.posts,
+    required this.onPostTap,
+    required this.parseImageUrls,
+    required this.formatPrice,
+  });
 
   @override
-  State<_FarmerPostDetailsSheet> createState() => _FarmerPostDetailsSheetState();
+  State<_FeaturedFarmerCarousel> createState() => _FeaturedFarmerCarouselState();
 }
 
-class _FarmerPostDetailsSheetState extends State<_FarmerPostDetailsSheet> {
+class _FeaturedFarmerCarouselState extends State<_FeaturedFarmerCarousel> {
+  late PageController _pageController;
+  int _currentPage = 0;
+  Timer? _autoSlideTimer;
+
   static const Color _farmerGreen = Color(0xFF2E7D32);
 
-  Map<String, dynamic> get post => widget.post;
-
-  String _getImageUrl() {
-    final imageUrl = post['imageUrl'];
-    if (imageUrl != null && imageUrl.toString().isNotEmpty) {
-      return ImageUrlHelper.getFullImageUrl(imageUrl.toString());
-    }
-    return '';
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(viewportFraction: 0.92);
+    _startAutoSlide();
   }
 
-  String _formatPrice(dynamic price) {
-    if (price == null) return '';
-    final numPrice = double.tryParse(price.toString()) ?? 0;
-    if (numPrice >= 100000) {
-      return '\u20B9${(numPrice / 100000).toStringAsFixed(1)}L';
-    } else if (numPrice >= 1000) {
-      return '\u20B9${(numPrice / 1000).toStringAsFixed(numPrice % 1000 == 0 ? 0 : 1)}K';
-    }
-    return '\u20B9${numPrice.toStringAsFixed(0)}';
+  @override
+  void dispose() {
+    _autoSlideTimer?.cancel();
+    _pageController.dispose();
+    super.dispose();
   }
 
-  String _formatDate(dynamic dateStr) {
-    if (dateStr == null) return '';
-    final date = DateTime.tryParse(dateStr.toString());
-    if (date == null) return '';
-    final now = DateTime.now();
-    final diff = now.difference(date);
-    if (diff.inDays == 0) return 'Today';
-    if (diff.inDays == 1) return 'Yesterday';
-    if (diff.inDays < 7) return '${diff.inDays} days ago';
-    return '${date.day}/${date.month}/${date.year}';
-  }
-
-  void _openFullScreenImage(BuildContext context, String imageUrl) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => _FarmerFullScreenImage(imageUrl: imageUrl),
-      ),
-    );
+  void _startAutoSlide() {
+    _autoSlideTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
+      if (_pageController.hasClients && widget.posts.length > 1) {
+        final nextPage = (_currentPage + 1) % widget.posts.length;
+        _pageController.animateToPage(
+          nextPage,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl = _getImageUrl();
-    final isSold = post['status'] == 'SOLD';
-    final price = post['price'];
-    final unit = post['unit'];
+    if (widget.posts.isEmpty) return const SizedBox.shrink();
 
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
-        children: [
-          // Handle
-          Container(
-            margin: const EdgeInsets.symmetric(vertical: 12),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.grey[300],
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Image
-                  if (imageUrl.isNotEmpty)
-                    GestureDetector(
-                      onTap: () => _openFullScreenImage(context, imageUrl),
-                      child: Stack(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: Image.network(
-                              imageUrl,
-                              width: double.infinity,
-                              height: 250,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => Container(
-                                height: 250,
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[300],
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Center(child: Icon(Icons.broken_image, size: 60, color: Colors.grey[500])),
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                            bottom: 10,
-                            right: 10,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.black54,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.fullscreen, color: Colors.white, size: 16),
-                                  SizedBox(width: 4),
-                                  Text('View', style: TextStyle(color: Colors.white, fontSize: 11)),
-                                ],
-                              ),
-                            ),
-                          ),
-                          if (isSold)
-                            Positioned(
-                              top: 10,
-                              left: 10,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: Colors.red,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Text('SOLD OUT', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
-                              ),
-                            ),
-                        ],
-                      ),
-                    )
-                  else
-                    Container(
-                      height: 180,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[200],
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Center(child: Icon(Icons.eco, size: 80, color: Colors.grey[400])),
-                    ),
-                  const SizedBox(height: 20),
-                  // Title and price
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          post['title'] ?? '',
-                          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      if (price != null)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: _farmerGreen.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            '${_formatPrice(price)}${unit != null ? '/$unit' : ''}',
-                            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: _farmerGreen),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  // Detail rows
-                  if (post['category'] != null)
-                    _buildDetailRow(Icons.category, 'Category', post['category']),
-                  if (post['sellerName'] != null)
-                    Builder(builder: (context) {
-                      final isLoggedIn = Provider.of<AuthProvider>(context, listen: false).isAuthenticated;
-                      final sellerName = post['sellerName'] ?? 'Farmer';
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Row(
-                          children: [
-                            Icon(Icons.person, size: 20, color: Colors.grey[600]),
-                            const SizedBox(width: 12),
-                            Text('Seller: ', style: TextStyle(fontSize: 15, color: Colors.grey[600])),
-                            Expanded(
-                              child: isLoggedIn
-                                  ? Text(sellerName, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600))
-                                  : ClipRect(
-                                      child: ImageFiltered(
-                                        imageFilter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                                        child: Text(sellerName, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                                      ),
-                                    ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
-                  if (post['location'] != null && post['location'].toString().isNotEmpty)
-                    _buildDetailRow(Icons.location_on, 'Location', post['location']),
-                  if (post['createdAt'] != null)
-                    _buildDetailRow(Icons.access_time, 'Posted', _formatDate(post['createdAt'])),
-                  // Description
-                  if (post['description'] != null && post['description'].toString().isNotEmpty) ...[
-                    const SizedBox(height: 20),
-                    const Text('Description', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    Text(
-                      post['description'],
-                      style: TextStyle(fontSize: 15, color: Colors.grey[700], height: 1.5),
-                    ),
-                  ],
-                  const SizedBox(height: 30),
-                  // Contact buttons
-                  if (!isSold)
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () async {
-                              final phone = post['sellerPhone']?.toString() ?? '';
-                              if (phone.isNotEmpty) {
-                                final uri = Uri.parse('tel:$phone');
-                                if (await canLaunchUrl(uri)) {
-                                  await launchUrl(uri);
-                                }
-                              }
-                            },
-                            icon: const Icon(Icons.call),
-                            label: const Text('Call'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _farmerGreen,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () async {
-                              final phone = post['sellerPhone']?.toString() ?? '';
-                              if (phone.isNotEmpty) {
-                                final cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
-                                final whatsappPhone = cleanPhone.startsWith('91') ? cleanPhone : '91$cleanPhone';
-                                final message = Uri.encodeComponent('Hi, I am interested in: ${post['title']}');
-                                final uri = Uri.parse('https://wa.me/$whatsappPhone?text=$message');
-                                if (await canLaunchUrl(uri)) {
-                                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                                }
-                              }
-                            },
-                            icon: const Icon(Icons.chat),
-                            label: const Text('WhatsApp'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: _farmerGreen,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              side: const BorderSide(color: _farmerGreen),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: Colors.grey[600]),
-          const SizedBox(width: 12),
-          Text('$label: ', style: TextStyle(fontSize: 15, color: Colors.grey[600])),
-          Expanded(child: Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600))),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── Farmer Full Screen Image Viewer ───
-
-class _FarmerFullScreenImage extends StatelessWidget {
-  final String imageUrl;
-
-  const _FarmerFullScreenImage({required this.imageUrl});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        title: const Text('Image', style: TextStyle(fontSize: 16)),
-        centerTitle: true,
-      ),
-      body: InteractiveViewer(
-        minScale: 0.5,
-        maxScale: 4.0,
-        child: Center(
-          child: Image.network(
-            imageUrl,
-            fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) => Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.broken_image, size: 80, color: Colors.grey[600]),
-                const SizedBox(height: 16),
-                Text('Failed to load image', style: TextStyle(color: Colors.grey[500])),
-              ],
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 12, 16, 8),
+          child: Text(
+            'Featured',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _farmerGreen),
           ),
         ),
-      ),
+        SizedBox(
+          height: 200,
+          child: PageView.builder(
+            controller: _pageController,
+            onPageChanged: (index) => setState(() => _currentPage = index),
+            itemCount: widget.posts.length,
+            itemBuilder: (context, index) {
+              final post = widget.posts[index];
+              final imageUrls = widget.parseImageUrls(post);
+              final firstImage = imageUrls.isNotEmpty ? imageUrls.first : null;
+              final price = post['price'];
+              final unit = post['unit'];
+
+              return GestureDetector(
+                onTap: () => widget.onPostTap(post),
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 4)),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        if (firstImage != null)
+                          CachedNetworkImage(
+                            imageUrl: firstImage,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(color: Colors.grey[300]),
+                            errorWidget: (context, url, error) => Container(
+                              color: Colors.grey[300],
+                              child: const Icon(Icons.eco, size: 40, color: Colors.grey),
+                            ),
+                          )
+                        else
+                          Container(
+                            color: Colors.grey[300],
+                            child: const Icon(Icons.eco, size: 40, color: Colors.grey),
+                          ),
+                        // Gradient overlay
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withOpacity(0.7),
+                              ],
+                              stops: const [0.4, 1.0],
+                            ),
+                          ),
+                        ),
+                        // Content
+                        Positioned(
+                          bottom: 12,
+                          left: 14,
+                          right: 14,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                post['title'] ?? '',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  if (price != null)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: _farmerGreen,
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        '${widget.formatPrice(price)}${unit != null ? '/$unit' : ''}',
+                                        style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                  if (post['category'] != null) ...[
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        post['category'],
+                                        style: const TextStyle(color: Colors.white, fontSize: 11),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        // SOLD badge
+                        if (post['status'] == 'SOLD')
+                          Positioned(
+                            top: 10,
+                            left: 10,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(6)),
+                              child: const Text('SOLD', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        // Dot indicators
+        if (widget.posts.length > 1) ...[
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(widget.posts.length, (index) {
+              return Container(
+                width: _currentPage == index ? 16 : 6,
+                height: 6,
+                margin: const EdgeInsets.symmetric(horizontal: 2),
+                decoration: BoxDecoration(
+                  color: _currentPage == index ? _farmerGreen : Colors.grey[350],
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              );
+            }),
+          ),
+        ],
+        const SizedBox(height: 8),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            'All Products',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+        ),
+        const SizedBox(height: 4),
+      ],
     );
   }
 }

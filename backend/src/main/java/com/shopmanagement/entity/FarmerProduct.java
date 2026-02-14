@@ -37,8 +37,9 @@ public class FarmerProduct {
     @Column(length = 20)
     private String unit;
 
-    @Column(name = "image_url", length = 500)
-    private String imageUrl;
+    // Store multiple image URLs as comma-separated string (up to 5)
+    @Column(name = "image_urls", length = 2500)
+    private String imageUrls;
 
     @Column(name = "seller_user_id", nullable = false)
     private Long sellerUserId;

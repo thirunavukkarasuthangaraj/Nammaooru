@@ -55,7 +55,7 @@ class FarmerProductsService {
     }
   }
 
-  /// Create a new farmer product post with multipart upload
+  /// Create a new farmer product post with multipart upload (supports up to 5 images)
   Future<Map<String, dynamic>> createPost({
     required String title,
     String? description,
@@ -64,7 +64,7 @@ class FarmerProductsService {
     String? category,
     String? location,
     String? unit,
-    String? imagePath,
+    List<String>? imagePaths,
   }) async {
     try {
       Logger.api('Creating farmer product post: $title');
@@ -89,15 +89,23 @@ class FarmerProductsService {
       if (unit != null && unit.isNotEmpty) {
         formMap['unit'] = unit;
       }
-      if (imagePath != null && imagePath.isNotEmpty) {
-        final imageFileName = imagePath.split('/').last;
-        formMap['image'] = await MultipartFile.fromFile(
-          imagePath,
-          filename: imageFileName.isNotEmpty ? imageFileName : 'image.jpg',
-        );
-      }
 
       final formData = FormData.fromMap(formMap);
+
+      if (imagePaths != null && imagePaths.isNotEmpty) {
+        for (final imagePath in imagePaths) {
+          if (imagePath.isNotEmpty) {
+            final imageFileName = imagePath.split('/').last;
+            formData.files.add(MapEntry(
+              'images',
+              await MultipartFile.fromFile(
+                imagePath,
+                filename: imageFileName.isNotEmpty ? imageFileName : 'image.jpg',
+              ),
+            ));
+          }
+        }
+      }
 
       final dio = ApiClient.dio;
 
