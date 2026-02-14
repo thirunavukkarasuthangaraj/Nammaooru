@@ -18,6 +18,8 @@ import '../features/customer/cart/cart_screen.dart';
 import '../features/customer/screens/orders_screen.dart';
 import '../features/customer/screens/marketplace_screen.dart';
 import '../features/customer/screens/create_post_screen.dart';
+import '../features/customer/screens/farmer_products_screen.dart';
+import '../features/customer/screens/create_farmer_post_screen.dart';
 // import '../features/delivery_fee_test/delivery_fee_test_screen.dart'; // Temporarily disabled
 
 class AppRouter {
@@ -121,6 +123,14 @@ class AppRouter {
           GoRoute(
             path: '/customer/marketplace/create',
             builder: (context, state) => const CreatePostScreen(),
+          ),
+          GoRoute(
+            path: '/customer/farmer-products',
+            builder: (context, state) => const FarmerProductsScreen(),
+          ),
+          GoRoute(
+            path: '/customer/farmer-products/create',
+            builder: (context, state) => const CreateFarmerPostScreen(),
           ),
         ],
       ),

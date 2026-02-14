@@ -39,6 +39,7 @@ import '../services/marketplace_service.dart';
 import '../screens/marketplace_screen.dart';
 import '../screens/bus_timing_screen.dart';
 import '../screens/create_post_screen.dart';
+import '../screens/farmer_products_screen.dart';
 
 class CustomerDashboard extends StatefulWidget {
   const CustomerDashboard({super.key});
@@ -1439,7 +1440,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 2x2 Grid: Grocery, Food, Marketplace, Bus Timing
+            // Service Categories Grid
             GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -1491,7 +1492,18 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                     MaterialPageRoute(builder: (context) => const MarketplaceScreen()),
                   ),
                 ),
-                // 4. Bus Timing
+                // 4. Farmer Products
+                _buildModernCategoryTile(
+                  icon: Icons.eco_rounded,
+                  title: languageProvider.getText('Farmer Products', 'விவசாய பொருட்கள்'),
+                  subtitle: languageProvider.getText('Fresh from farms', 'பண்ணையிலிருந்து'),
+                  color: const Color(0xFF2E7D32),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const FarmerProductsScreen()),
+                  ),
+                ),
+                // 5. Bus Timing
                 _buildModernCategoryTile(
                   icon: Icons.directions_bus_rounded,
                   title: languageProvider.getText('Bus Timing', 'பேருந்து நேரம்'),

@@ -134,6 +134,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       items: [
         { title: 'Buy & Sell Posts', icon: 'storefront', route: '/admin/marketplace', badge: null },
         { title: 'Real Estate', icon: 'home_work', route: '/admin/real-estate', badge: null },
+        { title: 'Farmer Products', icon: 'eco', route: '/admin/farmer-products', badge: null },
         { title: 'Reported Posts', icon: 'report', route: '/admin/reported-posts', badge: null },
         { title: 'Post Settings', icon: 'tune', route: '/admin/marketplace-config', badge: null }
       ]
@@ -209,6 +210,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       items: [
         { title: 'Buy & Sell Posts', icon: 'storefront', route: '/admin/marketplace', badge: null },
         { title: 'Real Estate', icon: 'home_work', route: '/admin/real-estate', badge: null },
+        { title: 'Farmer Products', icon: 'eco', route: '/admin/farmer-products', badge: null },
         { title: 'Reported Posts', icon: 'report', route: '/admin/reported-posts', badge: null },
         { title: 'Post Settings', icon: 'tune', route: '/admin/marketplace-config', badge: null }
       ]

@@ -41,6 +41,7 @@ import { RealEstateManagementComponent } from './components/real-estate-manageme
 import { BusTimingManagementComponent } from './components/bus-timing-management/bus-timing-management.component';
 import { ReportedPostsComponent } from './components/reported-posts/reported-posts.component';
 import { MarketplaceConfigComponent } from './components/marketplace-config/marketplace-config.component';
+import { FarmerProductsManagementComponent } from './components/farmer-products-management/farmer-products-management.component';
 
 @NgModule({
   declarations: [
@@ -58,7 +59,8 @@ import { MarketplaceConfigComponent } from './components/marketplace-config/mark
     RealEstateManagementComponent,
     BusTimingManagementComponent,
     ReportedPostsComponent,
-    MarketplaceConfigComponent
+    MarketplaceConfigComponent,
+    FarmerProductsManagementComponent
   ],
   imports: [
     CommonModule,
@@ -148,6 +150,10 @@ import { MarketplaceConfigComponent } from './components/marketplace-config/mark
       {
         path: 'marketplace-config',
         component: MarketplaceConfigComponent
+      },
+      {
+        path: 'farmer-products',
+        component: FarmerProductsManagementComponent
       },
       {
         path: 'shops',
