@@ -303,8 +303,12 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
 
     Timer(const Duration(seconds: 3), () {
       if (mounted) {
-        Navigator.pop(context); // Close dialog
-        Navigator.pop(context); // Go back to farmer products screen
+        Navigator.of(context, rootNavigator: true).pop(); // Close dialog
+        Future.delayed(const Duration(milliseconds: 150), () {
+          if (mounted) {
+            Navigator.of(context).pop(true); // Go back to farmer products screen
+          }
+        });
       }
     });
   }
