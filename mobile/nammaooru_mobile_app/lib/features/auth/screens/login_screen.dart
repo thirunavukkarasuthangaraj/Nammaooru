@@ -479,15 +479,14 @@ class _LoginScreenState extends State<LoginScreen> {
         const SizedBox(height: 8),
         SizedBox(
           width: double.infinity,
-          height: 40,
-          child: ElevatedButton(
+          height: 44,
+          child: OutlinedButton(
             onPressed: () {
               context.go('/register');
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white.withOpacity(0.15),
+            style: OutlinedButton.styleFrom(
               foregroundColor: Colors.white,
-              elevation: 0,
+              side: const BorderSide(color: Colors.white, width: 1.5),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
@@ -495,8 +494,9 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Text(
               langProvider.getText('Sign Up', 'பதிவு செய்'),
               style: const TextStyle(
-                fontSize: 14,
+                fontSize: 15,
                 fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
               ),
             ),
           ),
