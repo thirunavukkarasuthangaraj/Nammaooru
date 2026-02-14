@@ -131,9 +131,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            const SizedBox(height: 20),
+                            const SizedBox(height: 10),
                             _buildHeader(),
-                            const SizedBox(height: 20),
+                            const SizedBox(height: 16),
                             _buildEmailField(),
                             const SizedBox(height: 12),
                             _buildPasswordField(),
@@ -143,6 +143,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             _buildLoginButton(),
                             const SizedBox(height: 12),
                             _buildSignUpLink(),
+                            const SizedBox(height: 40),
                           ],
                         ),
                       ),
@@ -479,7 +480,7 @@ class _LoginScreenState extends State<LoginScreen> {
         const SizedBox(height: 8),
         SizedBox(
           width: double.infinity,
-          height: 44,
+          height: 50,
           child: ElevatedButton(
             onPressed: () {
               context.go('/register');
@@ -488,6 +489,7 @@ class _LoginScreenState extends State<LoginScreen> {
               backgroundColor: Colors.white,
               foregroundColor: VillageTheme.primaryGreen,
               elevation: 2,
+              padding: const EdgeInsets.symmetric(vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
